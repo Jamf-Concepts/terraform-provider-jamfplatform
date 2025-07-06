@@ -4,6 +4,9 @@ Provides resources and data sources for managing [Jamf Compliance Benchmark](htt
 
 **This repository also includes a Go client for direct API access and scripting.**
 
+![image](https://github.com/user-attachments/assets/f315d765-4346-46ea-b66a-1b127a6db9c3)
+
+
 ## Requirements
 
 * Terraform 1.3 or later
