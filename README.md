@@ -6,6 +6,8 @@ Provides resources and data sources for managing [Jamf Compliance Benchmark](htt
 
 ![image](https://github.com/user-attachments/assets/f315d765-4346-46ea-b66a-1b127a6db9c3)
 
+* Create, Update and Delete Benchmark resources (updates force a destroy and create until PUT is supported by the API)
+* Read Benchmark, Baesline and Rule data sources
 
 ## Requirements
 
