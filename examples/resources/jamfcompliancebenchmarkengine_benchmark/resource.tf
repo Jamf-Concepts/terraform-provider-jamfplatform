@@ -4,8 +4,8 @@ data "jamfcompliancebenchmarkengine_rules" "cis_lvl1" {
   baseline_id = "cis_lvl1"
 }
 
-resource "jamfcompliancebenchmarkengine_benchmark" "example" {
-  title              = "Example Benchmark"
+resource "jamfcompliancebenchmarkengine_benchmark" "cis_lvl1" {
+  title              = "CIS Level 1 Benchmark - All Sources, All Rules"
   description        = "Created by Terraform"
   source_baseline_id = "cis_lvl1"
 
@@ -26,9 +26,37 @@ resource "jamfcompliancebenchmarkengine_benchmark" "example" {
   target = {
     device_groups = ["example-device-group-id"]
   }
-  enforcement_mode = "MONITOR"
+  enforcement_mode = "MONITOR_AND_ENFORCE"
 }
 
-output "benchmark_id" {
-  value = jamfcompliancebenchmarkengine_benchmark.example.id
+resource "jamfcompliancebenchmarkengine_benchmark" "custom_cis_lvl1" {
+  title              = "CIS Level 1 Benchmark - All Sources, Custom Rules"
+  description        = "Time Server and Critical Update Install"
+  source_baseline_id = "cis_lvl1"
+
+  sources = [
+    for s in data.jamfcompliancebenchmarkengine_rules.cis_lvl1.sources : {
+      branch   = s.branch
+      revision = s.revision
+    }
+  ]
+
+  rules = [
+    {
+      id      = "system_settings_time_server_configure"
+      enabled = true
+      odv = {
+        value = "ntp.jamf.com"
+      }
+    },
+    {
+      id      = "system_settings_critical_update_install_enforce"
+      enabled = true
+    }
+  ]
+
+  target = {
+    device_groups = ["4a36a1fe-e45a-430d-a966-a4d3ac993577"]
+  }
+  enforcement_mode = "MONITOR"
 }
