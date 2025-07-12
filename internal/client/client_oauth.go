@@ -44,10 +44,6 @@ type OAuthClient struct {
 
 // NewOAuthClient creates a new OAuth client
 func NewOAuthClient(config OAuthConfig) *OAuthClient {
-	if config.TokenURL == "" {
-		config.TokenURL = "https://eu.apigw.jamf.com/auth/token"
-	}
-
 	return &OAuthClient{
 		config: config,
 		httpClient: &http.Client{
