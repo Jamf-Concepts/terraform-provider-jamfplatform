@@ -1,4 +1,4 @@
-module github.com/Jamf-Concepts/terraform-provider-jamfcompliancebenchmarkengine
+module github.com/Jamf-Concepts/terraform-provider-jamfplatform
 
 go 1.24.4
 

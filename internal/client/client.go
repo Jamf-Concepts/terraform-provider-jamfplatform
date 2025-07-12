@@ -13,14 +13,14 @@ import (
 	"strings"
 )
 
-// Client represents the main API client for Jamf Compliance Benchmark Engine
+// Client represents the main API client for Jamf Platform
 type Client struct {
 	oauthClient *OAuthClient
 	baseURL     string
 	httpClient  *http.Client
 }
 
-// NewClient creates a new Jamf Compliance Benchmark Engine API client
+// NewClient creates a new Jamf Platform API client
 // region must be one of: us, eu, apac
 func NewClient(region, clientID, clientSecret string) *Client {
 	region = strings.ToLower(region)
