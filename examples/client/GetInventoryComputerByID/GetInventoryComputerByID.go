@@ -34,51 +34,40 @@ func main() {
 		log.Fatal("Missing required configuration: JAMF_CLIENT_ID, JAMF_CLIENT_SECRET, JAMF_REGION")
 	}
 
-	// Get baseline ID from command line argument or environment variable
-	var baselineID string
+	// Get computer ID from command line argument or environment variable
+	var computerID string
 	if len(os.Args) > 1 {
-		baselineID = os.Args[1]
-	} else if envBaselineID := os.Getenv("BASELINE_ID"); envBaselineID != "" {
-		baselineID = envBaselineID
+		computerID = os.Args[1]
+	} else if envComputerID := os.Getenv("COMPUTER_ID"); envComputerID != "" {
+		computerID = envComputerID
 	} else {
-		log.Fatal("Please provide a baseline ID as a command line argument or set BASELINE_ID environment variable")
+		log.Fatal("Please provide a computer ID as a command line argument or set COMPUTER_ID environment variable")
 	}
 
 	// Initialize the client (region-based)
-	apiClient := client.NewCBEngineClient(region, clientID, clientSecret)
+	apiClient := client.NewInventoryClient(region, clientID, clientSecret)
 
-	// Get rules for the given baseline
-	rulesResp, err := apiClient.GetCBEngineRules(context.Background(), baselineID)
+	// Get specific computer by ID
+	comp, err := apiClient.GetInventoryComputerByID(context.Background(), computerID)
 	if err != nil {
-		log.Fatalf("Error getting rules for baseline %s: %v", baselineID, err)
+		log.Fatalf("Error getting computer %s: %v", computerID, err)
 	}
 
-	fmt.Printf("Found %d rule(s) for baseline %s\n\n", len(rulesResp.Rules), baselineID)
-
-	for _, rule := range rulesResp.Rules {
-		status := "Disabled"
-		if rule.Enabled {
-			status = "Enabled"
-		}
-		odvInfo := ""
-		if rule.ODV != nil {
-			odvInfo = fmt.Sprintf(" (ODV: %s)", rule.ODV.Value)
-		}
-		fmt.Printf("Rule: %s\nTitle: %s\nStatus: %s%s\nDescription: %s\n\n",
-			rule.ID,
-			rule.Title,
-			status,
-			odvInfo,
-			rule.Description,
-		)
-	}
+	fmt.Printf("Computer Details:\n")
+	fmt.Printf("ID: %s\n", comp.ID)
+	fmt.Printf("Name: %s\n", comp.General.Name)
+	fmt.Printf("Serial Number: %s\n", comp.Hardware.SerialNumber)
+	fmt.Printf("UDID: %s\n", comp.UDID)
+	fmt.Printf("Last IP: %s\n", comp.General.LastIpAddress)
+	fmt.Printf("User: %s\n", comp.UserAndLocation.Username)
+	fmt.Printf("OS: %s %s\n", comp.OperatingSystem.Name, comp.OperatingSystem.Version)
 
 	// Print the full JSON response
 	fmt.Print("\n" + strings.Repeat("=", 50) + "\n")
 	fmt.Printf("Full JSON Response:\n")
 	fmt.Print(strings.Repeat("=", 50) + "\n")
 
-	jsonData, err := json.MarshalIndent(rulesResp, "", "  ")
+	jsonData, err := json.MarshalIndent(comp, "", "  ")
 	if err != nil {
 		log.Printf("Error marshaling to JSON: %v", err)
 	} else {

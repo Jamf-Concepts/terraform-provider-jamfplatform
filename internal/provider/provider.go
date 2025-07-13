@@ -17,12 +17,18 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/baselines"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/benchmark"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/rules"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/computer"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/computers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/mobiledevice"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/mobiledevices"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/shared"
 )
 
 // providerModel describes the provider data model for configuration.
 type providerModel struct {
-	Region   types.String        `tfsdk:"region"`
-	CBEngine *serviceCredentials `tfsdk:"cbengine"`
+	Region    types.String        `tfsdk:"region"`
+	CBEngine  *serviceCredentials `tfsdk:"cbengine"`
+	Inventory *serviceCredentials `tfsdk:"inventory"`
 }
 
 // serviceCredentials represents service-specific OAuth credentials.
@@ -33,7 +39,8 @@ type serviceCredentials struct {
 
 // jamfPlatformProvider implements the Terraform provider for Jamf Platform.
 type jamfPlatformProvider struct {
-	cbengineClient *client.Client
+	cbengineClient  *client.Client
+	inventoryClient *client.Client
 }
 
 // Ensure jamfPlatformProvider satisfies the provider.Provider interface.
@@ -57,18 +64,34 @@ func (p *jamfPlatformProvider) Schema(_ context.Context, _ provider.SchemaReques
 				},
 			},
 			"cbengine": schema.SingleNestedAttribute{
-				Required:    true,
+				Optional:    true,
 				Description: "Compliance Benchmark Engine API credentials.",
 				Attributes: map[string]schema.Attribute{
 					"client_id": schema.StringAttribute{
-						Required:    true,
+						Optional:    true,
 						Sensitive:   true,
 						Description: "OAuth client ID for Compliance Benchmark Engine API.",
 					},
 					"client_secret": schema.StringAttribute{
-						Required:    true,
+						Optional:    true,
 						Sensitive:   true,
 						Description: "OAuth client secret for Compliance Benchmark Engine API.",
+					},
+				},
+			},
+			"inventory": schema.SingleNestedAttribute{
+				Optional:    true,
+				Description: "Inventory API credentials.",
+				Attributes: map[string]schema.Attribute{
+					"client_id": schema.StringAttribute{
+						Optional:    true,
+						Sensitive:   true,
+						Description: "OAuth client ID for Inventory API.",
+					},
+					"client_secret": schema.StringAttribute{
+						Optional:    true,
+						Sensitive:   true,
+						Description: "OAuth client secret for Inventory API.",
 					},
 				},
 			},
@@ -93,29 +116,28 @@ func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	if config.CBEngine == nil {
-		resp.Diagnostics.AddError(
-			"Missing Compliance Benchmark Engine API Configuration",
-			"Compliance Benchmark Engine API credentials block is required.",
-		)
-		return
+	if config.CBEngine != nil {
+		cbengineClientID := config.CBEngine.ClientID.ValueString()
+		cbengineClientSecret := config.CBEngine.ClientSecret.ValueString()
+		if cbengineClientID != "" && cbengineClientSecret != "" {
+			p.cbengineClient = client.NewCBEngineClient(region, cbengineClientID, cbengineClientSecret)
+		}
 	}
-
-	cbengineClientID := config.CBEngine.ClientID.ValueString()
-	cbengineClientSecret := config.CBEngine.ClientSecret.ValueString()
-
-	if cbengineClientID == "" || cbengineClientSecret == "" {
-		resp.Diagnostics.AddError(
-			"Missing Compliance Benchmark Engine API Credentials",
-			"Both cbengine.client_id and cbengine.client_secret must be set.",
-		)
-		return
+	if config.Inventory != nil {
+		inventoryClientID := config.Inventory.ClientID.ValueString()
+		inventoryClientSecret := config.Inventory.ClientSecret.ValueString()
+		if inventoryClientID != "" && inventoryClientSecret != "" {
+			p.inventoryClient = client.NewInventoryClient(region, inventoryClientID, inventoryClientSecret)
+		}
 	}
-
-	cbengineClient := client.NewClient(region, cbengineClientID, cbengineClientSecret)
-	p.cbengineClient = cbengineClient
-	resp.DataSourceData = cbengineClient
-	resp.ResourceData = cbengineClient
+	resp.DataSourceData = &shared.ProviderClients{
+		CBEngine:  p.cbengineClient,
+		Inventory: p.inventoryClient,
+	}
+	resp.ResourceData = &shared.ProviderClients{
+		CBEngine:  p.cbengineClient,
+		Inventory: p.inventoryClient,
+	}
 }
 
 // Resources returns the list of resource constructors for the provider.
@@ -125,12 +147,15 @@ func (p *jamfPlatformProvider) Resources(_ context.Context) []func() resource.Re
 	}
 }
 
-// DataSources returns the list of data source constructors for the provider.
 func (p *jamfPlatformProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		baselines.NewBaselinesDataSource,
 		rules.NewRulesDataSource,
 		benchmark.NewBenchmarkDataSource,
+		mobiledevices.NewDataSourceMobileDevices,
+		computers.NewDataSourceComputers,
+		computer.NewDataSourceComputer,
+		mobiledevice.NewDataSourceMobileDevice,
 	}
 }
 

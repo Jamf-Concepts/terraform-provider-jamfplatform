@@ -10,11 +10,81 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/shared"
 )
 
 // rulesDataSource implements the Terraform data source for mSCP rules.
 type rulesDataSource struct {
 	client *client.Client
+}
+
+// rulesDataSourceModel represents the Terraform data source model for mSCP rules.
+type rulesDataSourceModel struct {
+	BaselineID types.String  `tfsdk:"baseline_id"`
+	Sources    []sourceModel `tfsdk:"sources"`
+	Rules      []ruleModel   `tfsdk:"rules"`
+}
+
+// sourceModel represents a source branch and revision for a rule.
+type sourceModel struct {
+	Branch   types.String `tfsdk:"branch"`
+	Revision types.String `tfsdk:"revision"`
+}
+
+// ruleModel represents a rule in the data source, including ODV and computed fields.
+type ruleModel struct {
+	ID                 types.String                       `tfsdk:"id"`
+	SectionName        types.String                       `tfsdk:"section_name"`
+	Enabled            types.Bool                         `tfsdk:"enabled"`
+	Title              types.String                       `tfsdk:"title"`
+	Description        types.String                       `tfsdk:"description"`
+	References         []types.String                     `tfsdk:"references"`
+	ODV                *odvModel                          `tfsdk:"odv"`
+	SupportedOS        []osInfoModel                      `tfsdk:"supported_os"`
+	OSSpecificDefaults map[string]osSpecificRuleInfoModel `tfsdk:"os_specific_defaults"`
+	RuleRelation       *ruleRelationModel                 `tfsdk:"rule_relation"`
+}
+
+// odvModel represents the Organization Defined Value (ODV) for a rule, including its value, hint, placeholder, type, and validation.
+type odvModel struct {
+	Value       types.String                `tfsdk:"value"`
+	Hint        types.String                `tfsdk:"hint"`
+	Placeholder types.String                `tfsdk:"placeholder"`
+	Type        types.String                `tfsdk:"type"`
+	Validation  *validationConstraintsModel `tfsdk:"validation"`
+}
+
+// validationConstraintsModel represents validation constraints for an ODV field.
+type validationConstraintsModel struct {
+	Min        types.Int64    `tfsdk:"min"`
+	Max        types.Int64    `tfsdk:"max"`
+	EnumValues []types.String `tfsdk:"enum_values"`
+	Regex      types.String   `tfsdk:"regex"`
+}
+
+// osInfoModel represents supported OS information for a rule.
+type osInfoModel struct {
+	OSType         types.String `tfsdk:"os_type"`
+	OSVersion      types.Int64  `tfsdk:"os_version"`
+	ManagementType types.String `tfsdk:"management_type"`
+}
+
+// osSpecificRuleInfoModel represents OS-specific rule information, including ODV recommendations.
+type osSpecificRuleInfoModel struct {
+	Title       types.String            `tfsdk:"title"`
+	Description types.String            `tfsdk:"description"`
+	ODV         *odvRecommendationModel `tfsdk:"odv"`
+}
+
+// odvRecommendationModel represents a recommended ODV value and hint for a specific OS.
+type odvRecommendationModel struct {
+	Value types.String `tfsdk:"value"`
+	Hint  types.String `tfsdk:"hint"`
+}
+
+// ruleRelationModel represents rule dependencies for a rule.
+type ruleRelationModel struct {
+	DependsOn []types.String `tfsdk:"depends_on"`
 }
 
 // NewRulesDataSource returns a new instance of the rules data source.
@@ -27,15 +97,22 @@ func (d *rulesDataSource) Configure(ctx context.Context, req datasource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	apiClient, ok := req.ProviderData.(*client.Client)
+	providerClients, ok := req.ProviderData.(*shared.ProviderClients)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
+			"Expected *shared.ProviderClients, got something else.",
 		)
 		return
 	}
-	d.client = apiClient
+	if providerClients.CBEngine == nil {
+		resp.Diagnostics.AddError(
+			"CBEngine API client not configured",
+			"The provider's cbengine block is missing or incomplete. Please provide valid credentials.",
+		)
+		return
+	}
+	d.client = providerClients.CBEngine
 }
 
 // Metadata sets the data source type name for the Terraform provider.
@@ -209,75 +286,6 @@ func (d *rulesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 			},
 		},
 	}
-}
-
-// rulesDataSourceModel represents the Terraform data source model for mSCP rules.
-type rulesDataSourceModel struct {
-	BaselineID types.String  `tfsdk:"baseline_id"`
-	Sources    []sourceModel `tfsdk:"sources"`
-	Rules      []ruleModel   `tfsdk:"rules"`
-}
-
-// sourceModel represents a source branch and revision for a rule.
-type sourceModel struct {
-	Branch   types.String `tfsdk:"branch"`
-	Revision types.String `tfsdk:"revision"`
-}
-
-// ruleModel represents a rule in the data source, including ODV and computed fields.
-type ruleModel struct {
-	ID                 types.String                       `tfsdk:"id"`
-	SectionName        types.String                       `tfsdk:"section_name"`
-	Enabled            types.Bool                         `tfsdk:"enabled"`
-	Title              types.String                       `tfsdk:"title"`
-	Description        types.String                       `tfsdk:"description"`
-	References         []types.String                     `tfsdk:"references"`
-	ODV                *odvModel                          `tfsdk:"odv"`
-	SupportedOS        []osInfoModel                      `tfsdk:"supported_os"`
-	OSSpecificDefaults map[string]osSpecificRuleInfoModel `tfsdk:"os_specific_defaults"`
-	RuleRelation       *ruleRelationModel                 `tfsdk:"rule_relation"`
-}
-
-// odvModel represents the Organization Defined Value (ODV) for a rule, including its value, hint, placeholder, type, and validation.
-type odvModel struct {
-	Value       types.String                `tfsdk:"value"`
-	Hint        types.String                `tfsdk:"hint"`
-	Placeholder types.String                `tfsdk:"placeholder"`
-	Type        types.String                `tfsdk:"type"`
-	Validation  *validationConstraintsModel `tfsdk:"validation"`
-}
-
-// validationConstraintsModel represents validation constraints for an ODV field.
-type validationConstraintsModel struct {
-	Min        types.Int64    `tfsdk:"min"`
-	Max        types.Int64    `tfsdk:"max"`
-	EnumValues []types.String `tfsdk:"enum_values"`
-	Regex      types.String   `tfsdk:"regex"`
-}
-
-// osInfoModel represents supported OS information for a rule.
-type osInfoModel struct {
-	OSType         types.String `tfsdk:"os_type"`
-	OSVersion      types.Int64  `tfsdk:"os_version"`
-	ManagementType types.String `tfsdk:"management_type"`
-}
-
-// osSpecificRuleInfoModel represents OS-specific rule information, including ODV recommendations.
-type osSpecificRuleInfoModel struct {
-	Title       types.String            `tfsdk:"title"`
-	Description types.String            `tfsdk:"description"`
-	ODV         *odvRecommendationModel `tfsdk:"odv"`
-}
-
-// odvRecommendationModel represents a recommended ODV value and hint for a specific OS.
-type odvRecommendationModel struct {
-	Value types.String `tfsdk:"value"`
-	Hint  types.String `tfsdk:"hint"`
-}
-
-// ruleRelationModel represents rule dependencies for a rule.
-type ruleRelationModel struct {
-	DependsOn []types.String `tfsdk:"depends_on"`
 }
 
 // Read implements datasource.DataSource for rulesDataSource. It fetches the list of rules from the API and sets the state.

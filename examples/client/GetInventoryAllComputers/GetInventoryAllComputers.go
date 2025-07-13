@@ -34,42 +34,31 @@ func main() {
 		log.Fatal("Missing required configuration: JAMF_CLIENT_ID, JAMF_CLIENT_SECRET, JAMF_REGION")
 	}
 
-	// Get baseline ID from command line argument or environment variable
-	var baselineID string
-	if len(os.Args) > 1 {
-		baselineID = os.Args[1]
-	} else if envBaselineID := os.Getenv("BASELINE_ID"); envBaselineID != "" {
-		baselineID = envBaselineID
-	} else {
-		log.Fatal("Please provide a baseline ID as a command line argument or set BASELINE_ID environment variable")
+	// Filter from env or default
+	filter := ""
+	if envFilter := os.Getenv("INVENTORY_FILTER"); envFilter != "" {
+		filter = envFilter
 	}
 
 	// Initialize the client (region-based)
-	apiClient := client.NewCBEngineClient(region, clientID, clientSecret)
+	apiClient := client.NewInventoryClient(region, clientID, clientSecret)
 
-	// Get rules for the given baseline
-	rulesResp, err := apiClient.GetCBEngineRules(context.Background(), baselineID)
+	// Get all computers (automatic pagination handling)
+	// This function automatically fetches all pages and returns all computers as a single slice
+	computers, err := apiClient.GetInventoryAllComputers(context.Background(), filter)
 	if err != nil {
-		log.Fatalf("Error getting rules for baseline %s: %v", baselineID, err)
+		log.Fatalf("Error listing computers: %v", err)
 	}
 
-	fmt.Printf("Found %d rule(s) for baseline %s\n\n", len(rulesResp.Rules), baselineID)
-
-	for _, rule := range rulesResp.Rules {
-		status := "Disabled"
-		if rule.Enabled {
-			status = "Enabled"
-		}
-		odvInfo := ""
-		if rule.ODV != nil {
-			odvInfo = fmt.Sprintf(" (ODV: %s)", rule.ODV.Value)
-		}
-		fmt.Printf("Rule: %s\nTitle: %s\nStatus: %s%s\nDescription: %s\n\n",
-			rule.ID,
-			rule.Title,
-			status,
-			odvInfo,
-			rule.Description,
+	fmt.Printf("Found %d mobile device(s)\n\n", len(computers))
+	for _, dev := range computers {
+		fmt.Printf("ID: %s\nName: %s\nSerial: %s\nUDID: %s\nUser: %s\nOS: %s\n\n",
+			dev.ID,
+			dev.General.Name,
+			dev.Hardware.SerialNumber,
+			dev.General.ManagementId,
+			dev.UserAndLocation.Username,
+			dev.General.Platform,
 		)
 	}
 
@@ -78,7 +67,7 @@ func main() {
 	fmt.Printf("Full JSON Response:\n")
 	fmt.Print(strings.Repeat("=", 50) + "\n")
 
-	jsonData, err := json.MarshalIndent(rulesResp, "", "  ")
+	jsonData, err := json.MarshalIndent(computers, "", "  ")
 	if err != nil {
 		log.Printf("Error marshaling to JSON: %v", err)
 	} else {

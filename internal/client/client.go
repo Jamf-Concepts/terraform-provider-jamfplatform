@@ -19,9 +19,9 @@ type Client struct {
 	baseURL     string
 }
 
-// NewClient creates a new Jamf Platform API client
+// NewCBEngineClient creates a new Jamf Compliance Benchmark Engine API client
 // region must be one of: us, eu, apac
-func NewClient(region, clientID, clientSecret string) *Client {
+func NewCBEngineClient(region, clientID, clientSecret string) *Client {
 	region = strings.ToLower(region)
 	switch region {
 	case "us", "eu", "apac":
@@ -38,6 +38,33 @@ func NewClient(region, clientID, clientSecret string) *Client {
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Scopes:       []string{"default-plan", "tenant-environment", "cb-api-product"},
+	}
+
+	return &Client{
+		oauthClient: NewOAuthClient(config),
+		baseURL:     baseURL,
+	}
+}
+
+// NewInventoryClient creates a new Jamf Inventory API client
+// region must be one of: us, eu, apac
+func NewInventoryClient(region, clientID, clientSecret string) *Client {
+	region = strings.ToLower(region)
+	switch region {
+	case "us", "eu", "apac":
+	default:
+		panic("invalid region: must be one of us, eu, apac")
+	}
+
+	baseDomain := fmt.Sprintf("%s.apigw.jamf.com", region)
+	baseURL := fmt.Sprintf("https://%s/api/devices", baseDomain)
+	tokenURL := fmt.Sprintf("https://%s/auth/token", baseDomain)
+
+	config := OAuthConfig{
+		TokenURL:     tokenURL,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Scopes:       []string{"default-plan", "devices-inventory-product.read", "tenant-environment"},
 	}
 
 	return &Client{
@@ -65,25 +92,20 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		requestBody = bytes.NewReader(requestBodyBytes)
 	}
 
-	// Create authenticated request
 	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, url, requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authenticated request: %w", err)
 	}
 
-	// Set Content-Type for JSON requests
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	// Use the OAuth client's HTTP client directly since we already have an authenticated request
-	// The Do method on OAuthClient expects to handle the entire flow including authentication
 	resp, err := c.oauthClient.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
 
-	// Handle 401 errors by clearing token and retrying once
 	if resp.StatusCode == http.StatusUnauthorized {
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			fmt.Printf("warning: error closing response body: %v\n", closeErr)
@@ -91,7 +113,6 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 
 		c.oauthClient.ClearToken()
 
-		// Retry with fresh token
 		req, err = c.oauthClient.AuthenticatedRequest(ctx, method, url, requestBody)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authenticated request after 401: %w", err)

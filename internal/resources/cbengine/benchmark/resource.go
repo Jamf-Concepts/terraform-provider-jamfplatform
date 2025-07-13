@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/shared"
 )
 
 // BenchmarkResourceSchema returns the Terraform schema for the Jamf Compliance Benchmark resource.
@@ -276,13 +276,20 @@ func (r *BenchmarkResource) Configure(ctx context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	apiClient, ok := req.ProviderData.(*client.Client)
+	providerClients, ok := req.ProviderData.(*shared.ProviderClients)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
+			"Expected *shared.ProviderClients, got something else.",
 		)
 		return
 	}
-	r.client = apiClient
+	if providerClients.CBEngine == nil {
+		resp.Diagnostics.AddError(
+			"CBEngine API client not configured",
+			"The provider's cbengine block is missing or incomplete. Please provide valid credentials.",
+		)
+		return
+	}
+	r.client = providerClients.CBEngine
 }
