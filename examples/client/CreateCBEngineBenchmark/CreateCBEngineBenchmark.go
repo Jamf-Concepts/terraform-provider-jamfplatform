@@ -61,7 +61,7 @@ func main() {
 	// }
 
 	// Initialize the client (region-based)
-	apiClient := client.NewClient(region, clientID, clientSecret)
+	apiClient := client.NewCBEngineClient(region, clientID, clientSecret)
 
 	// Print the JSON request before sending
 	jsonReq, err := json.MarshalIndent(request, "", "  ")

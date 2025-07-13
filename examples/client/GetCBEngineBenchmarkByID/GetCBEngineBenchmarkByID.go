@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// Initialize the client (region-based)
-	apiClient := client.NewClient(region, clientID, clientSecret)
+	apiClient := client.NewCBEngineClient(region, clientID, clientSecret)
 
 	// Get specific benchmark by ID
 	benchmark, err := apiClient.GetCBEngineBenchmarkByID(context.Background(), benchmarkID)

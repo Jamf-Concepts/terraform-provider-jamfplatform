@@ -112,7 +112,7 @@ func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	cbengineClient := client.NewClient(region, cbengineClientID, cbengineClientSecret)
+	cbengineClient := client.NewCBEngineClient(region, cbengineClientID, cbengineClientSecret)
 	p.cbengineClient = cbengineClient
 	resp.DataSourceData = cbengineClient
 	resp.ResourceData = cbengineClient

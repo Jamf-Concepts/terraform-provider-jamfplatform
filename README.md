@@ -152,7 +152,7 @@ For example, go get a list of current Compliance Baselines from the mSCP:
 import "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 
 func main() {
-    apiClient := client.NewClient("us", "your-client-id", "your-client-secret")
+    apiClient := client.NewCBEngineClient("us", "your-client-id", "your-client-secret")
     // Use apiClient to call API methods, e.g.:
     baselines, err := apiClient.GetCBEngineBaselines(context.Background())
     // ...
