@@ -1,3 +1,5 @@
+// Copyright 2025 Jamf Software LLC.
+
 package mobiledevice
 
 import (
@@ -15,6 +17,23 @@ import (
 // DataSourceMobileDevice defines the data source implementation.
 type DataSourceMobileDevice struct {
 	client *client.Client
+}
+
+// mobileDeviceDataSourceModel maps the data source schema data.
+type mobileDeviceDataSourceModel struct {
+	ID              types.String `tfsdk:"id"`
+	MobileDeviceId  types.String `tfsdk:"mobile_device_id"`
+	DeviceType      types.String `tfsdk:"device_type"`
+	Sections        types.List   `tfsdk:"sections"`
+	General         types.Object `tfsdk:"general"`
+	Hardware        types.Object `tfsdk:"hardware"`
+	UserAndLocation types.Object `tfsdk:"user_and_location"`
+	Purchasing      types.Object `tfsdk:"purchasing"`
+	Security        types.Object `tfsdk:"security"`
+	Network         types.Object `tfsdk:"network"`
+	Applications    types.List   `tfsdk:"applications"`
+	Profiles        types.List   `tfsdk:"profiles"`
+	Certificates    types.List   `tfsdk:"certificates"`
 }
 
 // Ensure DataSourceMobileDevice implements the datasource.DataSource interface.
@@ -48,27 +67,12 @@ func (d *DataSourceMobileDevice) Configure(ctx context.Context, req datasource.C
 	d.client = providerClients.Inventory
 }
 
-// mobileDeviceDataSourceModel maps the data source schema data.
-type mobileDeviceDataSourceModel struct {
-	ID              types.String `tfsdk:"id"`
-	MobileDeviceId  types.String `tfsdk:"mobile_device_id"`
-	DeviceType      types.String `tfsdk:"device_type"`
-	Sections        types.List   `tfsdk:"sections"`
-	General         types.Object `tfsdk:"general"`
-	Hardware        types.Object `tfsdk:"hardware"`
-	UserAndLocation types.Object `tfsdk:"user_and_location"`
-	Purchasing      types.Object `tfsdk:"purchasing"`
-	Security        types.Object `tfsdk:"security"`
-	Network         types.Object `tfsdk:"network"`
-	Applications    types.List   `tfsdk:"applications"`
-	Profiles        types.List   `tfsdk:"profiles"`
-	Certificates    types.List   `tfsdk:"certificates"`
-}
-
+// Metadata sets the data source type name for the Terraform provider.
 func (d *DataSourceMobileDevice) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_mobile_device"
 }
 
+// Schema defines the schema for the mobile device data source.
 func (d *DataSourceMobileDevice) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -481,6 +485,7 @@ func (d *DataSourceMobileDevice) Schema(_ context.Context, _ datasource.SchemaRe
 	}
 }
 
+// Read fetches the mobile device details and sets the state.
 func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data mobileDeviceDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -497,7 +502,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	// Get sections to retrieve
 	var sections []string
 	if !data.Sections.IsNull() && !data.Sections.IsUnknown() {
 		resp.Diagnostics.Append(data.Sections.ElementsAs(ctx, &sections, false)...)
@@ -515,12 +519,10 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	// Map the response to the data source model
 	data.ID = types.StringValue(id)
 	data.MobileDeviceId = types.StringValue(mobileDevice.MobileDeviceId)
 	data.DeviceType = types.StringValue(mobileDevice.DeviceType)
 
-	// Map General information
 	generalAttrs := map[string]attr.Value{
 		"udid":                       types.StringValue(mobileDevice.General.Udid),
 		"display_name":               types.StringValue(mobileDevice.General.DisplayName),
@@ -557,7 +559,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.General = generalVal
 
-	// Map Hardware information
 	hardwareAttrs := map[string]attr.Value{
 		"capacity_mb":           types.Int64Value(int64(mobileDevice.Hardware.CapacityMb)),
 		"available_space_mb":    types.Int64Value(int64(mobileDevice.Hardware.AvailableSpaceMb)),
@@ -590,7 +591,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.Hardware = hardwareVal
 
-	// Map User and Location information
 	userLocationAttrs := map[string]attr.Value{
 		"username":      types.StringValue(mobileDevice.UserAndLocation.Username),
 		"real_name":     types.StringValue(mobileDevice.UserAndLocation.RealName),
@@ -619,7 +619,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.UserAndLocation = userLocationVal
 
-	// Map Purchasing information
 	purchasingAttrs := map[string]attr.Value{
 		"purchased":             types.BoolValue(mobileDevice.Purchasing.Purchased),
 		"leased":                types.BoolValue(mobileDevice.Purchasing.Leased),
@@ -652,7 +651,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.Purchasing = purchasingVal
 
-	// Map Security information
 	securityAttrs := map[string]attr.Value{
 		"data_protected":                 types.BoolValue(mobileDevice.Security.DataProtected),
 		"block_level_encryption_capable": types.BoolValue(mobileDevice.Security.BlockLevelEncryptionCapable),
@@ -681,7 +679,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.Security = securityVal
 
-	// Map Network information
 	networkAttrs := map[string]attr.Value{
 		"cellular_technology": types.StringValue(mobileDevice.Network.CellularTechnology),
 		"iccid":               types.StringValue(mobileDevice.Network.Iccid),
@@ -704,7 +701,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.Network = networkVal
 
-	// Map Applications
 	var appList []attr.Value
 	for _, app := range mobileDevice.Applications {
 		appAttrs := map[string]attr.Value{
@@ -741,7 +737,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.Applications = applicationsVal
 
-	// Map Profiles
 	var profileList []attr.Value
 	for _, profile := range mobileDevice.Profiles {
 		profileAttrs := map[string]attr.Value{
@@ -778,7 +773,6 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	resp.Diagnostics.Append(diags...)
 	data.Profiles = profilesVal
 
-	// Map Certificates
 	var certList []attr.Value
 	for _, cert := range mobileDevice.Certificates {
 		certAttrs := map[string]attr.Value{

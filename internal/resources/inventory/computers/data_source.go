@@ -1,3 +1,5 @@
+// Copyright 2025 Jamf Software LLC.
+
 package computers
 
 import (
@@ -14,6 +16,13 @@ import (
 // DataSourceComputers defines the data source implementation.
 type DataSourceComputers struct {
 	client *client.Client
+}
+
+// computersDataSourceModel maps the data source schema data.
+type computersDataSourceModel struct {
+	ID        types.String `tfsdk:"id"`
+	Filter    types.String `tfsdk:"filter"`
+	Computers types.List   `tfsdk:"computers"`
 }
 
 // Ensure DataSourceComputers implements the datasource.DataSource interface.
@@ -47,17 +56,12 @@ func (d *DataSourceComputers) Configure(ctx context.Context, req datasource.Conf
 	d.client = providerClients.Inventory
 }
 
-// computersDataSourceModel maps the data source schema data.
-type computersDataSourceModel struct {
-	ID        types.String `tfsdk:"id"`
-	Filter    types.String `tfsdk:"filter"`
-	Computers types.List   `tfsdk:"computers"`
-}
-
+// Metadata sets the data source type name for the Terraform provider.
 func (d *DataSourceComputers) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_computers"
 }
 
+// Schema defines the schema for the computers data source.
 func (d *DataSourceComputers) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -77,6 +81,7 @@ func (d *DataSourceComputers) Schema(_ context.Context, _ datasource.SchemaReque
 	}
 }
 
+// Read fetches the list of computers and sets the state.
 func (d *DataSourceComputers) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data computersDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -84,7 +89,6 @@ func (d *DataSourceComputers) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	// Get the filter string (if provided)
 	filter := ""
 	if !data.Filter.IsNull() && !data.Filter.IsUnknown() {
 		filter = data.Filter.ValueString()

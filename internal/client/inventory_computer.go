@@ -1,3 +1,7 @@
+// Copyright 2025 Jamf Software LLC.
+// https://developer.jamf.com/platform-api/reference/get_v1-computers-id
+// https://developer.jamf.com/platform-api/reference/get_v1-computers
+
 package client
 
 import (
@@ -6,7 +10,6 @@ import (
 	"net/url"
 )
 
-// InventoryComputer represents a computer record from the Inventory API
 // InventoryComputer represents a computer record from the Jamf Inventory API.
 type InventoryComputer struct {
 	ID                    string                                  `json:"id"`

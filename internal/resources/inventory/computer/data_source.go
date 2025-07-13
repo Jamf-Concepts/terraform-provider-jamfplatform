@@ -1,3 +1,5 @@
+// Copyright 2025 Jamf Software LLC.
+
 package computer
 
 import (
@@ -15,6 +17,21 @@ import (
 // DataSourceComputer defines the data source implementation.
 type DataSourceComputer struct {
 	client *client.Client
+}
+
+// computerDataSourceModel maps the data source schema data.
+type computerDataSourceModel struct {
+	ID                    types.String `tfsdk:"id"`
+	UDID                  types.String `tfsdk:"udid"`
+	General               types.Object `tfsdk:"general"`
+	Hardware              types.Object `tfsdk:"hardware"`
+	OperatingSystem       types.Object `tfsdk:"operating_system"`
+	UserAndLocation       types.Object `tfsdk:"user_and_location"`
+	Purchasing            types.Object `tfsdk:"purchasing"`
+	Security              types.Object `tfsdk:"security"`
+	Applications          types.List   `tfsdk:"applications"`
+	ConfigurationProfiles types.List   `tfsdk:"configuration_profiles"`
+	LocalUserAccounts     types.List   `tfsdk:"local_user_accounts"`
 }
 
 // Ensure DataSourceComputer implements the datasource.DataSource interface.
@@ -48,25 +65,12 @@ func (d *DataSourceComputer) Configure(ctx context.Context, req datasource.Confi
 	d.client = providerClients.Inventory
 }
 
-// computerDataSourceModel maps the data source schema data.
-type computerDataSourceModel struct {
-	ID                    types.String `tfsdk:"id"`
-	UDID                  types.String `tfsdk:"udid"`
-	General               types.Object `tfsdk:"general"`
-	Hardware              types.Object `tfsdk:"hardware"`
-	OperatingSystem       types.Object `tfsdk:"operating_system"`
-	UserAndLocation       types.Object `tfsdk:"user_and_location"`
-	Purchasing            types.Object `tfsdk:"purchasing"`
-	Security              types.Object `tfsdk:"security"`
-	Applications          types.List   `tfsdk:"applications"`
-	ConfigurationProfiles types.List   `tfsdk:"configuration_profiles"`
-	LocalUserAccounts     types.List   `tfsdk:"local_user_accounts"`
-}
-
+// Metadata sets the data source type name for the Terraform provider.
 func (d *DataSourceComputer) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_computer"
 }
 
+// Schema sets the Terraform schema for the data source.
 func (d *DataSourceComputer) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -346,6 +350,7 @@ func (d *DataSourceComputer) Schema(_ context.Context, _ datasource.SchemaReques
 	}
 }
 
+// Read retrieves the computer details based on the provided ID.
 func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data computerDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -371,11 +376,9 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	// Map the response to the data source model
 	data.ID = types.StringValue(computer.ID)
 	data.UDID = types.StringValue(computer.UDID)
 
-	// Map General information
 	generalAttrs := map[string]attr.Value{
 		"name":                types.StringValue(computer.General.Name),
 		"last_ip_address":     types.StringValue(computer.General.LastIpAddress),
@@ -402,7 +405,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.General = generalVal
 
-	// Map Hardware information
 	hardwareAttrs := map[string]attr.Value{
 		"make":                types.StringValue(computer.Hardware.Make),
 		"model":               types.StringValue(computer.Hardware.Model),
@@ -427,7 +429,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.Hardware = hardwareVal
 
-	// Map Operating System information
 	osAttrs := map[string]attr.Value{
 		"name":    types.StringValue(computer.OperatingSystem.Name),
 		"version": types.StringValue(computer.OperatingSystem.Version),
@@ -442,7 +443,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.OperatingSystem = osVal
 
-	// Map User and Location information
 	userLocationAttrs := map[string]attr.Value{
 		"username":      types.StringValue(computer.UserAndLocation.Username),
 		"realname":      types.StringValue(computer.UserAndLocation.Realname),
@@ -467,7 +467,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.UserAndLocation = userLocationVal
 
-	// Map Purchasing information
 	purchasingAttrs := map[string]attr.Value{
 		"purchased":      types.BoolValue(computer.Purchasing.Purchased),
 		"leased":         types.BoolValue(computer.Purchasing.Leased),
@@ -488,7 +487,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.Purchasing = purchasingVal
 
-	// Map Security information
 	securityAttrs := map[string]attr.Value{
 		"sip_status":              types.StringValue(computer.Security.SipStatus),
 		"gatekeeper_status":       types.StringValue(computer.Security.GatekeeperStatus),
@@ -505,7 +503,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.Security = securityVal
 
-	// Map Applications
 	var appList []attr.Value
 	for _, app := range computer.Applications {
 		appAttrs := map[string]attr.Value{
@@ -536,7 +533,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.Applications = applicationsVal
 
-	// Map Configuration Profiles
 	var profileList []attr.Value
 	for _, profile := range computer.ConfigurationProfiles {
 		profileAttrs := map[string]attr.Value{
@@ -564,7 +560,6 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.ConfigurationProfiles = configProfilesVal
 
-	// Map Local User Accounts
 	var userList []attr.Value
 	for _, user := range computer.LocalUserAccounts {
 		userAttrs := map[string]attr.Value{

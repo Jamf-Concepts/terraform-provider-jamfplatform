@@ -130,12 +130,10 @@ func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 			p.inventoryClient = client.NewInventoryClient(region, inventoryClientID, inventoryClientSecret)
 		}
 	}
-	// Set ProviderData for data sources/resources
 	resp.DataSourceData = &shared.ProviderClients{
 		CBEngine:  p.cbengineClient,
 		Inventory: p.inventoryClient,
 	}
-	// Resources also use the shared ProviderClients struct
 	resp.ResourceData = &shared.ProviderClients{
 		CBEngine:  p.cbengineClient,
 		Inventory: p.inventoryClient,

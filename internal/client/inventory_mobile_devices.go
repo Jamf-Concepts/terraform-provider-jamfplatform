@@ -1,3 +1,7 @@
+// Copyright 2025 Jamf Software LLC.
+// https://developer.jamf.com/platform-api/reference/get_v1-mobile-devices
+// https://developer.jamf.com/platform-api/reference/get_v1-mobile-devices-id
+
 package client
 
 import (

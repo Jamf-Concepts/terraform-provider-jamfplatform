@@ -1,3 +1,5 @@
+// Copyright 2025 Jamf Software LLC.
+
 package mobiledevices
 
 import (
@@ -15,6 +17,13 @@ import (
 // DataSourceMobileDevices defines the data source implementation.
 type DataSourceMobileDevices struct {
 	client *client.Client
+}
+
+// mobileDevicesDataSourceModel maps the data source schema data.
+type mobileDevicesDataSourceModel struct {
+	ID      types.String `tfsdk:"id"`
+	Section types.List   `tfsdk:"section"`
+	Devices types.List   `tfsdk:"devices"`
 }
 
 // Ensure DataSourceMobileDevices implements the datasource.DataSource interface.
@@ -48,17 +57,12 @@ func (d *DataSourceMobileDevices) Configure(ctx context.Context, req datasource.
 	d.client = providerClients.Inventory
 }
 
-// mobileDevicesDataSourceModel maps the data source schema data.
-type mobileDevicesDataSourceModel struct {
-	ID      types.String `tfsdk:"id"`
-	Section types.List   `tfsdk:"section"`
-	Devices types.List   `tfsdk:"devices"`
-}
-
+// Metadata sets the data source type name for the Terraform provider.
 func (d *DataSourceMobileDevices) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_mobile_devices"
 }
 
+// Schema sets the data source schema for the mobile devices.
 func (d *DataSourceMobileDevices) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -79,6 +83,7 @@ func (d *DataSourceMobileDevices) Schema(_ context.Context, _ datasource.SchemaR
 	}
 }
 
+// Read fetches the mobile devices and sets the data source state.
 func (d *DataSourceMobileDevices) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data mobileDevicesDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
