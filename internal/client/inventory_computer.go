@@ -143,7 +143,7 @@ type InventoryComputerDisk struct {
 	Model         string                       `json:"model"`
 	Revision      string                       `json:"revision"`
 	SerialNumber  string                       `json:"serialNumber"`
-	SizeMegabytes int64                        `json:"sizeMegabytes"`
+	SizeMegabytes int                          `json:"sizeMegabytes"`
 	SmartStatus   string                       `json:"smartStatus"`
 	Type          string                       `json:"type"`
 	Partitions    []InventoryComputerPartition `json:"partitions"`
@@ -152,12 +152,12 @@ type InventoryComputerDisk struct {
 // InventoryComputerPartition represents a partition on a disk.
 type InventoryComputerPartition struct {
 	Name                      string `json:"name"`
-	SizeMegabytes             int64  `json:"sizeMegabytes"`
-	AvailableMegabytes        int64  `json:"availableMegabytes"`
+	SizeMegabytes             int    `json:"sizeMegabytes"`
+	AvailableMegabytes        int    `json:"availableMegabytes"`
 	PartitionType             string `json:"partitionType"`
 	PercentUsed               int    `json:"percentUsed"`
 	FileVault2State           string `json:"fileVault2State"`
-	FileVault2ProgressPercent *int   `json:"fileVault2ProgressPercent"`
+	FileVault2ProgressPercent int    `json:"fileVault2ProgressPercent"`
 	LvmManaged                bool   `json:"lvmManaged"`
 }
 
@@ -203,18 +203,18 @@ type InventoryComputerHardware struct {
 	Model                  string                                `json:"model"`
 	ModelIdentifier        string                                `json:"modelIdentifier"`
 	SerialNumber           string                                `json:"serialNumber"`
-	ProcessorSpeedMhz      int64                                 `json:"processorSpeedMhz"`
+	ProcessorSpeedMhz      int                                   `json:"processorSpeedMhz"`
 	ProcessorCount         int                                   `json:"processorCount"`
 	CoreCount              int                                   `json:"coreCount"`
 	ProcessorType          string                                `json:"processorType"`
 	ProcessorArchitecture  string                                `json:"processorArchitecture"`
-	BusSpeedMhz            int64                                 `json:"busSpeedMhz"`
-	CacheSizeKilobytes     int64                                 `json:"cacheSizeKilobytes"`
+	BusSpeedMhz            int                                   `json:"busSpeedMhz"`
+	CacheSizeKilobytes     int                                   `json:"cacheSizeKilobytes"`
 	NetworkAdapterType     string                                `json:"networkAdapterType"`
 	MacAddress             string                                `json:"macAddress"`
 	AltNetworkAdapterType  string                                `json:"altNetworkAdapterType"`
 	AltMacAddress          string                                `json:"altMacAddress"`
-	TotalRamMegabytes      int64                                 `json:"totalRamMegabytes"`
+	TotalRamMegabytes      int                                   `json:"totalRamMegabytes"`
 	OpenRamSlots           int                                   `json:"openRamSlots"`
 	BatteryCapacityPercent int                                   `json:"batteryCapacityPercent"`
 	SmcVersion             string                                `json:"smcVersion"`
@@ -322,8 +322,7 @@ type InventoryComputerOperatingSystem struct {
 
 // InventoryComputerLicensedSoftware represents licensed software assigned to the computer.
 type InventoryComputerLicensedSoftware struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID string `json:"id"`
 }
 
 // InventoryComputerIbeacon represents an iBeacon associated with the computer.
@@ -372,25 +371,14 @@ type InventoryComputerContentCaching struct {
 	PersonalCacheBytesFree              int64                                             `json:"personalCacheBytesFree"`
 	PersonalCacheBytesLimit             int64                                             `json:"personalCacheBytesLimit"`
 	PersonalCacheBytesUsed              int64                                             `json:"personalCacheBytesUsed"`
-	Port                                int64                                             `json:"port"`
+	Port                                int                                               `json:"port"`
 	PublicAddress                       string                                            `json:"publicAddress"`
 	RegistrationError                   string                                            `json:"registrationError"`
-	RegistrationResponseCode            int64                                             `json:"registrationResponseCode"`
+	RegistrationResponseCode            int                                               `json:"registrationResponseCode"`
 	RegistrationStarted                 string                                            `json:"registrationStarted"`
 	RegistrationStatus                  string                                            `json:"registrationStatus"`
 	RestrictedMedia                     bool                                              `json:"restrictedMedia"`
 	ServerGuid                          string                                            `json:"serverGuid"`
-	StartupStatus                       string                                            `json:"startupStatus"`
-	TetheratorStatus                    string                                            `json:"tetheratorStatus"`
-	TotalBytesAreSince                  string                                            `json:"totalBytesAreSince"`
-	TotalBytesDropped                   int64                                             `json:"totalBytesDropped"`
-	TotalBytesImported                  int64                                             `json:"totalBytesImported"`
-	TotalBytesReturnedToChildren        int64                                             `json:"totalBytesReturnedToChildren"`
-	TotalBytesReturnedToClients         int64                                             `json:"totalBytesReturnedToClients"`
-	TotalBytesReturnedToPeers           int64                                             `json:"totalBytesReturnedToPeers"`
-	TotalBytesStoredFromOrigin          int64                                             `json:"totalBytesStoredFromOrigin"`
-	TotalBytesStoredFromParents         int64                                             `json:"totalBytesStoredFromParents"`
-	TotalBytesStoredFromPeers           int64                                             `json:"totalBytesStoredFromPeers"`
 }
 
 // InventoryComputerContentCachingParent represents a parent in the content caching hierarchy.
@@ -401,7 +389,7 @@ type InventoryComputerContentCachingParent struct {
 	Details                InventoryComputerContentCachingParentDetails `json:"details"`
 	Guid                   string                                       `json:"guid"`
 	Healthy                bool                                         `json:"healthy"`
-	Port                   int64                                        `json:"port"`
+	Port                   int                                          `json:"port"`
 	Version                string                                       `json:"version"`
 }
 
@@ -437,30 +425,23 @@ type InventoryComputerContentCachingParentCapabilities struct {
 // InventoryComputerContentCachingParentLocalNetwork represents a local network for a content caching parent.
 type InventoryComputerContentCachingParentLocalNetwork struct {
 	ContentCachingParentLocalNetworkId string `json:"contentCachingParentLocalNetworkId"`
-	Speed                              int64  `json:"speed"`
+	Speed                              int    `json:"speed"`
 	Wired                              bool   `json:"wired"`
 }
 
 // InventoryComputerContentCachingAlert represents a content caching alert for the computer.
 type InventoryComputerContentCachingAlert struct {
-	CacheBytesLimit      int64  `json:"cacheBytesLimit"`
-	ClassName            string `json:"className"`
-	PathPreventingAccess string `json:"pathPreventingAccess"`
-	PostDate             string `json:"postDate"`
-	ReservedVolumeBytes  int64  `json:"reservedVolumeBytes"`
-	Resource             string `json:"resource"`
+	CacheBytesLimit int `json:"cacheBytesLimit"`
 }
 
 // InventoryComputerContentCachingCacheDetail contains cache details for content caching.
 type InventoryComputerContentCachingCacheDetail struct {
 	ComputerContentCachingCacheDetailsId string `json:"computerContentCachingCacheDetailsId"`
-	CategoryName                         string `json:"categoryName"`
-	DiskSpaceBytesUsed                   int64  `json:"diskSpaceBytesUsed"`
 }
 
 // InventoryComputerContentCachingDataMigrationError represents a data migration error in content caching.
 type InventoryComputerContentCachingDataMigrationError struct {
-	Code     int64                                                       `json:"code"`
+	Code     int                                                         `json:"code"`
 	Domain   string                                                      `json:"domain"`
 	UserInfo []InventoryComputerContentCachingDataMigrationErrorUserInfo `json:"userInfo"`
 }
@@ -473,49 +454,22 @@ type InventoryComputerContentCachingDataMigrationErrorUserInfo struct {
 
 // InventoryGroupMembership represents a group membership for the computer.
 type InventoryGroupMembership struct {
-	GroupId    string `json:"groupId"`
-	GroupName  string `json:"groupName"`
-	SmartGroup bool   `json:"smartGroup"`
+	GroupId string `json:"groupId"`
 }
 
 // InventoryComputerProtectDetails contains Jamf Protect details for the computer.
 type InventoryComputerProtectDetails struct {
-	Uuid                    string   `json:"uuid"`
-	ProvisioningUdid        string   `json:"provisioningUdid"`
-	ConfigurationHash       string   `json:"configurationHash"`
-	CreatedDate             string   `json:"createdDate"`
-	LastModifiedDate        string   `json:"lastModifiedDate"`
-	Hostname                string   `json:"hostname"`
-	KernelVersion           string   `json:"kernelVersion"`
-	Plan                    string   `json:"plan"`
-	ProtectVersion          string   `json:"protectVersion"`
-	Checkin                 string   `json:"checkin"`
-	SignaturesVersion       int      `json:"signaturesVersion"`
-	ComputerLabel           string   `json:"computerLabel"`
-	Tags                    []string `json:"tags"`
-	InstallType             string   `json:"installType"`
-	ConnectionStatus        string   `json:"connectionStatus"`
-	LastConnection          string   `json:"lastConnection"`
-	LastConnectionIp        string   `json:"lastConnectionIp"`
-	LastDisconnection       string   `json:"lastDisconnection"`
-	LastDisconnectionReason string   `json:"lastDisconnectionReason"`
-	WebProtectionActive     bool     `json:"webProtectionActive"`
-	FullDiskAccess          string   `json:"fullDiskAccess"`
-	CertificateId           string   `json:"certificateId"`
+	Uuid string `json:"uuid"`
 }
 
 // InventorySchoolDeviceDetails contains school-related details for the computer.
 type InventorySchoolDeviceDetails struct {
-	Udid       string `json:"udid"`
-	DeviceName string `json:"deviceName"`
+	Udid string `json:"udid"`
 }
 
 // InventoryEnrollmentMethod describes the enrollment method for the computer.
 type InventoryEnrollmentMethod struct {
-	ID         string `json:"id"`
-	ObjectName string `json:"objectName"`
-	ObjectType string `json:"objectType"`
-	EnrollType string `json:"enrollType"`
+	ID string `json:"id"`
 }
 
 // InventoryComputerSearchResults represents a paginated list of inventory computers.
@@ -563,4 +517,29 @@ func (c *Client) GetInventoryComputers(ctx context.Context, page, pageSize int, 
 		return nil, err
 	}
 	return &result, nil
+}
+
+// GetInventoryAllComputers fetches all computers by automatically handling pagination.
+// It starts with page 0 and continues fetching until all computers are retrieved.
+func (c *Client) GetInventoryAllComputers(ctx context.Context, filter string) ([]InventoryComputer, error) {
+	var allComputers []InventoryComputer
+	page := 0
+	pageSize := 100 // Use default page size
+
+	for {
+		result, err := c.GetInventoryComputers(ctx, page, pageSize, filter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch computers page %d: %w", page, err)
+		}
+
+		allComputers = append(allComputers, result.Results...)
+
+		if len(allComputers) >= result.TotalCount || len(result.Results) < pageSize {
+			break
+		}
+
+		page++
+	}
+
+	return allComputers, nil
 }

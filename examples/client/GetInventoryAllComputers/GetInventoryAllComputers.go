@@ -34,16 +34,8 @@ func main() {
 		log.Fatal("Missing required configuration: JAMF_CLIENT_ID, JAMF_CLIENT_SECRET, JAMF_REGION")
 	}
 
-	// Pagination and filter from env or defaults
-	page := 0
-	pageSize := 100
+	// Filter from env or default
 	filter := ""
-	if envPage := os.Getenv("INVENTORY_PAGE"); envPage != "" {
-		fmt.Sscanf(envPage, "%d", &page)
-	}
-	if envPageSize := os.Getenv("INVENTORY_PAGE_SIZE"); envPageSize != "" {
-		fmt.Sscanf(envPageSize, "%d", &pageSize)
-	}
 	if envFilter := os.Getenv("INVENTORY_FILTER"); envFilter != "" {
 		filter = envFilter
 	}
@@ -51,21 +43,22 @@ func main() {
 	// Initialize the client (region-based)
 	apiClient := client.NewInventoryClient(region, clientID, clientSecret)
 
-	// Get mobile devices (paginated, filtered)
-	results, err := apiClient.GetInventoryMobileDevices(context.Background(), page, pageSize, filter)
+	// Get all computers (automatic pagination handling)
+	// This function automatically fetches all pages and returns all computers as a single slice
+	computers, err := apiClient.GetInventoryAllComputers(context.Background(), filter)
 	if err != nil {
-		log.Fatalf("Error listing mobile devices: %v", err)
+		log.Fatalf("Error listing computers: %v", err)
 	}
 
-	fmt.Printf("Found %d mobile device(s) (Total: %d)\n\n", len(results.Results), results.TotalCount)
-	for _, dev := range results.Results {
+	fmt.Printf("Found %d mobile device(s)\n\n", len(computers))
+	for _, dev := range computers {
 		fmt.Printf("ID: %s\nName: %s\nSerial: %s\nUDID: %s\nUser: %s\nOS: %s\n\n",
-			dev.MobileDeviceId,
-			dev.General.DisplayName,
+			dev.ID,
+			dev.General.Name,
 			dev.Hardware.SerialNumber,
-			dev.General.Udid,
+			dev.General.ManagementId,
 			dev.UserAndLocation.Username,
-			dev.General.OsVersion,
+			dev.General.Platform,
 		)
 	}
 
@@ -74,7 +67,7 @@ func main() {
 	fmt.Printf("Full JSON Response:\n")
 	fmt.Print(strings.Repeat("=", 50) + "\n")
 
-	jsonData, err := json.MarshalIndent(results, "", "  ")
+	jsonData, err := json.MarshalIndent(computers, "", "  ")
 	if err != nil {
 		log.Printf("Error marshaling to JSON: %v", err)
 	} else {

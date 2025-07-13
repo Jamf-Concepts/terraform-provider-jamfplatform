@@ -6,6 +6,46 @@ import (
 	"net/url"
 )
 
+// Mobile Device Section constants for the Jamf Inventory API
+const (
+	MobileDeviceSectionGeneral              = "GENERAL"
+	MobileDeviceSectionHardware             = "HARDWARE"
+	MobileDeviceSectionUserAndLocation      = "USER_AND_LOCATION"
+	MobileDeviceSectionPurchasing           = "PURCHASING"
+	MobileDeviceSectionSecurity             = "SECURITY"
+	MobileDeviceSectionApplications         = "APPLICATIONS"
+	MobileDeviceSectionEbooks               = "EBOOKS"
+	MobileDeviceSectionNetwork              = "NETWORK"
+	MobileDeviceSectionServiceSubscriptions = "SERVICE_SUBSCRIPTIONS"
+	MobileDeviceSectionCertificates         = "CERTIFICATES"
+	MobileDeviceSectionProfiles             = "PROFILES"
+	MobileDeviceSectionUserProfiles         = "USER_PROFILES"
+	MobileDeviceSectionProvisioningProfiles = "PROVISIONING_PROFILES"
+	MobileDeviceSectionSharedUsers          = "SHARED_USERS"
+	MobileDeviceSectionExtensionAttributes  = "EXTENSION_ATTRIBUTES"
+)
+
+// ValidMobileDeviceSections returns a list of valid section names for mobile device inventory requests
+func ValidMobileDeviceSections() []string {
+	return []string{
+		MobileDeviceSectionGeneral,
+		MobileDeviceSectionHardware,
+		MobileDeviceSectionUserAndLocation,
+		MobileDeviceSectionPurchasing,
+		MobileDeviceSectionSecurity,
+		MobileDeviceSectionApplications,
+		MobileDeviceSectionEbooks,
+		MobileDeviceSectionNetwork,
+		MobileDeviceSectionServiceSubscriptions,
+		MobileDeviceSectionCertificates,
+		MobileDeviceSectionProfiles,
+		MobileDeviceSectionUserProfiles,
+		MobileDeviceSectionProvisioningProfiles,
+		MobileDeviceSectionSharedUsers,
+		MobileDeviceSectionExtensionAttributes,
+	}
+}
+
 // InventoryMobileDevice represents a mobile device record from the Jamf Inventory API.
 type InventoryMobileDevice struct {
 	MobileDeviceId       string                                      `json:"mobileDeviceId"`
@@ -255,8 +295,18 @@ type InventoryJamfSchoolDeviceDetails struct {
 }
 
 // GetInventoryMobileDeviceByID fetches a single mobile device by ID from the Jamf Inventory API.
-func (c *Client) GetInventoryMobileDeviceByID(ctx context.Context, id string) (*InventoryMobileDevice, error) {
+// sections parameter allows specifying which sections of data to retrieve (e.g., []string{"GENERAL", "HARDWARE"})
+func (c *Client) GetInventoryMobileDeviceByID(ctx context.Context, id string, sections []string) (*InventoryMobileDevice, error) {
+	params := url.Values{}
+	for _, section := range sections {
+		params.Add("section", section)
+	}
+
 	endpoint := fmt.Sprintf("/v1/mobile-devices/%s", url.PathEscape(id))
+	if len(params) > 0 {
+		endpoint += "?" + params.Encode()
+	}
+
 	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mobile device by id: %w", err)
@@ -268,8 +318,9 @@ func (c *Client) GetInventoryMobileDeviceByID(ctx context.Context, id string) (*
 	return &result, nil
 }
 
-// GetInventoryMobileDevices fetches a paginated list of mobile devices, with optional filter and pagination.
-func (c *Client) GetInventoryMobileDevices(ctx context.Context, page, pageSize int, filter string) (*InventoryMobileDeviceSearchResults, error) {
+// GetInventoryMobileDevices fetches a paginated list of mobile devices with optional sections and pagination.
+// sections parameter allows specifying which sections of data to retrieve (e.g., []string{"GENERAL", "HARDWARE"})
+func (c *Client) GetInventoryMobileDevices(ctx context.Context, page, pageSize int, sections []string) (*InventoryMobileDeviceSearchResults, error) {
 	params := url.Values{}
 	if page > 0 {
 		params.Set("page", fmt.Sprintf("%d", page))
@@ -277,9 +328,10 @@ func (c *Client) GetInventoryMobileDevices(ctx context.Context, page, pageSize i
 	if pageSize > 0 {
 		params.Set("page-size", fmt.Sprintf("%d", pageSize))
 	}
-	if filter != "" {
-		params.Set("filter", filter)
+	for _, section := range sections {
+		params.Add("section", section)
 	}
+
 	endpoint := "/v1/mobile-devices"
 	if len(params) > 0 {
 		endpoint += "?" + params.Encode()
@@ -293,4 +345,30 @@ func (c *Client) GetInventoryMobileDevices(ctx context.Context, page, pageSize i
 		return nil, err
 	}
 	return &result, nil
+}
+
+// GetInventoryAllMobileDevices fetches all mobile devices by automatically handling pagination.
+// It starts with page 0 and continues fetching until all devices are retrieved.
+// sections parameter allows specifying which sections of data to retrieve (e.g., []string{"GENERAL", "HARDWARE"})
+func (c *Client) GetInventoryAllMobileDevices(ctx context.Context, sections []string) ([]InventoryMobileDevice, error) {
+	var allDevices []InventoryMobileDevice
+	page := 0
+	pageSize := 100
+
+	for {
+		result, err := c.GetInventoryMobileDevices(ctx, page, pageSize, sections)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch mobile devices page %d: %w", page, err)
+		}
+
+		allDevices = append(allDevices, result.Results...)
+
+		if len(allDevices) >= result.TotalCount || len(result.Results) < pageSize {
+			break
+		}
+
+		page++
+	}
+
+	return allDevices, nil
 }
