@@ -104,8 +104,8 @@ The plugin must be extracted to the correct location for Terraform to find and u
 
 ```bash
 cd ~/Downloads
-mkdir -p ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.0.0/darwin_arm64
-unzip terraform-provider-jamfplatform_1.0.0_darwin_arm64.zip -d ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.0.0/darwin_arm64
+mkdir -p ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.1.0/darwin_arm64
+unzip terraform-provider-jamfplatform_1.1.0_darwin_arm64.zip -d ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.1.0/darwin_arm64
 xattr -r -d com.apple.quarantine ~/.terraform.d/plugins
 ```
 
@@ -116,9 +116,9 @@ This will result in:
 └── local/
     └── Jamf-Concepts/
         └── jamfplatform/
-            └── 1.0.0/
+            └── 1.1.0/
                 └── darwin_arm64/
-                    └── terraform-provider-jamfplatform_v1.0.0
+                    └── terraform-provider-jamfplatform_v1.1.0
 ```
 
 ### Step 3: Set up a local file system mirror
