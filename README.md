@@ -3,7 +3,7 @@
 Provides resources and data sources for managing [Jamf Platform Services](https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api):
 
 * [Compliance Benchmark Engine](https://learn.jamf.com/en-US/bundle/jamf-compliance-benchmarks-configuration-guide/page/Compliance_Benchmarks_Configuration_Guide.html)
-* ...
+* Unified Inventory
 
 **This repository also includes a Go client for direct API access and scripting.**
 
@@ -32,6 +32,11 @@ provider "jamfplatform" {
     client_id     = "example-cbengine-client-id"
     client_secret = "example-cbengine-client-secret"
   }
+
+  inventory = {
+    client_id     = "example-inventory-client-id"
+    client_secret = "example-inventory-client-secret"
+  }
 }
 ```
 
@@ -54,6 +59,12 @@ provider "jamfplatform" {
     client_id     = "example-cbengine-client-id"
     client_secret = "example-cbengine-client-secret"
   }
+
+    inventory = {
+    client_id     = "example-inventory-client-id"
+    client_secret = "example-inventory-client-secret"
+  }
+
 }
 ```
 
