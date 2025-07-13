@@ -36,13 +36,26 @@ provider "jamfplatform" {
 
 ### Required
 
-- `cbengine` (Attributes) Compliance Benchmark Engine API credentials. (see [below for nested schema](#nestedatt--cbengine))
 - `region` (String) The Jamf region to use (us, eu, apac)
+
+### Optional
+
+- `cbengine` (Attributes) Compliance Benchmark Engine API credentials. (see [below for nested schema](#nestedatt--cbengine))
+- `inventory` (Attributes) Inventory API credentials. (see [below for nested schema](#nestedatt--inventory))
 
 <a id="nestedatt--cbengine"></a>
 ### Nested Schema for `cbengine`
 
-Required:
+Optional:
 
 - `client_id` (String, Sensitive) OAuth client ID for Compliance Benchmark Engine API.
 - `client_secret` (String, Sensitive) OAuth client secret for Compliance Benchmark Engine API.
+
+
+<a id="nestedatt--inventory"></a>
+### Nested Schema for `inventory`
+
+Optional:
+
+- `client_id` (String, Sensitive) OAuth client ID for Inventory API.
+- `client_secret` (String, Sensitive) OAuth client secret for Inventory API.
