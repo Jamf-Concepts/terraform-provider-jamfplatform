@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/shared"
 )
 
 // baselinesDataSource implements the Terraform data source for mSCP baselines.
@@ -31,22 +30,22 @@ func (d *baselinesDataSource) Configure(ctx context.Context, req datasource.Conf
 	if req.ProviderData == nil {
 		return
 	}
-	providerClients, ok := req.ProviderData.(*shared.ProviderClients)
+	clientSet, ok := req.ProviderData.(*client.ClientSet)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected ProviderData type",
-			"Expected *shared.ProviderClients, got something else.",
+			"Expected *provider.ClientSet, got something else.",
 		)
 		return
 	}
-	if providerClients.CBEngine == nil {
+	if clientSet.CBEngine == nil {
 		resp.Diagnostics.AddError(
 			"CBEngine API client not configured",
 			"The provider's cbengine block is missing or incomplete. Please provide valid credentials.",
 		)
 		return
 	}
-	d.client = providerClients.CBEngine
+	d.client = clientSet.CBEngine
 }
 
 // Metadata sets the data source type name for the Terraform provider.

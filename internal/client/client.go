@@ -19,6 +19,12 @@ type Client struct {
 	baseURL     string
 }
 
+// ClientSet contains authenticated API clients for each Jamf Platform API.
+type ClientSet struct {
+	CBEngine  *Client
+	Inventory *Client
+}
+
 // NewCBEngineClient creates a new Jamf Compliance Benchmark Engine API client
 // region must be one of: us, eu, apac
 func NewCBEngineClient(region, clientID, clientSecret string) *Client {

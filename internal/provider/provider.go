@@ -21,7 +21,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/computers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/mobiledevice"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/mobiledevices"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/shared"
 )
 
 // providerModel describes the provider data model for configuration.
@@ -130,11 +129,11 @@ func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 			p.inventoryClient = client.NewInventoryClient(region, inventoryClientID, inventoryClientSecret)
 		}
 	}
-	resp.DataSourceData = &shared.ProviderClients{
+	resp.DataSourceData = &client.ClientSet{
 		CBEngine:  p.cbengineClient,
 		Inventory: p.inventoryClient,
 	}
-	resp.ResourceData = &shared.ProviderClients{
+	resp.ResourceData = &client.ClientSet{
 		CBEngine:  p.cbengineClient,
 		Inventory: p.inventoryClient,
 	}

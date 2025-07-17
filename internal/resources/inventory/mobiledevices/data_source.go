@@ -8,7 +8,6 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/shared"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -39,22 +38,22 @@ func (d *DataSourceMobileDevices) Configure(ctx context.Context, req datasource.
 	if req.ProviderData == nil {
 		return
 	}
-	providerClients, ok := req.ProviderData.(*shared.ProviderClients)
+	clientSet, ok := req.ProviderData.(*client.ClientSet)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected ProviderData type",
-			"Expected *shared.ProviderClients, got something else.",
+			"Expected *client.ClientSet, got something else.",
 		)
 		return
 	}
-	if providerClients.Inventory == nil {
+	if clientSet.Inventory == nil {
 		resp.Diagnostics.AddError(
 			"Inventory API client not configured",
 			"The provider's inventory block is missing or incomplete. Please provide valid credentials.",
 		)
 		return
 	}
-	d.client = providerClients.Inventory
+	d.client = clientSet.Inventory
 }
 
 // Metadata sets the data source type name for the Terraform provider.
