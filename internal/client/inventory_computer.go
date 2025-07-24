@@ -10,6 +10,11 @@ import (
 	"net/url"
 )
 
+// Constants used for the Jamf Inventory API
+const (
+	inventoryComputersV1Prefix = "/devices/v1/computers"
+)
+
 // InventoryComputer represents a computer record from the Jamf Inventory API.
 type InventoryComputer struct {
 	ID                    string                                  `json:"id"`
@@ -483,7 +488,7 @@ type InventoryComputerSearchResults struct {
 
 // GetInventoryComputerByID fetches a single computer by ID
 func (c *Client) GetInventoryComputerByID(ctx context.Context, id string) (*InventoryComputer, error) {
-	endpoint := fmt.Sprintf("/v1/computers/%s", url.PathEscape(id))
+	endpoint := fmt.Sprintf("%s/%s", inventoryComputersV1Prefix, url.PathEscape(id))
 	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get computer by id: %w", err)
@@ -507,7 +512,7 @@ func (c *Client) GetInventoryComputers(ctx context.Context, page, pageSize int, 
 	if filter != "" {
 		params.Set("filter", filter)
 	}
-	endpoint := "/v1/computers"
+	endpoint := inventoryComputersV1Prefix
 	if len(params) > 0 {
 		endpoint += "?" + params.Encode()
 	}
@@ -527,7 +532,7 @@ func (c *Client) GetInventoryComputers(ctx context.Context, page, pageSize int, 
 func (c *Client) GetInventoryAllComputers(ctx context.Context, filter string) ([]InventoryComputer, error) {
 	var allComputers []InventoryComputer
 	page := 0
-	pageSize := 100 // Use default page size
+	pageSize := 100
 
 	for {
 		result, err := c.GetInventoryComputers(ctx, page, pageSize, filter)

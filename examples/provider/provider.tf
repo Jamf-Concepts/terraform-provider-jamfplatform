@@ -7,10 +7,7 @@ terraform {
 }
 
 provider "jamfplatform" {
-  region = "us" # or "eu", "apac"
-
-  cbengine = {
-    client_id     = "example-cbengine-client-id"
-    client_secret = "example-cbengine-client-secret"
-  }
+  region        = "us" # or "eu", "apac"
+  client_id     = "example-client-id"
+  client_secret = "example-client-secret"
 }

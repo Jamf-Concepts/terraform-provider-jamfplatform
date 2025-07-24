@@ -57,7 +57,7 @@ func main() {
 	fmt.Printf("Requesting sections: %s\n", strings.Join(sections, ", "))
 
 	// Initialize the client (region-based)
-	apiClient := client.NewInventoryClient(region, clientID, clientSecret)
+	apiClient := client.NewClient(region, clientID, clientSecret)
 
 	// Get all mobile devices (automatic pagination handling)
 	// This function automatically fetches all pages and returns all devices as a single slice

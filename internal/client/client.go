@@ -19,15 +19,9 @@ type Client struct {
 	baseURL     string
 }
 
-// ClientSet contains authenticated API clients for each Jamf Platform API.
-type ClientSet struct {
-	CBEngine  *Client
-	Inventory *Client
-}
-
-// NewCBEngineClient creates a new Jamf Compliance Benchmark Engine API client
+// NewClient creates a new Jamf Platform API client.
 // region must be one of: us, eu, apac
-func NewCBEngineClient(region, clientID, clientSecret string) *Client {
+func NewClient(region, clientID, clientSecret string) *Client {
 	region = strings.ToLower(region)
 	switch region {
 	case "us", "eu", "apac":
@@ -36,41 +30,13 @@ func NewCBEngineClient(region, clientID, clientSecret string) *Client {
 	}
 
 	baseDomain := fmt.Sprintf("%s.apigw.jamf.com", region)
-	baseURL := fmt.Sprintf("https://%s/api/cb/engine", baseDomain)
+	baseURL := fmt.Sprintf("https://%s/api", baseDomain)
 	tokenURL := fmt.Sprintf("https://%s/auth/token", baseDomain)
 
 	config := OAuthConfig{
 		TokenURL:     tokenURL,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Scopes:       []string{"default-plan", "tenant-environment", "cb-api-product"},
-	}
-
-	return &Client{
-		oauthClient: NewOAuthClient(config),
-		baseURL:     baseURL,
-	}
-}
-
-// NewInventoryClient creates a new Jamf Inventory API client
-// region must be one of: us, eu, apac
-func NewInventoryClient(region, clientID, clientSecret string) *Client {
-	region = strings.ToLower(region)
-	switch region {
-	case "us", "eu", "apac":
-	default:
-		panic("invalid region: must be one of us, eu, apac")
-	}
-
-	baseDomain := fmt.Sprintf("%s.apigw.jamf.com", region)
-	baseURL := fmt.Sprintf("https://%s/api/devices", baseDomain)
-	tokenURL := fmt.Sprintf("https://%s/auth/token", baseDomain)
-
-	config := OAuthConfig{
-		TokenURL:     tokenURL,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Scopes:       []string{"default-plan", "devices-inventory-product.read", "tenant-environment"},
 	}
 
 	return &Client{

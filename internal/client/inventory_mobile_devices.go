@@ -10,8 +10,9 @@ import (
 	"net/url"
 )
 
-// Mobile Device Section constants for the Jamf Inventory API
+// Constants used for the Jamf Inventory API
 const (
+	inventoryMobileDevicesV1Prefix          = "/devices/v1/mobile-devices"
 	MobileDeviceSectionGeneral              = "GENERAL"
 	MobileDeviceSectionHardware             = "HARDWARE"
 	MobileDeviceSectionUserAndLocation      = "USER_AND_LOCATION"
@@ -306,7 +307,7 @@ func (c *Client) GetInventoryMobileDeviceByID(ctx context.Context, id string, se
 		params.Add("section", section)
 	}
 
-	endpoint := fmt.Sprintf("/v1/mobile-devices/%s", url.PathEscape(id))
+	endpoint := fmt.Sprintf("%s/%s", inventoryMobileDevicesV1Prefix, url.PathEscape(id))
 	if len(params) > 0 {
 		endpoint += "?" + params.Encode()
 	}
@@ -336,7 +337,7 @@ func (c *Client) GetInventoryMobileDevices(ctx context.Context, page, pageSize i
 		params.Add("section", section)
 	}
 
-	endpoint := "/v1/mobile-devices"
+	endpoint := inventoryMobileDevicesV1Prefix
 	if len(params) > 0 {
 		endpoint += "?" + params.Encode()
 	}

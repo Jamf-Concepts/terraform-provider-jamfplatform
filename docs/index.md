@@ -3,12 +3,12 @@
 page_title: "jamfplatform Provider"
 subcategory: ""
 description: |-
-  Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure region and service-specific credentials.
+  Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure region and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.
 ---
 
 # jamfplatform Provider
 
-Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure region and service-specific credentials.
+Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure region and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.
 
 ## Example Usage
 
@@ -22,12 +22,9 @@ terraform {
 }
 
 provider "jamfplatform" {
-  region = "us" # or "eu", "apac"
-
-  cbengine = {
-    client_id     = "example-cbengine-client-id"
-    client_secret = "example-cbengine-client-secret"
-  }
+  region        = "us" # or "eu", "apac"
+  client_id     = "example-client-id"
+  client_secret = "example-client-secret"
 }
 ```
 
@@ -36,26 +33,6 @@ provider "jamfplatform" {
 
 ### Required
 
-- `region` (String) The Jamf region to use (us, eu, apac)
-
-### Optional
-
-- `cbengine` (Attributes) Compliance Benchmark Engine API credentials. (see [below for nested schema](#nestedatt--cbengine))
-- `inventory` (Attributes) Inventory API credentials. (see [below for nested schema](#nestedatt--inventory))
-
-<a id="nestedatt--cbengine"></a>
-### Nested Schema for `cbengine`
-
-Optional:
-
-- `client_id` (String, Sensitive) OAuth client ID for Compliance Benchmark Engine API.
-- `client_secret` (String, Sensitive) OAuth client secret for Compliance Benchmark Engine API.
-
-
-<a id="nestedatt--inventory"></a>
-### Nested Schema for `inventory`
-
-Optional:
-
-- `client_id` (String, Sensitive) OAuth client ID for Inventory API.
-- `client_secret` (String, Sensitive) OAuth client secret for Inventory API.
+- `client_id` (String, Sensitive) OAuth client ID for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_ID environment variable.
+- `client_secret` (String, Sensitive) OAuth client secret for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_SECRET environment variable.
+- `region` (String) The Jamf region to use (us, eu, apac). Can also be set via the JAMFPLATFORM_REGION environment variable.

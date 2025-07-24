@@ -67,7 +67,7 @@ func main() {
 	fmt.Printf("Requesting sections: %s\n", strings.Join(sections, ", "))
 
 	// Initialize the client (region-based)
-	apiClient := client.NewInventoryClient(region, clientID, clientSecret)
+	apiClient := client.NewClient(region, clientID, clientSecret)
 
 	// Get specific mobile device by ID
 	dev, err := apiClient.GetInventoryMobileDeviceByID(context.Background(), deviceID, sections)
