@@ -35,11 +35,12 @@ type OAuthConfig struct {
 
 // OAuthClient handles OAuth authentication and token management
 type OAuthClient struct {
-	config      OAuthConfig
-	httpClient  *http.Client
-	token       *TokenResponse
-	tokenExpiry time.Time
-	mutex       sync.RWMutex
+	config        OAuthConfig
+	httpClient    *http.Client
+	token         *TokenResponse
+	tokenExpiry   time.Time
+	GrantedScopes []string
+	mutex         sync.RWMutex
 }
 
 // NewOAuthClient creates a new OAuth client
@@ -120,6 +121,12 @@ func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to parse token response: %w", err)
 	}
 
+	// Parse granted scopes from token response
+	c.GrantedScopes = nil
+	if tokenResp.Scope != "" {
+		c.GrantedScopes = strings.Fields(tokenResp.Scope)
+	}
+
 	expiryDuration := time.Duration(tokenResp.ExpiresIn-60) * time.Second
 	if expiryDuration <= 0 {
 		expiryDuration = 5 * time.Minute
@@ -129,6 +136,13 @@ func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
 	c.tokenExpiry = time.Now().Add(expiryDuration)
 
 	return tokenResp.AccessToken, nil
+}
+
+// GetGrantedScopes returns the scopes granted by the OAuth server for the current token
+func (c *OAuthClient) GetGrantedScopes() []string {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	return append([]string(nil), c.GrantedScopes...)
 }
 
 // IsTokenValid checks if the current token is valid

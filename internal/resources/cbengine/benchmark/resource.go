@@ -275,20 +275,13 @@ func (r *BenchmarkResource) Configure(ctx context.Context, req resource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	clientSet, ok := req.ProviderData.(*client.ClientSet)
+	apiClient, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected ProviderData type",
-			"Expected *client.ClientSet, got something else.",
+			"Expected *client.Client, got something else.",
 		)
 		return
 	}
-	if clientSet.CBEngine == nil {
-		resp.Diagnostics.AddError(
-			"CBEngine API client not configured",
-			"The provider's cbengine block is missing or incomplete. Please provide valid credentials.",
-		)
-		return
-	}
-	r.client = clientSet.CBEngine
+	r.client = apiClient
 }

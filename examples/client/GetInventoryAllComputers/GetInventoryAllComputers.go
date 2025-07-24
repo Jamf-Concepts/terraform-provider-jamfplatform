@@ -41,7 +41,7 @@ func main() {
 	}
 
 	// Initialize the client (region-based)
-	apiClient := client.NewInventoryClient(region, clientID, clientSecret)
+	apiClient := client.NewClient(region, clientID, clientSecret)
 
 	// Get all computers (automatic pagination handling)
 	// This function automatically fetches all pages and returns all computers as a single slice

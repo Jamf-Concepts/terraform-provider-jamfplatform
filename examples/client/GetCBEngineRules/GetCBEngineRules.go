@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// Initialize the client (region-based)
-	apiClient := client.NewCBEngineClient(region, clientID, clientSecret)
+	apiClient := client.NewClient(region, clientID, clientSecret)
 
 	// Get rules for the given baseline
 	rulesResp, err := apiClient.GetCBEngineRules(context.Background(), baselineID)

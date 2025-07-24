@@ -96,22 +96,15 @@ func (d *rulesDataSource) Configure(ctx context.Context, req datasource.Configur
 	if req.ProviderData == nil {
 		return
 	}
-	clientSet, ok := req.ProviderData.(*client.ClientSet)
+	apiClient, ok := req.ProviderData.(*client.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected ProviderData type",
-			"Expected *client.ClientSet, got something else.",
+			"Expected *client.Client, got something else.",
 		)
 		return
 	}
-	if clientSet.CBEngine == nil {
-		resp.Diagnostics.AddError(
-			"CBEngine API client not configured",
-			"The provider's cbengine block is missing or incomplete. Please provide valid credentials.",
-		)
-		return
-	}
-	d.client = clientSet.CBEngine
+	d.client = apiClient
 }
 
 // Metadata sets the data source type name for the Terraform provider.
