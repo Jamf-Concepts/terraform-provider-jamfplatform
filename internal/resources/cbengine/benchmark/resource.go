@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -224,6 +225,9 @@ func BenchmarkResourceSchema() schema.Schema {
 						Required:    true,
 						PlanModifiers: []planmodifier.List{
 							listplanmodifier.RequiresReplace(),
+						},
+						Validators: []validator.List{
+							SingleItemList(),
 						},
 					},
 				},
