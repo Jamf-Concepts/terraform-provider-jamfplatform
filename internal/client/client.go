@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 // Client represents the main API client for Jamf Platform
@@ -20,18 +19,8 @@ type Client struct {
 }
 
 // NewClient creates a new Jamf Platform API client.
-// region must be one of: us, eu, apac
-func NewClient(region, clientID, clientSecret string) *Client {
-	region = strings.ToLower(region)
-	switch region {
-	case "us", "eu", "apac":
-	default:
-		panic("invalid region: must be one of us, eu, apac")
-	}
-
-	baseDomain := fmt.Sprintf("%s.apigw.jamf.com", region)
-	baseURL := fmt.Sprintf("https://%s/api", baseDomain)
-	tokenURL := fmt.Sprintf("https://%s/auth/token", baseDomain)
+func NewClient(baseURL, clientID, clientSecret string) *Client {
+	tokenURL := baseURL + "/auth/token"
 
 	config := OAuthConfig{
 		TokenURL:     tokenURL,
@@ -54,7 +43,12 @@ func (c *Client) SetHTTPClient(httpClient *http.Client) {
 func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
 	var requestBody io.Reader
 
-	url := fmt.Sprintf("%s%s", c.baseURL, endpoint)
+	var fullURL string
+	if len(endpoint) > 0 && endpoint[0] == '/' {
+		fullURL = c.baseURL + endpoint
+	} else {
+		fullURL = c.baseURL + "/" + endpoint
+	}
 
 	if body != nil {
 		requestBodyBytes, err := json.Marshal(body)
@@ -64,7 +58,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		requestBody = bytes.NewReader(requestBodyBytes)
 	}
 
-	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, url, requestBody)
+	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authenticated request: %w", err)
 	}
@@ -85,7 +79,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 
 		c.oauthClient.ClearToken()
 
-		req, err = c.oauthClient.AuthenticatedRequest(ctx, method, url, requestBody)
+		req, err = c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBody)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authenticated request after 401: %w", err)
 		}

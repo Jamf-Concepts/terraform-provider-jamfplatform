@@ -12,7 +12,7 @@ import (
 
 // Constants used for the Jamf Inventory API
 const (
-	inventoryComputersV1Prefix = "/devices/v1/computers"
+	inventoryComputersV1Prefix = "/api/devices/v1/computers"
 )
 
 // InventoryComputer represents a computer record from the Jamf Inventory API.

@@ -4,7 +4,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"os"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
@@ -27,14 +25,14 @@ import (
 
 // Constants for environment variable names.
 const (
-	envRegion       = "JAMFPLATFORM_REGION"
+	envBaseURL      = "JAMFPLATFORM_BASE_URL"
 	envClientID     = "JAMFPLATFORM_CLIENT_ID"
 	envClientSecret = "JAMFPLATFORM_CLIENT_SECRET"
 )
 
 // providerModel describes the provider data model for configuration.
 type providerModel struct {
-	Region       types.String `tfsdk:"region"`
+	BaseURL      types.String `tfsdk:"base_url"`
 	ClientID     types.String `tfsdk:"client_id"`
 	ClientSecret types.String `tfsdk:"client_secret"`
 }
@@ -55,14 +53,11 @@ func (p *jamfPlatformProvider) Metadata(_ context.Context, _ provider.MetadataRe
 // Schema sets the Terraform schema for the provider.
 func (p *jamfPlatformProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure region and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
+		Description: "Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure base_url and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
 		Attributes: map[string]schema.Attribute{
-			"region": schema.StringAttribute{
+			"base_url": schema.StringAttribute{
 				Required:    true,
-				Description: "The Jamf region to use (us, eu, apac). Can also be set via the JAMFPLATFORM_REGION environment variable.",
-				Validators: []validator.String{
-					RegionValidator{},
-				},
+				Description: "The Jamf Platform base URL to use (e.g., https://us.apigw.jamf.com or https://us.stage.apigw.jamfnebula.com). Can also be set via the JAMFPLATFORM_BASE_URL environment variable.",
 			},
 			"client_id": schema.StringAttribute{
 				Required:    true,
@@ -86,14 +81,14 @@ func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	region := config.Region.ValueString()
-	if region == "" {
-		region = getenv(envRegion)
+	baseURL := config.BaseURL.ValueString()
+	if baseURL == "" {
+		baseURL = getenv(envBaseURL)
 	}
-	if region == "" {
+	if baseURL == "" {
 		resp.Diagnostics.AddError(
 			"Missing Required Provider Configuration",
-			"Region must be set either in the provider block or via the JAMFPLATFORM_REGION environment variable.",
+			"base_url must be set either in the provider block or via the JAMFPLATFORM_BASE_URL environment variable.",
 		)
 		return
 	}
@@ -108,7 +103,7 @@ func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	}
 
 	if clientID != "" && clientSecret != "" {
-		p.apiClient = client.NewClient(region, clientID, clientSecret)
+		p.apiClient = client.NewClient(baseURL, clientID, clientSecret)
 	} else {
 		p.apiClient = nil
 	}
@@ -145,34 +140,4 @@ func (p *jamfPlatformProvider) DataSources(_ context.Context) []func() datasourc
 // New creates a new instance of the Jamf Platform provider.
 func New() provider.Provider {
 	return &jamfPlatformProvider{}
-}
-
-// RegionValidator ensures region is one of the allowed values for the provider.
-type RegionValidator struct{}
-
-// ValidateString validates that the region is one of 'us', 'eu', or 'apac'.
-func (v RegionValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-	value := req.ConfigValue.ValueString()
-	switch value {
-	case "us", "eu", "apac":
-		return
-	default:
-		resp.Diagnostics.AddError(
-			"Invalid Region",
-			fmt.Sprintf("Region must be one of 'us', 'eu', or 'apac', got: %s", value),
-		)
-	}
-}
-
-// Description returns a description of the region validator.
-func (v RegionValidator) Description(_ context.Context) string {
-	return "Validates that the region is one of 'us', 'eu', or 'apac'"
-}
-
-// MarkdownDescription returns a markdown description of the region validator.
-func (v RegionValidator) MarkdownDescription(_ context.Context) string {
-	return "Validates that the region is one of `us`, `eu`, or `apac`"
 }

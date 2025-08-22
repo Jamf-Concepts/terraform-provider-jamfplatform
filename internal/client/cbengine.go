@@ -164,8 +164,8 @@ type CBEngineSourcedRules struct {
 
 // CBEngine API path constants
 const (
-	cbEngineV1Prefix = "/cb/engine/v1"
-	cbEngineV2Prefix = "/cb/engine/v2"
+	cbEngineV1Prefix = "/api/cb/engine/v1"
+	cbEngineV2Prefix = "/api/cb/engine/v2"
 )
 
 // CBEngine Baseline operations
