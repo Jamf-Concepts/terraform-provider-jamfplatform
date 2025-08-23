@@ -1,6 +1,5 @@
 data "jamfplatform_blueprints_component" "example" {
-  provider = jamfplatform.blueprints
-  id       = "com.jamf.ddm.safari-settings"
+  id = "com.jamf.ddm.safari-settings"
 }
 
 output "component_identifier" {
