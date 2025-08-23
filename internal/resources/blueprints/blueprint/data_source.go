@@ -4,6 +4,7 @@ package blueprint
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -80,30 +81,19 @@ func (d *blueprintDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 				ElementType: types.StringType,
 				Computed:    true,
 			},
-			"steps": schema.ListNestedAttribute{
-				Description: "Blueprint steps.",
+			"component": schema.ListNestedAttribute{
+				Description: "Blueprint components.",
 				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							Description: "Step name.",
+						"identifier": schema.StringAttribute{
+							Description: "Component identifier.",
 							Computed:    true,
 						},
-						"components": schema.ListNestedAttribute{
-							Description: "Step components.",
+						"configuration": schema.MapAttribute{
+							Description: "Component configuration as a map of key-value pairs.",
+							ElementType: types.StringType,
 							Computed:    true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"identifier": schema.StringAttribute{
-										Description: "Component identifier.",
-										Computed:    true,
-									},
-									"configuration": schema.StringAttribute{
-										Description: "Component configuration.",
-										Computed:    true,
-									},
-								},
-							},
 						},
 					},
 				},
@@ -155,24 +145,25 @@ func (d *blueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		deviceGroups = append(deviceGroups, types.StringValue(g))
 	}
 
-	var steps []stepModel
-	for _, s := range bp.Steps {
-		var components []componentModel
-		for _, c := range s.Components {
-			var configStr string
-			if c.Configuration != nil {
-				configStr = string(c.Configuration)
+	var components []componentModel
+	if len(bp.Steps) > 0 {
+		step := bp.Steps[0]
+		components = make([]componentModel, len(step.Components))
+		for i, comp := range step.Components {
+			configMap := make(map[string]string)
+			if comp.Configuration != nil {
+				var jsonObj map[string]interface{}
+				if err := json.Unmarshal(comp.Configuration, &jsonObj); err == nil {
+					flattenJSON(jsonObj, "", configMap)
+				}
 			}
 
-			components = append(components, componentModel{
-				Identifier:    types.StringValue(c.Identifier),
-				Configuration: types.StringValue(configStr),
-			})
+			configMapValue, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
+			components[i] = componentModel{
+				Identifier:    types.StringValue(comp.Identifier),
+				Configuration: configMapValue,
+			}
 		}
-		steps = append(steps, stepModel{
-			Name:       types.StringValue(s.Name),
-			Components: components,
-		})
 	}
 
 	state := blueprintDataSourceModel{
@@ -184,7 +175,7 @@ func (d *blueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		Updated:         types.StringValue(bp.Updated),
 		DeploymentState: types.StringValue(bp.DeploymentState.State),
 		DeviceGroups:    deviceGroups,
-		Steps:           steps,
+		Components:      components,
 	}
 
 	diags = resp.State.Set(ctx, &state)

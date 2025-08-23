@@ -8,7 +8,6 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // Create creates a new Blueprint resource in Terraform.
@@ -24,26 +23,45 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	steps := make([]client.BlueprintStep, len(plan.Steps))
-	for i, step := range plan.Steps {
-		components := make([]client.BlueprintComponent, len(step.Components))
-		for j, comp := range step.Components {
-			component := client.BlueprintComponent{
-				Identifier: comp.Identifier.ValueString(),
-			}
-			if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
-				configStr := comp.Configuration.ValueString()
-				if configStr != "" {
-					normalizedConfig := normalizeJSON(configStr)
-					component.Configuration = json.RawMessage(normalizedConfig)
-				}
-			}
-			components[j] = component
+	components := make([]client.BlueprintComponent, len(plan.Components))
+	for i, comp := range plan.Components {
+		component := client.BlueprintComponent{
+			Identifier: comp.Identifier.ValueString(),
 		}
-		steps[i] = client.BlueprintStep{
-			Name:       step.Name.ValueString(),
+
+		if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
+			configMap := make(map[string]string)
+			diags := comp.Configuration.ElementsAs(ctx, &configMap, false)
+			if diags.HasError() {
+				resp.Diagnostics.Append(diags...)
+				return
+			}
+
+			jsonObj := make(map[string]interface{})
+			for key, value := range configMap {
+				setNestedValue(jsonObj, key, value)
+			}
+
+			jsonBytes, err := json.Marshal(jsonObj)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Error encoding component configuration",
+					"Could not encode component configuration to JSON: "+err.Error(),
+				)
+				return
+			}
+
+			normalizedConfig := normalizeJSON(string(jsonBytes))
+			component.Configuration = json.RawMessage(normalizedConfig)
+		}
+		components[i] = component
+	}
+
+	steps := []client.BlueprintStep{
+		{
+			Name:       "Declaration group",
 			Components: components,
-		}
+		},
 	}
 
 	reqBody := &client.BlueprintCreateRequest{
@@ -69,6 +87,16 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		resp.Diagnostics.AddError(
 			"Error reading created blueprint",
 			"Could not read created blueprint: "+err.Error(),
+		)
+		return
+	}
+
+	// Deploy the blueprint after successful creation
+	err = r.client.DeployBlueprint(ctx, createResp.ID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error deploying blueprint",
+			"Blueprint was created successfully but could not be deployed: "+err.Error(),
 		)
 		return
 	}
@@ -113,26 +141,45 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	steps := make([]client.BlueprintStep, len(plan.Steps))
-	for i, step := range plan.Steps {
-		components := make([]client.BlueprintComponent, len(step.Components))
-		for j, comp := range step.Components {
-			component := client.BlueprintComponent{
-				Identifier: comp.Identifier.ValueString(),
-			}
-			if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
-				configStr := comp.Configuration.ValueString()
-				if configStr != "" {
-					normalizedConfig := normalizeJSON(configStr)
-					component.Configuration = json.RawMessage(normalizedConfig)
-				}
-			}
-			components[j] = component
+	components := make([]client.BlueprintComponent, len(plan.Components))
+	for i, comp := range plan.Components {
+		component := client.BlueprintComponent{
+			Identifier: comp.Identifier.ValueString(),
 		}
-		steps[i] = client.BlueprintStep{
-			Name:       step.Name.ValueString(),
+
+		if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
+			configMap := make(map[string]string)
+			diags := comp.Configuration.ElementsAs(ctx, &configMap, false)
+			if diags.HasError() {
+				resp.Diagnostics.Append(diags...)
+				return
+			}
+
+			jsonObj := make(map[string]interface{})
+			for key, value := range configMap {
+				setNestedValue(jsonObj, key, value)
+			}
+
+			jsonBytes, err := json.Marshal(jsonObj)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Error encoding component configuration",
+					"Could not encode component configuration to JSON: "+err.Error(),
+				)
+				return
+			}
+
+			normalizedConfig := normalizeJSON(string(jsonBytes))
+			component.Configuration = json.RawMessage(normalizedConfig)
+		}
+		components[i] = component
+	}
+
+	steps := []client.BlueprintStep{
+		{
+			Name:       "Declaration group",
 			Components: components,
-		}
+		},
 	}
 
 	updateReq := &client.BlueprintUpdateRequest{
@@ -162,6 +209,16 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	// Deploy the blueprint after successful update
+	err = r.client.DeployBlueprint(ctx, plan.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error deploying blueprint",
+			"Blueprint was updated successfully but could not be deployed: "+err.Error(),
+		)
+		return
+	}
+
 	updateModelFromAPIResponse(&plan, blueprint)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
@@ -183,61 +240,4 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 		)
 		return
 	}
-}
-
-// updateModelFromAPIResponse updates the Terraform model with data from the API response.
-func updateModelFromAPIResponse(model *blueprintResourceModel, blueprint *client.BlueprintDetail) {
-	model.ID = types.StringValue(blueprint.ID)
-	model.Name = types.StringValue(blueprint.Name)
-	model.Description = types.StringValue(blueprint.Description)
-	model.Created = types.StringValue(blueprint.Created)
-	model.Updated = types.StringValue(blueprint.Updated)
-	model.DeploymentState = types.StringValue(blueprint.DeploymentState.State)
-
-	deviceGroups := make([]types.String, len(blueprint.Scope.DeviceGroups))
-	for i, dg := range blueprint.Scope.DeviceGroups {
-		deviceGroups[i] = types.StringValue(dg)
-	}
-	model.DeviceGroups = deviceGroups
-
-	steps := make([]stepModel, len(blueprint.Steps))
-	for i, step := range blueprint.Steps {
-		components := make([]componentModel, len(step.Components))
-		for j, comp := range step.Components {
-			component := componentModel{
-				Identifier: types.StringValue(comp.Identifier),
-			}
-			if comp.Configuration != nil {
-				normalizedConfig := normalizeJSON(string(comp.Configuration))
-				component.Configuration = types.StringValue(normalizedConfig)
-			} else {
-				component.Configuration = types.StringNull()
-			}
-			components[j] = component
-		}
-		steps[i] = stepModel{
-			Name:       types.StringValue(step.Name),
-			Components: components,
-		}
-	}
-	model.Steps = steps
-}
-
-// normalizeJSON takes a JSON string and returns it with sorted keys to ensure consistent comparison
-func normalizeJSON(jsonStr string) string {
-	if jsonStr == "" {
-		return ""
-	}
-
-	var obj interface{}
-	if err := json.Unmarshal([]byte(jsonStr), &obj); err != nil {
-		return jsonStr
-	}
-
-	normalized, err := json.Marshal(obj)
-	if err != nil {
-		return jsonStr
-	}
-
-	return string(normalized)
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -69,35 +68,6 @@ func (r *BlueprintResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 					listplanmodifier.RequiresReplace(),
 				},
 			},
-			"steps": schema.ListNestedAttribute{
-				Description: "List of blueprint steps.",
-				Optional:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
-							Description: "Step name.",
-							Required:    true,
-							Default:     stringdefault.StaticString("Declaration group"),
-						},
-						"components": schema.ListNestedAttribute{
-							Description: "List of components in this step.",
-							Optional:    true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"identifier": schema.StringAttribute{
-										Description: "Component identifier.",
-										Required:    true,
-									},
-									"configuration": schema.StringAttribute{
-										Description: "Component configuration as JSON string. Each component has its own unique schema.",
-										Optional:    true,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
 			"created": schema.StringAttribute{
 				Description: "Creation timestamp.",
 				Computed:    true,
@@ -109,6 +79,24 @@ func (r *BlueprintResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"deployment_state": schema.StringAttribute{
 				Description: "Current deployment state.",
 				Computed:    true,
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"component": schema.ListNestedBlock{
+				Description: "Component configuration. All components will be placed in a 'Declaration group' step automatically.",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"identifier": schema.StringAttribute{
+							Description: "Component identifier (e.g., com.jamf.ddm.disk-management).",
+							Required:    true,
+						},
+						"configuration": schema.MapAttribute{
+							Description: "Component configuration as key-value pairs. The provider will automatically convert this to the proper JSON format.",
+							Optional:    true,
+							ElementType: types.StringType,
+						},
+					},
+				},
 			},
 		},
 	}
