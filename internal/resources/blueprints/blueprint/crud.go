@@ -82,21 +82,20 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	blueprint, err := r.client.GetBlueprintByID(ctx, createResp.ID)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading created blueprint",
-			"Could not read created blueprint: "+err.Error(),
-		)
-		return
-	}
-
-	// Deploy the blueprint after successful creation
 	err = r.client.DeployBlueprint(ctx, createResp.ID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deploying blueprint",
 			"Blueprint was created successfully but could not be deployed: "+err.Error(),
+		)
+		return
+	}
+
+	blueprint, err := r.client.GetBlueprintByID(ctx, createResp.ID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading created blueprint",
+			"Could not read created blueprint: "+err.Error(),
 		)
 		return
 	}
@@ -200,21 +199,20 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	blueprint, err := r.client.GetBlueprintByID(ctx, plan.ID.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading updated blueprint",
-			"Could not read updated blueprint: "+err.Error(),
-		)
-		return
-	}
-
-	// Deploy the blueprint after successful update
 	err = r.client.DeployBlueprint(ctx, plan.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deploying blueprint",
 			"Blueprint was updated successfully but could not be deployed: "+err.Error(),
+		)
+		return
+	}
+
+	blueprint, err := r.client.GetBlueprintByID(ctx, plan.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading updated blueprint",
+			"Could not read updated blueprint: "+err.Error(),
 		)
 		return
 	}
