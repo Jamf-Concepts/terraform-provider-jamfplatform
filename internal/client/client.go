@@ -18,6 +18,20 @@ type Client struct {
 	baseURL     string
 }
 
+type ApiError struct {
+	HTTPStatus int     `json:"httpStatus"`
+	TraceID    string  `json:"traceId"`
+	Errors     []Error `json:"errors"`
+}
+
+// Error represents an error response from the API
+type Error struct {
+	ID          string `json:"id,omitempty"`
+	Code        string `json:"code"`
+	Field       string `json:"field"`
+	Description string `json:"description"`
+}
+
 // NewClient creates a new Jamf Platform API client.
 func NewClient(baseURL, clientID, clientSecret string) *Client {
 	tokenURL := baseURL + "/auth/token"
@@ -64,7 +78,11 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 	}
 
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		if method == http.MethodPatch {
+			req.Header.Set("Content-Type", "application/merge-patch+json")
+		} else {
+			req.Header.Set("Content-Type", "application/json")
+		}
 	}
 
 	resp, err := c.oauthClient.httpClient.Do(req)
@@ -85,7 +103,11 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		}
 
 		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
+			if method == http.MethodPatch {
+				req.Header.Set("Content-Type", "application/merge-patch+json")
+			} else {
+				req.Header.Set("Content-Type", "application/json")
+			}
 		}
 
 		resp, err = c.oauthClient.httpClient.Do(req)
@@ -107,6 +129,14 @@ func (c *Client) handleAPIResponse(resp *http.Response, expectedStatus int, resu
 
 	if resp.StatusCode != expectedStatus {
 		body, _ := io.ReadAll(resp.Body)
+		var apiErr ApiError
+		if err := json.Unmarshal(body, &apiErr); err == nil && len(apiErr.Errors) > 0 {
+			var details []string
+			for _, e := range apiErr.Errors {
+				details = append(details, fmt.Sprintf("[%s] %s: %s", e.Code, e.Field, e.Description))
+			}
+			return fmt.Errorf("API request failed with status %d, traceId %s: %s", apiErr.HTTPStatus, apiErr.TraceID, details)
+		}
 		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
