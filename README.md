@@ -3,7 +3,13 @@
 Provides resources and data sources for managing [Jamf Platform Services](https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api):
 
 * [Compliance Benchmark Engine](https://learn.jamf.com/en-US/bundle/jamf-compliance-benchmarks-configuration-guide/page/Compliance_Benchmarks_Configuration_Guide.html)
+  * [API Reference](https://portal.jamf.build/catalog/default/api/compliance-benchmark-engine/definition)
 * Unified Inventory
+  * [API Reference](https://developer.jamf.com/platform-api/reference/computer-inventory)
+* [Blueprints](https://learn.jamf.com/en-US/bundle/jamf-pro-blueprints-configuration-guide/page/Jamf_Pro_Blueprints_Configuration_Guide.html)
+  * [API Reference](https://portal.jamf.build/catalog/default/api/blueprints-api-service/definition)
+
+Note that some of these APIs are not public facing and are only available for internal development testing [(Backstage)](https://stage-account.jamfnebula.com/) or private beta. Provider stability, functionality and schemas are subject to change.
 
 **This repository also includes a Go client for direct API access and scripting.**
 
@@ -13,7 +19,7 @@ Provides resources and data sources for managing [Jamf Platform Services](https:
 
 ## Using the Provider in your own Terraform Projects
 
-### If using the Terraform Registry
+### If using the Terraform Registry (NOT YET PUBLISHED, FOLLOW LOCAL INSTALL INSTRUCTIONS)
 
 ```hcl
 terraform {
@@ -26,9 +32,9 @@ terraform {
 }
 
 provider "jamfplatform" {
-  region        = "us" # or "eu", "apac"
-  client_id     = "example-client-id"
-  client_secret = "example-client-secret"
+  base_url        = "https://us.apigw.jamf.com" # or "https://eu.apigw.jamf.com", "https://apac.apigw.jamf.com"
+  client_id       = "example-client-id"
+  client_secret   = "example-client-secret"
 }
 ```
 
@@ -45,9 +51,9 @@ terraform {
 }
 
 provider "jamfplatform" {
-  region        = "us" # or "eu", "apac"
-  client_id     = "example-client-id"
-  client_secret = "example-client-secret"
+  base_url        = "https://us.apigw.jamf.com" # or "https://eu.apigw.jamf.com", "https://apac.apigw.jamf.com"
+  client_id       = "example-client-id"
+  client_secret   = "example-client-secret"
 }
 ```
 
@@ -87,8 +93,8 @@ The plugin must be extracted to the correct location for Terraform to find and u
 
 ```bash
 cd ~/Downloads
-mkdir -p ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.2.0/darwin_arm64
-unzip terraform-provider-jamfplatform_1.2.0_darwin_arm64.zip -d ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.2.0/darwin_arm64
+mkdir -p ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.3.0/darwin_arm64
+unzip terraform-provider-jamfplatform_1.3.0_darwin_arm64.zip -d ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.3.0/darwin_arm64
 xattr -r -d com.apple.quarantine ~/.terraform.d/plugins
 ```
 
@@ -99,9 +105,9 @@ This will result in:
 └── local/
     └── Jamf-Concepts/
         └── jamfplatform/
-            └── 1.2.0/
+            └── 1.3.0/
                 └── darwin_arm64/
-                    └── terraform-provider-jamfplatform_v1.2.0
+                    └── terraform-provider-jamfplatform_v1.3.0
 ```
 
 ### Step 3: Set up a local file system mirror

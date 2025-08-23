@@ -60,7 +60,7 @@ func (p *jamfPlatformProvider) Schema(_ context.Context, _ provider.SchemaReques
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
 				Required:    true,
-				Description: "The Jamf Platform base URL to use (e.g., https://us.apigw.jamf.com or https://us.stage.apigw.jamfnebula.com). Can also be set via the JAMFPLATFORM_BASE_URL environment variable.",
+				Description: "The Jamf Platform base URL to use (e.g., https://us.apigw.jamf.com for production US region or https://us.stage.apigw.jamfnebula.com for internal staging US region). Can also be set via the JAMFPLATFORM_BASE_URL environment variable.",
 			},
 			"client_id": schema.StringAttribute{
 				Required:    true,
