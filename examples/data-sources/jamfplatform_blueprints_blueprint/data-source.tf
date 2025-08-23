@@ -5,18 +5,6 @@ data "jamfplatform_blueprints_blueprint" "example" {
   name     = "Blueprint Name"
 }
 
-output "blueprint_id" {
-  value = data.jamfplatform_blueprints_blueprint.example.blueprint_id
-}
-
-output "blueprint_description" {
-  value = data.jamfplatform_blueprints_blueprint.example.description
-}
-
-output "blueprint_device_groups" {
-  value = data.jamfplatform_blueprints_blueprint.example.device_groups
-}
-
-output "blueprint_steps" {
-  value = data.jamfplatform_blueprints_blueprint.example.steps
+output "blueprint_example_all" {
+  value = data.jamfplatform_blueprints_blueprint.example
 }

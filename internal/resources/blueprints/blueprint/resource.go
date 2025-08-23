@@ -43,7 +43,7 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 // Schema returns the Terraform schema for the blueprint resource.
 func (r *BlueprintResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Resource schema for creating and managing Jamf Blueprints.",
+		Description: "Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description: "The unique identifier for the blueprint.",
@@ -91,7 +91,7 @@ func (r *BlueprintResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 							Required:    true,
 						},
 						"configuration": schema.MapAttribute{
-							Description: "Component configuration as key-value pairs. The provider will automatically convert this to the proper JSON format.",
+							Description: "Component configuration as key-value pairs. Each component has its own unique configuration options.",
 							Optional:    true,
 							ElementType: types.StringType,
 						},

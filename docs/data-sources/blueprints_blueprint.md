@@ -20,20 +20,8 @@ data "jamfplatform_blueprints_blueprint" "example" {
   name     = "Blueprint Name"
 }
 
-output "blueprint_id" {
-  value = data.jamfplatform_blueprints_blueprint.example.blueprint_id
-}
-
-output "blueprint_description" {
-  value = data.jamfplatform_blueprints_blueprint.example.description
-}
-
-output "blueprint_device_groups" {
-  value = data.jamfplatform_blueprints_blueprint.example.device_groups
-}
-
-output "blueprint_steps" {
-  value = data.jamfplatform_blueprints_blueprint.example.steps
+output "blueprint_example_all" {
+  value = data.jamfplatform_blueprints_blueprint.example
 }
 ```
 
@@ -48,25 +36,17 @@ output "blueprint_steps" {
 ### Read-Only
 
 - `blueprint_id` (String) Blueprint ID.
+- `component` (Attributes List) Blueprint components. (see [below for nested schema](#nestedatt--component))
 - `created` (String) Created at (RFC3339).
 - `deployment_state` (String) Deployment state.
 - `description` (String) Description.
 - `device_groups` (List of String) Device groups in scope.
-- `steps` (Attributes List) Blueprint steps. (see [below for nested schema](#nestedatt--steps))
 - `updated` (String) Updated at (RFC3339).
 
-<a id="nestedatt--steps"></a>
-### Nested Schema for `steps`
+<a id="nestedatt--component"></a>
+### Nested Schema for `component`
 
 Read-Only:
 
-- `components` (Attributes List) Step components. (see [below for nested schema](#nestedatt--steps--components))
-- `name` (String) Step name.
-
-<a id="nestedatt--steps--components"></a>
-### Nested Schema for `steps.components`
-
-Read-Only:
-
-- `configuration` (String) Component configuration.
+- `configuration` (Map of String) Component configuration as a map of key-value pairs.
 - `identifier` (String) Component identifier.
