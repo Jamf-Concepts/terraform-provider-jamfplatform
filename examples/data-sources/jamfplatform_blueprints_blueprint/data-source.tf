@@ -6,17 +6,17 @@ data "jamfplatform_blueprints_blueprint" "example" {
 }
 
 output "blueprint_id" {
-  value = data.jamfplatform_blueprint.example.blueprint_id
+  value = data.jamfplatform_blueprints_blueprint.example.blueprint_id
 }
 
 output "blueprint_description" {
-  value = data.jamfplatform_blueprint.example.description
+  value = data.jamfplatform_blueprints_blueprint.example.description
 }
 
 output "blueprint_device_groups" {
-  value = data.jamfplatform_blueprint.example.device_groups
+  value = data.jamfplatform_blueprints_blueprint.example.device_groups
 }
 
 output "blueprint_steps" {
-  value = data.jamfplatform_blueprint.example.steps
+  value = data.jamfplatform_blueprints_blueprint.example.steps
 }
