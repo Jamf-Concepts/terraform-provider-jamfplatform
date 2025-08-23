@@ -1,8 +1,26 @@
 package blueprint
 
 import (
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// BlueprintResource implements the Terraform resource for Jamf Blueprint.
+type BlueprintResource struct {
+	client *client.Client
+}
+
+// blueprintResourceModel represents the Terraform resource model for a Jamf Blueprint.
+type blueprintResourceModel struct {
+	ID              types.String   `tfsdk:"id"`
+	Name            types.String   `tfsdk:"name"`
+	Description     types.String   `tfsdk:"description"`
+	DeviceGroups    []types.String `tfsdk:"device_groups"`
+	Steps           []stepModel    `tfsdk:"steps"`
+	Created         types.String   `tfsdk:"created"`
+	Updated         types.String   `tfsdk:"updated"`
+	DeploymentState types.String   `tfsdk:"deployment_state"`
+}
 
 // blueprintDataSourceModel defines the data structure for the blueprint data source.
 type blueprintDataSourceModel struct {

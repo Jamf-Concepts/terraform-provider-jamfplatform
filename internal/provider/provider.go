@@ -125,6 +125,7 @@ func getenv(key string) string {
 func (p *jamfPlatformProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		benchmark.NewBenchmarkResource,
+		blueprint.NewBlueprintResource,
 	}
 }
 
