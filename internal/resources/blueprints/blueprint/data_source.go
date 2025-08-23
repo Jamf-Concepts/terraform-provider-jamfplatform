@@ -18,10 +18,6 @@ func NewBlueprintDataSource() datasource.DataSource {
 	return &blueprintDataSource{}
 }
 
-type blueprintDataSource struct {
-	client *client.Client
-}
-
 // Configure sets up the API client for the data source from the provider configuration.
 func (d *blueprintDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {

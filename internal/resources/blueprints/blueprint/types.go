@@ -22,6 +22,11 @@ type blueprintResourceModel struct {
 	DeploymentState types.String     `tfsdk:"deployment_state"`
 }
 
+// blueprintDataSource implements the Terraform data source for Jamf Blueprint.
+type blueprintDataSource struct {
+	client *client.Client
+}
+
 // blueprintDataSourceModel defines the data structure for the blueprint data source.
 type blueprintDataSourceModel struct {
 	ID              types.String     `tfsdk:"id"`
