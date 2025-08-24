@@ -65,22 +65,12 @@ func (d *componentsDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 							Description: "Component description.",
 							Computed:    true,
 						},
-						"meta": schema.SingleNestedAttribute{
-							Description: "Component metadata.",
-							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"supported_os": schema.MapAttribute{
-									Description: "Supported operating systems with their versions.",
-									ElementType: types.ListType{
-										ElemType: types.ObjectType{
-											AttrTypes: map[string]attr.Type{
-												"version": types.StringType,
-											},
-										},
-									},
-									Computed: true,
-								},
+						"supported_os": schema.MapAttribute{
+							Description: "Supported operating systems with their versions.",
+							ElementType: types.ListType{
+								ElemType: types.StringType,
 							},
+							Computed: true,
 						},
 					},
 				},
@@ -115,65 +105,33 @@ func (d *componentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	// Convert components to Terraform types
 	var componentsList []componentListModel
 	for _, comp := range components {
 		supportedOsAttrType := types.ListType{
-			ElemType: types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"version": types.StringType,
-				},
-			},
+			ElemType: types.StringType,
 		}
 
-		metaAttrType := map[string]attr.Type{
-			"supported_os": types.MapType{
-				ElemType: supportedOsAttrType,
-			},
-		}
-
-		var meta types.Object
+		var supportedOsMap attr.Value
 		if len(comp.Meta.SupportedOs) == 0 {
-			meta = types.ObjectNull(metaAttrType)
+			supportedOsMap = types.MapNull(supportedOsAttrType)
 		} else {
 			supportedOsMapVals := make(map[string]attr.Value)
 			for osFamily, versions := range comp.Meta.SupportedOs {
 				osVersionVals := make([]attr.Value, len(versions))
 				for i, v := range versions {
-					osVersionVals[i], _ = types.ObjectValue(
-						map[string]attr.Type{
-							"version": types.StringType,
-						},
-						map[string]attr.Value{
-							"version": types.StringValue(v.Version),
-						},
-					)
+					osVersionVals[i] = types.StringValue(v.Version)
 				}
-				supportedOsList, _ := types.ListValue(
-					types.ObjectType{
-						AttrTypes: map[string]attr.Type{
-							"version": types.StringType,
-						},
-					},
-					osVersionVals,
-				)
+				supportedOsList, _ := types.ListValue(types.StringType, osVersionVals)
 				supportedOsMapVals[osFamily] = supportedOsList
 			}
-
-			supportedOsMap, _ := types.MapValue(supportedOsAttrType, supportedOsMapVals)
-			meta, _ = types.ObjectValue(
-				metaAttrType,
-				map[string]attr.Value{
-					"supported_os": supportedOsMap,
-				},
-			)
+			supportedOsMap, _ = types.MapValue(supportedOsAttrType, supportedOsMapVals)
 		}
 
 		componentsList = append(componentsList, componentListModel{
 			Identifier:  types.StringValue(comp.Identifier),
 			Name:        types.StringValue(comp.Name),
 			Description: types.StringValue(comp.Description),
-			Meta:        meta,
+			SupportedOs: supportedOsMap.(types.Map),
 		})
 	}
 

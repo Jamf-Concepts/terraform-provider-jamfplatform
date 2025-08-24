@@ -45,12 +45,5 @@ output "supported_operating_systems" {
 
 - `description` (String) Component description.
 - `identifier` (String) Component identifier.
-- `meta` (Attributes) Component metadata. (see [below for nested schema](#nestedatt--meta))
 - `name` (String) Component name.
-
-<a id="nestedatt--meta"></a>
-### Nested Schema for `meta`
-
-Read-Only:
-
-- `supported_os` (Map of List of Object) Supported operating systems with their versions.
+- `supported_os` (Map of List of String) Supported operating systems with their versions.

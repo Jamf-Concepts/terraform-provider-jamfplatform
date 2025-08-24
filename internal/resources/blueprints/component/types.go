@@ -10,5 +10,5 @@ type componentDataSourceModel struct {
 	Identifier  types.String `tfsdk:"identifier"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
-	Meta        types.Object `tfsdk:"meta"`
+	SupportedOs types.Map    `tfsdk:"supported_os"`
 }
