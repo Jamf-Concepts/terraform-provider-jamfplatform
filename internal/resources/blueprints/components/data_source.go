@@ -18,10 +18,6 @@ func NewComponentsDataSource() datasource.DataSource {
 	return &componentsDataSource{}
 }
 
-type componentsDataSource struct {
-	client *client.Client
-}
-
 // Configure sets up the API client for the data source from the provider configuration.
 func (d *componentsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {

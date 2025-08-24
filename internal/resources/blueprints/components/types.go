@@ -3,8 +3,14 @@
 package components
 
 import (
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// componentsDataSource defines the data source for blueprint components.
+type componentsDataSource struct {
+	client *client.Client
+}
 
 // componentsDataSourceModel defines the data structure for the components data source.
 type componentsDataSourceModel struct {
