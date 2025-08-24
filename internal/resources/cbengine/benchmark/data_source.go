@@ -176,19 +176,13 @@ func (d *benchmarkDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 										Description: "OS-specific rule description.",
 										Computed:    true,
 									},
-									"odv": schema.SingleNestedAttribute{
-										Description: "ODV recommendation for this OS.",
+									"odv_value": schema.StringAttribute{
+										Description: "Recommended ODV value.",
 										Computed:    true,
-										Attributes: map[string]schema.Attribute{
-											"value": schema.StringAttribute{
-												Description: "Recommended ODV value.",
-												Computed:    true,
-											},
-											"hint": schema.StringAttribute{
-												Description: "Recommended ODV hint.",
-												Computed:    true,
-											},
-										},
+									},
+									"odv_hint": schema.StringAttribute{
+										Description: "Recommended ODV hint.",
+										Computed:    true,
 									},
 								},
 							},
@@ -363,12 +357,8 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 			AttrTypes: map[string]attr.Type{
 				"title":       types.StringType,
 				"description": types.StringType,
-				"odv": types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"value": types.StringType,
-						"hint":  types.StringType,
-					},
-				},
+				"odv_value":   types.StringType,
+				"odv_hint":    types.StringType,
 			},
 		}
 		var osSpecificDefaults types.Map
@@ -377,34 +367,26 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		} else {
 			vals := make(map[string]attr.Value, len(r.OSSpecificDefaults))
 			for k, v := range r.OSSpecificDefaults {
-				var odvVal attr.Value = types.ObjectNull(map[string]attr.Type{"value": types.StringType, "hint": types.StringType})
+				var odvValue, odvHint types.String
 				if v.ODV != nil {
-					odvVal, _ = types.ObjectValue(
-						map[string]attr.Type{
-							"value": types.StringType,
-							"hint":  types.StringType,
-						},
-						map[string]attr.Value{
-							"value": types.StringValue(v.ODV.Value),
-							"hint":  types.StringValue(v.ODV.Hint),
-						},
-					)
+					odvValue = types.StringValue(v.ODV.Value)
+					odvHint = types.StringValue(v.ODV.Hint)
+				} else {
+					odvValue = types.StringNull()
+					odvHint = types.StringNull()
 				}
 				vals[k], _ = types.ObjectValue(
 					map[string]attr.Type{
 						"title":       types.StringType,
 						"description": types.StringType,
-						"odv": types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"value": types.StringType,
-								"hint":  types.StringType,
-							},
-						},
+						"odv_value":   types.StringType,
+						"odv_hint":    types.StringType,
 					},
 					map[string]attr.Value{
 						"title":       types.StringValue(v.Title),
 						"description": types.StringValue(v.Description),
-						"odv":         odvVal,
+						"odv_value":   odvValue,
+						"odv_hint":    odvHint,
 					},
 				)
 			}

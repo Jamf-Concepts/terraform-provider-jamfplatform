@@ -129,19 +129,13 @@ func BenchmarkResourceSchema() schema.Schema {
 										Description: "OS-specific rule description.",
 										Computed:    true,
 									},
-									"odv": schema.SingleNestedAttribute{
-										Description: "ODV recommendation for this OS.",
+									"odv_value": schema.StringAttribute{
+										Description: "Recommended ODV value.",
 										Computed:    true,
-										Attributes: map[string]schema.Attribute{
-											"value": schema.StringAttribute{
-												Description: "Recommended ODV value.",
-												Computed:    true,
-											},
-											"hint": schema.StringAttribute{
-												Description: "Recommended ODV hint.",
-												Computed:    true,
-											},
-										},
+									},
+									"odv_hint": schema.StringAttribute{
+										Description: "Recommended ODV hint.",
+										Computed:    true,
 									},
 								},
 							},

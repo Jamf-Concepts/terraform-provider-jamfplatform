@@ -92,17 +92,9 @@ Read-Only:
 Read-Only:
 
 - `description` (String) OS-specific rule description.
-- `odv` (Attributes) ODV recommendation for this OS. (see [below for nested schema](#nestedatt--rules--os_specific_defaults--odv))
+- `odv_hint` (String) Recommended ODV hint.
+- `odv_value` (String) Recommended ODV value.
 - `title` (String) OS-specific rule title.
-
-<a id="nestedatt--rules--os_specific_defaults--odv"></a>
-### Nested Schema for `rules.os_specific_defaults.odv`
-
-Read-Only:
-
-- `hint` (String) Recommended ODV hint.
-- `value` (String) Recommended ODV value.
-
 
 
 <a id="nestedatt--rules--supported_os"></a>

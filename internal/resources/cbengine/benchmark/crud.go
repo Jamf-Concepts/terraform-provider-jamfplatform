@@ -110,12 +110,8 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 			AttrTypes: map[string]attr.Type{
 				"title":       types.StringType,
 				"description": types.StringType,
-				"odv": types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"value": types.StringType,
-						"hint":  types.StringType,
-					},
-				},
+				"odv_value":   types.StringType,
+				"odv_hint":    types.StringType,
 			},
 		}
 		var osSpecificDefaults types.Map
@@ -124,34 +120,26 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		} else {
 			vals := make(map[string]attr.Value, len(r.OSSpecificDefaults))
 			for k, v := range r.OSSpecificDefaults {
-				var odvVal attr.Value = types.ObjectNull(map[string]attr.Type{"value": types.StringType, "hint": types.StringType})
+				var odvValue, odvHint types.String
 				if v.ODV != nil {
-					odvVal, _ = types.ObjectValue(
-						map[string]attr.Type{
-							"value": types.StringType,
-							"hint":  types.StringType,
-						},
-						map[string]attr.Value{
-							"value": types.StringValue(v.ODV.Value),
-							"hint":  types.StringValue(v.ODV.Hint),
-						},
-					)
+					odvValue = types.StringValue(v.ODV.Value)
+					odvHint = types.StringValue(v.ODV.Hint)
+				} else {
+					odvValue = types.StringNull()
+					odvHint = types.StringNull()
 				}
 				vals[k], _ = types.ObjectValue(
 					map[string]attr.Type{
 						"title":       types.StringType,
 						"description": types.StringType,
-						"odv": types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"value": types.StringType,
-								"hint":  types.StringType,
-							},
-						},
+						"odv_value":   types.StringType,
+						"odv_hint":    types.StringType,
 					},
 					map[string]attr.Value{
 						"title":       types.StringValue(v.Title),
 						"description": types.StringValue(v.Description),
-						"odv":         odvVal,
+						"odv_value":   odvValue,
+						"odv_hint":    odvHint,
 					},
 				)
 			}
@@ -315,12 +303,8 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 			AttrTypes: map[string]attr.Type{
 				"title":       types.StringType,
 				"description": types.StringType,
-				"odv": types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"value": types.StringType,
-						"hint":  types.StringType,
-					},
-				},
+				"odv_value":   types.StringType,
+				"odv_hint":    types.StringType,
 			},
 		}
 		var osSpecificDefaults types.Map
@@ -329,34 +313,26 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		} else {
 			vals := make(map[string]attr.Value, len(r.OSSpecificDefaults))
 			for k, v := range r.OSSpecificDefaults {
-				var odvVal attr.Value = types.ObjectNull(map[string]attr.Type{"value": types.StringType, "hint": types.StringType})
+				var odvValue, odvHint types.String
 				if v.ODV != nil {
-					odvVal, _ = types.ObjectValue(
-						map[string]attr.Type{
-							"value": types.StringType,
-							"hint":  types.StringType,
-						},
-						map[string]attr.Value{
-							"value": types.StringValue(v.ODV.Value),
-							"hint":  types.StringValue(v.ODV.Hint),
-						},
-					)
+					odvValue = types.StringValue(v.ODV.Value)
+					odvHint = types.StringValue(v.ODV.Hint)
+				} else {
+					odvValue = types.StringNull()
+					odvHint = types.StringNull()
 				}
 				vals[k], _ = types.ObjectValue(
 					map[string]attr.Type{
 						"title":       types.StringType,
 						"description": types.StringType,
-						"odv": types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"value": types.StringType,
-								"hint":  types.StringType,
-							},
-						},
+						"odv_value":   types.StringType,
+						"odv_hint":    types.StringType,
 					},
 					map[string]attr.Value{
 						"title":       types.StringValue(v.Title),
 						"description": types.StringValue(v.Description),
-						"odv":         odvVal,
+						"odv_value":   odvValue,
+						"odv_hint":    odvHint,
 					},
 				)
 			}
