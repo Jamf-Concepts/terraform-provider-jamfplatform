@@ -49,7 +49,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		reqBody.Rules[i] = rr
 	}
 
-	bench, err := CreateBenchmarkResource(ctx, r.client, reqBody)
+	bench, err := r.client.CreateCBEngineBenchmark(ctx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating benchmark", err.Error())
 		return
@@ -445,19 +445,9 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	err := DeleteBenchmarkResource(ctx, r.client, state.ID.ValueString())
+	err := r.client.DeleteCBEngineBenchmark(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting benchmark", err.Error())
 		return
 	}
-}
-
-// CreateBenchmarkResource creates a new benchmark resource (for Terraform resource).
-func CreateBenchmarkResource(ctx context.Context, c *client.Client, req *client.CBEngineBenchmarkRequest) (*client.CBEngineBenchmarkResponse, error) {
-	return c.CreateCBEngineBenchmark(ctx, req)
-}
-
-// DeleteBenchmarkResource deletes a benchmark resource (for Terraform resource).
-func DeleteBenchmarkResource(ctx context.Context, c *client.Client, id string) error {
-	return c.DeleteCBEngineBenchmark(ctx, id)
 }
