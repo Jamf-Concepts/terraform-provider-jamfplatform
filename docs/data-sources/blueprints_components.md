@@ -13,9 +13,7 @@ Returns all available blueprint components.
 ## Example Usage
 
 ```terraform
-data "jamfplatform_blueprints_components" "all" {
-  provider = jamfplatform.blueprints
-}
+data "jamfplatform_blueprints_components" "all" {}
 
 output "all_components" {
   value = data.jamfplatform_blueprints_components.all
