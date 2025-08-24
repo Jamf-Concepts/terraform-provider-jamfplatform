@@ -34,12 +34,5 @@ Read-Only:
 
 - `description` (String) Component description.
 - `identifier` (String) Component identifier.
-- `meta` (Attributes) Component metadata. (see [below for nested schema](#nestedatt--components--meta))
 - `name` (String) Component name.
-
-<a id="nestedatt--components--meta"></a>
-### Nested Schema for `components.meta`
-
-Read-Only:
-
-- `supported_os` (Map of List of Object) Supported operating systems with their versions.
+- `supported_os` (Map of List of String) Supported operating systems with their versions.
