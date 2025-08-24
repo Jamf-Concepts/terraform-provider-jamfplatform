@@ -180,16 +180,10 @@ func BenchmarkResourceSchema() schema.Schema {
 							Description: "Regular expression pattern for REGEX type.",
 							Computed:    true,
 						},
-						"rule_relation": schema.SingleNestedAttribute{
-							Description: "Rule dependencies.",
+						"depends_on": schema.ListAttribute{
+							Description: "IDs of rules this rule depends on.",
+							ElementType: types.StringType,
 							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"depends_on": schema.ListAttribute{
-									Description: "IDs of rules this rule depends on.",
-									ElementType: types.StringType,
-									Computed:    true,
-								},
-							},
 						},
 					},
 				},

@@ -204,21 +204,15 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 			odvValidationRegex = types.StringNull()
 		}
 
-		var ruleRelation types.Object
-		ruleRelObjType := map[string]attr.Type{"depends_on": types.ListType{ElemType: types.StringType}}
-		if r.RuleRelation != nil && len(r.RuleRelation.DependsOn) > 0 {
-			dependsOnList := make([]attr.Value, len(r.RuleRelation.DependsOn))
-			for j, dep := range r.RuleRelation.DependsOn {
-				dependsOnList[j] = types.StringValue(dep)
-			}
-			ruleRelation, _ = types.ObjectValue(
-				ruleRelObjType,
-				map[string]attr.Value{
-					"depends_on": types.ListValueMust(types.StringType, dependsOnList),
-				},
-			)
+		var dependsOn types.List
+		if r.RuleRelation == nil || len(r.RuleRelation.DependsOn) == 0 {
+			dependsOn = types.ListNull(types.StringType)
 		} else {
-			ruleRelation = types.ObjectNull(ruleRelObjType)
+			vals := make([]attr.Value, len(r.RuleRelation.DependsOn))
+			for j, dep := range r.RuleRelation.DependsOn {
+				vals[j] = types.StringValue(dep)
+			}
+			dependsOn, _ = types.ListValue(types.StringType, vals)
 		}
 
 		plan.Rules[i].SectionName = types.StringValue(r.SectionName)
@@ -235,7 +229,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		plan.Rules[i].ODVValidationMax = odvValidationMax
 		plan.Rules[i].ODVValidationEnumValues = odvValidationEnumValues
 		plan.Rules[i].ODVValidationRegex = odvValidationRegex
-		plan.Rules[i].RuleRelation = ruleRelation
+		plan.Rules[i].DependsOn = dependsOn
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -415,21 +409,15 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 			odvValidationRegex = types.StringNull()
 		}
 
-		var ruleRelation types.Object
-		ruleRelObjType := map[string]attr.Type{"depends_on": types.ListType{ElemType: types.StringType}}
-		if r.RuleRelation != nil && len(r.RuleRelation.DependsOn) > 0 {
-			dependsOnList := make([]attr.Value, len(r.RuleRelation.DependsOn))
-			for j, dep := range r.RuleRelation.DependsOn {
-				dependsOnList[j] = types.StringValue(dep)
-			}
-			ruleRelation, _ = types.ObjectValue(
-				ruleRelObjType,
-				map[string]attr.Value{
-					"depends_on": types.ListValueMust(types.StringType, dependsOnList),
-				},
-			)
+		var dependsOn types.List
+		if r.RuleRelation == nil || len(r.RuleRelation.DependsOn) == 0 {
+			dependsOn = types.ListNull(types.StringType)
 		} else {
-			ruleRelation = types.ObjectNull(ruleRelObjType)
+			vals := make([]attr.Value, len(r.RuleRelation.DependsOn))
+			for j, dep := range r.RuleRelation.DependsOn {
+				vals[j] = types.StringValue(dep)
+			}
+			dependsOn, _ = types.ListValue(types.StringType, vals)
 		}
 
 		state.Rules[i] = ruleModel{
@@ -449,7 +437,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 			ODVValidationMax:        odvValidationMax,
 			ODVValidationEnumValues: odvValidationEnumValues,
 			ODVValidationRegex:      odvValidationRegex,
-			RuleRelation:            ruleRelation,
+			DependsOn:               dependsOn,
 		}
 	}
 

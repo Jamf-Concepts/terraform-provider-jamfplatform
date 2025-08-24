@@ -68,6 +68,7 @@ output "benchmark_by_title_rules" {
 
 Read-Only:
 
+- `depends_on` (List of String) IDs of rules this rule depends on.
 - `description` (String) Description of the rule.
 - `enabled` (Boolean) Whether the rule is enabled.
 - `id` (String) Rule ID.
@@ -81,7 +82,6 @@ Read-Only:
 - `odv_value` (String) ODV value.
 - `os_specific_defaults` (Attributes Map) OS-specific rule defaults. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
 - `references` (List of String) References for the rule.
-- `rule_relation` (Attributes) Rule dependencies. (see [below for nested schema](#nestedatt--rules--rule_relation))
 - `section_name` (String) Section name for the rule.
 - `supported_os` (Attributes List) Supported operating systems. (see [below for nested schema](#nestedatt--rules--supported_os))
 - `title` (String) Title of the rule.
@@ -103,14 +103,6 @@ Read-Only:
 - `hint` (String) Recommended ODV hint.
 - `value` (String) Recommended ODV value.
 
-
-
-<a id="nestedatt--rules--rule_relation"></a>
-### Nested Schema for `rules.rule_relation`
-
-Read-Only:
-
-- `depends_on` (List of String) IDs of rules this rule depends on.
 
 
 <a id="nestedatt--rules--supported_os"></a>

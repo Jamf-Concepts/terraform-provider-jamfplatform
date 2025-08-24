@@ -73,5 +73,5 @@ type ruleModel struct {
 	ODVValidationRegex      types.String `tfsdk:"odv_validation_regex"`
 	SupportedOS             types.List   `tfsdk:"supported_os"`
 	OSSpecificDefaults      types.Map    `tfsdk:"os_specific_defaults"`
-	RuleRelation            types.Object `tfsdk:"rule_relation"`
+	DependsOn               types.List   `tfsdk:"depends_on"`
 }

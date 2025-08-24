@@ -108,6 +108,7 @@ Optional:
 
 Read-Only:
 
+- `depends_on` (List of String) IDs of rules this rule depends on.
 - `description` (String) Description of the rule.
 - `odv_hint` (String) ODV hint.
 - `odv_placeholder` (String) ODV placeholder.
@@ -118,7 +119,6 @@ Read-Only:
 - `odv_validation_regex` (String) Regular expression pattern for REGEX type.
 - `os_specific_defaults` (Attributes Map) OS specific defaults for the rule. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
 - `references` (List of String) References for the rule.
-- `rule_relation` (Attributes) Rule dependencies. (see [below for nested schema](#nestedatt--rules--rule_relation))
 - `section_name` (String) Section name for the rule.
 - `supported_os` (Attributes List) Supported OS for the rule. (see [below for nested schema](#nestedatt--rules--supported_os))
 - `title` (String) Title of the rule.
@@ -140,14 +140,6 @@ Read-Only:
 - `hint` (String) Recommended ODV hint.
 - `value` (String) Recommended ODV value.
 
-
-
-<a id="nestedatt--rules--rule_relation"></a>
-### Nested Schema for `rules.rule_relation`
-
-Read-Only:
-
-- `depends_on` (List of String) IDs of rules this rule depends on.
 
 
 <a id="nestedatt--rules--supported_os"></a>

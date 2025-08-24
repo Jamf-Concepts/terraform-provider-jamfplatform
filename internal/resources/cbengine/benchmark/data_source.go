@@ -193,16 +193,10 @@ func (d *benchmarkDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 								},
 							},
 						},
-						"rule_relation": schema.SingleNestedAttribute{
-							Description: "Rule dependencies.",
+						"depends_on": schema.ListAttribute{
+							Description: "IDs of rules this rule depends on.",
+							ElementType: types.StringType,
 							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"depends_on": schema.ListAttribute{
-									Description: "IDs of rules this rule depends on.",
-									ElementType: types.StringType,
-									Computed:    true,
-								},
-							},
 						},
 					},
 				},
@@ -417,22 +411,15 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 			osSpecificDefaults, _ = types.MapValue(osSpecObjType, vals)
 		}
 
-		ruleRelObjType := map[string]attr.Type{
-			"depends_on": types.ListType{ElemType: types.StringType},
-		}
-		var ruleRelation types.Object
+		var dependsOn types.List
 		if r.RuleRelation == nil || len(r.RuleRelation.DependsOn) == 0 {
-			ruleRelation = types.ObjectNull(ruleRelObjType)
+			dependsOn = types.ListNull(types.StringType)
 		} else {
-			dependsOnVals := make([]attr.Value, len(r.RuleRelation.DependsOn))
+			vals := make([]attr.Value, len(r.RuleRelation.DependsOn))
 			for j, dep := range r.RuleRelation.DependsOn {
-				dependsOnVals[j] = types.StringValue(dep)
+				vals[j] = types.StringValue(dep)
 			}
-			dependsOnList, _ := types.ListValue(types.StringType, dependsOnVals)
-			ruleRelation, _ = types.ObjectValue(
-				ruleRelObjType,
-				map[string]attr.Value{"depends_on": dependsOnList},
-			)
+			dependsOn, _ = types.ListValue(types.StringType, vals)
 		}
 
 		rules = append(rules, ruleModel{
@@ -452,7 +439,7 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 			ODVValidationRegex:      odvValidationRegex,
 			SupportedOS:             supportedOS,
 			OSSpecificDefaults:      osSpecificDefaults,
-			RuleRelation:            ruleRelation,
+			DependsOn:               dependsOn,
 		})
 	}
 
