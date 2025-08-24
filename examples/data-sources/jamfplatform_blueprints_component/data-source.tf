@@ -15,5 +15,5 @@ output "component_description" {
 }
 
 output "supported_operating_systems" {
-  value = data.jamfplatform_blueprints_component.example.meta.supported_os
+  value = data.jamfplatform_blueprints_component.example.supported_os
 }
