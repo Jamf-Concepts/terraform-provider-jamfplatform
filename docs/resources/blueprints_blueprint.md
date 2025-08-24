@@ -15,8 +15,7 @@ Resource schema for creating and managing Jamf Blueprints. Blueprints are automa
 ```terraform
 # Software Update Settings Blueprint
 resource "jamfplatform_blueprints_blueprint" "software_update" {
-  provider = jamfplatform.blueprints
-  name     = "Software Update Settings Blueprint"
+  name = "Software Update Settings Blueprint"
 
   # Use the same device group as the security blueprint
   device_groups = [
@@ -57,7 +56,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update" {
   }
 }
 
-# Example Security Settings Blueprint (Disk Management and Passcode)
+# Security Settings Blueprint (Disk Management and Passcode)
 resource "jamfplatform_blueprints_blueprint" "security" {
   provider    = jamfplatform.blueprints
   name        = "Security Blueprint"
@@ -92,7 +91,6 @@ resource "jamfplatform_blueprints_blueprint" "security" {
   }
 }
 
-# Example Safari Settings Blueprint
 # Safari Settings Blueprint
 resource "jamfplatform_blueprints_blueprint" "safari_settings" {
   provider    = jamfplatform.blueprints

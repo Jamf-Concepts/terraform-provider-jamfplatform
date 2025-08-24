@@ -9,10 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -131,80 +129,55 @@ func BenchmarkResourceSchema() schema.Schema {
 										Description: "OS-specific rule description.",
 										Computed:    true,
 									},
-									"odv": schema.SingleNestedAttribute{
-										Description: "ODV recommendation for this OS.",
+									"odv_value": schema.StringAttribute{
+										Description: "Recommended ODV value.",
 										Computed:    true,
-										Attributes: map[string]schema.Attribute{
-											"value": schema.StringAttribute{
-												Description: "Recommended ODV value.",
-												Computed:    true,
-											},
-											"hint": schema.StringAttribute{
-												Description: "Recommended ODV hint.",
-												Computed:    true,
-											},
-										},
+									},
+									"odv_hint": schema.StringAttribute{
+										Description: "Recommended ODV hint.",
+										Computed:    true,
 									},
 								},
 							},
 						},
-						"odv": schema.SingleNestedAttribute{
-							Description: "Organization defined value for the rule.",
+						"odv_value": schema.StringAttribute{
+							Description: "ODV value.",
 							Optional:    true,
 							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"value": schema.StringAttribute{
-									Description: "ODV value.",
-									Optional:    true,
-									Computed:    true,
-								},
-								"hint": schema.StringAttribute{
-									Description: "ODV hint.",
-									Computed:    true,
-								},
-								"placeholder": schema.StringAttribute{
-									Description: "ODV placeholder.",
-									Computed:    true,
-								},
-								"type": schema.StringAttribute{
-									Description: "ODV type.",
-									Computed:    true,
-								},
-								"validation": schema.SingleNestedAttribute{
-									Description: "ODV validation constraints.",
-									Computed:    true,
-									Attributes: map[string]schema.Attribute{
-										"min": schema.Int64Attribute{
-											Description: "Minimum value constraint for INTEGER type.",
-											Computed:    true,
-										},
-										"max": schema.Int64Attribute{
-											Description: "Maximum value constraint for INTEGER type.",
-											Computed:    true,
-										},
-										"enum_values": schema.ListAttribute{
-											Description: "Enumeration values for ENUM type.",
-											ElementType: types.StringType,
-											Computed:    true,
-										},
-										"regex": schema.StringAttribute{
-											Description: "Regular expression pattern for REGEX type.",
-											Computed:    true,
-										},
-									},
-								},
-							},
 						},
-						"rule_relation": schema.SingleNestedAttribute{
-							Description: "Rule dependencies.",
+						"odv_hint": schema.StringAttribute{
+							Description: "ODV hint.",
 							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"depends_on": schema.ListAttribute{
-									Description: "IDs of rules this rule depends on.",
-									ElementType: types.StringType,
-									Computed:    true,
-								},
-							},
+						},
+						"odv_placeholder": schema.StringAttribute{
+							Description: "ODV placeholder.",
+							Computed:    true,
+						},
+						"odv_type": schema.StringAttribute{
+							Description: "ODV type.",
+							Computed:    true,
+						},
+						"odv_validation_min": schema.Int64Attribute{
+							Description: "Minimum value constraint for INTEGER type.",
+							Computed:    true,
+						},
+						"odv_validation_max": schema.Int64Attribute{
+							Description: "Maximum value constraint for INTEGER type.",
+							Computed:    true,
+						},
+						"odv_validation_enum_values": schema.ListAttribute{
+							Description: "Enumeration values for ENUM type.",
+							ElementType: types.StringType,
+							Computed:    true,
+						},
+						"odv_validation_regex": schema.StringAttribute{
+							Description: "Regular expression pattern for REGEX type.",
+							Computed:    true,
+						},
+						"depends_on": schema.ListAttribute{
+							Description: "IDs of rules this rule depends on.",
+							ElementType: types.StringType,
+							Computed:    true,
 						},
 					},
 				},
@@ -212,24 +185,11 @@ func BenchmarkResourceSchema() schema.Schema {
 					listplanmodifier.RequiresReplace(),
 				},
 			},
-			"target": schema.SingleNestedAttribute{
-				Description: "Target configuration.",
+			"target_device_group": schema.StringAttribute{
+				Description: "Device group for the target configuration.",
 				Required:    true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.RequiresReplace(),
-				},
-				Attributes: map[string]schema.Attribute{
-					"device_groups": schema.ListAttribute{
-						Description: "Device groups.",
-						ElementType: types.StringType,
-						Required:    true,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.RequiresReplace(),
-						},
-						Validators: []validator.List{
-							SingleItemList(),
-						},
-					},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"enforcement_mode": schema.StringAttribute{

@@ -38,10 +38,8 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
     }
   ]
 
-  target = {
-    device_groups = ["example-device-group-id"]
-  }
-  enforcement_mode = "MONITOR_AND_ENFORCE"
+  target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
+  enforcement_mode    = "MONITOR_AND_ENFORCE"
 }
 
 resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
@@ -58,22 +56,17 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
   rules = [
     {
-      id      = "system_settings_time_server_configure"
-      enabled = true
-      odv = {
-        value = "ntp.jamf.com"
-      }
+      id        = "system_settings_time_server_configure"
+      enabled   = true
+      odv_value = "ntp.jamf.com"
     },
     {
       id      = "system_settings_critical_update_install_enforce"
       enabled = true
     }
   ]
-
-  target = {
-    device_groups = ["4a36a1fe-e45a-430d-a966-a4d3ac993577"]
-  }
-  enforcement_mode = "MONITOR"
+  target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
+  enforcement_mode    = "MONITOR"
 }
 ```
 
@@ -86,7 +79,7 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 - `rules` (Attributes List) List of rule IDs to include in the benchmark, with enabled flag and computed fields. (see [below for nested schema](#nestedatt--rules))
 - `source_baseline_id` (String) Source baseline ID.
 - `sources` (Attributes List) List of sources. (see [below for nested schema](#nestedatt--sources))
-- `target` (Attributes) Target configuration. (see [below for nested schema](#nestedatt--target))
+- `target_device_group` (String) Device group for the target configuration.
 - `title` (String) Benchmark title.
 
 ### Optional
@@ -111,43 +104,24 @@ Required:
 
 Optional:
 
-- `odv` (Attributes) Organization defined value for the rule. (see [below for nested schema](#nestedatt--rules--odv))
+- `odv_value` (String) ODV value.
 
 Read-Only:
 
+- `depends_on` (List of String) IDs of rules this rule depends on.
 - `description` (String) Description of the rule.
+- `odv_hint` (String) ODV hint.
+- `odv_placeholder` (String) ODV placeholder.
+- `odv_type` (String) ODV type.
+- `odv_validation_enum_values` (List of String) Enumeration values for ENUM type.
+- `odv_validation_max` (Number) Maximum value constraint for INTEGER type.
+- `odv_validation_min` (Number) Minimum value constraint for INTEGER type.
+- `odv_validation_regex` (String) Regular expression pattern for REGEX type.
 - `os_specific_defaults` (Attributes Map) OS specific defaults for the rule. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
 - `references` (List of String) References for the rule.
-- `rule_relation` (Attributes) Rule dependencies. (see [below for nested schema](#nestedatt--rules--rule_relation))
 - `section_name` (String) Section name for the rule.
 - `supported_os` (Attributes List) Supported OS for the rule. (see [below for nested schema](#nestedatt--rules--supported_os))
 - `title` (String) Title of the rule.
-
-<a id="nestedatt--rules--odv"></a>
-### Nested Schema for `rules.odv`
-
-Optional:
-
-- `value` (String) ODV value.
-
-Read-Only:
-
-- `hint` (String) ODV hint.
-- `placeholder` (String) ODV placeholder.
-- `type` (String) ODV type.
-- `validation` (Attributes) ODV validation constraints. (see [below for nested schema](#nestedatt--rules--odv--validation))
-
-<a id="nestedatt--rules--odv--validation"></a>
-### Nested Schema for `rules.odv.validation`
-
-Read-Only:
-
-- `enum_values` (List of String) Enumeration values for ENUM type.
-- `max` (Number) Maximum value constraint for INTEGER type.
-- `min` (Number) Minimum value constraint for INTEGER type.
-- `regex` (String) Regular expression pattern for REGEX type.
-
-
 
 <a id="nestedatt--rules--os_specific_defaults"></a>
 ### Nested Schema for `rules.os_specific_defaults`
@@ -155,25 +129,9 @@ Read-Only:
 Read-Only:
 
 - `description` (String) OS-specific rule description.
-- `odv` (Attributes) ODV recommendation for this OS. (see [below for nested schema](#nestedatt--rules--os_specific_defaults--odv))
+- `odv_hint` (String) Recommended ODV hint.
+- `odv_value` (String) Recommended ODV value.
 - `title` (String) OS-specific rule title.
-
-<a id="nestedatt--rules--os_specific_defaults--odv"></a>
-### Nested Schema for `rules.os_specific_defaults.odv`
-
-Read-Only:
-
-- `hint` (String) Recommended ODV hint.
-- `value` (String) Recommended ODV value.
-
-
-
-<a id="nestedatt--rules--rule_relation"></a>
-### Nested Schema for `rules.rule_relation`
-
-Read-Only:
-
-- `depends_on` (List of String) IDs of rules this rule depends on.
 
 
 <a id="nestedatt--rules--supported_os"></a>
@@ -194,11 +152,3 @@ Required:
 
 - `branch` (String) Source branch.
 - `revision` (String) Source revision.
-
-
-<a id="nestedatt--target"></a>
-### Nested Schema for `target`
-
-Required:
-
-- `device_groups` (List of String) Device groups.

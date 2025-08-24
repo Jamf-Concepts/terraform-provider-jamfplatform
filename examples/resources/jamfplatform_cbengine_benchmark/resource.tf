@@ -23,10 +23,8 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
     }
   ]
 
-  target = {
-    device_groups = ["example-device-group-id"]
-  }
-  enforcement_mode = "MONITOR_AND_ENFORCE"
+  target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
+  enforcement_mode    = "MONITOR_AND_ENFORCE"
 }
 
 resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
@@ -43,20 +41,15 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
   rules = [
     {
-      id      = "system_settings_time_server_configure"
-      enabled = true
-      odv = {
-        value = "ntp.jamf.com"
-      }
+      id        = "system_settings_time_server_configure"
+      enabled   = true
+      odv_value = "ntp.jamf.com"
     },
     {
       id      = "system_settings_critical_update_install_enforce"
       enabled = true
     }
   ]
-
-  target = {
-    device_groups = ["4a36a1fe-e45a-430d-a966-a4d3ac993577"]
-  }
-  enforcement_mode = "MONITOR"
+  target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
+  enforcement_mode    = "MONITOR"
 }

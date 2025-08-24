@@ -110,50 +110,38 @@ func (d *benchmarkDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 							ElementType: types.StringType,
 							Computed:    true,
 						},
-						"odv": schema.SingleNestedAttribute{
-							Description: "Organization defined value for the rule.",
+						"odv_value": schema.StringAttribute{
+							Description: "ODV value.",
 							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"value": schema.StringAttribute{
-									Description: "ODV value.",
-									Computed:    true,
-								},
-								"hint": schema.StringAttribute{
-									Description: "ODV hint.",
-									Computed:    true,
-								},
-								"placeholder": schema.StringAttribute{
-									Description: "ODV placeholder.",
-									Computed:    true,
-								},
-								"type": schema.StringAttribute{
-									Description: "ODV type.",
-									Computed:    true,
-								},
-								"validation": schema.SingleNestedAttribute{
-									Description: "ODV validation constraints.",
-									Computed:    true,
-									Attributes: map[string]schema.Attribute{
-										"min": schema.Int64Attribute{
-											Description: "Minimum value.",
-											Computed:    true,
-										},
-										"max": schema.Int64Attribute{
-											Description: "Maximum value.",
-											Computed:    true,
-										},
-										"enum_values": schema.ListAttribute{
-											Description: "Allowed enum values.",
-											ElementType: types.StringType,
-											Computed:    true,
-										},
-										"regex": schema.StringAttribute{
-											Description: "Regex pattern.",
-											Computed:    true,
-										},
-									},
-								},
-							},
+						},
+						"odv_hint": schema.StringAttribute{
+							Description: "ODV hint.",
+							Computed:    true,
+						},
+						"odv_placeholder": schema.StringAttribute{
+							Description: "ODV placeholder.",
+							Computed:    true,
+						},
+						"odv_type": schema.StringAttribute{
+							Description: "ODV type.",
+							Computed:    true,
+						},
+						"odv_validation_min": schema.Int64Attribute{
+							Description: "Minimum value.",
+							Computed:    true,
+						},
+						"odv_validation_max": schema.Int64Attribute{
+							Description: "Maximum value.",
+							Computed:    true,
+						},
+						"odv_validation_enum_values": schema.ListAttribute{
+							Description: "Allowed enum values.",
+							ElementType: types.StringType,
+							Computed:    true,
+						},
+						"odv_validation_regex": schema.StringAttribute{
+							Description: "Regex pattern.",
+							Computed:    true,
 						},
 						"supported_os": schema.ListNestedAttribute{
 							Description: "Supported operating systems.",
@@ -188,47 +176,28 @@ func (d *benchmarkDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 										Description: "OS-specific rule description.",
 										Computed:    true,
 									},
-									"odv": schema.SingleNestedAttribute{
-										Description: "ODV recommendation for this OS.",
+									"odv_value": schema.StringAttribute{
+										Description: "Recommended ODV value.",
 										Computed:    true,
-										Attributes: map[string]schema.Attribute{
-											"value": schema.StringAttribute{
-												Description: "Recommended ODV value.",
-												Computed:    true,
-											},
-											"hint": schema.StringAttribute{
-												Description: "Recommended ODV hint.",
-												Computed:    true,
-											},
-										},
+									},
+									"odv_hint": schema.StringAttribute{
+										Description: "Recommended ODV hint.",
+										Computed:    true,
 									},
 								},
 							},
 						},
-						"rule_relation": schema.SingleNestedAttribute{
-							Description: "Rule dependencies.",
+						"depends_on": schema.ListAttribute{
+							Description: "IDs of rules this rule depends on.",
+							ElementType: types.StringType,
 							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"depends_on": schema.ListAttribute{
-									Description: "IDs of rules this rule depends on.",
-									ElementType: types.StringType,
-									Computed:    true,
-								},
-							},
 						},
 					},
 				},
 			},
-			"target": schema.SingleNestedAttribute{
-				Description: "Target.",
+			"target_device_group": schema.StringAttribute{
+				Description: "Device group for the target configuration.",
 				Computed:    true,
-				Attributes: map[string]schema.Attribute{
-					"device_groups": schema.ListAttribute{
-						Description: "Device groups.",
-						ElementType: types.StringType,
-						Computed:    true,
-					},
-				},
 			},
 			"enforcement_mode": schema.StringAttribute{
 				Description: "Enforcement mode.",
@@ -309,90 +278,50 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 			references, _ = types.ListValue(types.StringType, vals)
 		}
 
-		var odv types.Object
+		var odvValue, odvHint, odvPlaceholder, odvType, odvValidationRegex types.String
+		var odvValidationMin, odvValidationMax types.Int64
+		var odvValidationEnumValues types.List
 		if r.ODV != nil {
-			validationObjType := map[string]attr.Type{
-				"min":         types.Int64Type,
-				"max":         types.Int64Type,
-				"enum_values": types.ListType{ElemType: types.StringType},
-				"regex":       types.StringType,
-			}
-			var validation types.Object
+			odvValue = types.StringValue(r.ODV.Value)
+			odvHint = types.StringValue(r.ODV.Hint)
+			odvPlaceholder = types.StringValue(r.ODV.Placeholder)
+			odvType = types.StringValue(r.ODV.Type)
 			if r.ODV.Validation != nil {
+				if r.ODV.Validation.Min != nil {
+					odvValidationMin = types.Int64Value(int64(*r.ODV.Validation.Min))
+				} else {
+					odvValidationMin = types.Int64Null()
+				}
+				if r.ODV.Validation.Max != nil {
+					odvValidationMax = types.Int64Value(int64(*r.ODV.Validation.Max))
+				} else {
+					odvValidationMax = types.Int64Null()
+				}
 				enumValues := make([]attr.Value, len(r.ODV.Validation.EnumValues))
 				for k, v := range r.ODV.Validation.EnumValues {
 					enumValues[k] = types.StringValue(v)
 				}
-				var enumValuesList types.List
 				if len(enumValues) == 0 {
-					enumValuesList = types.ListNull(types.StringType)
+					odvValidationEnumValues = types.ListNull(types.StringType)
 				} else {
-					enumValuesList, _ = types.ListValue(types.StringType, enumValues)
+					odvValidationEnumValues, _ = types.ListValue(types.StringType, enumValues)
 				}
-
-				var minVal, maxVal types.Int64
-				if r.ODV.Validation.Min != nil {
-					minVal = types.Int64Value(int64(*r.ODV.Validation.Min))
-				} else {
-					minVal = types.Int64Null()
-				}
-				if r.ODV.Validation.Max != nil {
-					maxVal = types.Int64Value(int64(*r.ODV.Validation.Max))
-				} else {
-					maxVal = types.Int64Null()
-				}
-
-				validation, _ = types.ObjectValue(
-					validationObjType,
-					map[string]attr.Value{
-						"min":         minVal,
-						"max":         maxVal,
-						"enum_values": enumValuesList,
-						"regex":       types.StringValue(r.ODV.Validation.Regex),
-					},
-				)
+				odvValidationRegex = types.StringValue(r.ODV.Validation.Regex)
 			} else {
-				validation = types.ObjectNull(validationObjType)
+				odvValidationMin = types.Int64Null()
+				odvValidationMax = types.Int64Null()
+				odvValidationEnumValues = types.ListNull(types.StringType)
+				odvValidationRegex = types.StringNull()
 			}
-
-			odv, _ = types.ObjectValue(
-				map[string]attr.Type{
-					"value":       types.StringType,
-					"hint":        types.StringType,
-					"placeholder": types.StringType,
-					"type":        types.StringType,
-					"validation": types.ObjectType{
-						AttrTypes: map[string]attr.Type{
-							"min":         types.Int64Type,
-							"max":         types.Int64Type,
-							"enum_values": types.ListType{ElemType: types.StringType},
-							"regex":       types.StringType,
-						},
-					},
-				},
-				map[string]attr.Value{
-					"value":       types.StringValue(r.ODV.Value),
-					"hint":        types.StringValue(r.ODV.Hint),
-					"placeholder": types.StringValue(r.ODV.Placeholder),
-					"type":        types.StringValue(r.ODV.Type),
-					"validation":  validation,
-				},
-			)
 		} else {
-			odv = types.ObjectNull(map[string]attr.Type{
-				"value":       types.StringType,
-				"hint":        types.StringType,
-				"placeholder": types.StringType,
-				"type":        types.StringType,
-				"validation": types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"min":         types.Int64Type,
-						"max":         types.Int64Type,
-						"enum_values": types.ListType{ElemType: types.StringType},
-						"regex":       types.StringType,
-					},
-				},
-			})
+			odvValue = types.StringNull()
+			odvHint = types.StringNull()
+			odvPlaceholder = types.StringNull()
+			odvType = types.StringNull()
+			odvValidationMin = types.Int64Null()
+			odvValidationMax = types.Int64Null()
+			odvValidationEnumValues = types.ListNull(types.StringType)
+			odvValidationRegex = types.StringNull()
 		}
 
 		var supportedOS types.List
@@ -428,12 +357,8 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 			AttrTypes: map[string]attr.Type{
 				"title":       types.StringType,
 				"description": types.StringType,
-				"odv": types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"value": types.StringType,
-						"hint":  types.StringType,
-					},
-				},
+				"odv_value":   types.StringType,
+				"odv_hint":    types.StringType,
 			},
 		}
 		var osSpecificDefaults types.Map
@@ -442,94 +367,84 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		} else {
 			vals := make(map[string]attr.Value, len(r.OSSpecificDefaults))
 			for k, v := range r.OSSpecificDefaults {
-				var odvVal attr.Value = types.ObjectNull(map[string]attr.Type{"value": types.StringType, "hint": types.StringType})
+				var odvValue, odvHint types.String
 				if v.ODV != nil {
-					odvVal, _ = types.ObjectValue(
-						map[string]attr.Type{
-							"value": types.StringType,
-							"hint":  types.StringType,
-						},
-						map[string]attr.Value{
-							"value": types.StringValue(v.ODV.Value),
-							"hint":  types.StringValue(v.ODV.Hint),
-						},
-					)
+					odvValue = types.StringValue(v.ODV.Value)
+					odvHint = types.StringValue(v.ODV.Hint)
+				} else {
+					odvValue = types.StringNull()
+					odvHint = types.StringNull()
 				}
 				vals[k], _ = types.ObjectValue(
 					map[string]attr.Type{
 						"title":       types.StringType,
 						"description": types.StringType,
-						"odv": types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"value": types.StringType,
-								"hint":  types.StringType,
-							},
-						},
+						"odv_value":   types.StringType,
+						"odv_hint":    types.StringType,
 					},
 					map[string]attr.Value{
 						"title":       types.StringValue(v.Title),
 						"description": types.StringValue(v.Description),
-						"odv":         odvVal,
+						"odv_value":   odvValue,
+						"odv_hint":    odvHint,
 					},
 				)
 			}
 			osSpecificDefaults, _ = types.MapValue(osSpecObjType, vals)
 		}
 
-		ruleRelObjType := map[string]attr.Type{
-			"depends_on": types.ListType{ElemType: types.StringType},
-		}
-		var ruleRelation types.Object
+		var dependsOn types.List
 		if r.RuleRelation == nil || len(r.RuleRelation.DependsOn) == 0 {
-			ruleRelation = types.ObjectNull(ruleRelObjType)
+			dependsOn = types.ListNull(types.StringType)
 		} else {
-			dependsOnVals := make([]attr.Value, len(r.RuleRelation.DependsOn))
+			vals := make([]attr.Value, len(r.RuleRelation.DependsOn))
 			for j, dep := range r.RuleRelation.DependsOn {
-				dependsOnVals[j] = types.StringValue(dep)
+				vals[j] = types.StringValue(dep)
 			}
-			dependsOnList, _ := types.ListValue(types.StringType, dependsOnVals)
-			ruleRelation, _ = types.ObjectValue(
-				ruleRelObjType,
-				map[string]attr.Value{"depends_on": dependsOnList},
-			)
+			dependsOn, _ = types.ListValue(types.StringType, vals)
 		}
 
 		rules = append(rules, ruleModel{
-			ID:                 types.StringValue(r.ID),
-			SectionName:        types.StringValue(r.SectionName),
-			Enabled:            types.BoolValue(r.Enabled),
-			Title:              types.StringValue(r.Title),
-			Description:        types.StringValue(r.Description),
-			References:         references,
-			ODV:                odv,
-			SupportedOS:        supportedOS,
-			OSSpecificDefaults: osSpecificDefaults,
-			RuleRelation:       ruleRelation,
+			ID:                      types.StringValue(r.ID),
+			SectionName:             types.StringValue(r.SectionName),
+			Enabled:                 types.BoolValue(r.Enabled),
+			Title:                   types.StringValue(r.Title),
+			Description:             types.StringValue(r.Description),
+			References:              references,
+			ODVValue:                odvValue,
+			ODVHint:                 odvHint,
+			ODVPlaceholder:          odvPlaceholder,
+			ODVType:                 odvType,
+			ODVValidationMin:        odvValidationMin,
+			ODVValidationMax:        odvValidationMax,
+			ODVValidationEnumValues: odvValidationEnumValues,
+			ODVValidationRegex:      odvValidationRegex,
+			SupportedOS:             supportedOS,
+			OSSpecificDefaults:      osSpecificDefaults,
+			DependsOn:               dependsOn,
 		})
 	}
 
-	var target *targetModel
+	var targetDeviceGroup types.String
 	if len(bench.Target.DeviceGroups) > 0 {
-		groups := make([]types.String, 0, len(bench.Target.DeviceGroups))
-		for _, g := range bench.Target.DeviceGroups {
-			groups = append(groups, types.StringValue(g))
-		}
-		target = &targetModel{DeviceGroups: groups}
+		targetDeviceGroup = types.StringValue(bench.Target.DeviceGroups[0])
+	} else {
+		targetDeviceGroup = types.StringNull()
 	}
 
 	state := benchmarkDataSourceModel{
-		ID:              config.ID,
-		BenchmarkID:     types.StringValue(bench.BenchmarkID),
-		TenantID:        types.StringValue(bench.TenantID),
-		Title:           types.StringValue(bench.Title),
-		Description:     types.StringValue(bench.Description),
-		Sources:         sources,
-		Rules:           rules,
-		Target:          target,
-		EnforcementMode: types.StringValue(bench.EnforcementMode),
-		Deleted:         types.BoolValue(bench.Deleted),
-		UpdateAvailable: types.BoolValue(bench.UpdateAvailable),
-		LastUpdatedAt:   types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00")),
+		ID:                config.ID,
+		BenchmarkID:       types.StringValue(bench.BenchmarkID),
+		TenantID:          types.StringValue(bench.TenantID),
+		Title:             types.StringValue(bench.Title),
+		Description:       types.StringValue(bench.Description),
+		Sources:           sources,
+		Rules:             rules,
+		TargetDeviceGroup: targetDeviceGroup,
+		EnforcementMode:   types.StringValue(bench.EnforcementMode),
+		Deleted:           types.BoolValue(bench.Deleted),
+		UpdateAvailable:   types.BoolValue(bench.UpdateAvailable),
+		LastUpdatedAt:     types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00")),
 	}
 
 	diags = resp.State.Set(ctx, &state)
