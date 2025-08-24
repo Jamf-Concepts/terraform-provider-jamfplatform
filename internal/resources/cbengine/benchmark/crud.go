@@ -26,7 +26,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		Sources:          make([]client.CBEngineSource, len(plan.Sources)),
 		Rules:            make([]client.CBEngineRuleRequest, len(plan.Rules)),
 		Target: client.CBEngineTarget{
-			DeviceGroups: make([]string, 0),
+			DeviceGroups: []string{plan.TargetDeviceGroup.ValueString()},
 		},
 		EnforcementMode: plan.EnforcementMode.ValueString(),
 	}
@@ -50,11 +50,6 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 			}
 		}
 		reqBody.Rules[i] = rr
-	}
-	if plan.Target != nil {
-		for _, g := range plan.Target.DeviceGroups {
-			reqBody.Target.DeviceGroups = append(reqBody.Target.DeviceGroups, g.ValueString())
-		}
 	}
 
 	bench, err := CreateBenchmarkResource(ctx, r.client, reqBody)
@@ -528,11 +523,9 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	if len(bench.Target.DeviceGroups) > 0 {
-		groups := make([]types.String, len(bench.Target.DeviceGroups))
-		for i, g := range bench.Target.DeviceGroups {
-			groups[i] = types.StringValue(g)
-		}
-		state.Target = &targetModel{DeviceGroups: groups}
+		state.TargetDeviceGroup = types.StringValue(bench.Target.DeviceGroups[0])
+	} else {
+		state.TargetDeviceGroup = types.StringNull()
 	}
 	state.EnforcementMode = types.StringValue(bench.EnforcementMode)
 

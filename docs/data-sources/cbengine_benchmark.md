@@ -59,7 +59,7 @@ output "benchmark_by_title_rules" {
 - `last_updated_at` (String) Last updated at (RFC3339).
 - `rules` (Attributes List) Rules. (see [below for nested schema](#nestedatt--rules))
 - `sources` (Attributes List) Sources. (see [below for nested schema](#nestedatt--sources))
-- `target` (Attributes) Target. (see [below for nested schema](#nestedatt--target))
+- `target_device_group` (String) Device group for the target configuration.
 - `tenant_id` (String) Tenant ID.
 - `update_available` (Boolean) Update available flag.
 
@@ -147,11 +147,3 @@ Read-Only:
 
 - `branch` (String) Branch.
 - `revision` (String) Revision.
-
-
-<a id="nestedatt--target"></a>
-### Nested Schema for `target`
-
-Read-Only:
-
-- `device_groups` (List of String) Device groups.

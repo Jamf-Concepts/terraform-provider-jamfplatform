@@ -219,16 +219,9 @@ func (d *benchmarkDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 					},
 				},
 			},
-			"target": schema.SingleNestedAttribute{
-				Description: "Target.",
+			"target_device_group": schema.StringAttribute{
+				Description: "Device group for the target configuration.",
 				Computed:    true,
-				Attributes: map[string]schema.Attribute{
-					"device_groups": schema.ListAttribute{
-						Description: "Device groups.",
-						ElementType: types.StringType,
-						Computed:    true,
-					},
-				},
 			},
 			"enforcement_mode": schema.StringAttribute{
 				Description: "Enforcement mode.",
@@ -508,28 +501,26 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		})
 	}
 
-	var target *targetModel
+	var targetDeviceGroup types.String
 	if len(bench.Target.DeviceGroups) > 0 {
-		groups := make([]types.String, 0, len(bench.Target.DeviceGroups))
-		for _, g := range bench.Target.DeviceGroups {
-			groups = append(groups, types.StringValue(g))
-		}
-		target = &targetModel{DeviceGroups: groups}
+		targetDeviceGroup = types.StringValue(bench.Target.DeviceGroups[0])
+	} else {
+		targetDeviceGroup = types.StringNull()
 	}
 
 	state := benchmarkDataSourceModel{
-		ID:              config.ID,
-		BenchmarkID:     types.StringValue(bench.BenchmarkID),
-		TenantID:        types.StringValue(bench.TenantID),
-		Title:           types.StringValue(bench.Title),
-		Description:     types.StringValue(bench.Description),
-		Sources:         sources,
-		Rules:           rules,
-		Target:          target,
-		EnforcementMode: types.StringValue(bench.EnforcementMode),
-		Deleted:         types.BoolValue(bench.Deleted),
-		UpdateAvailable: types.BoolValue(bench.UpdateAvailable),
-		LastUpdatedAt:   types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00")),
+		ID:                config.ID,
+		BenchmarkID:       types.StringValue(bench.BenchmarkID),
+		TenantID:          types.StringValue(bench.TenantID),
+		Title:             types.StringValue(bench.Title),
+		Description:       types.StringValue(bench.Description),
+		Sources:           sources,
+		Rules:             rules,
+		TargetDeviceGroup: targetDeviceGroup,
+		EnforcementMode:   types.StringValue(bench.EnforcementMode),
+		Deleted:           types.BoolValue(bench.Deleted),
+		UpdateAvailable:   types.BoolValue(bench.UpdateAvailable),
+		LastUpdatedAt:     types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00")),
 	}
 
 	diags = resp.State.Set(ctx, &state)

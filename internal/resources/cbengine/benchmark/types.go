@@ -18,25 +18,20 @@ type sourceModel struct {
 	Revision types.String `tfsdk:"revision"`
 }
 
-// targetModel represents the device groups targeted by the benchmark.
-type targetModel struct {
-	DeviceGroups []types.String `tfsdk:"device_groups"`
-}
-
 // benchmarkResourceModel represents the Terraform resource model for a Jamf Compliance Benchmark.
 type benchmarkResourceModel struct {
-	ID               types.String  `tfsdk:"id"`
-	Title            types.String  `tfsdk:"title"`
-	Description      types.String  `tfsdk:"description"`
-	SourceBaselineID types.String  `tfsdk:"source_baseline_id"`
-	Sources          []sourceModel `tfsdk:"sources"`
-	Rules            []ruleModel   `tfsdk:"rules"`
-	Target           *targetModel  `tfsdk:"target"`
-	EnforcementMode  types.String  `tfsdk:"enforcement_mode"`
-	TenantID         types.String  `tfsdk:"tenant_id"`
-	Deleted          types.Bool    `tfsdk:"deleted"`
-	UpdateAvailable  types.Bool    `tfsdk:"update_available"`
-	LastUpdatedAt    types.String  `tfsdk:"last_updated_at"`
+	ID                types.String  `tfsdk:"id"`
+	Title             types.String  `tfsdk:"title"`
+	Description       types.String  `tfsdk:"description"`
+	SourceBaselineID  types.String  `tfsdk:"source_baseline_id"`
+	Sources           []sourceModel `tfsdk:"sources"`
+	Rules             []ruleModel   `tfsdk:"rules"`
+	TargetDeviceGroup types.String  `tfsdk:"target_device_group"`
+	EnforcementMode   types.String  `tfsdk:"enforcement_mode"`
+	TenantID          types.String  `tfsdk:"tenant_id"`
+	Deleted           types.Bool    `tfsdk:"deleted"`
+	UpdateAvailable   types.Bool    `tfsdk:"update_available"`
+	LastUpdatedAt     types.String  `tfsdk:"last_updated_at"`
 }
 
 // benchmarkDataSource implements the Terraform data source for Jamf Compliance Benchmarks.
@@ -46,18 +41,18 @@ type benchmarkDataSource struct {
 
 // benchmarkDataSourceModel represents the Terraform data source model for a Jamf Compliance Benchmark.
 type benchmarkDataSourceModel struct {
-	ID              types.String  `tfsdk:"id"`
-	Title           types.String  `tfsdk:"title"`
-	BenchmarkID     types.String  `tfsdk:"benchmark_id"`
-	TenantID        types.String  `tfsdk:"tenant_id"`
-	Description     types.String  `tfsdk:"description"`
-	Sources         []sourceModel `tfsdk:"sources"`
-	Rules           []ruleModel   `tfsdk:"rules"`
-	Target          *targetModel  `tfsdk:"target"`
-	EnforcementMode types.String  `tfsdk:"enforcement_mode"`
-	Deleted         types.Bool    `tfsdk:"deleted"`
-	UpdateAvailable types.Bool    `tfsdk:"update_available"`
-	LastUpdatedAt   types.String  `tfsdk:"last_updated_at"`
+	ID                types.String  `tfsdk:"id"`
+	Title             types.String  `tfsdk:"title"`
+	BenchmarkID       types.String  `tfsdk:"benchmark_id"`
+	TenantID          types.String  `tfsdk:"tenant_id"`
+	Description       types.String  `tfsdk:"description"`
+	Sources           []sourceModel `tfsdk:"sources"`
+	Rules             []ruleModel   `tfsdk:"rules"`
+	TargetDeviceGroup types.String  `tfsdk:"target_device_group"`
+	EnforcementMode   types.String  `tfsdk:"enforcement_mode"`
+	Deleted           types.Bool    `tfsdk:"deleted"`
+	UpdateAvailable   types.Bool    `tfsdk:"update_available"`
+	LastUpdatedAt     types.String  `tfsdk:"last_updated_at"`
 }
 
 // ruleModel represents a rule in the benchmark, including ODV and computed fields.
