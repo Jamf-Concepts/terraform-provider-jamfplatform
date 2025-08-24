@@ -57,14 +57,21 @@ type benchmarkDataSourceModel struct {
 
 // ruleModel represents a rule in the benchmark, including ODV and computed fields.
 type ruleModel struct {
-	ID                 types.String `tfsdk:"id"`
-	SectionName        types.String `tfsdk:"section_name"`
-	Enabled            types.Bool   `tfsdk:"enabled"`
-	Title              types.String `tfsdk:"title"`
-	Description        types.String `tfsdk:"description"`
-	References         types.List   `tfsdk:"references"`
-	ODV                types.Object `tfsdk:"odv"`
-	SupportedOS        types.List   `tfsdk:"supported_os"`
-	OSSpecificDefaults types.Map    `tfsdk:"os_specific_defaults"`
-	RuleRelation       types.Object `tfsdk:"rule_relation"`
+	ID                      types.String `tfsdk:"id"`
+	SectionName             types.String `tfsdk:"section_name"`
+	Enabled                 types.Bool   `tfsdk:"enabled"`
+	Title                   types.String `tfsdk:"title"`
+	Description             types.String `tfsdk:"description"`
+	References              types.List   `tfsdk:"references"`
+	ODVValue                types.String `tfsdk:"odv_value"`
+	ODVHint                 types.String `tfsdk:"odv_hint"`
+	ODVPlaceholder          types.String `tfsdk:"odv_placeholder"`
+	ODVType                 types.String `tfsdk:"odv_type"`
+	ODVValidationMin        types.Int64  `tfsdk:"odv_validation_min"`
+	ODVValidationMax        types.Int64  `tfsdk:"odv_validation_max"`
+	ODVValidationEnumValues types.List   `tfsdk:"odv_validation_enum_values"`
+	ODVValidationRegex      types.String `tfsdk:"odv_validation_regex"`
+	SupportedOS             types.List   `tfsdk:"supported_os"`
+	OSSpecificDefaults      types.Map    `tfsdk:"os_specific_defaults"`
+	RuleRelation            types.Object `tfsdk:"rule_relation"`
 }

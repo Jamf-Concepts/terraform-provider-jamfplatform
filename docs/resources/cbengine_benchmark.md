@@ -56,11 +56,9 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
   rules = [
     {
-      id      = "system_settings_time_server_configure"
-      enabled = true
-      odv = {
-        value = "ntp.jamf.com"
-      }
+      id        = "system_settings_time_server_configure"
+      enabled   = true
+      odv_value = "ntp.jamf.com"
     },
     {
       id      = "system_settings_critical_update_install_enforce"
@@ -106,43 +104,24 @@ Required:
 
 Optional:
 
-- `odv` (Attributes) Organization defined value for the rule. (see [below for nested schema](#nestedatt--rules--odv))
+- `odv_value` (String) ODV value.
 
 Read-Only:
 
 - `description` (String) Description of the rule.
+- `odv_hint` (String) ODV hint.
+- `odv_placeholder` (String) ODV placeholder.
+- `odv_type` (String) ODV type.
+- `odv_validation_enum_values` (List of String) Enumeration values for ENUM type.
+- `odv_validation_max` (Number) Maximum value constraint for INTEGER type.
+- `odv_validation_min` (Number) Minimum value constraint for INTEGER type.
+- `odv_validation_regex` (String) Regular expression pattern for REGEX type.
 - `os_specific_defaults` (Attributes Map) OS specific defaults for the rule. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
 - `references` (List of String) References for the rule.
 - `rule_relation` (Attributes) Rule dependencies. (see [below for nested schema](#nestedatt--rules--rule_relation))
 - `section_name` (String) Section name for the rule.
 - `supported_os` (Attributes List) Supported OS for the rule. (see [below for nested schema](#nestedatt--rules--supported_os))
 - `title` (String) Title of the rule.
-
-<a id="nestedatt--rules--odv"></a>
-### Nested Schema for `rules.odv`
-
-Optional:
-
-- `value` (String) ODV value.
-
-Read-Only:
-
-- `hint` (String) ODV hint.
-- `placeholder` (String) ODV placeholder.
-- `type` (String) ODV type.
-- `validation` (Attributes) ODV validation constraints. (see [below for nested schema](#nestedatt--rules--odv--validation))
-
-<a id="nestedatt--rules--odv--validation"></a>
-### Nested Schema for `rules.odv.validation`
-
-Read-Only:
-
-- `enum_values` (List of String) Enumeration values for ENUM type.
-- `max` (Number) Maximum value constraint for INTEGER type.
-- `min` (Number) Minimum value constraint for INTEGER type.
-- `regex` (String) Regular expression pattern for REGEX type.
-
-
 
 <a id="nestedatt--rules--os_specific_defaults"></a>
 ### Nested Schema for `rules.os_specific_defaults`

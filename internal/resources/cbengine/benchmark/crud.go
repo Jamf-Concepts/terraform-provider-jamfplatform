@@ -41,12 +41,9 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 			ID:      rule.ID.ValueString(),
 			Enabled: rule.Enabled.ValueBool(),
 		}
-		if !rule.ODV.IsNull() && !rule.ODV.IsUnknown() {
-			odvAttrs := rule.ODV.Attributes()
-			if valueAttr, exists := odvAttrs["value"]; exists && !valueAttr.IsNull() && !valueAttr.IsUnknown() {
-				rr.ODV = &client.CBEngineODVRequest{
-					Value: valueAttr.(types.String).ValueString(),
-				}
+		if !rule.ODVValue.IsNull() && rule.ODVValue.ValueString() != "" {
+			rr.ODV = &client.CBEngineODVRequest{
+				Value: rule.ODVValue.ValueString(),
 			}
 		}
 		reqBody.Rules[i] = rr
@@ -161,90 +158,50 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 			osSpecificDefaults, _ = types.MapValue(osSpecObjType, vals)
 		}
 
-		var odv types.Object
+		var odvValue, odvHint, odvPlaceholder, odvType, odvValidationRegex types.String
+		var odvValidationMin, odvValidationMax types.Int64
+		var odvValidationEnumValues types.List
 		if r.ODV != nil {
-			validationObjType := map[string]attr.Type{
-				"min":         types.Int64Type,
-				"max":         types.Int64Type,
-				"enum_values": types.ListType{ElemType: types.StringType},
-				"regex":       types.StringType,
-			}
-			var validation types.Object
+			odvValue = types.StringValue(r.ODV.Value)
+			odvHint = types.StringValue(r.ODV.Hint)
+			odvPlaceholder = types.StringValue(r.ODV.Placeholder)
+			odvType = types.StringValue(r.ODV.Type)
 			if r.ODV.Validation != nil {
+				if r.ODV.Validation.Min != nil {
+					odvValidationMin = types.Int64Value(int64(*r.ODV.Validation.Min))
+				} else {
+					odvValidationMin = types.Int64Null()
+				}
+				if r.ODV.Validation.Max != nil {
+					odvValidationMax = types.Int64Value(int64(*r.ODV.Validation.Max))
+				} else {
+					odvValidationMax = types.Int64Null()
+				}
 				enumValues := make([]attr.Value, len(r.ODV.Validation.EnumValues))
 				for k, v := range r.ODV.Validation.EnumValues {
 					enumValues[k] = types.StringValue(v)
 				}
-				var enumValuesList types.List
 				if len(enumValues) == 0 {
-					enumValuesList = types.ListNull(types.StringType)
+					odvValidationEnumValues = types.ListNull(types.StringType)
 				} else {
-					enumValuesList, _ = types.ListValue(types.StringType, enumValues)
+					odvValidationEnumValues, _ = types.ListValue(types.StringType, enumValues)
 				}
-
-				var minVal, maxVal types.Int64
-				if r.ODV.Validation.Min != nil {
-					minVal = types.Int64Value(int64(*r.ODV.Validation.Min))
-				} else {
-					minVal = types.Int64Null()
-				}
-				if r.ODV.Validation.Max != nil {
-					maxVal = types.Int64Value(int64(*r.ODV.Validation.Max))
-				} else {
-					maxVal = types.Int64Null()
-				}
-
-				validation, _ = types.ObjectValue(
-					validationObjType,
-					map[string]attr.Value{
-						"min":         minVal,
-						"max":         maxVal,
-						"enum_values": enumValuesList,
-						"regex":       types.StringValue(r.ODV.Validation.Regex),
-					},
-				)
+				odvValidationRegex = types.StringValue(r.ODV.Validation.Regex)
 			} else {
-				validation = types.ObjectNull(validationObjType)
+				odvValidationMin = types.Int64Null()
+				odvValidationMax = types.Int64Null()
+				odvValidationEnumValues = types.ListNull(types.StringType)
+				odvValidationRegex = types.StringNull()
 			}
-
-			odv, _ = types.ObjectValue(
-				map[string]attr.Type{
-					"value":       types.StringType,
-					"hint":        types.StringType,
-					"placeholder": types.StringType,
-					"type":        types.StringType,
-					"validation": types.ObjectType{
-						AttrTypes: map[string]attr.Type{
-							"min":         types.Int64Type,
-							"max":         types.Int64Type,
-							"enum_values": types.ListType{ElemType: types.StringType},
-							"regex":       types.StringType,
-						},
-					},
-				},
-				map[string]attr.Value{
-					"value":       types.StringValue(r.ODV.Value),
-					"hint":        types.StringValue(r.ODV.Hint),
-					"placeholder": types.StringValue(r.ODV.Placeholder),
-					"type":        types.StringValue(r.ODV.Type),
-					"validation":  validation,
-				},
-			)
 		} else {
-			odv = types.ObjectNull(map[string]attr.Type{
-				"value":       types.StringType,
-				"hint":        types.StringType,
-				"placeholder": types.StringType,
-				"type":        types.StringType,
-				"validation": types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"min":         types.Int64Type,
-						"max":         types.Int64Type,
-						"enum_values": types.ListType{ElemType: types.StringType},
-						"regex":       types.StringType,
-					},
-				},
-			})
+			odvValue = types.StringNull()
+			odvHint = types.StringNull()
+			odvPlaceholder = types.StringNull()
+			odvType = types.StringNull()
+			odvValidationMin = types.Int64Null()
+			odvValidationMax = types.Int64Null()
+			odvValidationEnumValues = types.ListNull(types.StringType)
+			odvValidationRegex = types.StringNull()
 		}
 
 		var ruleRelation types.Object
@@ -270,7 +227,14 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		plan.Rules[i].Description = types.StringValue(r.Description)
 		plan.Rules[i].SupportedOS = supportedOS
 		plan.Rules[i].OSSpecificDefaults = osSpecificDefaults
-		plan.Rules[i].ODV = odv
+		plan.Rules[i].ODVValue = odvValue
+		plan.Rules[i].ODVHint = odvHint
+		plan.Rules[i].ODVPlaceholder = odvPlaceholder
+		plan.Rules[i].ODVType = odvType
+		plan.Rules[i].ODVValidationMin = odvValidationMin
+		plan.Rules[i].ODVValidationMax = odvValidationMax
+		plan.Rules[i].ODVValidationEnumValues = odvValidationEnumValues
+		plan.Rules[i].ODVValidationRegex = odvValidationRegex
 		plan.Rules[i].RuleRelation = ruleRelation
 	}
 
@@ -405,90 +369,50 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 			osSpecificDefaults, _ = types.MapValue(osSpecObjType, vals)
 		}
 
-		var odv types.Object
+		var odvValue, odvHint, odvPlaceholder, odvType, odvValidationRegex types.String
+		var odvValidationMin, odvValidationMax types.Int64
+		var odvValidationEnumValues types.List
 		if r.ODV != nil {
-			validationObjType := map[string]attr.Type{
-				"min":         types.Int64Type,
-				"max":         types.Int64Type,
-				"enum_values": types.ListType{ElemType: types.StringType},
-				"regex":       types.StringType,
-			}
-			var validation types.Object
+			odvValue = types.StringValue(r.ODV.Value)
+			odvHint = types.StringValue(r.ODV.Hint)
+			odvPlaceholder = types.StringValue(r.ODV.Placeholder)
+			odvType = types.StringValue(r.ODV.Type)
 			if r.ODV.Validation != nil {
+				if r.ODV.Validation.Min != nil {
+					odvValidationMin = types.Int64Value(int64(*r.ODV.Validation.Min))
+				} else {
+					odvValidationMin = types.Int64Null()
+				}
+				if r.ODV.Validation.Max != nil {
+					odvValidationMax = types.Int64Value(int64(*r.ODV.Validation.Max))
+				} else {
+					odvValidationMax = types.Int64Null()
+				}
 				enumValues := make([]attr.Value, len(r.ODV.Validation.EnumValues))
 				for k, v := range r.ODV.Validation.EnumValues {
 					enumValues[k] = types.StringValue(v)
 				}
-				var enumValuesList types.List
 				if len(enumValues) == 0 {
-					enumValuesList = types.ListNull(types.StringType)
+					odvValidationEnumValues = types.ListNull(types.StringType)
 				} else {
-					enumValuesList, _ = types.ListValue(types.StringType, enumValues)
+					odvValidationEnumValues, _ = types.ListValue(types.StringType, enumValues)
 				}
-
-				var minVal, maxVal types.Int64
-				if r.ODV.Validation.Min != nil {
-					minVal = types.Int64Value(int64(*r.ODV.Validation.Min))
-				} else {
-					minVal = types.Int64Null()
-				}
-				if r.ODV.Validation.Max != nil {
-					maxVal = types.Int64Value(int64(*r.ODV.Validation.Max))
-				} else {
-					maxVal = types.Int64Null()
-				}
-
-				validation, _ = types.ObjectValue(
-					validationObjType,
-					map[string]attr.Value{
-						"min":         minVal,
-						"max":         maxVal,
-						"enum_values": enumValuesList,
-						"regex":       types.StringValue(r.ODV.Validation.Regex),
-					},
-				)
+				odvValidationRegex = types.StringValue(r.ODV.Validation.Regex)
 			} else {
-				validation = types.ObjectNull(validationObjType)
+				odvValidationMin = types.Int64Null()
+				odvValidationMax = types.Int64Null()
+				odvValidationEnumValues = types.ListNull(types.StringType)
+				odvValidationRegex = types.StringNull()
 			}
-
-			odv, _ = types.ObjectValue(
-				map[string]attr.Type{
-					"value":       types.StringType,
-					"hint":        types.StringType,
-					"placeholder": types.StringType,
-					"type":        types.StringType,
-					"validation": types.ObjectType{
-						AttrTypes: map[string]attr.Type{
-							"min":         types.Int64Type,
-							"max":         types.Int64Type,
-							"enum_values": types.ListType{ElemType: types.StringType},
-							"regex":       types.StringType,
-						},
-					},
-				},
-				map[string]attr.Value{
-					"value":       types.StringValue(r.ODV.Value),
-					"hint":        types.StringValue(r.ODV.Hint),
-					"placeholder": types.StringValue(r.ODV.Placeholder),
-					"type":        types.StringValue(r.ODV.Type),
-					"validation":  validation,
-				},
-			)
 		} else {
-			odv = types.ObjectNull(map[string]attr.Type{
-				"value":       types.StringType,
-				"hint":        types.StringType,
-				"placeholder": types.StringType,
-				"type":        types.StringType,
-				"validation": types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"min":         types.Int64Type,
-						"max":         types.Int64Type,
-						"enum_values": types.ListType{ElemType: types.StringType},
-						"regex":       types.StringType,
-					},
-				},
-			})
+			odvValue = types.StringNull()
+			odvHint = types.StringNull()
+			odvPlaceholder = types.StringNull()
+			odvType = types.StringNull()
+			odvValidationMin = types.Int64Null()
+			odvValidationMax = types.Int64Null()
+			odvValidationEnumValues = types.ListNull(types.StringType)
+			odvValidationRegex = types.StringNull()
 		}
 
 		var ruleRelation types.Object
@@ -509,16 +433,23 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		}
 
 		state.Rules[i] = ruleModel{
-			ID:                 types.StringValue(r.ID),
-			Enabled:            types.BoolValue(r.Enabled),
-			SectionName:        types.StringValue(r.SectionName),
-			Title:              types.StringValue(r.Title),
-			References:         references,
-			Description:        types.StringValue(r.Description),
-			SupportedOS:        supportedOS,
-			OSSpecificDefaults: osSpecificDefaults,
-			ODV:                odv,
-			RuleRelation:       ruleRelation,
+			ID:                      types.StringValue(r.ID),
+			Enabled:                 types.BoolValue(r.Enabled),
+			SectionName:             types.StringValue(r.SectionName),
+			Title:                   types.StringValue(r.Title),
+			References:              references,
+			Description:             types.StringValue(r.Description),
+			SupportedOS:             supportedOS,
+			OSSpecificDefaults:      osSpecificDefaults,
+			ODVValue:                odvValue,
+			ODVHint:                 odvHint,
+			ODVPlaceholder:          odvPlaceholder,
+			ODVType:                 odvType,
+			ODVValidationMin:        odvValidationMin,
+			ODVValidationMax:        odvValidationMax,
+			ODVValidationEnumValues: odvValidationEnumValues,
+			ODVValidationRegex:      odvValidationRegex,
+			RuleRelation:            ruleRelation,
 		}
 	}
 

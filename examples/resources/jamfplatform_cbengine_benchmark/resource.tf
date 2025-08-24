@@ -41,11 +41,9 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
   rules = [
     {
-      id      = "system_settings_time_server_configure"
-      enabled = true
-      odv = {
-        value = "ntp.jamf.com"
-      }
+      id        = "system_settings_time_server_configure"
+      enabled   = true
+      odv_value = "ntp.jamf.com"
     },
     {
       id      = "system_settings_critical_update_install_enforce"

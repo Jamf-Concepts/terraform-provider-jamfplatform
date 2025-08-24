@@ -146,52 +146,39 @@ func BenchmarkResourceSchema() schema.Schema {
 								},
 							},
 						},
-						"odv": schema.SingleNestedAttribute{
-							Description: "Organization defined value for the rule.",
+						"odv_value": schema.StringAttribute{
+							Description: "ODV value.",
 							Optional:    true,
 							Computed:    true,
-							Attributes: map[string]schema.Attribute{
-								"value": schema.StringAttribute{
-									Description: "ODV value.",
-									Optional:    true,
-									Computed:    true,
-								},
-								"hint": schema.StringAttribute{
-									Description: "ODV hint.",
-									Computed:    true,
-								},
-								"placeholder": schema.StringAttribute{
-									Description: "ODV placeholder.",
-									Computed:    true,
-								},
-								"type": schema.StringAttribute{
-									Description: "ODV type.",
-									Computed:    true,
-								},
-								"validation": schema.SingleNestedAttribute{
-									Description: "ODV validation constraints.",
-									Computed:    true,
-									Attributes: map[string]schema.Attribute{
-										"min": schema.Int64Attribute{
-											Description: "Minimum value constraint for INTEGER type.",
-											Computed:    true,
-										},
-										"max": schema.Int64Attribute{
-											Description: "Maximum value constraint for INTEGER type.",
-											Computed:    true,
-										},
-										"enum_values": schema.ListAttribute{
-											Description: "Enumeration values for ENUM type.",
-											ElementType: types.StringType,
-											Computed:    true,
-										},
-										"regex": schema.StringAttribute{
-											Description: "Regular expression pattern for REGEX type.",
-											Computed:    true,
-										},
-									},
-								},
-							},
+						},
+						"odv_hint": schema.StringAttribute{
+							Description: "ODV hint.",
+							Computed:    true,
+						},
+						"odv_placeholder": schema.StringAttribute{
+							Description: "ODV placeholder.",
+							Computed:    true,
+						},
+						"odv_type": schema.StringAttribute{
+							Description: "ODV type.",
+							Computed:    true,
+						},
+						"odv_validation_min": schema.Int64Attribute{
+							Description: "Minimum value constraint for INTEGER type.",
+							Computed:    true,
+						},
+						"odv_validation_max": schema.Int64Attribute{
+							Description: "Maximum value constraint for INTEGER type.",
+							Computed:    true,
+						},
+						"odv_validation_enum_values": schema.ListAttribute{
+							Description: "Enumeration values for ENUM type.",
+							ElementType: types.StringType,
+							Computed:    true,
+						},
+						"odv_validation_regex": schema.StringAttribute{
+							Description: "Regular expression pattern for REGEX type.",
+							Computed:    true,
 						},
 						"rule_relation": schema.SingleNestedAttribute{
 							Description: "Rule dependencies.",
