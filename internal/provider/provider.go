@@ -33,28 +33,29 @@ const (
 	envClientSecret = "JAMFPLATFORM_CLIENT_SECRET"
 )
 
-// providerModel describes the provider data model for configuration.
-type providerModel struct {
+// Ensure JamfPlatformProvider satisfies the provider.Provider interface.
+var _ provider.Provider = &JamfPlatformProvider{}
+
+// JamfPlatformProvider implements the Terraform provider for Jamf Platform.
+type JamfPlatformProvider struct {
+	version string
+}
+
+// JamfPlatformProviderModel describes the provider data model for configuration.
+type JamfPlatformProviderModel struct {
 	BaseURL      types.String `tfsdk:"base_url"`
 	ClientID     types.String `tfsdk:"client_id"`
 	ClientSecret types.String `tfsdk:"client_secret"`
 }
 
-// jamfPlatformProvider implements the Terraform provider for Jamf Platform.
-type jamfPlatformProvider struct {
-	apiClient *client.Client
-}
-
-// Ensure jamfPlatformProvider satisfies the provider.Provider interface.
-var _ provider.Provider = &jamfPlatformProvider{}
-
 // Metadata sets the provider type name for the Terraform provider.
-func (p *jamfPlatformProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "jamfplatform"
+	resp.Version = p.version
 }
 
 // Schema sets the Terraform schema for the provider.
-func (p *jamfPlatformProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure base_url and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
 		Attributes: map[string]schema.Attribute{
@@ -77,14 +78,16 @@ func (p *jamfPlatformProvider) Schema(_ context.Context, _ provider.SchemaReques
 }
 
 // Configure sets up the API client for the provider from the provider configuration.
-func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var config providerModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var data JamfPlatformProviderModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	baseURL := config.BaseURL.ValueString()
+	baseURL := data.BaseURL.ValueString()
 	if baseURL == "" {
 		baseURL = getenv(envBaseURL)
 	}
@@ -96,40 +99,29 @@ func (p *jamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	clientID := config.ClientID.ValueString()
+	clientID := data.ClientID.ValueString()
 	if clientID == "" {
 		clientID = getenv(envClientID)
 	}
-	clientSecret := config.ClientSecret.ValueString()
+	clientSecret := data.ClientSecret.ValueString()
 	if clientSecret == "" {
 		clientSecret = getenv(envClientSecret)
 	}
 
-	if clientID != "" && clientSecret != "" {
-		p.apiClient = client.NewClient(baseURL, clientID, clientSecret)
-	} else {
-		p.apiClient = nil
-	}
-
-	resp.DataSourceData = p.apiClient
-	resp.ResourceData = p.apiClient
-}
-
-// getenv is a helper to get an environment variable, returns empty string if not set.
-func getenv(key string) string {
-	v, _ := os.LookupEnv(key)
-	return v
+	client := client.NewClient(baseURL, clientID, clientSecret)
+	resp.DataSourceData = client
+	resp.ResourceData = client
 }
 
 // Resources returns the list of resource constructors for the provider.
-func (p *jamfPlatformProvider) Resources(_ context.Context) []func() resource.Resource {
+func (p *JamfPlatformProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
 	}
 }
 
-func (p *jamfPlatformProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+func (p *JamfPlatformProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		blueprint.NewBlueprintDataSource,
 		component.NewComponentDataSource,
@@ -145,6 +137,16 @@ func (p *jamfPlatformProvider) DataSources(_ context.Context) []func() datasourc
 }
 
 // New creates a new instance of the Jamf Platform provider.
-func New() provider.Provider {
-	return &jamfPlatformProvider{}
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &JamfPlatformProvider{
+			version: version,
+		}
+	}
+}
+
+// getenv is a helper to get an environment variable, returns empty string if not set.
+func getenv(key string) string {
+	v, _ := os.LookupEnv(key)
+	return v
 }
