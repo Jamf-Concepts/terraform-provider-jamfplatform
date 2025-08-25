@@ -5,13 +5,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// componentDataSource defines the data source for blueprint components.
-type componentDataSource struct {
+// ComponentDataSource defines the data source implementation.
+type ComponentDataSource struct {
 	client *client.Client
 }
 
-// componentDataSourceModel defines the data structure for the component data source.
-type componentDataSourceModel struct {
+// ComponentDataSourceModel defines the data source data model.
+type ComponentDataSourceModel struct {
 	ID          types.String `tfsdk:"id"`
 	Identifier  types.String `tfsdk:"identifier"`
 	Name        types.String `tfsdk:"name"`

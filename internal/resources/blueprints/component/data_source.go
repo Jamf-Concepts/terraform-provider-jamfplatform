@@ -4,43 +4,32 @@ package component
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
 
-// NewComponentDataSource returns a new instance of componentDataSource.
-func NewComponentDataSource() datasource.DataSource {
-	return &componentDataSource{}
-}
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &ComponentDataSource{}
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *componentDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
+// NewComponentDataSource returns a new instance of ComponentDataSource.
+func NewComponentDataSource() datasource.DataSource {
+	return &ComponentDataSource{}
 }
 
 // Metadata sets the data source type name for the Terraform provider.
-func (d *componentDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *ComponentDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_blueprints_component"
 }
 
 // Schema sets the Terraform schema for the data source.
-func (d *componentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *ComponentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Returns a blueprint component by identifier.",
 		Attributes: map[string]schema.Attribute{
@@ -71,11 +60,31 @@ func (d *componentDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	}
 }
 
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *ComponentDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
 // Read fetches a component by identifier and populates the Terraform state.
-func (d *componentDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config componentDataSourceModel
-	diags := req.Config.Get(ctx, &config)
-	resp.Diagnostics.Append(diags...)
+func (d *ComponentDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data ComponentDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -88,7 +97,7 @@ func (d *componentDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	if config.ID.IsNull() || config.ID.ValueString() == "" {
+	if data.ID.IsNull() || data.ID.ValueString() == "" {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
 			"The 'id' attribute must be set to look up a component.",
@@ -96,7 +105,7 @@ func (d *componentDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	comp, err := d.client.GetBlueprintComponentByID(ctx, config.ID.ValueString())
+	comp, err := d.client.GetBlueprintComponentByID(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get component",
@@ -125,14 +134,15 @@ func (d *componentDataSource) Read(ctx context.Context, req datasource.ReadReque
 		supportedOsMap, _ = types.MapValue(supportedOsAttrType, supportedOsMapVals)
 	}
 
-	state := componentDataSourceModel{
-		ID:          config.ID,
+	state := ComponentDataSourceModel{
+		ID:          data.ID,
 		Identifier:  types.StringValue(comp.Identifier),
 		Name:        types.StringValue(comp.Name),
 		Description: types.StringValue(comp.Description),
 		SupportedOs: supportedOsMap.(types.Map),
 	}
 
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
