@@ -11,39 +11,24 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// Ensure DataSourceMobileDevice implements the datasource.DataSource interface.
+// Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DataSourceMobileDevice{}
 
-// NewDataSourceMobileDevice returns a new data source instance.
+// NewDataSourceMobileDevice returns a new instance of DataSourceMobileDevice.
 func NewDataSourceMobileDevice() datasource.DataSource {
 	return &DataSourceMobileDevice{}
 }
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *DataSourceMobileDevice) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
-}
-
 // Metadata sets the data source type name for the Terraform provider.
-func (d *DataSourceMobileDevice) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *DataSourceMobileDevice) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_mobile_device"
 }
 
 // Schema defines the schema for the mobile device data source.
-func (d *DataSourceMobileDevice) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *DataSourceMobileDevice) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -419,10 +404,31 @@ func (d *DataSourceMobileDevice) Schema(_ context.Context, _ datasource.SchemaRe
 	}
 }
 
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *DataSourceMobileDevice) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
 // Read fetches the mobile device details and sets the state.
 func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data mobileDeviceDataSourceModel
+	var data MobileDeviceDataSourceModel
+
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -622,5 +628,7 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	resp.State.Set(ctx, &data)
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

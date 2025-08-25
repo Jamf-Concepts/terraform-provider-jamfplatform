@@ -11,39 +11,24 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// Ensure DataSourceComputer implements the datasource.DataSource interface.
+// Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DataSourceComputer{}
 
-// NewDataSourceComputer returns a new data source instance.
+// NewDataSourceComputer returns a new instance of DataSourceComputer.
 func NewDataSourceComputer() datasource.DataSource {
 	return &DataSourceComputer{}
 }
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *DataSourceComputer) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
-}
-
 // Metadata sets the data source type name for the Terraform provider.
-func (d *DataSourceComputer) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *DataSourceComputer) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_computer"
 }
 
 // Schema sets the Terraform schema for the data source.
-func (d *DataSourceComputer) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *DataSourceComputer) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -247,11 +232,31 @@ func (d *DataSourceComputer) Schema(_ context.Context, _ datasource.SchemaReques
 	}
 }
 
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *DataSourceComputer) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
 // Read fetches the data for the data source.
 func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data computerDataSourceModel
-	diags := req.Config.Get(ctx, &data)
-	resp.Diagnostics.Append(diags...)
+	var data ComputerDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -355,6 +360,7 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(diags...)
 	data.LocalUserAccounts = localUserAccountsVal
 
-	diags = resp.State.Set(ctx, &data)
-	resp.Diagnostics.Append(diags...)
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

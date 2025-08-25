@@ -10,8 +10,8 @@ type DataSourceComputers struct {
 	client *client.Client
 }
 
-// computersDataSourceModel maps the data source schema data.
-type computersDataSourceModel struct {
+// ComputersDataSourceModel maps the data source schema data.
+type ComputersDataSourceModel struct {
 	ID        types.String `tfsdk:"id"`
 	Filter    types.String `tfsdk:"filter"`
 	Computers types.List   `tfsdk:"computers"`

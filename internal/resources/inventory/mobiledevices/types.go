@@ -10,8 +10,8 @@ type DataSourceMobileDevices struct {
 	client *client.Client
 }
 
-// mobileDevicesDataSourceModel maps the data source schema data.
-type mobileDevicesDataSourceModel struct {
+// MobileDevicesDataSourceModel maps the data source schema data.
+type MobileDevicesDataSourceModel struct {
 	ID      types.String `tfsdk:"id"`
 	Section types.List   `tfsdk:"section"`
 	Devices types.List   `tfsdk:"devices"`
