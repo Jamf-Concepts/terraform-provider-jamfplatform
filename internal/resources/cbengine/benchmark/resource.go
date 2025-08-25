@@ -4,8 +4,10 @@ package benchmark
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -14,9 +16,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// BenchmarkResourceSchema returns the Terraform schema for the Jamf Compliance Benchmark resource.
-func BenchmarkResourceSchema() schema.Schema {
-	return schema.Schema{
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &BenchmarkResource{}
+var _ resource.ResourceWithImportState = &BenchmarkResource{}
+
+// NewBenchmarkResource returns a new instance of BenchmarkResource.
+func NewBenchmarkResource() resource.Resource {
+	return &BenchmarkResource{}
+}
+
+// Metadata sets the resource type name for the Terraform provider.
+func (r *BenchmarkResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_cbengine_benchmark"
+}
+
+// Schema returns the Terraform schema for the benchmark resource.
+func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		Description: "Resource schema for creating a Jamf Compliance Benchmark.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -219,33 +235,27 @@ func BenchmarkResourceSchema() schema.Schema {
 	}
 }
 
-// NewBenchmarkResource returns a new instance of BenchmarkResource.
-func NewBenchmarkResource() resource.Resource {
-	return &BenchmarkResource{}
-}
-
-// Metadata sets the resource type name for the Terraform provider.
-func (r *BenchmarkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_cbengine_benchmark"
-}
-
-// Schema sets the Terraform schema for the resource.
-func (r *BenchmarkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = BenchmarkResourceSchema()
-}
-
 // Configure sets up the API client for the resource from the provider configuration.
 func (r *BenchmarkResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
-	apiClient, ok := req.ProviderData.(*client.Client)
+
+	client, ok := req.ProviderData.(*client.Client)
+
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
+
 		return
 	}
-	r.client = apiClient
+
+	r.client = client
+}
+
+// ImportState handles the import of existing Benchmark resources.
+func (r *BenchmarkResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

@@ -152,3 +152,13 @@ Required:
 
 - `branch` (String) Source branch.
 - `revision` (String) Source revision.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import jamfplatform_cbengine_benchmark.example "906ad0ba-57aa-4243-b08b-b7d8e29b0363"
+```

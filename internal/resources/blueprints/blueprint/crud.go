@@ -8,23 +8,25 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Create creates a new Blueprint resource in Terraform.
 func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan BlueprintResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var data BlueprintResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	deviceGroups := make([]string, len(plan.DeviceGroups))
-	for i, dg := range plan.DeviceGroups {
+	deviceGroups := make([]string, len(data.DeviceGroups))
+	for i, dg := range data.DeviceGroups {
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	components := make([]client.BlueprintComponent, len(plan.Components))
-	for i, comp := range plan.Components {
+	components := make([]client.BlueprintComponent, len(data.Components))
+	for i, comp := range data.Components {
 		component := client.BlueprintComponent{
 			Identifier: comp.Identifier.ValueString(),
 		}
@@ -65,8 +67,8 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	reqBody := &client.BlueprintCreateRequest{
-		Name:        plan.Name.ValueString(),
-		Description: plan.Description.ValueString(),
+		Name:        data.Name.ValueString(),
+		Description: data.Description.ValueString(),
 		Scope: client.BlueprintCreateScope{
 			DeviceGroups: deviceGroups,
 		},
@@ -100,20 +102,23 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	updateModelFromAPIResponse(&plan, blueprint)
+	updateModelFromAPIResponse(&data, blueprint)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
+	tflog.Trace(ctx, "created a resource")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
 // Read reads the Blueprint resource state from the API.
 func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state BlueprintResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	var data BlueprintResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	blueprint, err := r.client.GetBlueprintByID(ctx, state.ID.ValueString())
+	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading blueprint",
@@ -122,26 +127,27 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	updateModelFromAPIResponse(&state, blueprint)
+	updateModelFromAPIResponse(&data, blueprint)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
 // Update updates the Blueprint resource.
 func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan BlueprintResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var data BlueprintResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	deviceGroups := make([]string, len(plan.DeviceGroups))
-	for i, dg := range plan.DeviceGroups {
+	deviceGroups := make([]string, len(data.DeviceGroups))
+	for i, dg := range data.DeviceGroups {
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	components := make([]client.BlueprintComponent, len(plan.Components))
-	for i, comp := range plan.Components {
+	components := make([]client.BlueprintComponent, len(data.Components))
+	for i, comp := range data.Components {
 		component := client.BlueprintComponent{
 			Identifier: comp.Identifier.ValueString(),
 		}
@@ -182,15 +188,15 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	updateReq := &client.BlueprintUpdateRequest{
-		Name:        plan.Name.ValueString(),
-		Description: plan.Description.ValueString(),
+		Name:        data.Name.ValueString(),
+		Description: data.Description.ValueString(),
 		Scope: client.BlueprintUpdateScope{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
 	}
 
-	err := r.client.UpdateBlueprint(ctx, plan.ID.ValueString(), updateReq)
+	err := r.client.UpdateBlueprint(ctx, data.ID.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating blueprint",
@@ -199,7 +205,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	err = r.client.DeployBlueprint(ctx, plan.ID.ValueString())
+	err = r.client.DeployBlueprint(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deploying blueprint",
@@ -208,7 +214,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	blueprint, err := r.client.GetBlueprintByID(ctx, plan.ID.ValueString())
+	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading updated blueprint",
@@ -217,20 +223,26 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	updateModelFromAPIResponse(&plan, blueprint)
+	updateModelFromAPIResponse(&data, blueprint)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
 }
 
 // Delete deletes the Blueprint resource.
 func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state BlueprintResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	var data BlueprintResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	err := r.client.DeleteBlueprint(ctx, state.ID.ValueString())
+	if data.ID.IsNull() || data.ID.ValueString() == "" {
+		resp.Diagnostics.AddError("Missing ID", "Cannot delete blueprint without ID.")
+		return
+	}
+
+	err := r.client.DeleteBlueprint(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting blueprint",
