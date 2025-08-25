@@ -5,26 +5,26 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// rulesDataSource implements the Terraform data source for mSCP rules.
-type rulesDataSource struct {
+// RulesDataSource implements the Terraform data source for mSCP rules.
+type RulesDataSource struct {
 	client *client.Client
 }
 
-// rulesDataSourceModel represents the Terraform data source model for mSCP rules.
-type rulesDataSourceModel struct {
+// RulesDataSourceModel represents the Terraform data source model for mSCP rules.
+type RulesDataSourceModel struct {
 	BaselineID types.String  `tfsdk:"baseline_id"`
-	Sources    []sourceModel `tfsdk:"sources"`
-	Rules      []ruleModel   `tfsdk:"rules"`
+	Sources    []SourceModel `tfsdk:"sources"`
+	Rules      []RuleModel   `tfsdk:"rules"`
 }
 
-// sourceModel represents a source branch and revision for a rule.
-type sourceModel struct {
+// SourceModel represents a source branch and revision for a rule.
+type SourceModel struct {
 	Branch   types.String `tfsdk:"branch"`
 	Revision types.String `tfsdk:"revision"`
 }
 
-// ruleModel represents a rule in the data source, including ODV and computed fields.
-type ruleModel struct {
+// RuleModel represents a rule in the data source, including ODV and computed fields.
+type RuleModel struct {
 	ID                      types.String   `tfsdk:"id"`
 	SectionName             types.String   `tfsdk:"section_name"`
 	Enabled                 types.Bool     `tfsdk:"enabled"`
@@ -39,13 +39,13 @@ type ruleModel struct {
 	ODVValidationMax        types.Int64    `tfsdk:"odv_validation_max"`
 	ODVValidationEnumValues []types.String `tfsdk:"odv_validation_enum_values"`
 	ODVValidationRegex      types.String   `tfsdk:"odv_validation_regex"`
-	SupportedOS             []osInfoModel  `tfsdk:"supported_os"`
+	SupportedOS             []OSInfoModel  `tfsdk:"supported_os"`
 	OSSpecificDefaults      types.Map      `tfsdk:"os_specific_defaults"`
 	DependsOn               []types.String `tfsdk:"depends_on"`
 }
 
-// osInfoModel represents supported OS information for a rule.
-type osInfoModel struct {
+// OSInfoModel represents supported OS information for a rule.
+type OSInfoModel struct {
 	OSType         types.String `tfsdk:"os_type"`
 	OSVersion      types.Int64  `tfsdk:"os_version"`
 	ManagementType types.String `tfsdk:"management_type"`

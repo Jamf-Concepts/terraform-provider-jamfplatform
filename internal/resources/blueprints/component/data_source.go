@@ -134,7 +134,7 @@ func (d *ComponentDataSource) Read(ctx context.Context, req datasource.ReadReque
 		supportedOsMap, _ = types.MapValue(supportedOsAttrType, supportedOsMapVals)
 	}
 
-	state := ComponentDataSourceModel{
+	data = ComponentDataSourceModel{
 		ID:          data.ID,
 		Identifier:  types.StringValue(comp.Identifier),
 		Name:        types.StringValue(comp.Name),
@@ -144,5 +144,5 @@ func (d *ComponentDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	tflog.Trace(ctx, "read a data source")
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

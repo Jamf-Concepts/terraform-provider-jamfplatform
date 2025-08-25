@@ -139,11 +139,11 @@ func (d *ComponentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		})
 	}
 
-	state := ComponentsDataSourceModel{
+	data = ComponentsDataSourceModel{
 		Components: componentsList,
 	}
 
 	tflog.Trace(ctx, "read a data source")
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

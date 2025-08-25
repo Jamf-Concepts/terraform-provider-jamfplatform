@@ -108,9 +108,9 @@ func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.Conf
 
 // Read fetches a blueprint by ID or title and populates the Terraform state.
 func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config BlueprintDataSourceModel
+	var data BlueprintDataSourceModel
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -126,10 +126,10 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	var bp *client.BlueprintDetail
 	var err error
-	if !config.ID.IsNull() && config.ID.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByID(ctx, config.ID.ValueString())
-	} else if !config.Name.IsNull() && config.Name.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByName(ctx, config.Name.ValueString())
+	if !data.ID.IsNull() && data.ID.ValueString() != "" {
+		bp, err = d.client.GetBlueprintByID(ctx, data.ID.ValueString())
+	} else if !data.Name.IsNull() && data.Name.ValueString() != "" {
+		bp, err = d.client.GetBlueprintByName(ctx, data.Name.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
@@ -171,8 +171,8 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		}
 	}
 
-	state := BlueprintDataSourceModel{
-		ID:              config.ID,
+	data = BlueprintDataSourceModel{
+		ID:              data.ID,
 		Name:            types.StringValue(bp.Name),
 		BlueprintID:     types.StringValue(bp.ID),
 		Description:     types.StringValue(bp.Description),
@@ -185,5 +185,5 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	tflog.Trace(ctx, "read a data source")
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

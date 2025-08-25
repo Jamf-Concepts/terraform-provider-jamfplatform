@@ -13,7 +13,7 @@ import (
 
 // Create creates a new Jamf Compliance Benchmark resource in Terraform.
 func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan benchmarkResourceModel
+	var plan BenchmarkResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -225,7 +225,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 
 // Read reads the current state of a Jamf Compliance Benchmark resource from the API and updates the Terraform state.
 func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state benchmarkResourceModel
+	var state BenchmarkResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -249,15 +249,15 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 	state.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
 	state.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
 
-	state.Sources = make([]sourceModel, len(bench.Sources))
+	state.Sources = make([]SourceModel, len(bench.Sources))
 	for i, s := range bench.Sources {
-		state.Sources[i] = sourceModel{
+		state.Sources[i] = SourceModel{
 			Branch:   types.StringValue(s.Branch),
 			Revision: types.StringValue(s.Revision),
 		}
 	}
 
-	state.Rules = make([]ruleModel, len(bench.Rules))
+	state.Rules = make([]RuleModel, len(bench.Rules))
 	for i, r := range bench.Rules {
 		var references types.List
 		if len(r.References) == 0 {
@@ -396,7 +396,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 			dependsOn, _ = types.ListValue(types.StringType, vals)
 		}
 
-		state.Rules[i] = ruleModel{
+		state.Rules[i] = RuleModel{
 			ID:                      types.StringValue(r.ID),
 			Enabled:                 types.BoolValue(r.Enabled),
 			SectionName:             types.StringValue(r.SectionName),
@@ -434,7 +434,7 @@ func (r *BenchmarkResource) Update(ctx context.Context, req resource.UpdateReque
 
 // Delete deletes a Jamf Compliance Benchmark resource from the API and removes it from the Terraform state.
 func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state benchmarkResourceModel
+	var state BenchmarkResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return

@@ -5,18 +5,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// baselinesDataSource implements the Terraform data source for mSCP baselines.
-type baselinesDataSource struct {
+// BaselinesDataSource implements the Terraform data source for mSCP baselines.
+type BaselinesDataSource struct {
 	client *client.Client
 }
 
-// baselinesDataSourceModel represents the Terraform data source model for mSCP baselines.
-type baselinesDataSourceModel struct {
-	Baselines []baselineModel `tfsdk:"baselines"`
+// BaselinesDataSourceModel represents the Terraform data source model for mSCP baselines.
+type BaselinesDataSourceModel struct {
+	Baselines []BaselineModel `tfsdk:"baselines"`
 }
 
-// baselineModel represents a single mSCP baseline in the data source.
-type baselineModel struct {
+// BaselineModel represents a single mSCP baseline in the data source.
+type BaselineModel struct {
 	ID          types.String `tfsdk:"id"`
 	BaselineID  types.String `tfsdk:"baseline_id"`
 	Title       types.String `tfsdk:"title"`

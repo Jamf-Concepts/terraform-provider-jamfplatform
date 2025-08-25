@@ -4,43 +4,32 @@ package rules
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
 
-// NewRulesDataSource returns a new instance of the rules data source.
-func NewRulesDataSource() datasource.DataSource {
-	return &rulesDataSource{}
-}
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &RulesDataSource{}
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *rulesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
+// NewRulesDataSource returns a new instance of RulesDataSource.
+func NewRulesDataSource() datasource.DataSource {
+	return &RulesDataSource{}
 }
 
 // Metadata sets the data source type name for the Terraform provider.
-func (d *rulesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *RulesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_cbengine_rules"
 }
 
 // Schema sets the Terraform schema for the data source.
-func (d *rulesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Returns list of rules for a given mSCP baseline.",
 		Attributes: map[string]schema.Attribute{
@@ -183,11 +172,31 @@ func (d *rulesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 	}
 }
 
-// Read implements datasource.DataSource for rulesDataSource. It fetches the list of rules from the API and sets the state.
-func (d *rulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config rulesDataSourceModel
-	diags := req.Config.Get(ctx, &config)
-	resp.Diagnostics.Append(diags...)
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *RulesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
+// Read implements datasource.DataSource for RulesDataSource. It fetches the list of rules from the API and sets the state.
+func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data RulesDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -200,7 +209,7 @@ func (d *rulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	rulesResp, err := d.client.GetCBEngineRules(ctx, config.BaselineID.ValueString())
+	rulesResp, err := d.client.GetCBEngineRules(ctx, data.BaselineID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get rules",
@@ -209,15 +218,15 @@ func (d *rulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	var sources []sourceModel
+	var sources []SourceModel
 	for _, s := range rulesResp.Sources {
-		sources = append(sources, sourceModel{
+		sources = append(sources, SourceModel{
 			Branch:   types.StringValue(s.Branch),
 			Revision: types.StringValue(s.Revision),
 		})
 	}
 
-	var rules []ruleModel
+	var rules []RuleModel
 	for _, r := range rulesResp.Rules {
 		var references []types.String
 		for _, ref := range r.References {
@@ -251,9 +260,9 @@ func (d *rulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			}
 		}
 
-		var supportedOS []osInfoModel
+		var supportedOS []OSInfoModel
 		for _, os := range r.SupportedOS {
-			supportedOS = append(supportedOS, osInfoModel{
+			supportedOS = append(supportedOS, OSInfoModel{
 				OSType:         types.StringValue(os.OSType),
 				OSVersion:      types.Int64Value(int64(os.OSVersion)),
 				ManagementType: types.StringValue(os.ManagementType),
@@ -307,7 +316,7 @@ func (d *rulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			}
 		}
 
-		rules = append(rules, ruleModel{
+		rules = append(rules, RuleModel{
 			ID:                      types.StringValue(r.ID),
 			SectionName:             types.StringValue(r.SectionName),
 			Enabled:                 types.BoolValue(r.Enabled),
@@ -328,12 +337,13 @@ func (d *rulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		})
 	}
 
-	state := rulesDataSourceModel{
-		BaselineID: config.BaselineID,
+	data = RulesDataSourceModel{
+		BaselineID: data.BaselineID,
 		Sources:    sources,
 		Rules:      rules,
 	}
 
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

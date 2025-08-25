@@ -4,43 +4,32 @@ package benchmark
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
 
-// NewBenchmarkDataSource returns a new instance of benchmarkDataSource.
-func NewBenchmarkDataSource() datasource.DataSource {
-	return &benchmarkDataSource{}
-}
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &BenchmarkDataSource{}
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *benchmarkDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
+// NewBenchmarkDataSource returns a new instance of BenchmarkDataSource.
+func NewBenchmarkDataSource() datasource.DataSource {
+	return &BenchmarkDataSource{}
 }
 
 // Metadata sets the data source type name for the Terraform provider.
-func (d *benchmarkDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *BenchmarkDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_cbengine_benchmark"
 }
 
 // Schema sets the Terraform schema for the data source.
-func (d *benchmarkDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *BenchmarkDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Returns a benchmark by ID or title.",
 		Attributes: map[string]schema.Attribute{
@@ -219,11 +208,31 @@ func (d *benchmarkDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	}
 }
 
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *BenchmarkDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
 // Read fetches a benchmark by ID or title and populates the Terraform state.
-func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config benchmarkDataSourceModel
-	diags := req.Config.Get(ctx, &config)
-	resp.Diagnostics.Append(diags...)
+func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data BenchmarkDataSourceModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -238,10 +247,10 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	var bench *client.CBEngineBenchmarkResponse
 	var err error
-	if !config.ID.IsNull() && config.ID.ValueString() != "" {
-		bench, err = d.client.GetCBEngineBenchmarkByID(ctx, config.ID.ValueString())
-	} else if !config.Title.IsNull() && config.Title.ValueString() != "" {
-		bench, err = d.client.GetCBEngineBenchmarkByTitle(ctx, config.Title.ValueString())
+	if !data.ID.IsNull() && data.ID.ValueString() != "" {
+		bench, err = d.client.GetCBEngineBenchmarkByID(ctx, data.ID.ValueString())
+	} else if !data.Title.IsNull() && data.Title.ValueString() != "" {
+		bench, err = d.client.GetCBEngineBenchmarkByTitle(ctx, data.Title.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
@@ -257,15 +266,15 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	sources := make([]sourceModel, 0, len(bench.Sources))
+	sources := make([]SourceModel, 0, len(bench.Sources))
 	for _, s := range bench.Sources {
-		sources = append(sources, sourceModel{
+		sources = append(sources, SourceModel{
 			Branch:   types.StringValue(s.Branch),
 			Revision: types.StringValue(s.Revision),
 		})
 	}
 
-	rules := make([]ruleModel, 0, len(bench.Rules))
+	rules := make([]RuleModel, 0, len(bench.Rules))
 	for _, r := range bench.Rules {
 		var references types.List
 		if len(r.References) == 0 {
@@ -404,7 +413,7 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 			dependsOn, _ = types.ListValue(types.StringType, vals)
 		}
 
-		rules = append(rules, ruleModel{
+		rules = append(rules, RuleModel{
 			ID:                      types.StringValue(r.ID),
 			SectionName:             types.StringValue(r.SectionName),
 			Enabled:                 types.BoolValue(r.Enabled),
@@ -432,8 +441,8 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		targetDeviceGroup = types.StringNull()
 	}
 
-	state := benchmarkDataSourceModel{
-		ID:                config.ID,
+	data = BenchmarkDataSourceModel{
+		ID:                data.ID,
 		BenchmarkID:       types.StringValue(bench.BenchmarkID),
 		TenantID:          types.StringValue(bench.TenantID),
 		Title:             types.StringValue(bench.Title),
@@ -447,6 +456,7 @@ func (d *benchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		LastUpdatedAt:     types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00")),
 	}
 
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
