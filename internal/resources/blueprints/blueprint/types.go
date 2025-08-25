@@ -10,25 +10,25 @@ type BlueprintResource struct {
 	client *client.Client
 }
 
-// blueprintResourceModel represents the Terraform resource model for a Jamf Blueprint.
-type blueprintResourceModel struct {
+// BlueprintResourceModel represents the Terraform resource model for a Jamf Blueprint.
+type BlueprintResourceModel struct {
 	ID              types.String     `tfsdk:"id"`
 	Name            types.String     `tfsdk:"name"`
 	Description     types.String     `tfsdk:"description"`
 	DeviceGroups    []types.String   `tfsdk:"device_groups"`
-	Components      []componentModel `tfsdk:"component"`
+	Components      []ComponentModel `tfsdk:"component"`
 	Created         types.String     `tfsdk:"created"`
 	Updated         types.String     `tfsdk:"updated"`
 	DeploymentState types.String     `tfsdk:"deployment_state"`
 }
 
-// blueprintDataSource implements the Terraform data source for Jamf Blueprint.
-type blueprintDataSource struct {
+// BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
+type BlueprintDataSource struct {
 	client *client.Client
 }
 
-// blueprintDataSourceModel defines the data structure for the blueprint data source.
-type blueprintDataSourceModel struct {
+// BlueprintDataSourceModel defines the data structure for the blueprint data source.
+type BlueprintDataSourceModel struct {
 	ID              types.String     `tfsdk:"id"`
 	Name            types.String     `tfsdk:"name"`
 	BlueprintID     types.String     `tfsdk:"blueprint_id"`
@@ -37,11 +37,11 @@ type blueprintDataSourceModel struct {
 	Updated         types.String     `tfsdk:"updated"`
 	DeploymentState types.String     `tfsdk:"deployment_state"`
 	DeviceGroups    []types.String   `tfsdk:"device_groups"`
-	Components      []componentModel `tfsdk:"component"`
+	Components      []ComponentModel `tfsdk:"component"`
 }
 
-// componentModel defines the data structure for a blueprint component.
-type componentModel struct {
+// ComponentModel defines the data structure for a blueprint component.
+type ComponentModel struct {
 	Identifier    types.String `tfsdk:"identifier"`
 	Configuration types.Map    `tfsdk:"configuration"`
 }

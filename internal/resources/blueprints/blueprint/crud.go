@@ -12,7 +12,7 @@ import (
 
 // Create creates a new Blueprint resource in Terraform.
 func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan blueprintResourceModel
+	var plan BlueprintResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -107,7 +107,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 
 // Read reads the Blueprint resource state from the API.
 func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state blueprintResourceModel
+	var state BlueprintResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -129,7 +129,7 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 // Update updates the Blueprint resource.
 func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan blueprintResourceModel
+	var plan BlueprintResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -224,7 +224,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 
 // Delete deletes the Blueprint resource.
 func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state blueprintResourceModel
+	var state BlueprintResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return

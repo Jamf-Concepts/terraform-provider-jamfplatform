@@ -13,13 +13,13 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
 
-// NewBlueprintDataSource returns a new instance of blueprintDataSource.
+// NewBlueprintDataSource returns a new instance of BlueprintDataSource.
 func NewBlueprintDataSource() datasource.DataSource {
-	return &blueprintDataSource{}
+	return &BlueprintDataSource{}
 }
 
 // Configure sets up the API client for the data source from the provider configuration.
-func (d *blueprintDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -35,12 +35,12 @@ func (d *blueprintDataSource) Configure(ctx context.Context, req datasource.Conf
 }
 
 // Metadata sets the data source type name for the Terraform provider.
-func (d *blueprintDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *BlueprintDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_blueprints_blueprint"
 }
 
 // Schema sets the Terraform schema for the data source.
-func (d *blueprintDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *BlueprintDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Returns a blueprint by ID or name.",
 		Attributes: map[string]schema.Attribute{
@@ -99,8 +99,8 @@ func (d *blueprintDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 }
 
 // Read fetches a blueprint by ID or title and populates the Terraform state.
-func (d *blueprintDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config blueprintDataSourceModel
+func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config BlueprintDataSourceModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -141,10 +141,10 @@ func (d *blueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		deviceGroups = append(deviceGroups, types.StringValue(g))
 	}
 
-	var components []componentModel
+	var components []ComponentModel
 	if len(bp.Steps) > 0 {
 		step := bp.Steps[0]
-		components = make([]componentModel, len(step.Components))
+		components = make([]ComponentModel, len(step.Components))
 		for i, comp := range step.Components {
 			configMap := make(map[string]string)
 			if comp.Configuration != nil {
@@ -155,14 +155,14 @@ func (d *blueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 			}
 
 			configMapValue, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
-			components[i] = componentModel{
+			components[i] = ComponentModel{
 				Identifier:    types.StringValue(comp.Identifier),
 				Configuration: configMapValue,
 			}
 		}
 	}
 
-	state := blueprintDataSourceModel{
+	state := BlueprintDataSourceModel{
 		ID:              config.ID,
 		Name:            types.StringValue(bp.Name),
 		BlueprintID:     types.StringValue(bp.ID),

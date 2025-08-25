@@ -11,7 +11,7 @@ import (
 )
 
 // updateModelFromAPIResponse updates the Terraform model with data from the API response.
-func updateModelFromAPIResponse(model *blueprintResourceModel, blueprint *client.BlueprintDetail) {
+func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client.BlueprintDetail) {
 	model.ID = types.StringValue(blueprint.ID)
 	model.Name = types.StringValue(blueprint.Name)
 
@@ -33,7 +33,7 @@ func updateModelFromAPIResponse(model *blueprintResourceModel, blueprint *client
 
 	if len(blueprint.Steps) > 0 {
 		step := blueprint.Steps[0]
-		components := make([]componentModel, len(step.Components))
+		components := make([]ComponentModel, len(step.Components))
 		for i, comp := range step.Components {
 			configMap := make(map[string]string)
 			if comp.Configuration != nil {
@@ -44,14 +44,14 @@ func updateModelFromAPIResponse(model *blueprintResourceModel, blueprint *client
 			}
 
 			configMapValue, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
-			components[i] = componentModel{
+			components[i] = ComponentModel{
 				Identifier:    types.StringValue(comp.Identifier),
 				Configuration: configMapValue,
 			}
 		}
 		model.Components = components
 	} else {
-		model.Components = []componentModel{}
+		model.Components = []ComponentModel{}
 	}
 }
 
