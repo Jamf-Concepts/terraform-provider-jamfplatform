@@ -5,42 +5,31 @@ package blueprint
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
+
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ datasource.DataSource = &BlueprintDataSource{}
 
 // NewBlueprintDataSource returns a new instance of BlueprintDataSource.
 func NewBlueprintDataSource() datasource.DataSource {
 	return &BlueprintDataSource{}
 }
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
-}
-
 // Metadata sets the data source type name for the Terraform provider.
-func (d *BlueprintDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *BlueprintDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_blueprints_blueprint"
 }
 
 // Schema sets the Terraform schema for the data source.
-func (d *BlueprintDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Returns a blueprint by ID or name.",
 		Attributes: map[string]schema.Attribute{
@@ -98,11 +87,31 @@ func (d *BlueprintDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	}
 }
 
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
 // Read fetches a blueprint by ID or title and populates the Terraform state.
 func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var config BlueprintDataSourceModel
-	diags := req.Config.Get(ctx, &config)
-	resp.Diagnostics.Append(diags...)
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -174,6 +183,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		Components:      components,
 	}
 
-	diags = resp.State.Set(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
