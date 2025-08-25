@@ -13,18 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// DataSourceMobileDevices defines the data source implementation.
-type DataSourceMobileDevices struct {
-	client *client.Client
-}
-
-// mobileDevicesDataSourceModel maps the data source schema data.
-type mobileDevicesDataSourceModel struct {
-	ID      types.String `tfsdk:"id"`
-	Section types.List   `tfsdk:"section"`
-	Devices types.List   `tfsdk:"devices"`
-}
-
 // Ensure DataSourceMobileDevices implements the datasource.DataSource interface.
 var _ datasource.DataSource = &DataSourceMobileDevices{}
 

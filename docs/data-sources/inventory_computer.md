@@ -31,16 +31,48 @@ output "computer" {
 
 ### Read-Only
 
+- `activation_lock_enabled` (Boolean) Whether activation lock is enabled.
 - `applications` (Attributes List) Applications installed on the computer. (see [below for nested schema](#nestedatt--applications))
+- `asset_tag` (String) Asset tag.
+- `building_id` (String) Building ID.
 - `configuration_profiles` (Attributes List) Configuration profiles installed on the computer. (see [below for nested schema](#nestedatt--configuration_profiles))
-- `general` (Attributes) General information about the computer. (see [below for nested schema](#nestedatt--general))
-- `hardware` (Attributes) Hardware information. (see [below for nested schema](#nestedatt--hardware))
+- `department_id` (String) Department ID.
+- `email` (String) Email address.
+- `gatekeeper_status` (String) Gatekeeper status.
+- `jamf_binary_version` (String) Jamf binary version.
+- `last_contact_time` (String) Last contact time.
+- `last_enrolled_date` (String) Last enrolled date.
+- `last_ip_address` (String) Last known IP address.
+- `leased` (Boolean) Whether the computer is leased.
 - `local_user_accounts` (Attributes List) Local user accounts on the computer. (see [below for nested schema](#nestedatt--local_user_accounts))
-- `operating_system` (Attributes) Operating system information. (see [below for nested schema](#nestedatt--operating_system))
-- `purchasing` (Attributes) Purchasing and warranty information. (see [below for nested schema](#nestedatt--purchasing))
-- `security` (Attributes) Security information. (see [below for nested schema](#nestedatt--security))
+- `mac_address` (String) MAC address.
+- `make` (String) Hardware make.
+- `management_id` (String) Management ID.
+- `model` (String) Hardware model.
+- `model_identifier` (String) Model identifier.
+- `name` (String) Name of the computer.
+- `os_build` (String) OS build.
+- `os_name` (String) OS name.
+- `os_version` (String) OS version.
+- `phone` (String) Phone number.
+- `platform` (String) Platform of the computer.
+- `po_number` (String) Purchase order number.
+- `position` (String) Position.
+- `processor_speed_mhz` (Number) Processor speed in MHz.
+- `processor_type` (String) Processor type.
+- `purchase_price` (String) Purchase price.
+- `purchased` (Boolean) Whether the computer is purchased.
+- `realname` (String) Real name.
+- `recovery_lock_enabled` (Boolean) Whether recovery lock is enabled.
+- `room` (String) Room.
+- `serial_number` (String) Serial number.
+- `sip_status` (String) SIP status.
+- `supervised` (Boolean) Whether the computer is supervised.
+- `total_ram_megabytes` (Number) Total RAM in megabytes.
 - `udid` (String) The UDID of the computer.
-- `user_and_location` (Attributes) User and location information. (see [below for nested schema](#nestedatt--user_and_location))
+- `username` (String) Username.
+- `vendor` (String) Vendor.
+- `warranty_date` (String) Warranty date.
 
 <a id="nestedatt--applications"></a>
 ### Nested Schema for `applications`
@@ -65,37 +97,6 @@ Read-Only:
 - `removable` (Boolean) Whether removable.
 
 
-<a id="nestedatt--general"></a>
-### Nested Schema for `general`
-
-Read-Only:
-
-- `asset_tag` (String) Asset tag.
-- `jamf_binary_version` (String) Jamf binary version.
-- `last_contact_time` (String) Last contact time.
-- `last_enrolled_date` (String) Last enrolled date.
-- `last_ip_address` (String) Last known IP address.
-- `management_id` (String) Management ID.
-- `name` (String) Name of the computer.
-- `platform` (String) Platform of the computer.
-- `supervised` (Boolean) Whether the computer is supervised.
-
-
-<a id="nestedatt--hardware"></a>
-### Nested Schema for `hardware`
-
-Read-Only:
-
-- `mac_address` (String) MAC address.
-- `make` (String) Hardware make.
-- `model` (String) Hardware model.
-- `model_identifier` (String) Model identifier.
-- `processor_speed_mhz` (Number) Processor speed in MHz.
-- `processor_type` (String) Processor type.
-- `serial_number` (String) Serial number.
-- `total_ram_megabytes` (Number) Total RAM in megabytes.
-
-
 <a id="nestedatt--local_user_accounts"></a>
 ### Nested Schema for `local_user_accounts`
 
@@ -104,53 +105,4 @@ Read-Only:
 - `admin` (Boolean) Whether admin user.
 - `full_name` (String) Full name.
 - `home_directory` (String) Home directory.
-- `username` (String) Username.
-
-
-<a id="nestedatt--operating_system"></a>
-### Nested Schema for `operating_system`
-
-Read-Only:
-
-- `build` (String) OS build.
-- `name` (String) OS name.
-- `version` (String) OS version.
-
-
-<a id="nestedatt--purchasing"></a>
-### Nested Schema for `purchasing`
-
-Read-Only:
-
-- `leased` (Boolean) Whether the computer is leased.
-- `po_number` (String) Purchase order number.
-- `purchase_price` (String) Purchase price.
-- `purchased` (Boolean) Whether the computer is purchased.
-- `vendor` (String) Vendor.
-- `warranty_date` (String) Warranty date.
-
-
-<a id="nestedatt--security"></a>
-### Nested Schema for `security`
-
-Read-Only:
-
-- `activation_lock_enabled` (Boolean) Whether activation lock is enabled.
-- `gatekeeper_status` (String) Gatekeeper status.
-- `recovery_lock_enabled` (Boolean) Whether recovery lock is enabled.
-- `sip_status` (String) SIP status.
-
-
-<a id="nestedatt--user_and_location"></a>
-### Nested Schema for `user_and_location`
-
-Read-Only:
-
-- `building_id` (String) Building ID.
-- `department_id` (String) Department ID.
-- `email` (String) Email address.
-- `phone` (String) Phone number.
-- `position` (String) Position.
-- `realname` (String) Real name.
-- `room` (String) Room.
 - `username` (String) Username.

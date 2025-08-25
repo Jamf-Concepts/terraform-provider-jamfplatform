@@ -36,17 +36,76 @@ output "device" {
 
 ### Read-Only
 
+- `activation_lock_enabled` (Boolean) Whether activation lock is enabled.
+- `apple_care_id` (String) AppleCare ID.
 - `applications` (Attributes List) Applications installed on the device. (see [below for nested schema](#nestedatt--applications))
+- `asset_tag` (String) Asset tag.
+- `available_space_mb` (Number) Available space in MB.
+- `battery_health` (String) Battery health status.
+- `battery_level` (Number) Battery level percentage.
+- `block_level_encryption_capable` (Boolean) Whether block level encryption capable.
+- `bluetooth_mac` (String) Bluetooth MAC address.
+- `bluetooth_mac_address` (String) Bluetooth MAC address.
+- `building` (String) Building name.
+- `building_id` (String) Building ID.
+- `capacity_mb` (Number) Storage capacity in MB.
+- `carrier` (String) Carrier.
+- `cellular_technology` (String) Cellular technology.
 - `certificates` (Attributes List) Certificates installed on the device. (see [below for nested schema](#nestedatt--certificates))
+- `data_protected` (Boolean) Whether data is protected.
+- `department` (String) Department name.
+- `department_id` (String) Department ID.
+- `device_id` (String) Device ID.
+- `device_ownership_type` (String) Device ownership type.
 - `device_type` (String) Type of the device.
-- `general` (Attributes) General information about the mobile device. (see [below for nested schema](#nestedatt--general))
-- `hardware` (Attributes) Hardware information. (see [below for nested schema](#nestedatt--hardware))
+- `display_name` (String) Display name of the device.
+- `email_address` (String) Email address.
+- `ethernet_mac` (String) Ethernet MAC address.
+- `file_level_encryption_capable` (Boolean) Whether file level encryption capable.
+- `hardware_wifi_mac_address` (String) WiFi MAC address from hardware section.
+- `iccid` (String) ICCID.
+- `ip_address` (String) IP address.
+- `jail_break_detected` (Boolean) Whether jailbreak is detected.
+- `last_enrolled_date` (String) Last enrolled date.
+- `last_inventory_update_date` (String) Last inventory update date.
+- `lease_expires_date` (String) Lease expiration date.
+- `leased` (Boolean) Whether leased.
+- `life_expectancy` (Number) Life expectancy in years.
+- `lost_mode_enabled` (Boolean) Whether lost mode is enabled.
+- `lost_mode_message` (String) Lost mode message.
+- `lost_mode_phone_number` (String) Lost mode phone number.
+- `managed` (Boolean) Whether the device is managed.
+- `mdm_profile_expiration` (String) MDM profile expiration date.
 - `mobile_device_id` (String) Mobile device ID from the API response.
-- `network` (Attributes) Network information. (see [below for nested schema](#nestedatt--network))
+- `model` (String) Device model.
+- `model_identifier` (String) Model identifier.
+- `model_number` (String) Model number.
+- `network_wifi_mac_address` (String) WiFi MAC address from network section.
+- `os_build` (String) OS build.
+- `os_version` (String) OS version.
+- `passcode_compliant` (Boolean) Whether passcode is compliant.
+- `passcode_present` (Boolean) Whether passcode is present.
+- `phone_number` (String) Phone number.
+- `po_date` (String) Purchase order date.
+- `po_number` (String) Purchase order number.
+- `position` (String) Position.
 - `profiles` (Attributes List) Configuration profiles installed on the device. (see [below for nested schema](#nestedatt--profiles))
-- `purchasing` (Attributes) Purchasing and warranty information. (see [below for nested schema](#nestedatt--purchasing))
-- `security` (Attributes) Security information. (see [below for nested schema](#nestedatt--security))
-- `user_and_location` (Attributes) User and location information. (see [below for nested schema](#nestedatt--user_and_location))
+- `purchase_price` (String) Purchase price.
+- `purchased` (Boolean) Whether purchased.
+- `purchasing_account` (String) Purchasing account.
+- `purchasing_contact` (String) Purchasing contact.
+- `real_name` (String) Real name.
+- `room` (String) Room.
+- `serial_number` (String) Serial number.
+- `sim_phone_number` (String) SIM phone number.
+- `site_id` (String) Site ID.
+- `supervised` (Boolean) Whether the device is supervised.
+- `time_zone` (String) Device time zone.
+- `udid` (String) UDID of the device.
+- `used_space_percentage` (Number) Used space percentage.
+- `username` (String) Username.
+- `vendor` (String) Vendor.
+- `warranty_expires_date` (String) Warranty expiration date.
 
 <a id="nestedatt--applications"></a>
 ### Nested Schema for `applications`
@@ -72,60 +131,6 @@ Read-Only:
 - `identity` (Boolean) Whether identity certificate.
 
 
-<a id="nestedatt--general"></a>
-### Nested Schema for `general`
-
-Read-Only:
-
-- `asset_tag` (String) Asset tag.
-- `device_ownership_type` (String) Device ownership type.
-- `display_name` (String) Display name of the device.
-- `ip_address` (String) IP address.
-- `last_enrolled_date` (String) Last enrolled date.
-- `last_inventory_update_date` (String) Last inventory update date.
-- `managed` (Boolean) Whether the device is managed.
-- `mdm_profile_expiration` (String) MDM profile expiration date.
-- `os_build` (String) OS build.
-- `os_version` (String) OS version.
-- `site_id` (String) Site ID.
-- `supervised` (Boolean) Whether the device is supervised.
-- `time_zone` (String) Device time zone.
-- `udid` (String) UDID of the device.
-
-
-<a id="nestedatt--hardware"></a>
-### Nested Schema for `hardware`
-
-Read-Only:
-
-- `available_space_mb` (Number) Available space in MB.
-- `battery_health` (String) Battery health status.
-- `battery_level` (Number) Battery level percentage.
-- `bluetooth_mac_address` (String) Bluetooth MAC address.
-- `capacity_mb` (Number) Storage capacity in MB.
-- `device_id` (String) Device ID.
-- `model` (String) Device model.
-- `model_identifier` (String) Model identifier.
-- `model_number` (String) Model number.
-- `serial_number` (String) Serial number.
-- `used_space_percentage` (Number) Used space percentage.
-- `wifi_mac_address` (String) WiFi MAC address.
-
-
-<a id="nestedatt--network"></a>
-### Nested Schema for `network`
-
-Read-Only:
-
-- `bluetooth_mac` (String) Bluetooth MAC address.
-- `carrier` (String) Carrier.
-- `cellular_technology` (String) Cellular technology.
-- `ethernet_mac` (String) Ethernet MAC address.
-- `iccid` (String) ICCID.
-- `sim_phone_number` (String) SIM phone number.
-- `wifi_mac_address` (String) WiFi MAC address.
-
-
 <a id="nestedatt--profiles"></a>
 ### Nested Schema for `profiles`
 
@@ -138,56 +143,3 @@ Read-Only:
 - `username` (String) Username.
 - `uuid` (String) Profile UUID.
 - `version` (String) Profile version.
-
-
-<a id="nestedatt--purchasing"></a>
-### Nested Schema for `purchasing`
-
-Read-Only:
-
-- `apple_care_id` (String) AppleCare ID.
-- `lease_expires_date` (String) Lease expiration date.
-- `leased` (Boolean) Whether leased.
-- `life_expectancy` (Number) Life expectancy in years.
-- `po_date` (String) Purchase order date.
-- `po_number` (String) Purchase order number.
-- `purchase_price` (String) Purchase price.
-- `purchased` (Boolean) Whether purchased.
-- `purchasing_account` (String) Purchasing account.
-- `purchasing_contact` (String) Purchasing contact.
-- `vendor` (String) Vendor.
-- `warranty_expires_date` (String) Warranty expiration date.
-
-
-<a id="nestedatt--security"></a>
-### Nested Schema for `security`
-
-Read-Only:
-
-- `activation_lock_enabled` (Boolean) Whether activation lock is enabled.
-- `block_level_encryption_capable` (Boolean) Whether block level encryption capable.
-- `data_protected` (Boolean) Whether data is protected.
-- `file_level_encryption_capable` (Boolean) Whether file level encryption capable.
-- `jail_break_detected` (Boolean) Whether jailbreak is detected.
-- `lost_mode_enabled` (Boolean) Whether lost mode is enabled.
-- `lost_mode_message` (String) Lost mode message.
-- `lost_mode_phone_number` (String) Lost mode phone number.
-- `passcode_compliant` (Boolean) Whether passcode is compliant.
-- `passcode_present` (Boolean) Whether passcode is present.
-
-
-<a id="nestedatt--user_and_location"></a>
-### Nested Schema for `user_and_location`
-
-Read-Only:
-
-- `building` (String) Building name.
-- `building_id` (String) Building ID.
-- `department` (String) Department name.
-- `department_id` (String) Department ID.
-- `email_address` (String) Email address.
-- `phone_number` (String) Phone number.
-- `position` (String) Position.
-- `real_name` (String) Real name.
-- `room` (String) Room.
-- `username` (String) Username.
