@@ -13,13 +13,13 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
 
-// NewComponentsDataSource returns a new instance of componentsDataSource.
+// NewComponentsDataSource returns a new instance of ComponentsDataSource.
 func NewComponentsDataSource() datasource.DataSource {
-	return &componentsDataSource{}
+	return &ComponentsDataSource{}
 }
 
 // Configure sets up the API client for the data source from the provider configuration.
-func (d *componentsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *ComponentsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -35,12 +35,12 @@ func (d *componentsDataSource) Configure(ctx context.Context, req datasource.Con
 }
 
 // Metadata sets the data source type name for the Terraform provider.
-func (d *componentsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *ComponentsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_blueprints_components"
 }
 
 // Schema sets the Terraform schema for the data source.
-func (d *componentsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *ComponentsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Returns all available blueprint components.",
 		Attributes: map[string]schema.Attribute{
@@ -76,8 +76,8 @@ func (d *componentsDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 }
 
 // Read fetches all components and populates the Terraform state.
-func (d *componentsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config componentsDataSourceModel
+func (d *ComponentsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var config ComponentsDataSourceModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -101,7 +101,7 @@ func (d *componentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	var componentsList []componentListModel
+	var componentsList []ComponentListModel
 	for _, comp := range components {
 		supportedOsAttrType := types.ListType{
 			ElemType: types.StringType,
@@ -123,7 +123,7 @@ func (d *componentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 			supportedOsMap, _ = types.MapValue(supportedOsAttrType, supportedOsMapVals)
 		}
 
-		componentsList = append(componentsList, componentListModel{
+		componentsList = append(componentsList, ComponentListModel{
 			Identifier:  types.StringValue(comp.Identifier),
 			Name:        types.StringValue(comp.Name),
 			Description: types.StringValue(comp.Description),
@@ -131,7 +131,7 @@ func (d *componentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		})
 	}
 
-	state := componentsDataSourceModel{
+	state := ComponentsDataSourceModel{
 		Components: componentsList,
 	}
 

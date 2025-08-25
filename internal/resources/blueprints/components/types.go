@@ -7,18 +7,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// componentsDataSource defines the data source for blueprint components.
-type componentsDataSource struct {
+// ComponentsDataSource defines the data source for blueprint components.
+type ComponentsDataSource struct {
 	client *client.Client
 }
 
-// componentsDataSourceModel defines the data structure for the components data source.
-type componentsDataSourceModel struct {
-	Components []componentListModel `tfsdk:"components"`
+// ComponentsDataSourceModel defines the data structure for the components data source.
+type ComponentsDataSourceModel struct {
+	Components []ComponentListModel `tfsdk:"components"`
 }
 
-// componentListModel defines the data structure for a component in the list.
-type componentListModel struct {
+// ComponentListModel defines the data structure for a component in the list.
+type ComponentListModel struct {
 	Identifier  types.String `tfsdk:"identifier"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
