@@ -11,61 +11,24 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// DataSourceMobileDevice defines the data source implementation.
-type DataSourceMobileDevice struct {
-	client *client.Client
-}
-
-// mobileDeviceDataSourceModel maps the data source schema data.
-type mobileDeviceDataSourceModel struct {
-	ID              types.String `tfsdk:"id"`
-	MobileDeviceId  types.String `tfsdk:"mobile_device_id"`
-	DeviceType      types.String `tfsdk:"device_type"`
-	Sections        types.List   `tfsdk:"sections"`
-	General         types.Object `tfsdk:"general"`
-	Hardware        types.Object `tfsdk:"hardware"`
-	UserAndLocation types.Object `tfsdk:"user_and_location"`
-	Purchasing      types.Object `tfsdk:"purchasing"`
-	Security        types.Object `tfsdk:"security"`
-	Network         types.Object `tfsdk:"network"`
-	Applications    types.List   `tfsdk:"applications"`
-	Profiles        types.List   `tfsdk:"profiles"`
-	Certificates    types.List   `tfsdk:"certificates"`
-}
-
-// Ensure DataSourceMobileDevice implements the datasource.DataSource interface.
+// Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DataSourceMobileDevice{}
 
-// NewDataSourceMobileDevice returns a new data source instance.
+// NewDataSourceMobileDevice returns a new instance of DataSourceMobileDevice.
 func NewDataSourceMobileDevice() datasource.DataSource {
 	return &DataSourceMobileDevice{}
 }
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *DataSourceMobileDevice) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
-}
-
 // Metadata sets the data source type name for the Terraform provider.
-func (d *DataSourceMobileDevice) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *DataSourceMobileDevice) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_mobile_device"
 }
 
 // Schema defines the schema for the mobile device data source.
-func (d *DataSourceMobileDevice) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *DataSourceMobileDevice) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -85,301 +48,265 @@ func (d *DataSourceMobileDevice) Schema(_ context.Context, _ datasource.SchemaRe
 				Optional:    true,
 				Description: "Sections to retrieve (e.g., ['GENERAL', 'HARDWARE', 'SECURITY']). If not specified, all sections are retrieved.",
 			},
-			"general": schema.SingleNestedAttribute{
+			"udid": schema.StringAttribute{
 				Computed:    true,
-				Description: "General information about the mobile device.",
-				Attributes: map[string]schema.Attribute{
-					"udid": schema.StringAttribute{
-						Computed:    true,
-						Description: "UDID of the device.",
-					},
-					"display_name": schema.StringAttribute{
-						Computed:    true,
-						Description: "Display name of the device.",
-					},
-					"asset_tag": schema.StringAttribute{
-						Computed:    true,
-						Description: "Asset tag.",
-					},
-					"site_id": schema.StringAttribute{
-						Computed:    true,
-						Description: "Site ID.",
-					},
-					"last_inventory_update_date": schema.StringAttribute{
-						Computed:    true,
-						Description: "Last inventory update date.",
-					},
-					"os_version": schema.StringAttribute{
-						Computed:    true,
-						Description: "OS version.",
-					},
-					"os_build": schema.StringAttribute{
-						Computed:    true,
-						Description: "OS build.",
-					},
-					"ip_address": schema.StringAttribute{
-						Computed:    true,
-						Description: "IP address.",
-					},
-					"managed": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether the device is managed.",
-					},
-					"supervised": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether the device is supervised.",
-					},
-					"device_ownership_type": schema.StringAttribute{
-						Computed:    true,
-						Description: "Device ownership type.",
-					},
-					"last_enrolled_date": schema.StringAttribute{
-						Computed:    true,
-						Description: "Last enrolled date.",
-					},
-					"mdm_profile_expiration": schema.StringAttribute{
-						Computed:    true,
-						Description: "MDM profile expiration date.",
-					},
-					"time_zone": schema.StringAttribute{
-						Computed:    true,
-						Description: "Device time zone.",
-					},
-				},
+				Description: "UDID of the device.",
 			},
-			"hardware": schema.SingleNestedAttribute{
+			"display_name": schema.StringAttribute{
 				Computed:    true,
-				Description: "Hardware information.",
-				Attributes: map[string]schema.Attribute{
-					"capacity_mb": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Storage capacity in MB.",
-					},
-					"available_space_mb": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Available space in MB.",
-					},
-					"used_space_percentage": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Used space percentage.",
-					},
-					"battery_level": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Battery level percentage.",
-					},
-					"battery_health": schema.StringAttribute{
-						Computed:    true,
-						Description: "Battery health status.",
-					},
-					"serial_number": schema.StringAttribute{
-						Computed:    true,
-						Description: "Serial number.",
-					},
-					"wifi_mac_address": schema.StringAttribute{
-						Computed:    true,
-						Description: "WiFi MAC address.",
-					},
-					"bluetooth_mac_address": schema.StringAttribute{
-						Computed:    true,
-						Description: "Bluetooth MAC address.",
-					},
-					"model": schema.StringAttribute{
-						Computed:    true,
-						Description: "Device model.",
-					},
-					"model_identifier": schema.StringAttribute{
-						Computed:    true,
-						Description: "Model identifier.",
-					},
-					"model_number": schema.StringAttribute{
-						Computed:    true,
-						Description: "Model number.",
-					},
-					"device_id": schema.StringAttribute{
-						Computed:    true,
-						Description: "Device ID.",
-					},
-				},
+				Description: "Display name of the device.",
 			},
-			"user_and_location": schema.SingleNestedAttribute{
+			"asset_tag": schema.StringAttribute{
 				Computed:    true,
-				Description: "User and location information.",
-				Attributes: map[string]schema.Attribute{
-					"username": schema.StringAttribute{
-						Computed:    true,
-						Description: "Username.",
-					},
-					"real_name": schema.StringAttribute{
-						Computed:    true,
-						Description: "Real name.",
-					},
-					"email_address": schema.StringAttribute{
-						Computed:    true,
-						Description: "Email address.",
-					},
-					"position": schema.StringAttribute{
-						Computed:    true,
-						Description: "Position.",
-					},
-					"phone_number": schema.StringAttribute{
-						Computed:    true,
-						Description: "Phone number.",
-					},
-					"department_id": schema.StringAttribute{
-						Computed:    true,
-						Description: "Department ID.",
-					},
-					"building_id": schema.StringAttribute{
-						Computed:    true,
-						Description: "Building ID.",
-					},
-					"room": schema.StringAttribute{
-						Computed:    true,
-						Description: "Room.",
-					},
-					"building": schema.StringAttribute{
-						Computed:    true,
-						Description: "Building name.",
-					},
-					"department": schema.StringAttribute{
-						Computed:    true,
-						Description: "Department name.",
-					},
-				},
+				Description: "Asset tag.",
 			},
-			"purchasing": schema.SingleNestedAttribute{
+			"site_id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Purchasing and warranty information.",
-				Attributes: map[string]schema.Attribute{
-					"purchased": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether purchased.",
-					},
-					"leased": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether leased.",
-					},
-					"po_number": schema.StringAttribute{
-						Computed:    true,
-						Description: "Purchase order number.",
-					},
-					"vendor": schema.StringAttribute{
-						Computed:    true,
-						Description: "Vendor.",
-					},
-					"apple_care_id": schema.StringAttribute{
-						Computed:    true,
-						Description: "AppleCare ID.",
-					},
-					"purchase_price": schema.StringAttribute{
-						Computed:    true,
-						Description: "Purchase price.",
-					},
-					"purchasing_account": schema.StringAttribute{
-						Computed:    true,
-						Description: "Purchasing account.",
-					},
-					"po_date": schema.StringAttribute{
-						Computed:    true,
-						Description: "Purchase order date.",
-					},
-					"warranty_expires_date": schema.StringAttribute{
-						Computed:    true,
-						Description: "Warranty expiration date.",
-					},
-					"lease_expires_date": schema.StringAttribute{
-						Computed:    true,
-						Description: "Lease expiration date.",
-					},
-					"life_expectancy": schema.Int64Attribute{
-						Computed:    true,
-						Description: "Life expectancy in years.",
-					},
-					"purchasing_contact": schema.StringAttribute{
-						Computed:    true,
-						Description: "Purchasing contact.",
-					},
-				},
+				Description: "Site ID.",
 			},
-			"security": schema.SingleNestedAttribute{
+			"last_inventory_update_date": schema.StringAttribute{
 				Computed:    true,
-				Description: "Security information.",
-				Attributes: map[string]schema.Attribute{
-					"data_protected": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether data is protected.",
-					},
-					"block_level_encryption_capable": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether block level encryption capable.",
-					},
-					"file_level_encryption_capable": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether file level encryption capable.",
-					},
-					"passcode_present": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether passcode is present.",
-					},
-					"passcode_compliant": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether passcode is compliant.",
-					},
-					"activation_lock_enabled": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether activation lock is enabled.",
-					},
-					"jail_break_detected": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether jailbreak is detected.",
-					},
-					"lost_mode_enabled": schema.BoolAttribute{
-						Computed:    true,
-						Description: "Whether lost mode is enabled.",
-					},
-					"lost_mode_message": schema.StringAttribute{
-						Computed:    true,
-						Description: "Lost mode message.",
-					},
-					"lost_mode_phone_number": schema.StringAttribute{
-						Computed:    true,
-						Description: "Lost mode phone number.",
-					},
-				},
+				Description: "Last inventory update date.",
 			},
-			"network": schema.SingleNestedAttribute{
+			"os_version": schema.StringAttribute{
 				Computed:    true,
-				Description: "Network information.",
-				Attributes: map[string]schema.Attribute{
-					"cellular_technology": schema.StringAttribute{
-						Computed:    true,
-						Description: "Cellular technology.",
-					},
-					"iccid": schema.StringAttribute{
-						Computed:    true,
-						Description: "ICCID.",
-					},
-					"carrier": schema.StringAttribute{
-						Computed:    true,
-						Description: "Carrier.",
-					},
-					"sim_phone_number": schema.StringAttribute{
-						Computed:    true,
-						Description: "SIM phone number.",
-					},
-					"wifi_mac_address": schema.StringAttribute{
-						Computed:    true,
-						Description: "WiFi MAC address.",
-					},
-					"bluetooth_mac": schema.StringAttribute{
-						Computed:    true,
-						Description: "Bluetooth MAC address.",
-					},
-					"ethernet_mac": schema.StringAttribute{
-						Computed:    true,
-						Description: "Ethernet MAC address.",
-					},
-				},
+				Description: "OS version.",
+			},
+			"os_build": schema.StringAttribute{
+				Computed:    true,
+				Description: "OS build.",
+			},
+			"ip_address": schema.StringAttribute{
+				Computed:    true,
+				Description: "IP address.",
+			},
+			"managed": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the device is managed.",
+			},
+			"supervised": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether the device is supervised.",
+			},
+			"device_ownership_type": schema.StringAttribute{
+				Computed:    true,
+				Description: "Device ownership type.",
+			},
+			"last_enrolled_date": schema.StringAttribute{
+				Computed:    true,
+				Description: "Last enrolled date.",
+			},
+			"mdm_profile_expiration": schema.StringAttribute{
+				Computed:    true,
+				Description: "MDM profile expiration date.",
+			},
+			"time_zone": schema.StringAttribute{
+				Computed:    true,
+				Description: "Device time zone.",
+			},
+			"capacity_mb": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Storage capacity in MB.",
+			},
+			"available_space_mb": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Available space in MB.",
+			},
+			"used_space_percentage": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Used space percentage.",
+			},
+			"battery_level": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Battery level percentage.",
+			},
+			"battery_health": schema.StringAttribute{
+				Computed:    true,
+				Description: "Battery health status.",
+			},
+			"serial_number": schema.StringAttribute{
+				Computed:    true,
+				Description: "Serial number.",
+			},
+			"hardware_wifi_mac_address": schema.StringAttribute{
+				Computed:    true,
+				Description: "WiFi MAC address from hardware section.",
+			},
+			"bluetooth_mac_address": schema.StringAttribute{
+				Computed:    true,
+				Description: "Bluetooth MAC address.",
+			},
+			"model": schema.StringAttribute{
+				Computed:    true,
+				Description: "Device model.",
+			},
+			"model_identifier": schema.StringAttribute{
+				Computed:    true,
+				Description: "Model identifier.",
+			},
+			"model_number": schema.StringAttribute{
+				Computed:    true,
+				Description: "Model number.",
+			},
+			"device_id": schema.StringAttribute{
+				Computed:    true,
+				Description: "Device ID.",
+			},
+			"username": schema.StringAttribute{
+				Computed:    true,
+				Description: "Username.",
+			},
+			"real_name": schema.StringAttribute{
+				Computed:    true,
+				Description: "Real name.",
+			},
+			"email_address": schema.StringAttribute{
+				Computed:    true,
+				Description: "Email address.",
+			},
+			"position": schema.StringAttribute{
+				Computed:    true,
+				Description: "Position.",
+			},
+			"phone_number": schema.StringAttribute{
+				Computed:    true,
+				Description: "Phone number.",
+			},
+			"department_id": schema.StringAttribute{
+				Computed:    true,
+				Description: "Department ID.",
+			},
+			"building_id": schema.StringAttribute{
+				Computed:    true,
+				Description: "Building ID.",
+			},
+			"room": schema.StringAttribute{
+				Computed:    true,
+				Description: "Room.",
+			},
+			"building": schema.StringAttribute{
+				Computed:    true,
+				Description: "Building name.",
+			},
+			"department": schema.StringAttribute{
+				Computed:    true,
+				Description: "Department name.",
+			},
+			"purchased": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether purchased.",
+			},
+			"leased": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether leased.",
+			},
+			"po_number": schema.StringAttribute{
+				Computed:    true,
+				Description: "Purchase order number.",
+			},
+			"vendor": schema.StringAttribute{
+				Computed:    true,
+				Description: "Vendor.",
+			},
+			"apple_care_id": schema.StringAttribute{
+				Computed:    true,
+				Description: "AppleCare ID.",
+			},
+			"purchase_price": schema.StringAttribute{
+				Computed:    true,
+				Description: "Purchase price.",
+			},
+			"purchasing_account": schema.StringAttribute{
+				Computed:    true,
+				Description: "Purchasing account.",
+			},
+			"po_date": schema.StringAttribute{
+				Computed:    true,
+				Description: "Purchase order date.",
+			},
+			"warranty_expires_date": schema.StringAttribute{
+				Computed:    true,
+				Description: "Warranty expiration date.",
+			},
+			"lease_expires_date": schema.StringAttribute{
+				Computed:    true,
+				Description: "Lease expiration date.",
+			},
+			"life_expectancy": schema.Int64Attribute{
+				Computed:    true,
+				Description: "Life expectancy in years.",
+			},
+			"purchasing_contact": schema.StringAttribute{
+				Computed:    true,
+				Description: "Purchasing contact.",
+			},
+			"data_protected": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether data is protected.",
+			},
+			"block_level_encryption_capable": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether block level encryption capable.",
+			},
+			"file_level_encryption_capable": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether file level encryption capable.",
+			},
+			"passcode_present": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether passcode is present.",
+			},
+			"passcode_compliant": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether passcode is compliant.",
+			},
+			"activation_lock_enabled": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether activation lock is enabled.",
+			},
+			"jail_break_detected": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether jailbreak is detected.",
+			},
+			"lost_mode_enabled": schema.BoolAttribute{
+				Computed:    true,
+				Description: "Whether lost mode is enabled.",
+			},
+			"lost_mode_message": schema.StringAttribute{
+				Computed:    true,
+				Description: "Lost mode message.",
+			},
+			"lost_mode_phone_number": schema.StringAttribute{
+				Computed:    true,
+				Description: "Lost mode phone number.",
+			},
+			"cellular_technology": schema.StringAttribute{
+				Computed:    true,
+				Description: "Cellular technology.",
+			},
+			"iccid": schema.StringAttribute{
+				Computed:    true,
+				Description: "ICCID.",
+			},
+			"carrier": schema.StringAttribute{
+				Computed:    true,
+				Description: "Carrier.",
+			},
+			"sim_phone_number": schema.StringAttribute{
+				Computed:    true,
+				Description: "SIM phone number.",
+			},
+			"network_wifi_mac_address": schema.StringAttribute{
+				Computed:    true,
+				Description: "WiFi MAC address from network section.",
+			},
+			"bluetooth_mac": schema.StringAttribute{
+				Computed:    true,
+				Description: "Bluetooth MAC address.",
+			},
+			"ethernet_mac": schema.StringAttribute{
+				Computed:    true,
+				Description: "Ethernet MAC address.",
 			},
 			"applications": schema.ListNestedAttribute{
 				Computed:    true,
@@ -477,10 +404,31 @@ func (d *DataSourceMobileDevice) Schema(_ context.Context, _ datasource.SchemaRe
 	}
 }
 
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *DataSourceMobileDevice) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
 // Read fetches the mobile device details and sets the state.
 func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data mobileDeviceDataSourceModel
+	var data MobileDeviceDataSourceModel
+
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -514,184 +462,71 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	data.ID = types.StringValue(id)
 	data.MobileDeviceId = types.StringValue(mobileDevice.MobileDeviceId)
 	data.DeviceType = types.StringValue(mobileDevice.DeviceType)
-
-	generalAttrs := map[string]attr.Value{
-		"udid":                       types.StringValue(mobileDevice.General.Udid),
-		"display_name":               types.StringValue(mobileDevice.General.DisplayName),
-		"asset_tag":                  types.StringValue(mobileDevice.General.AssetTag),
-		"site_id":                    types.StringValue(mobileDevice.General.SiteId),
-		"last_inventory_update_date": types.StringValue(mobileDevice.General.LastInventoryUpdateDate),
-		"os_version":                 types.StringValue(mobileDevice.General.OsVersion),
-		"os_build":                   types.StringValue(mobileDevice.General.OsBuild),
-		"ip_address":                 types.StringValue(mobileDevice.General.IpAddress),
-		"managed":                    types.BoolValue(mobileDevice.General.Managed),
-		"supervised":                 types.BoolValue(mobileDevice.General.Supervised),
-		"device_ownership_type":      types.StringValue(mobileDevice.General.DeviceOwnershipType),
-		"last_enrolled_date":         types.StringValue(mobileDevice.General.LastEnrolledDate),
-		"mdm_profile_expiration":     types.StringValue(mobileDevice.General.MdmProfileExpiration),
-		"time_zone":                  types.StringValue(mobileDevice.General.TimeZone),
-	}
-
-	generalVal, diags := types.ObjectValue(map[string]attr.Type{
-		"udid":                       types.StringType,
-		"display_name":               types.StringType,
-		"asset_tag":                  types.StringType,
-		"site_id":                    types.StringType,
-		"last_inventory_update_date": types.StringType,
-		"os_version":                 types.StringType,
-		"os_build":                   types.StringType,
-		"ip_address":                 types.StringType,
-		"managed":                    types.BoolType,
-		"supervised":                 types.BoolType,
-		"device_ownership_type":      types.StringType,
-		"last_enrolled_date":         types.StringType,
-		"mdm_profile_expiration":     types.StringType,
-		"time_zone":                  types.StringType,
-	}, generalAttrs)
-	resp.Diagnostics.Append(diags...)
-	data.General = generalVal
-
-	hardwareAttrs := map[string]attr.Value{
-		"capacity_mb":           types.Int64Value(int64(mobileDevice.Hardware.CapacityMb)),
-		"available_space_mb":    types.Int64Value(int64(mobileDevice.Hardware.AvailableSpaceMb)),
-		"used_space_percentage": types.Int64Value(int64(mobileDevice.Hardware.UsedSpacePercentage)),
-		"battery_level":         types.Int64Value(int64(mobileDevice.Hardware.BatteryLevel)),
-		"battery_health":        types.StringValue(mobileDevice.Hardware.BatteryHealth),
-		"serial_number":         types.StringValue(mobileDevice.Hardware.SerialNumber),
-		"wifi_mac_address":      types.StringValue(mobileDevice.Hardware.WifiMacAddress),
-		"bluetooth_mac_address": types.StringValue(mobileDevice.Hardware.BluetoothMacAddress),
-		"model":                 types.StringValue(mobileDevice.Hardware.Model),
-		"model_identifier":      types.StringValue(mobileDevice.Hardware.ModelIdentifier),
-		"model_number":          types.StringValue(mobileDevice.Hardware.ModelNumber),
-		"device_id":             types.StringValue(mobileDevice.Hardware.DeviceId),
-	}
-
-	hardwareVal, diags := types.ObjectValue(map[string]attr.Type{
-		"capacity_mb":           types.Int64Type,
-		"available_space_mb":    types.Int64Type,
-		"used_space_percentage": types.Int64Type,
-		"battery_level":         types.Int64Type,
-		"battery_health":        types.StringType,
-		"serial_number":         types.StringType,
-		"wifi_mac_address":      types.StringType,
-		"bluetooth_mac_address": types.StringType,
-		"model":                 types.StringType,
-		"model_identifier":      types.StringType,
-		"model_number":          types.StringType,
-		"device_id":             types.StringType,
-	}, hardwareAttrs)
-	resp.Diagnostics.Append(diags...)
-	data.Hardware = hardwareVal
-
-	userLocationAttrs := map[string]attr.Value{
-		"username":      types.StringValue(mobileDevice.UserAndLocation.Username),
-		"real_name":     types.StringValue(mobileDevice.UserAndLocation.RealName),
-		"email_address": types.StringValue(mobileDevice.UserAndLocation.EmailAddress),
-		"position":      types.StringValue(mobileDevice.UserAndLocation.Position),
-		"phone_number":  types.StringValue(mobileDevice.UserAndLocation.PhoneNumber),
-		"department_id": types.StringValue(mobileDevice.UserAndLocation.DepartmentId),
-		"building_id":   types.StringValue(mobileDevice.UserAndLocation.BuildingId),
-		"room":          types.StringValue(mobileDevice.UserAndLocation.Room),
-		"building":      types.StringValue(mobileDevice.UserAndLocation.Building),
-		"department":    types.StringValue(mobileDevice.UserAndLocation.Department),
-	}
-
-	userLocationVal, diags := types.ObjectValue(map[string]attr.Type{
-		"username":      types.StringType,
-		"real_name":     types.StringType,
-		"email_address": types.StringType,
-		"position":      types.StringType,
-		"phone_number":  types.StringType,
-		"department_id": types.StringType,
-		"building_id":   types.StringType,
-		"room":          types.StringType,
-		"building":      types.StringType,
-		"department":    types.StringType,
-	}, userLocationAttrs)
-	resp.Diagnostics.Append(diags...)
-	data.UserAndLocation = userLocationVal
-
-	purchasingAttrs := map[string]attr.Value{
-		"purchased":             types.BoolValue(mobileDevice.Purchasing.Purchased),
-		"leased":                types.BoolValue(mobileDevice.Purchasing.Leased),
-		"po_number":             types.StringValue(mobileDevice.Purchasing.PoNumber),
-		"vendor":                types.StringValue(mobileDevice.Purchasing.Vendor),
-		"apple_care_id":         types.StringValue(mobileDevice.Purchasing.AppleCareId),
-		"purchase_price":        types.StringValue(mobileDevice.Purchasing.PurchasePrice),
-		"purchasing_account":    types.StringValue(mobileDevice.Purchasing.PurchasingAccount),
-		"po_date":               types.StringValue(mobileDevice.Purchasing.PoDate),
-		"warranty_expires_date": types.StringValue(mobileDevice.Purchasing.WarrantyExpiresDate),
-		"lease_expires_date":    types.StringValue(mobileDevice.Purchasing.LeaseExpiresDate),
-		"life_expectancy":       types.Int64Value(int64(mobileDevice.Purchasing.LifeExpectancy)),
-		"purchasing_contact":    types.StringValue(mobileDevice.Purchasing.PurchasingContact),
-	}
-
-	purchasingVal, diags := types.ObjectValue(map[string]attr.Type{
-		"purchased":             types.BoolType,
-		"leased":                types.BoolType,
-		"po_number":             types.StringType,
-		"vendor":                types.StringType,
-		"apple_care_id":         types.StringType,
-		"purchase_price":        types.StringType,
-		"purchasing_account":    types.StringType,
-		"po_date":               types.StringType,
-		"warranty_expires_date": types.StringType,
-		"lease_expires_date":    types.StringType,
-		"life_expectancy":       types.Int64Type,
-		"purchasing_contact":    types.StringType,
-	}, purchasingAttrs)
-	resp.Diagnostics.Append(diags...)
-	data.Purchasing = purchasingVal
-
-	securityAttrs := map[string]attr.Value{
-		"data_protected":                 types.BoolValue(mobileDevice.Security.DataProtected),
-		"block_level_encryption_capable": types.BoolValue(mobileDevice.Security.BlockLevelEncryptionCapable),
-		"file_level_encryption_capable":  types.BoolValue(mobileDevice.Security.FileLevelEncryptionCapable),
-		"passcode_present":               types.BoolValue(mobileDevice.Security.PasscodePresent),
-		"passcode_compliant":             types.BoolValue(mobileDevice.Security.PasscodeCompliant),
-		"activation_lock_enabled":        types.BoolValue(mobileDevice.Security.ActivationLockEnabled),
-		"jail_break_detected":            types.BoolValue(mobileDevice.Security.JailBreakDetected),
-		"lost_mode_enabled":              types.BoolValue(mobileDevice.Security.LostModeEnabled),
-		"lost_mode_message":              types.StringValue(mobileDevice.Security.LostModeMessage),
-		"lost_mode_phone_number":         types.StringValue(mobileDevice.Security.LostModePhoneNumber),
-	}
-
-	securityVal, diags := types.ObjectValue(map[string]attr.Type{
-		"data_protected":                 types.BoolType,
-		"block_level_encryption_capable": types.BoolType,
-		"file_level_encryption_capable":  types.BoolType,
-		"passcode_present":               types.BoolType,
-		"passcode_compliant":             types.BoolType,
-		"activation_lock_enabled":        types.BoolType,
-		"jail_break_detected":            types.BoolType,
-		"lost_mode_enabled":              types.BoolType,
-		"lost_mode_message":              types.StringType,
-		"lost_mode_phone_number":         types.StringType,
-	}, securityAttrs)
-	resp.Diagnostics.Append(diags...)
-	data.Security = securityVal
-
-	networkAttrs := map[string]attr.Value{
-		"cellular_technology": types.StringValue(mobileDevice.Network.CellularTechnology),
-		"iccid":               types.StringValue(mobileDevice.Network.Iccid),
-		"carrier":             types.StringValue(mobileDevice.Network.Carrier),
-		"sim_phone_number":    types.StringValue(mobileDevice.Network.SimPhoneNumber),
-		"wifi_mac_address":    types.StringValue(mobileDevice.Network.WifiMacAddress),
-		"bluetooth_mac":       types.StringValue(mobileDevice.Network.BluetoothMac),
-		"ethernet_mac":        types.StringValue(mobileDevice.Network.EthernetMac),
-	}
-
-	networkVal, diags := types.ObjectValue(map[string]attr.Type{
-		"cellular_technology": types.StringType,
-		"iccid":               types.StringType,
-		"carrier":             types.StringType,
-		"sim_phone_number":    types.StringType,
-		"wifi_mac_address":    types.StringType,
-		"bluetooth_mac":       types.StringType,
-		"ethernet_mac":        types.StringType,
-	}, networkAttrs)
-	resp.Diagnostics.Append(diags...)
-	data.Network = networkVal
+	data.Udid = types.StringValue(mobileDevice.General.Udid)
+	data.DisplayName = types.StringValue(mobileDevice.General.DisplayName)
+	data.AssetTag = types.StringValue(mobileDevice.General.AssetTag)
+	data.SiteId = types.StringValue(mobileDevice.General.SiteId)
+	data.LastInventoryUpdateDate = types.StringValue(mobileDevice.General.LastInventoryUpdateDate)
+	data.OsVersion = types.StringValue(mobileDevice.General.OsVersion)
+	data.OsBuild = types.StringValue(mobileDevice.General.OsBuild)
+	data.IpAddress = types.StringValue(mobileDevice.General.IpAddress)
+	data.Managed = types.BoolValue(mobileDevice.General.Managed)
+	data.Supervised = types.BoolValue(mobileDevice.General.Supervised)
+	data.DeviceOwnershipType = types.StringValue(mobileDevice.General.DeviceOwnershipType)
+	data.LastEnrolledDate = types.StringValue(mobileDevice.General.LastEnrolledDate)
+	data.MdmProfileExpiration = types.StringValue(mobileDevice.General.MdmProfileExpiration)
+	data.TimeZone = types.StringValue(mobileDevice.General.TimeZone)
+	data.CapacityMb = types.Int64Value(int64(mobileDevice.Hardware.CapacityMb))
+	data.AvailableSpaceMb = types.Int64Value(int64(mobileDevice.Hardware.AvailableSpaceMb))
+	data.UsedSpacePercentage = types.Int64Value(int64(mobileDevice.Hardware.UsedSpacePercentage))
+	data.BatteryLevel = types.Int64Value(int64(mobileDevice.Hardware.BatteryLevel))
+	data.BatteryHealth = types.StringValue(mobileDevice.Hardware.BatteryHealth)
+	data.SerialNumber = types.StringValue(mobileDevice.Hardware.SerialNumber)
+	data.HardwareWifiMacAddress = types.StringValue(mobileDevice.Hardware.WifiMacAddress)
+	data.BluetoothMacAddress = types.StringValue(mobileDevice.Hardware.BluetoothMacAddress)
+	data.Model = types.StringValue(mobileDevice.Hardware.Model)
+	data.ModelIdentifier = types.StringValue(mobileDevice.Hardware.ModelIdentifier)
+	data.ModelNumber = types.StringValue(mobileDevice.Hardware.ModelNumber)
+	data.DeviceId = types.StringValue(mobileDevice.Hardware.DeviceId)
+	data.Username = types.StringValue(mobileDevice.UserAndLocation.Username)
+	data.RealName = types.StringValue(mobileDevice.UserAndLocation.RealName)
+	data.EmailAddress = types.StringValue(mobileDevice.UserAndLocation.EmailAddress)
+	data.Position = types.StringValue(mobileDevice.UserAndLocation.Position)
+	data.PhoneNumber = types.StringValue(mobileDevice.UserAndLocation.PhoneNumber)
+	data.DepartmentId = types.StringValue(mobileDevice.UserAndLocation.DepartmentId)
+	data.BuildingId = types.StringValue(mobileDevice.UserAndLocation.BuildingId)
+	data.Room = types.StringValue(mobileDevice.UserAndLocation.Room)
+	data.Building = types.StringValue(mobileDevice.UserAndLocation.Building)
+	data.Department = types.StringValue(mobileDevice.UserAndLocation.Department)
+	data.Purchased = types.BoolValue(mobileDevice.Purchasing.Purchased)
+	data.Leased = types.BoolValue(mobileDevice.Purchasing.Leased)
+	data.PoNumber = types.StringValue(mobileDevice.Purchasing.PoNumber)
+	data.Vendor = types.StringValue(mobileDevice.Purchasing.Vendor)
+	data.AppleCareId = types.StringValue(mobileDevice.Purchasing.AppleCareId)
+	data.PurchasePrice = types.StringValue(mobileDevice.Purchasing.PurchasePrice)
+	data.PurchasingAccount = types.StringValue(mobileDevice.Purchasing.PurchasingAccount)
+	data.PoDate = types.StringValue(mobileDevice.Purchasing.PoDate)
+	data.WarrantyExpiresDate = types.StringValue(mobileDevice.Purchasing.WarrantyExpiresDate)
+	data.LeaseExpiresDate = types.StringValue(mobileDevice.Purchasing.LeaseExpiresDate)
+	data.LifeExpectancy = types.Int64Value(int64(mobileDevice.Purchasing.LifeExpectancy))
+	data.PurchasingContact = types.StringValue(mobileDevice.Purchasing.PurchasingContact)
+	data.DataProtected = types.BoolValue(mobileDevice.Security.DataProtected)
+	data.BlockLevelEncryptionCapable = types.BoolValue(mobileDevice.Security.BlockLevelEncryptionCapable)
+	data.FileLevelEncryptionCapable = types.BoolValue(mobileDevice.Security.FileLevelEncryptionCapable)
+	data.PasscodePresent = types.BoolValue(mobileDevice.Security.PasscodePresent)
+	data.PasscodeCompliant = types.BoolValue(mobileDevice.Security.PasscodeCompliant)
+	data.ActivationLockEnabled = types.BoolValue(mobileDevice.Security.ActivationLockEnabled)
+	data.JailBreakDetected = types.BoolValue(mobileDevice.Security.JailBreakDetected)
+	data.LostModeEnabled = types.BoolValue(mobileDevice.Security.LostModeEnabled)
+	data.LostModeMessage = types.StringValue(mobileDevice.Security.LostModeMessage)
+	data.LostModePhoneNumber = types.StringValue(mobileDevice.Security.LostModePhoneNumber)
+	data.CellularTechnology = types.StringValue(mobileDevice.Network.CellularTechnology)
+	data.Iccid = types.StringValue(mobileDevice.Network.Iccid)
+	data.Carrier = types.StringValue(mobileDevice.Network.Carrier)
+	data.SimPhoneNumber = types.StringValue(mobileDevice.Network.SimPhoneNumber)
+	data.NetworkWifiMacAddress = types.StringValue(mobileDevice.Network.WifiMacAddress)
+	data.BluetoothMac = types.StringValue(mobileDevice.Network.BluetoothMac)
+	data.EthernetMac = types.StringValue(mobileDevice.Network.EthernetMac)
 
 	var appList []attr.Value
 	for _, app := range mobileDevice.Applications {
@@ -793,5 +628,7 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	resp.State.Set(ctx, &data)
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

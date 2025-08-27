@@ -10,51 +10,24 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-// DataSourceComputers defines the data source implementation.
-type DataSourceComputers struct {
-	client *client.Client
-}
-
-// computersDataSourceModel maps the data source schema data.
-type computersDataSourceModel struct {
-	ID        types.String `tfsdk:"id"`
-	Filter    types.String `tfsdk:"filter"`
-	Computers types.List   `tfsdk:"computers"`
-}
-
-// Ensure DataSourceComputers implements the datasource.DataSource interface.
+// Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DataSourceComputers{}
 
-// NewDataSourceComputers returns a new data source instance.
+// NewDataSourceComputers returns a new instance of DataSourceComputers.
 func NewDataSourceComputers() datasource.DataSource {
 	return &DataSourceComputers{}
 }
 
-// Configure sets up the API client for the data source from the provider configuration.
-func (d *DataSourceComputers) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	apiClient, ok := req.ProviderData.(*client.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected ProviderData type",
-			"Expected *client.Client, got something else.",
-		)
-		return
-	}
-	d.client = apiClient
-}
-
 // Metadata sets the data source type name for the Terraform provider.
-func (d *DataSourceComputers) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *DataSourceComputers) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_inventory_computers"
 }
 
 // Schema defines the schema for the computers data source.
-func (d *DataSourceComputers) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *DataSourceComputers) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -73,10 +46,31 @@ func (d *DataSourceComputers) Schema(_ context.Context, _ datasource.SchemaReque
 	}
 }
 
+// Configure sets up the API client for the data source from the provider configuration.
+func (d *DataSourceComputers) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	d.client = client
+}
+
 // Read fetches the list of computers and sets the state.
 func (d *DataSourceComputers) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data computersDataSourceModel
+	var data ComputersDataSourceModel
+
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -118,5 +112,8 @@ func (d *DataSourceComputers) Read(ctx context.Context, req datasource.ReadReque
 
 	data.ID = types.StringValue("static-id")
 	data.Computers = computersListVal
-	resp.State.Set(ctx, &data)
+
+	tflog.Trace(ctx, "read a data source")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

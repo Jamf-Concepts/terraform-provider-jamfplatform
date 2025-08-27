@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 // Client represents the main API client for Jamf Platform
@@ -19,19 +18,23 @@ type Client struct {
 	baseURL     string
 }
 
-// NewClient creates a new Jamf Platform API client.
-// region must be one of: us, eu, apac
-func NewClient(region, clientID, clientSecret string) *Client {
-	region = strings.ToLower(region)
-	switch region {
-	case "us", "eu", "apac":
-	default:
-		panic("invalid region: must be one of us, eu, apac")
-	}
+type ApiError struct {
+	HTTPStatus int     `json:"httpStatus"`
+	TraceID    string  `json:"traceId"`
+	Errors     []Error `json:"errors"`
+}
 
-	baseDomain := fmt.Sprintf("%s.apigw.jamf.com", region)
-	baseURL := fmt.Sprintf("https://%s/api", baseDomain)
-	tokenURL := fmt.Sprintf("https://%s/auth/token", baseDomain)
+// Error represents an error response from the API
+type Error struct {
+	ID          string `json:"id,omitempty"`
+	Code        string `json:"code"`
+	Field       string `json:"field"`
+	Description string `json:"description"`
+}
+
+// NewClient creates a new Jamf Platform API client.
+func NewClient(baseURL, clientID, clientSecret string) *Client {
+	tokenURL := baseURL + "/auth/token"
 
 	config := OAuthConfig{
 		TokenURL:     tokenURL,
@@ -54,7 +57,12 @@ func (c *Client) SetHTTPClient(httpClient *http.Client) {
 func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
 	var requestBody io.Reader
 
-	url := fmt.Sprintf("%s%s", c.baseURL, endpoint)
+	var fullURL string
+	if len(endpoint) > 0 && endpoint[0] == '/' {
+		fullURL = c.baseURL + endpoint
+	} else {
+		fullURL = c.baseURL + "/" + endpoint
+	}
 
 	if body != nil {
 		requestBodyBytes, err := json.Marshal(body)
@@ -64,13 +72,17 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		requestBody = bytes.NewReader(requestBodyBytes)
 	}
 
-	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, url, requestBody)
+	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authenticated request: %w", err)
 	}
 
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		if method == http.MethodPatch {
+			req.Header.Set("Content-Type", "application/merge-patch+json")
+		} else {
+			req.Header.Set("Content-Type", "application/json")
+		}
 	}
 
 	resp, err := c.oauthClient.httpClient.Do(req)
@@ -85,13 +97,17 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 
 		c.oauthClient.ClearToken()
 
-		req, err = c.oauthClient.AuthenticatedRequest(ctx, method, url, requestBody)
+		req, err = c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBody)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authenticated request after 401: %w", err)
 		}
 
 		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
+			if method == http.MethodPatch {
+				req.Header.Set("Content-Type", "application/merge-patch+json")
+			} else {
+				req.Header.Set("Content-Type", "application/json")
+			}
 		}
 
 		resp, err = c.oauthClient.httpClient.Do(req)
@@ -113,6 +129,14 @@ func (c *Client) handleAPIResponse(resp *http.Response, expectedStatus int, resu
 
 	if resp.StatusCode != expectedStatus {
 		body, _ := io.ReadAll(resp.Body)
+		var apiErr ApiError
+		if err := json.Unmarshal(body, &apiErr); err == nil && len(apiErr.Errors) > 0 {
+			var details []string
+			for _, e := range apiErr.Errors {
+				details = append(details, fmt.Sprintf("[%s] %s: %s", e.Code, e.Field, e.Description))
+			}
+			return fmt.Errorf("API request failed with status %d, traceId %s: %s", apiErr.HTTPStatus, apiErr.TraceID, details)
+		}
 		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 

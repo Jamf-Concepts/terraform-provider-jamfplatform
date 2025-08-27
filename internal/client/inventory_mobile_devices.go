@@ -12,7 +12,7 @@ import (
 
 // Constants used for the Jamf Inventory API
 const (
-	inventoryMobileDevicesV1Prefix          = "/devices/v1/mobile-devices"
+	inventoryMobileDevicesV1Prefix          = "/api/devices/v1/mobile-devices"
 	MobileDeviceSectionGeneral              = "GENERAL"
 	MobileDeviceSectionHardware             = "HARDWARE"
 	MobileDeviceSectionUserAndLocation      = "USER_AND_LOCATION"

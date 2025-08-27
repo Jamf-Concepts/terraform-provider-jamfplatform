@@ -17,7 +17,7 @@ func main() {
 	// Configuration - you can also use environment variables
 	clientID := "example-client-id"
 	clientSecret := "example-client-secret"
-	region := "eu" // us, eu, or apac
+	baseURL := "https://us.apigw.jamf.com"
 
 	// Alternatively, use environment variables
 	if envClientID := os.Getenv("JAMF_CLIENT_ID"); envClientID != "" {
@@ -26,12 +26,12 @@ func main() {
 	if envClientSecret := os.Getenv("JAMF_CLIENT_SECRET"); envClientSecret != "" {
 		clientSecret = envClientSecret
 	}
-	if envRegion := os.Getenv("JAMF_REGION"); envRegion != "" {
-		region = envRegion
+	if envBaseURL := os.Getenv("JAMF_BASE_URL"); envBaseURL != "" {
+		baseURL = envBaseURL
 	}
 
-	if clientID == "" || clientSecret == "" || region == "" {
-		log.Fatal("Missing required configuration: JAMF_CLIENT_ID, JAMF_CLIENT_SECRET, JAMF_REGION")
+	if clientID == "" || clientSecret == "" || baseURL == "" {
+		log.Fatal("Missing required configuration: JAMF_CLIENT_ID, JAMF_CLIENT_SECRET, JAMF_BASE_URL")
 	}
 
 	// Filter from env or default
@@ -40,8 +40,8 @@ func main() {
 		filter = envFilter
 	}
 
-	// Initialize the client (region-based)
-	apiClient := client.NewClient(region, clientID, clientSecret)
+	// Initialize the client (baseURL-based)
+	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get all computers (automatic pagination handling)
 	// This function automatically fetches all pages and returns all computers as a single slice
