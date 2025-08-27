@@ -4,10 +4,12 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -25,12 +27,20 @@ type TokenResponse struct {
 	Scope            string `json:"scope"`
 }
 
+// OAuthError represents an error response from the token endpoint (RFC 6749)
+type OAuthError struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+	ErrorURI         string `json:"error_uri"`
+}
+
 // OAuthConfig holds the OAuth configuration
 type OAuthConfig struct {
 	TokenURL     string
 	ClientID     string
 	ClientSecret string
 	Scopes       []string
+	UserAgent    string
 }
 
 // OAuthClient handles OAuth authentication and token management
@@ -41,6 +51,8 @@ type OAuthClient struct {
 	tokenExpiry   time.Time
 	GrantedScopes []string
 	mutex         sync.RWMutex
+	logger        *log.Logger
+	userAgent     string
 }
 
 // NewOAuthClient creates a new OAuth client
@@ -50,7 +62,22 @@ func NewOAuthClient(config OAuthConfig) *OAuthClient {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		userAgent: config.UserAgent,
 	}
+}
+
+// SetUserAgent sets the User-Agent header value that will be sent with token
+// requests and authenticated API requests. If empty, no User-Agent header is set.
+func (c *OAuthClient) SetUserAgent(ua string) {
+	c.mutex.Lock()
+	c.userAgent = ua
+	c.mutex.Unlock()
+}
+
+// SetLogger assigns a logger to the OAuthClient. If not set, warnings are
+// silently discarded.
+func (c *OAuthClient) SetLogger(l *log.Logger) {
+	c.logger = l
 }
 
 // SetHTTPClient allows setting a custom HTTP client
@@ -73,12 +100,13 @@ func (c *OAuthClient) GetValidToken(ctx context.Context) (string, error) {
 
 // refreshToken obtains a new access token using client credentials
 func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
+	c.mutex.RLock()
 	if c.token != nil && time.Now().Before(c.tokenExpiry) {
-		return c.token.AccessToken, nil
+		token := c.token.AccessToken
+		c.mutex.RUnlock()
+		return token, nil
 	}
+	c.mutex.RUnlock()
 
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
@@ -96,6 +124,12 @@ func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	c.mutex.RLock()
+	ua := c.userAgent
+	c.mutex.RUnlock()
+	if ua != "" {
+		req.Header.Set("User-Agent", ua)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -103,7 +137,9 @@ func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			fmt.Printf("warning: error closing response body: %v\n", err)
+			if c.logger != nil {
+				c.logger.Printf("warning: error closing response body: %v", err)
+			}
 		}
 	}()
 
@@ -113,6 +149,13 @@ func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		var oerr OAuthError
+		if err := json.Unmarshal(body, &oerr); err == nil && oerr.Error != "" {
+			if c.logger != nil {
+				c.logger.Printf("token request failed with status %d: %s: %s", resp.StatusCode, oerr.Error, oerr.ErrorDescription)
+			}
+			return "", fmt.Errorf("token request failed with status %d: %s: %s", resp.StatusCode, oerr.Error, oerr.ErrorDescription)
+		}
 		return "", fmt.Errorf("token request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -121,19 +164,26 @@ func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to parse token response: %w", err)
 	}
 
-	// Parse granted scopes from token response
+	c.mutex.Lock()
 	c.GrantedScopes = nil
 	if tokenResp.Scope != "" {
 		c.GrantedScopes = strings.Fields(tokenResp.Scope)
 	}
 
-	expiryDuration := time.Duration(tokenResp.ExpiresIn-60) * time.Second
-	if expiryDuration <= 0 {
-		expiryDuration = 5 * time.Minute
+	now := time.Now()
+	if tokenResp.ExpiresIn <= 0 {
+		c.token = &tokenResp
+		c.tokenExpiry = now.Add(5 * time.Minute)
+	} else {
+		margin := 10 * time.Second
+		expiry := now.Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		if time.Duration(tokenResp.ExpiresIn)*time.Second > margin {
+			expiry = expiry.Add(-margin)
+		}
+		c.token = &tokenResp
+		c.tokenExpiry = expiry
 	}
-
-	c.token = &tokenResp
-	c.tokenExpiry = time.Now().Add(expiryDuration)
+	c.mutex.Unlock()
 
 	return tokenResp.AccessToken, nil
 }
@@ -174,24 +224,45 @@ func (c *OAuthClient) GetTokenInfo() (accessToken string, expiresAt time.Time, i
 	return c.token.AccessToken, c.tokenExpiry, time.Now().Before(c.tokenExpiry)
 }
 
-// AuthenticatedRequest creates an HTTP request with OAuth authentication
-func (c *OAuthClient) AuthenticatedRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+// AuthenticatedRequest creates an HTTP request with OAuth authentication.
+func (c *OAuthClient) AuthenticatedRequest(ctx context.Context, method, url string, body []byte) (*http.Request, error) {
 	token, err := c.GetValidToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get valid token: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
+	if body != nil {
+		if method == http.MethodPatch {
+			req.Header.Set("Content-Type", "application/merge-patch+json")
+		} else {
+			req.Header.Set("Content-Type", "application/json")
+		}
+	}
+	c.mutex.RLock()
+	ua := c.userAgent
+	c.mutex.RUnlock()
+	if ua != "" {
+		req.Header.Set("User-Agent", ua)
+	}
+
 	return req, nil
 }
 
-// Do performs an authenticated HTTP request
-func (c *OAuthClient) Do(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {
+// Do performs an authenticated HTTP request. The body is provided as a
+// byte slice so retries can recreate the request body reader.
+func (c *OAuthClient) Do(ctx context.Context, method, url string, body []byte) (*http.Response, error) {
+	// First attempt
 	req, err := c.AuthenticatedRequest(ctx, method, url, body)
 	if err != nil {
 		return nil, err
@@ -204,21 +275,17 @@ func (c *OAuthClient) Do(ctx context.Context, method, url string, body io.Reader
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		if err := resp.Body.Close(); err != nil {
-			fmt.Printf("warning: error closing response body: %v\n", err)
+			if c.logger != nil {
+				c.logger.Printf("warning: error closing response body: %v", err)
+			}
 		}
 
 		c.ClearToken()
 
-		token, err := c.GetValidToken(ctx)
+		req, err = c.AuthenticatedRequest(ctx, method, url, body)
 		if err != nil {
-			return nil, fmt.Errorf("failed to refresh token after 401: %w", err)
+			return nil, fmt.Errorf("failed to create authenticated request after 401: %w", err)
 		}
-
-		req, err = http.NewRequestWithContext(ctx, method, url, body)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
 
 		resp, err = c.httpClient.Do(req)
 		if err != nil {
