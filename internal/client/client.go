@@ -4,7 +4,6 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +17,7 @@ type Client struct {
 	baseURL     string
 }
 
+// ApiError represents an error response from the API
 type ApiError struct {
 	HTTPStatus int     `json:"httpStatus"`
 	TraceID    string  `json:"traceId"`
@@ -81,10 +81,9 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request body: %w", err)
 		}
-		requestBody = bytes.NewReader(requestBodyBytes)
 	}
 
-	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBody)
+	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBodyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authenticated request: %w", err)
 	}
@@ -109,20 +108,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 
 		c.oauthClient.ClearToken()
 
-		req, err = c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBody)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create authenticated request after 401: %w", err)
-		}
-
-		if body != nil {
-			if method == http.MethodPatch {
-				req.Header.Set("Content-Type", "application/merge-patch+json")
-			} else {
-				req.Header.Set("Content-Type", "application/json")
-			}
-		}
-
-		resp, err = c.oauthClient.httpClient.Do(req)
+		resp, err = c.oauthClient.Do(ctx, method, fullURL, requestBodyBytes)
 		if err != nil {
 			return nil, fmt.Errorf("API request failed on retry: %w", err)
 		}
@@ -145,15 +131,23 @@ func (c *Client) handleAPIResponse(resp *http.Response, expectedStatus int, resu
 
 	if resp.StatusCode != expectedStatus {
 		body, _ := io.ReadAll(resp.Body)
+
+		requestInfo := fmt.Sprintf("method=%s, url=%s", resp.Request.Method, resp.Request.URL.String())
+
 		var apiErr ApiError
 		if err := json.Unmarshal(body, &apiErr); err == nil && len(apiErr.Errors) > 0 {
 			var details []string
 			for _, e := range apiErr.Errors {
 				details = append(details, fmt.Sprintf("[%s] %s: %s", e.Code, e.Field, e.Description))
 			}
-			return fmt.Errorf("API request failed with status %d, traceId %s: %s", apiErr.HTTPStatus, apiErr.TraceID, details)
+			return fmt.Errorf("API request failed with status %d, traceId %s (%s): %s", apiErr.HTTPStatus, apiErr.TraceID, requestInfo, details)
 		}
-		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+
+		if resp.StatusCode >= 500 {
+			return fmt.Errorf("server error (status %d) for %s: %s - this appears to be a server-side issue, consider retrying or checking server logs", resp.StatusCode, requestInfo, string(body))
+		}
+
+		return fmt.Errorf("API request failed with status %d (%s): %s", resp.StatusCode, requestInfo, string(body))
 	}
 
 	if result != nil {
