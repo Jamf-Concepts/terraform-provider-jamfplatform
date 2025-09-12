@@ -124,8 +124,8 @@ type BlueprintCreateResponse struct {
 
 // Blueprint API path constants
 const (
-	blueprintV1Prefix           = "/blueprints/api/v1/blueprints"
-	blueprintComponentsV1Prefix = "/blueprints/api/v1/blueprint-components"
+	blueprintV1Prefix           = "/api/blueprints/v1/blueprints"
+	blueprintComponentsV1Prefix = "/api/blueprints/v1/blueprint-components"
 )
 
 // GetBlueprints returns all blueprints, automatically handling pagination
