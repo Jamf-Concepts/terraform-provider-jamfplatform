@@ -1,6 +1,6 @@
 module github.com/Jamf-Concepts/terraform-provider-jamfplatform
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.16.0
