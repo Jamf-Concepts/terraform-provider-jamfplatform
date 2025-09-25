@@ -162,3 +162,12 @@ func main() {
 See the [examples/client/](./examples/client/) directory for full working Go examples.
 
 ---
+
+## Feedback & Discussion
+
+Please contact the project principles via [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues). The Jamf Terraform community has discussions in #terraform-provider-jamfpro on [MacAdmins Slack](https://www.macadmins.org/). 
+
+
+&nbsp;
+
+*Copyright 2025, Jamf Software LLC.*
