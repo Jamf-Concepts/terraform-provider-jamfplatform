@@ -1,0 +1,6 @@
+# CODEOWNERS
+# Specify code owners for this repository.
+# Format: <pattern> <owner> (use @username for GitHub users)
+
+# Default owner for all files
+* @neilmartin83 @Jamf-Concepts/jamf-concepts-maintainer

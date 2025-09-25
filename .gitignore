@@ -77,3 +77,6 @@ terraform.rc
 
 # Ignore compiled provider binaries
 terraform-provider-*
+/.scannerwork
+tflint-report.json
+tfsec-report.json
