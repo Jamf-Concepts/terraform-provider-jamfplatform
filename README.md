@@ -165,9 +165,15 @@ See the [examples/client/](./examples/client/) directory for full working Go exa
 
 ## Feedback & Discussion
 
-Please contact the project principles via [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues). The Jamf Terraform community has discussions in #terraform-provider-jamfpro on [MacAdmins Slack](https://www.macadmins.org/). 
-
+Please contact the project principles via [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues). The Jamf Terraform community has discussions in #terraform-provider-jamfpro on [MacAdmins Slack](https://www.macadmins.org/).
 
 &nbsp;
 
 *Copyright 2025, Jamf Software LLC.*
+
+## Included components
+
+The following third party acknowledgements and licenses are incorporated by reference:
+
+* [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) ([MPL](https://github.com/hashicorp/terraform-plugin-framework?tab=MPL-2.0-1-ov-file))
+* [Terraform Plugin Log](https://github.com/hashicorp/terraform-plugin-log) ([MPL](https://github.com/hashicorp/terraform-plugin-log?tab=MPL-2.0-1-ov-file))

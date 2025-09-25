@@ -1,3 +1,5 @@
+// Copyright 2025 Jamf Software LLC.
+
 package mobiledevice
 
 import (
