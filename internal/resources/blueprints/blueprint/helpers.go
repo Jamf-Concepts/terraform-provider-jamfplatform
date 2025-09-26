@@ -113,6 +113,13 @@ func setNestedValue(obj map[string]interface{}, key string, value string) {
 	} else if num, err := strconv.Atoi(value); err == nil {
 		current[finalKey] = num
 	} else {
+		if strings.HasPrefix(value, "[") || strings.HasPrefix(value, "{") {
+			var jsonValue interface{}
+			if err := json.Unmarshal([]byte(value), &jsonValue); err == nil {
+				current[finalKey] = jsonValue
+				return
+			}
+		}
 		current[finalKey] = value
 	}
 }
