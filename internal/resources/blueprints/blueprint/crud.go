@@ -120,6 +120,14 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "Blueprint not found, removing from state", map[string]interface{}{
+				"blueprint_id": data.ID.ValueString(),
+			})
+			resp.State.RemoveResource(ctx)
+			return
+		}
+
 		resp.Diagnostics.AddError(
 			"Error reading blueprint",
 			"Could not read blueprint: "+err.Error(),
@@ -244,6 +252,13 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err := r.client.DeleteBlueprint(ctx, data.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "Blueprint already deleted", map[string]interface{}{
+				"blueprint_id": data.ID.ValueString(),
+			})
+			return
+		}
+
 		resp.Diagnostics.AddError(
 			"Error deleting blueprint",
 			"Could not delete blueprint: "+err.Error(),

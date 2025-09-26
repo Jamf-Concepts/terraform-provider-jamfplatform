@@ -60,16 +60,16 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 		Description: "Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure base_url and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
-				Required:    true,
+				Optional:    true,
 				Description: "The Jamf Platform base URL to use (e.g., https://us.apigw.jamf.com for production US region or https://us.stage.apigw.jamfnebula.com for internal staging US region). Can also be set via the JAMFPLATFORM_BASE_URL environment variable.",
 			},
 			"client_id": schema.StringAttribute{
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
 				Description: "OAuth client ID for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_ID environment variable.",
 			},
 			"client_secret": schema.StringAttribute{
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
 				Description: "OAuth client secret for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_SECRET environment variable.",
 			},

@@ -33,20 +33,32 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 
 	if len(blueprint.Steps) > 0 {
 		step := blueprint.Steps[0]
-		components := make([]ComponentModel, len(step.Components))
-		for i, comp := range step.Components {
-			configMap := make(map[string]string)
-			if comp.Configuration != nil {
-				var jsonObj map[string]interface{}
-				if err := json.Unmarshal(comp.Configuration, &jsonObj); err == nil {
-					flattenJSON(jsonObj, "", configMap)
-				}
-			}
 
-			configMapValue, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
-			components[i] = ComponentModel{
-				Identifier:    types.StringValue(comp.Identifier),
-				Configuration: configMapValue,
+		apiComponentsByID := make(map[string]client.BlueprintComponent)
+		for _, comp := range step.Components {
+			apiComponentsByID[comp.Identifier] = comp
+		}
+
+		components := make([]ComponentModel, len(model.Components))
+		for i, modelComp := range model.Components {
+			identifier := modelComp.Identifier.ValueString()
+
+			if apiComp, exists := apiComponentsByID[identifier]; exists {
+				configMap := make(map[string]string)
+				if apiComp.Configuration != nil {
+					var jsonObj map[string]interface{}
+					if err := json.Unmarshal(apiComp.Configuration, &jsonObj); err == nil {
+						flattenJSON(jsonObj, "", configMap)
+					}
+				}
+
+				configMapValue, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
+				components[i] = ComponentModel{
+					Identifier:    types.StringValue(apiComp.Identifier),
+					Configuration: configMapValue,
+				}
+			} else {
+				components[i] = modelComp
 			}
 		}
 		model.Components = components
@@ -138,4 +150,15 @@ func flattenJSON(obj map[string]interface{}, prefix string, result map[string]st
 			}
 		}
 	}
+}
+
+// isNotFoundError checks if the error is a 404 not found error
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errorStr := err.Error()
+	return strings.Contains(errorStr, "status 404") ||
+		strings.Contains(errorStr, "was not found") ||
+		strings.Contains(errorStr, "NOT_FOUND")
 }
