@@ -5,6 +5,7 @@ package blueprint
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -84,13 +85,15 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	time.Sleep(2 * time.Second)
+
 	err = r.client.DeployBlueprint(ctx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error deploying blueprint",
-			"Blueprint was created successfully but could not be deployed: "+err.Error(),
+		resp.Diagnostics.AddWarning(
+			"Blueprint deployment failed",
+			"Blueprint was created successfully but could not be deployed: "+err.Error()+
+				". The blueprint exists in your Jamf instance but is not yet deployed. You can manually deploy it or run 'terraform apply' again to retry deployment.",
 		)
-		return
 	}
 
 	blueprint, err := r.client.GetBlueprintByID(ctx, createResp.ID)
@@ -213,13 +216,15 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	time.Sleep(2 * time.Second)
+
 	err = r.client.DeployBlueprint(ctx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error deploying blueprint",
-			"Blueprint was updated successfully but could not be deployed: "+err.Error(),
+		resp.Diagnostics.AddWarning(
+			"Blueprint deployment failed",
+			"Blueprint was updated successfully but could not be deployed: "+err.Error()+
+				". The blueprint changes exist in your Jamf instance but are not yet deployed. You can manually deploy it or run 'terraform apply' again to retry deployment.",
 		)
-		return
 	}
 
 	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
