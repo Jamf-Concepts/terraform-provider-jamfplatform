@@ -169,3 +169,13 @@ func isNotFoundError(err error) bool {
 		strings.Contains(errorStr, "was not found") ||
 		strings.Contains(errorStr, "NOT_FOUND")
 }
+
+// isServerError checks if the error is a server error (500)
+func isServerError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errorStr := err.Error()
+	return strings.Contains(errorStr, "status 500") ||
+		strings.Contains(errorStr, "Internal Server Error")
+}

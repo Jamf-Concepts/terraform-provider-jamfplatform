@@ -5,7 +5,6 @@ package blueprint
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -85,14 +84,12 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	time.Sleep(2 * time.Second)
-
 	err = r.client.DeployBlueprint(ctx, createResp.ID)
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Blueprint deployment failed",
-			"Blueprint was created successfully but could not be deployed: "+err.Error()+
-				". The blueprint exists in your Jamf instance but is not yet deployed. You can manually deploy it or run 'terraform apply' again to retry deployment.",
+			"Blueprint was created successfully but may not have been deployed: "+err.Error()+
+				". The blueprint may have been deployed despite the error. Check your Jamf instance to verify the blueprint status.",
 		)
 	}
 
@@ -216,14 +213,12 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	time.Sleep(2 * time.Second)
-
 	err = r.client.DeployBlueprint(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Blueprint deployment failed",
-			"Blueprint was updated successfully but could not be deployed: "+err.Error()+
-				". The blueprint changes exist in your Jamf instance but are not yet deployed. You can manually deploy it or run 'terraform apply' again to retry deployment.",
+			"Blueprint was updated successfully but may not have been deployed: "+err.Error()+
+				". The blueprint may have been deployed despite the error. Check your Jamf instance to verify the blueprint status.",
 		)
 	}
 
@@ -261,6 +256,15 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 			tflog.Info(ctx, "Blueprint already deleted", map[string]interface{}{
 				"blueprint_id": data.ID.ValueString(),
 			})
+			return
+		}
+
+		if isServerError(err) {
+			resp.Diagnostics.AddWarning(
+				"Blueprint deletion encountered server error",
+				"Delete operation encountered a server error: "+err.Error()+
+					". The blueprint may have been deleted despite the error. Check your Jamf instance to verify the blueprint status.",
+			)
 			return
 		}
 
