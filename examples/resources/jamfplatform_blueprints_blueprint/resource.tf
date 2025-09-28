@@ -1,102 +1,50 @@
 # Software Update Settings Blueprint
-resource "jamfplatform_blueprints_blueprint" "software_update" {
-  name = "Software Update Settings Blueprint"
+resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
+  name        = "Software Update Settings"
+  description = "Managed by Terraform"
 
-  # Use the same device group as the security blueprint
-  device_groups = [
-    "fce3d9a5-8660-42ff-a95e-625e7b53b48a"
-  ]
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  # Blueprint component
-  component {
-    identifier = "com.jamf.ddm.software-update-settings"
-    configuration = {
-      AllowStandardUserOSUpdates_Enabled              = true
-      AllowStandardUserOSUpdates_Included             = true
-      AutomaticActions_Download_Included              = true
-      AutomaticActions_Download_Value                 = "AlwaysOn"
-      AutomaticActions_InstallOSUpdates_Included      = true
-      AutomaticActions_InstallOSUpdates_Value         = "AlwaysOn"
-      AutomaticActions_InstallSecurityUpdate_Included = true
-      AutomaticActions_InstallSecurityUpdate_Value    = "AlwaysOn"
-      Beta_Included                                   = true
-      Beta_Value_ProgramEnrollment                    = "AlwaysOff"
-      Deferrals_CombinedPeriodInDays_Included         = true
-      Deferrals_CombinedPeriodInDays_Value            = 7
-      Deferrals_MajorPeriodInDays_Included            = true
-      Deferrals_MajorPeriodInDays_Value               = 30
-      Deferrals_MinorPeriodInDays_Included            = true
-      Deferrals_MinorPeriodInDays_Value               = 7
-      Deferrals_SystemPeriodInDays_Included           = true
-      Deferrals_SystemPeriodInDays_Value              = 7
-      Notifications_Enabled                           = true
-      Notifications_Included                          = true
-      RapidSecurityResponse_EnableRollback_Enabled    = false
-      RapidSecurityResponse_EnableRollback_Included   = true
-      RapidSecurityResponse_Enable_Enabled            = true
-      RapidSecurityResponse_Enable_Included           = true
-      RecommendedCadence_Included                     = true
-      RecommendedCadence_Value                        = "Newest"
+  software_update_settings {
+    allow_standard_user_os_updates           = true
+    automatic_download                       = "AlwaysOn"
+    automatic_install_os_updates             = "AlwaysOn"
+    automatic_install_security_updates       = "AlwaysOn"
+    beta_program_enrollment                  = "Allowed"
+    deferral_combined_period_days            = 7
+    deferral_major_period_days               = 30
+    deferral_minor_period_days               = 14
+    deferral_system_period_days              = 3
+    notifications_enabled                    = true
+    rapid_security_response_enabled          = true
+    rapid_security_response_rollback_enabled = false
+    recommended_cadence                      = "Newest"
+
+    beta_offer_programs {
+      token       = "beta-token-1"
+      description = "iOS 18 Beta Program"
+    }
+
+    beta_offer_programs {
+      token       = "beta-token-2"
+      description = "macOS Sequoia Beta Program"
     }
   }
 }
 
-# Security Settings Blueprint (Disk Management and Passcode)
-resource "jamfplatform_blueprints_blueprint" "security" {
-  provider    = jamfplatform.blueprints
-  name        = "Security Blueprint"
-  description = "Created by Terraform"
+# Legacy Payloads Example Blueprint
+resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
+  name        = "Restrictions for Safari"
+  description = "Managed by Terraform"
 
-  # Device groups to target (must be valid device group IDs)
-  device_groups = [
-    "fce3d9a5-8660-42ff-a95e-625e7b53b48a"
-  ]
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  # Blueprint components
-  component {
-    identifier = "com.jamf.ddm.disk-management"
-    configuration = {
-      version                               = 2
-      Restrictions_NetworkStorage_Value     = "ReadOnly"
-      Restrictions_NetworkStorage_Included  = true
-      Restrictions_ExternalStorage_Value    = "Disallowed"
-      Restrictions_ExternalStorage_Included = true
+  legacy_payloads = jsonencode([
+    {
+      allowSafariHistoryClearing = false
+      allowSafariPrivateBrowsing = false
+      payloadType                = "com.apple.applicationaccess"
+      payloadIdentifier          = "da0ac44c-419e-43ff-b300-00b0e645fa7e"
     }
-  }
-
-  component {
-    identifier = "com.jamf.ddm.passcode-settings"
-    configuration = {
-      RequirePasscode             = true
-      ChangeAtNextAuth            = false
-      RequireComplexPasscode      = true
-      MinimumComplexCharacters    = 1
-      RequireAlphanumericPasscode = false
-    }
-  }
-}
-
-# Safari Settings Blueprint
-resource "jamfplatform_blueprints_blueprint" "safari_settings" {
-  provider    = jamfplatform.blueprints
-  name        = "Safari Settings Blueprint"
-  description = "Created by Terraform"
-
-  # Use the same device group as the security blueprint
-  device_groups = [
-    "fce3d9a5-8660-42ff-a95e-625e7b53b48a"
-  ]
-
-  # Blueprint component
-  component {
-    identifier = "com.jamf.ddm.safari-settings"
-    configuration = {
-      AllowHistoryClearing_Value          = false
-      AllowHistoryClearing_Included       = true
-      AllowPrivateBrowsing_Value          = false
-      AllowPrivateBrowsing_Included       = true
-      AllowDisablingFraudWarning_Value    = false
-      AllowDisablingFraudWarning_Included = true
-    }
-  }
+  ])
 }

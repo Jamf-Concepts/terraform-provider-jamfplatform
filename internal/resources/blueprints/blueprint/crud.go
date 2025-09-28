@@ -4,7 +4,6 @@ package blueprint
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -25,44 +24,16 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	components := make([]client.BlueprintComponent, len(data.Components))
-	for i, comp := range data.Components {
-		component := client.BlueprintComponent{
-			Identifier: comp.Identifier.ValueString(),
-		}
-
-		if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
-			configMap := make(map[string]string)
-			diags := comp.Configuration.ElementsAs(ctx, &configMap, false)
-			if diags.HasError() {
-				resp.Diagnostics.Append(diags...)
-				return
-			}
-
-			jsonObj := make(map[string]interface{})
-			for key, value := range configMap {
-				setNestedValue(jsonObj, key, value)
-			}
-
-			jsonBytes, err := json.Marshal(jsonObj)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Error encoding component configuration",
-					"Could not encode component configuration to JSON: "+err.Error(),
-				)
-				return
-			}
-
-			normalizedConfig := normalizeJSON(string(jsonBytes))
-			component.Configuration = json.RawMessage(normalizedConfig)
-		}
-		components[i] = component
+	allComponents, diags := r.collectAllComponents(ctx, &data)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	steps := []client.BlueprintStep{
 		{
 			Name:       "Declaration group",
-			Components: components,
+			Components: allComponents,
 		},
 	}
 
@@ -154,44 +125,16 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	components := make([]client.BlueprintComponent, len(data.Components))
-	for i, comp := range data.Components {
-		component := client.BlueprintComponent{
-			Identifier: comp.Identifier.ValueString(),
-		}
-
-		if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
-			configMap := make(map[string]string)
-			diags := comp.Configuration.ElementsAs(ctx, &configMap, false)
-			if diags.HasError() {
-				resp.Diagnostics.Append(diags...)
-				return
-			}
-
-			jsonObj := make(map[string]interface{})
-			for key, value := range configMap {
-				setNestedValue(jsonObj, key, value)
-			}
-
-			jsonBytes, err := json.Marshal(jsonObj)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Error encoding component configuration",
-					"Could not encode component configuration to JSON: "+err.Error(),
-				)
-				return
-			}
-
-			normalizedConfig := normalizeJSON(string(jsonBytes))
-			component.Configuration = json.RawMessage(normalizedConfig)
-		}
-		components[i] = component
+	allComponents, diags := r.collectAllComponents(ctx, &data)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	steps := []client.BlueprintStep{
 		{
 			Name:       "Declaration group",
-			Components: components,
+			Components: allComponents,
 		},
 	}
 
