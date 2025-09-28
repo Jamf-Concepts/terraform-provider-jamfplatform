@@ -78,7 +78,7 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 - `audio_accessory_settings` (Block List) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedblock--audio_accessory_settings))
 - `description` (String) Blueprint description.
 - `disk_management_settings` (Block List) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedblock--disk_management_settings))
-- `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas Each payload must have payloadType and payloadIdentifier fields. The payload display name will automatically use the blueprint name.
+- `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have payloadType and payloadIdentifier fields. The payload display name will automatically use the blueprint name.
 - `math_settings` (Block List) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedblock--math_settings))
 - `passcode_policy` (Block List) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedblock--passcode_policy))
 - `raw_component` (Block List) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedblock--raw_component))
