@@ -4,7 +4,6 @@ package blueprint
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -25,44 +24,16 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	components := make([]client.BlueprintComponent, len(data.Components))
-	for i, comp := range data.Components {
-		component := client.BlueprintComponent{
-			Identifier: comp.Identifier.ValueString(),
-		}
-
-		if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
-			configMap := make(map[string]string)
-			diags := comp.Configuration.ElementsAs(ctx, &configMap, false)
-			if diags.HasError() {
-				resp.Diagnostics.Append(diags...)
-				return
-			}
-
-			jsonObj := make(map[string]interface{})
-			for key, value := range configMap {
-				setNestedValue(jsonObj, key, value)
-			}
-
-			jsonBytes, err := json.Marshal(jsonObj)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Error encoding component configuration",
-					"Could not encode component configuration to JSON: "+err.Error(),
-				)
-				return
-			}
-
-			normalizedConfig := normalizeJSON(string(jsonBytes))
-			component.Configuration = json.RawMessage(normalizedConfig)
-		}
-		components[i] = component
+	allComponents, diags := r.collectAllComponents(ctx, &data)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	steps := []client.BlueprintStep{
 		{
 			Name:       "Declaration group",
-			Components: components,
+			Components: allComponents,
 		},
 	}
 
@@ -86,11 +57,11 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 
 	err = r.client.DeployBlueprint(ctx, createResp.ID)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error deploying blueprint",
-			"Blueprint was created successfully but could not be deployed: "+err.Error(),
+		resp.Diagnostics.AddWarning(
+			"Blueprint deployment failed",
+			"Blueprint was created successfully but may not have been deployed: "+err.Error()+
+				". The blueprint may have been deployed despite the error. Check your Jamf instance to verify the blueprint status.",
 		)
-		return
 	}
 
 	blueprint, err := r.client.GetBlueprintByID(ctx, createResp.ID)
@@ -120,6 +91,14 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "Blueprint not found, removing from state", map[string]interface{}{
+				"blueprint_id": data.ID.ValueString(),
+			})
+			resp.State.RemoveResource(ctx)
+			return
+		}
+
 		resp.Diagnostics.AddError(
 			"Error reading blueprint",
 			"Could not read blueprint: "+err.Error(),
@@ -146,44 +125,16 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		deviceGroups[i] = dg.ValueString()
 	}
 
-	components := make([]client.BlueprintComponent, len(data.Components))
-	for i, comp := range data.Components {
-		component := client.BlueprintComponent{
-			Identifier: comp.Identifier.ValueString(),
-		}
-
-		if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
-			configMap := make(map[string]string)
-			diags := comp.Configuration.ElementsAs(ctx, &configMap, false)
-			if diags.HasError() {
-				resp.Diagnostics.Append(diags...)
-				return
-			}
-
-			jsonObj := make(map[string]interface{})
-			for key, value := range configMap {
-				setNestedValue(jsonObj, key, value)
-			}
-
-			jsonBytes, err := json.Marshal(jsonObj)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Error encoding component configuration",
-					"Could not encode component configuration to JSON: "+err.Error(),
-				)
-				return
-			}
-
-			normalizedConfig := normalizeJSON(string(jsonBytes))
-			component.Configuration = json.RawMessage(normalizedConfig)
-		}
-		components[i] = component
+	allComponents, diags := r.collectAllComponents(ctx, &data)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	steps := []client.BlueprintStep{
 		{
 			Name:       "Declaration group",
-			Components: components,
+			Components: allComponents,
 		},
 	}
 
@@ -207,11 +158,11 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 
 	err = r.client.DeployBlueprint(ctx, data.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error deploying blueprint",
-			"Blueprint was updated successfully but could not be deployed: "+err.Error(),
+		resp.Diagnostics.AddWarning(
+			"Blueprint deployment failed",
+			"Blueprint was updated successfully but may not have been deployed: "+err.Error()+
+				". The blueprint may have been deployed despite the error. Check your Jamf instance to verify the blueprint status.",
 		)
-		return
 	}
 
 	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
@@ -244,6 +195,22 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err := r.client.DeleteBlueprint(ctx, data.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "Blueprint already deleted", map[string]interface{}{
+				"blueprint_id": data.ID.ValueString(),
+			})
+			return
+		}
+
+		if isServerError(err) {
+			resp.Diagnostics.AddWarning(
+				"Blueprint deletion encountered server error",
+				"Delete operation encountered a server error: "+err.Error()+
+					". The blueprint may have been deleted despite the error. Check your Jamf instance to verify the blueprint status.",
+			)
+			return
+		}
+
 		resp.Diagnostics.AddError(
 			"Error deleting blueprint",
 			"Could not delete blueprint: "+err.Error(),

@@ -14,106 +14,54 @@ Resource schema for creating and managing Jamf Blueprints. Blueprints are automa
 
 ```terraform
 # Software Update Settings Blueprint
-resource "jamfplatform_blueprints_blueprint" "software_update" {
-  name = "Software Update Settings Blueprint"
+resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
+  name        = "Software Update Settings"
+  description = "Managed by Terraform"
 
-  # Use the same device group as the security blueprint
-  device_groups = [
-    "fce3d9a5-8660-42ff-a95e-625e7b53b48a"
-  ]
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  # Blueprint component
-  component {
-    identifier = "com.jamf.ddm.software-update-settings"
-    configuration = {
-      AllowStandardUserOSUpdates_Enabled              = true
-      AllowStandardUserOSUpdates_Included             = true
-      AutomaticActions_Download_Included              = true
-      AutomaticActions_Download_Value                 = "AlwaysOn"
-      AutomaticActions_InstallOSUpdates_Included      = true
-      AutomaticActions_InstallOSUpdates_Value         = "AlwaysOn"
-      AutomaticActions_InstallSecurityUpdate_Included = true
-      AutomaticActions_InstallSecurityUpdate_Value    = "AlwaysOn"
-      Beta_Included                                   = true
-      Beta_Value_ProgramEnrollment                    = "AlwaysOff"
-      Deferrals_CombinedPeriodInDays_Included         = true
-      Deferrals_CombinedPeriodInDays_Value            = 7
-      Deferrals_MajorPeriodInDays_Included            = true
-      Deferrals_MajorPeriodInDays_Value               = 30
-      Deferrals_MinorPeriodInDays_Included            = true
-      Deferrals_MinorPeriodInDays_Value               = 7
-      Deferrals_SystemPeriodInDays_Included           = true
-      Deferrals_SystemPeriodInDays_Value              = 7
-      Notifications_Enabled                           = true
-      Notifications_Included                          = true
-      RapidSecurityResponse_EnableRollback_Enabled    = false
-      RapidSecurityResponse_EnableRollback_Included   = true
-      RapidSecurityResponse_Enable_Enabled            = true
-      RapidSecurityResponse_Enable_Included           = true
-      RecommendedCadence_Included                     = true
-      RecommendedCadence_Value                        = "Newest"
+  software_update_settings {
+    allow_standard_user_os_updates           = true
+    automatic_download                       = "AlwaysOn"
+    automatic_install_os_updates             = "AlwaysOn"
+    automatic_install_security_updates       = "AlwaysOn"
+    beta_program_enrollment                  = "Allowed"
+    deferral_combined_period_days            = 7
+    deferral_major_period_days               = 30
+    deferral_minor_period_days               = 14
+    deferral_system_period_days              = 3
+    notifications_enabled                    = true
+    rapid_security_response_enabled          = true
+    rapid_security_response_rollback_enabled = false
+    recommended_cadence                      = "Newest"
+
+    beta_offer_programs {
+      token       = "beta-token-1"
+      description = "iOS 18 Beta Program"
+    }
+
+    beta_offer_programs {
+      token       = "beta-token-2"
+      description = "macOS Sequoia Beta Program"
     }
   }
 }
 
-# Security Settings Blueprint (Disk Management and Passcode)
-resource "jamfplatform_blueprints_blueprint" "security" {
-  provider    = jamfplatform.blueprints
-  name        = "Security Blueprint"
-  description = "Created by Terraform"
+# Legacy Payloads Example Blueprint
+resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
+  name        = "Restrictions for Safari"
+  description = "Managed by Terraform"
 
-  # Device groups to target (must be valid device group IDs)
-  device_groups = [
-    "fce3d9a5-8660-42ff-a95e-625e7b53b48a"
-  ]
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  # Blueprint components
-  component {
-    identifier = "com.jamf.ddm.disk-management"
-    configuration = {
-      version                               = 2
-      Restrictions_NetworkStorage_Value     = "ReadOnly"
-      Restrictions_NetworkStorage_Included  = true
-      Restrictions_ExternalStorage_Value    = "Disallowed"
-      Restrictions_ExternalStorage_Included = true
+  legacy_payloads = jsonencode([
+    {
+      allowSafariHistoryClearing = false
+      allowSafariPrivateBrowsing = false
+      payloadType                = "com.apple.applicationaccess"
+      payloadIdentifier          = "da0ac44c-419e-43ff-b300-00b0e645fa7e"
     }
-  }
-
-  component {
-    identifier = "com.jamf.ddm.passcode-settings"
-    configuration = {
-      RequirePasscode             = true
-      ChangeAtNextAuth            = false
-      RequireComplexPasscode      = true
-      MinimumComplexCharacters    = 1
-      RequireAlphanumericPasscode = false
-    }
-  }
-}
-
-# Safari Settings Blueprint
-resource "jamfplatform_blueprints_blueprint" "safari_settings" {
-  provider    = jamfplatform.blueprints
-  name        = "Safari Settings Blueprint"
-  description = "Created by Terraform"
-
-  # Use the same device group as the security blueprint
-  device_groups = [
-    "fce3d9a5-8660-42ff-a95e-625e7b53b48a"
-  ]
-
-  # Blueprint component
-  component {
-    identifier = "com.jamf.ddm.safari-settings"
-    configuration = {
-      AllowHistoryClearing_Value          = false
-      AllowHistoryClearing_Included       = true
-      AllowPrivateBrowsing_Value          = false
-      AllowPrivateBrowsing_Included       = true
-      AllowDisablingFraudWarning_Value    = false
-      AllowDisablingFraudWarning_Included = true
-    }
-  }
+  ])
 }
 ```
 
@@ -127,8 +75,20 @@ resource "jamfplatform_blueprints_blueprint" "safari_settings" {
 
 ### Optional
 
-- `component` (Block List) Component configuration. All components will be placed in a 'Declaration group' step automatically. (see [below for nested schema](#nestedblock--component))
+- `audio_accessory_settings` (Block List) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedblock--audio_accessory_settings))
 - `description` (String) Blueprint description.
+- `disk_management_settings` (Block List) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedblock--disk_management_settings))
+- `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have payloadType and payloadIdentifier fields. The payload display name will automatically use the blueprint name.
+- `math_settings` (Block List) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedblock--math_settings))
+- `passcode_policy` (Block List) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedblock--passcode_policy))
+- `raw_component` (Block List) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedblock--raw_component))
+- `safari_bookmarks` (Block List) Safari bookmarks component for managing Safari managed bookmarks and bookmark groups. (see [below for nested schema](#nestedblock--safari_bookmarks))
+- `safari_extensions` (Block List) Safari extensions component for managing Safari extension permissions and states. (see [below for nested schema](#nestedblock--safari_extensions))
+- `safari_settings` (Block List) Safari settings component for managing Safari browser behavior and security settings. (see [below for nested schema](#nestedblock--safari_settings))
+- `service_background_tasks` (Block List) Service background tasks component for managing background service tasks and launchd configurations. (see [below for nested schema](#nestedblock--service_background_tasks))
+- `service_configuration_files` (Block List) Service configuration files component for managing configuration files for system services. (see [below for nested schema](#nestedblock--service_configuration_files))
+- `software_update` (Block List) Software update component for enforcing OS updates on devices. (see [below for nested schema](#nestedblock--software_update))
+- `software_update_settings` (Block List) Software update settings component for configuring system update behavior and policies. (see [below for nested schema](#nestedblock--software_update_settings))
 
 ### Read-Only
 
@@ -137,8 +97,61 @@ resource "jamfplatform_blueprints_blueprint" "safari_settings" {
 - `id` (String) The unique identifier for the blueprint.
 - `updated` (String) Last updated timestamp.
 
-<a id="nestedblock--component"></a>
-### Nested Schema for `component`
+<a id="nestedblock--audio_accessory_settings"></a>
+### Nested Schema for `audio_accessory_settings`
+
+Optional:
+
+- `temporary_pairing_disabled` (Boolean) If true, temporary pairing of audio accessories is disabled.
+- `unpairing_time_hour` (Number) The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is 'Hour'. Range: 0-23.
+- `unpairing_time_policy` (String) Device's unpairing policy. Valid values: None, Hour.
+
+
+<a id="nestedblock--disk_management_settings"></a>
+### Nested Schema for `disk_management_settings`
+
+Optional:
+
+- `external_storage` (String) Storage mode for external storage. Valid values: Allowed, Disallowed, ReadOnly.
+- `network_storage` (String) Storage mode for network storage. Valid values: Allowed, Disallowed, ReadOnly.
+
+
+<a id="nestedblock--math_settings"></a>
+### Nested Schema for `math_settings`
+
+Optional:
+
+- `calculator_basic_mode_add_square_root` (Boolean) Add the square root button to the basic calculator by replacing the +/- button.
+- `calculator_input_modes_rpn` (Boolean) Configures whether RPN input is enabled in Calculator.
+- `calculator_input_modes_unit_conversion` (Boolean) Configures whether unit conversions are enabled in Calculator.
+- `calculator_math_notes_mode_enabled` (Boolean) Controls whether the Math Notes mode is enabled in Calculator.
+- `calculator_programmer_mode_enabled` (Boolean) Controls whether the programmer mode is enabled in Calculator.
+- `calculator_scientific_mode_enabled` (Boolean) Controls whether the scientific mode is enabled in Calculator.
+- `system_behavior_keyboard_suggestions` (Boolean) Controls whether keyboard suggestions include math solutions.
+- `system_behavior_math_notes` (Boolean) Controls whether Math Notes is allowed in other apps such as Notes.
+
+
+<a id="nestedblock--passcode_policy"></a>
+### Nested Schema for `passcode_policy`
+
+Optional:
+
+- `change_at_next_auth` (Boolean) Change at next auth.
+- `failed_attempts_reset_in_minutes` (Number) Failed attempts reset in minutes. Minimum: 0.
+- `maximum_failed_attempts` (Number) Maximum failed attempts. Range: 2-11.
+- `maximum_grace_period_in_minutes` (Number) Maximum grace period in minutes. Minimum: 0.
+- `maximum_inactivity_in_minutes` (Number) Maximum inactivity in minutes. Range: 0-15.
+- `maximum_passcode_age_in_days` (Number) Maximum passcode age in days. Range: 0-730.
+- `minimum_complex_characters` (Number) Minimum complex characters. Range: 0-4.
+- `minimum_length` (Number) Minimum length. Range: 0-16.
+- `passcode_reuse_limit` (Number) Passcode reuse limit. Range: 1-50.
+- `require_alphanumeric_passcode` (Boolean) Require alphanumeric passcode.
+- `require_complex_passcode` (Boolean) Require complex passcode.
+- `require_passcode` (Boolean) Require passcode.
+
+
+<a id="nestedblock--raw_component"></a>
+### Nested Schema for `raw_component`
 
 Required:
 
@@ -147,6 +160,249 @@ Required:
 Optional:
 
 - `configuration` (Map of String) Component configuration as key-value pairs. Each component has its own unique configuration options.
+
+
+<a id="nestedblock--safari_bookmarks"></a>
+### Nested Schema for `safari_bookmarks`
+
+Optional:
+
+- `managed_bookmarks` (Block List) List of managed bookmark groups. (see [below for nested schema](#nestedblock--safari_bookmarks--managed_bookmarks))
+
+<a id="nestedblock--safari_bookmarks--managed_bookmarks"></a>
+### Nested Schema for `safari_bookmarks.managed_bookmarks`
+
+Required:
+
+- `group_identifier` (String) Unique identifier for this group of managed bookmarks.
+- `title` (String) The name of the bookmarks folder.
+
+Optional:
+
+- `bookmarks` (Block List) List of bookmarks in this group. (see [below for nested schema](#nestedblock--safari_bookmarks--managed_bookmarks--bookmarks))
+
+<a id="nestedblock--safari_bookmarks--managed_bookmarks--bookmarks"></a>
+### Nested Schema for `safari_bookmarks.managed_bookmarks.bookmarks`
+
+Required:
+
+- `title` (String) The title of the folder shown in Safari.
+
+Optional:
+
+- `folder` (Block List) Bookmarks within this folder. (see [below for nested schema](#nestedblock--safari_bookmarks--managed_bookmarks--bookmarks--folder))
+- `type` (String) Type of bookmark. Valid values: 'bookmark' (URL bookmark) or 'folder' (bookmark folder).
+- `url` (String) The URL for direct bookmarks (not used for folders).
+
+<a id="nestedblock--safari_bookmarks--managed_bookmarks--bookmarks--folder"></a>
+### Nested Schema for `safari_bookmarks.managed_bookmarks.bookmarks.folder`
+
+Required:
+
+- `title` (String) The title of the bookmark shown in Safari.
+- `url` (String) The URL for the bookmark item.
+
+
+
+
+
+<a id="nestedblock--safari_extensions"></a>
+### Nested Schema for `safari_extensions`
+
+Optional:
+
+- `managed_extensions` (Block List) List of managed Safari extensions. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions))
+
+<a id="nestedblock--safari_extensions--managed_extensions"></a>
+### Nested Schema for `safari_extensions.managed_extensions`
+
+Required:
+
+- `extension_id` (String) The extension identifier (bundle ID).
+
+Optional:
+
+- `allowed_domains` (Block List) List of allowed domains for this extension. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions--allowed_domains))
+- `denied_domains` (Block List) List of denied domains for this extension. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions--denied_domains))
+- `private_browsing` (String) Private browsing state. Valid values: Allowed, AlwaysOn, AlwaysOff.
+- `state` (String) Extension state. Valid values: Allowed, AlwaysOn, AlwaysOff.
+
+<a id="nestedblock--safari_extensions--managed_extensions--allowed_domains"></a>
+### Nested Schema for `safari_extensions.managed_extensions.allowed_domains`
+
+Required:
+
+- `domain` (String) Domain name.
+
+
+<a id="nestedblock--safari_extensions--managed_extensions--denied_domains"></a>
+### Nested Schema for `safari_extensions.managed_extensions.denied_domains`
+
+Required:
+
+- `domain` (String) Domain name.
+
+
+
+
+<a id="nestedblock--safari_settings"></a>
+### Nested Schema for `safari_settings`
+
+Optional:
+
+- `accept_cookies` (String) The policy Safari uses for managing cookies. Valid values: Never, CurrentWebsite, VisitedWebsites, Always.
+- `allow_disabling_fraud_warning` (Boolean) If false, the system forces fraud warnings on in Safari.
+- `allow_history_clearing` (Boolean) If false, the system disables clearing history in Safari.
+- `allow_javascript` (Boolean) If false, the system disables JavaScript in Safari.
+- `allow_popups` (Boolean) If false, the system disables popups in Safari.
+- `allow_private_browsing` (Boolean) If false, the system disables private browsing in Safari.
+- `allow_summary` (Boolean) If false, the system disables summarization of content in Safari.
+- `new_tab_start_page_extension_id` (String) The composed identifier of the extension that provides the start page. Required when page type is 'Extension'. Format: com.example.extension (ABC1234567).
+- `new_tab_start_page_homepage_url` (String) The URL of the homepage which needs to start with https:// or http://. Required when page type is 'Home'.
+- `new_tab_start_page_type` (String) Sets the start page type in Safari. Valid values: Start, Home, Extension.
+
+
+<a id="nestedblock--service_background_tasks"></a>
+### Nested Schema for `service_background_tasks`
+
+Optional:
+
+- `background_tasks` (Block List) List of background tasks. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks))
+
+<a id="nestedblock--service_background_tasks--background_tasks"></a>
+### Nested Schema for `service_background_tasks.background_tasks`
+
+Required:
+
+- `task_type` (String) Task type identifier.
+
+Optional:
+
+- `executable_asset_reference` (Block, Optional) Reference to the executable asset. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks--executable_asset_reference))
+- `launchd_configurations` (Block List) Launchd configuration items. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks--launchd_configurations))
+- `task_description` (String) Task description.
+
+<a id="nestedblock--service_background_tasks--background_tasks--executable_asset_reference"></a>
+### Nested Schema for `service_background_tasks.background_tasks.executable_asset_reference`
+
+Required:
+
+- `data_url` (String) URL that hosts the executable data.
+
+Optional:
+
+- `hash_sha_256` (String) SHA-256 hash of the data.
+
+Read-Only:
+
+- `content_type` (String) Media type of the data. Always 'application/zip' for executable assets.
+
+
+<a id="nestedblock--service_background_tasks--background_tasks--launchd_configurations"></a>
+### Nested Schema for `service_background_tasks.background_tasks.launchd_configurations`
+
+Required:
+
+- `context` (String) Launchd context. Valid values: daemon, agent.
+
+Optional:
+
+- `file_asset_reference` (Block, Optional) Reference to the configuration file asset. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference))
+
+<a id="nestedblock--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference"></a>
+### Nested Schema for `service_background_tasks.background_tasks.launchd_configurations.file_asset_reference`
+
+Required:
+
+- `data_url` (String) URL that hosts the configuration data.
+
+Optional:
+
+- `content_type` (String) Media type of the data.
+- `hash_sha_256` (String) SHA-256 hash of the data.
+
+
+
+
+
+<a id="nestedblock--service_configuration_files"></a>
+### Nested Schema for `service_configuration_files`
+
+Optional:
+
+- `service_config_files` (Block List) List of service configuration files. (see [below for nested schema](#nestedblock--service_configuration_files--service_config_files))
+
+<a id="nestedblock--service_configuration_files--service_config_files"></a>
+### Nested Schema for `service_configuration_files.service_config_files`
+
+Required:
+
+- `service_type` (String) The identifier of the system service with managed configuration files.
+
+Optional:
+
+- `data_asset_reference` (Block, Optional) Reference to the configuration data asset. (see [below for nested schema](#nestedblock--service_configuration_files--service_config_files--data_asset_reference))
+
+<a id="nestedblock--service_configuration_files--service_config_files--data_asset_reference"></a>
+### Nested Schema for `service_configuration_files.service_config_files.data_asset_reference`
+
+Required:
+
+- `data_url` (String) URL that hosts the configuration data.
+
+Optional:
+
+- `hash_sha_256` (String) SHA-256 hash of the data.
+
+Read-Only:
+
+- `content_type` (String) Media type of the data. Always 'application/zip' for service configuration files.
+
+
+
+
+<a id="nestedblock--software_update"></a>
+### Nested Schema for `software_update`
+
+Required:
+
+- `target_local_date_time` (String) Local time of the device until which update must be performed. Format: RFC3339 date-time.
+- `target_os_version` (String) Target OS version. Format: major.minor[.patch]
+
+Optional:
+
+- `details_url_value` (String) URL of a web page with the details about the enforced update.
+
+
+<a id="nestedblock--software_update_settings"></a>
+### Nested Schema for `software_update_settings`
+
+Optional:
+
+- `allow_standard_user_os_updates` (Boolean) Allow standard users to install OS updates without administrator privileges.
+- `automatic_download` (String) Automatic download behavior for updates. Valid values: Allowed, AlwaysOn, AlwaysOff.
+- `automatic_install_os_updates` (String) Automatic installation behavior for OS updates. Valid values: Allowed, AlwaysOn, AlwaysOff.
+- `automatic_install_security_updates` (String) Automatic installation behavior for security updates. Valid values: Allowed, AlwaysOn, AlwaysOff.
+- `beta_offer_programs` (Block List) Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each). (see [below for nested schema](#nestedblock--software_update_settings--beta_offer_programs))
+- `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: Allowed, AlwaysOn, AlwaysOff.
+- `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with beta_require_program_token.
+- `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with beta_require_program_description.
+- `deferral_combined_period_days` (Number) Number of days to defer combined updates (1-90 days).
+- `deferral_major_period_days` (Number) Number of days to defer major updates (1-90 days).
+- `deferral_minor_period_days` (Number) Number of days to defer minor updates (1-90 days).
+- `deferral_system_period_days` (Number) Number of days to defer system updates (1-90 days).
+- `notifications_enabled` (Boolean) Enable update notifications to users.
+- `rapid_security_response_enabled` (Boolean) Enable Rapid Security Response updates.
+- `rapid_security_response_rollback_enabled` (Boolean) Enable rollback capability for Rapid Security Response updates.
+- `recommended_cadence` (String) Recommended update cadence policy. Valid values: All, Oldest, Newest.
+
+<a id="nestedblock--software_update_settings--beta_offer_programs"></a>
+### Nested Schema for `software_update_settings.beta_offer_programs`
+
+Required:
+
+- `description` (String) Beta program description (1-1000 characters).
+- `token` (String) Beta program token (1-1000 characters).
 
 ## Import
 

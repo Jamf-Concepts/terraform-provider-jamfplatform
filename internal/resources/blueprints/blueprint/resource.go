@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -70,10 +71,14 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 				Description: "Current deployment state.",
 				Computed:    true,
 			},
+			"legacy_payloads": schema.StringAttribute{
+				Description: "JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have payloadType and payloadIdentifier fields. The payload display name will automatically use the blueprint name.",
+				Optional:    true,
+			},
 		},
 		Blocks: map[string]schema.Block{
-			"component": schema.ListNestedBlock{
-				Description: "Component configuration. All components will be placed in a 'Declaration group' step automatically.",
+			"raw_component": schema.ListNestedBlock{
+				Description: "Raw component configuration using key-value pairs.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"identifier": schema.StringAttribute{
@@ -87,6 +92,50 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 						},
 					},
 				},
+			},
+			"audio_accessory_settings": schema.ListNestedBlock{
+				Description:  "Audio accessory settings component for managing temporary pairing and unpairing policies.",
+				NestedObject: components.AudioAccessorySettingsComponentSchema(),
+			},
+			"disk_management_settings": schema.ListNestedBlock{
+				Description:  "Disk management settings component for controlling external and network storage restrictions.",
+				NestedObject: components.DiskManagementPolicyComponentSchema(),
+			},
+			"math_settings": schema.ListNestedBlock{
+				Description:  "Math settings component for managing calculator modes and system behavior.",
+				NestedObject: components.MathSettingsComponentSchema(),
+			},
+			"passcode_policy": schema.ListNestedBlock{
+				Description:  "Passcode policy component for managing device passcode requirements and restrictions.",
+				NestedObject: components.PasscodePolicyComponentSchema(),
+			},
+			"safari_bookmarks": schema.ListNestedBlock{
+				Description:  "Safari bookmarks component for managing Safari managed bookmarks and bookmark groups.",
+				NestedObject: components.SafariBookmarksComponentSchema(),
+			},
+			"safari_extensions": schema.ListNestedBlock{
+				Description:  "Safari extensions component for managing Safari extension permissions and states.",
+				NestedObject: components.SafariExtensionsComponentSchema(),
+			},
+			"safari_settings": schema.ListNestedBlock{
+				Description:  "Safari settings component for managing Safari browser behavior and security settings.",
+				NestedObject: components.SafariSettingsComponentSchema(),
+			},
+			"service_background_tasks": schema.ListNestedBlock{
+				Description:  "Service background tasks component for managing background service tasks and launchd configurations.",
+				NestedObject: components.ServiceBackgroundTasksComponentSchema(),
+			},
+			"service_configuration_files": schema.ListNestedBlock{
+				Description:  "Service configuration files component for managing configuration files for system services.",
+				NestedObject: components.ServiceConfigurationFilesComponentSchema(),
+			},
+			"software_update": schema.ListNestedBlock{
+				Description:  "Software update component for enforcing OS updates on devices.",
+				NestedObject: components.SoftwareUpdateComponentSchema(),
+			},
+			"software_update_settings": schema.ListNestedBlock{
+				Description:  "Software update settings component for configuring system update behavior and policies.",
+				NestedObject: components.SoftwareUpdateSettingsComponentSchema(),
 			},
 		},
 	}
