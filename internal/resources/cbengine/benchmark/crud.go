@@ -243,6 +243,14 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	bench, err := r.client.GetCBEngineBenchmarkByID(ctx, data.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]interface{}{
+				"benchmark_id": data.ID.ValueString(),
+			})
+			resp.State.RemoveResource(ctx)
+			return
+		}
+
 		resp.Diagnostics.AddError("Error reading benchmark", err.Error())
 		return
 	}
@@ -453,6 +461,13 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err := r.client.DeleteCBEngineBenchmark(ctx, data.ID.ValueString())
 	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "Benchmark already deleted", map[string]interface{}{
+				"benchmark_id": data.ID.ValueString(),
+			})
+			return
+		}
+
 		resp.Diagnostics.AddError(
 			"Error deleting benchmark",
 			"Could not delete benchmark: "+err.Error(),
