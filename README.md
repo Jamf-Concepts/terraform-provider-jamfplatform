@@ -9,144 +9,33 @@ Provides resources and data sources for managing [Jamf Platform Services](https:
 * [Blueprints](https://learn.jamf.com/en-US/bundle/jamf-pro-blueprints-configuration-guide/page/Jamf_Pro_Blueprints_Configuration_Guide.html)
   * [API Reference](https://developer.jamf.com/platform-api/reference/blueprints-1)
 
-Note that some of these APIs are only available in private beta. Provider stability, functionality and schemas are subject to change.
+Note that some of these APIs are only available in private beta. Provider stability, functionality and schemas are subject to change without notice.
 
 **This repository also includes a Go client for direct API access and scripting.**
 
 ## Requirements
 
-* Terraform 1.3 or later
+* Terraform 0.12 or later, or OpenTofu 1.6.0 or later
 
 ## Using the Provider in your own Terraform Projects
 
-### If using the Terraform Registry
+The jamfplatform provider is published in the [Hashicorp](https://registry.terraform.io/providers/Jamf-Concepts/jamfplatform) and [OpenTofu](https://search.opentofu.org/provider/jamf-concepts/jamfplatform) registries.
 
-```hcl
-terraform {
-  required_providers {
-    jamfplatform = {
-      source  = "Jamf-Concepts/jamfplatform"
-      version = ">= 1.0.0"
-    }
-  }
-}
-
-provider "jamfplatform" {
-  base_url        = "https://us.apigw.jamf.com" # or "https://eu.apigw.jamf.com", "https://apac.apigw.jamf.com"
-  client_id       = "example-client-id"
-  client_secret   = "example-client-secret"
-}
-```
-
-### If using a local install (see manual installation steps below)
-
-```hcl
-terraform {
-  required_providers {
-    jamfplatform = {
-      source  = "local/Jamf-Concepts/jamfplatform"
-      version = ">= 1.0.0"
-    }
-  }
-}
-
-provider "jamfplatform" {
-  base_url        = "https://us.apigw.jamf.com" # or "https://eu.apigw.jamf.com", "https://apac.apigw.jamf.com"
-  client_id       = "example-client-id"
-  client_secret   = "example-client-secret"
-}
-```
-
----
-
-### Initialize Terraform
-
-```bash
-terraform init
-```
-
-Terraform will detect the provider and you're good to go!
-
-**Note: If you are updating this provider manually, you should also delete the lock file:**
-
-```bash
-rm .terraform.lock.hcl
-terraform init
-```
-
-## Manual Installation
-
-### Step 1: Download the Release Zip
-
-Pick your platform and architecture from the [latest releases](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/releases/latest) page:
-
-* If running on an Apple Silicon Mac, download `...darwin_arm64.zip`
-* If running on an Intel Mac, download `...darwin_amd64.zip`
-
----
-
-### Step 2: Extract to your local Terraform Plugin Directory
-
-The plugin must be extracted to the correct location for Terraform to find and use it. You must also remove the Quarantine attribute on macOS.
-
-#### Example (macOS arm64)
-
-```bash
-cd ~/Downloads
-mkdir -p ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.3.2/darwin_arm64
-unzip terraform-provider-jamfplatform_1.3.2_darwin_arm64.zip -d ~/.terraform.d/plugins/local/Jamf-Concepts/jamfplatform/1.3.2/darwin_arm64
-xattr -r -d com.apple.quarantine ~/.terraform.d/plugins
-```
-
-This will result in:
-
-```bash
-~/.terraform.d/plugins/
-└── local/
-    └── Jamf-Concepts/
-        └── jamfplatform/
-            └── 1.3.2/
-                └── darwin_arm64/
-                    └── terraform-provider-jamfplatform_v1.3.2
-```
-
-### Step 3: Set up a local file system mirror
-
-Terraform needs to know it will be using a locally installed plugin. Create the file: `~/.terraform.d/terraform.tfrc`
-
-* `nano ~/.terraform.d/terraform.tfrc`
-
-It must contain the following contents:
-
-```hcl
-provider_installation {
-  filesystem_mirror {
-    path    = ~"/.terraform.d/plugins"
-    include = ["local/Jamf-Concepts/*"]
-  }
-  direct {
-    exclude = ["local/Jamf-Concepts/*"]
-  }
-}
-```
-
-* In nano, use **ctrl+x** then enter **y** and **return** to save.
-
-That's it! You're ready to use the provider!
+For usage instructions and provider block/variable reference, refer to the registry link above for your platform of choice.
 
 ---
 
 ## Provider Configuration Reference and Example Usage
 
-Refer to the [documentation](./docs) and the [examples](./examples/) directories for full usage and Terraform examples.
+Refer to the [documentation](https://registry.terraform.io/providers/Jamf-Concepts/jamfplatform/latest/docs) for a full list of resources and data sources, their usage and Terraform examples.
 
 ---
 
 ## Using the Go Client in Your Own Go Projects
 
-You can import and use the Go client directly in your own Go code for scripting or automation against the services supported by the Jamf Platform API.
+The provider includes a comprehensive Go client for interacting with the Jamf Platform API. You can import and use the client directly in your own Go projects for scripting or automation against the services supported by the Jamf Platform API.
 
-For example, go get a list of current Compliance Baselines from the mSCP:
+For example, to get a list of current Compliance Baselines the Compliance Benchmark Engine currently supports from the mSCP:
 
 ```go
 import "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
@@ -165,11 +54,9 @@ See the [examples/client/](./examples/client/) directory for full working Go exa
 
 ## Feedback & Discussion
 
-Please contact the project principles via [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues). The Jamf Terraform community has discussions in #terraform-provider-jamfpro on [MacAdmins Slack](https://www.macadmins.org/).
+Please contact the project principles via [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues).
 
-&nbsp;
-
-*Copyright 2025, Jamf Software LLC.*
+The Jamf Terraform community has discussions in #terraform-provider-jamfpro on [MacAdmins Slack](https://www.macadmins.org/). This channel is primarily focused on discussion and community support relating to the [jamfpro](https://github.com/deploymenttheory/terraform-provider-jamfpro) provider that is owned and maintained by our friends, [Deployment Theory](https://github.com/deploymenttheory).
 
 ## Included components
 
@@ -177,3 +64,7 @@ The following third party acknowledgements and licenses are incorporated by refe
 
 * [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) ([MPL](https://github.com/hashicorp/terraform-plugin-framework?tab=MPL-2.0-1-ov-file))
 * [Terraform Plugin Log](https://github.com/hashicorp/terraform-plugin-log) ([MPL](https://github.com/hashicorp/terraform-plugin-log?tab=MPL-2.0-1-ov-file))
+
+&nbsp;
+
+*Copyright 2025, Jamf Software LLC.*
