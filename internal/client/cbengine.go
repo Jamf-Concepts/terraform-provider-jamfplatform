@@ -199,39 +199,7 @@ func (c *Client) CreateCBEngineBenchmark(ctx context.Context, request *CBEngineB
 		return nil, err
 	}
 
-	const pollInterval = 5
-	const maxRetries = 24
-	retries := 0
-	for retries < maxRetries {
-		time.Sleep(pollInterval * time.Second)
-		benchmarks, err := c.GetCBEngineBenchmarks(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to poll benchmarks after create: %w", err)
-		}
-		var found *CBEngineBenchmark
-		for _, b := range benchmarks.Benchmarks {
-			if b.ID == result.BenchmarkID {
-				found = &b
-				break
-			}
-		}
-		if found == nil {
-			return nil, fmt.Errorf("benchmark %s not found during polling after create", result.BenchmarkID)
-		}
-		switch found.SyncState {
-		case "PENDING":
-			retries++
-			continue
-		case "SYNCED":
-			return &result, nil
-		case "FAILED":
-			_ = c.DeleteCBEngineBenchmark(ctx, found.ID)
-			return c.CreateCBEngineBenchmark(ctx, request)
-		default:
-			return nil, fmt.Errorf("unexpected syncState after create: %s", found.SyncState)
-		}
-	}
-	return nil, fmt.Errorf("timed out waiting for benchmark creation to complete after %d retries", maxRetries)
+	return &result, nil
 }
 
 // GetCBEngineBenchmarks retrieves all benchmarks for the tenant
@@ -279,37 +247,7 @@ func (c *Client) DeleteCBEngineBenchmark(ctx context.Context, id string) error {
 		return err
 	}
 
-	const pollInterval = 5
-	const maxRetries = 24
-	retries := 0
-	for retries < maxRetries {
-		time.Sleep(pollInterval * time.Second)
-
-		benchmarks, err := c.GetCBEngineBenchmarks(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to poll benchmarks after delete: %w", err)
-		}
-
-		found := false
-		for _, b := range benchmarks.Benchmarks {
-			if b.ID == id {
-				found = true
-				if b.SyncState == "DELETING" {
-					_ = c.DeleteCBEngineBenchmark(ctx, id)
-					retries++
-					break
-				} else if b.SyncState == "DELETE_FAILED" {
-					return fmt.Errorf("benchmark %s deletion failed: syncState=DELETE_FAILED", id)
-				} else {
-					return fmt.Errorf("benchmark %s still present after delete, syncState=%s", id, b.SyncState)
-				}
-			}
-		}
-		if !found {
-			return nil
-		}
-	}
-	return fmt.Errorf("timed out waiting for benchmark deletion to complete after %d retries", maxRetries)
+	return nil
 }
 
 // GetCBEngineBenchmarkByTitle retrieves a specific benchmark by title
