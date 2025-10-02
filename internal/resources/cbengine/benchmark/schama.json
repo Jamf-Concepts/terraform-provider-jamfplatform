@@ -1,0 +1,2132 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "compliance-benchmark-engine",
+        "version": "latest"
+    },
+    "servers": [],
+    "paths": {
+        "/v2/benchmarks/{id}": {
+            "get": {
+                "tags": [
+                    "benchmark-controller-v-2"
+                ],
+                "summary": "Returns benchmark for given benchmark ID",
+                "operationId": "getBenchmark",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BenchmarkResponseV2"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    },
+                    "404": {
+                        "description": "Benchmark not found"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            },
+            "put": {
+                "tags": [
+                    "benchmark-controller-v-2"
+                ],
+                "summary": "Updates an existing benchmark from provided benchmark request",
+                "description": "Updates given benchmark from provided benchmark request and deploys associated artifacts to the MDM",
+                "operationId": "putBenchmark",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BenchmarkRequestV2"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BenchmarkResponseV2"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid benchmark request or missing benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    },
+                    "404": {
+                        "description": "Benchmark not found"
+                    },
+                    "409": {
+                        "description": "Benchmark with the same title exists already"
+                    }
+                },
+                "x-required-privileges": [
+                    "update:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v2/benchmarks/{id}/draft": {
+            "get": {
+                "tags": [
+                    "benchmark-draft-controller-v-2"
+                ],
+                "summary": "Returns benchmark draft",
+                "description": "Returns draft of edited benchmark",
+                "operationId": "getBenchmarkDraftV2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BenchmarkDraftResponseV2"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            },
+            "put": {
+                "tags": [
+                    "benchmark-draft-controller-v-2"
+                ],
+                "summary": "Updates benchmark draft",
+                "description": "Creates or updates benchmark draft with provided changes",
+                "operationId": "updateBenchmarkDraftV2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DraftRequestV2"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Successful operation result"
+                    },
+                    "400": {
+                        "description": "Invalid benchmark ID or draft request"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    },
+                    "409": {
+                        "description": "Benchmark with the same title exists already"
+                    }
+                },
+                "x-required-privileges": [
+                    "update:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v2/benchmarks": {
+            "get": {
+                "tags": [
+                    "benchmark-controller-v-2"
+                ],
+                "summary": "Returns list of tenant benchmarks",
+                "description": "Returns list of tenant benchmarks (if any)",
+                "operationId": "getTenantBenchmarks",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BenchmarksResponseV2"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            },
+            "post": {
+                "tags": [
+                    "benchmark-controller-v-2"
+                ],
+                "summary": "Creates a new benchmark from provided benchmark request",
+                "description": "Creates a new benchmark from provided benchmark request and deploys associated artifacts to the MDM",
+                "operationId": "postBenchmark",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BenchmarkRequestV2"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BenchmarkResponseV2"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid benchmark request"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    },
+                    "409": {
+                        "description": "Benchmark with the same title exists already"
+                    }
+                },
+                "x-required-privileges": [
+                    "create:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/deployable-objects/sync": {
+            "post": {
+                "tags": [
+                    "deployable-objects-controller"
+                ],
+                "summary": "Sync deployable objects of a given benchmark",
+                "description": "Syncs benchmark generated objects to the MDM",
+                "operationId": "sync",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Sync request accepted and the sync was triggered"
+                    },
+                    "400": {
+                        "description": "Invalid benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    },
+                    "404": {
+                        "description": "Benchmark not found for given ID"
+                    }
+                },
+                "x-required-privileges": [
+                    "update:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/deployable-objects/preview": {
+            "post": {
+                "tags": [
+                    "deployable-objects-controller"
+                ],
+                "summary": "Preview deployable objects",
+                "description": "Provides deployable objects for review based on the provided baseline data",
+                "operationId": "previewDeployableObjects",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DeployableObjectsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeployableObjectsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request for deployable objects"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "create:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/benchmarks/{id}/auditing-documents/download": {
+            "post": {
+                "tags": [
+                    "auditing-documents-controller"
+                ],
+                "summary": "Generate auditing documentation for given benchmark",
+                "description": "Returns a downloadable attachment with auditing documentation for benchmark in given format",
+                "operationId": "downloadAuditingDocuments",
+                "parameters": [
+                    {
+                        "name": "Client-Timezone",
+                        "in": "header",
+                        "description": "Client timezone, defaults to UTC",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "UTC"
+                        }
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Given benchmark ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AuditingDocumentsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result"
+                    },
+                    "429": {
+                        "description": "Too many parallel requests"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/benchmarks/{benchmarkId}/draft/publish": {
+            "post": {
+                "tags": [
+                    "benchmark-draft-controller"
+                ],
+                "summary": "Publishes benchmark draft",
+                "description": "Publishes benchmark draft and updates all affected deployable objects",
+                "operationId": "publishBenchmarkDraft",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Successful operation result"
+                    },
+                    "400": {
+                        "description": "Invalid benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    },
+                    "404": {
+                        "description": "Benchmark draft not found"
+                    },
+                    "423": {
+                        "description": "Other publish operation is in progress"
+                    }
+                },
+                "x-required-privileges": [
+                    "update:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/tenant-support-info": {
+            "get": {
+                "tags": [
+                    "tenant-support-info-controller"
+                ],
+                "summary": "Checks if tenant has supported Jamf Pro version",
+                "description": "Checks whether tenant has supported Jamf Pro version and returns the minimum version that is supported.",
+                "operationId": "getJamfProSupportInfoForTenant",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TenantJamfProSupportInfoResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/rules": {
+            "get": {
+                "tags": [
+                    "rule-controller"
+                ],
+                "summary": "Get list of rules for given baseline",
+                "description": "Returns list of the rules for given mSCP baseline together with sources that provide them",
+                "operationId": "getRules",
+                "parameters": [
+                    {
+                        "name": "baselineId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SourcedRules"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or empty baseline ID"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/rules/update": {
+            "get": {
+                "tags": [
+                    "rule-controller"
+                ],
+                "summary": "Get list of updated rules for given benchmark",
+                "description": "Returns list of the updated and removed rules for given given benchmark should that benchmark be updated to the current mSCP sources",
+                "operationId": "getRulesForUpdate",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UpdatedSourcedRules"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or empty benchmark ID"
+                    },
+                    "404": {
+                        "description": "Benchmark not found"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/deployable-objects/sync-status": {
+            "get": {
+                "tags": [
+                    "deployable-objects-controller"
+                ],
+                "summary": "Overview for sync status of deployable objects of a given benchmark",
+                "description": "Overview for sync status of deployable objects of a benchmark with given benchmark ID",
+                "operationId": "syncStatus",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync status report for the given benchmark",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeployableObjectsSyncStatusResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/deployable-objects/sync-detail": {
+            "get": {
+                "tags": [
+                    "deployable-objects-controller"
+                ],
+                "summary": "Sync status for deployable objects of a given benchmark",
+                "description": "Sync status for deployable objects of a given benchmark",
+                "operationId": "syncDetail",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync status report for the given benchmark",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeployableObjectsSyncDetailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/benchmarks/{id}/auditing-documents": {
+            "get": {
+                "tags": [
+                    "auditing-documents-controller"
+                ],
+                "summary": "Get list of all auditing documentation files for given benchmark",
+                "description": "Returns list of auditing documentation files for given benchmark grouped by OS version",
+                "operationId": "getAuditingDocuments",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Given benchmark ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditingDocumentsResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/benchmarks/{benchmarkId}/rules-report": {
+            "get": {
+                "tags": [
+                    "benchmark-controller"
+                ],
+                "summary": "Returns benchmark for given benchmark ID",
+                "operationId": "getBenchmarkRulesReport",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RulesReportResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or invalid benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/baselines": {
+            "get": {
+                "tags": [
+                    "baseline-controller"
+                ],
+                "summary": "Returns list of the mSCP baselines",
+                "description": "Returns list of the mSCP baselines allowed for the Compliance benchmarks",
+                "operationId": "getBaselines",
+                "responses": {
+                    "200": {
+                        "description": "Successful operation result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BaselinesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/internal/v1/deployable-objects": {
+            "get": {
+                "tags": [
+                    "internal-deployable-objects-controller"
+                ],
+                "operationId": "getDeployableObjectInfo",
+                "parameters": [
+                    {
+                        "name": "external-id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "CATEGORY",
+                                "EXTENSION_ATTRIBUTE",
+                                "EXTENSION_ATTRIBUTE_LIST",
+                                "EXTENSION_ATTRIBUTE_COUNT",
+                                "SMART_GROUP_PER_OS",
+                                "SMART_GROUP_COMPLIANT",
+                                "SMART_GROUP_NOT_COMPLIANT",
+                                "COMPLIANCE_SCRIPT",
+                                "PLIST",
+                                "MOBILECONFIG",
+                                "AUDIT_POLICY",
+                                "REMEDIATION_POLICY"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeployableObjectInfoResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-required-privileges": [
+                    "read:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/benchmarks/{benchmarkId}": {
+            "delete": {
+                "tags": [
+                    "benchmark-controller"
+                ],
+                "summary": "Removes benchmark with given benchmark ID",
+                "description": "Removes benchmark with given benchmark and removes associated draft (if any) and artifacts from the MDM",
+                "operationId": "deleteBenchmark",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful operation result"
+                    },
+                    "400": {
+                        "description": "Invalid benchmark request or missing benchmark ID"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "delete:env:compliance-benchmarks"
+                ]
+            }
+        },
+        "/v1/benchmarks/{benchmarkId}/draft": {
+            "delete": {
+                "tags": [
+                    "benchmark-draft-controller"
+                ],
+                "summary": "Deletes benchmark draft",
+                "operationId": "deleteBenchmarkDraft",
+                "parameters": [
+                    {
+                        "name": "benchmarkId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful operation result"
+                    },
+                    "400": {
+                        "description": "Invalid benchmark ID or draft request"
+                    },
+                    "401": {
+                        "description": "Unauthorized request"
+                    },
+                    "403": {
+                        "description": "Insufficient permissions"
+                    }
+                },
+                "x-required-privileges": [
+                    "delete:env:compliance-benchmarks"
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "BenchmarkRequestV2": {
+                "required": [
+                    "enforcementMode",
+                    "rules",
+                    "sourceBaselineId",
+                    "sources",
+                    "target",
+                    "title"
+                ],
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "type": "string"
+                    },
+                    "description": {
+                        "maxLength": 1000,
+                        "minLength": 0,
+                        "type": "string"
+                    },
+                    "sourceBaselineId": {
+                        "type": "string"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Source"
+                        }
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RuleRequest"
+                        }
+                    },
+                    "target": {
+                        "$ref": "#/components/schemas/TargetV2"
+                    },
+                    "enforcementMode": {
+                        "type": "string",
+                        "enum": [
+                            "MONITOR",
+                            "MONITOR_AND_ENFORCE"
+                        ]
+                    }
+                }
+            },
+            "OdvRequest": {
+                "required": [
+                    "value"
+                ],
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            },
+            "RuleRequest": {
+                "required": [
+                    "enabled",
+                    "id"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "odv": {
+                        "$ref": "#/components/schemas/OdvRequest"
+                    }
+                }
+            },
+            "Source": {
+                "required": [
+                    "branch",
+                    "revision"
+                ],
+                "type": "object",
+                "properties": {
+                    "branch": {
+                        "type": "string"
+                    },
+                    "revision": {
+                        "type": "string"
+                    }
+                }
+            },
+            "TargetV2": {
+                "required": [
+                    "deviceGroups"
+                ],
+                "type": "object",
+                "properties": {
+                    "deviceGroups": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "BenchmarkResponseV2": {
+                "required": [
+                    "benchmarkId",
+                    "deleted",
+                    "enforcementMode",
+                    "lastUpdatedAt",
+                    "rules",
+                    "sources",
+                    "target",
+                    "tenantId",
+                    "title",
+                    "updateAvailable"
+                ],
+                "type": "object",
+                "properties": {
+                    "benchmarkId": {
+                        "type": "string"
+                    },
+                    "tenantId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Source"
+                        }
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RuleInfo"
+                        }
+                    },
+                    "target": {
+                        "$ref": "#/components/schemas/TargetV2"
+                    },
+                    "enforcementMode": {
+                        "type": "string",
+                        "enum": [
+                            "MONITOR",
+                            "MONITOR_AND_ENFORCE"
+                        ]
+                    },
+                    "deleted": {
+                        "type": "boolean"
+                    },
+                    "updateAvailable": {
+                        "type": "boolean"
+                    },
+                    "lastUpdatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "OdvRecommendation": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "hint": {
+                        "type": "string"
+                    }
+                }
+            },
+            "OrganizationDefinedValue": {
+                "required": [
+                    "value"
+                ],
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "hint": {
+                        "type": "string"
+                    },
+                    "placeholder": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "INTEGER",
+                            "STRING",
+                            "ENUM",
+                            "REGEX"
+                        ]
+                    },
+                    "validation": {
+                        "$ref": "#/components/schemas/ValidationConstraints"
+                    }
+                }
+            },
+            "OsInfo": {
+                "required": [
+                    "managementType",
+                    "osType",
+                    "osVersion"
+                ],
+                "type": "object",
+                "properties": {
+                    "osType": {
+                        "type": "string",
+                        "enum": [
+                            "MAC_OS",
+                            "IOS"
+                        ]
+                    },
+                    "osVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "managementType": {
+                        "type": "string",
+                        "enum": [
+                            "MANAGED",
+                            "BYOD"
+                        ]
+                    }
+                }
+            },
+            "OsSpecificRuleInfo": {
+                "required": [
+                    "description",
+                    "title"
+                ],
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "odv": {
+                        "$ref": "#/components/schemas/OdvRecommendation"
+                    }
+                }
+            },
+            "RuleInfo": {
+                "required": [
+                    "description",
+                    "enabled",
+                    "id",
+                    "osSpecificDefaults",
+                    "sectionName",
+                    "supportedOs",
+                    "title"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "sectionName": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "references": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "odv": {
+                        "$ref": "#/components/schemas/OrganizationDefinedValue"
+                    },
+                    "supportedOs": {
+                        "uniqueItems": true,
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OsInfo"
+                        }
+                    },
+                    "osSpecificDefaults": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/OsSpecificRuleInfo"
+                        }
+                    },
+                    "ruleRelation": {
+                        "$ref": "#/components/schemas/RuleRelation"
+                    },
+                    "reportable": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "RuleRelation": {
+                "type": "object",
+                "properties": {
+                    "dependsOn": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "conflictsWith": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "ValidationConstraints": {
+                "type": "object",
+                "properties": {
+                    "min": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "max": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "enumValues": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "regex": {
+                        "type": "string"
+                    }
+                }
+            },
+            "DraftChangesV2": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "type": "string"
+                    },
+                    "description": {
+                        "maxLength": 1000,
+                        "minLength": 0,
+                        "type": "string"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Source"
+                        }
+                    },
+                    "enforcementMode": {
+                        "type": "string",
+                        "enum": [
+                            "MONITOR",
+                            "MONITOR_AND_ENFORCE"
+                        ]
+                    },
+                    "target": {
+                        "$ref": "#/components/schemas/TargetV2"
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RuleChange"
+                        }
+                    }
+                }
+            },
+            "DraftRequestV2": {
+                "required": [
+                    "changedFields",
+                    "changes"
+                ],
+                "type": "object",
+                "properties": {
+                    "changedFields": {
+                        "uniqueItems": true,
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "TITLE",
+                                "DESCRIPTION",
+                                "ENFORCEMENT_MODE",
+                                "TARGET",
+                                "RULES",
+                                "SOURCES"
+                            ]
+                        }
+                    },
+                    "changes": {
+                        "$ref": "#/components/schemas/DraftChangesV2"
+                    }
+                }
+            },
+            "OdvValue": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            },
+            "RuleChange": {
+                "required": [
+                    "enabled",
+                    "id"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "odv": {
+                        "$ref": "#/components/schemas/OdvValue"
+                    }
+                }
+            },
+            "DeployableObjectsRequest": {
+                "required": [
+                    "benchmarkName",
+                    "enforcementMode",
+                    "rules",
+                    "sourceBaselineId",
+                    "sources"
+                ],
+                "type": "object",
+                "properties": {
+                    "benchmarkName": {
+                        "type": "string"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Source"
+                        }
+                    },
+                    "sourceBaselineId": {
+                        "type": "string"
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PreviewRuleRequest"
+                        }
+                    },
+                    "enforcementMode": {
+                        "type": "string",
+                        "enum": [
+                            "MONITOR",
+                            "MONITOR_AND_ENFORCE"
+                        ]
+                    }
+                }
+            },
+            "PreviewRuleRequest": {
+                "required": [
+                    "ruleId"
+                ],
+                "type": "object",
+                "properties": {
+                    "ruleId": {
+                        "type": "string"
+                    },
+                    "odv": {
+                        "$ref": "#/components/schemas/OdvRequest"
+                    }
+                }
+            },
+            "DeployableObject": {
+                "required": [
+                    "payloads"
+                ],
+                "type": "object",
+                "properties": {
+                    "osType": {
+                        "type": "string",
+                        "enum": [
+                            "MAC_OS",
+                            "IOS"
+                        ]
+                    },
+                    "osVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "payloads": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Payload"
+                        }
+                    }
+                }
+            },
+            "DeployableObjectsResponse": {
+                "required": [
+                    "categories",
+                    "complianceScripts",
+                    "extensionAttributes",
+                    "mobileConfigs",
+                    "plists",
+                    "policies",
+                    "smartGroups"
+                ],
+                "type": "object",
+                "properties": {
+                    "complianceScripts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObject"
+                        }
+                    },
+                    "mobileConfigs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObject"
+                        }
+                    },
+                    "plists": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObject"
+                        }
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObject"
+                        }
+                    },
+                    "extensionAttributes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObject"
+                        }
+                    },
+                    "policies": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObject"
+                        }
+                    },
+                    "smartGroups": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObject"
+                        }
+                    }
+                }
+            },
+            "Payload": {
+                "required": [
+                    "name"
+                ],
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    }
+                }
+            },
+            "AuditingDocumentRequest": {
+                "required": [
+                    "formats",
+                    "osType",
+                    "osVersion"
+                ],
+                "type": "object",
+                "properties": {
+                    "osType": {
+                        "type": "string",
+                        "enum": [
+                            "MAC_OS",
+                            "IOS"
+                        ]
+                    },
+                    "osVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "formats": {
+                        "uniqueItems": true,
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "ADOC",
+                                "PDF",
+                                "HTML",
+                                "XLSX"
+                            ]
+                        }
+                    }
+                }
+            },
+            "AuditingDocumentsRequest": {
+                "required": [
+                    "auditingDocuments"
+                ],
+                "type": "object",
+                "properties": {
+                    "auditingDocuments": {
+                        "uniqueItems": true,
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AuditingDocumentRequest"
+                        }
+                    }
+                }
+            },
+            "BenchmarkV2": {
+                "required": [
+                    "id",
+                    "modified",
+                    "syncState",
+                    "target",
+                    "title",
+                    "updateAvailable"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "updateAvailable": {
+                        "type": "boolean"
+                    },
+                    "modified": {
+                        "type": "boolean"
+                    },
+                    "target": {
+                        "$ref": "#/components/schemas/TargetV2"
+                    },
+                    "syncState": {
+                        "type": "string",
+                        "enum": [
+                            "SYNCED",
+                            "PENDING",
+                            "FAILED",
+                            "DELETING",
+                            "DELETE_FAILED"
+                        ]
+                    }
+                }
+            },
+            "BenchmarksResponseV2": {
+                "required": [
+                    "benchmarks"
+                ],
+                "type": "object",
+                "properties": {
+                    "benchmarks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BenchmarkV2"
+                        }
+                    }
+                }
+            },
+            "BenchmarkDraftResponseV2": {
+                "required": [
+                    "benchmarkId",
+                    "changedFields",
+                    "changes",
+                    "id",
+                    "lastUpdatedAt",
+                    "numberOfChanges"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "benchmarkId": {
+                        "type": "string"
+                    },
+                    "lastUpdatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "changedFields": {
+                        "uniqueItems": true,
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "TITLE",
+                                "DESCRIPTION",
+                                "ENFORCEMENT_MODE",
+                                "TARGET",
+                                "RULES",
+                                "SOURCES"
+                            ]
+                        }
+                    },
+                    "numberOfChanges": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "changes": {
+                        "$ref": "#/components/schemas/DraftChangesResponseV2"
+                    }
+                }
+            },
+            "DraftChangesResponseV2": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "enforcementMode": {
+                        "type": "string",
+                        "enum": [
+                            "MONITOR",
+                            "MONITOR_AND_ENFORCE"
+                        ]
+                    },
+                    "target": {
+                        "$ref": "#/components/schemas/TargetV2"
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Source"
+                        }
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RuleInfo"
+                        }
+                    }
+                }
+            },
+            "TenantJamfProSupportInfoResponse": {
+                "required": [
+                    "currentVersion",
+                    "minimumSupportedVersion",
+                    "supported"
+                ],
+                "type": "object",
+                "properties": {
+                    "currentVersion": {
+                        "type": "string"
+                    },
+                    "supported": {
+                        "type": "boolean"
+                    },
+                    "minimumSupportedVersion": {
+                        "type": "string"
+                    }
+                }
+            },
+            "SourcedRules": {
+                "required": [
+                    "rules",
+                    "sources"
+                ],
+                "type": "object",
+                "properties": {
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Source"
+                        }
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RuleInfo"
+                        }
+                    }
+                }
+            },
+            "RuleInfoWithUpdate": {
+                "required": [
+                    "description",
+                    "enabled",
+                    "id",
+                    "osSpecificDefaults",
+                    "sectionName",
+                    "supportedOs",
+                    "title",
+                    "updateStatus"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "sectionName": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "references": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "odv": {
+                        "$ref": "#/components/schemas/OrganizationDefinedValue"
+                    },
+                    "supportedOs": {
+                        "uniqueItems": true,
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OsInfo"
+                        }
+                    },
+                    "osSpecificDefaults": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/OsSpecificRuleInfo"
+                        }
+                    },
+                    "ruleRelation": {
+                        "$ref": "#/components/schemas/RuleRelation"
+                    },
+                    "reportable": {
+                        "type": "boolean"
+                    },
+                    "updateStatus": {
+                        "type": "string",
+                        "enum": [
+                            "ADDED",
+                            "REMOVED",
+                            "MODIFIED",
+                            "NOT_CHANGED"
+                        ]
+                    }
+                }
+            },
+            "UpdatedSourcedRules": {
+                "required": [
+                    "rules",
+                    "sources"
+                ],
+                "type": "object",
+                "properties": {
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Source"
+                        }
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RuleInfoWithUpdate"
+                        }
+                    }
+                }
+            },
+            "DeployableObjectsSyncStatusResponse": {
+                "required": [
+                    "categories",
+                    "configProfiles",
+                    "extensionAttributes",
+                    "policies",
+                    "scripts",
+                    "smartGroups",
+                    "status"
+                ],
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "SYNCED",
+                            "PENDING",
+                            "FAILED",
+                            "DELETING",
+                            "DELETE_FAILED"
+                        ]
+                    },
+                    "categories": {
+                        "$ref": "#/components/schemas/SyncStats"
+                    },
+                    "configProfiles": {
+                        "$ref": "#/components/schemas/SyncStats"
+                    },
+                    "extensionAttributes": {
+                        "$ref": "#/components/schemas/SyncStats"
+                    },
+                    "policies": {
+                        "$ref": "#/components/schemas/SyncStats"
+                    },
+                    "scripts": {
+                        "$ref": "#/components/schemas/SyncStats"
+                    },
+                    "smartGroups": {
+                        "$ref": "#/components/schemas/SyncStats"
+                    }
+                }
+            },
+            "SyncStats": {
+                "required": [
+                    "failed",
+                    "pending",
+                    "synced"
+                ],
+                "type": "object",
+                "properties": {
+                    "synced": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "pending": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "failed": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "DeployableObjectSyncDetail": {
+                "required": [
+                    "id",
+                    "name",
+                    "syncState",
+                    "type"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "CATEGORY",
+                            "EXTENSION_ATTRIBUTE",
+                            "EXTENSION_ATTRIBUTE_LIST",
+                            "EXTENSION_ATTRIBUTE_COUNT",
+                            "SMART_GROUP_PER_OS",
+                            "SMART_GROUP_COMPLIANT",
+                            "SMART_GROUP_NOT_COMPLIANT",
+                            "COMPLIANCE_SCRIPT",
+                            "PLIST",
+                            "MOBILECONFIG",
+                            "AUDIT_POLICY",
+                            "REMEDIATION_POLICY"
+                        ]
+                    },
+                    "syncState": {
+                        "type": "string",
+                        "enum": [
+                            "SYNCED",
+                            "PENDING",
+                            "FAILED",
+                            "DELETING",
+                            "DELETE_FAILED"
+                        ]
+                    },
+                    "externalId": {
+                        "type": "string"
+                    },
+                    "failureReason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "DeployableObjectsSyncDetailResponse": {
+                "required": [
+                    "syncObjects"
+                ],
+                "type": "object",
+                "properties": {
+                    "syncObjects": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeployableObjectSyncDetail"
+                        }
+                    }
+                }
+            },
+            "AuditingDocument": {
+                "required": [
+                    "files",
+                    "osType",
+                    "osVersion"
+                ],
+                "type": "object",
+                "properties": {
+                    "osType": {
+                        "type": "string",
+                        "enum": [
+                            "MAC_OS",
+                            "IOS"
+                        ]
+                    },
+                    "osVersion": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "files": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AuditingFile"
+                        }
+                    }
+                }
+            },
+            "AuditingDocumentsResponse": {
+                "required": [
+                    "auditingDocuments"
+                ],
+                "type": "object",
+                "properties": {
+                    "auditingDocuments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AuditingDocument"
+                        }
+                    }
+                }
+            },
+            "AuditingFile": {
+                "required": [
+                    "filename",
+                    "format"
+                ],
+                "type": "object",
+                "properties": {
+                    "format": {
+                        "type": "string",
+                        "enum": [
+                            "ADOC",
+                            "PDF",
+                            "HTML",
+                            "XLSX"
+                        ]
+                    },
+                    "filename": {
+                        "type": "string"
+                    }
+                }
+            },
+            "RuleReport": {
+                "required": [
+                    "failed",
+                    "id",
+                    "passPercentage",
+                    "passing",
+                    "references",
+                    "title",
+                    "unknown"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "passing": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "failed": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "unknown": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "passPercentage": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "references": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "RulesReportResponse": {
+                "required": [
+                    "rules"
+                ],
+                "type": "object",
+                "properties": {
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RuleReport"
+                        }
+                    }
+                }
+            },
+            "BaselineInfo": {
+                "required": [
+                    "baselineId",
+                    "description",
+                    "id",
+                    "ruleCount",
+                    "title"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "baselineId": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "ruleCount": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                }
+            },
+            "BaselinesResponse": {
+                "required": [
+                    "baselines"
+                ],
+                "type": "object",
+                "properties": {
+                    "baselines": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BaselineInfo"
+                        }
+                    }
+                }
+            },
+            "DeployableObjectInfoResponse": {
+                "required": [
+                    "benchmarkId",
+                    "deployment",
+                    "type"
+                ],
+                "type": "object",
+                "properties": {
+                    "benchmarkId": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "CATEGORY",
+                            "EXTENSION_ATTRIBUTE",
+                            "EXTENSION_ATTRIBUTE_LIST",
+                            "EXTENSION_ATTRIBUTE_COUNT",
+                            "SMART_GROUP_PER_OS",
+                            "SMART_GROUP_COMPLIANT",
+                            "SMART_GROUP_NOT_COMPLIANT",
+                            "COMPLIANCE_SCRIPT",
+                            "PLIST",
+                            "MOBILECONFIG",
+                            "AUDIT_POLICY",
+                            "REMEDIATION_POLICY"
+                        ]
+                    },
+                    "deployment": {
+                        "$ref": "#/components/schemas/DeploymentInfo"
+                    }
+                }
+            },
+            "DeploymentInfo": {
+                "required": [
+                    "externalId",
+                    "state"
+                ],
+                "type": "object",
+                "properties": {
+                    "state": {
+                        "type": "string",
+                        "enum": [
+                            "UPLOADED",
+                            "CREATED",
+                            "FAILED_RETRYABLE",
+                            "FAILED_NON_RETRYABLE"
+                        ]
+                    },
+                    "externalId": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

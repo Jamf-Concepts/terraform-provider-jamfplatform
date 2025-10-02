@@ -57,7 +57,7 @@ func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.Metada
 // Schema sets the Terraform schema for the provider.
 func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provider for Jamf Platform. https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api Configure base_url and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
+		Description: "Provider for Jamf Platform API Services. https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Configure base_url and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
 				Optional:    true,

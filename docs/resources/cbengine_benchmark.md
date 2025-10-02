@@ -3,12 +3,12 @@
 page_title: "jamfplatform_cbengine_benchmark Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Resource schema for creating a Jamf Compliance Benchmark.
+  Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches SYNCED or a terminal failure.
 ---
 
 # jamfplatform_cbengine_benchmark (Resource)
 
-Resource schema for creating a Jamf Compliance Benchmark.
+Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches SYNCED or a terminal failure.
 
 ## Example Usage
 
@@ -75,53 +75,53 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
 ### Required
 
-- `enforcement_mode` (String) Enforcement mode (MONITOR or MONITOR_AND_ENFORCE).
-- `rules` (Attributes List) List of rule IDs to include in the benchmark, with enabled flag and computed fields. (see [below for nested schema](#nestedatt--rules))
-- `source_baseline_id` (String) Source baseline ID.
-- `sources` (Attributes List) List of sources. (see [below for nested schema](#nestedatt--sources))
-- `target_device_group` (String) Device group for the target configuration.
-- `title` (String) Benchmark title.
+- `enforcement_mode` (String) Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).
+- `rules` (Attributes List) Ordered list of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. (see [below for nested schema](#nestedatt--rules))
+- `source_baseline_id` (String) mSCP baseline identifier used as the source for rules. Required and immutable for this resource (replace on change).
+- `sources` (Attributes List) List of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. (see [below for nested schema](#nestedatt--sources))
+- `target_device_group` (String) Device group ID(s) targeted by this benchmark (maps to target.deviceGroups). Required and immutable for this resource (replace on change).
+- `title` (String) Benchmark title (max length 100). Required and replaces the resource when changed.
 
 ### Optional
 
-- `description` (String) Benchmark description.
+- `description` (String) Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.
 
 ### Read-Only
 
-- `deleted` (Boolean) Whether the benchmark is deleted.
-- `id` (String) The unique identifier for the benchmark (maps to benchmarkId in the API).
-- `last_updated_at` (String) Timestamp of the last update to the benchmark.
-- `tenant_id` (String) Tenant ID for the benchmark.
-- `update_available` (Boolean) Whether an update is available for the benchmark.
+- `deleted` (Boolean) Whether the benchmark is marked deleted by the API.
+- `id` (String) Unique identifier assigned by the API (maps to benchmarkId).
+- `last_updated_at` (String) Timestamp (RFC3339) of the last update to the benchmark.
+- `tenant_id` (String) Identifier for the tenant that owns the benchmark.
+- `update_available` (Boolean) Whether an update is available for the benchmark relative to current mSCP sources.
 
 <a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`
 
 Required:
 
-- `enabled` (Boolean) Whether the rule is enabled.
-- `id` (String) Rule ID.
+- `enabled` (Boolean) Whether the rule is enabled in this benchmark.
+- `id` (String) Rule identifier from the baseline.
 
 Optional:
 
-- `odv_value` (String) ODV value.
+- `odv_value` (String) Optional organization-defined value to apply for this rule (if applicable).
 
 Read-Only:
 
-- `depends_on` (List of String) IDs of rules this rule depends on.
-- `description` (String) Description of the rule.
-- `odv_hint` (String) ODV hint.
-- `odv_placeholder` (String) ODV placeholder.
-- `odv_type` (String) ODV type.
-- `odv_validation_enum_values` (List of String) Enumeration values for ENUM type.
-- `odv_validation_max` (Number) Maximum value constraint for INTEGER type.
-- `odv_validation_min` (Number) Minimum value constraint for INTEGER type.
-- `odv_validation_regex` (String) Regular expression pattern for REGEX type.
-- `os_specific_defaults` (Attributes Map) OS specific defaults for the rule. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
-- `references` (List of String) References for the rule.
-- `section_name` (String) Section name for the rule.
-- `supported_os` (Attributes List) Supported OS for the rule. (see [below for nested schema](#nestedatt--rules--supported_os))
-- `title` (String) Title of the rule.
+- `depends_on` (List of String) List of rule IDs this rule depends on.
+- `description` (String) Rule description from the baseline.
+- `odv_hint` (String) Hint for ODV usage.
+- `odv_placeholder` (String) Placeholder for ODV input.
+- `odv_type` (String) ODV type (INTEGER, STRING, ENUM, REGEX) when applicable.
+- `odv_validation_enum_values` (List of String) Allowed enum values for ENUM ODV types.
+- `odv_validation_max` (Number) Maximum validation for INTEGER ODV types.
+- `odv_validation_min` (Number) Minimum validation for INTEGER ODV types.
+- `odv_validation_regex` (String) Regex pattern for REGEX ODV types.
+- `os_specific_defaults` (Attributes Map) OS-specific defaults for the rule. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
+- `references` (List of String) Reference URLs or identifiers for the rule.
+- `section_name` (String) Section name of the rule from the baseline.
+- `supported_os` (Attributes List) Operating systems supported by the rule. (see [below for nested schema](#nestedatt--rules--supported_os))
+- `title` (String) Rule title resolved from the baseline.
 
 <a id="nestedatt--rules--os_specific_defaults"></a>
 ### Nested Schema for `rules.os_specific_defaults`
@@ -129,8 +129,8 @@ Read-Only:
 Read-Only:
 
 - `description` (String) OS-specific rule description.
-- `odv_hint` (String) Recommended ODV hint.
-- `odv_value` (String) Recommended ODV value.
+- `odv_hint` (String) Hint for the organization-defined value.
+- `odv_value` (String) Recommended organization-defined value for this OS.
 - `title` (String) OS-specific rule title.
 
 
@@ -139,9 +139,9 @@ Read-Only:
 
 Read-Only:
 
-- `management_type` (String) Management type.
-- `os_type` (String) OS type.
-- `os_version` (Number) OS version.
+- `management_type` (String) Management type for the OS.
+- `os_type` (String) Operating system type (e.g. MAC_OS, IOS).
+- `os_version` (Number) OS version integer.
 
 
 
@@ -150,8 +150,8 @@ Read-Only:
 
 Required:
 
-- `branch` (String) Source branch.
-- `revision` (String) Source revision.
+- `branch` (String) Source branch name.
+- `revision` (String) Source revision identifier.
 
 ## Import
 
@@ -160,5 +160,6 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
+# Copyright 2025 Jamf Software LLC
 terraform import jamfplatform_cbengine_benchmark.example "906ad0ba-57aa-4243-b08b-b7d8e29b0363"
 ```
