@@ -4,6 +4,8 @@ package benchmark
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -51,13 +53,37 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		reqBody.Rules[i] = rr
 	}
 
+	tflog.Debug(ctx, "creating cbengine benchmark", map[string]interface{}{
+		"title": data.Title.ValueString(),
+	})
+
 	bench, err := r.client.CreateCBEngineBenchmark(ctx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating benchmark", err.Error())
 		return
 	}
 
-	data.ID = types.StringValue(bench.BenchmarkID)
+	tflog.Debug(ctx, "created benchmark (async)", map[string]interface{}{
+		"benchmark_id": bench.BenchmarkID,
+		"tenant_id":    bench.TenantID,
+	})
+
+	pollInterval := 5 * time.Second
+	tflog.Debug(ctx, "waiting for benchmark to reach SYNCED state", map[string]interface{}{
+		"benchmark_id":  bench.BenchmarkID,
+		"poll_interval": pollInterval.String(),
+	})
+
+	syncedBench, err := waitForBenchmarkSync(ctx, r.client, bench.BenchmarkID, pollInterval)
+	if err != nil {
+		tflog.Error(ctx, "wait for benchmark sync failed", map[string]interface{}{"error": err.Error(), "benchmark_id": bench.BenchmarkID})
+		resp.Diagnostics.AddError("Error waiting for benchmark to sync", err.Error())
+		return
+	}
+
+	tflog.Debug(ctx, "benchmark synced", map[string]interface{}{"benchmark_id": syncedBench.ID})
+
+	data.ID = types.StringValue(syncedBench.ID)
 	data.TenantID = types.StringValue(bench.TenantID)
 	data.Deleted = types.BoolValue(bench.Deleted)
 	data.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
@@ -471,6 +497,18 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		resp.Diagnostics.AddError(
 			"Error deleting benchmark",
 			"Could not delete benchmark: "+err.Error(),
+		)
+		return
+	}
+
+	pollInterval := 5 * time.Second
+	if err := waitForBenchmarkDeletion(ctx, r.client, data.ID.ValueString(), pollInterval); err != nil {
+		if isNotFoundError(err) {
+			return
+		}
+		resp.Diagnostics.AddError(
+			"Error waiting for benchmark deletion",
+			fmt.Sprintf("Benchmark %s deletion did not complete: %v", data.ID.ValueString(), err),
 		)
 		return
 	}
