@@ -387,10 +387,10 @@ Optional:
 - `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: Allowed, AlwaysOn, AlwaysOff.
 - `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with beta_require_program_token.
 - `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with beta_require_program_description.
-- `deferral_combined_period_days` (Number) Number of days to defer combined updates (1-90 days).
-- `deferral_major_period_days` (Number) Number of days to defer major updates (1-90 days).
-- `deferral_minor_period_days` (Number) Number of days to defer minor updates (1-90 days).
-- `deferral_system_period_days` (Number) Number of days to defer system updates (1-90 days).
+- `deferral_combined_period_days` (String) Number of days to defer combined updates (1-90 days).
+- `deferral_major_period_days` (String) Number of days to defer major updates (1-90 days).
+- `deferral_minor_period_days` (String) Number of days to defer minor updates (1-90 days).
+- `deferral_system_period_days` (String) Number of days to defer system updates (1-90 days).
 - `notifications_enabled` (Boolean) Enable update notifications to users.
 - `rapid_security_response_enabled` (Boolean) Enable Rapid Security Response updates.
 - `rapid_security_response_rollback_enabled` (Boolean) Enable rollback capability for Rapid Security Response updates.
