@@ -19,10 +19,10 @@ type SoftwareUpdateSettingsComponent struct {
 	BetaOfferPrograms                    []BetaProgramModel `tfsdk:"beta_offer_programs"`
 	BetaRequireProgramToken              types.String       `tfsdk:"beta_require_program_token"`
 	BetaRequireProgramDescription        types.String       `tfsdk:"beta_require_program_description"`
-	DeferralCombinedPeriod               types.Int64        `tfsdk:"deferral_combined_period_days"`
-	DeferralMajorPeriod                  types.Int64        `tfsdk:"deferral_major_period_days"`
-	DeferralMinorPeriod                  types.Int64        `tfsdk:"deferral_minor_period_days"`
-	DeferralSystemPeriod                 types.Int64        `tfsdk:"deferral_system_period_days"`
+	DeferralCombinedPeriod               types.String       `tfsdk:"deferral_combined_period_days"`
+	DeferralMajorPeriod                  types.String       `tfsdk:"deferral_major_period_days"`
+	DeferralMinorPeriod                  types.String       `tfsdk:"deferral_minor_period_days"`
+	DeferralSystemPeriod                 types.String       `tfsdk:"deferral_system_period_days"`
 	NotificationsEnabled                 types.Bool         `tfsdk:"notifications_enabled"`
 	RapidSecurityResponseEnabled         types.Bool         `tfsdk:"rapid_security_response_enabled"`
 	RapidSecurityResponseRollbackEnabled types.Bool         `tfsdk:"rapid_security_response_rollback_enabled"`
@@ -59,19 +59,19 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 				Description: "Beta program enrollment setting. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
 			},
-			"deferral_combined_period_days": schema.Int64Attribute{
+			"deferral_combined_period_days": schema.StringAttribute{
 				Description: "Number of days to defer combined updates (1-90 days).",
 				Optional:    true,
 			},
-			"deferral_major_period_days": schema.Int64Attribute{
+			"deferral_major_period_days": schema.StringAttribute{
 				Description: "Number of days to defer major updates (1-90 days).",
 				Optional:    true,
 			},
-			"deferral_minor_period_days": schema.Int64Attribute{
+			"deferral_minor_period_days": schema.StringAttribute{
 				Description: "Number of days to defer minor updates (1-90 days).",
 				Optional:    true,
 			},
-			"deferral_system_period_days": schema.Int64Attribute{
+			"deferral_system_period_days": schema.StringAttribute{
 				Description: "Number of days to defer system updates (1-90 days).",
 				Optional:    true,
 			},
@@ -193,25 +193,25 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 	deferrals := make(map[string]interface{})
 	if !c.DeferralCombinedPeriod.IsNull() && !c.DeferralCombinedPeriod.IsUnknown() {
 		deferrals["CombinedPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralCombinedPeriod.ValueInt64(),
+			"Value":    c.DeferralCombinedPeriod.ValueString(),
 			"Included": true,
 		}
 	}
 	if !c.DeferralMajorPeriod.IsNull() && !c.DeferralMajorPeriod.IsUnknown() {
 		deferrals["MajorPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralMajorPeriod.ValueInt64(),
+			"Value":    c.DeferralMajorPeriod.ValueString(),
 			"Included": true,
 		}
 	}
 	if !c.DeferralMinorPeriod.IsNull() && !c.DeferralMinorPeriod.IsUnknown() {
 		deferrals["MinorPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralMinorPeriod.ValueInt64(),
+			"Value":    c.DeferralMinorPeriod.ValueString(),
 			"Included": true,
 		}
 	}
 	if !c.DeferralSystemPeriod.IsNull() && !c.DeferralSystemPeriod.IsUnknown() {
 		deferrals["SystemPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralSystemPeriod.ValueInt64(),
+			"Value":    c.DeferralSystemPeriod.ValueString(),
 			"Included": true,
 		}
 	}
@@ -360,27 +360,27 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 	}
 
 	if val := extractValue("Deferrals", "CombinedPeriodInDays"); val != nil {
-		c.DeferralCombinedPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralCombinedPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralCombinedPeriod = types.Int64Null()
+		c.DeferralCombinedPeriod = types.StringNull()
 	}
 
 	if val := extractValue("Deferrals", "MajorPeriodInDays"); val != nil {
-		c.DeferralMajorPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralMajorPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralMajorPeriod = types.Int64Null()
+		c.DeferralMajorPeriod = types.StringNull()
 	}
 
 	if val := extractValue("Deferrals", "MinorPeriodInDays"); val != nil {
-		c.DeferralMinorPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralMinorPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralMinorPeriod = types.Int64Null()
+		c.DeferralMinorPeriod = types.StringNull()
 	}
 
 	if val := extractValue("Deferrals", "SystemPeriodInDays"); val != nil {
-		c.DeferralSystemPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralSystemPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralSystemPeriod = types.Int64Null()
+		c.DeferralSystemPeriod = types.StringNull()
 	}
 
 	if rsr, exists := rawConfig["RapidSecurityResponse"]; exists {
