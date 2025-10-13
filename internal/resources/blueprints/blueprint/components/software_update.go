@@ -4,8 +4,11 @@ package components
 
 import (
 	"encoding/json"
+	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -23,10 +26,18 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 			"target_os_version": schema.StringAttribute{
 				Description: "Target OS version. Format: major.minor[.patch]",
 				Required:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`),
+					"Value must be a valid semantic version (e.g., 10.15.7)",
+				)},
 			},
 			"target_local_date_time": schema.StringAttribute{
 				Description: "Local time of the device until which update must be performed. Format: RFC3339 date-time.",
 				Required:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`),
+					"Value must be a valid RFC3339 date-time (e.g., 2023-10-05T14:48:00)",
+				)},
 			},
 			"details_url_value": schema.StringAttribute{
 				Description: "URL of a web page with the details about the enforced update.",

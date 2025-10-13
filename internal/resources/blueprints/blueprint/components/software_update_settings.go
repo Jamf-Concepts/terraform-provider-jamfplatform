@@ -4,8 +4,11 @@ package components
 
 import (
 	"encoding/json"
+	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -46,34 +49,54 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 			"automatic_download": schema.StringAttribute{
 				Description: "Automatic download behavior for updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"automatic_install_os_updates": schema.StringAttribute{
 				Description: "Automatic installation behavior for OS updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"automatic_install_security_updates": schema.StringAttribute{
 				Description: "Automatic installation behavior for security updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"beta_program_enrollment": schema.StringAttribute{
 				Description: "Beta program enrollment setting. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"deferral_combined_period_days": schema.StringAttribute{
 				Description: "Number of days to defer combined updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
 			"deferral_major_period_days": schema.StringAttribute{
 				Description: "Number of days to defer major updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
 			"deferral_minor_period_days": schema.StringAttribute{
 				Description: "Number of days to defer minor updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
 			"deferral_system_period_days": schema.StringAttribute{
 				Description: "Number of days to defer system updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
 			"notifications_enabled": schema.BoolAttribute{
 				Description: "Enable update notifications to users.",
@@ -90,6 +113,7 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 			"recommended_cadence": schema.StringAttribute{
 				Description: "Recommended update cadence policy. Valid values: All, Oldest, Newest.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("All", "Oldest", "Newest")},
 			},
 			"beta_require_program_token": schema.StringAttribute{
 				Description: "Required beta program token (1-1000 characters). Must be specified with beta_require_program_description.",

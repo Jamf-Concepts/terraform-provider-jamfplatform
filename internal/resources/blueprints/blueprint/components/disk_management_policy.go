@@ -5,7 +5,9 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -27,10 +29,12 @@ func DiskManagementPolicyComponentSchema() schema.NestedBlockObject {
 			"external_storage": schema.StringAttribute{
 				Description: "Storage mode for external storage. Valid values: Allowed, Disallowed, ReadOnly.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
 			},
 			"network_storage": schema.StringAttribute{
 				Description: "Storage mode for network storage. Valid values: Allowed, Disallowed, ReadOnly.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
 			},
 		},
 	}

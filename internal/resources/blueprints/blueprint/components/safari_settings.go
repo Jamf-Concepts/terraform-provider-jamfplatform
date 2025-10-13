@@ -5,7 +5,9 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -63,6 +65,7 @@ func SafariSettingsComponentSchema() schema.NestedBlockObject {
 			"new_tab_start_page_type": schema.StringAttribute{
 				Description: "Sets the start page type in Safari. Valid values: Start, Home, Extension.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Start", "Home", "Extension")},
 			},
 			"new_tab_start_page_homepage_url": schema.StringAttribute{
 				Description: "The URL of the homepage which needs to start with https:// or http://. Required when page type is 'Home'.",

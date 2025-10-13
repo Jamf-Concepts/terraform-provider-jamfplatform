@@ -7,12 +7,14 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -42,6 +44,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 			"title": schema.StringAttribute{
 				Description: "Benchmark title (max length 100). Required and replaces the resource when changed.",
 				Required:    true,
+				Validators:  []validator.String{stringvalidator.LengthBetween(1, 100)},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -49,6 +52,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 			"description": schema.StringAttribute{
 				Description: "Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.LengthBetween(0, 1000)},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -211,6 +215,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 			"enforcement_mode": schema.StringAttribute{
 				Description: "Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).",
 				Required:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("MONITOR", "MONITOR_AND_ENFORCE")},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

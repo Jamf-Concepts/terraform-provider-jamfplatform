@@ -5,7 +5,9 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -65,6 +67,7 @@ func SafariBookmarksComponentSchema() schema.NestedBlockObject {
 									"type": schema.StringAttribute{
 										Description: "Type of bookmark. Valid values: 'bookmark' (URL bookmark) or 'folder' (bookmark folder).",
 										Optional:    true,
+										Validators:  []validator.String{stringvalidator.OneOf("bookmark", "folder")},
 									},
 									"title": schema.StringAttribute{
 										Description: "The title of the folder shown in Safari.",
