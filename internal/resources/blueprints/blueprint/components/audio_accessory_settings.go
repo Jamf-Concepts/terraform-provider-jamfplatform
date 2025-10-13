@@ -5,7 +5,10 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -32,10 +35,12 @@ func AudioAccessorySettingsComponentSchema() schema.NestedBlockObject {
 			"unpairing_time_policy": schema.StringAttribute{
 				Description: "Device's unpairing policy. Valid values: None, Hour.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("None", "Hour")},
 			},
 			"unpairing_time_hour": schema.Int64Attribute{
 				Description: "The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is 'Hour'. Range: 0-23.",
 				Optional:    true,
+				Validators:  []validator.Int64{int64validator.Between(0, 23)},
 			},
 		},
 	}

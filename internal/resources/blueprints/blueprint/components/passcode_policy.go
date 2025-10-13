@@ -5,7 +5,9 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -45,6 +47,7 @@ func PasscodePolicyComponentSchema() schema.NestedBlockObject {
 			"maximum_failed_attempts": schema.Int64Attribute{
 				Description: "Maximum failed attempts. Range: 2-11.",
 				Optional:    true,
+				Validators:  []validator.Int64{int64validator.Between(2, 11)},
 			},
 			"maximum_grace_period_in_minutes": schema.Int64Attribute{
 				Description: "Maximum grace period in minutes. Minimum: 0.",
@@ -53,22 +56,27 @@ func PasscodePolicyComponentSchema() schema.NestedBlockObject {
 			"maximum_inactivity_in_minutes": schema.Int64Attribute{
 				Description: "Maximum inactivity in minutes. Range: 0-15.",
 				Optional:    true,
+				Validators:  []validator.Int64{int64validator.Between(0, 15)},
 			},
 			"maximum_passcode_age_in_days": schema.Int64Attribute{
 				Description: "Maximum passcode age in days. Range: 0-730.",
 				Optional:    true,
+				Validators:  []validator.Int64{int64validator.Between(0, 730)},
 			},
 			"minimum_complex_characters": schema.Int64Attribute{
 				Description: "Minimum complex characters. Range: 0-4.",
 				Optional:    true,
+				Validators:  []validator.Int64{int64validator.Between(0, 4)},
 			},
 			"minimum_length": schema.Int64Attribute{
 				Description: "Minimum length. Range: 0-16.",
 				Optional:    true,
+				Validators:  []validator.Int64{int64validator.Between(0, 16)},
 			},
 			"passcode_reuse_limit": schema.Int64Attribute{
 				Description: "Passcode reuse limit. Range: 1-50.",
 				Optional:    true,
+				Validators:  []validator.Int64{int64validator.Between(1, 50)},
 			},
 			"require_alphanumeric_passcode": schema.BoolAttribute{
 				Description: "Require alphanumeric passcode.",
