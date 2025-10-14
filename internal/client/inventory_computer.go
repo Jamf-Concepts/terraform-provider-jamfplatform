@@ -494,7 +494,7 @@ func (c *Client) GetInventoryComputerByID(ctx context.Context, id string) (*Inve
 		return nil, fmt.Errorf("failed to get computer by id: %w", err)
 	}
 	var result InventoryComputer
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -521,7 +521,7 @@ func (c *Client) GetInventoryComputers(ctx context.Context, page, pageSize int, 
 		return nil, fmt.Errorf("failed to list computers: %w", err)
 	}
 	var result InventoryComputerSearchResults
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

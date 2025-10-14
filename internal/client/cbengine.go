@@ -178,7 +178,7 @@ func (c *Client) GetCBEngineBaselines(ctx context.Context) (*CBEngineBaselinesRe
 	}
 
 	var result CBEngineBaselinesResponse
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 
@@ -195,7 +195,7 @@ func (c *Client) CreateCBEngineBenchmark(ctx context.Context, request *CBEngineB
 	}
 
 	var result CBEngineBenchmarkResponse
-	if err := c.handleAPIResponse(resp, 202, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 202, &result); err != nil {
 		return nil, err
 	}
 
@@ -210,7 +210,7 @@ func (c *Client) GetCBEngineBenchmarks(ctx context.Context) (*CBEngineBenchmarks
 	}
 
 	var result CBEngineBenchmarksResponse
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 
@@ -227,7 +227,7 @@ func (c *Client) GetCBEngineBenchmarkByID(ctx context.Context, id string) (*CBEn
 	}
 
 	var result CBEngineBenchmarkResponse
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 
@@ -243,7 +243,7 @@ func (c *Client) DeleteCBEngineBenchmark(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete benchmark %s: %w", id, err)
 	}
 
-	if err := c.handleAPIResponse(resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
 		return err
 	}
 
@@ -278,7 +278,7 @@ func (c *Client) GetCBEngineRules(ctx context.Context, baselineID string) (*CBEn
 	}
 
 	var result CBEngineSourcedRules
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 

@@ -11,10 +11,17 @@ import (
 	"net/http"
 )
 
+// Logger is an interface for logging HTTP requests and responses
+type Logger interface {
+	LogRequest(ctx context.Context, method, url string, body []byte)
+	LogResponse(ctx context.Context, statusCode int, body []byte)
+}
+
 // Client represents the main API client for Jamf Platform
 type Client struct {
 	oauthClient *OAuthClient
 	baseURL     string
+	logger      Logger
 }
 
 // ApiError represents an error response from the API
@@ -57,6 +64,11 @@ func (c *Client) SetHTTPClient(httpClient *http.Client) {
 	c.oauthClient.SetHTTPClient(httpClient)
 }
 
+// SetLogger sets the logger for the client
+func (c *Client) SetLogger(logger Logger) {
+	c.logger = logger
+}
+
 // SetUserAgent sets the User-Agent header value used for token and API requests.
 func (c *Client) SetUserAgent(ua string) {
 	if c.oauthClient != nil {
@@ -81,6 +93,10 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request body: %w", err)
 		}
+	}
+
+	if c.logger != nil {
+		c.logger.LogRequest(ctx, method, fullURL, requestBodyBytes)
 	}
 
 	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBodyBytes)
@@ -118,7 +134,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 }
 
 // handleAPIResponse processes API responses and handles common error cases
-func (c *Client) handleAPIResponse(resp *http.Response, expectedStatus int, result interface{}) error {
+func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, expectedStatus int, result interface{}) error {
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			if c.oauthClient != nil && c.oauthClient.logger != nil {
@@ -129,9 +145,16 @@ func (c *Client) handleAPIResponse(resp *http.Response, expectedStatus int, resu
 		}
 	}()
 
-	if resp.StatusCode != expectedStatus {
-		body, _ := io.ReadAll(resp.Body)
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return fmt.Errorf("failed to read response body: %w", readErr)
+	}
 
+	if c.logger != nil {
+		c.logger.LogResponse(ctx, resp.StatusCode, body)
+	}
+
+	if resp.StatusCode != expectedStatus {
 		requestInfo := fmt.Sprintf("method=%s, url=%s", resp.Request.Method, resp.Request.URL.String())
 
 		var apiErr ApiError
@@ -151,7 +174,7 @@ func (c *Client) handleAPIResponse(resp *http.Response, expectedStatus int, resu
 	}
 
 	if result != nil {
-		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		if err := json.Unmarshal(body, result); err != nil {
 			return fmt.Errorf("failed to decode response: %w", err)
 		}
 	}

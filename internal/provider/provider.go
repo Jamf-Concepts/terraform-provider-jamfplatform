@@ -108,9 +108,12 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		clientSecret = getenv(envClientSecret)
 	}
 
-	client := client.NewClient(baseURL, clientID, clientSecret)
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	apiClient := client.NewClient(baseURL, clientID, clientSecret)
+
+	apiClient.SetLogger(NewTerraformLogger())
+
+	resp.DataSourceData = apiClient
+	resp.ResourceData = apiClient
 }
 
 // Resources returns the list of resource constructors for the provider.

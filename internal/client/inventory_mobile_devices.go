@@ -317,7 +317,7 @@ func (c *Client) GetInventoryMobileDeviceByID(ctx context.Context, id string, se
 		return nil, fmt.Errorf("failed to get mobile device by id: %w", err)
 	}
 	var result InventoryMobileDevice
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -346,7 +346,7 @@ func (c *Client) GetInventoryMobileDevices(ctx context.Context, page, pageSize i
 		return nil, fmt.Errorf("failed to list mobile devices: %w", err)
 	}
 	var result InventoryMobileDeviceSearchResults
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
