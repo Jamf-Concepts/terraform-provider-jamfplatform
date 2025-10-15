@@ -96,7 +96,7 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 
 ### Required
 
-- `device_groups` (List of String) List of device group IDs to target. Specified as a list of strings in UUID format.
+- `device_groups` (List of String) List of device group Platform IDs to target. Specified as a list of strings in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint.
 - `name` (String) Blueprint name.
 
 ### Optional
