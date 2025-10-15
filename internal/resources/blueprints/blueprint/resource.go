@@ -8,12 +8,14 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -96,46 +98,79 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 			"audio_accessory_settings": schema.ListNestedBlock{
 				Description:  "Audio accessory settings component for managing temporary pairing and unpairing policies.",
 				NestedObject: components.AudioAccessorySettingsComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"disk_management_settings": schema.ListNestedBlock{
 				Description:  "Disk management settings component for controlling external and network storage restrictions.",
 				NestedObject: components.DiskManagementPolicyComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"math_settings": schema.ListNestedBlock{
 				Description:  "Math settings component for managing calculator modes and system behavior.",
 				NestedObject: components.MathSettingsComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"passcode_policy": schema.ListNestedBlock{
 				Description:  "Passcode policy component for managing device passcode requirements and restrictions.",
 				NestedObject: components.PasscodePolicyComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"safari_bookmarks": schema.ListNestedBlock{
 				Description:  "Safari bookmarks component for managing Safari managed bookmarks and bookmark groups.",
 				NestedObject: components.SafariBookmarksComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"safari_extensions": schema.ListNestedBlock{
 				Description:  "Safari extensions component for managing Safari extension permissions and states.",
 				NestedObject: components.SafariExtensionsComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"safari_settings": schema.ListNestedBlock{
 				Description:  "Safari settings component for managing Safari browser behavior and security settings.",
 				NestedObject: components.SafariSettingsComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"service_background_tasks": schema.ListNestedBlock{
 				Description:  "Service background tasks component for managing background service tasks and launchd configurations.",
 				NestedObject: components.ServiceBackgroundTasksComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"service_configuration_files": schema.ListNestedBlock{
 				Description:  "Service configuration files component for managing configuration files for system services.",
 				NestedObject: components.ServiceConfigurationFilesComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"software_update": schema.ListNestedBlock{
 				Description:  "Software update component for enforcing OS updates on devices.",
 				NestedObject: components.SoftwareUpdateComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 			"software_update_settings": schema.ListNestedBlock{
 				Description:  "Software update settings component for configuring system update behavior and policies.",
 				NestedObject: components.SoftwareUpdateSettingsComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
 			},
 		},
 	}
