@@ -150,7 +150,7 @@ func (c *Client) GetBlueprints(ctx context.Context, sort []string, search string
 			return nil, fmt.Errorf("failed to list blueprints: %w", err)
 		}
 		var result BlueprintOverviewPagedResponse
-		if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 			return nil, err
 		}
 		allResults = append(allResults, result.Results...)
@@ -170,7 +170,7 @@ func (c *Client) GetBlueprintByID(ctx context.Context, blueprintID string) (*Blu
 		return nil, fmt.Errorf("failed to get blueprint %s: %w", blueprintID, err)
 	}
 	var result BlueprintDetail
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -201,7 +201,7 @@ func (c *Client) CreateBlueprint(ctx context.Context, request *BlueprintCreateRe
 		return nil, fmt.Errorf("failed to create blueprint: %w", err)
 	}
 	var result BlueprintCreateResponse
-	if err := c.handleAPIResponse(resp, 201, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 201, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -214,7 +214,7 @@ func (c *Client) UpdateBlueprint(ctx context.Context, blueprintID string, reques
 	if err != nil {
 		return fmt.Errorf("failed to update blueprint %s: %w", blueprintID, err)
 	}
-	if err := c.handleAPIResponse(resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
 		return err
 	}
 	return nil
@@ -227,7 +227,7 @@ func (c *Client) DeleteBlueprint(ctx context.Context, blueprintID string) error 
 	if err != nil {
 		return fmt.Errorf("failed to delete blueprint %s: %w", blueprintID, err)
 	}
-	if err := c.handleAPIResponse(resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
 		return err
 	}
 	return nil
@@ -240,7 +240,7 @@ func (c *Client) DeployBlueprint(ctx context.Context, blueprintID string) error 
 	if err != nil {
 		return fmt.Errorf("failed to deploy blueprint %s: %w", blueprintID, err)
 	}
-	if err := c.handleAPIResponse(resp, 202, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 202, nil); err != nil {
 		return err
 	}
 	return nil
@@ -262,7 +262,7 @@ func (c *Client) GetBlueprintComponents(ctx context.Context) ([]BlueprintCompone
 			return nil, fmt.Errorf("failed to list blueprint components: %w", err)
 		}
 		var result BlueprintComponentDescriptionPagedResponse
-		if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 			return nil, err
 		}
 		allResults = append(allResults, result.Results...)
@@ -282,7 +282,7 @@ func (c *Client) GetBlueprintComponentByID(ctx context.Context, identifier strin
 		return nil, fmt.Errorf("failed to get blueprint component %s: %w", identifier, err)
 	}
 	var result BlueprintComponentDescription
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
