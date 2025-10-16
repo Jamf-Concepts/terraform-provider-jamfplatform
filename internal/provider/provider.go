@@ -4,7 +4,7 @@ package provider
 
 import (
 	"context"
-
+	"fmt"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -103,14 +103,37 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	if clientID == "" {
 		clientID = getenv(envClientID)
 	}
+	if clientID == "" {
+		resp.Diagnostics.AddError(
+			"Missing Required Provider Configuration",
+			"client_id must be set either in the provider block or via the JAMFPLATFORM_CLIENT_ID environment variable.",
+		)
+		return
+	}
+
 	clientSecret := data.ClientSecret.ValueString()
 	if clientSecret == "" {
 		clientSecret = getenv(envClientSecret)
+	}
+	if clientSecret == "" {
+		resp.Diagnostics.AddError(
+			"Missing Required Provider Configuration",
+			"client_secret must be set either in the provider block or via the JAMFPLATFORM_CLIENT_SECRET environment variable.",
+		)
+		return
 	}
 
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	apiClient.SetLogger(NewTerraformLogger())
+
+	if _, err := apiClient.OAuthClient().GetValidToken(ctx); err != nil {
+		resp.Diagnostics.AddError(
+			"Authentication Failed",
+			fmt.Sprintf("Unable to authenticate with Jamf Platform API. Please verify your credentials are correct.\n\nError: %s", err.Error()),
+		)
+		return
+	}
 
 	resp.DataSourceData = apiClient
 	resp.ResourceData = apiClient
