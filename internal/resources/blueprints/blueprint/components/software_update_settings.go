@@ -148,35 +148,14 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	if !c.AllowStandardUserOSUpdates.IsNull() && !c.AllowStandardUserOSUpdates.IsUnknown() {
-		config["AllowStandardUserOSUpdates"] = map[string]interface{}{
-			"Enabled":  c.AllowStandardUserOSUpdates.ValueBool(),
-			"Included": true,
-		}
-	}
+	config["AllowStandardUserOSUpdates"] = setBoolField(c.AllowStandardUserOSUpdates, false)
 
-	automaticActions := make(map[string]interface{})
-	if !c.AutomaticDownload.IsNull() && !c.AutomaticDownload.IsUnknown() {
-		automaticActions["Download"] = map[string]interface{}{
-			"Value":    c.AutomaticDownload.ValueString(),
-			"Included": true,
-		}
+	automaticActions := map[string]interface{}{
+		"Download":              setStringField(c.AutomaticDownload, "Allowed"),
+		"InstallOSUpdates":      setStringField(c.AutomaticInstallOSUpdates, "Allowed"),
+		"InstallSecurityUpdate": setStringField(c.AutomaticInstallSecurityUpdate, "Allowed"),
 	}
-	if !c.AutomaticInstallOSUpdates.IsNull() && !c.AutomaticInstallOSUpdates.IsUnknown() {
-		automaticActions["InstallOSUpdates"] = map[string]interface{}{
-			"Value":    c.AutomaticInstallOSUpdates.ValueString(),
-			"Included": true,
-		}
-	}
-	if !c.AutomaticInstallSecurityUpdate.IsNull() && !c.AutomaticInstallSecurityUpdate.IsUnknown() {
-		automaticActions["InstallSecurityUpdate"] = map[string]interface{}{
-			"Value":    c.AutomaticInstallSecurityUpdate.ValueString(),
-			"Included": true,
-		}
-	}
-	if len(automaticActions) > 0 {
-		config["AutomaticActions"] = automaticActions
-	}
+	config["AutomaticActions"] = automaticActions
 
 	hasBetaSettings := !c.BetaProgramEnrollment.IsNull() && !c.BetaProgramEnrollment.IsUnknown() ||
 		len(c.BetaOfferPrograms) > 0 ||
@@ -214,65 +193,23 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 		}
 	}
 
-	deferrals := make(map[string]interface{})
-	if !c.DeferralCombinedPeriod.IsNull() && !c.DeferralCombinedPeriod.IsUnknown() {
-		deferrals["CombinedPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralCombinedPeriod.ValueString(),
-			"Included": true,
-		}
+	deferrals := map[string]interface{}{
+		"CombinedPeriodInDays": setStringField(c.DeferralCombinedPeriod, ""),
+		"MajorPeriodInDays":    setStringField(c.DeferralMajorPeriod, ""),
+		"MinorPeriodInDays":    setStringField(c.DeferralMinorPeriod, ""),
+		"SystemPeriodInDays":   setStringField(c.DeferralSystemPeriod, ""),
 	}
-	if !c.DeferralMajorPeriod.IsNull() && !c.DeferralMajorPeriod.IsUnknown() {
-		deferrals["MajorPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralMajorPeriod.ValueString(),
-			"Included": true,
-		}
-	}
-	if !c.DeferralMinorPeriod.IsNull() && !c.DeferralMinorPeriod.IsUnknown() {
-		deferrals["MinorPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralMinorPeriod.ValueString(),
-			"Included": true,
-		}
-	}
-	if !c.DeferralSystemPeriod.IsNull() && !c.DeferralSystemPeriod.IsUnknown() {
-		deferrals["SystemPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralSystemPeriod.ValueString(),
-			"Included": true,
-		}
-	}
-	if len(deferrals) > 0 {
-		config["Deferrals"] = deferrals
-	}
+	config["Deferrals"] = deferrals
 
-	if !c.NotificationsEnabled.IsNull() && !c.NotificationsEnabled.IsUnknown() {
-		config["Notifications"] = map[string]interface{}{
-			"Enabled":  c.NotificationsEnabled.ValueBool(),
-			"Included": true,
-		}
-	}
+	config["Notifications"] = setBoolField(c.NotificationsEnabled, false)
 
-	rapidSecurityResponse := make(map[string]interface{})
-	if !c.RapidSecurityResponseEnabled.IsNull() && !c.RapidSecurityResponseEnabled.IsUnknown() {
-		rapidSecurityResponse["Enable"] = map[string]interface{}{
-			"Enabled":  c.RapidSecurityResponseEnabled.ValueBool(),
-			"Included": true,
-		}
+	rapidSecurityResponse := map[string]interface{}{
+		"Enable":         setBoolField(c.RapidSecurityResponseEnabled, false),
+		"EnableRollback": setBoolField(c.RapidSecurityResponseRollbackEnabled, false),
 	}
-	if !c.RapidSecurityResponseRollbackEnabled.IsNull() && !c.RapidSecurityResponseRollbackEnabled.IsUnknown() {
-		rapidSecurityResponse["EnableRollback"] = map[string]interface{}{
-			"Enabled":  c.RapidSecurityResponseRollbackEnabled.ValueBool(),
-			"Included": true,
-		}
-	}
-	if len(rapidSecurityResponse) > 0 {
-		config["RapidSecurityResponse"] = rapidSecurityResponse
-	}
+	config["RapidSecurityResponse"] = rapidSecurityResponse
 
-	if !c.RecommendedCadence.IsNull() && !c.RecommendedCadence.IsUnknown() {
-		config["RecommendedCadence"] = map[string]interface{}{
-			"Value":    c.RecommendedCadence.ValueString(),
-			"Included": true,
-		}
-	}
+	config["RecommendedCadence"] = setStringField(c.RecommendedCadence, "All")
 
 	return config, nil
 }
