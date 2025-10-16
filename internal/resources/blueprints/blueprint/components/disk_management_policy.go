@@ -46,59 +46,54 @@ func (c *DiskManagementPolicyComponent) ToRawConfiguration() (map[string]interfa
 
 	config["version"] = int32(2)
 
-	if (!c.ExternalStorage.IsNull() && !c.ExternalStorage.IsUnknown()) ||
-		(!c.NetworkStorage.IsNull() && !c.NetworkStorage.IsUnknown()) {
-
-		restrictions := make(map[string]interface{})
-
-		if !c.ExternalStorage.IsNull() && !c.ExternalStorage.IsUnknown() {
-			restrictions["ExternalStorage"] = map[string]interface{}{
-				"Value":    c.ExternalStorage.ValueString(),
-				"Included": true,
-			}
-		}
-
-		if !c.NetworkStorage.IsNull() && !c.NetworkStorage.IsUnknown() {
-			restrictions["NetworkStorage"] = map[string]interface{}{
-				"Value":    c.NetworkStorage.ValueString(),
-				"Included": true,
-			}
-		}
-
-		config["Restrictions"] = restrictions
+	restrictions := map[string]interface{}{
+		"ExternalStorage": setStringField(c.ExternalStorage, "Allowed"),
+		"NetworkStorage":  setStringField(c.NetworkStorage, "Allowed"),
 	}
+	config["Restrictions"] = restrictions
 
 	return config, nil
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
 func (c *DiskManagementPolicyComponent) FromRawConfiguration(raw map[string]interface{}) error {
-	if restrictionsRaw, exists := raw["Restrictions"]; exists {
-		if restrictionsMap, ok := restrictionsRaw.(map[string]interface{}); ok {
-			if externalStorageRaw, exists := restrictionsMap["ExternalStorage"]; exists {
-				if externalStorageStr, ok := externalStorageRaw.(string); ok {
-					c.ExternalStorage = types.StringValue(externalStorageStr)
-				} else if externalStorageMap, ok := externalStorageRaw.(map[string]interface{}); ok {
-					if value, exists := externalStorageMap["Value"]; exists {
-						if valueStr, ok := value.(string); ok {
-							c.ExternalStorage = types.StringValue(valueStr)
-						}
-					}
+	extractValue := func(path ...string) interface{} {
+		current := raw
+		for _, key := range path[:len(path)-1] {
+			if next, exists := current[key]; exists {
+				if nextMap, ok := next.(map[string]interface{}); ok {
+					current = nextMap
+				} else {
+					return nil
 				}
+			} else {
+				return nil
 			}
+		}
 
-			if networkStorageRaw, exists := restrictionsMap["NetworkStorage"]; exists {
-				if networkStorageStr, ok := networkStorageRaw.(string); ok {
-					c.NetworkStorage = types.StringValue(networkStorageStr)
-				} else if networkStorageMap, ok := networkStorageRaw.(map[string]interface{}); ok {
-					if value, exists := networkStorageMap["Value"]; exists {
-						if valueStr, ok := value.(string); ok {
-							c.NetworkStorage = types.StringValue(valueStr)
-						}
+		finalKey := path[len(path)-1]
+		if obj, exists := current[finalKey]; exists {
+			if objMap, ok := obj.(map[string]interface{}); ok {
+				if value, hasValue := objMap["Value"]; hasValue {
+					if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
+						return value
 					}
 				}
 			}
 		}
+		return nil
+	}
+
+	if val := extractValue("Restrictions", "ExternalStorage"); val != nil {
+		c.ExternalStorage = types.StringValue(val.(string))
+	} else {
+		c.ExternalStorage = types.StringNull()
+	}
+
+	if val := extractValue("Restrictions", "NetworkStorage"); val != nil {
+		c.NetworkStorage = types.StringValue(val.(string))
+	} else {
+		c.NetworkStorage = types.StringNull()
 	}
 
 	return nil
