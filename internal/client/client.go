@@ -76,6 +76,11 @@ func (c *Client) SetUserAgent(ua string) {
 	}
 }
 
+// OAuthClient returns the OAuth client for authentication operations.
+func (c *Client) OAuthClient() *OAuthClient {
+	return c.oauthClient
+}
+
 // makeRequest is a helper method for making authenticated API requests
 func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
 	var requestBodyBytes []byte
