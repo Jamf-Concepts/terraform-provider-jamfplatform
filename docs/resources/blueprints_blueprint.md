@@ -126,11 +126,14 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 <a id="nestedblock--audio_accessory_settings"></a>
 ### Nested Schema for `audio_accessory_settings`
 
-Optional:
+Required:
 
 - `temporary_pairing_disabled` (Boolean) If true, temporary pairing of audio accessories is disabled.
+
+Optional:
+
 - `unpairing_time_hour` (Number) The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is 'Hour'. Range: 0-23.
-- `unpairing_time_policy` (String) Device's unpairing policy. Valid values: None, Hour.
+- `unpairing_time_policy` (String) Device's unpairing policy. Valid values: None, Hour. When set to 'Hour', unpairing_time_hour must also be provided.
 
 
 <a id="nestedblock--disk_management_settings"></a>
