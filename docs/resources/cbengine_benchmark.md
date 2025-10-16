@@ -79,7 +79,7 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 - `rules` (Attributes List) Ordered list of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. (see [below for nested schema](#nestedatt--rules))
 - `source_baseline_id` (String) mSCP baseline identifier used as the source for rules. Required and immutable for this resource (replace on change).
 - `sources` (Attributes List) List of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. (see [below for nested schema](#nestedatt--sources))
-- `target_device_group` (String) Device group ID(s) targeted by this benchmark (maps to target.deviceGroups). Required and immutable for this resource (replace on change).
+- `target_device_group` (String) Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).
 - `title` (String) Benchmark title (max length 100). Required and replaces the resource when changed.
 
 ### Optional

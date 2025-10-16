@@ -47,6 +47,32 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   }
 }
 
+# Latest OS version Software Updates Blueprint
+resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
+  name        = "Latest OS version Software Updates"
+  description = "Managed by Terraform"
+
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
+
+  software_update {
+    deployment_time    = "02:00"
+    enforce_after_days = 7
+  }
+}
+
+# Specific OS version and time Software Updates Blueprint
+resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
+  name        = "Specific OS Version and time Software Updates"
+  description = "Managed by Terraform"
+
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
+
+  software_update {
+    target_os_version      = "26.0.1"
+    target_local_date_time = "2025-10-10T12:00:00"
+  }
+}
+
 # Legacy Payloads Example Blueprint
 resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
   name        = "Restrictions for Safari"
@@ -70,7 +96,7 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 
 ### Required
 
-- `device_groups` (List of String) List of device group IDs to target.
+- `device_groups` (List of String) List of device group Platform IDs to target. Specified as a list of strings in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint.
 - `name` (String) Blueprint name.
 
 ### Optional
@@ -364,14 +390,17 @@ Read-Only:
 <a id="nestedblock--software_update"></a>
 ### Nested Schema for `software_update`
 
-Required:
-
-- `target_local_date_time` (String) Local time of the device until which update must be performed. Format: RFC3339 date-time.
-- `target_os_version` (String) Target OS version. Format: major.minor[.patch]
-
 Optional:
 
-- `details_url_value` (String) URL of a web page with the details about the enforced update.
+- `deployment_time` (String) For automatic enforcement. Local device time to install the update. Format: HH:mm (24-hour). Cannot be used with target_os_version or target_local_date_time.
+- `details_url_value` (String) URL of a web page with the details about the software update.
+- `enforce_after_days` (Number) For automatic enforcement. Days after release to enforce the update. Maximum is 30. Cannot be used with target_os_version or target_local_date_time.
+- `target_local_date_time` (String) For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with deployment_time or enforce_after_days.
+- `target_os_version` (String) For manual enforcement. Target OS version. Format: major.minor[.patch]. Cannot be used with deployment_time or enforce_after_days.
+
+Read-Only:
+
+- `enforcement_type` (String) Type of enforcement. Automatically set to 'AUTOMATIC' when deployment_time or enforce_after_days is specified, or 'MANUAL' when target_os_version or target_local_date_time is specified.
 
 
 <a id="nestedblock--software_update_settings"></a>

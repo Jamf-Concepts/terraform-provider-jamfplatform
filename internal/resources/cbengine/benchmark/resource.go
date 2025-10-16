@@ -5,6 +5,7 @@ package benchmark
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -206,8 +207,10 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"target_device_group": schema.StringAttribute{
-				Description: "Device group ID(s) targeted by this benchmark (maps to target.deviceGroups). Required and immutable for this resource (replace on change).",
+				Description: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).",
 				Required:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`),
+					"Device group IDmust be a valid UUID")},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
