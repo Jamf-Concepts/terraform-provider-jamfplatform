@@ -5,7 +5,10 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -49,18 +52,30 @@ func MathSettingsComponentSchema() schema.NestedBlockObject {
 			"calculator_input_modes_unit_conversion": schema.BoolAttribute{
 				Description: "Configures whether unit conversions are enabled in Calculator.",
 				Optional:    true,
+				Validators: []validator.Bool{
+					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("calculator_input_modes_rpn")),
+				},
 			},
 			"calculator_input_modes_rpn": schema.BoolAttribute{
 				Description: "Configures whether RPN input is enabled in Calculator.",
 				Optional:    true,
+				Validators: []validator.Bool{
+					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("calculator_input_modes_unit_conversion")),
+				},
 			},
 			"system_behavior_keyboard_suggestions": schema.BoolAttribute{
 				Description: "Controls whether keyboard suggestions include math solutions.",
 				Optional:    true,
+				Validators: []validator.Bool{
+					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("system_behavior_math_notes")),
+				},
 			},
 			"system_behavior_math_notes": schema.BoolAttribute{
 				Description: "Controls whether Math Notes is allowed in other apps such as Notes.",
 				Optional:    true,
+				Validators: []validator.Bool{
+					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("system_behavior_keyboard_suggestions")),
+				},
 			},
 		},
 	}
@@ -70,160 +85,128 @@ func MathSettingsComponentSchema() schema.NestedBlockObject {
 func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	if (!c.CalculatorBasicModeAddSquareRoot.IsNull() && !c.CalculatorBasicModeAddSquareRoot.IsUnknown()) ||
-		(!c.CalculatorScientificModeEnabled.IsNull() && !c.CalculatorScientificModeEnabled.IsUnknown()) ||
-		(!c.CalculatorProgrammerModeEnabled.IsNull() && !c.CalculatorProgrammerModeEnabled.IsUnknown()) ||
-		(!c.CalculatorMathNotesModeEnabled.IsNull() && !c.CalculatorMathNotesModeEnabled.IsUnknown()) ||
-		(!c.CalculatorInputModesUnitConversion.IsNull() && !c.CalculatorInputModesUnitConversion.IsUnknown()) ||
-		(!c.CalculatorInputModesRPN.IsNull() && !c.CalculatorInputModesRPN.IsUnknown()) {
-
-		calculator := make(map[string]interface{})
-
-		if !c.CalculatorBasicModeAddSquareRoot.IsNull() && !c.CalculatorBasicModeAddSquareRoot.IsUnknown() {
-			calculator["BasicMode"] = map[string]interface{}{
-				"AddSquareRoot": c.CalculatorBasicModeAddSquareRoot.ValueBool(),
-				"Included":      true,
-			}
-		}
-
-		if !c.CalculatorScientificModeEnabled.IsNull() && !c.CalculatorScientificModeEnabled.IsUnknown() {
-			calculator["ScientificMode"] = map[string]interface{}{
-				"Enabled":  c.CalculatorScientificModeEnabled.ValueBool(),
-				"Included": true,
-			}
-		}
-
-		if !c.CalculatorProgrammerModeEnabled.IsNull() && !c.CalculatorProgrammerModeEnabled.IsUnknown() {
-			calculator["ProgrammerMode"] = map[string]interface{}{
-				"Enabled":  c.CalculatorProgrammerModeEnabled.ValueBool(),
-				"Included": true,
-			}
-		}
-
-		if !c.CalculatorMathNotesModeEnabled.IsNull() && !c.CalculatorMathNotesModeEnabled.IsUnknown() {
-			calculator["MathNotesMode"] = map[string]interface{}{
-				"Enabled":  c.CalculatorMathNotesModeEnabled.ValueBool(),
-				"Included": true,
-			}
-		}
-
-		if (!c.CalculatorInputModesUnitConversion.IsNull() && !c.CalculatorInputModesUnitConversion.IsUnknown()) ||
-			(!c.CalculatorInputModesRPN.IsNull() && !c.CalculatorInputModesRPN.IsUnknown()) {
-
-			inputModes := map[string]interface{}{
-				"Included": true,
-			}
-
-			if !c.CalculatorInputModesUnitConversion.IsNull() && !c.CalculatorInputModesUnitConversion.IsUnknown() {
-				inputModes["UnitConversion"] = c.CalculatorInputModesUnitConversion.ValueBool()
-			}
-
-			if !c.CalculatorInputModesRPN.IsNull() && !c.CalculatorInputModesRPN.IsUnknown() {
-				inputModes["RPN"] = c.CalculatorInputModesRPN.ValueBool()
-			}
-
-			calculator["InputModes"] = inputModes
-		}
-
-		config["Calculator"] = calculator
+	calculator := map[string]interface{}{
+		"BasicMode":      setBoolFieldWithKey(c.CalculatorBasicModeAddSquareRoot, "AddSquareRoot", true),
+		"ScientificMode": setBoolField(c.CalculatorScientificModeEnabled, true),
+		"ProgrammerMode": setBoolField(c.CalculatorProgrammerModeEnabled, true),
+		"MathNotesMode":  setBoolField(c.CalculatorMathNotesModeEnabled, true),
 	}
 
-	if (!c.SystemBehaviorKeyboardSuggestions.IsNull() && !c.SystemBehaviorKeyboardSuggestions.IsUnknown()) ||
-		(!c.SystemBehaviorMathNotes.IsNull() && !c.SystemBehaviorMathNotes.IsUnknown()) {
+	hasInputModes := (!c.CalculatorInputModesUnitConversion.IsNull() && !c.CalculatorInputModesUnitConversion.IsUnknown()) ||
+		(!c.CalculatorInputModesRPN.IsNull() && !c.CalculatorInputModesRPN.IsUnknown())
 
-		systemBehavior := map[string]interface{}{
-			"Included": true,
+	inputModes := make(map[string]interface{})
+	if hasInputModes {
+		inputModes["Included"] = true
+		if !c.CalculatorInputModesUnitConversion.IsNull() && !c.CalculatorInputModesUnitConversion.IsUnknown() {
+			inputModes["UnitConversion"] = c.CalculatorInputModesUnitConversion.ValueBool()
+		} else {
+			inputModes["UnitConversion"] = true
 		}
+		if !c.CalculatorInputModesRPN.IsNull() && !c.CalculatorInputModesRPN.IsUnknown() {
+			inputModes["RPN"] = c.CalculatorInputModesRPN.ValueBool()
+		} else {
+			inputModes["RPN"] = true
+		}
+	} else {
+		inputModes["Included"] = false
+		inputModes["UnitConversion"] = true
+		inputModes["RPN"] = true
+	}
+	calculator["InputModes"] = inputModes
 
+	config["Calculator"] = calculator
+
+	hasSystemBehavior := (!c.SystemBehaviorKeyboardSuggestions.IsNull() && !c.SystemBehaviorKeyboardSuggestions.IsUnknown()) ||
+		(!c.SystemBehaviorMathNotes.IsNull() && !c.SystemBehaviorMathNotes.IsUnknown())
+
+	systemBehavior := make(map[string]interface{})
+	if hasSystemBehavior {
+		systemBehavior["Included"] = true
 		if !c.SystemBehaviorKeyboardSuggestions.IsNull() && !c.SystemBehaviorKeyboardSuggestions.IsUnknown() {
 			systemBehavior["KeyboardSuggestions"] = c.SystemBehaviorKeyboardSuggestions.ValueBool()
+		} else {
+			systemBehavior["KeyboardSuggestions"] = true
 		}
-
 		if !c.SystemBehaviorMathNotes.IsNull() && !c.SystemBehaviorMathNotes.IsUnknown() {
 			systemBehavior["MathNotes"] = c.SystemBehaviorMathNotes.ValueBool()
+		} else {
+			systemBehavior["MathNotes"] = true
 		}
-
-		config["SystemBehavior"] = systemBehavior
+	} else {
+		systemBehavior["Included"] = false
+		systemBehavior["KeyboardSuggestions"] = true
+		systemBehavior["MathNotes"] = true
 	}
+	config["SystemBehavior"] = systemBehavior
 
 	return config, nil
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
 func (c *MathSettingsComponent) FromRawConfiguration(raw map[string]interface{}) error {
-	if calculatorRaw, exists := raw["Calculator"]; exists {
-		if calculatorMap, ok := calculatorRaw.(map[string]interface{}); ok {
-			if basicModeRaw, exists := calculatorMap["BasicMode"]; exists {
-				if basicModeMap, ok := basicModeRaw.(map[string]interface{}); ok {
-					if addSquareRoot, exists := basicModeMap["AddSquareRoot"]; exists {
-						if addSquareRootBool, ok := addSquareRoot.(bool); ok {
-							c.CalculatorBasicModeAddSquareRoot = types.BoolValue(addSquareRootBool)
+	extractBool := func(path ...string) types.Bool {
+		current := raw
+		for i, key := range path {
+			if next, exists := current[key]; exists {
+				if nextMap, ok := next.(map[string]interface{}); ok {
+					if i == len(path)-1 {
+						if included, hasIncluded := nextMap["Included"]; hasIncluded && included.(bool) {
+							for _, valueKey := range []string{"Enabled", "AddSquareRoot"} {
+								if value, hasValue := nextMap[valueKey]; hasValue {
+									if boolVal, ok := value.(bool); ok {
+										return types.BoolValue(boolVal)
+									}
+								}
+							}
 						}
+						return types.BoolNull()
 					}
+					current = nextMap
+				} else {
+					return types.BoolNull()
 				}
+			} else {
+				return types.BoolNull()
 			}
+		}
+		return types.BoolNull()
+	}
 
-			if scientificModeRaw, exists := calculatorMap["ScientificMode"]; exists {
-				if scientificModeMap, ok := scientificModeRaw.(map[string]interface{}); ok {
-					if enabled, exists := scientificModeMap["Enabled"]; exists {
-						if enabledBool, ok := enabled.(bool); ok {
-							c.CalculatorScientificModeEnabled = types.BoolValue(enabledBool)
-						}
-					}
+	extractGroupBool := func(groupPath []string, fieldKey string) types.Bool {
+		current := raw
+		for _, key := range groupPath {
+			if next, exists := current[key]; exists {
+				if nextMap, ok := next.(map[string]interface{}); ok {
+					current = nextMap
+				} else {
+					return types.BoolNull()
 				}
+			} else {
+				return types.BoolNull()
 			}
+		}
 
-			if programmerModeRaw, exists := calculatorMap["ProgrammerMode"]; exists {
-				if programmerModeMap, ok := programmerModeRaw.(map[string]interface{}); ok {
-					if enabled, exists := programmerModeMap["Enabled"]; exists {
-						if enabledBool, ok := enabled.(bool); ok {
-							c.CalculatorProgrammerModeEnabled = types.BoolValue(enabledBool)
-						}
-					}
-				}
-			}
-
-			if mathNotesModeRaw, exists := calculatorMap["MathNotesMode"]; exists {
-				if mathNotesModeMap, ok := mathNotesModeRaw.(map[string]interface{}); ok {
-					if enabled, exists := mathNotesModeMap["Enabled"]; exists {
-						if enabledBool, ok := enabled.(bool); ok {
-							c.CalculatorMathNotesModeEnabled = types.BoolValue(enabledBool)
-						}
-					}
-				}
-			}
-
-			if inputModesRaw, exists := calculatorMap["InputModes"]; exists {
-				if inputModesMap, ok := inputModesRaw.(map[string]interface{}); ok {
-					if unitConversion, exists := inputModesMap["UnitConversion"]; exists {
-						if unitConversionBool, ok := unitConversion.(bool); ok {
-							c.CalculatorInputModesUnitConversion = types.BoolValue(unitConversionBool)
-						}
-					}
-					if rpn, exists := inputModesMap["RPN"]; exists {
-						if rpnBool, ok := rpn.(bool); ok {
-							c.CalculatorInputModesRPN = types.BoolValue(rpnBool)
-						}
-					}
+		if included, hasIncluded := current["Included"]; hasIncluded && included.(bool) {
+			if value, hasValue := current[fieldKey]; hasValue {
+				if boolVal, ok := value.(bool); ok {
+					return types.BoolValue(boolVal)
 				}
 			}
 		}
+		return types.BoolNull()
 	}
 
-	if systemBehaviorRaw, exists := raw["SystemBehavior"]; exists {
-		if systemBehaviorMap, ok := systemBehaviorRaw.(map[string]interface{}); ok {
-			if keyboardSuggestions, exists := systemBehaviorMap["KeyboardSuggestions"]; exists {
-				if keyboardSuggestionsBool, ok := keyboardSuggestions.(bool); ok {
-					c.SystemBehaviorKeyboardSuggestions = types.BoolValue(keyboardSuggestionsBool)
-				}
-			}
-			if mathNotes, exists := systemBehaviorMap["MathNotes"]; exists {
-				if mathNotesBool, ok := mathNotes.(bool); ok {
-					c.SystemBehaviorMathNotes = types.BoolValue(mathNotesBool)
-				}
-			}
-		}
-	}
+	c.CalculatorBasicModeAddSquareRoot = extractBool("Calculator", "BasicMode")
+	c.CalculatorScientificModeEnabled = extractBool("Calculator", "ScientificMode")
+	c.CalculatorProgrammerModeEnabled = extractBool("Calculator", "ProgrammerMode")
+	c.CalculatorMathNotesModeEnabled = extractBool("Calculator", "MathNotesMode")
+
+	c.CalculatorInputModesUnitConversion = extractGroupBool([]string{"Calculator", "InputModes"}, "UnitConversion")
+	c.CalculatorInputModesRPN = extractGroupBool([]string{"Calculator", "InputModes"}, "RPN")
+
+	c.SystemBehaviorKeyboardSuggestions = extractGroupBool([]string{"SystemBehavior"}, "KeyboardSuggestions")
+	c.SystemBehaviorMathNotes = extractGroupBool([]string{"SystemBehavior"}, "MathNotes")
 
 	return nil
 }
