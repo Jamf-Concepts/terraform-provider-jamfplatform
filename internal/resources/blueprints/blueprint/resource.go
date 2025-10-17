@@ -10,6 +10,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -54,13 +55,13 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 				Description: "Blueprint description.",
 				Optional:    true,
 			},
-			"device_groups": schema.ListAttribute{
-				Description: "List of device group Platform IDs to target. Specified as a list of strings in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint.",
+			"device_groups": schema.SetAttribute{
+				Description: "Set of device group Platform IDs to target. Specified as a set of strings in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Order does not matter.",
 				Required:    true,
 				ElementType: types.StringType,
-				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
-					listvalidator.ValueStringsAre(stringvalidator.RegexMatches(
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
+					setvalidator.ValueStringsAre(stringvalidator.RegexMatches(
 						regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`),
 						"Each device group ID must be a valid UUID",
 					)),

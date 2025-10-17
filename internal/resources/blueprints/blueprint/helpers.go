@@ -29,11 +29,8 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 	model.Updated = types.StringValue(blueprint.Updated)
 	model.DeploymentState = types.StringValue(blueprint.DeploymentState.State)
 
-	deviceGroups := make([]types.String, len(blueprint.Scope.DeviceGroups))
-	for i, dg := range blueprint.Scope.DeviceGroups {
-		deviceGroups[i] = types.StringValue(dg)
-	}
-	model.DeviceGroups = deviceGroups
+	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, blueprint.Scope.DeviceGroups)
+	model.DeviceGroups = deviceGroupsSet
 
 	if len(blueprint.Steps) > 0 {
 		step := blueprint.Steps[0]

@@ -19,9 +19,11 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	deviceGroups := make([]string, len(data.DeviceGroups))
-	for i, dg := range data.DeviceGroups {
-		deviceGroups[i] = dg.ValueString()
+	var deviceGroupsSet []string
+	diags := data.DeviceGroups.ElementsAs(ctx, &deviceGroupsSet, false)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	allComponents, diags := r.collectAllComponents(ctx, &data)
@@ -41,7 +43,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
 		Scope: client.BlueprintCreateScope{
-			DeviceGroups: deviceGroups,
+			DeviceGroups: deviceGroupsSet,
 		},
 		Steps: steps,
 	}
@@ -120,9 +122,11 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	deviceGroups := make([]string, len(data.DeviceGroups))
-	for i, dg := range data.DeviceGroups {
-		deviceGroups[i] = dg.ValueString()
+	var deviceGroupsSet []string
+	diags := data.DeviceGroups.ElementsAs(ctx, &deviceGroupsSet, false)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	allComponents, diags := r.collectAllComponents(ctx, &data)
@@ -142,7 +146,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
 		Scope: client.BlueprintUpdateScope{
-			DeviceGroups: deviceGroups,
+			DeviceGroups: deviceGroupsSet,
 		},
 		Steps: steps,
 	}
