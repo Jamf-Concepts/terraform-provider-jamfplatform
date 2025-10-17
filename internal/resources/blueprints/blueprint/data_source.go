@@ -61,8 +61,8 @@ func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				Description: "Deployment state.",
 				Computed:    true,
 			},
-			"device_groups": schema.ListAttribute{
-				Description: "Device groups in scope.",
+			"device_groups": schema.SetAttribute{
+				Description: "Device groups in scope (unordered).",
 				ElementType: types.StringType,
 				Computed:    true,
 			},
@@ -145,10 +145,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var deviceGroups []types.String
-	for _, g := range bp.Scope.DeviceGroups {
-		deviceGroups = append(deviceGroups, types.StringValue(g))
-	}
+	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, bp.Scope.DeviceGroups)
 
 	var components []ComponentModel
 	if len(bp.Steps) > 0 {
@@ -179,7 +176,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		Created:         types.StringValue(bp.Created),
 		Updated:         types.StringValue(bp.Updated),
 		DeploymentState: types.StringValue(bp.DeploymentState.State),
-		DeviceGroups:    deviceGroups,
+		DeviceGroups:    deviceGroupsSet,
 		Components:      components,
 	}
 

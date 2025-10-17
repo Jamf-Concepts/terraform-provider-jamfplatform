@@ -18,7 +18,7 @@ type BlueprintResourceModel struct {
 	ID                        types.String                                    `tfsdk:"id"`
 	Name                      types.String                                    `tfsdk:"name"`
 	Description               types.String                                    `tfsdk:"description"`
-	DeviceGroups              []types.String                                  `tfsdk:"device_groups"`
+	DeviceGroups              types.Set                                       `tfsdk:"device_groups"`
 	Components                []ComponentModel                                `tfsdk:"raw_component"`
 	AudioAccessorySettings    []components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
 	DiskManagementSettings    []components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
@@ -51,7 +51,7 @@ type BlueprintDataSourceModel struct {
 	Created         types.String     `tfsdk:"created"`
 	Updated         types.String     `tfsdk:"updated"`
 	DeploymentState types.String     `tfsdk:"deployment_state"`
-	DeviceGroups    []types.String   `tfsdk:"device_groups"`
+	DeviceGroups    types.Set        `tfsdk:"device_groups"`
 	Components      []ComponentModel `tfsdk:"component"`
 }
 
