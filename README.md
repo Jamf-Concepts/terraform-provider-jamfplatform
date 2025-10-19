@@ -52,6 +52,20 @@ See the [examples/client/](./examples/client/) directory for full working Go exa
 
 ---
 
+## Contributing
+
+Contributions are welcome! When submitting changes that add or modify resources or data sources:
+
+1. **Add integration tests** - All new resources and data sources must include integration tests
+2. **Follow the testing guide** - See [testing/README.md](./testing/README.md) for detailed instructions on writing and running tests
+3. **Verify tests pass locally** - Run `terraform test` before submitting your PR
+4. **Test with real resources** - Run `terraform apply` against a test instance and include screenshots of the created resources in the Jamf Pro UI in your PR description
+5. **Automated testing** - GitHub Actions will automatically run integration tests on your PR
+
+For bug reports, feature requests, or general discussion, please use [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues).
+
+---
+
 ## Feedback & Discussion
 
 Please contact the project principles via [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues).

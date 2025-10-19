@@ -31,7 +31,7 @@ go.work.sum
 # .idea/
 # .vscode/
 
-testing/
+local-testing/
 **/.DS_Store
 
 # Local .terraform directories
