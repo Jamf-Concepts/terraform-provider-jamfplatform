@@ -1,7 +1,21 @@
-# If you prefer the allow list template instead of the deny list, see community template:
+# -----------------------------------------------------------------------------
+# Terraform Provider Project .gitignore
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# Notes
+# -----------------------------------------------------------------------------
+# If you prefer the allow list template instead of the deny list, see:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
+# Keep go.mod and go.sum if you are vendoring dependencies.
+# Remove go.sum above if you want it committed (recommended for reproducibility).
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# Go Build Artifacts
+# -----------------------------------------------------------------------------
 # Binaries for programs and plugins
+bin/
 *.exe
 *.exe~
 *.dll
@@ -11,31 +25,30 @@
 # Test binary, built with `go test -c`
 *.test
 
-# Code coverage profiles and other test artifacts
+# Output of the go build and coverage process
 *.out
+
+# -----------------------------------------------------------------------------
+# Test and Coverage Artifacts
+# -----------------------------------------------------------------------------
+# Code coverage profiles and other test artifacts
 coverage.*
 *.coverprofile
 profile.cov
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# -----------------------------------------------------------------------------
+# Terraform Provider Build Outputs
+# -----------------------------------------------------------------------------
+# Compiled provider binaries
+terraform-provider-*
+*.zip
 
-# Go workspace file
-go.work
-go.work.sum
-
-# env file
-.env
-
-# Editor/IDE
-# .idea/
-# .vscode/
-
-local-testing/
-**/.DS_Store
-
+# -----------------------------------------------------------------------------
+# Terraform Files
+# -----------------------------------------------------------------------------
 # Local .terraform directories
 **/.terraform/*
+.terraform/
 
 # .tfstate files
 *.tfstate
@@ -44,12 +57,12 @@ local-testing/
 # Crash log files
 crash.log
 
-# Exclude all .tfvars files, which are likely to contain sentitive data, such as
+# Exclude all .tfvars files, which are likely to contain sensitive data, such as
 # password, private keys, and other secrets. These should not be part of version
 # control as they are data points which are potentially sensitive and subject
 # to change depending on the environment.
-#
 *.tfvars
+*.tfvars.json
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
@@ -59,7 +72,6 @@ override.tf.json
 *_override.tf.json
 
 # Include override files you do wish to add to version control using negated pattern
-#
 # !example_override.tf
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
@@ -75,8 +87,59 @@ terraform.rc
 # Ignore terragrunt cache
 .terragrunt-cache
 
-# Ignore compiled provider binaries
-terraform-provider-*
+# -----------------------------------------------------------------------------
+# Local Test Directories
+# -----------------------------------------------------------------------------
+local-testing/
+
+# -----------------------------------------------------------------------------
+# Environment and Configuration
+# -----------------------------------------------------------------------------
+# env file
+.env
+.env.*
+
+# -----------------------------------------------------------------------------
+# Editor/IDE Files
+# -----------------------------------------------------------------------------
+# Skip developer local IDE/Editor files (e.g. VS Code / JetBrains / Sublime / Vim)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -----------------------------------------------------------------------------
+# macOS / Linux
+# -----------------------------------------------------------------------------
+.DS_Store
+**/.DS_Store
+.Trash-*
+*.tmp
+*.bak
+
+# -----------------------------------------------------------------------------
+# Go Modules and Dependencies
+# -----------------------------------------------------------------------------
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# -----------------------------------------------------------------------------
+# Build and Distribution
+# -----------------------------------------------------------------------------
+dist/
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+*.log
+
+# -----------------------------------------------------------------------------
+# Scanner and Linter Outputs
+# -----------------------------------------------------------------------------
 /.scannerwork
 tflint-report.json
 tfsec-report.json
