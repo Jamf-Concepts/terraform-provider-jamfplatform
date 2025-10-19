@@ -8,7 +8,7 @@ on:
       - "testing/**"
       - "go.mod"
       - "go.sum"
-      - ".github/workflows/terraform-tests.yml"
+      - ".github/workflows/integration-tests.yml"
 
 permissions:
   contents: read
