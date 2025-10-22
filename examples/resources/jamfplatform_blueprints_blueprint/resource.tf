@@ -32,6 +32,32 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   }
 }
 
+# Latest OS version Software Updates Blueprint
+resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
+  name        = "Latest OS version Software Updates"
+  description = "Managed by Terraform"
+
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
+
+  software_update {
+    deployment_time    = "02:00"
+    enforce_after_days = 7
+  }
+}
+
+# Specific OS version and time Software Updates Blueprint
+resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
+  name        = "Specific OS Version and time Software Updates"
+  description = "Managed by Terraform"
+
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
+
+  software_update {
+    target_os_version      = "26.0.1"
+    target_local_date_time = "2025-10-10T12:00:00"
+  }
+}
+
 # Legacy Payloads Example Blueprint
 resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
   name        = "Restrictions for Safari"

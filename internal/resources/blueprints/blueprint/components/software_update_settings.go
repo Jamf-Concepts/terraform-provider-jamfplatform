@@ -4,8 +4,11 @@ package components
 
 import (
 	"encoding/json"
+	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -19,10 +22,10 @@ type SoftwareUpdateSettingsComponent struct {
 	BetaOfferPrograms                    []BetaProgramModel `tfsdk:"beta_offer_programs"`
 	BetaRequireProgramToken              types.String       `tfsdk:"beta_require_program_token"`
 	BetaRequireProgramDescription        types.String       `tfsdk:"beta_require_program_description"`
-	DeferralCombinedPeriod               types.Int64        `tfsdk:"deferral_combined_period_days"`
-	DeferralMajorPeriod                  types.Int64        `tfsdk:"deferral_major_period_days"`
-	DeferralMinorPeriod                  types.Int64        `tfsdk:"deferral_minor_period_days"`
-	DeferralSystemPeriod                 types.Int64        `tfsdk:"deferral_system_period_days"`
+	DeferralCombinedPeriod               types.String       `tfsdk:"deferral_combined_period_days"`
+	DeferralMajorPeriod                  types.String       `tfsdk:"deferral_major_period_days"`
+	DeferralMinorPeriod                  types.String       `tfsdk:"deferral_minor_period_days"`
+	DeferralSystemPeriod                 types.String       `tfsdk:"deferral_system_period_days"`
 	NotificationsEnabled                 types.Bool         `tfsdk:"notifications_enabled"`
 	RapidSecurityResponseEnabled         types.Bool         `tfsdk:"rapid_security_response_enabled"`
 	RapidSecurityResponseRollbackEnabled types.Bool         `tfsdk:"rapid_security_response_rollback_enabled"`
@@ -46,34 +49,54 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 			"automatic_download": schema.StringAttribute{
 				Description: "Automatic download behavior for updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"automatic_install_os_updates": schema.StringAttribute{
 				Description: "Automatic installation behavior for OS updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"automatic_install_security_updates": schema.StringAttribute{
 				Description: "Automatic installation behavior for security updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"beta_program_enrollment": schema.StringAttribute{
 				Description: "Beta program enrollment setting. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
-			"deferral_combined_period_days": schema.Int64Attribute{
+			"deferral_combined_period_days": schema.StringAttribute{
 				Description: "Number of days to defer combined updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
-			"deferral_major_period_days": schema.Int64Attribute{
+			"deferral_major_period_days": schema.StringAttribute{
 				Description: "Number of days to defer major updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
-			"deferral_minor_period_days": schema.Int64Attribute{
+			"deferral_minor_period_days": schema.StringAttribute{
 				Description: "Number of days to defer minor updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
-			"deferral_system_period_days": schema.Int64Attribute{
+			"deferral_system_period_days": schema.StringAttribute{
 				Description: "Number of days to defer system updates (1-90 days).",
 				Optional:    true,
+				Validators: []validator.String{stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+					"Value must be a number between 1 and 90",
+				)},
 			},
 			"notifications_enabled": schema.BoolAttribute{
 				Description: "Enable update notifications to users.",
@@ -90,6 +113,7 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 			"recommended_cadence": schema.StringAttribute{
 				Description: "Recommended update cadence policy. Valid values: All, Oldest, Newest.",
 				Optional:    true,
+				Validators:  []validator.String{stringvalidator.OneOf("All", "Oldest", "Newest")},
 			},
 			"beta_require_program_token": schema.StringAttribute{
 				Description: "Required beta program token (1-1000 characters). Must be specified with beta_require_program_description.",
@@ -124,35 +148,14 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	if !c.AllowStandardUserOSUpdates.IsNull() && !c.AllowStandardUserOSUpdates.IsUnknown() {
-		config["AllowStandardUserOSUpdates"] = map[string]interface{}{
-			"Enabled":  c.AllowStandardUserOSUpdates.ValueBool(),
-			"Included": true,
-		}
-	}
+	config["AllowStandardUserOSUpdates"] = setBoolField(c.AllowStandardUserOSUpdates, false)
 
-	automaticActions := make(map[string]interface{})
-	if !c.AutomaticDownload.IsNull() && !c.AutomaticDownload.IsUnknown() {
-		automaticActions["Download"] = map[string]interface{}{
-			"Value":    c.AutomaticDownload.ValueString(),
-			"Included": true,
-		}
+	automaticActions := map[string]interface{}{
+		"Download":              setStringField(c.AutomaticDownload, "Allowed"),
+		"InstallOSUpdates":      setStringField(c.AutomaticInstallOSUpdates, "Allowed"),
+		"InstallSecurityUpdate": setStringField(c.AutomaticInstallSecurityUpdate, "Allowed"),
 	}
-	if !c.AutomaticInstallOSUpdates.IsNull() && !c.AutomaticInstallOSUpdates.IsUnknown() {
-		automaticActions["InstallOSUpdates"] = map[string]interface{}{
-			"Value":    c.AutomaticInstallOSUpdates.ValueString(),
-			"Included": true,
-		}
-	}
-	if !c.AutomaticInstallSecurityUpdate.IsNull() && !c.AutomaticInstallSecurityUpdate.IsUnknown() {
-		automaticActions["InstallSecurityUpdate"] = map[string]interface{}{
-			"Value":    c.AutomaticInstallSecurityUpdate.ValueString(),
-			"Included": true,
-		}
-	}
-	if len(automaticActions) > 0 {
-		config["AutomaticActions"] = automaticActions
-	}
+	config["AutomaticActions"] = automaticActions
 
 	hasBetaSettings := !c.BetaProgramEnrollment.IsNull() && !c.BetaProgramEnrollment.IsUnknown() ||
 		len(c.BetaOfferPrograms) > 0 ||
@@ -190,65 +193,23 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 		}
 	}
 
-	deferrals := make(map[string]interface{})
-	if !c.DeferralCombinedPeriod.IsNull() && !c.DeferralCombinedPeriod.IsUnknown() {
-		deferrals["CombinedPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralCombinedPeriod.ValueInt64(),
-			"Included": true,
-		}
+	deferrals := map[string]interface{}{
+		"CombinedPeriodInDays": setStringField(c.DeferralCombinedPeriod, ""),
+		"MajorPeriodInDays":    setStringField(c.DeferralMajorPeriod, ""),
+		"MinorPeriodInDays":    setStringField(c.DeferralMinorPeriod, ""),
+		"SystemPeriodInDays":   setStringField(c.DeferralSystemPeriod, ""),
 	}
-	if !c.DeferralMajorPeriod.IsNull() && !c.DeferralMajorPeriod.IsUnknown() {
-		deferrals["MajorPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralMajorPeriod.ValueInt64(),
-			"Included": true,
-		}
-	}
-	if !c.DeferralMinorPeriod.IsNull() && !c.DeferralMinorPeriod.IsUnknown() {
-		deferrals["MinorPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralMinorPeriod.ValueInt64(),
-			"Included": true,
-		}
-	}
-	if !c.DeferralSystemPeriod.IsNull() && !c.DeferralSystemPeriod.IsUnknown() {
-		deferrals["SystemPeriodInDays"] = map[string]interface{}{
-			"Value":    c.DeferralSystemPeriod.ValueInt64(),
-			"Included": true,
-		}
-	}
-	if len(deferrals) > 0 {
-		config["Deferrals"] = deferrals
-	}
+	config["Deferrals"] = deferrals
 
-	if !c.NotificationsEnabled.IsNull() && !c.NotificationsEnabled.IsUnknown() {
-		config["Notifications"] = map[string]interface{}{
-			"Enabled":  c.NotificationsEnabled.ValueBool(),
-			"Included": true,
-		}
-	}
+	config["Notifications"] = setBoolField(c.NotificationsEnabled, false)
 
-	rapidSecurityResponse := make(map[string]interface{})
-	if !c.RapidSecurityResponseEnabled.IsNull() && !c.RapidSecurityResponseEnabled.IsUnknown() {
-		rapidSecurityResponse["Enable"] = map[string]interface{}{
-			"Enabled":  c.RapidSecurityResponseEnabled.ValueBool(),
-			"Included": true,
-		}
+	rapidSecurityResponse := map[string]interface{}{
+		"Enable":         setBoolField(c.RapidSecurityResponseEnabled, false),
+		"EnableRollback": setBoolField(c.RapidSecurityResponseRollbackEnabled, false),
 	}
-	if !c.RapidSecurityResponseRollbackEnabled.IsNull() && !c.RapidSecurityResponseRollbackEnabled.IsUnknown() {
-		rapidSecurityResponse["EnableRollback"] = map[string]interface{}{
-			"Enabled":  c.RapidSecurityResponseRollbackEnabled.ValueBool(),
-			"Included": true,
-		}
-	}
-	if len(rapidSecurityResponse) > 0 {
-		config["RapidSecurityResponse"] = rapidSecurityResponse
-	}
+	config["RapidSecurityResponse"] = rapidSecurityResponse
 
-	if !c.RecommendedCadence.IsNull() && !c.RecommendedCadence.IsUnknown() {
-		config["RecommendedCadence"] = map[string]interface{}{
-			"Value":    c.RecommendedCadence.ValueString(),
-			"Included": true,
-		}
-	}
+	config["RecommendedCadence"] = setStringField(c.RecommendedCadence, "All")
 
 	return config, nil
 }
@@ -360,27 +321,27 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 	}
 
 	if val := extractValue("Deferrals", "CombinedPeriodInDays"); val != nil {
-		c.DeferralCombinedPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralCombinedPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralCombinedPeriod = types.Int64Null()
+		c.DeferralCombinedPeriod = types.StringNull()
 	}
 
 	if val := extractValue("Deferrals", "MajorPeriodInDays"); val != nil {
-		c.DeferralMajorPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralMajorPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralMajorPeriod = types.Int64Null()
+		c.DeferralMajorPeriod = types.StringNull()
 	}
 
 	if val := extractValue("Deferrals", "MinorPeriodInDays"); val != nil {
-		c.DeferralMinorPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralMinorPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralMinorPeriod = types.Int64Null()
+		c.DeferralMinorPeriod = types.StringNull()
 	}
 
 	if val := extractValue("Deferrals", "SystemPeriodInDays"); val != nil {
-		c.DeferralSystemPeriod = types.Int64Value(int64(val.(float64)))
+		c.DeferralSystemPeriod = types.StringValue(val.(string))
 	} else {
-		c.DeferralSystemPeriod = types.Int64Null()
+		c.DeferralSystemPeriod = types.StringNull()
 	}
 
 	if rsr, exists := rawConfig["RapidSecurityResponse"]; exists {

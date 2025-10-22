@@ -15,18 +15,18 @@ import (
 // WaitForBenchmarkSync polls until the benchmark reaches a terminal state
 // (SYNCED or FAILED) or the provided context is canceled. The interval
 // controls how often the API is polled.
-func waitForBenchmarkSync(ctx context.Context, c *client.Client, id string, interval time.Duration) (*client.CBEngineBenchmark, error) {
+func waitForBenchmarkSync(ctx context.Context, c *client.Client, id string, interval time.Duration) (*client.CBEngineBenchmarkV2, error) {
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-time.After(interval):
-			benchmarks, err := c.GetCBEngineBenchmarks(ctx)
+			benchmarks, err := c.GetCBEngineBenchmarksV2(ctx)
 			if err != nil {
 				tflog.Debug(ctx, "polling benchmarks failed", map[string]interface{}{"error": err.Error()})
 				return nil, fmt.Errorf("failed to poll benchmarks: %w", err)
 			}
-			var found *client.CBEngineBenchmark
+			var found *client.CBEngineBenchmarkV2
 			for _, b := range benchmarks.Benchmarks {
 				if b.ID == id {
 					found = &b
@@ -61,7 +61,7 @@ func waitForBenchmarkDeletion(ctx context.Context, c *client.Client, id string, 
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(interval):
-			benchmarks, err := c.GetCBEngineBenchmarks(ctx)
+			benchmarks, err := c.GetCBEngineBenchmarksV2(ctx)
 			if err != nil {
 				tflog.Debug(ctx, "polling benchmarks failed", map[string]interface{}{"error": err.Error()})
 				return fmt.Errorf("failed to poll benchmarks: %w", err)

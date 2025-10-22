@@ -5,7 +5,9 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -48,10 +50,12 @@ func SafariExtensionsComponentSchema() schema.NestedBlockObject {
 						"state": schema.StringAttribute{
 							Description: "Extension state. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 							Optional:    true,
+							Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 						},
 						"private_browsing": schema.StringAttribute{
 							Description: "Private browsing state. Valid values: Allowed, AlwaysOn, AlwaysOff.",
 							Optional:    true,
+							Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 						},
 					},
 					Blocks: map[string]schema.Block{

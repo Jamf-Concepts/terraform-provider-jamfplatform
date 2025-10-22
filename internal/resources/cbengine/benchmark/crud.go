@@ -23,30 +23,30 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	reqBody := &client.CBEngineBenchmarkRequest{
+	reqBody := &client.CBEngineBenchmarkRequestV2{
 		Title:            data.Title.ValueString(),
 		Description:      data.Description.ValueString(),
 		SourceBaselineID: data.SourceBaselineID.ValueString(),
-		Sources:          make([]client.CBEngineSource, len(data.Sources)),
-		Rules:            make([]client.CBEngineRuleRequest, len(data.Rules)),
-		Target: client.CBEngineTarget{
+		Sources:          make([]client.CBEngineSourceV1, len(data.Sources)),
+		Rules:            make([]client.CBEngineRuleRequestV2, len(data.Rules)),
+		Target: client.CBEngineTargetV2{
 			DeviceGroups: []string{data.TargetDeviceGroup.ValueString()},
 		},
 		EnforcementMode: data.EnforcementMode.ValueString(),
 	}
 	for i, s := range data.Sources {
-		reqBody.Sources[i] = client.CBEngineSource{
+		reqBody.Sources[i] = client.CBEngineSourceV1{
 			Branch:   s.Branch.ValueString(),
 			Revision: s.Revision.ValueString(),
 		}
 	}
 	for i, rule := range data.Rules {
-		rr := client.CBEngineRuleRequest{
+		rr := client.CBEngineRuleRequestV2{
 			ID:      rule.ID.ValueString(),
 			Enabled: rule.Enabled.ValueBool(),
 		}
 		if !rule.ODVValue.IsNull() && rule.ODVValue.ValueString() != "" {
-			rr.ODV = &client.CBEngineODVRequest{
+			rr.ODV = &client.CBEngineODVRequestV2{
 				Value: rule.ODVValue.ValueString(),
 			}
 		}
@@ -57,7 +57,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		"title": data.Title.ValueString(),
 	})
 
-	bench, err := r.client.CreateCBEngineBenchmark(ctx, reqBody)
+	bench, err := r.client.CreateCBEngineBenchmarkV2(ctx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating benchmark", err.Error())
 		return
@@ -267,7 +267,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	bench, err := r.client.GetCBEngineBenchmarkByID(ctx, data.ID.ValueString())
+	bench, err := r.client.GetCBEngineBenchmarkByIDV2(ctx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]interface{}{
@@ -485,7 +485,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	err := r.client.DeleteCBEngineBenchmark(ctx, data.ID.ValueString())
+	err := r.client.DeleteCBEngineBenchmarkV1(ctx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark already deleted", map[string]interface{}{

@@ -1,0 +1,68 @@
+name: "Terraform Tests"
+
+on:
+  pull_request:
+    paths:
+      - "**.go"
+      - "**.tf"
+      - "testing/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/integration-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    name: "🔌 Integration Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Compile Provider Binary
+        run: |
+          mkdir -p ~/.terraform.d/plugins/local/jamf/jamfplatform/0.1.0/linux_amd64/
+          go build -buildvcs=false
+          mv ./terraform-provider-jamfplatform ~/.terraform.d/plugins/local/jamf/jamfplatform/0.1.0/linux_amd64/
+          chmod +x ~/.terraform.d/plugins/local/jamf/jamfplatform/0.1.0/linux_amd64/terraform-provider-jamfplatform
+        continue-on-error: false
+
+      - name: Initialize Terraform
+        run: terraform init -upgrade
+        working-directory: testing
+
+      - name: Generate UUID
+        id: generate-uuid
+        run: |
+          generated_uuid=$(uuidgen)
+          echo "uuid=$generated_uuid" >> $GITHUB_OUTPUT
+          echo "Run ID: $generated_uuid"
+
+      - name: Run Terraform Test
+        run: terraform test -verbose -parallelism=1
+        working-directory: testing
+        env:
+          TF_VAR_test_id: ${{ steps.generate-uuid.outputs.uuid }}
+          TF_VAR_jamfpro_instance_fqdn: ${{ secrets.JAMFPRO_INSTANCE_FQDN }}
+          TF_VAR_jamfpro_client_id: ${{ secrets.JAMFPRO_CLIENT_ID }}
+          TF_VAR_jamfpro_client_secret: ${{ secrets.JAMFPRO_CLIENT_SECRET }}
+          TF_VAR_jamfplatform_base_url: ${{ secrets.JAMFPLATFORM_BASE_URL }}
+          TF_VAR_jamfplatform_client_id: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
+          TF_VAR_jamfplatform_client_secret: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
+          TF_VAR_jamfplatform_inventory_client_id: ${{ secrets.JAMFPLATFORM_INVENTORY_CLIENT_ID }}
+          TF_VAR_jamfplatform_inventory_client_secret: ${{ secrets.JAMFPLATFORM_INVENTORY_CLIENT_SECRET }}
+        continue-on-error: false

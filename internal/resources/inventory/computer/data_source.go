@@ -270,7 +270,7 @@ func (d *DataSourceComputer) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	computer, err := d.client.GetInventoryComputerByID(ctx, id)
+	computer, err := d.client.GetInventoryComputerByIDV1(ctx, id)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get computer",

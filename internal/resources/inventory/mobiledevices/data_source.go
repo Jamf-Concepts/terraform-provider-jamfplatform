@@ -88,7 +88,7 @@ func (d *DataSourceMobileDevices) Read(ctx context.Context, req datasource.ReadR
 		}
 	}
 
-	devices, err := d.client.GetInventoryAllMobileDevices(ctx, sections)
+	devices, err := d.client.GetInventoryAllMobileDevicesV1(ctx, sections)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get mobile devices",

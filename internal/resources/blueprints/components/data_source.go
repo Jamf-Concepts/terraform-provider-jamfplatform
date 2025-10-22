@@ -100,7 +100,7 @@ func (d *ComponentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	components, err := d.client.GetBlueprintComponents(ctx)
+	components, err := d.client.GetBlueprintComponentsV1(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get components",

@@ -105,7 +105,7 @@ func (d *ComponentDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	comp, err := d.client.GetBlueprintComponentByID(ctx, data.ID.ValueString())
+	comp, err := d.client.GetBlueprintComponentByIDV1(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get component",

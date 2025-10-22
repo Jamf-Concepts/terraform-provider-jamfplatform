@@ -262,7 +262,6 @@ func (c *OAuthClient) AuthenticatedRequest(ctx context.Context, method, url stri
 // Do performs an authenticated HTTP request. The body is provided as a
 // byte slice so retries can recreate the request body reader.
 func (c *OAuthClient) Do(ctx context.Context, method, url string, body []byte) (*http.Response, error) {
-	// First attempt
 	req, err := c.AuthenticatedRequest(ctx, method, url, body)
 	if err != nil {
 		return nil, err
