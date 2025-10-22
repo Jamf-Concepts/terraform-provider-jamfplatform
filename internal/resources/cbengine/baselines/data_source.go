@@ -101,7 +101,7 @@ func (d *BaselinesDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	baselinesResp, err := d.client.GetCBEngineBaselines(ctx)
+	baselinesResp, err := d.client.GetCBEngineBaselinesV1(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get baselines",

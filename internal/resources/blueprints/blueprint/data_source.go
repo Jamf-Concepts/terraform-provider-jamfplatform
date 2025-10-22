@@ -124,12 +124,12 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bp *client.BlueprintDetail
+	var bp *client.BlueprintDetailV1
 	var err error
 	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByID(ctx, data.ID.ValueString())
+		bp, err = d.client.GetBlueprintByIDV1(ctx, data.ID.ValueString())
 	} else if !data.Name.IsNull() && data.Name.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByName(ctx, data.Name.ValueString())
+		bp, err = d.client.GetBlueprintByNameV1(ctx, data.Name.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",

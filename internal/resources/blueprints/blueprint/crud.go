@@ -32,23 +32,23 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	steps := []client.BlueprintStep{
+	steps := []client.BlueprintStepV1{
 		{
 			Name:       "Declaration group",
 			Components: allComponents,
 		},
 	}
 
-	reqBody := &client.BlueprintCreateRequest{
+	reqBody := &client.BlueprintCreateRequestV1{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
-		Scope: client.BlueprintCreateScope{
+		Scope: client.BlueprintCreateScopeV1{
 			DeviceGroups: deviceGroupsSet,
 		},
 		Steps: steps,
 	}
 
-	createResp, err := r.client.CreateBlueprint(ctx, reqBody)
+	createResp, err := r.client.CreateBlueprintV1(ctx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating blueprint",
@@ -57,7 +57,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	err = r.client.DeployBlueprint(ctx, createResp.ID)
+	err = r.client.DeployBlueprintV1(ctx, createResp.ID)
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Blueprint deployment failed",
@@ -66,7 +66,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		)
 	}
 
-	blueprint, err := r.client.GetBlueprintByID(ctx, createResp.ID)
+	blueprint, err := r.client.GetBlueprintByIDV1(ctx, createResp.ID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading created blueprint",
@@ -91,7 +91,7 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
+	blueprint, err := r.client.GetBlueprintByIDV1(ctx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint not found, removing from state", map[string]interface{}{
@@ -135,23 +135,23 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	steps := []client.BlueprintStep{
+	steps := []client.BlueprintStepV1{
 		{
 			Name:       "Declaration group",
 			Components: allComponents,
 		},
 	}
 
-	updateReq := &client.BlueprintUpdateRequest{
+	updateReq := &client.BlueprintUpdateRequestV1{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
-		Scope: client.BlueprintUpdateScope{
+		Scope: client.BlueprintUpdateScopeV1{
 			DeviceGroups: deviceGroupsSet,
 		},
 		Steps: steps,
 	}
 
-	err := r.client.UpdateBlueprint(ctx, data.ID.ValueString(), updateReq)
+	err := r.client.UpdateBlueprintV1(ctx, data.ID.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating blueprint",
@@ -160,7 +160,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	err = r.client.DeployBlueprint(ctx, data.ID.ValueString())
+	err = r.client.DeployBlueprintV1(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Blueprint deployment failed",
@@ -169,7 +169,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		)
 	}
 
-	blueprint, err := r.client.GetBlueprintByID(ctx, data.ID.ValueString())
+	blueprint, err := r.client.GetBlueprintByIDV1(ctx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading updated blueprint",
@@ -197,7 +197,7 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	err := r.client.DeleteBlueprint(ctx, data.ID.ValueString())
+	err := r.client.DeleteBlueprintV1(ctx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint already deleted", map[string]interface{}{

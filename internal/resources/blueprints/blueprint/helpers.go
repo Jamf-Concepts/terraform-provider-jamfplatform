@@ -15,7 +15,7 @@ import (
 )
 
 // updateModelFromAPIResponse updates the Terraform model with data from the API response.
-func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client.BlueprintDetail) {
+func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client.BlueprintDetailV1) {
 	model.ID = types.StringValue(blueprint.ID)
 	model.Name = types.StringValue(blueprint.Name)
 
@@ -35,7 +35,7 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 	if len(blueprint.Steps) > 0 {
 		step := blueprint.Steps[0]
 
-		apiComponentsByID := make(map[string]client.BlueprintComponent)
+		apiComponentsByID := make(map[string]client.BlueprintComponentV1)
 		for _, comp := range step.Components {
 			apiComponentsByID[comp.Identifier] = comp
 		}
@@ -186,12 +186,12 @@ func isServerError(err error) bool {
 }
 
 // collectAllComponents gathers components from both raw and strongly-typed sources
-func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *BlueprintResourceModel) ([]client.BlueprintComponent, diag.Diagnostics) {
-	var allComponents []client.BlueprintComponent
+func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *BlueprintResourceModel) ([]client.BlueprintComponentV1, diag.Diagnostics) {
+	var allComponents []client.BlueprintComponentV1
 	var diags diag.Diagnostics
 
 	for _, comp := range data.Components {
-		component := client.BlueprintComponent{
+		component := client.BlueprintComponentV1{
 			Identifier: comp.Identifier.ValueString(),
 		}
 
@@ -229,7 +229,7 @@ func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *Blue
 }
 
 // collectStronglyTypedComponents processes all strongly-typed components using a scalable approach
-func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]client.BlueprintComponent, diags *diag.Diagnostics, data *BlueprintResourceModel) {
+func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]client.BlueprintComponentV1, diags *diag.Diagnostics, data *BlueprintResourceModel) {
 	for i := range data.AudioAccessorySettings {
 		r.collectSingleComponent(allComponents, diags, &data.AudioAccessorySettings[i], "audio accessory settings")
 	}
@@ -280,7 +280,7 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]clie
 }
 
 // collectSingleComponent is a helper function that can collect any type of strongly-typed component
-func (r *BlueprintResource) collectSingleComponent(allComponents *[]client.BlueprintComponent, diags *diag.Diagnostics, comp components.ComponentConverter, componentName string) {
+func (r *BlueprintResource) collectSingleComponent(allComponents *[]client.BlueprintComponentV1, diags *diag.Diagnostics, comp components.ComponentConverter, componentName string) {
 	clientComp, err := comp.ToClientComponent()
 	if err != nil {
 		diags.AddError(
@@ -289,14 +289,14 @@ func (r *BlueprintResource) collectSingleComponent(allComponents *[]client.Bluep
 		)
 		return
 	}
-	*allComponents = append(*allComponents, client.BlueprintComponent{
+	*allComponents = append(*allComponents, client.BlueprintComponentV1{
 		Identifier:    clientComp.Identifier,
 		Configuration: clientComp.Configuration,
 	})
 }
 
 // collectLegacyPayloadsString is a special helper for legacy payloads from string attribute
-func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.BlueprintComponent, diags *diag.Diagnostics, payloadContent string, blueprintName string) {
+func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.BlueprintComponentV1, diags *diag.Diagnostics, payloadContent string, blueprintName string) {
 	var payloadArray []interface{}
 	if err := json.Unmarshal([]byte(payloadContent), &payloadArray); err != nil {
 		diags.AddError(
@@ -320,14 +320,14 @@ func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.
 		return
 	}
 
-	*allComponents = append(*allComponents, client.BlueprintComponent{
+	*allComponents = append(*allComponents, client.BlueprintComponentV1{
 		Identifier:    "com.jamf.ddm-configuration-profile",
 		Configuration: json.RawMessage(configJSON),
 	})
 }
 
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components from API response
-func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponent) {
+func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1) {
 	updateComponentsFromAPI("com.jamf.ddm.audio-accessory-settings", apiComponentsByID, func(jsonObj map[string]interface{}) {
 		for i := range model.AudioAccessorySettings {
 			_ = model.AudioAccessorySettings[i].FromRawConfiguration(jsonObj)
@@ -407,7 +407,7 @@ func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComp
 }
 
 // updateComponentsFromAPI is a generic helper that updates components of any type from API response
-func updateComponentsFromAPI(identifier string, apiComponentsByID map[string]client.BlueprintComponent, updateFunc func(map[string]interface{})) {
+func updateComponentsFromAPI(identifier string, apiComponentsByID map[string]client.BlueprintComponentV1, updateFunc func(map[string]interface{})) {
 	if apiComp, exists := apiComponentsByID[identifier]; exists && apiComp.Configuration != nil {
 		var jsonObj map[string]interface{}
 		if err := json.Unmarshal(apiComp.Configuration, &jsonObj); err == nil {

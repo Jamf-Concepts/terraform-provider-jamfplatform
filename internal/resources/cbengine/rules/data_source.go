@@ -209,7 +209,7 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	rulesResp, err := d.client.GetCBEngineRules(ctx, data.BaselineID.ValueString())
+	rulesResp, err := d.client.GetCBEngineRulesV1(ctx, data.BaselineID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get rules",

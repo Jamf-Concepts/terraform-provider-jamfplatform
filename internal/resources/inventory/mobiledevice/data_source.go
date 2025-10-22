@@ -450,7 +450,7 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 		}
 	}
 
-	mobileDevice, err := d.client.GetInventoryMobileDeviceByID(ctx, id, sections)
+	mobileDevice, err := d.client.GetInventoryMobileDeviceByIDV1(ctx, id, sections)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get mobile device",
