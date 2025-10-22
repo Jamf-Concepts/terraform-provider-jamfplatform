@@ -55,7 +55,7 @@ type DeviceGroupCreateRepresentationV1 struct {
 	Members     []string                              `json:"members,omitempty" validate:"required_if=GroupType STATIC,excluded_with=Criteria"`
 }
 
-type DeviceGroupCreateResponse struct {
+type DeviceGroupCreateResponseV1 struct {
 	ID   string `json:"id"`
 	Href string `json:"href"`
 }
@@ -72,18 +72,18 @@ type DeviceGroupMemberPatchRepresentationV1 struct {
 	Removed []string `json:"removed,omitempty"`
 }
 
-type DeviceGroupMember struct {
+type DeviceGroupMemberV1 struct {
 	DeviceID string `json:"deviceId" validate:"required"`
 }
 
 type ListDeviceGroupMemberReadRepresentation struct {
-	Results     []DeviceGroupMember `json:"results"`
-	TotalCount  int                 `json:"totalCount"`
-	Page        int                 `json:"page"`
-	PageSize    int                 `json:"pageSize"`
-	TotalPages  int                 `json:"totalPages"`
-	HasNext     bool                `json:"hasNext"`
-	HasPrevious bool                `json:"hasPrevious"`
+	Results     []DeviceGroupMemberV1 `json:"results"`
+	TotalCount  int                   `json:"totalCount"`
+	Page        int                   `json:"page"`
+	PageSize    int                   `json:"pageSize"`
+	TotalPages  int                   `json:"totalPages"`
+	HasNext     bool                  `json:"hasNext"`
+	HasPrevious bool                  `json:"hasPrevious"`
 }
 
 type DeviceGroupMemberOfRepresentationV1 struct {
@@ -91,7 +91,7 @@ type DeviceGroupMemberOfRepresentationV1 struct {
 	GroupName string `json:"groupName" validate:"required"`
 }
 
-type ListDeviceGroupMemberOfResponseRepresentation struct {
+type ListDeviceGroupMemberOfResponseRepresentationV1 struct {
 	Results     []DeviceGroupMemberOfRepresentationV1 `json:"results"`
 	TotalCount  int                                   `json:"totalCount"`
 	Page        int                                   `json:"page"`
@@ -101,7 +101,7 @@ type ListDeviceGroupMemberOfResponseRepresentation struct {
 	HasPrevious bool                                  `json:"hasPrevious"`
 }
 
-type DeviceGroupPagedResponse struct {
+type DeviceGroupPagedResponseV1 struct {
 	Results     []DeviceGroupListReadRepresentationV1 `json:"results"`
 	TotalCount  int64                                 `json:"totalCount"`
 	Page        int                                   `json:"page"`
@@ -111,8 +111,8 @@ type DeviceGroupPagedResponse struct {
 	HasPrevious bool                                  `json:"hasPrevious"`
 }
 
-// GetDeviceGroups returns all device groups, automatically handling pagination
-func (c *Client) GetDeviceGroups(ctx context.Context, sort []string, filter string) ([]DeviceGroupListReadRepresentationV1, error) {
+// GetDeviceGroupsV1 returns all device groups, automatically handling pagination
+func (c *Client) GetDeviceGroupsV1(ctx context.Context, sort []string, filter string) ([]DeviceGroupListReadRepresentationV1, error) {
 	var allResults []DeviceGroupListReadRepresentationV1
 	page := 0
 	pageSize := 100
@@ -137,8 +137,8 @@ func (c *Client) GetDeviceGroups(ctx context.Context, sort []string, filter stri
 			return nil, fmt.Errorf("failed to list device groups: %w", err)
 		}
 
-		var result DeviceGroupPagedResponse
-		if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+		var result DeviceGroupPagedResponseV1
+		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 			return nil, err
 		}
 
@@ -151,62 +151,62 @@ func (c *Client) GetDeviceGroups(ctx context.Context, sort []string, filter stri
 	return allResults, nil
 }
 
-// GetDeviceGroupByID retrieves a device group by ID
-func (c *Client) GetDeviceGroupByID(ctx context.Context, id string) (*DeviceGroupReadRepresentationV1, error) {
+// GetDeviceGroupByIDV1 retrieves a device group by ID
+func (c *Client) GetDeviceGroupByIDV1(ctx context.Context, id string) (*DeviceGroupReadRepresentationV1, error) {
 	endpoint := fmt.Sprintf("%s/%s", deviceGroupsV1Prefix, url.PathEscape(id))
 	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device group %s: %w", id, err)
 	}
 	var result DeviceGroupReadRepresentationV1
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// CreateDeviceGroup creates a new device group
-func (c *Client) CreateDeviceGroup(ctx context.Context, request *DeviceGroupCreateRepresentationV1) (*DeviceGroupCreateResponse, error) {
+// CreateDeviceGroupV1 creates a new device group
+func (c *Client) CreateDeviceGroupV1(ctx context.Context, request *DeviceGroupCreateRepresentationV1) (*DeviceGroupCreateResponseV1, error) {
 	endpoint := deviceGroupsV1Prefix + "/device-groups"
 	resp, err := c.makeRequest(ctx, "POST", endpoint, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create device group: %w", err)
 	}
-	var result DeviceGroupCreateResponse
-	if err := c.handleAPIResponse(resp, 201, &result); err != nil {
+	var result DeviceGroupCreateResponseV1
+	if err := c.handleAPIResponse(ctx, resp, 201, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// UpdateDeviceGroup updates a device group
-func (c *Client) UpdateDeviceGroup(ctx context.Context, id string, request *DeviceGroupUpdateRepresentationV1) error {
+// UpdateDeviceGroupV1 updates a device group
+func (c *Client) UpdateDeviceGroupV1(ctx context.Context, id string, request *DeviceGroupUpdateRepresentationV1) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s", deviceGroupsV1Prefix, url.PathEscape(id))
 	resp, err := c.makeRequest(ctx, "PATCH", endpoint, request)
 	if err != nil {
 		return fmt.Errorf("failed to update device group %s: %w", id, err)
 	}
-	if err := c.handleAPIResponse(resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
 		return err
 	}
 	return nil
 }
 
-// DeleteDeviceGroup deletes a device group by ID
-func (c *Client) DeleteDeviceGroup(ctx context.Context, id string) error {
+// DeleteDeviceGroupV1 deletes a device group by ID
+func (c *Client) DeleteDeviceGroupV1(ctx context.Context, id string) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s", deviceGroupsV1Prefix, url.PathEscape(id))
 	resp, err := c.makeRequest(ctx, "DELETE", endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete device group %s: %w", id, err)
 	}
-	if err := c.handleAPIResponse(resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
 		return err
 	}
 	return nil
 }
 
-// GetDeviceGroupMembers returns the full paginated response with metadata
-func (c *Client) GetDeviceGroupMembers(ctx context.Context, id string, page, pageSize int) (*ListDeviceGroupMemberReadRepresentation, error) {
+// GetDeviceGroupMembersV1 returns the full paginated response with metadata
+func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string, page, pageSize int) (*ListDeviceGroupMemberReadRepresentation, error) {
 	params := url.Values{}
 	params.Set("page", fmt.Sprintf("%d", page))
 	params.Set("page-size", fmt.Sprintf("%d", pageSize))
@@ -217,27 +217,27 @@ func (c *Client) GetDeviceGroupMembers(ctx context.Context, id string, page, pag
 		return nil, fmt.Errorf("failed to get members for device group %s: %w", id, err)
 	}
 	var result ListDeviceGroupMemberReadRepresentation
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// UpdateDeviceGroupMembers patches the members of a static device group
-func (c *Client) UpdateDeviceGroupMembers(ctx context.Context, id string, patch *DeviceGroupMemberPatchRepresentationV1) error {
+// UpdateDeviceGroupMembersV1 patches the members of a static device group
+func (c *Client) UpdateDeviceGroupMembersV1(ctx context.Context, id string, patch *DeviceGroupMemberPatchRepresentationV1) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s/members", deviceGroupsV1Prefix, url.PathEscape(id))
 	resp, err := c.makeRequest(ctx, "PATCH", endpoint, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update members for device group %s: %w", id, err)
 	}
-	if err := c.handleAPIResponse(resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
 		return err
 	}
 	return nil
 }
 
-// GetDeviceGroupsForDevice returns the device groups that a device belongs to with full pagination
-func (c *Client) GetDeviceGroupsForDevice(ctx context.Context, deviceID string, page, pageSize int) (*ListDeviceGroupMemberOfResponseRepresentation, error) {
+// GetDeviceGroupsForDeviceV1 returns the device groups that a device belongs to with full pagination
+func (c *Client) GetDeviceGroupsForDeviceV1(ctx context.Context, deviceID string, page, pageSize int) (*ListDeviceGroupMemberOfResponseRepresentationV1, error) {
 	params := url.Values{}
 	params.Set("page", fmt.Sprintf("%d", page))
 	params.Set("page-size", fmt.Sprintf("%d", pageSize))
@@ -247,8 +247,8 @@ func (c *Client) GetDeviceGroupsForDevice(ctx context.Context, deviceID string, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device groups for device %s: %w", deviceID, err)
 	}
-	var result ListDeviceGroupMemberOfResponseRepresentation
-	if err := c.handleAPIResponse(resp, 200, &result); err != nil {
+	var result ListDeviceGroupMemberOfResponseRepresentationV1
+	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

@@ -17,7 +17,7 @@ func main() {
 	clientID := "example-client-id"
 	clientSecret := "example-client-secret"
 	baseURL := "https://us.apigw.jamf.com"
-	// Replace with a real device group ID for a real run
+	// Replace this with the group you want to update
 	groupID := "example-group-id"
 
 	if env := os.Getenv("JAMF_CLIENT_ID"); env != "" {
@@ -39,22 +39,25 @@ func main() {
 
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
-	membersResp, err := apiClient.GetDeviceGroupMembers(context.Background(), groupID, 0, 50)
-	if err != nil {
-		log.Fatalf("Error getting device group members: %v", err)
+	req := &client.DeviceGroupUpdateRepresentationV1{
+		Name: "example-updated-name",
+		// Optionally update criteria or deviceIds depending on group type
 	}
 
-	fmt.Printf("Found %d member(s) on page %d\n\n", len(membersResp.Results), membersResp.Page)
+	if err := apiClient.UpdateDeviceGroupV1(context.Background(), groupID, req); err != nil {
+		log.Fatalf("Error updating device group: %v", err)
+	}
 
-	for _, m := range membersResp.Results {
-		fmt.Printf("DeviceID: %s\n", m.DeviceID)
+	fmt.Println("Device group updated successfully")
+
+	// Retrieve and print the updated group
+	grp, err := apiClient.GetDeviceGroupByIDV1(context.Background(), groupID)
+	if err != nil {
+		log.Fatalf("Error retrieving updated group: %v", err)
 	}
 
 	fmt.Print("\n" + strings.Repeat("=", 50) + "\n")
-	fmt.Printf("Full JSON Response:\n")
-	fmt.Print(strings.Repeat("=", 50) + "\n")
-
-	b, err := json.MarshalIndent(membersResp, "", "  ")
+	b, err := json.MarshalIndent(grp, "", "  ")
 	if err != nil {
 		log.Printf("Error marshaling to JSON: %v", err)
 	} else {

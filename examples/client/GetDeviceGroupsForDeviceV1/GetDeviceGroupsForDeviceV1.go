@@ -39,7 +39,7 @@ func main() {
 
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
-	resp, err := apiClient.GetDeviceGroupsForDevice(context.Background(), deviceID, 0, 50)
+	resp, err := apiClient.GetDeviceGroupsForDeviceV1(context.Background(), deviceID, 0, 50)
 	if err != nil {
 		log.Fatalf("Error getting device groups for device: %v", err)
 	}
