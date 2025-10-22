@@ -48,7 +48,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get rules for the given baseline
-	rulesResp, err := apiClient.GetCBEngineRules(context.Background(), baselineID)
+	rulesResp, err := apiClient.GetCBEngineRulesV1(context.Background(), baselineID)
 	if err != nil {
 		log.Fatalf("Error getting rules for baseline %s: %v", baselineID, err)
 	}

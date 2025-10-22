@@ -38,7 +38,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get all baselines
-	baselinesResp, err := apiClient.GetCBEngineBaselines(context.Background())
+	baselinesResp, err := apiClient.GetCBEngineBaselinesV1(context.Background())
 	if err != nil {
 		log.Fatalf("Error getting baselines: %v", err)
 	}

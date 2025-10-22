@@ -46,7 +46,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Delete the benchmark
-	err := apiClient.DeleteCBEngineBenchmark(context.Background(), benchmarkID)
+	err := apiClient.DeleteCBEngineBenchmarkV1(context.Background(), benchmarkID)
 	if err != nil {
 		log.Fatalf("Error deleting benchmark %s: %v", benchmarkID, err)
 	}

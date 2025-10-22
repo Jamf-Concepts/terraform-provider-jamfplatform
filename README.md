@@ -43,7 +43,7 @@ import "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client
 func main() {
     apiClient := client.NewClient("https://region.apigw.jamf.com", "your-client-id", "your-client-secret")
     // Use apiClient to call API methods, e.g.:
-    baselines, err := apiClient.GetCBEngineBaselines(context.Background())
+    baselines, err := apiClient.GetCBEngineBaselinesV1(context.Background())
     // ...
 }
 ```

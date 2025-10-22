@@ -245,12 +245,12 @@ func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bench *client.CBEngineBenchmarkResponse
+	var bench *client.CBEngineBenchmarkResponseV2
 	var err error
 	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		bench, err = d.client.GetCBEngineBenchmarkByID(ctx, data.ID.ValueString())
+		bench, err = d.client.GetCBEngineBenchmarkByIDV2(ctx, data.ID.ValueString())
 	} else if !data.Title.IsNull() && data.Title.ValueString() != "" {
-		bench, err = d.client.GetCBEngineBenchmarkByTitle(ctx, data.Title.ValueString())
+		bench, err = d.client.GetCBEngineBenchmarkByTitleV2(ctx, data.Title.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",

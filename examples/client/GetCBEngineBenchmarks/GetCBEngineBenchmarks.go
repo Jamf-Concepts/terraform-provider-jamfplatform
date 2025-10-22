@@ -38,7 +38,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get all benchmarks
-	benchmarks, err := apiClient.GetCBEngineBenchmarks(context.Background())
+	benchmarks, err := apiClient.GetCBEngineBenchmarksV2(context.Background())
 	if err != nil {
 		log.Fatalf("Error getting benchmarks: %v", err)
 	}

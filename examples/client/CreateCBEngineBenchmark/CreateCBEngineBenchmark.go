@@ -35,19 +35,19 @@ func main() {
 	}
 
 	// Example: create a new benchmark (customize as needed)
-	request := &client.CBEngineBenchmarkRequest{
+	request := &client.CBEngineBenchmarkRequestV2{
 		Title:            "Test2",
 		Description:      "Test",
 		SourceBaselineID: "cis_lvl1",
-		Sources: []client.CBEngineSource{
+		Sources: []client.CBEngineSourceV1{
 			{Branch: "sonoma", Revision: "acd8e3069260029475b15a1e964db89e7bfa01a0"},
 			{Branch: "sequoia", Revision: "0b4d809ae043ca16e10a595c1f87c4d9fe21eb4a"},
 			{Branch: "ventura", Revision: "c204a2b3c8e6fa948dde8883f8fd0df971183223"},
 		},
-		Rules: []client.CBEngineRuleRequest{
+		Rules: []client.CBEngineRuleRequestV2{
 			{ID: "system_settings_software_update_download_enforce", Enabled: true},
 		},
-		Target: client.CBEngineTarget{
+		Target: client.CBEngineTargetV2{
 			DeviceGroups: []string{"4a36a1fe-e45a-430d-a966-a4d3ac993577"},
 		},
 		EnforcementMode: "MONITOR_AND_ENFORCE",
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	// Create the benchmark
-	benchmark, err := apiClient.CreateCBEngineBenchmark(context.Background(), request)
+	benchmark, err := apiClient.CreateCBEngineBenchmarkV2(context.Background(), request)
 	if err != nil {
 		log.Fatalf("Error creating benchmark: %v", err)
 	}
