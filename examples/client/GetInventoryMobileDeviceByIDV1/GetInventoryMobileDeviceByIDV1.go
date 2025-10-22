@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// Alternative: Get all available sections
-	// sections = client.ValidMobileDeviceSections()
+	// sections = client.ValidMobileDeviceSectionsV1()
 
 	// Available sections: GENERAL, HARDWARE, USER_AND_LOCATION, PURCHASING,
 	// SECURITY, APPLICATIONS, EBOOKS, NETWORK, SERVICE_SUBSCRIPTIONS,
@@ -70,7 +70,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get specific mobile device by ID
-	dev, err := apiClient.GetInventoryMobileDeviceByID(context.Background(), deviceID, sections)
+	dev, err := apiClient.GetInventoryMobileDeviceByIDV1(context.Background(), deviceID, sections)
 	if err != nil {
 		log.Fatalf("Error getting mobile device %s: %v", deviceID, err)
 	}

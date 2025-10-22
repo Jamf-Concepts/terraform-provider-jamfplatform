@@ -47,7 +47,7 @@ func main() {
 	}
 
 	// Alternative: Get all available sections
-	// sections = client.ValidMobileDeviceSections()
+	// sections = client.ValidMobileDeviceSectionsV1()
 
 	// Available sections: GENERAL, HARDWARE, USER_AND_LOCATION, PURCHASING,
 	// SECURITY, APPLICATIONS, EBOOKS, NETWORK, SERVICE_SUBSCRIPTIONS,
@@ -61,9 +61,9 @@ func main() {
 
 	// Get all mobile devices (automatic pagination handling)
 	// This function automatically fetches all pages and returns all devices as a single slice
-	// For manual pagination control, use: apiClient.GetInventoryMobileDevices(ctx, page, pageSize, sections)
+	// For manual pagination control, use: apiClient.GetInventoryMobileDevicesV1(ctx, page, pageSize, sections)
 	// For memory-efficient processing of large datasets, see the GetInventoryMobileDevicesCallback example
-	devices, err := apiClient.GetInventoryAllMobileDevices(context.Background(), sections)
+	devices, err := apiClient.GetInventoryAllMobileDevicesV1(context.Background(), sections)
 	if err != nil {
 		log.Fatalf("Error listing mobile devices: %v", err)
 	}

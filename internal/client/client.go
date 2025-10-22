@@ -1,4 +1,23 @@
 // Copyright 2025 Jamf Software LLC.
+// Package client provides a Go client for the Jamf Platform API.
+//
+// # Versioning Strategy
+//
+// This package uses explicit version suffixes (V1, V2, etc.) on types and functions
+// to support multiple API versions without breaking changes. This allows:
+//   - Adding V2 endpoints alongside V1 without deprecation
+//   - Mixing API versions within the same domain (e.g., CBEngine uses both v1 and v2)
+//   - Clear indication of which API version each function calls
+//
+// When API endpoints are upgraded:
+//   - Create new V2 types and functions
+//   - Keep V1 functions unchanged
+//   - Update resources to use V2 at their own pace
+//
+// Example:
+//   CreateBlueprintV1() - calls /api/blueprints/v1/blueprints
+//   GetCBEngineBaselinesV1() - calls /api/cb-engine/v1/baselines
+//   CreateCBEngineBenchmarkV2() - calls /api/cb-engine/v2/benchmarks
 // https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api
 
 package client
