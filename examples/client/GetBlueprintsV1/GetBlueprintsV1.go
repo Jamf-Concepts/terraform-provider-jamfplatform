@@ -38,7 +38,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get all blueprints (pagination handled automatically)
-	blueprints, err := apiClient.GetBlueprints(context.Background(), nil, "")
+	blueprints, err := apiClient.GetBlueprintsV1(context.Background(), nil, "")
 	if err != nil {
 		log.Fatalf("Error getting blueprints: %v", err)
 	}

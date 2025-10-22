@@ -12,18 +12,12 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <blueprint-id>\n", os.Args[0])
-		os.Exit(1)
-	}
-	blueprintID := os.Args[1]
-
 	// Configuration - you can also use environment variables
 	clientID := "example-client-id"
 	clientSecret := "example-client-secret"
 	baseURL := "https://us.apigw.jamf.com"
 
-	// Use environment variables if set
+	// Alternatively, use environment variables
 	if envClientID := os.Getenv("JAMF_CLIENT_ID"); envClientID != "" {
 		clientID = envClientID
 	}
@@ -38,13 +32,24 @@ func main() {
 		log.Fatal("Missing required configuration: JAMF_CLIENT_ID, JAMF_CLIENT_SECRET, JAMF_BASE_URL")
 	}
 
+	// Get Blueprint ID from command line argument or environment variable
+	var blueprintID string
+	if len(os.Args) > 1 {
+		blueprintID = os.Args[1]
+	} else if envBlueprintID := os.Getenv("BLUEPRINT_ID"); envBlueprintID != "" {
+		blueprintID = envBlueprintID
+	} else {
+		log.Fatal("Please provide a Blueprint ID as a command line argument or set BLUEPRINT_ID environment variable")
+	}
+
 	// Initialize the client (baseURL-based)
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
-	// Deploy blueprint by ID
-	fmt.Printf("Deploying blueprint: %s\n", blueprintID)
-	if err := apiClient.DeployBlueprint(context.Background(), blueprintID); err != nil {
-		log.Fatalf("Error deploying blueprint %s: %v", blueprintID, err)
+	// Delete the Blueprint
+	err := apiClient.DeleteBlueprintV1(context.Background(), blueprintID)
+	if err != nil {
+		log.Fatalf("Error deleting Blueprint %s: %v", blueprintID, err)
 	}
-	fmt.Println("Deployment started successfully (202 Accepted)")
+
+	fmt.Printf("Blueprint %s deleted successfully.\n", blueprintID)
 }

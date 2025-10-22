@@ -48,7 +48,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get specific blueprint by name
-	blueprint, err := apiClient.GetBlueprintByName(context.Background(), blueprintName)
+	blueprint, err := apiClient.GetBlueprintByNameV1(context.Background(), blueprintName)
 	if err != nil {
 		log.Fatalf("Error getting blueprint by name '%s': %v", blueprintName, err)
 	}

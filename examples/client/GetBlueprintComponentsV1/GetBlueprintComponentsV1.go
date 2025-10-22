@@ -14,12 +14,6 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <component-identifier>\n", os.Args[0])
-		os.Exit(1)
-	}
-	identifier := os.Args[1]
-
 	// Configuration - you can also use environment variables
 	clientID := "example-client-id"
 	clientSecret := "example-client-secret"
@@ -43,37 +37,41 @@ func main() {
 	// Initialize the client (baseURL-based)
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
-	// Get blueprint component by identifier
-	component, err := apiClient.GetBlueprintComponentByID(context.Background(), identifier)
+	// Get blueprint components (first page, default size)
+	components, err := apiClient.GetBlueprintComponentsV1(context.Background())
 	if err != nil {
-		log.Fatalf("Error getting blueprint component '%s': %v", identifier, err)
+		log.Fatalf("Error getting blueprint components: %v", err)
 	}
 
-	fmt.Printf("Component Details:\n"+
-		"Identifier: %s\n"+
-		"Name: %s\n"+
-		"Description: %s\n",
-		component.Identifier,
-		component.Name,
-		component.Description,
-	)
-	fmt.Printf("Supported OS:\n")
-	for osFamily, versions := range component.Meta.SupportedOs {
-		fmt.Printf("  %s: ", osFamily)
-		var verList []string
-		for _, v := range versions {
-			verList = append(verList, v.Version)
+	fmt.Printf("Found %d blueprint component(s)\n\n", len(components))
+
+	for _, comp := range components {
+		fmt.Printf("Component Details:\n"+
+			"Identifier: %s\n"+
+			"Name: %s\n"+
+			"Description: %s\n",
+			comp.Identifier,
+			comp.Name,
+			comp.Description,
+		)
+		fmt.Printf("Supported OS:\n")
+		for osFamily, versions := range comp.Meta.SupportedOs {
+			fmt.Printf("  %s: ", osFamily)
+			var verList []string
+			for _, v := range versions {
+				verList = append(verList, v.Version)
+			}
+			fmt.Printf("%s\n", strings.Join(verList, ", "))
 		}
-		fmt.Printf("%s\n", strings.Join(verList, ", "))
+		fmt.Println()
 	}
-	fmt.Println()
 
 	// Print the full JSON response
 	fmt.Print("\n" + strings.Repeat("=", 50) + "\n")
 	fmt.Printf("Full JSON Response:\n")
 	fmt.Print(strings.Repeat("=", 50) + "\n")
 
-	jsonData, err := json.MarshalIndent(component, "", "  ")
+	jsonData, err := json.MarshalIndent(components, "", "  ")
 	if err != nil {
 		log.Printf("Error marshaling to JSON: %v", err)
 	} else {

@@ -44,16 +44,16 @@ func main() {
 		return b
 	}
 
-	request := &client.BlueprintCreateRequest{
+	request := &client.BlueprintCreateRequestV1{
 		Name:        "Updates and things",
 		Description: "This is a description",
-		Scope: client.BlueprintCreateScope{
+		Scope: client.BlueprintCreateScopeV1{
 			DeviceGroups: []string{"fce3d9a5-8660-42ff-a95e-625e7b53b48a"},
 		},
-		Steps: []client.BlueprintStep{
+		Steps: []client.BlueprintStepV1{
 			{
 				Name: "Declaration group",
-				Components: []client.BlueprintComponent{
+				Components: []client.BlueprintComponentV1{
 					{
 						Identifier: "com.jamf.ddm.sw-updates",
 						Configuration: marshalConfig(map[string]interface{}{
@@ -117,7 +117,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Create the blueprint
-	blueprint, err := apiClient.CreateBlueprint(context.Background(), request)
+	blueprint, err := apiClient.CreateBlueprintV1(context.Background(), request)
 	if err != nil {
 		log.Fatalf("Error creating blueprint: %v", err)
 	}

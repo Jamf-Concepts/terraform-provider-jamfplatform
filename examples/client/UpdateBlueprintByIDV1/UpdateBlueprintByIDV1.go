@@ -50,16 +50,16 @@ func main() {
 		return b
 	}
 
-	updateRequest := &client.BlueprintUpdateRequest{
+	updateRequest := &client.BlueprintUpdateRequestV1{
 		Name:        "Updated Blueprint Name",
 		Description: "Updated description",
-		Scope: client.BlueprintUpdateScope{
+		Scope: client.BlueprintUpdateScopeV1{
 			DeviceGroups: []string{"fce3d9a5-8660-42ff-a95e-625e7b53b48a"},
 		},
-		Steps: []client.BlueprintStep{
+		Steps: []client.BlueprintStepV1{
 			{
 				Name: "Updated Declaration group",
-				Components: []client.BlueprintComponent{
+				Components: []client.BlueprintComponentV1{
 					{
 						Identifier: "com.jamf.ddm.sw-updates",
 						Configuration: marshalConfig(map[string]interface{}{
@@ -92,7 +92,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Update the blueprint
-	err = apiClient.UpdateBlueprint(context.Background(), blueprintID, updateRequest)
+	err = apiClient.UpdateBlueprintV1(context.Background(), blueprintID, updateRequest)
 	if err != nil {
 		log.Fatalf("Error updating blueprint: %v", err)
 	}

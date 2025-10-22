@@ -14,110 +14,110 @@ import (
 
 // Blueprint API Types
 
-// BlueprintComponentDescription describes a component within a blueprint
-type BlueprintComponentDescription struct {
-	Identifier  string        `json:"identifier"`
-	Name        string        `json:"name"`
-	Description string        `json:"description,omitempty"`
-	Meta        BlueprintMeta `json:"meta"`
+// BlueprintComponentDescriptionV1 describes a component within a blueprint
+type BlueprintComponentDescriptionV1 struct {
+	Identifier  string          `json:"identifier"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Meta        BlueprintMetaV1 `json:"meta"`
 }
 
-// BlueprintMeta describes metadata about a blueprint
-type BlueprintMeta struct {
-	SupportedOs map[string][]BlueprintSupportedOs `json:"supportedOs"`
+// BlueprintMetaV1 describes metadata about a blueprint
+type BlueprintMetaV1 struct {
+	SupportedOs map[string][]BlueprintSupportedOsV1 `json:"supportedOs"`
 }
 
-// BlueprintSupportedOs describes a supported operating system for a blueprint
-type BlueprintSupportedOs struct {
+// BlueprintSupportedOsV1 describes a supported operating system for a blueprint
+type BlueprintSupportedOsV1 struct {
 	Version string `json:"version"`
 }
 
-// BlueprintComponentDescriptionPagedResponse describes a paged response for blueprint components
-type BlueprintComponentDescriptionPagedResponse struct {
-	Results    []BlueprintComponentDescription `json:"results"`
-	TotalCount int64                           `json:"totalCount"`
+// BlueprintComponentDescriptionPagedResponseV1 describes a paged response for blueprint components
+type BlueprintComponentDescriptionPagedResponseV1 struct {
+	Results    []BlueprintComponentDescriptionV1 `json:"results"`
+	TotalCount int64                             `json:"totalCount"`
 }
 
-// BlueprintComponent describes a component within a blueprint
-type BlueprintComponent struct {
+// BlueprintComponentV1 describes a component within a blueprint
+type BlueprintComponentV1 struct {
 	Identifier    string          `json:"identifier"`
 	Configuration json.RawMessage `json:"configuration,omitempty"`
 }
 
-// BlueprintStep describes a step within a blueprint
-type BlueprintStep struct {
-	Name       string               `json:"name"`
-	Components []BlueprintComponent `json:"components,omitempty"`
+// BlueprintStepV1 describes a step within a blueprint
+type BlueprintStepV1 struct {
+	Name       string                 `json:"name"`
+	Components []BlueprintComponentV1 `json:"components,omitempty"`
 }
 
-// BlueprintCreateScope defines the scope for creating a blueprint
-type BlueprintCreateScope struct {
+// BlueprintCreateScopeV1 defines the scope for creating a blueprint
+type BlueprintCreateScopeV1 struct {
 	DeviceGroups []string `json:"deviceGroups"`
 }
 
-// BlueprintCreateRequest represents a request to create or update a blueprint
-type BlueprintCreateRequest struct {
-	Name        string               `json:"name"`
-	Description string               `json:"description,omitempty"`
-	Scope       BlueprintCreateScope `json:"scope"`
-	Steps       []BlueprintStep      `json:"steps,omitempty"`
+// BlueprintCreateRequestV1 represents a request to create or update a blueprint
+type BlueprintCreateRequestV1 struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Scope       BlueprintCreateScopeV1 `json:"scope"`
+	Steps       []BlueprintStepV1      `json:"steps,omitempty"`
 }
 
-// BlueprintUpdateRequest represents a request to update an existing blueprint
-type BlueprintUpdateRequest struct {
-	Name        string               `json:"name"`
-	Description string               `json:"description,omitempty"`
-	Scope       BlueprintUpdateScope `json:"scope"`
-	Steps       []BlueprintStep      `json:"steps,omitempty"`
+// BlueprintUpdateRequestV1 represents a request to update an existing blueprint
+type BlueprintUpdateRequestV1 struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Scope       BlueprintUpdateScopeV1 `json:"scope"`
+	Steps       []BlueprintStepV1      `json:"steps,omitempty"`
 }
 
-// BlueprintDeployment describes the deployment status of a blueprint
-type BlueprintDeployment struct {
+// BlueprintDeploymentV1 describes the deployment status of a blueprint
+type BlueprintDeploymentV1 struct {
 	Started string `json:"started"`
 	State   string `json:"state"`
 }
 
-// BlueprintDeploymentState describes the state of a blueprint deployment
-type BlueprintDeploymentState struct {
-	State          string               `json:"state"`
-	LastDeployment *BlueprintDeployment `json:"lastDeployment"`
+// BlueprintDeploymentStateV1 describes the state of a blueprint deployment
+type BlueprintDeploymentStateV1 struct {
+	State          string                 `json:"state"`
+	LastDeployment *BlueprintDeploymentV1 `json:"lastDeployment"`
 }
 
-// BlueprintDetail describes the details of a blueprint
-type BlueprintDetail struct {
-	ID              string                   `json:"id"`
-	Name            string                   `json:"name"`
-	Description     string                   `json:"description,omitempty"`
-	Scope           BlueprintUpdateScope     `json:"scope,omitempty"`
-	Created         string                   `json:"created"`
-	Updated         string                   `json:"updated"`
-	DeploymentState BlueprintDeploymentState `json:"deploymentState"`
-	Steps           []BlueprintStep          `json:"steps"`
+// BlueprintDetailV1 describes the details of a blueprint
+type BlueprintDetailV1 struct {
+	ID              string                     `json:"id"`
+	Name            string                     `json:"name"`
+	Description     string                     `json:"description,omitempty"`
+	Scope           BlueprintUpdateScopeV1     `json:"scope,omitempty"`
+	Created         string                     `json:"created"`
+	Updated         string                     `json:"updated"`
+	DeploymentState BlueprintDeploymentStateV1 `json:"deploymentState"`
+	Steps           []BlueprintStepV1          `json:"steps"`
 }
 
-// BlueprintOverview describes a summary of a blueprint
-type BlueprintOverview struct {
-	ID              string                   `json:"id"`
-	Name            string                   `json:"name"`
-	Description     string                   `json:"description,omitempty"`
-	Created         string                   `json:"created"`
-	Updated         string                   `json:"updated"`
-	DeploymentState BlueprintDeploymentState `json:"deploymentState"`
+// BlueprintOverviewV1 describes a summary of a blueprint
+type BlueprintOverviewV1 struct {
+	ID              string                     `json:"id"`
+	Name            string                     `json:"name"`
+	Description     string                     `json:"description,omitempty"`
+	Created         string                     `json:"created"`
+	Updated         string                     `json:"updated"`
+	DeploymentState BlueprintDeploymentStateV1 `json:"deploymentState"`
 }
 
 // BlueprintUpdateScope defines the scope for updating a blueprint
-type BlueprintUpdateScope struct {
+type BlueprintUpdateScopeV1 struct {
 	DeviceGroups []string `json:"deviceGroups"`
 }
 
-// BlueprintOverviewPagedResponse describes a paged response for blueprint overviews
-type BlueprintOverviewPagedResponse struct {
-	Results    []BlueprintOverview `json:"results"`
-	TotalCount int64               `json:"totalCount"`
+// BlueprintOverviewPagedResponseV1 describes a paged response for blueprint overviews
+type BlueprintOverviewPagedResponseV1 struct {
+	Results    []BlueprintOverviewV1 `json:"results"`
+	TotalCount int64                 `json:"totalCount"`
 }
 
-// BlueprintCreateResponse represents the response for creating a blueprint
-type BlueprintCreateResponse struct {
+// BlueprintCreateResponseV1 represents the response for creating a blueprint
+type BlueprintCreateResponseV1 struct {
 	ID   string `json:"id"`
 	Href string `json:"href"`
 }
@@ -128,9 +128,9 @@ const (
 	blueprintComponentsV1Prefix = "/api/blueprints/v1/blueprint-components"
 )
 
-// GetBlueprints returns all blueprints, automatically handling pagination
-func (c *Client) GetBlueprints(ctx context.Context, sort []string, search string) ([]BlueprintOverview, error) {
-	var allResults []BlueprintOverview
+// GetBlueprintsV1 returns all blueprints, automatically handling pagination
+func (c *Client) GetBlueprintsV1(ctx context.Context, sort []string, search string) ([]BlueprintOverviewV1, error) {
+	var allResults []BlueprintOverviewV1
 	page := 0
 	for {
 		params := url.Values{}
@@ -149,7 +149,7 @@ func (c *Client) GetBlueprints(ctx context.Context, sort []string, search string
 		if err != nil {
 			return nil, fmt.Errorf("failed to list blueprints: %w", err)
 		}
-		var result BlueprintOverviewPagedResponse
+		var result BlueprintOverviewPagedResponseV1
 		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 			return nil, err
 		}
@@ -162,53 +162,53 @@ func (c *Client) GetBlueprints(ctx context.Context, sort []string, search string
 	return allResults, nil
 }
 
-// GetBlueprintByID retrieves a blueprint by ID
-func (c *Client) GetBlueprintByID(ctx context.Context, blueprintID string) (*BlueprintDetail, error) {
+// GetBlueprintByIDV1 retrieves a blueprint by ID
+func (c *Client) GetBlueprintByIDV1(ctx context.Context, blueprintID string) (*BlueprintDetailV1, error) {
 	endpoint := fmt.Sprintf("%s/%s", blueprintV1Prefix, url.PathEscape(blueprintID))
 	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blueprint %s: %w", blueprintID, err)
 	}
-	var result BlueprintDetail
+	var result BlueprintDetailV1
 	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// GetBlueprintByName finds a blueprint by exact name and returns its details
-func (c *Client) GetBlueprintByName(ctx context.Context, name string) (*BlueprintDetail, error) {
+// GetBlueprintByNameV1 finds a blueprint by exact name and returns its details
+func (c *Client) GetBlueprintByNameV1(ctx context.Context, name string) (*BlueprintDetailV1, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name cannot be empty")
 	}
-	blueprints, err := c.GetBlueprints(ctx, nil, name)
+	blueprints, err := c.GetBlueprintsV1(ctx, nil, name)
 	if err != nil {
 		return nil, fmt.Errorf("error searching for blueprint by name: %w", err)
 	}
 	for _, bp := range blueprints {
 		if bp.Name == name {
-			return c.GetBlueprintByID(ctx, bp.ID)
+			return c.GetBlueprintByIDV1(ctx, bp.ID)
 		}
 	}
 	return nil, fmt.Errorf("blueprint with name '%s' not found", name)
 }
 
-// CreateBlueprint creates a new blueprint
-func (c *Client) CreateBlueprint(ctx context.Context, request *BlueprintCreateRequest) (*BlueprintCreateResponse, error) {
+// CreateBlueprintV1 creates a new blueprint
+func (c *Client) CreateBlueprintV1(ctx context.Context, request *BlueprintCreateRequestV1) (*BlueprintCreateResponseV1, error) {
 	endpoint := blueprintV1Prefix
 	resp, err := c.makeRequest(ctx, "POST", endpoint, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create blueprint: %w", err)
 	}
-	var result BlueprintCreateResponse
+	var result BlueprintCreateResponseV1
 	if err := c.handleAPIResponse(ctx, resp, 201, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// UpdateBlueprint updates a blueprint configuration
-func (c *Client) UpdateBlueprint(ctx context.Context, blueprintID string, request *BlueprintUpdateRequest) error {
+// UpdateBlueprintV1 updates a blueprint configuration
+func (c *Client) UpdateBlueprintV1(ctx context.Context, blueprintID string, request *BlueprintUpdateRequestV1) error {
 	endpoint := fmt.Sprintf("%s/%s", blueprintV1Prefix, url.PathEscape(blueprintID))
 	resp, err := c.makeRequest(ctx, "PATCH", endpoint, request)
 	if err != nil {
@@ -220,8 +220,8 @@ func (c *Client) UpdateBlueprint(ctx context.Context, blueprintID string, reques
 	return nil
 }
 
-// DeleteBlueprint deletes a blueprint by ID
-func (c *Client) DeleteBlueprint(ctx context.Context, blueprintID string) error {
+// DeleteBlueprintV1 deletes a blueprint by ID
+func (c *Client) DeleteBlueprintV1(ctx context.Context, blueprintID string) error {
 	endpoint := fmt.Sprintf("%s/%s", blueprintV1Prefix, url.PathEscape(blueprintID))
 	resp, err := c.makeRequest(ctx, "DELETE", endpoint, nil)
 	if err != nil {
@@ -233,8 +233,8 @@ func (c *Client) DeleteBlueprint(ctx context.Context, blueprintID string) error 
 	return nil
 }
 
-// DeployBlueprint starts deployment of a blueprint
-func (c *Client) DeployBlueprint(ctx context.Context, blueprintID string) error {
+// DeployBlueprintV1 starts deployment of a blueprint
+func (c *Client) DeployBlueprintV1(ctx context.Context, blueprintID string) error {
 	endpoint := fmt.Sprintf("%s/%s/deploy", blueprintV1Prefix, url.PathEscape(blueprintID))
 	resp, err := c.makeRequest(ctx, "POST", endpoint, nil)
 	if err != nil {
@@ -246,9 +246,9 @@ func (c *Client) DeployBlueprint(ctx context.Context, blueprintID string) error 
 	return nil
 }
 
-// GetBlueprintComponents returns all blueprint components, automatically handling pagination
-func (c *Client) GetBlueprintComponents(ctx context.Context) ([]BlueprintComponentDescription, error) {
-	var allResults []BlueprintComponentDescription
+// GetBlueprintComponentsV1 returns all blueprint components, automatically handling pagination
+func (c *Client) GetBlueprintComponentsV1(ctx context.Context) ([]BlueprintComponentDescriptionV1, error) {
+	var allResults []BlueprintComponentDescriptionV1
 	page := 0
 	for {
 		params := url.Values{}
@@ -261,7 +261,7 @@ func (c *Client) GetBlueprintComponents(ctx context.Context) ([]BlueprintCompone
 		if err != nil {
 			return nil, fmt.Errorf("failed to list blueprint components: %w", err)
 		}
-		var result BlueprintComponentDescriptionPagedResponse
+		var result BlueprintComponentDescriptionPagedResponseV1
 		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 			return nil, err
 		}
@@ -274,14 +274,14 @@ func (c *Client) GetBlueprintComponents(ctx context.Context) ([]BlueprintCompone
 	return allResults, nil
 }
 
-// GetBlueprintComponentByID gets a blueprint component by identifier
-func (c *Client) GetBlueprintComponentByID(ctx context.Context, identifier string) (*BlueprintComponentDescription, error) {
+// GetBlueprintComponentByIDV1 gets a blueprint component by identifier
+func (c *Client) GetBlueprintComponentByIDV1(ctx context.Context, identifier string) (*BlueprintComponentDescriptionV1, error) {
 	endpoint := fmt.Sprintf("%s/%s", blueprintComponentsV1Prefix, url.PathEscape(identifier))
 	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blueprint component %s: %w", identifier, err)
 	}
-	var result BlueprintComponentDescription
+	var result BlueprintComponentDescriptionV1
 	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
