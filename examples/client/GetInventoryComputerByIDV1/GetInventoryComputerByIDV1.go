@@ -48,7 +48,7 @@ func main() {
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
 	// Get specific computer by ID
-	comp, err := apiClient.GetInventoryComputerByID(context.Background(), computerID)
+	comp, err := apiClient.GetInventoryComputerByIDV1(context.Background(), computerID)
 	if err != nil {
 		log.Fatalf("Error getting computer %s: %v", computerID, err)
 	}

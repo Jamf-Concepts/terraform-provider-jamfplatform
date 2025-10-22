@@ -80,7 +80,7 @@ func (d *DataSourceComputers) Read(ctx context.Context, req datasource.ReadReque
 		filter = data.Filter.ValueString()
 	}
 
-	computers, err := d.client.GetInventoryAllComputers(ctx, filter)
+	computers, err := d.client.GetInventoryAllComputersV1(ctx, filter)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get computers",

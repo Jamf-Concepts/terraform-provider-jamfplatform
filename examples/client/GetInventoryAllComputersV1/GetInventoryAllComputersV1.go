@@ -45,7 +45,7 @@ func main() {
 
 	// Get all computers (automatic pagination handling)
 	// This function automatically fetches all pages and returns all computers as a single slice
-	computers, err := apiClient.GetInventoryAllComputers(context.Background(), filter)
+	computers, err := apiClient.GetInventoryAllComputersV1(context.Background(), filter)
 	if err != nil {
 		log.Fatalf("Error listing computers: %v", err)
 	}
