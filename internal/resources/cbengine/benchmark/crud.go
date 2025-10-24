@@ -76,12 +76,15 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 
 	syncedBench, err := waitForBenchmarkSync(ctx, r.client, bench.BenchmarkID, pollInterval)
 	if err != nil {
-		tflog.Error(ctx, "wait for benchmark sync failed", map[string]interface{}{"error": err.Error(), "benchmark_id": bench.BenchmarkID})
-		resp.Diagnostics.AddError("Error waiting for benchmark to sync", err.Error())
-		return
+		tflog.Warn(ctx, "wait for benchmark sync failed", map[string]interface{}{"error": err.Error(), "benchmark_id": bench.BenchmarkID})
+		resp.Diagnostics.AddWarning(
+			"Benchmark deployment failed.",
+			"The benchmark was successfully created but did not deploy successfully: "+err.Error()+
+				". Check your Jamf instance to verify the benchmark status.",
+		)
+	} else {
+		tflog.Debug(ctx, "benchmark synced", map[string]interface{}{"benchmark_id": syncedBench.ID})
 	}
-
-	tflog.Debug(ctx, "benchmark synced", map[string]interface{}{"benchmark_id": syncedBench.ID})
 
 	data.ID = types.StringValue(syncedBench.ID)
 	data.TenantID = types.StringValue(bench.TenantID)
