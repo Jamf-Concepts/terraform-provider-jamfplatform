@@ -33,28 +33,26 @@ const (
 	envClientSecret = "JAMFPLATFORM_CLIENT_SECRET"
 )
 
-// Ensure JamfPlatformProvider satisfies the provider.Provider interface.
+// Ensure JamfPlatformProvider satisfies the various provider interfaces.
 var _ provider.Provider = &JamfPlatformProvider{}
 
-// JamfPlatformProvider implements the Terraform provider for Jamf Platform.
+// JamfPlatformProvider defines the provider implementation.
 type JamfPlatformProvider struct {
 	version string
 }
 
-// JamfPlatformProviderModel describes the provider data model for configuration.
+// JamfPlatformProviderModel describes the provider data model.
 type JamfPlatformProviderModel struct {
 	BaseURL      types.String `tfsdk:"base_url"`
 	ClientID     types.String `tfsdk:"client_id"`
 	ClientSecret types.String `tfsdk:"client_secret"`
 }
 
-// Metadata sets the provider type name for the Terraform provider.
 func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "jamfplatform"
 	resp.Version = p.version
 }
 
-// Schema sets the Terraform schema for the provider.
 func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Provider for Jamf Platform API Services. https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Configure base_url and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
@@ -77,7 +75,6 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 	}
 }
 
-// Configure sets up the API client for the provider from the provider configuration.
 func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var data JamfPlatformProviderModel
 
@@ -139,15 +136,14 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	resp.ResourceData = apiClient
 }
 
-// Resources returns the list of resource constructors for the provider.
-func (p *JamfPlatformProvider) Resources(_ context.Context) []func() resource.Resource {
+func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
 	}
 }
 
-func (p *JamfPlatformProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		blueprint.NewBlueprintDataSource,
 		component.NewComponentDataSource,
@@ -162,7 +158,6 @@ func (p *JamfPlatformProvider) DataSources(_ context.Context) []func() datasourc
 	}
 }
 
-// New creates a new instance of the Jamf Platform provider.
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
 		return &JamfPlatformProvider{
