@@ -1,6 +1,6 @@
 // Copyright 2025 Jamf Software LLC.
 // Blueprint API client
-// https://developer.jamf.com/platform-api/reference/blueprints
+// https://developer.jamf.com/platform-api/reference/blueprints-1
 
 package client
 
