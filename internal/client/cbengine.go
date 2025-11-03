@@ -1,9 +1,7 @@
 // Copyright 2025 Jamf Software LLC.
-// https://developer.jamf.com/platform-api/reference/getbaselines
-// https://developer.jamf.com/platform-api/reference/getbenchmark
-// https://developer.jamf.com/platform-api/reference/gettenantbenchmarks
-// https://developer.jamf.com/platform-api/reference/postbenchmark
-// https://developer.jamf.com/platform-api/reference/deletebenchmark
+// https://developer.jamf.com/platform-api/reference/benchmarks
+// https://developer.jamf.com/platform-api/reference/rules
+// https://developer.jamf.com/platform-api/reference/baselines
 
 package client
 
