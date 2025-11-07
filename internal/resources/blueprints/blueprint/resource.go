@@ -108,6 +108,13 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 					listvalidator.SizeAtMost(1),
 				},
 			},
+			"custom_declarations": schema.ListNestedBlock{
+				Description:  "Custom declarations component for managing custom DDM declarations with system or user channel types.",
+				NestedObject: components.CustomDeclarationsComponentSchema(),
+				Validators: []validator.List{
+					listvalidator.SizeAtMost(1),
+				},
+			},
 			"disk_management_settings": schema.ListNestedBlock{
 				Description:  "Disk management settings component for controlling external and network storage restrictions.",
 				NestedObject: components.DiskManagementPolicyComponentSchema(),
