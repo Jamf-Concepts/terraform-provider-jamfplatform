@@ -74,3 +74,41 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
     }
   ])
 }
+
+# Custom Declaration Example Blueprint
+resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
+  name        = "Custom Declarations"
+  description = "Managed by Terraform"
+
+  device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
+
+  custom_declarations {
+
+    declaration {
+      channel = "SYSTEM"
+      kind    = "CONFIGURATION"
+      type    = "com.apple.configuration.softwareupdate.settings"
+      payload = jsonencode({
+        Beta = {
+          RequireProgram = {
+            Token       = "<beta-token-here>",
+            Description = "AppleSeed for IT"
+          },
+          ProgramEnrollment = "AlwaysOn"
+        }
+      })
+    }
+
+    declaration {
+      channel = "USER"
+      kind    = "ASSET"
+      type    = "com.apple.asset.credential.userpassword"
+      payload = jsonencode({
+        Reference = {
+          DataURL     = "https://somewhere.com/something.plist",
+          ContentType = "application/plist"
+        }
+      })
+    }
+  }
+}

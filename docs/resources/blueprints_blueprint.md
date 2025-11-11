@@ -102,6 +102,7 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 ### Optional
 
 - `audio_accessory_settings` (Block List) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedblock--audio_accessory_settings))
+- `custom_declarations` (Block List) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedblock--custom_declarations))
 - `description` (String) Blueprint description.
 - `disk_management_settings` (Block List) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedblock--disk_management_settings))
 - `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have payloadType and payloadIdentifier fields. The payload display name will automatically use the blueprint name.
@@ -134,6 +135,25 @@ Optional:
 
 - `unpairing_time_hour` (Number) The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is 'Hour'. Range: 0-23.
 - `unpairing_time_policy` (String) Device's unpairing policy. Valid values: None, Hour. When set to 'Hour', unpairing_time_hour must also be provided.
+
+
+<a id="nestedblock--custom_declarations"></a>
+### Nested Schema for `custom_declarations`
+
+Optional:
+
+- `declaration` (Block List) Custom DDM declaration. (see [below for nested schema](#nestedblock--custom_declarations--declaration))
+
+<a id="nestedblock--custom_declarations--declaration"></a>
+### Nested Schema for `custom_declarations.declaration`
+
+Required:
+
+- `channel` (String) The channel type for the declaration. Valid values: SYSTEM, USER.
+- `kind` (String) The kind of declaration. Valid values: CONFIGURATION, ASSET.
+- `payload` (String) JSON-encoded payload object for the declaration.
+- `type` (String) The declaration type identifier (e.g., 'com.apple.configuration.softwareupdate.settings').
+
 
 
 <a id="nestedblock--disk_management_settings"></a>
