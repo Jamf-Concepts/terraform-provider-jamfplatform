@@ -1,7 +1,8 @@
 name: "Terraform Tests"
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize]
     paths:
       - "**.go"
       - "**.tf"
@@ -21,6 +22,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
 
       - name: Setup Go
