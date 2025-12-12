@@ -234,6 +234,10 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]clie
 		r.collectSingleComponent(allComponents, diags, &data.AudioAccessorySettings[i], "audio accessory settings")
 	}
 
+	for i := range data.CustomDeclarations {
+		r.collectSingleComponent(allComponents, diags, &data.CustomDeclarations[i], "custom declarations")
+	}
+
 	for i := range data.DiskManagementSettings {
 		r.collectSingleComponent(allComponents, diags, &data.DiskManagementSettings[i], "disk management settings")
 	}

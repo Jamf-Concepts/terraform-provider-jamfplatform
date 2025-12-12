@@ -21,6 +21,7 @@ type BlueprintResourceModel struct {
 	DeviceGroups              types.Set                                       `tfsdk:"device_groups"`
 	Components                []ComponentModel                                `tfsdk:"raw_component"`
 	AudioAccessorySettings    []components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
+	CustomDeclarations        []components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
 	DiskManagementSettings    []components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
 	MathSettings              []components.MathSettingsComponent              `tfsdk:"math_settings"`
 	PasscodePolicy            []components.PasscodePolicyComponent            `tfsdk:"passcode_policy"`
