@@ -85,8 +85,8 @@ type DeviceGroupMemberV1 struct {
 	DeviceID string `json:"deviceId"`
 }
 
-// ListDeviceGroupMemberReadRepresentation represents the paginated response for device group members
-type ListDeviceGroupMemberReadRepresentation struct {
+// ListDeviceGroupMemberReadRepresentationV1 represents the paginated response for device group members
+type ListDeviceGroupMemberReadRepresentationV1 struct {
 	Results     []string `json:"results"`
 	TotalCount  int      `json:"totalCount"`
 	Page        int      `json:"page"`
@@ -219,7 +219,7 @@ func (c *Client) DeleteDeviceGroupV1(ctx context.Context, id string) error {
 }
 
 // GetDeviceGroupMembersV1 returns the full paginated response with metadata
-func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string, page, pageSize int) (*ListDeviceGroupMemberReadRepresentation, error) {
+func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string, page, pageSize int) (*ListDeviceGroupMemberReadRepresentationV1, error) {
 	params := url.Values{}
 	params.Set("page", fmt.Sprintf("%d", page))
 	params.Set("page-size", fmt.Sprintf("%d", pageSize))
@@ -229,7 +229,7 @@ func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string, page, p
 	if err != nil {
 		return nil, fmt.Errorf("failed to get members for device group %s: %w", id, err)
 	}
-	var result ListDeviceGroupMemberReadRepresentation
+	var result ListDeviceGroupMemberReadRepresentationV1
 	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
 		return nil, err
 	}
