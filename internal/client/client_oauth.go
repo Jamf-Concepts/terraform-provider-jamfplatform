@@ -244,7 +244,11 @@ func (c *OAuthClient) AuthenticatedRequest(ctx context.Context, method, url stri
 	req.Header.Set("Authorization", "Bearer "+token)
 	if body != nil {
 		if method == http.MethodPatch {
-			req.Header.Set("Content-Type", "application/merge-patch+json")
+			if strings.Contains(url, "/device-groups/v1/device-groups/") {
+				req.Header.Set("Content-Type", "application/json")
+			} else {
+				req.Header.Set("Content-Type", "application/merge-patch+json")
+			}
 		} else {
 			req.Header.Set("Content-Type", "application/json")
 		}
