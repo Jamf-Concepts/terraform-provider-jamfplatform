@@ -12,10 +12,12 @@ import (
 
 // Device Groups API path constants
 const (
-	deviceGroupsV1Prefix = "/api/device-groups/v1"
+	deviceGroupsV1Prefix = "/management/device-groups/v1"
 )
 
-// Device group types
+// Device Groups Types
+
+// DeviceGroupListReadRepresentationV1 represents a device group in a list response
 type DeviceGroupListReadRepresentationV1 struct {
 	ID          string                                `json:"id"`
 	Name        string                                `json:"name"`
@@ -26,16 +28,18 @@ type DeviceGroupListReadRepresentationV1 struct {
 	Criteria    []DeviceGroupCriteriaRepresentationV1 `json:"criteria,omitempty"`
 }
 
+// DeviceGroupCriteriaRepresentationV1 represents a criterion for device groups
 type DeviceGroupCriteriaRepresentationV1 struct {
-	Order                 int    `json:"order" validate:"required"`
-	AttributeName         string `json:"attributeName" validate:"required"`
-	Operator              string `json:"operator" validate:"required"`
-	AttributeValue        string `json:"attributeValue" validate:"required"`
-	JoinType              string `json:"joinType" validate:"required,oneof=AND OR"`
+	Order                 int    `json:"order"`
+	AttributeName         string `json:"attributeName"`
+	Operator              string `json:"operator"`
+	AttributeValue        string `json:"attributeValue"`
+	JoinType              string `json:"joinType"`
 	HasOpeningParenthesis bool   `json:"hasOpeningParenthesis,omitempty"`
 	HasClosingParenthesis bool   `json:"hasClosingParenthesis,omitempty"`
 }
 
+// DeviceGroupListReadRepresentationV1 represents a device group in a list response
 type DeviceGroupReadRepresentationV1 struct {
 	ID          string                                `json:"id"`
 	Name        string                                `json:"name"`
@@ -46,51 +50,59 @@ type DeviceGroupReadRepresentationV1 struct {
 	Criteria    []DeviceGroupCriteriaRepresentationV1 `json:"criteria,omitempty"`
 }
 
+// DeviceGroupCreateRepresentationV1 represents the payload to create a device group
 type DeviceGroupCreateRepresentationV1 struct {
-	Name        string                                `json:"name" validate:"required"`
+	Name        string                                `json:"name"`
 	Description string                                `json:"description,omitempty"`
-	DeviceType  string                                `json:"deviceType" validate:"required,oneof=COMPUTER MOBILE_DEVICE"`
-	GroupType   string                                `json:"groupType" validate:"required,oneof=SMART STATIC"`
-	Criteria    []DeviceGroupCriteriaRepresentationV1 `json:"criteria,omitempty" validate:"required_if=GroupType SMART,excluded_with=Members"`
-	Members     []string                              `json:"members,omitempty" validate:"required_if=GroupType STATIC,excluded_with=Criteria"`
+	DeviceType  string                                `json:"deviceType"`
+	GroupType   string                                `json:"groupType"`
+	Criteria    []DeviceGroupCriteriaRepresentationV1 `json:"criteria,omitempty"`
+	Members     []string                              `json:"members,omitempty"`
 }
 
+// DeviceGroupCreateResponseV1 represents the response after creating a device group
 type DeviceGroupCreateResponseV1 struct {
 	ID   string `json:"id"`
 	Href string `json:"href"`
 }
 
+// DeviceGroupUpdateRepresentationV1 represents the payload to update a device group
 type DeviceGroupUpdateRepresentationV1 struct {
-	Name        string                                `json:"name" validate:"required"`
+	Name        string                                `json:"name"`
 	Description string                                `json:"description,omitempty"`
 	Criteria    []DeviceGroupCriteriaRepresentationV1 `json:"criteria,omitempty"`
 	DeviceIds   []string                              `json:"deviceIds,omitempty"`
 }
 
+// DeviceGroupMemberPatchRepresentationV1 represents the payload to patch device group members
 type DeviceGroupMemberPatchRepresentationV1 struct {
 	Added   []string `json:"added,omitempty"`
 	Removed []string `json:"removed,omitempty"`
 }
 
+// DeviceGroupMemberV1 represents a device group member
 type DeviceGroupMemberV1 struct {
-	DeviceID string `json:"deviceId" validate:"required"`
+	DeviceID string `json:"deviceId"`
 }
 
+// ListDeviceGroupMemberReadRepresentation represents the paginated response for device group members
 type ListDeviceGroupMemberReadRepresentation struct {
-	Results     []DeviceGroupMemberV1 `json:"results"`
-	TotalCount  int                   `json:"totalCount"`
-	Page        int                   `json:"page"`
-	PageSize    int                   `json:"pageSize"`
-	TotalPages  int                   `json:"totalPages"`
-	HasNext     bool                  `json:"hasNext"`
-	HasPrevious bool                  `json:"hasPrevious"`
+	Results     []string `json:"results"`
+	TotalCount  int      `json:"totalCount"`
+	Page        int      `json:"page"`
+	PageSize    int      `json:"pageSize"`
+	TotalPages  int      `json:"totalPages"`
+	HasNext     bool     `json:"hasNext"`
+	HasPrevious bool     `json:"hasPrevious"`
 }
 
+// DeviceGroupMemberOfRepresentationV1 represents a device group that a device belongs to
 type DeviceGroupMemberOfRepresentationV1 struct {
-	GroupID   string `json:"groupId" validate:"required"`
-	GroupName string `json:"groupName" validate:"required"`
+	GroupID   string `json:"groupId"`
+	GroupName string `json:"groupName"`
 }
 
+// ListDeviceGroupMemberOfResponseRepresentationV1 represents the paginated response for device groups a device belongs to
 type ListDeviceGroupMemberOfResponseRepresentationV1 struct {
 	Results     []DeviceGroupMemberOfRepresentationV1 `json:"results"`
 	TotalCount  int                                   `json:"totalCount"`
@@ -101,6 +113,7 @@ type ListDeviceGroupMemberOfResponseRepresentationV1 struct {
 	HasPrevious bool                                  `json:"hasPrevious"`
 }
 
+// DeviceGroupPagedResponseV1 represents a paginated response for device groups
 type DeviceGroupPagedResponseV1 struct {
 	Results     []DeviceGroupListReadRepresentationV1 `json:"results"`
 	TotalCount  int64                                 `json:"totalCount"`
@@ -153,7 +166,7 @@ func (c *Client) GetDeviceGroupsV1(ctx context.Context, sort []string, filter st
 
 // GetDeviceGroupByIDV1 retrieves a device group by ID
 func (c *Client) GetDeviceGroupByIDV1(ctx context.Context, id string) (*DeviceGroupReadRepresentationV1, error) {
-	endpoint := fmt.Sprintf("%s/%s", deviceGroupsV1Prefix, url.PathEscape(id))
+	endpoint := fmt.Sprintf("%s/%s", deviceGroupsV1Prefix+"/device-groups", url.PathEscape(id))
 	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device group %s: %w", id, err)
@@ -242,7 +255,7 @@ func (c *Client) GetDeviceGroupsForDeviceV1(ctx context.Context, deviceID string
 	params.Set("page", fmt.Sprintf("%d", page))
 	params.Set("page-size", fmt.Sprintf("%d", pageSize))
 
-	endpoint := fmt.Sprintf("/devices/%s/device-groups?%s", url.PathEscape(deviceID), params.Encode())
+	endpoint := fmt.Sprintf("%s/devices/%s/device-groups?%s", deviceGroupsV1Prefix, url.PathEscape(deviceID), params.Encode())
 	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device groups for device %s: %w", deviceID, err)
