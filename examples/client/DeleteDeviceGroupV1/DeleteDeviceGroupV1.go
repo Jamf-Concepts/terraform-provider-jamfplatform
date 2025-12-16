@@ -37,7 +37,7 @@ func main() {
 
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
-	if err := apiClient.DeleteDeviceGroup(context.Background(), groupID); err != nil {
+	if err := apiClient.DeleteDeviceGroupV1(context.Background(), groupID); err != nil {
 		log.Fatalf("Error deleting device group: %v", err)
 	}
 

@@ -42,7 +42,7 @@ func main() {
 		Members:    []string{"device-uuid-1", "device-uuid-2"},
 	}
 
-	created, err := apiClient.CreateDeviceGroup(context.Background(), req)
+	created, err := apiClient.CreateDeviceGroupV1(context.Background(), req)
 	if err != nil {
 		log.Fatalf("Error creating device group: %v", err)
 	}

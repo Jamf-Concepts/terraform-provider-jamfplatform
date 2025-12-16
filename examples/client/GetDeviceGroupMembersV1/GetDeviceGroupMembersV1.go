@@ -46,8 +46,8 @@ func main() {
 
 	fmt.Printf("Found %d member(s) on page %d\n\n", len(membersResp.Results), membersResp.Page)
 
-	for _, m := range membersResp.Results {
-		fmt.Printf("DeviceID: %s\n", m.DeviceID)
+	for _, deviceID := range membersResp.Results {
+		fmt.Printf("DeviceID: %s\n", deviceID)
 	}
 
 	fmt.Print("\n" + strings.Repeat("=", 50) + "\n")
