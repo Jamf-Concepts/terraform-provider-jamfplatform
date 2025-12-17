@@ -39,14 +39,14 @@ func main() {
 
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
-	membersResp, err := apiClient.GetDeviceGroupMembersV1(context.Background(), groupID, 0, 50)
+	members, err := apiClient.GetDeviceGroupMembersV1(context.Background(), groupID)
 	if err != nil {
 		log.Fatalf("Error getting device group members: %v", err)
 	}
 
-	fmt.Printf("Found %d member(s) on page %d\n\n", len(membersResp.Results), membersResp.Page)
+	fmt.Printf("Found %d member(s)\n\n", len(members))
 
-	for _, deviceID := range membersResp.Results {
+	for _, deviceID := range members {
 		fmt.Printf("DeviceID: %s\n", deviceID)
 	}
 
@@ -54,7 +54,7 @@ func main() {
 	fmt.Printf("Full JSON Response:\n")
 	fmt.Print(strings.Repeat("=", 50) + "\n")
 
-	b, err := json.MarshalIndent(membersResp, "", "  ")
+	b, err := json.MarshalIndent(members, "", "  ")
 	if err != nil {
 		log.Printf("Error marshaling to JSON: %v", err)
 	} else {

@@ -218,22 +218,40 @@ func (c *Client) DeleteDeviceGroupV1(ctx context.Context, id string) error {
 	return nil
 }
 
-// GetDeviceGroupMembersV1 returns the full paginated response with metadata
-func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string, page, pageSize int) (*ListDeviceGroupMemberReadRepresentationV1, error) {
-	params := url.Values{}
-	params.Set("page", fmt.Sprintf("%d", page))
-	params.Set("page-size", fmt.Sprintf("%d", pageSize))
+// GetDeviceGroupMembersV1 returns all member IDs for a device group, handling pagination internally.
+func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string) ([]string, error) {
+	var allMembers []string
+	page := 0
+	pageSize := 100
 
-	endpoint := fmt.Sprintf("%s/device-groups/%s/members?%s", deviceGroupsV1Prefix, url.PathEscape(id), params.Encode())
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get members for device group %s: %w", id, err)
+	for {
+		params := url.Values{}
+		params.Set("page", fmt.Sprintf("%d", page))
+		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+
+		endpoint := fmt.Sprintf("%s/device-groups/%s/members?%s", deviceGroupsV1Prefix, url.PathEscape(id), params.Encode())
+		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get members for device group %s: %w", id, err)
+		}
+
+		var result ListDeviceGroupMemberReadRepresentationV1
+		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+			return nil, err
+		}
+
+		if len(result.Results) == 0 {
+			break
+		}
+
+		allMembers = append(allMembers, result.Results...)
+		if len(result.Results) < pageSize || !result.HasNext {
+			break
+		}
+		page++
 	}
-	var result ListDeviceGroupMemberReadRepresentationV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
+
+	return allMembers, nil
 }
 
 // UpdateDeviceGroupMembersV1 patches the members of a static device group
@@ -249,20 +267,38 @@ func (c *Client) UpdateDeviceGroupMembersV1(ctx context.Context, id string, patc
 	return nil
 }
 
-// GetDeviceGroupsForDeviceV1 returns the device groups that a device belongs to with full pagination
-func (c *Client) GetDeviceGroupsForDeviceV1(ctx context.Context, deviceID string, page, pageSize int) (*ListDeviceGroupMemberOfResponseRepresentationV1, error) {
-	params := url.Values{}
-	params.Set("page", fmt.Sprintf("%d", page))
-	params.Set("page-size", fmt.Sprintf("%d", pageSize))
+// GetDeviceGroupsForDeviceV1 returns all device groups a device belongs to, handling pagination internally.
+func (c *Client) GetDeviceGroupsForDeviceV1(ctx context.Context, deviceID string) ([]DeviceGroupMemberOfRepresentationV1, error) {
+	var allGroups []DeviceGroupMemberOfRepresentationV1
+	page := 0
+	pageSize := 100
 
-	endpoint := fmt.Sprintf("%s/devices/%s/device-groups?%s", deviceGroupsV1Prefix, url.PathEscape(deviceID), params.Encode())
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get device groups for device %s: %w", deviceID, err)
+	for {
+		params := url.Values{}
+		params.Set("page", fmt.Sprintf("%d", page))
+		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+
+		endpoint := fmt.Sprintf("%s/devices/%s/device-groups?%s", deviceGroupsV1Prefix, url.PathEscape(deviceID), params.Encode())
+		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get device groups for device %s: %w", deviceID, err)
+		}
+
+		var result ListDeviceGroupMemberOfResponseRepresentationV1
+		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+			return nil, err
+		}
+
+		if len(result.Results) == 0 {
+			break
+		}
+
+		allGroups = append(allGroups, result.Results...)
+		if len(result.Results) < pageSize || !result.HasNext {
+			break
+		}
+		page++
 	}
-	var result ListDeviceGroupMemberOfResponseRepresentationV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
+
+	return allGroups, nil
 }
