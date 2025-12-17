@@ -54,7 +54,7 @@ testing/
 | File | Purpose |
 |------|---------|
 | `integration.tftest.hcl` | Orchestrates test execution with `run` blocks |
-| `provider.tf` | Configures multiple provider instances (default, inventory alias, jamfpro) |
+| `provider.tf` | Configures multiple provider instances (default, inventory alias) |
 | `variables.tf` | Defines authentication credentials and test ID variable |
 | `data_sources/*.tf` | Individual data source test configurations |
 | `resources/*.tf` | Individual resource test configurations |
@@ -82,10 +82,6 @@ export TF_VAR_jamfplatform_client_secret="your-client-secret"
 
 export TF_VAR_jamfplatform_inventory_client_id="your-inventory-client-id"
 export TF_VAR_jamfplatform_inventory_client_secret="your-inventory-client-secret"
-
-export TF_VAR_jamfpro_instance_fqdn="your-instance.jamfcloud.com"
-export TF_VAR_jamfpro_client_id="your-jamfpro-client-id"
-export TF_VAR_jamfpro_client_secret="your-jamfpro-client-secret"
 
 # Optional: Unique test ID to avoid naming conflicts
 export TF_VAR_test_id="$(uuidgen)"
@@ -166,9 +162,6 @@ Configure these secrets in your repository settings:
 | `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret for compliance/blueprints |
 | `JAMFPLATFORM_INVENTORY_CLIENT_ID` | OAuth client ID for inventory APIs |
 | `JAMFPLATFORM_INVENTORY_CLIENT_SECRET` | OAuth client secret for inventory APIs |
-| `JAMFPRO_INSTANCE_FQDN` | Jamf Pro instance FQDN |
-| `JAMFPRO_CLIENT_ID` | Jamf Pro OAuth client ID |
-| `JAMFPRO_CLIENT_SECRET` | Jamf Pro OAuth client secret |
 
 ## Adding New Tests
 
@@ -244,7 +237,7 @@ resource "jamfplatform_your_resource" "test_example" {
   
   # Use target groups from main.tf if needed
   device_groups = [
-    data.jamfpro_group.test_target_computer_group.group_platform_id
+    jamfplatform_device_group.test_smart_computer.id
   ]
 }
 
@@ -276,8 +269,8 @@ The `resources/main.tf` file provides shared infrastructure that can be referenc
 
 ```hcl
 # Available shared resources:
-data.jamfpro_group.test_target_computer_group.group_platform_id
-data.jamfpro_group.test_target_mobile_device_group.group_platform_id
+jamfplatform_device_group.test_smart_computer.id
+jamfplatform_device_group.test_smart_mobile.id
 ```
 
 These groups are created via the `jamfpro` provider and can be used as target groups for blueprints, benchmarks, and other resources.
@@ -295,9 +288,8 @@ data "jamfplatform_inventory_computers" "test" {
 
 The available provider aliases are:
 
-- `jamfplatform` (default) - For compliance/blueprints APIs
+- `jamfplatform` (default) - For compliance/blueprints/device-group APIs
 - `jamfplatform.inventory` - For inventory APIs
-- `jamfpro` - For Jamf Pro Classic/UAPI
 
 ## Best Practices
 

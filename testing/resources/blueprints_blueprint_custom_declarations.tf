@@ -2,7 +2,7 @@ resource "jamfplatform_blueprints_blueprint" "test_custom_declarations" {
   name        = "Terraform Test Custom Declarations ${var.test_id}"
   description = "Managed by Terraform"
 
-  device_groups = [data.jamfpro_group.test_target_computer_group.group_platform_id]
+  device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
   custom_declarations {
 

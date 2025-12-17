@@ -2,7 +2,7 @@ resource "jamfplatform_blueprints_blueprint" "test_safari_extensions" {
   name        = "Terraform Test Safari Extensions ${var.test_id}"
   description = "Managed by Terraform"
 
-  device_groups = [data.jamfpro_group.test_target_computer_group.group_platform_id]
+  device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
   safari_extensions {
     managed_extensions {

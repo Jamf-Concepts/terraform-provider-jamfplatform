@@ -57,9 +57,6 @@ jobs:
         working-directory: testing
         env:
           TF_VAR_test_id: ${{ steps.generate-uuid.outputs.uuid }}
-          TF_VAR_jamfpro_instance_fqdn: ${{ secrets.JAMFPRO_INSTANCE_FQDN }}
-          TF_VAR_jamfpro_client_id: ${{ secrets.JAMFPRO_CLIENT_ID }}
-          TF_VAR_jamfpro_client_secret: ${{ secrets.JAMFPRO_CLIENT_SECRET }}
           TF_VAR_jamfplatform_base_url: ${{ secrets.JAMFPLATFORM_BASE_URL }}
           TF_VAR_jamfplatform_client_id: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
           TF_VAR_jamfplatform_client_secret: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}

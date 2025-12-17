@@ -123,19 +123,6 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		c.logger.LogRequest(ctx, method, fullURL, requestBodyBytes)
 	}
 
-	req, err := c.oauthClient.AuthenticatedRequest(ctx, method, fullURL, requestBodyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authenticated request: %w", err)
-	}
-
-	if body != nil {
-		if method == http.MethodPatch {
-			req.Header.Set("Content-Type", "application/merge-patch+json")
-		} else {
-			req.Header.Set("Content-Type", "application/json")
-		}
-	}
-
 	resp, err := c.oauthClient.Do(ctx, method, fullURL, requestBodyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
