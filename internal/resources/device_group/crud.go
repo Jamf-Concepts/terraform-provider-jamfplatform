@@ -1,0 +1,221 @@
+// Copyright 2025 Jamf Software LLC.
+
+package device_group
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+)
+
+// Create creates a new Jamf Platform device group resource.
+func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan DeviceGroupResourceModel
+	var config DeviceGroupResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if plan.Members.IsNull() && isConfiguredValue(config.Members) {
+		plan.Members = config.Members
+	}
+
+	manageMembers := isConfiguredValue(plan.Members)
+	manageDescription := isConfiguredValue(plan.Description)
+
+	if err := validateDeviceGroupPlan(&plan); err != nil {
+		resp.Diagnostics.AddError("Invalid device group configuration", err.Error())
+		return
+	}
+
+	reqBody := &client.DeviceGroupCreateRepresentationV1{
+		Name:        plan.Name.ValueString(),
+		Description: stringPointerValue(plan.Description),
+		DeviceType:  strings.ToUpper(plan.DeviceType.ValueString()),
+		GroupType:   strings.ToUpper(plan.GroupType.ValueString()),
+	}
+
+	switch strings.ToLower(plan.GroupType.ValueString()) {
+	case "smart":
+		reqBody.Criteria = expandDeviceGroupCriteria(plan.Criteria)
+	case "static":
+		if manageMembers {
+			members, diags := membersSetToStrings(ctx, plan.Members)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			reqBody.Members = members
+		}
+	}
+
+	created, err := r.client.CreateDeviceGroupV1(ctx, reqBody)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating device group",
+			fmt.Sprintf("API error: %v", err),
+		)
+		return
+	}
+
+	plan.ID = types.StringValue(created.ID)
+
+	if !r.refreshDeviceGroupState(ctx, created.ID, &plan, manageMembers, manageDescription, &resp.Diagnostics) {
+		return
+	}
+
+	tflog.Trace(ctx, "created device group", map[string]interface{}{
+		"id":         created.ID,
+		"group_type": plan.GroupType.ValueString(),
+	})
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// Read syncs the Terraform state with the latest API representation.
+func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state DeviceGroupResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if state.ID.IsNull() || state.ID.ValueString() == "" {
+		resp.Diagnostics.AddError("Missing ID", "Cannot read device group without ID.")
+		return
+	}
+
+	grp, err := r.client.GetDeviceGroupByIDV1(ctx, state.ID.ValueString())
+	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "device group not found, removing from state", map[string]interface{}{
+				"id": state.ID.ValueString(),
+			})
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading device group", err.Error())
+		return
+	}
+
+	var members []string
+	manageMembers := isConfiguredValue(state.Members)
+	manageDescription := isConfiguredValue(state.Description)
+	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
+		var err error
+		members, err = r.client.GetDeviceGroupMembersV1(ctx, grp.ID)
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading device group members", err.Error())
+			return
+		}
+	}
+
+	resp.Diagnostics.Append(assignDeviceGroupModel(ctx, &state, grp, members, manageMembers, manageDescription)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// Update updates name/description/criteria and reconciles membership for static groups.
+func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan DeviceGroupResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if err := validateDeviceGroupPlan(&plan); err != nil {
+		resp.Diagnostics.AddError("Invalid device group configuration", err.Error())
+		return
+	}
+
+	manageMembers := isConfiguredValue(plan.Members)
+	manageDescription := isConfiguredValue(plan.Description)
+
+	updateReq := &client.DeviceGroupUpdateRepresentationV1{
+		Name:        plan.Name.ValueString(),
+		Description: stringPointerValue(plan.Description),
+	}
+
+	if strings.ToLower(plan.GroupType.ValueString()) == "smart" {
+		updateReq.Criteria = expandDeviceGroupCriteria(plan.Criteria)
+	}
+
+	if err := r.client.UpdateDeviceGroupV1(ctx, plan.ID.ValueString(), updateReq); err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating device group",
+			fmt.Sprintf("API error: %v", err),
+		)
+		return
+	}
+
+	if strings.ToLower(plan.GroupType.ValueString()) == "static" && manageMembers {
+		desired, diags := membersSetToStrings(ctx, plan.Members)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		current, err := r.client.GetDeviceGroupMembersV1(ctx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading device group members", err.Error())
+			return
+		}
+
+		added, removed := diffStringSlices(current, desired)
+		if len(added) > 0 || len(removed) > 0 {
+			patch := &client.DeviceGroupMemberPatchRepresentationV1{
+				Added:   added,
+				Removed: removed,
+			}
+			if err := r.client.UpdateDeviceGroupMembersV1(ctx, plan.ID.ValueString(), patch); err != nil {
+				resp.Diagnostics.AddError("Error updating device group members", err.Error())
+				return
+			}
+		}
+	}
+
+	if !r.refreshDeviceGroupState(ctx, plan.ID.ValueString(), &plan, manageMembers, manageDescription, &resp.Diagnostics) {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// Delete removes the device group from Jamf Platform.
+func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state DeviceGroupResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if state.ID.IsNull() || state.ID.ValueString() == "" {
+		resp.Diagnostics.AddError("Missing ID", "Cannot delete device group without ID.")
+		return
+	}
+
+	err := r.client.DeleteDeviceGroupV1(ctx, state.ID.ValueString())
+	if err != nil {
+		if isNotFoundError(err) {
+			tflog.Info(ctx, "device group already removed", map[string]interface{}{
+				"id": state.ID.ValueString(),
+			})
+			return
+		}
+		resp.Diagnostics.AddError("Error deleting device group", err.Error())
+	}
+}

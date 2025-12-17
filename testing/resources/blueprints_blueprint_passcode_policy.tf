@@ -2,8 +2,8 @@ resource "jamfplatform_blueprints_blueprint" "test_passcode_policy" {
   name        = "Terraform Test Passcode Policy ${var.test_id}"
   description = "Managed by Terraform"
 
-  device_groups = [data.jamfpro_group.test_target_computer_group.group_platform_id,
-  data.jamfpro_group.test_target_mobile_device_group.group_platform_id]
+  device_groups = [jamfplatform_device_group.test_smart_computer.id,
+  jamfplatform_device_group.test_smart_mobile.id]
 
   passcode_policy {
     change_at_next_auth              = true

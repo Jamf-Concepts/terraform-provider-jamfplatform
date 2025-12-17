@@ -32,26 +32,26 @@ type CBEngineBaselineInfoV1 struct {
 
 // CBEngineSourceV1 represents source information
 type CBEngineSourceV1 struct {
-	Branch   string `json:"branch" validate:"required"`
-	Revision string `json:"revision" validate:"required"`
+	Branch   string `json:"branch"`
+	Revision string `json:"revision"`
 }
 
 // CBEngineTargetV2 represents the target configuration
 type CBEngineTargetV2 struct {
-	DeviceGroups []string `json:"deviceGroups" validate:"required"`
+	DeviceGroups []string `json:"deviceGroups"`
 }
 
 // CBEngine Benchmark Types
 
 // CBEngineBenchmarkRequestV2 represents the request body for creating/updating benchmarks
 type CBEngineBenchmarkRequestV2 struct {
-	Title            string                  `json:"title" validate:"required,max=100"`
-	Description      string                  `json:"description,omitempty" validate:"max=1000"`
-	SourceBaselineID string                  `json:"sourceBaselineId" validate:"required"`
-	Sources          []CBEngineSourceV1      `json:"sources" validate:"required"`
-	Rules            []CBEngineRuleRequestV2 `json:"rules" validate:"required"`
-	Target           CBEngineTargetV2        `json:"target" validate:"required"`
-	EnforcementMode  string                  `json:"enforcementMode" validate:"required,oneof=MONITOR MONITOR_AND_ENFORCE"`
+	Title            string                  `json:"title"`
+	Description      string                  `json:"description,omitempty"`
+	SourceBaselineID string                  `json:"sourceBaselineId"`
+	Sources          []CBEngineSourceV1      `json:"sources"`
+	Rules            []CBEngineRuleRequestV2 `json:"rules"`
+	Target           CBEngineTargetV2        `json:"target"`
+	EnforcementMode  string                  `json:"enforcementMode"`
 }
 
 // CBEngineBenchmarkResponseV2 represents the response for benchmark operations
@@ -88,14 +88,14 @@ type CBEngineBenchmarkV2 struct {
 
 // CBEngineRuleRequestV2 represents a rule in the request
 type CBEngineRuleRequestV2 struct {
-	ID      string                `json:"id" validate:"required"`
-	Enabled bool                  `json:"enabled" validate:"required"`
+	ID      string                `json:"id"`
+	Enabled bool                  `json:"enabled"`
 	ODV     *CBEngineODVRequestV2 `json:"odv,omitempty"`
 }
 
 // CBEngineODVRequestV2 represents an organization-defined value in requests
 type CBEngineODVRequestV2 struct {
-	Value string `json:"value" validate:"required"`
+	Value string `json:"value"`
 }
 
 // CBEngineRuleInfoV1 represents detailed rule information in responses
@@ -114,7 +114,7 @@ type CBEngineRuleInfoV1 struct {
 
 // CBEngineOrganizationDefinedValueV1 represents ODV with full details
 type CBEngineOrganizationDefinedValueV1 struct {
-	Value       string                           `json:"value" validate:"required"`
+	Value       string                           `json:"value"`
 	Hint        string                           `json:"hint,omitempty"`
 	Placeholder string                           `json:"placeholder,omitempty"`
 	Type        string                           `json:"type,omitempty"`

@@ -8,6 +8,8 @@ Provides resources and data sources for managing [Jamf Platform Services](https:
   * [API Reference](https://developer.jamf.com/platform-api/reference/computer-inventory)
 * [Blueprints](https://learn.jamf.com/en-US/bundle/jamf-pro-blueprints-configuration-guide/page/Jamf_Pro_Blueprints_Configuration_Guide.html)
   * [API Reference](https://developer.jamf.com/platform-api/reference/blueprints-1)
+* Device Groups
+  * [API Reference](https://developer.jamf.com/platform-api/reference/device-groups)
 
 Note that some of these APIs are only available in private beta. Provider stability, functionality and schemas are subject to change without notice.
 

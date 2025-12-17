@@ -28,23 +28,6 @@ variable "jamfplatform_inventory_client_secret" {
   sensitive   = true
 }
 
-variable "jamfpro_instance_fqdn" {
-  description = "Jamf Pro instance FQDN (set via TF_VAR_jamfpro_instance_fqdn)"
-  type        = string
-}
-
-variable "jamfpro_client_id" {
-  description = "OAuth client ID for Jamf Pro (set via TF_VAR_jamfpro_client_id)"
-  type        = string
-  sensitive   = true
-}
-
-variable "jamfpro_client_secret" {
-  description = "OAuth client secret for Jamf Pro (set via TF_VAR_jamfpro_client_secret)"
-  type        = string
-  sensitive   = true
-}
-
 variable "test_id" {
   description = "Unique identifier for test resources to avoid naming conflicts"
   type        = string
