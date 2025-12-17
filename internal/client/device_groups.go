@@ -53,7 +53,7 @@ type DeviceGroupReadRepresentationV1 struct {
 // DeviceGroupCreateRepresentationV1 represents the payload to create a device group
 type DeviceGroupCreateRepresentationV1 struct {
 	Name        string                                `json:"name"`
-	Description string                                `json:"description,omitempty"`
+	Description *string                               `json:"description,omitempty"`
 	DeviceType  string                                `json:"deviceType"`
 	GroupType   string                                `json:"groupType"`
 	Criteria    []DeviceGroupCriteriaRepresentationV1 `json:"criteria,omitempty"`
@@ -69,7 +69,7 @@ type DeviceGroupCreateResponseV1 struct {
 // DeviceGroupUpdateRepresentationV1 represents the payload to update a device group
 type DeviceGroupUpdateRepresentationV1 struct {
 	Name        string                                `json:"name"`
-	Description string                                `json:"description,omitempty"`
+	Description *string                               `json:"description,omitempty"`
 	Criteria    []DeviceGroupCriteriaRepresentationV1 `json:"criteria,omitempty"`
 	DeviceIds   []string                              `json:"deviceIds,omitempty"`
 }

@@ -39,9 +39,10 @@ func main() {
 
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
+	description := "Updated description"
 	req := &client.DeviceGroupUpdateRepresentationV1{
 		Name:        "example-updated-name",
-		Description: "Updated description",
+		Description: &description,
 		// Optionally update criteria or deviceIds depending on group type
 	}
 
