@@ -27,6 +27,6 @@ resource "jamfplatform_cbengine_benchmark" "test_all_benchmarks" {
     }
   ]
 
-  target_device_group = data.jamfpro_group.test_target_computer_group.group_platform_id
+  target_device_group = jamfplatform_device_group.test_smart_computer.id
   enforcement_mode    = "MONITOR"
 }
