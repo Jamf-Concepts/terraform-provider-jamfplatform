@@ -1,10 +1,8 @@
 // Copyright 2025 Jamf Software LLC.
 
-package device
+package devices
 
 import (
-	"strings"
-
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -22,17 +20,4 @@ func stringPointerValueOrNull(value *string) types.String {
 		return types.StringNull()
 	}
 	return types.StringValue(*value)
-}
-
-// boolPointerValueOrNull safely unwraps a *bool and converts it to a Terraform bool.
-func boolPointerValueOrNull(value *bool) types.Bool {
-	if value == nil {
-		return types.BoolNull()
-	}
-	return types.BoolValue(*value)
-}
-
-// escapeFilterValue escapes double quotes for use in API filter strings.
-func escapeFilterValue(value string) string {
-	return strings.ReplaceAll(value, "\"", `\\"`)
 }

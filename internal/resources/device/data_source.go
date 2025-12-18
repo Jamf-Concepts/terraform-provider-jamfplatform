@@ -90,6 +90,86 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				MarkdownDescription: "Timestamp of the last enrollment in ISO 8601 format.",
 				Computed:            true,
 			},
+			"managed": schema.BoolAttribute{
+				MarkdownDescription: "Indicates whether the device is managed.",
+				Computed:            true,
+			},
+			"supervised": schema.BoolAttribute{
+				MarkdownDescription: "Indicates whether the device is supervised.",
+				Computed:            true,
+			},
+			"hardware_make": schema.StringAttribute{
+				MarkdownDescription: "Hardware make from the detailed device record.",
+				Computed:            true,
+			},
+			"hardware_udid": schema.StringAttribute{
+				MarkdownDescription: "Hardware UDID reported by inventory.",
+				Computed:            true,
+			},
+			"hardware_battery_health": schema.StringAttribute{
+				MarkdownDescription: "Battery health reported by inventory.",
+				Computed:            true,
+			},
+			"hardware_mac_address": schema.StringAttribute{
+				MarkdownDescription: "Primary hardware MAC address.",
+				Computed:            true,
+			},
+			"hardware_storage_capacity": schema.Int64Attribute{
+				MarkdownDescription: "Total storage capacity in bytes.",
+				Computed:            true,
+			},
+			"hardware_storage_used": schema.Int64Attribute{
+				MarkdownDescription: "Used storage in bytes.",
+				Computed:            true,
+			},
+			"network_last_ip_address": schema.StringAttribute{
+				MarkdownDescription: "Last IP address reported for the device.",
+				Computed:            true,
+			},
+			"network_last_reported_ipv4_address": schema.StringAttribute{
+				MarkdownDescription: "Last reported IPv4 address.",
+				Computed:            true,
+			},
+			"network_last_reported_ipv6_address": schema.StringAttribute{
+				MarkdownDescription: "Last reported IPv6 address.",
+				Computed:            true,
+			},
+			"operating_system_name": schema.StringAttribute{
+				MarkdownDescription: "Operating system name.",
+				Computed:            true,
+			},
+			"operating_system_build": schema.StringAttribute{
+				MarkdownDescription: "Operating system build string.",
+				Computed:            true,
+			},
+			"operating_system_supplemental_build_version": schema.StringAttribute{
+				MarkdownDescription: "Supplemental build version, if provided.",
+				Computed:            true,
+			},
+			"operating_system_rapid_security_response": schema.StringAttribute{
+				MarkdownDescription: "Rapid Security Response build identifier, if provided.",
+				Computed:            true,
+			},
+			"security_bootstrap_token_escrowed_status": schema.StringAttribute{
+				MarkdownDescription: "Bootstrap token escrow status.",
+				Computed:            true,
+			},
+			"security_hardware_encryption": schema.BoolAttribute{
+				MarkdownDescription: "Indicates whether hardware encryption is enabled.",
+				Computed:            true,
+			},
+			"security_passcode_present": schema.BoolAttribute{
+				MarkdownDescription: "Indicates whether a passcode is present.",
+				Computed:            true,
+			},
+			"security_passcode_compliant": schema.BoolAttribute{
+				MarkdownDescription: "Indicates whether the passcode complies with policy.",
+				Computed:            true,
+			},
+			"security_lost_mode_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Indicates whether lost mode is enabled.",
+				Computed:            true,
+			},
 		},
 	}
 }
@@ -147,44 +227,139 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	var filter string
+	var (
+		deviceID      string
+		filter        string
+		matchedDevice *client.DeviceListReadRepresentationV1
+	)
+
 	if lookupID != "" {
-		filter = fmt.Sprintf(`id=="%s"`, escapeFilterValue(lookupID))
+		deviceID = lookupID
 	} else {
 		filter = fmt.Sprintf(`serialNumber=="%s"`, escapeFilterValue(lookupSerial))
+		devices, err := d.client.GetDevicesV1(ctx, nil, filter)
+		if err != nil {
+			resp.Diagnostics.AddError("Unable to search devices", err.Error())
+			return
+		}
+
+		switch len(devices) {
+		case 0:
+			resp.Diagnostics.AddError("Device not found", fmt.Sprintf("No devices matched filter %q", filter))
+			return
+		case 1:
+			matchedDevice = &devices[0]
+			deviceID = matchedDevice.ID
+		default:
+			resp.Diagnostics.AddError("Multiple devices matched", fmt.Sprintf("Filter %q returned %d devices; please refine your query", filter, len(devices)))
+			return
+		}
 	}
 
-	devices, err := d.client.GetDevicesV1(ctx, nil, filter)
+	deviceDetail, err := d.client.GetDeviceByIDV1(ctx, deviceID)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to search devices", err.Error())
+		resp.Diagnostics.AddError("Unable to read device", fmt.Sprintf("Failed to get device %s: %s", deviceID, err))
 		return
 	}
 
-	switch len(devices) {
-	case 0:
-		resp.Diagnostics.AddError("Device not found", fmt.Sprintf("No devices matched filter %q", filter))
-		return
-	case 1:
-	default:
-		resp.Diagnostics.AddError("Multiple devices matched", fmt.Sprintf("Filter %q returned %d devices; please refine your query", filter, len(devices)))
-		return
+	serialValue := ""
+	if deviceDetail.Hardware != nil && deviceDetail.Hardware.SerialNumber != "" {
+		serialValue = deviceDetail.Hardware.SerialNumber
+	} else if matchedDevice != nil && matchedDevice.SerialNumber != "" {
+		serialValue = matchedDevice.SerialNumber
+	} else if lookupSerial != "" {
+		serialValue = lookupSerial
 	}
 
-	device := devices[0]
-	data.ID = types.StringValue(device.ID)
-	data.SerialNumber = stringValueOrNull(device.SerialNumber)
-	data.Name = stringValueOrNull(device.Name)
-	data.Model = stringValueOrNull(device.Model)
-	data.ModelIdentifier = stringValueOrNull(device.ModelIdentifier)
-	data.LastInventoryUpdate = stringValueOrNull(device.LastInventoryUpdateTime)
-	data.LastCheckIn = stringPointerValueOrNull(device.LastCheckInTime)
-	data.OperatingSystemVersion = stringValueOrNull(device.OperatingSystemVersion)
-	data.UserID = stringPointerValueOrNull(device.UserID)
-	data.EnrollmentType = stringValueOrNull(device.EnrollmentType)
-	data.LastEnrollmentTime = stringValueOrNull(device.LastEnrollmentTime)
+	modelValue := ""
+	if deviceDetail.Hardware != nil && deviceDetail.Hardware.Model != "" {
+		modelValue = deviceDetail.Hardware.Model
+	} else if matchedDevice != nil && matchedDevice.Model != "" {
+		modelValue = matchedDevice.Model
+	}
+
+	modelIdentifierValue := ""
+	if deviceDetail.Hardware != nil && deviceDetail.Hardware.ModelIdentifier != "" {
+		modelIdentifierValue = deviceDetail.Hardware.ModelIdentifier
+	} else if matchedDevice != nil && matchedDevice.ModelIdentifier != "" {
+		modelIdentifierValue = matchedDevice.ModelIdentifier
+	}
+
+	operatingSystemVersion := ""
+	if deviceDetail.OperatingSystem != nil && deviceDetail.OperatingSystem.Version != "" {
+		operatingSystemVersion = deviceDetail.OperatingSystem.Version
+	} else if matchedDevice != nil && matchedDevice.OperatingSystemVersion != "" {
+		operatingSystemVersion = matchedDevice.OperatingSystemVersion
+	}
+
+	data.ID = types.StringValue(deviceDetail.ID)
+	data.SerialNumber = stringValueOrNull(serialValue)
+	data.Name = stringValueOrNull(deviceDetail.Name)
+	data.Model = stringValueOrNull(modelValue)
+	data.ModelIdentifier = stringValueOrNull(modelIdentifierValue)
+	data.LastInventoryUpdate = stringValueOrNull(deviceDetail.LastInventoryUpdateTime)
+	data.LastCheckIn = stringPointerValueOrNull(deviceDetail.LastCheckInTime)
+	data.OperatingSystemVersion = stringValueOrNull(operatingSystemVersion)
+	if deviceDetail.OperatingSystem != nil {
+		data.OperatingSystemName = stringValueOrNull(deviceDetail.OperatingSystem.Name)
+		data.OperatingSystemBuild = stringValueOrNull(deviceDetail.OperatingSystem.Build)
+		data.OperatingSystemSupplementalBuildVersion = stringPointerValueOrNull(deviceDetail.OperatingSystem.SupplementalBuildVersion)
+		data.OperatingSystemRapidSecurityResponse = stringPointerValueOrNull(deviceDetail.OperatingSystem.RapidSecurityResponse)
+	} else {
+		data.OperatingSystemName = types.StringNull()
+		data.OperatingSystemBuild = types.StringNull()
+		data.OperatingSystemSupplementalBuildVersion = types.StringNull()
+		data.OperatingSystemRapidSecurityResponse = types.StringNull()
+	}
+	data.UserID = stringPointerValueOrNull(deviceDetail.UserID)
+	data.EnrollmentType = stringValueOrNull(deviceDetail.EnrollmentType)
+	data.LastEnrollmentTime = stringValueOrNull(deviceDetail.LastEnrollmentTime)
+	data.Managed = types.BoolValue(deviceDetail.Managed)
+	data.Supervised = types.BoolValue(deviceDetail.Supervised)
+
+	if deviceDetail.Hardware != nil {
+		data.HardwareMake = stringValueOrNull(deviceDetail.Hardware.Make)
+		data.HardwareUDID = stringValueOrNull(deviceDetail.Hardware.UDID)
+		data.HardwareBatteryHealth = stringValueOrNull(deviceDetail.Hardware.BatteryHealth)
+		data.HardwareMacAddress = stringValueOrNull(deviceDetail.Hardware.MacAddress)
+		data.HardwareStorageCapacity = types.Int64Value(int64(deviceDetail.Hardware.StorageCapacity))
+		data.HardwareStorageUsed = types.Int64Value(int64(deviceDetail.Hardware.StorageUsed))
+	} else {
+		data.HardwareMake = types.StringNull()
+		data.HardwareUDID = types.StringNull()
+		data.HardwareBatteryHealth = types.StringNull()
+		data.HardwareMacAddress = types.StringNull()
+		data.HardwareStorageCapacity = types.Int64Null()
+		data.HardwareStorageUsed = types.Int64Null()
+	}
+
+	if deviceDetail.Network != nil {
+		data.NetworkLastIPAddress = stringPointerValueOrNull(deviceDetail.Network.LastIPAddress)
+		data.NetworkLastReportedIPv4Address = stringPointerValueOrNull(deviceDetail.Network.LastReportedIPv4Address)
+		data.NetworkLastReportedIPv6Address = stringPointerValueOrNull(deviceDetail.Network.LastReportedIPv6Address)
+	} else {
+		data.NetworkLastIPAddress = types.StringNull()
+		data.NetworkLastReportedIPv4Address = types.StringNull()
+		data.NetworkLastReportedIPv6Address = types.StringNull()
+	}
+
+	if deviceDetail.Security != nil {
+		data.SecurityBootstrapTokenEscrowedStatus = stringValueOrNull(deviceDetail.Security.BootstrapTokenEscrowedStatus)
+		data.SecurityHardwareEncryption = boolPointerValueOrNull(deviceDetail.Security.HardwareEncryption)
+		data.SecurityPasscodePresent = boolPointerValueOrNull(deviceDetail.Security.PasscodePresent)
+		data.SecurityPasscodeCompliant = boolPointerValueOrNull(deviceDetail.Security.PasscodeCompliant)
+		data.SecurityLostModeEnabled = boolPointerValueOrNull(deviceDetail.Security.LostModeEnabled)
+	} else {
+		data.SecurityBootstrapTokenEscrowedStatus = types.StringNull()
+		data.SecurityHardwareEncryption = types.BoolNull()
+		data.SecurityPasscodePresent = types.BoolNull()
+		data.SecurityPasscodeCompliant = types.BoolNull()
+		data.SecurityLostModeEnabled = types.BoolNull()
+	}
 
 	tflog.Trace(ctx, "read device data source", map[string]interface{}{
-		"id": device.ID,
+		"id":     deviceDetail.ID,
+		"filter": filter,
 	})
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

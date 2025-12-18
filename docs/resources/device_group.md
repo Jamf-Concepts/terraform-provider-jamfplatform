@@ -82,6 +82,7 @@ Required:
 
 - `criteria` (String) Inventory attribute to evaluate.
 - `operator` (String) Operator to apply. Valid values are 'is', 'is not', 'has', 'does not have', 'member of', 'not member of', 'before (yyyy-mm-dd)', 'after (yyyy-mm-dd)', 'more than x days ago', 'less than x days ago', 'like', 'not like', 'greater than', 'more than', 'less than', 'greater than or equal', 'less than or equal', 'matches regex', 'does not match regex'.
+- `value` (String) Optional comparison value used by the operator.
 
 Optional:
 
@@ -89,4 +90,3 @@ Optional:
 - `has_closing_parenthesis` (Boolean) Whether the criterion ends a parenthetical grouping.
 - `has_opening_parenthesis` (Boolean) Whether the criterion begins a parenthetical grouping.
 - `order` (Number) Execution order for the criterion. Defaults to the block index if omitted.
-- `value` (String) Optional comparison value used by the operator.
