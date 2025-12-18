@@ -29,18 +29,19 @@ func (d *DataSourceComputers) Metadata(ctx context.Context, req datasource.Metad
 // Schema defines the schema for the computers data source.
 func (d *DataSourceComputers) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Returns a list of Jamf computers from an Environment via the Universal Inventory API. Requires **Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,
 			},
 			"filter": schema.StringAttribute{
-				Optional:    true,
-				Description: "Optional filter string to limit results (e.g., 'general.name==\"MacBook*\"')",
+				Optional:            true,
+				MarkdownDescription: "Optional filter string to limit results (e.g., `general.name==\"MacBook*\"`)",
 			},
 			"computers": schema.ListAttribute{
-				ElementType: types.MapType{ElemType: types.StringType},
-				Computed:    true,
-				Description: "List of computers.",
+				ElementType:         types.MapType{ElemType: types.StringType},
+				Computed:            true,
+				MarkdownDescription: "List of computers.",
 			},
 		},
 	}

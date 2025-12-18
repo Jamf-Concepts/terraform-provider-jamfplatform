@@ -36,29 +36,29 @@ func (r *DeviceGroupResource) Metadata(ctx context.Context, req resource.Metadat
 // Schema returns the Terraform schema for the device group resource.
 func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages Jamf device groups (static or smart) via the Platform API.",
+		MarkdownDescription: "Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "Unique identifier assigned by the API.",
-				Computed:    true,
+				MarkdownDescription: "Unique identifier assigned by the API.",
+				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"name": schema.StringAttribute{
-				Description: "Display name for the device group.",
-				Required:    true,
+				MarkdownDescription: "Display name for the device group.",
+				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"description": schema.StringAttribute{
-				Description: "Optional description for the device group.",
-				Optional:    true,
+				MarkdownDescription: "Optional Description for the device group.",
+				Optional:            true,
 			},
 			"device_type": schema.StringAttribute{
-				Description: "Jamf device type. Changes require resource replacement. Valid values are 'computer' or 'mobile'.",
-				Required:    true,
+				MarkdownDescription: "Jamf device type. Changes require resource replacement. Valid values are `computer` or `mobile`.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -67,8 +67,8 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"group_type": schema.StringAttribute{
-				Description: "Group implementation type. Changes require resource replacement. Valid values are 'static' or 'smart'.",
-				Required:    true,
+				MarkdownDescription: "Group implementation type. Changes require resource replacement. Valid values are `static` or `smart`.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -77,34 +77,34 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"members": schema.SetAttribute{
-				Description: "Optional device IDs to manage for STATIC groups. When omitted, the provider leaves membership unchanged. Ignored for SMART groups.",
-				Optional:    true,
-				ElementType: types.StringType,
+				MarkdownDescription: "Optional device IDs to manage for static groups. When omitted, the provider leaves membership unchanged. Ignored for smart groups.",
+				Optional:            true,
+				ElementType:         types.StringType,
 				PlanModifiers: []planmodifier.Set{
 					setplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"member_count": schema.Int64Attribute{
-				Description: "Total members reported by the API.",
-				Computed:    true,
+				MarkdownDescription: "Total members reported by the API.",
+				Computed:            true,
 			},
 		},
 		Blocks: map[string]schema.Block{
 			"criteria": schema.ListNestedBlock{
-				Description: "Smart-group criteria evaluated by the Jamf inventory service.",
+				MarkdownDescription: "Smart-group criteria evaluated by the Jamf inventory service.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"order": schema.Int64Attribute{
-							Description: "Execution order for the criterion. Defaults to the block index if omitted.",
-							Optional:    true,
+							MarkdownDescription: "Execution order for the criterion. Defaults to the block index if omitted.",
+							Optional:            true,
 						},
 						"criteria": schema.StringAttribute{
-							Description: "Inventory attribute to evaluate.",
-							Required:    true,
+							MarkdownDescription: "Inventory attribute to evaluate.",
+							Required:            true,
 						},
 						"operator": schema.StringAttribute{
-							Description: "Operator to apply. Valid values are 'is', 'is not', 'has', 'does not have', 'member of', 'not member of', 'before (yyyy-mm-dd)', 'after (yyyy-mm-dd)', 'more than x days ago', 'less than x days ago', 'like', 'not like', 'greater than', 'more than', 'less than', 'greater than or equal', 'less than or equal', 'matches regex', 'does not match regex'.",
-							Required:    true,
+							MarkdownDescription: "Operator to apply. Valid values are `is`, `is not`, `has`, `does not have`, `member of`, `not member of`, `before (yyyy-mm-dd)`, `after (yyyy-mm-dd)`, `more than x days ago`, `less than x days ago`, `like`, `not like`, `greater than`, `more than`, `less than`, `greater than or equal`, `less than or equal`, `matches regex`, `does not match regex`.",
+							Required:            true,
 							Validators: []validator.String{
 								stringvalidator.OneOf(
 									"is",
@@ -130,25 +130,25 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 							},
 						},
 						"value": schema.StringAttribute{
-							Description: "Optional comparison value used by the operator.",
-							Required:    true,
+							MarkdownDescription: "Optional comparison value used by the operator.",
+							Required:            true,
 						},
 						"and_or": schema.StringAttribute{
-							Description: "How this criterion joins to the next. Defaults to and if omitted.",
-							Computed:    true,
-							Optional:    true,
-							Default:     stringdefault.StaticString("and"),
+							MarkdownDescription: "How this criterion joins to the next. Valid values are `and` or `or`. Defaults to `and` if omitted.",
+							Computed:            true,
+							Optional:            true,
+							Default:             stringdefault.StaticString("and"),
 							Validators: []validator.String{
 								stringvalidator.OneOf("and", "or"),
 							},
 						},
 						"has_opening_parenthesis": schema.BoolAttribute{
-							Description: "Whether the criterion begins a parenthetical grouping.",
-							Optional:    true,
+							MarkdownDescription: "Whether the criterion begins a parenthetical grouping.",
+							Optional:            true,
 						},
 						"has_closing_parenthesis": schema.BoolAttribute{
-							Description: "Whether the criterion ends a parenthetical grouping.",
-							Optional:    true,
+							MarkdownDescription: "Whether the criterion ends a parenthetical grouping.",
+							Optional:            true,
 						},
 					},
 				},

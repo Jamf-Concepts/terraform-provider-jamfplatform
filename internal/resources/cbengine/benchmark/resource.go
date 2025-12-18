@@ -36,50 +36,50 @@ func (r *BenchmarkResource) Metadata(ctx context.Context, req resource.MetadataR
 // Schema returns the Terraform schema for the benchmark resource.
 func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches SYNCED or a terminal failure.",
+		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "Unique identifier assigned by the API (maps to benchmarkId).",
-				Computed:    true,
+				MarkdownDescription: "Unique identifier assigned by the API (maps to benchmarkId).",
+				Computed:            true,
 			},
 			"title": schema.StringAttribute{
-				Description: "Benchmark title (max length 100). Required and replaces the resource when changed.",
-				Required:    true,
-				Validators:  []validator.String{stringvalidator.LengthBetween(1, 100)},
+				MarkdownDescription: "Benchmark title (max length 100). Required and replaces the resource when changed.",
+				Required:            true,
+				Validators:          []validator.String{stringvalidator.LengthBetween(1, 100)},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"description": schema.StringAttribute{
-				Description: "Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.LengthBetween(0, 1000)},
+				MarkdownDescription: "Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.LengthBetween(0, 1000)},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"source_baseline_id": schema.StringAttribute{
-				Description: "mSCP baseline identifier used as the source for rules. Required and immutable for this resource (replace on change).",
-				Required:    true,
+				MarkdownDescription: "mSCP baseline identifier used as the source for rules. Required and immutable for this resource (replace on change). Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"sources": schema.ListNestedAttribute{
-				Description: "List of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace.",
-				Required:    true,
+				MarkdownDescription: "List of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources.",
+				Required:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"branch": schema.StringAttribute{
-							Description: "Source branch name.",
-							Required:    true,
+							MarkdownDescription: "Source branch name.",
+							Required:            true,
 							PlanModifiers: []planmodifier.String{
 								stringplanmodifier.RequiresReplace(),
 							},
 						},
 						"revision": schema.StringAttribute{
-							Description: "Source revision identifier.",
-							Required:    true,
+							MarkdownDescription: "Source revision identifier.",
+							Required:            true,
 							PlanModifiers: []planmodifier.String{
 								stringplanmodifier.RequiresReplace(),
 							},
@@ -88,117 +88,117 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"rules": schema.ListNestedAttribute{
-				Description: "Ordered list of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API.",
-				Required:    true,
+				MarkdownDescription: "Ordered list of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules.",
+				Required:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							Description: "Rule identifier from the baseline.",
-							Required:    true,
+							MarkdownDescription: "Rule identifier from the baseline.",
+							Required:            true,
 						},
 						"enabled": schema.BoolAttribute{
-							Description: "Whether the rule is enabled in this benchmark.",
-							Required:    true,
+							MarkdownDescription: "Whether the rule is enabled in this benchmark.",
+							Required:            true,
 						},
 						"section_name": schema.StringAttribute{
-							Description: "Section name of the rule from the baseline.",
-							Computed:    true,
+							MarkdownDescription: "Section name of the rule from the baseline.",
+							Computed:            true,
 						},
 						"title": schema.StringAttribute{
-							Description: "Rule title resolved from the baseline.",
-							Computed:    true,
+							MarkdownDescription: "Rule title resolved from the baseline.",
+							Computed:            true,
 						},
 						"references": schema.ListAttribute{
-							Description: "Reference URLs or identifiers for the rule.",
-							ElementType: types.StringType,
-							Computed:    true,
+							MarkdownDescription: "Reference URLs or identifiers for the rule.",
+							ElementType:         types.StringType,
+							Computed:            true,
 						},
 						"description": schema.StringAttribute{
-							Description: "Rule description from the baseline.",
-							Computed:    true,
+							MarkdownDescription: "Rule description from the baseline.",
+							Computed:            true,
 						},
 						"supported_os": schema.ListNestedAttribute{
-							Description: "Operating systems supported by the rule.",
-							Computed:    true,
+							MarkdownDescription: "Operating systems supported by the rule.",
+							Computed:            true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"os_type": schema.StringAttribute{
-										Description: "Operating system type (e.g. MAC_OS, IOS).",
-										Computed:    true,
+										MarkdownDescription: "Operating system type (e.g. `MAC_OS`, `IOS`).",
+										Computed:            true,
 									},
 									"os_version": schema.Int64Attribute{
-										Description: "OS version integer.",
-										Computed:    true,
+										MarkdownDescription: "OS version integer.",
+										Computed:            true,
 									},
 									"management_type": schema.StringAttribute{
-										Description: "Management type for the OS.",
-										Computed:    true,
+										MarkdownDescription: "Management type for the OS.",
+										Computed:            true,
 									},
 								},
 							},
 						},
 						"os_specific_defaults": schema.MapNestedAttribute{
-							Description: "OS-specific defaults for the rule.",
-							Computed:    true,
+							MarkdownDescription: "OS-specific defaults for the rule.",
+							Computed:            true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"title": schema.StringAttribute{
-										Description: "OS-specific rule title.",
-										Computed:    true,
+										MarkdownDescription: "OS-specific rule title.",
+										Computed:            true,
 									},
 									"description": schema.StringAttribute{
-										Description: "OS-specific rule description.",
-										Computed:    true,
+										MarkdownDescription: "OS-specific rule description.",
+										Computed:            true,
 									},
 									"odv_value": schema.StringAttribute{
-										Description: "Recommended organization-defined value for this OS.",
-										Computed:    true,
+										MarkdownDescription: "Recommended organization-defined value for this OS.",
+										Computed:            true,
 									},
 									"odv_hint": schema.StringAttribute{
-										Description: "Hint for the organization-defined value.",
-										Computed:    true,
+										MarkdownDescription: "Hint for the organization-defined value.",
+										Computed:            true,
 									},
 								},
 							},
 						},
 						"odv_value": schema.StringAttribute{
-							Description: "Optional organization-defined value to apply for this rule (if applicable).",
-							Optional:    true,
-							Computed:    true,
+							MarkdownDescription: "Optional organization-defined value to apply for this rule (if applicable).",
+							Optional:            true,
+							Computed:            true,
 						},
 						"odv_hint": schema.StringAttribute{
-							Description: "Hint for ODV usage.",
-							Computed:    true,
+							MarkdownDescription: "Hint for ODV usage.",
+							Computed:            true,
 						},
 						"odv_placeholder": schema.StringAttribute{
-							Description: "Placeholder for ODV input.",
-							Computed:    true,
+							MarkdownDescription: "Placeholder for ODV input.",
+							Computed:            true,
 						},
 						"odv_type": schema.StringAttribute{
-							Description: "ODV type (INTEGER, STRING, ENUM, REGEX) when applicable.",
-							Computed:    true,
+							MarkdownDescription: "ODV type (`INTEGER`, `STRING`, `ENUM`, `REGEX`) when applicable.",
+							Computed:            true,
 						},
 						"odv_validation_min": schema.Int64Attribute{
-							Description: "Minimum validation for INTEGER ODV types.",
-							Computed:    true,
+							MarkdownDescription: "Minimum validation for `INTEGER` ODV types.",
+							Computed:            true,
 						},
 						"odv_validation_max": schema.Int64Attribute{
-							Description: "Maximum validation for INTEGER ODV types.",
-							Computed:    true,
+							MarkdownDescription: "Maximum validation for `INTEGER` ODV types.",
+							Computed:            true,
 						},
 						"odv_validation_enum_values": schema.ListAttribute{
-							Description: "Allowed enum values for ENUM ODV types.",
-							ElementType: types.StringType,
-							Computed:    true,
+							MarkdownDescription: "Allowed enum values for `ENUM` ODV types.",
+							ElementType:         types.StringType,
+							Computed:            true,
 						},
 						"odv_validation_regex": schema.StringAttribute{
-							Description: "Regex pattern for REGEX ODV types.",
-							Computed:    true,
+							MarkdownDescription: "Regex pattern for `REGEX` ODV types.",
+							Computed:            true,
 						},
 						"depends_on": schema.ListAttribute{
-							Description: "List of rule IDs this rule depends on.",
-							ElementType: types.StringType,
-							Computed:    true,
+							MarkdownDescription: "List of rule IDs this rule depends on.",
+							ElementType:         types.StringType,
+							Computed:            true,
 						},
 					},
 				},
@@ -207,8 +207,8 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"target_device_group": schema.StringAttribute{
-				Description: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).",
-				Required:    true,
+				MarkdownDescription: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).",
+				Required:            true,
 				Validators: []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`),
 					"Device group IDmust be a valid UUID")},
 				PlanModifiers: []planmodifier.String{
@@ -216,28 +216,28 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"enforcement_mode": schema.StringAttribute{
-				Description: "Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).",
-				Required:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("MONITOR", "MONITOR_AND_ENFORCE")},
+				MarkdownDescription: "Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).",
+				Required:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("MONITOR", "MONITOR_AND_ENFORCE")},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"tenant_id": schema.StringAttribute{
-				Description: "Identifier for the tenant that owns the benchmark.",
-				Computed:    true,
+				MarkdownDescription: "Identifier for the tenant that owns the benchmark.",
+				Computed:            true,
 			},
 			"deleted": schema.BoolAttribute{
-				Description: "Whether the benchmark is marked deleted by the API.",
-				Computed:    true,
+				MarkdownDescription: "Whether the benchmark is marked deleted by the API.",
+				Computed:            true,
 			},
 			"update_available": schema.BoolAttribute{
-				Description: "Whether an update is available for the benchmark relative to current mSCP sources.",
-				Computed:    true,
+				MarkdownDescription: "Whether an update is available for the benchmark relative to current mSCP sources.",
+				Computed:            true,
 			},
 			"last_updated_at": schema.StringAttribute{
-				Description: "Timestamp (RFC3339) of the last update to the benchmark.",
-				Computed:    true,
+				MarkdownDescription: "Timestamp (RFC3339) of the last update to the benchmark.",
+				Computed:            true,
 			},
 		},
 	}

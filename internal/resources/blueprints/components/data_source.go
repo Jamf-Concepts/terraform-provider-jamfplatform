@@ -31,27 +31,27 @@ func (d *ComponentsDataSource) Metadata(ctx context.Context, req datasource.Meta
 // Schema sets the Terraform schema for the data source.
 func (d *ComponentsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Returns all available blueprint components.",
+		MarkdownDescription: "Returns all available blueprint components. Requires **Blueprints API** access.",
 		Attributes: map[string]schema.Attribute{
 			"components": schema.ListNestedAttribute{
-				Description: "List of all blueprint components.",
-				Computed:    true,
+				MarkdownDescription: "List of all blueprint components.",
+				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"identifier": schema.StringAttribute{
-							Description: "Component identifier.",
-							Computed:    true,
+							MarkdownDescription: "Component identifier.",
+							Computed:            true,
 						},
 						"name": schema.StringAttribute{
-							Description: "Component name.",
-							Computed:    true,
+							MarkdownDescription: "Component name.",
+							Computed:            true,
 						},
 						"description": schema.StringAttribute{
-							Description: "Component description.",
-							Computed:    true,
+							MarkdownDescription: "Component description.",
+							Computed:            true,
 						},
 						"supported_os": schema.MapAttribute{
-							Description: "Supported operating systems with their versions.",
+							MarkdownDescription: "Supported operating systems with their versions.",
 							ElementType: types.ListType{
 								ElemType: types.StringType,
 							},

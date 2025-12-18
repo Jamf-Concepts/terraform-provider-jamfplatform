@@ -3,12 +3,12 @@
 page_title: "jamfplatform_blueprints_blueprint Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Returns a blueprint by ID or name.
+  Returns a blueprint by ID or name. Requires Blueprints API access.
 ---
 
 # jamfplatform_blueprints_blueprint (Data Source)
 
-Returns a blueprint by ID or name.
+Returns a blueprint by ID or name. Requires **Blueprints API** access.
 
 ## Example Usage
 
@@ -39,7 +39,7 @@ output "blueprint_example_all" {
 - `created` (String) Created at (RFC3339).
 - `deployment_state` (String) Deployment state.
 - `description` (String) Description.
-- `device_groups` (Set of String) Device groups in scope (unordered).
+- `device_groups` (Set of String) Device groups in scope.
 - `updated` (String) Updated at (RFC3339).
 
 <a id="nestedatt--component"></a>
