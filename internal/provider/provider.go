@@ -22,7 +22,9 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/benchmark"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/benchmarks"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/rules"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/computer"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/computers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/inventory/mobiledevice"
@@ -158,6 +160,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		benchmark.NewBenchmarkDataSource,
 		benchmarks.NewBenchmarksDataSource,
 		device_group.NewDeviceGroupDataSource,
+		device.NewDeviceDataSource,
+		devices.NewDevicesDataSource,
 		mobiledevices.NewDataSourceMobileDevices,
 		computers.NewDataSourceComputers,
 		computer.NewDataSourceComputer,
