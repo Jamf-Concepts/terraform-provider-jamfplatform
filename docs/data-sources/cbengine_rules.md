@@ -3,12 +3,12 @@
 page_title: "jamfplatform_cbengine_rules Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Returns list of rules for a given mSCP baseline.
+  Returns list of rules for a given mSCP baseline. Requires Compliance Benchmarks API access.
 ---
 
 # jamfplatform_cbengine_rules (Data Source)
 
-Returns list of rules for a given mSCP baseline.
+Returns list of rules for a given mSCP baseline. Requires **Compliance Benchmarks API** access.
 
 ## Example Usage
 
@@ -75,8 +75,8 @@ Read-Only:
 
 Read-Only:
 
-- `management_type` (String) Management type (e.g. MANAGED, BYOD).
-- `os_type` (String) OS type (e.g. MAC_OS, IOS).
+- `management_type` (String) Management type (e.g. `MANAGED`, `BYOD`).
+- `os_type` (String) OS type (e.g. `MAC_OS`, `IOS`).
 - `os_version` (Number) OS version.
 
 

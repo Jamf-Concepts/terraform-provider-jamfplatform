@@ -3,12 +3,12 @@
 page_title: "jamfplatform_cbengine_benchmark Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Returns a benchmark by ID or title.
+  Returns a benchmark by ID or title. Requires Compliance Benchmarks API access.
 ---
 
 # jamfplatform_cbengine_benchmark (Data Source)
 
-Returns a benchmark by ID or title.
+Returns a benchmark by ID or title. Requires **Compliance Benchmarks API** access.
 
 ## Example Usage
 
@@ -102,8 +102,8 @@ Read-Only:
 
 Read-Only:
 
-- `management_type` (String) Management type (e.g. MANAGED, BYOD).
-- `os_type` (String) OS type (e.g. MAC_OS, IOS).
+- `management_type` (String) Management type (e.g. `MANAGED`, `BYOD`).
+- `os_type` (String) OS type (e.g. `MAC_OS`, `IOS`).
 - `os_version` (Number) OS version.
 
 
