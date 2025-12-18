@@ -32,12 +32,12 @@ func (d *DeviceDataSource) Metadata(ctx context.Context, req datasource.Metadata
 // Schema defines the data source schema.
 func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Lookup a Jamf device by ID or serial number via the Device Inventory API.",
+		MarkdownDescription: "Lookup a Jamf device by ID or serial number via the Device Inventory API. Requires **Device Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "Optional device UUID (Jamf Pro Management ID) to query.",
-				Optional:    true,
-				Computed:    true,
+				MarkdownDescription: "Optional device UUID (Jamf Pro Management ID) to query.",
+				Optional:            true,
+				Computed:            true,
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(
 						path.MatchRelative().AtParent().AtName("serial_number"),
@@ -45,9 +45,9 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				},
 			},
 			"serial_number": schema.StringAttribute{
-				Description: "Optional device serial number to query (case-sensitive).",
-				Optional:    true,
-				Computed:    true,
+				MarkdownDescription: "Optional device serial number to query (case-sensitive).",
+				Optional:            true,
+				Computed:            true,
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(
 						path.MatchRelative().AtParent().AtName("id"),
@@ -55,40 +55,40 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				},
 			},
 			"name": schema.StringAttribute{
-				Description: "Device name reported by inventory.",
-				Computed:    true,
+				MarkdownDescription: "Device name reported by inventory.",
+				Computed:            true,
 			},
 			"model": schema.StringAttribute{
-				Description: "Marketing model string.",
-				Computed:    true,
+				MarkdownDescription: "Marketing model string.",
+				Computed:            true,
 			},
 			"model_identifier": schema.StringAttribute{
-				Description: "Model identifier (e.g., Mac14,6).",
-				Computed:    true,
+				MarkdownDescription: "Model identifier (e.g., Mac14,6).",
+				Computed:            true,
 			},
 			"last_inventory_update_time": schema.StringAttribute{
-				Description: "Timestamp of the last inventory update in ISO 8601 format.",
-				Computed:    true,
+				MarkdownDescription: "Timestamp of the last inventory update in ISO 8601 format.",
+				Computed:            true,
 			},
 			"last_check_in_time": schema.StringAttribute{
-				Description: "Timestamp of the last check-in in ISO 8601 format.",
-				Computed:    true,
+				MarkdownDescription: "Timestamp of the last check-in in ISO 8601 format.",
+				Computed:            true,
 			},
 			"operating_system_version": schema.StringAttribute{
-				Description: "Operating system version string.",
-				Computed:    true,
+				MarkdownDescription: "Operating system version string.",
+				Computed:            true,
 			},
 			"user_id": schema.StringAttribute{
-				Description: "User ID associated with the device, if any.",
-				Computed:    true,
+				MarkdownDescription: "User ID associated with the device, if any.",
+				Computed:            true,
 			},
 			"enrollment_type": schema.StringAttribute{
-				Description: "Enrollment type reported by the API.",
-				Computed:    true,
+				MarkdownDescription: "Enrollment type reported by the API.",
+				Computed:            true,
 			},
 			"last_enrollment_time": schema.StringAttribute{
-				Description: "Timestamp of the last enrollment in ISO 8601 format.",
-				Computed:    true,
+				MarkdownDescription: "Timestamp of the last enrollment in ISO 8601 format.",
+				Computed:            true,
 			},
 		},
 	}

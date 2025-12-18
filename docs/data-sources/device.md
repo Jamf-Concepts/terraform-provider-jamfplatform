@@ -3,12 +3,12 @@
 page_title: "jamfplatform_device Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lookup a Jamf device by ID or serial number via the Device Inventory API.
+  Lookup a Jamf device by ID or serial number via the Device Inventory API. Requires Device Inventory API access.
 ---
 
 # jamfplatform_device (Data Source)
 
-Lookup a Jamf device by ID or serial number via the Device Inventory API.
+Lookup a Jamf device by ID or serial number via the Device Inventory API. Requires **Device Inventory API** access.
 
 ## Example Usage
 
