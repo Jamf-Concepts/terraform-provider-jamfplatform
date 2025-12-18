@@ -30,32 +30,32 @@ func (d *BaselinesDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema sets the Terraform schema for the data source.
 func (d *BaselinesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Returns list of the mSCP baselines allowed for the Compliance benchmarks.",
+		MarkdownDescription: "Returns list of the mSCP baselines allowed for the Compliance benchmarks. Requires **Compliance Benchmarks API** access.",
 		Attributes: map[string]schema.Attribute{
 			"baselines": schema.ListNestedAttribute{
-				Description: "List of baselines.",
-				Computed:    true,
+				MarkdownDescription: "List of baselines.",
+				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							Description: "Unique identifier for the baseline.",
-							Computed:    true,
+							MarkdownDescription: "Unique identifier for the baseline.",
+							Computed:            true,
 						},
 						"baseline_id": schema.StringAttribute{
-							Description: "Baseline ID.",
-							Computed:    true,
+							MarkdownDescription: "Baseline ID.",
+							Computed:            true,
 						},
 						"title": schema.StringAttribute{
-							Description: "Title of the baseline.",
-							Computed:    true,
+							MarkdownDescription: "Title of the baseline.",
+							Computed:            true,
 						},
 						"description": schema.StringAttribute{
-							Description: "Description of the baseline.",
-							Computed:    true,
+							MarkdownDescription: "Description of the baseline.",
+							Computed:            true,
 						},
 						"rule_count": schema.Int64Attribute{
-							Description: "Number of rules in the baseline.",
-							Computed:    true,
+							MarkdownDescription: "Number of rules in the baseline.",
+							Computed:            true,
 						},
 					},
 				},

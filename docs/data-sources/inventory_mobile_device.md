@@ -3,12 +3,12 @@
 page_title: "jamfplatform_inventory_mobile_device Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  
+  Lookup a Jamf mobile device by ID from an Environment via the Mobile Device Inventory API. Requires Mobile Device Inventory API access.
 ---
 
 # jamfplatform_inventory_mobile_device (Data Source)
 
-
+Lookup a Jamf mobile device by ID from an Environment via the Mobile Device Inventory API. Requires **Mobile Device Inventory API** access.
 
 ## Example Usage
 
@@ -32,7 +32,7 @@ output "device" {
 
 ### Optional
 
-- `sections` (List of String) Sections to retrieve (e.g., ['GENERAL', 'HARDWARE', 'SECURITY']). If not specified, all sections are retrieved.
+- `sections` (List of String) Sections to retrieve (e.g., `GENERAL`, `HARDWARE`, `SECURITY`). If not specified, all sections are retrieved.
 
 ### Read-Only
 

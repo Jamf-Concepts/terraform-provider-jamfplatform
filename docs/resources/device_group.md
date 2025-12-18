@@ -3,12 +3,12 @@
 page_title: "jamfplatform_device_group Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf device groups (static or smart) via the Platform API.
+  Manages Jamf device groups (static or smart) via the Platform API. Requires Device Group Inventory API access.
 ---
 
 # jamfplatform_device_group (Resource)
 
-Manages Jamf device groups (static or smart) via the Platform API.
+Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access.
 
 ## Example Usage
 
@@ -60,15 +60,15 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 
 ### Required
 
-- `device_type` (String) Jamf device type. Changes require resource replacement. Valid values are 'computer' or 'mobile'.
-- `group_type` (String) Group implementation type. Changes require resource replacement. Valid values are 'static' or 'smart'.
+- `device_type` (String) Jamf device type. Changes require resource replacement. Valid values are `computer` or `mobile`.
+- `group_type` (String) Group implementation type. Changes require resource replacement. Valid values are `static` or `smart`.
 - `name` (String) Display name for the device group.
 
 ### Optional
 
 - `criteria` (Block List) Smart-group criteria evaluated by the Jamf inventory service. (see [below for nested schema](#nestedblock--criteria))
-- `description` (String) Optional description for the device group.
-- `members` (Set of String) Optional device IDs to manage for STATIC groups. When omitted, the provider leaves membership unchanged. Ignored for SMART groups.
+- `description` (String) Optional Description for the device group.
+- `members` (Set of String) Optional device IDs to manage for static groups. When omitted, the provider leaves membership unchanged. Ignored for smart groups.
 
 ### Read-Only
 
@@ -81,12 +81,12 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 Required:
 
 - `criteria` (String) Inventory attribute to evaluate.
-- `operator` (String) Operator to apply. Valid values are 'is', 'is not', 'has', 'does not have', 'member of', 'not member of', 'before (yyyy-mm-dd)', 'after (yyyy-mm-dd)', 'more than x days ago', 'less than x days ago', 'like', 'not like', 'greater than', 'more than', 'less than', 'greater than or equal', 'less than or equal', 'matches regex', 'does not match regex'.
+- `operator` (String) Operator to apply. Valid values are `is`, `is not`, `has`, `does not have`, `member of`, `not member of`, `before (yyyy-mm-dd)`, `after (yyyy-mm-dd)`, `more than x days ago`, `less than x days ago`, `like`, `not like`, `greater than`, `more than`, `less than`, `greater than or equal`, `less than or equal`, `matches regex`, `does not match regex`.
 - `value` (String) Optional comparison value used by the operator.
 
 Optional:
 
-- `and_or` (String) How this criterion joins to the next. Defaults to and if omitted.
+- `and_or` (String) How this criterion joins to the next. Valid values are `and` or `or`. Defaults to `and` if omitted.
 - `has_closing_parenthesis` (Boolean) Whether the criterion ends a parenthetical grouping.
 - `has_opening_parenthesis` (Boolean) Whether the criterion begins a parenthetical grouping.
 - `order` (Number) Execution order for the criterion. Defaults to the block index if omitted.

@@ -3,12 +3,12 @@
 page_title: "jamfplatform_inventory_computer Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  
+  Lookup a Jamf computer by ID from an Environment via the Universal Inventory API. Requires Inventory API access.
 ---
 
 # jamfplatform_inventory_computer (Data Source)
 
-
+Lookup a Jamf computer by ID from an Environment via the Universal Inventory API. Requires **Inventory API** access.
 
 ## Example Usage
 

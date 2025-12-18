@@ -32,80 +32,80 @@ func (d *DeviceGroupDataSource) Metadata(ctx context.Context, req datasource.Met
 // Schema sets the Terraform schema for the data source.
 func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Lookup a Jamf device group by ID or name.",
+		MarkdownDescription: "Lookup a Jamf device group by ID or name. Requires **Device Group Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "Optional device group Platform ID to query.",
-				Optional:    true,
-				Computed:    true,
+				MarkdownDescription: "Optional device group Platform ID to query.",
+				Optional:            true,
+				Computed:            true,
 			},
 			"name": schema.StringAttribute{
-				Description: "Optional device group name to query (case-insensitive).",
-				Optional:    true,
-				Computed:    true,
+				MarkdownDescription: "Optional device group name to query (case-insensitive).",
+				Optional:            true,
+				Computed:            true,
 			},
 			"description": schema.StringAttribute{
-				Description: "Device group description.",
-				Computed:    true,
+				MarkdownDescription: "Device group Description.",
+				Computed:            true,
 			},
 			"device_type": schema.StringAttribute{
-				Description: "Optional device type filter (computer or mobile). When set, the value is returned in lowercase.",
-				Optional:    true,
-				Computed:    true,
+				MarkdownDescription: "Optional device type filter. When set, the value is returned in lowercase. Valid values are `computer` and `mobile`.",
+				Optional:            true,
+				Computed:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf("computer", "mobile"),
 				},
 			},
 			"group_type": schema.StringAttribute{
-				Description: "Optional group type filter (static or smart). When set, the value is returned in lowercase.",
-				Optional:    true,
-				Computed:    true,
+				MarkdownDescription: "Optional group type filter. When set, the value is returned in lowercase. Valid values are `static` and `smart`.",
+				Optional:            true,
+				Computed:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf("static", "smart"),
 				},
 			},
 			"member_count": schema.Int64Attribute{
-				Description: "Number of members in the group.",
-				Computed:    true,
+				MarkdownDescription: "Number of members in the group.",
+				Computed:            true,
 			},
 			"members": schema.SetAttribute{
-				Description: "Devices currently assigned to the group (Jamf Pro Management IDs).",
-				Computed:    true,
-				ElementType: types.StringType,
+				MarkdownDescription: "Devices currently assigned to the group (Jamf Pro Management IDs).",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 		},
 		Blocks: map[string]schema.Block{
 			"criteria": schema.ListNestedBlock{
-				Description: "Smart-group criteria returned by the API.",
+				MarkdownDescription: "Smart-group criteria returned by the API.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"order": schema.Int64Attribute{
-							Description: "Server-evaluated order for the criterion.",
-							Computed:    true,
+							MarkdownDescription: "Server-evaluated order for the criterion.",
+							Computed:            true,
 						},
 						"criteria": schema.StringAttribute{
-							Description: "Inventory attribute used in the criterion.",
-							Computed:    true,
+							MarkdownDescription: "Inventory attribute used in the criterion.",
+							Computed:            true,
 						},
 						"operator": schema.StringAttribute{
-							Description: "Comparison operator.",
-							Computed:    true,
+							MarkdownDescription: "Comparison operator.",
+							Computed:            true,
 						},
 						"value": schema.StringAttribute{
-							Description: "Comparison value, when applicable.",
-							Computed:    true,
+							MarkdownDescription: "Comparison value, when applicable.",
+							Computed:            true,
 						},
 						"and_or": schema.StringAttribute{
-							Description: "Join type between criteria (AND/OR).",
-							Computed:    true,
+							MarkdownDescription: "Join type between criteria (AND/OR).",
+							Computed:            true,
 						},
 						"has_opening_parenthesis": schema.BoolAttribute{
-							Description: "Whether the criterion starts a parenthetical expression.",
-							Computed:    true,
+							MarkdownDescription: "Whether the criterion starts a parenthetical expression.",
+							Computed:            true,
 						},
 						"has_closing_parenthesis": schema.BoolAttribute{
-							Description: "Whether the criterion ends a parenthetical expression.",
-							Computed:    true,
+							MarkdownDescription: "Whether the criterion ends a parenthetical expression.",
+							Computed:            true,
 						},
 					},
 				},

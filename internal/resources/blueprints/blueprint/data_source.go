@@ -31,54 +31,54 @@ func (d *BlueprintDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema sets the Terraform schema for the data source.
 func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Returns a blueprint by ID or name.",
+		MarkdownDescription: "Returns a blueprint by ID or name. Requires **Blueprints API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "The blueprint ID to fetch. Optional if name is set.",
-				Optional:    true,
+				MarkdownDescription: "The blueprint ID to fetch. Optional if name is set.",
+				Optional:            true,
 			},
 			"name": schema.StringAttribute{
-				Description: "The blueprint name to fetch. Optional if id is set.",
-				Optional:    true,
+				MarkdownDescription: "The blueprint name to fetch. Optional if id is set.",
+				Optional:            true,
 			},
 			"blueprint_id": schema.StringAttribute{
-				Description: "Blueprint ID.",
-				Computed:    true,
+				MarkdownDescription: "Blueprint ID.",
+				Computed:            true,
 			},
 			"description": schema.StringAttribute{
-				Description: "Description.",
-				Computed:    true,
+				MarkdownDescription: "Description.",
+				Computed:            true,
 			},
 			"created": schema.StringAttribute{
-				Description: "Created at (RFC3339).",
-				Computed:    true,
+				MarkdownDescription: "Created at (RFC3339).",
+				Computed:            true,
 			},
 			"updated": schema.StringAttribute{
-				Description: "Updated at (RFC3339).",
-				Computed:    true,
+				MarkdownDescription: "Updated at (RFC3339).",
+				Computed:            true,
 			},
 			"deployment_state": schema.StringAttribute{
-				Description: "Deployment state.",
-				Computed:    true,
+				MarkdownDescription: "Deployment state.",
+				Computed:            true,
 			},
 			"device_groups": schema.SetAttribute{
-				Description: "Device groups in scope (unordered).",
-				ElementType: types.StringType,
-				Computed:    true,
+				MarkdownDescription: "Device groups in scope.",
+				ElementType:         types.StringType,
+				Computed:            true,
 			},
 			"component": schema.ListNestedAttribute{
-				Description: "Blueprint components.",
-				Computed:    true,
+				MarkdownDescription: "Blueprint components.",
+				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"identifier": schema.StringAttribute{
-							Description: "Component identifier.",
-							Computed:    true,
+							MarkdownDescription: "Component identifier.",
+							Computed:            true,
 						},
 						"configuration": schema.MapAttribute{
-							Description: "Component configuration as a map of key-value pairs.",
-							ElementType: types.StringType,
-							Computed:    true,
+							MarkdownDescription: "Component configuration as a map of key-value pairs.",
+							ElementType:         types.StringType,
+							Computed:            true,
 						},
 					},
 				},

@@ -15,10 +15,12 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/component"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/components"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/baselines"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/benchmark"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/benchmarks"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/rules"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
@@ -150,11 +152,13 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		blueprint.NewBlueprintDataSource,
+		blueprints.NewBlueprintsDataSource,
 		component.NewComponentDataSource,
 		components.NewComponentsDataSource,
 		baselines.NewBaselinesDataSource,
 		rules.NewRulesDataSource,
 		benchmark.NewBenchmarkDataSource,
+		benchmarks.NewBenchmarksDataSource,
 		device_group.NewDeviceGroupDataSource,
 		device.NewDeviceDataSource,
 		devices.NewDevicesDataSource,
