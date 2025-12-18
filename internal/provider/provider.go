@@ -15,6 +15,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/component"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/components"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/cbengine/baselines"
@@ -148,6 +149,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		blueprint.NewBlueprintDataSource,
+		blueprints.NewBlueprintsDataSource,
 		component.NewComponentDataSource,
 		components.NewComponentsDataSource,
 		baselines.NewBaselinesDataSource,
