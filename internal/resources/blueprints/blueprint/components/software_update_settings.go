@@ -43,99 +43,99 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Attributes: map[string]schema.Attribute{
 			"allow_standard_user_os_updates": schema.BoolAttribute{
-				Description: "Allow standard users to install OS updates without administrator privileges.",
-				Optional:    true,
+				MarkdownDescription: "Allow standard users to install OS updates without administrator privileges.",
+				Optional:            true,
 			},
 			"automatic_download": schema.StringAttribute{
-				Description: "Automatic download behavior for updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+				MarkdownDescription: "Automatic download behavior for updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"automatic_install_os_updates": schema.StringAttribute{
-				Description: "Automatic installation behavior for OS updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+				MarkdownDescription: "Automatic installation behavior for OS updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"automatic_install_security_updates": schema.StringAttribute{
-				Description: "Automatic installation behavior for security updates. Valid values: Allowed, AlwaysOn, AlwaysOff.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+				MarkdownDescription: "Automatic installation behavior for security updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"beta_program_enrollment": schema.StringAttribute{
-				Description: "Beta program enrollment setting. Valid values: Allowed, AlwaysOn, AlwaysOff.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+				MarkdownDescription: "Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 			},
 			"deferral_combined_period_days": schema.StringAttribute{
-				Description: "Number of days to defer combined updates (1-90 days).",
-				Optional:    true,
+				MarkdownDescription: "Number of days to defer combined updates (1-90 days).",
+				Optional:            true,
 				Validators: []validator.String{stringvalidator.RegexMatches(
 					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
 					"Value must be a number between 1 and 90",
 				)},
 			},
 			"deferral_major_period_days": schema.StringAttribute{
-				Description: "Number of days to defer major updates (1-90 days).",
-				Optional:    true,
+				MarkdownDescription: "Number of days to defer major updates (1-90 days).",
+				Optional:            true,
 				Validators: []validator.String{stringvalidator.RegexMatches(
 					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
 					"Value must be a number between 1 and 90",
 				)},
 			},
 			"deferral_minor_period_days": schema.StringAttribute{
-				Description: "Number of days to defer minor updates (1-90 days).",
-				Optional:    true,
+				MarkdownDescription: "Number of days to defer minor updates (1-90 days).",
+				Optional:            true,
 				Validators: []validator.String{stringvalidator.RegexMatches(
 					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
 					"Value must be a number between 1 and 90",
 				)},
 			},
 			"deferral_system_period_days": schema.StringAttribute{
-				Description: "Number of days to defer system updates (1-90 days).",
-				Optional:    true,
+				MarkdownDescription: "Number of days to defer system updates (1-90 days).",
+				Optional:            true,
 				Validators: []validator.String{stringvalidator.RegexMatches(
 					regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
 					"Value must be a number between 1 and 90",
 				)},
 			},
 			"notifications_enabled": schema.BoolAttribute{
-				Description: "Enable update notifications to users.",
-				Optional:    true,
+				MarkdownDescription: "Enable update notifications to users.",
+				Optional:            true,
 			},
 			"rapid_security_response_enabled": schema.BoolAttribute{
-				Description: "Enable Rapid Security Response updates.",
-				Optional:    true,
+				MarkdownDescription: "Enable Rapid Security Response updates.",
+				Optional:            true,
 			},
 			"rapid_security_response_rollback_enabled": schema.BoolAttribute{
-				Description: "Enable rollback capability for Rapid Security Response updates.",
-				Optional:    true,
+				MarkdownDescription: "Enable rollback capability for Rapid Security Response updates.",
+				Optional:            true,
 			},
 			"recommended_cadence": schema.StringAttribute{
-				Description: "Recommended update cadence policy. Valid values: All, Oldest, Newest.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("All", "Oldest", "Newest")},
+				MarkdownDescription: "Recommended update cadence policy. Valid values: `All`, `Oldest`, `Newest`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("All", "Oldest", "Newest")},
 			},
 			"beta_require_program_token": schema.StringAttribute{
-				Description: "Required beta program token (1-1000 characters). Must be specified with beta_require_program_description.",
-				Optional:    true,
+				MarkdownDescription: "Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.",
+				Optional:            true,
 			},
 			"beta_require_program_description": schema.StringAttribute{
-				Description: "Required beta program description (1-1000 characters). Must be specified with beta_require_program_token.",
-				Optional:    true,
+				MarkdownDescription: "Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.",
+				Optional:            true,
 			},
 		},
 		Blocks: map[string]schema.Block{
 			"beta_offer_programs": schema.ListNestedBlock{
-				Description: "Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each).",
+				MarkdownDescription: "Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each).",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"token": schema.StringAttribute{
-							Description: "Beta program token (1-1000 characters).",
-							Required:    true,
+							MarkdownDescription: "Beta program token (1-1000 characters).",
+							Required:            true,
 						},
 						"description": schema.StringAttribute{
-							Description: "Beta program description (1-1000 characters).",
-							Required:    true,
+							MarkdownDescription: "Beta program description (1-1000 characters).",
+							Required:            true,
 						},
 					},
 				},

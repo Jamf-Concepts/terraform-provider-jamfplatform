@@ -42,61 +42,61 @@ func ServiceBackgroundTasksComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Blocks: map[string]schema.Block{
 			"background_tasks": schema.ListNestedBlock{
-				Description: "List of background tasks.",
+				MarkdownDescription: "List of background tasks.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"task_type": schema.StringAttribute{
-							Description: "Task type identifier.",
-							Required:    true,
+							MarkdownDescription: "Task type identifier.",
+							Required:            true,
 						},
 						"task_description": schema.StringAttribute{
-							Description: "Task description.",
-							Optional:    true,
+							MarkdownDescription: "Task description.",
+							Optional:            true,
 						},
 					},
 					Blocks: map[string]schema.Block{
 						"executable_asset_reference": schema.SingleNestedBlock{
-							Description: "Reference to the executable asset.",
+							MarkdownDescription: "Reference to the executable asset.",
 							Attributes: map[string]schema.Attribute{
 								"data_url": schema.StringAttribute{
-									Description: "URL that hosts the executable data.",
-									Required:    true,
+									MarkdownDescription: "URL that hosts the executable data.",
+									Required:            true,
 								},
 								"hash_sha_256": schema.StringAttribute{
-									Description: "SHA-256 hash of the data.",
-									Optional:    true,
+									MarkdownDescription: "SHA-256 hash of the data.",
+									Optional:            true,
 								},
 								"content_type": schema.StringAttribute{
-									Description: "Media type of the data. Always 'application/zip' for executable assets.",
-									Computed:    true,
+									MarkdownDescription: "Media type of the data. Always `application/zip` for executable assets.",
+									Computed:            true,
 								},
 							},
 						},
 						"launchd_configurations": schema.ListNestedBlock{
-							Description: "Launchd configuration items.",
+							MarkdownDescription: "Launchd configuration items.",
 							NestedObject: schema.NestedBlockObject{
 								Attributes: map[string]schema.Attribute{
 									"context": schema.StringAttribute{
-										Description: "Launchd context. Valid values: daemon, agent.",
-										Required:    true,
-										Validators:  []validator.String{stringvalidator.OneOf("daemon", "agent")},
+										MarkdownDescription: "Launchd context. Valid values are `daemon`, `agent`.",
+										Required:            true,
+										Validators:          []validator.String{stringvalidator.OneOf("daemon", "agent")},
 									},
 								},
 								Blocks: map[string]schema.Block{
 									"file_asset_reference": schema.SingleNestedBlock{
-										Description: "Reference to the configuration file asset.",
+										MarkdownDescription: "Reference to the configuration file asset.",
 										Attributes: map[string]schema.Attribute{
 											"data_url": schema.StringAttribute{
-												Description: "URL that hosts the configuration data.",
-												Required:    true,
+												MarkdownDescription: "URL that hosts the configuration data.",
+												Required:            true,
 											},
 											"hash_sha_256": schema.StringAttribute{
-												Description: "SHA-256 hash of the data.",
-												Optional:    true,
+												MarkdownDescription: "SHA-256 hash of the data.",
+												Optional:            true,
 											},
 											"content_type": schema.StringAttribute{
-												Description: "Media type of the data.",
-												Optional:    true,
+												MarkdownDescription: "Media type of the data.",
+												Optional:            true,
 											},
 										},
 									},

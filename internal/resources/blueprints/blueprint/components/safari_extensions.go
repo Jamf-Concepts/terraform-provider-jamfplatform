@@ -40,43 +40,43 @@ func SafariExtensionsComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Blocks: map[string]schema.Block{
 			"managed_extensions": schema.ListNestedBlock{
-				Description: "List of managed Safari extensions.",
+				MarkdownDescription: "List of managed Safari extensions.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"extension_id": schema.StringAttribute{
-							Description: "The extension identifier (bundle ID).",
-							Required:    true,
+							MarkdownDescription: "The extension identifier (bundle ID).",
+							Required:            true,
 						},
 						"state": schema.StringAttribute{
-							Description: "Extension state. Valid values: Allowed, AlwaysOn, AlwaysOff.",
-							Optional:    true,
-							Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+							MarkdownDescription: "Extension state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+							Optional:            true,
+							Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 						},
 						"private_browsing": schema.StringAttribute{
-							Description: "Private browsing state. Valid values: Allowed, AlwaysOn, AlwaysOff.",
-							Optional:    true,
-							Validators:  []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+							MarkdownDescription: "Private browsing state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+							Optional:            true,
+							Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 						},
 					},
 					Blocks: map[string]schema.Block{
 						"allowed_domains": schema.ListNestedBlock{
-							Description: "List of allowed domains for this extension.",
+							MarkdownDescription: "List of allowed domains for this extension.",
 							NestedObject: schema.NestedBlockObject{
 								Attributes: map[string]schema.Attribute{
 									"domain": schema.StringAttribute{
-										Description: "Domain name.",
-										Required:    true,
+										MarkdownDescription: "Domain name.",
+										Required:            true,
 									},
 								},
 							},
 						},
 						"denied_domains": schema.ListNestedBlock{
-							Description: "List of denied domains for this extension.",
+							MarkdownDescription: "List of denied domains for this extension.",
 							NestedObject: schema.NestedBlockObject{
 								Attributes: map[string]schema.Attribute{
 									"domain": schema.StringAttribute{
-										Description: "Domain name.",
-										Required:    true,
+										MarkdownDescription: "Domain name.",
+										Required:            true,
 									},
 								},
 							},

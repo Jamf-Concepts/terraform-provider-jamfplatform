@@ -35,45 +35,45 @@ func SafariSettingsComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Attributes: map[string]schema.Attribute{
 			"accept_cookies": schema.StringAttribute{
-				Description: "The policy Safari uses for managing cookies. Valid values: Never, CurrentWebsite, VisitedWebsites, Always.",
-				Optional:    true,
+				MarkdownDescription: "The policy Safari uses for managing cookies. Valid values are `Never`, `CurrentWebsite`, `VisitedWebsites`, `Always`.",
+				Optional:            true,
 			},
 			"allow_disabling_fraud_warning": schema.BoolAttribute{
-				Description: "If false, the system forces fraud warnings on in Safari.",
-				Optional:    true,
+				MarkdownDescription: "If false, the system forces fraud warnings on in Safari.",
+				Optional:            true,
 			},
 			"allow_history_clearing": schema.BoolAttribute{
-				Description: "If false, the system disables clearing history in Safari.",
-				Optional:    true,
+				MarkdownDescription: "If false, the system disables clearing history in Safari.",
+				Optional:            true,
 			},
 			"allow_javascript": schema.BoolAttribute{
-				Description: "If false, the system disables JavaScript in Safari.",
-				Optional:    true,
+				MarkdownDescription: "If false, the system disables JavaScript in Safari.",
+				Optional:            true,
 			},
 			"allow_private_browsing": schema.BoolAttribute{
-				Description: "If false, the system disables private browsing in Safari.",
-				Optional:    true,
+				MarkdownDescription: "If false, the system disables private browsing in Safari.",
+				Optional:            true,
 			},
 			"allow_popups": schema.BoolAttribute{
-				Description: "If false, the system disables popups in Safari.",
-				Optional:    true,
+				MarkdownDescription: "If false, the system disables popups in Safari.",
+				Optional:            true,
 			},
 			"allow_summary": schema.BoolAttribute{
-				Description: "If false, the system disables summarization of content in Safari.",
-				Optional:    true,
+				MarkdownDescription: "If false, the system disables summarization of content in Safari.",
+				Optional:            true,
 			},
 			"new_tab_start_page_type": schema.StringAttribute{
-				Description: "Sets the start page type in Safari. Valid values: Start, Home, Extension.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("Start", "Home", "Extension")},
+				MarkdownDescription: "Sets the start page type in Safari. Valid values are `Start`, `Home`, `Extension`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("Start", "Home", "Extension")},
 			},
 			"new_tab_start_page_homepage_url": schema.StringAttribute{
-				Description: "The URL of the homepage which needs to start with https:// or http://. Required when page type is 'Home'.",
-				Optional:    true,
+				MarkdownDescription: "The URL of the homepage which needs to start with `https://` or `http://`. Required when page type is `Home`.",
+				Optional:            true,
 			},
 			"new_tab_start_page_extension_id": schema.StringAttribute{
-				Description: "The composed identifier of the extension that provides the start page. Required when page type is 'Extension'. Format: com.example.extension (ABC1234567).",
-				Optional:    true,
+				MarkdownDescription: "The composed identifier of the extension that provides the start page. Required when page type is `Extension`. Format: `com.example.extension (ABC1234567)`.",
+				Optional:            true,
 			},
 		},
 	}

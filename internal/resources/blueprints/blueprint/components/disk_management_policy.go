@@ -27,14 +27,14 @@ func DiskManagementPolicyComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Attributes: map[string]schema.Attribute{
 			"external_storage": schema.StringAttribute{
-				Description: "Storage mode for external storage. Valid values: Allowed, Disallowed, ReadOnly.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
+				MarkdownDescription: "Storage mode for external storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
 			},
 			"network_storage": schema.StringAttribute{
-				Description: "Storage mode for network storage. Valid values: Allowed, Disallowed, ReadOnly.",
-				Optional:    true,
-				Validators:  []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
+				MarkdownDescription: "Storage mode for network storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
+				Optional:            true,
+				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
 			},
 		},
 	}

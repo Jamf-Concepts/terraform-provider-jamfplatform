@@ -3,12 +3,12 @@
 page_title: "jamfplatform_blueprints_components Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Returns all available blueprint components.
+  Returns all available blueprint components. Requires Blueprints API access.
 ---
 
 # jamfplatform_blueprints_components (Data Source)
 
-Returns all available blueprint components.
+Returns all available blueprint components. Requires **Blueprints API** access.
 
 ## Example Usage
 
