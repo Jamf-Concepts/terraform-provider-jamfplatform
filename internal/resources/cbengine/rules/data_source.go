@@ -31,139 +31,139 @@ func (d *RulesDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 // Schema sets the Terraform schema for the data source.
 func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Returns list of rules for a given mSCP baseline.",
+		MarkdownDescription: "Returns list of rules for a given mSCP baseline. Requires **Compliance Benchmarks API** access.",
 		Attributes: map[string]schema.Attribute{
 			"baseline_id": schema.StringAttribute{
-				Description: "The baseline ID to fetch rules for.",
-				Required:    true,
+				MarkdownDescription: "The baseline ID to fetch rules for.",
+				Required:            true,
 			},
 			"sources": schema.ListNestedAttribute{
-				Description: "List of sources for the rules baseline.",
-				Computed:    true,
+				MarkdownDescription: "List of sources for the rules baseline.",
+				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"branch": schema.StringAttribute{
-							Description: "Source branch.",
-							Computed:    true,
+							MarkdownDescription: "Source branch.",
+							Computed:            true,
 						},
 						"revision": schema.StringAttribute{
-							Description: "Source revision.",
-							Computed:    true,
+							MarkdownDescription: "Source revision.",
+							Computed:            true,
 						},
 					},
 				},
 			},
 			"rules": schema.ListNestedAttribute{
-				Description: "List of rules for the baseline.",
-				Computed:    true,
+				MarkdownDescription: "List of rules for the baseline.",
+				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							Description: "Unique identifier for the rule.",
-							Computed:    true,
+							MarkdownDescription: "Unique identifier for the rule.",
+							Computed:            true,
 						},
 						"section_name": schema.StringAttribute{
-							Description: "Section name for the rule.",
-							Computed:    true,
+							MarkdownDescription: "Section name for the rule.",
+							Computed:            true,
 						},
 						"enabled": schema.BoolAttribute{
-							Description: "Whether the rule is enabled.",
-							Computed:    true,
+							MarkdownDescription: "Whether the rule is enabled.",
+							Computed:            true,
 						},
 						"title": schema.StringAttribute{
-							Description: "Title of the rule.",
-							Computed:    true,
+							MarkdownDescription: "Title of the rule.",
+							Computed:            true,
 						},
 						"description": schema.StringAttribute{
-							Description: "Description of the rule.",
-							Computed:    true,
+							MarkdownDescription: "Description of the rule.",
+							Computed:            true,
 						},
 						"references": schema.ListAttribute{
-							Description: "References for the rule.",
-							ElementType: types.StringType,
-							Computed:    true,
+							MarkdownDescription: "References for the rule.",
+							ElementType:         types.StringType,
+							Computed:            true,
 						},
 						"odv_value": schema.StringAttribute{
-							Description: "ODV value.",
-							Computed:    true,
+							MarkdownDescription: "ODV value.",
+							Computed:            true,
 						},
 						"odv_hint": schema.StringAttribute{
-							Description: "ODV hint.",
-							Computed:    true,
+							MarkdownDescription: "ODV hint.",
+							Computed:            true,
 						},
 						"odv_placeholder": schema.StringAttribute{
-							Description: "ODV placeholder.",
-							Computed:    true,
+							MarkdownDescription: "ODV placeholder.",
+							Computed:            true,
 						},
 						"odv_type": schema.StringAttribute{
-							Description: "ODV type.",
-							Computed:    true,
+							MarkdownDescription: "ODV type.",
+							Computed:            true,
 						},
 						"odv_validation_min": schema.Int64Attribute{
-							Description: "ODV validation minimum value.",
-							Computed:    true,
+							MarkdownDescription: "ODV validation minimum value.",
+							Computed:            true,
 						},
 						"odv_validation_max": schema.Int64Attribute{
-							Description: "ODV validation maximum value.",
-							Computed:    true,
+							MarkdownDescription: "ODV validation maximum value.",
+							Computed:            true,
 						},
 						"odv_validation_enum_values": schema.ListAttribute{
-							Description: "ODV validation allowed enum values.",
-							ElementType: types.StringType,
-							Computed:    true,
+							MarkdownDescription: "ODV validation allowed enum values.",
+							ElementType:         types.StringType,
+							Computed:            true,
 						},
 						"odv_validation_regex": schema.StringAttribute{
-							Description: "ODV validation regex pattern.",
-							Computed:    true,
+							MarkdownDescription: "ODV validation regex pattern.",
+							Computed:            true,
 						},
 						"supported_os": schema.ListNestedAttribute{
-							Description: "Supported operating systems.",
-							Computed:    true,
+							MarkdownDescription: "Supported operating systems.",
+							Computed:            true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"os_type": schema.StringAttribute{
-										Description: "OS type (e.g. MAC_OS, IOS).",
-										Computed:    true,
+										MarkdownDescription: "OS type (e.g. `MAC_OS`, `IOS`).",
+										Computed:            true,
 									},
 									"os_version": schema.Int64Attribute{
-										Description: "OS version.",
-										Computed:    true,
+										MarkdownDescription: "OS version.",
+										Computed:            true,
 									},
 									"management_type": schema.StringAttribute{
-										Description: "Management type (e.g. MANAGED, BYOD).",
-										Computed:    true,
+										MarkdownDescription: "Management type (e.g. `MANAGED`, `BYOD`).",
+										Computed:            true,
 									},
 								},
 							},
 						},
 						"os_specific_defaults": schema.MapNestedAttribute{
-							Description: "OS-specific rule defaults.",
-							Computed:    true,
+							MarkdownDescription: "OS-specific rule defaults.",
+							Computed:            true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"title": schema.StringAttribute{
-										Description: "OS-specific rule title.",
-										Computed:    true,
+										MarkdownDescription: "OS-specific rule title.",
+										Computed:            true,
 									},
 									"description": schema.StringAttribute{
-										Description: "OS-specific rule description.",
-										Computed:    true,
+										MarkdownDescription: "OS-specific rule description.",
+										Computed:            true,
 									},
 									"odv_value": schema.StringAttribute{
-										Description: "Recommended ODV value.",
-										Computed:    true,
+										MarkdownDescription: "Recommended ODV value.",
+										Computed:            true,
 									},
 									"odv_hint": schema.StringAttribute{
-										Description: "Recommended ODV hint.",
-										Computed:    true,
+										MarkdownDescription: "Recommended ODV hint.",
+										Computed:            true,
 									},
 								},
 							},
 						},
 						"depends_on": schema.ListAttribute{
-							Description: "IDs of rules this rule depends on.",
-							ElementType: types.StringType,
-							Computed:    true,
+							MarkdownDescription: "IDs of rules this rule depends on.",
+							ElementType:         types.StringType,
+							Computed:            true,
 						},
 					},
 				},

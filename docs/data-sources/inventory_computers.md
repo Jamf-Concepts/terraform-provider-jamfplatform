@@ -3,12 +3,12 @@
 page_title: "jamfplatform_inventory_computers Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  
+  Returns a list of Jamf computers from an Environment via the Universal Inventory API. Requires Inventory API access.
 ---
 
 # jamfplatform_inventory_computers (Data Source)
 
-
+Returns a list of Jamf computers from an Environment via the Universal Inventory API. Requires **Inventory API** access.
 
 ## Example Usage
 
@@ -33,7 +33,7 @@ output "all_computers" {
 
 ### Optional
 
-- `filter` (String) Optional filter string to limit results (e.g., 'general.name=="MacBook*"')
+- `filter` (String) Optional filter string to limit results (e.g., `general.name=="MacBook*"`)
 
 ### Read-Only
 

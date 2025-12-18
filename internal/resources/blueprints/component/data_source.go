@@ -31,26 +31,26 @@ func (d *ComponentDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema sets the Terraform schema for the data source.
 func (d *ComponentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Returns a blueprint component by identifier.",
+		MarkdownDescription: "Returns a blueprint component by identifier. Requires **Blueprints API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Description: "The component identifier to fetch.",
-				Required:    true,
+				MarkdownDescription: "The component identifier to fetch.",
+				Required:            true,
 			},
 			"identifier": schema.StringAttribute{
-				Description: "Component identifier.",
-				Computed:    true,
+				MarkdownDescription: "Component identifier.",
+				Computed:            true,
 			},
 			"name": schema.StringAttribute{
-				Description: "Component name.",
-				Computed:    true,
+				MarkdownDescription: "Component name.",
+				Computed:            true,
 			},
 			"description": schema.StringAttribute{
-				Description: "Component description.",
-				Computed:    true,
+				MarkdownDescription: "Component description.",
+				Computed:            true,
 			},
 			"supported_os": schema.MapAttribute{
-				Description: "Supported operating systems with their versions.",
+				MarkdownDescription: "Supported operating systems with their versions.",
 				ElementType: types.ListType{
 					ElemType: types.StringType,
 				},

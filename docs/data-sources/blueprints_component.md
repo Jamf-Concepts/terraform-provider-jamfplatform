@@ -3,12 +3,12 @@
 page_title: "jamfplatform_blueprints_component Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Returns a blueprint component by identifier.
+  Returns a blueprint component by identifier. Requires Blueprints API access.
 ---
 
 # jamfplatform_blueprints_component (Data Source)
 
-Returns a blueprint component by identifier.
+Returns a blueprint component by identifier. Requires **Blueprints API** access.
 
 ## Example Usage
 

@@ -3,12 +3,12 @@
 page_title: "jamfplatform_blueprints_blueprint Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update.
+  Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update. Requires Blueprints API access.
 ---
 
 # jamfplatform_blueprints_blueprint (Resource)
 
-Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update.
+Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update. Requires **Blueprints API** access.
 
 ## Example Usage
 
@@ -134,7 +134,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 
 ### Required
 
-- `device_groups` (Set of String) Set of device group Platform IDs to target. Specified as a set of strings in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Order does not matter.
+- `device_groups` (Set of String) Set of device group Platform IDs to target. Specified as a set of strings in UUID format.
 - `name` (String) Blueprint name.
 
 ### Optional
@@ -143,7 +143,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 - `custom_declarations` (Block List) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedblock--custom_declarations))
 - `description` (String) Blueprint description.
 - `disk_management_settings` (Block List) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedblock--disk_management_settings))
-- `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have payloadType and payloadIdentifier fields. The payload display name will automatically use the blueprint name.
+- `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have `payloadType` and `payloadIdentifier` fields. The payload display name will automatically use the blueprint name.
 - `math_settings` (Block List) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedblock--math_settings))
 - `passcode_policy` (Block List) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedblock--passcode_policy))
 - `raw_component` (Block List) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedblock--raw_component))
@@ -171,8 +171,8 @@ Required:
 
 Optional:
 
-- `unpairing_time_hour` (Number) The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is 'Hour'. Range: 0-23.
-- `unpairing_time_policy` (String) Device's unpairing policy. Valid values: None, Hour. When set to 'Hour', unpairing_time_hour must also be provided.
+- `unpairing_time_hour` (Number) The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is `Hour`. Range: `0`-`23`.
+- `unpairing_time_policy` (String) Device's unpairing policy. Valid values are `None`, `Hour`. When set to `Hour`, `unpairing_time_hour` must also be provided.
 
 
 <a id="nestedblock--custom_declarations"></a>
@@ -187,10 +187,10 @@ Optional:
 
 Required:
 
-- `channel` (String) The channel type for the declaration. Valid values: SYSTEM, USER.
-- `kind` (String) The kind of declaration. Valid values: CONFIGURATION, ASSET.
+- `channel` (String) The channel type for the declaration. Valid values are `SYSTEM`, `USER`.
+- `kind` (String) The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.
 - `payload` (String) JSON-encoded payload object for the declaration.
-- `type` (String) The declaration type identifier (e.g., 'com.apple.configuration.softwareupdate.settings').
+- `type` (String) The declaration type identifier (e.g., `com.apple.configuration.softwareupdate.settings`).
 
 
 
@@ -199,8 +199,8 @@ Required:
 
 Optional:
 
-- `external_storage` (String) Storage mode for external storage. Valid values: Allowed, Disallowed, ReadOnly.
-- `network_storage` (String) Storage mode for network storage. Valid values: Allowed, Disallowed, ReadOnly.
+- `external_storage` (String) Storage mode for external storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.
+- `network_storage` (String) Storage mode for network storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.
 
 
 <a id="nestedblock--math_settings"></a>
@@ -209,13 +209,13 @@ Optional:
 Optional:
 
 - `calculator_basic_mode_add_square_root` (Boolean) Add the square root button to the basic calculator by replacing the +/- button.
-- `calculator_input_modes_rpn` (Boolean) Configures whether RPN input is enabled in Calculator.
-- `calculator_input_modes_unit_conversion` (Boolean) Configures whether unit conversions are enabled in Calculator.
+- `calculator_input_modes_rpn` (Boolean) Configures whether RPN input is enabled in Calculator. Also requires `calculator_input_modes_unit_conversion` to be set.
+- `calculator_input_modes_unit_conversion` (Boolean) Configures whether unit conversions are enabled in Calculator. Also requires `calculator_input_modes_rpn` to be set.
 - `calculator_math_notes_mode_enabled` (Boolean) Controls whether the Math Notes mode is enabled in Calculator.
 - `calculator_programmer_mode_enabled` (Boolean) Controls whether the programmer mode is enabled in Calculator.
 - `calculator_scientific_mode_enabled` (Boolean) Controls whether the scientific mode is enabled in Calculator.
-- `system_behavior_keyboard_suggestions` (Boolean) Controls whether keyboard suggestions include math solutions.
-- `system_behavior_math_notes` (Boolean) Controls whether Math Notes is allowed in other apps such as Notes.
+- `system_behavior_keyboard_suggestions` (Boolean) Controls whether keyboard suggestions include math solutions. Also requires `system_behavior_math_notes` to be set.
+- `system_behavior_math_notes` (Boolean) Controls whether Math Notes is allowed in other apps such as Notes. Also requires `system_behavior_keyboard_suggestions` to be set.
 
 
 <a id="nestedblock--passcode_policy"></a>
@@ -224,14 +224,14 @@ Optional:
 Optional:
 
 - `change_at_next_auth` (Boolean) Change at next auth.
-- `failed_attempts_reset_in_minutes` (Number) Failed attempts reset in minutes. Minimum: 0.
-- `maximum_failed_attempts` (Number) Maximum failed attempts. Range: 2-11.
-- `maximum_grace_period_in_minutes` (Number) Maximum grace period in minutes. Minimum: 0.
-- `maximum_inactivity_in_minutes` (Number) Maximum inactivity in minutes. Range: 0-15.
-- `maximum_passcode_age_in_days` (Number) Maximum passcode age in days. Range: 0-730.
-- `minimum_complex_characters` (Number) Minimum complex characters. Range: 0-4.
-- `minimum_length` (Number) Minimum length. Range: 0-16.
-- `passcode_reuse_limit` (Number) Passcode reuse limit. Range: 1-50.
+- `failed_attempts_reset_in_minutes` (Number) Failed attempts reset in minutes. Minimum: `0`.
+- `maximum_failed_attempts` (Number) Maximum failed attempts. Range: `2`-`11`.
+- `maximum_grace_period_in_minutes` (Number) Maximum grace period in minutes. Minimum: `0`.
+- `maximum_inactivity_in_minutes` (Number) Maximum inactivity in minutes. Range: `0`-`15`.
+- `maximum_passcode_age_in_days` (Number) Maximum passcode age in days. Range: `0`-`730`.
+- `minimum_complex_characters` (Number) Minimum complex characters. Range: `0`-`4`.
+- `minimum_length` (Number) Minimum length. Range: `0`-`16`.
+- `passcode_reuse_limit` (Number) Passcode reuse limit. Range: `1`-`50`.
 - `require_alphanumeric_passcode` (Boolean) Require alphanumeric passcode.
 - `require_complex_passcode` (Boolean) Require complex passcode.
 - `require_passcode` (Boolean) Require passcode.
@@ -242,7 +242,7 @@ Optional:
 
 Required:
 
-- `identifier` (String) Component identifier (e.g., com.jamf.ddm.disk-management).
+- `identifier` (String) Component identifier (e.g., `com.jamf.ddm.disk-management`).
 
 Optional:
 
@@ -278,7 +278,7 @@ Required:
 Optional:
 
 - `folder` (Block List) Bookmarks within this folder. (see [below for nested schema](#nestedblock--safari_bookmarks--managed_bookmarks--bookmarks--folder))
-- `type` (String) Type of bookmark. Valid values: 'bookmark' (URL bookmark) or 'folder' (bookmark folder).
+- `type` (String) Type of bookmark. Valid values are `bookmark` (URL bookmark) or `folder` (bookmark folder).
 - `url` (String) The URL for direct bookmarks (not used for folders).
 
 <a id="nestedblock--safari_bookmarks--managed_bookmarks--bookmarks--folder"></a>
@@ -311,8 +311,8 @@ Optional:
 
 - `allowed_domains` (Block List) List of allowed domains for this extension. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions--allowed_domains))
 - `denied_domains` (Block List) List of denied domains for this extension. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions--denied_domains))
-- `private_browsing` (String) Private browsing state. Valid values: Allowed, AlwaysOn, AlwaysOff.
-- `state` (String) Extension state. Valid values: Allowed, AlwaysOn, AlwaysOff.
+- `private_browsing` (String) Private browsing state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `state` (String) Extension state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.
 
 <a id="nestedblock--safari_extensions--managed_extensions--allowed_domains"></a>
 ### Nested Schema for `safari_extensions.managed_extensions.allowed_domains`
@@ -337,16 +337,16 @@ Required:
 
 Optional:
 
-- `accept_cookies` (String) The policy Safari uses for managing cookies. Valid values: Never, CurrentWebsite, VisitedWebsites, Always.
+- `accept_cookies` (String) The policy Safari uses for managing cookies. Valid values are `Never`, `CurrentWebsite`, `VisitedWebsites`, `Always`.
 - `allow_disabling_fraud_warning` (Boolean) If false, the system forces fraud warnings on in Safari.
 - `allow_history_clearing` (Boolean) If false, the system disables clearing history in Safari.
 - `allow_javascript` (Boolean) If false, the system disables JavaScript in Safari.
 - `allow_popups` (Boolean) If false, the system disables popups in Safari.
 - `allow_private_browsing` (Boolean) If false, the system disables private browsing in Safari.
 - `allow_summary` (Boolean) If false, the system disables summarization of content in Safari.
-- `new_tab_start_page_extension_id` (String) The composed identifier of the extension that provides the start page. Required when page type is 'Extension'. Format: com.example.extension (ABC1234567).
-- `new_tab_start_page_homepage_url` (String) The URL of the homepage which needs to start with https:// or http://. Required when page type is 'Home'.
-- `new_tab_start_page_type` (String) Sets the start page type in Safari. Valid values: Start, Home, Extension.
+- `new_tab_start_page_extension_id` (String) The composed identifier of the extension that provides the start page. Required when page type is `Extension`. Format: `com.example.extension (ABC1234567)`.
+- `new_tab_start_page_homepage_url` (String) The URL of the homepage which needs to start with `https://` or `http://`. Required when page type is `Home`.
+- `new_tab_start_page_type` (String) Sets the start page type in Safari. Valid values are `Start`, `Home`, `Extension`.
 
 
 <a id="nestedblock--service_background_tasks"></a>
@@ -382,7 +382,7 @@ Optional:
 
 Read-Only:
 
-- `content_type` (String) Media type of the data. Always 'application/zip' for executable assets.
+- `content_type` (String) Media type of the data. Always `application/zip` for executable assets.
 
 
 <a id="nestedblock--service_background_tasks--background_tasks--launchd_configurations"></a>
@@ -390,7 +390,7 @@ Read-Only:
 
 Required:
 
-- `context` (String) Launchd context. Valid values: daemon, agent.
+- `context` (String) Launchd context. Valid values are `daemon`, `agent`.
 
 Optional:
 
@@ -443,7 +443,7 @@ Optional:
 
 Read-Only:
 
-- `content_type` (String) Media type of the data. Always 'application/zip' for service configuration files.
+- `content_type` (String) Media type of the data. Always `application/zip` for service configuration files.
 
 
 
@@ -453,15 +453,15 @@ Read-Only:
 
 Optional:
 
-- `deployment_time` (String) For automatic enforcement. Local device time to install the update. Format: HH:mm (24-hour). Cannot be used with target_os_version or target_local_date_time.
+- `deployment_time` (String) For automatic enforcement. Local device time to install the update. Format: `HH:mm` (24-hour). Cannot be used with `target_os_version` or `target_local_date_time`.
 - `details_url_value` (String) URL of a web page with the details about the software update.
-- `enforce_after_days` (Number) For automatic enforcement. Days after release to enforce the update. Maximum is 30. Cannot be used with target_os_version or target_local_date_time.
-- `target_local_date_time` (String) For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with deployment_time or enforce_after_days.
-- `target_os_version` (String) For manual enforcement. Target OS version. Format: major.minor[.patch]. Cannot be used with deployment_time or enforce_after_days.
+- `enforce_after_days` (Number) For automatic enforcement. Days after release to enforce the update. Maximum is `30`. Cannot be used with `target_os_version` or `target_local_date_time`.
+- `target_local_date_time` (String) For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time` or `enforce_after_days`.
+- `target_os_version` (String) For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time` or `enforce_after_days`.
 
 Read-Only:
 
-- `enforcement_type` (String) Type of enforcement. Automatically set to 'AUTOMATIC' when deployment_time or enforce_after_days is specified, or 'MANUAL' when target_os_version or target_local_date_time is specified.
+- `enforcement_type` (String) Type of enforcement. Automatically set to `AUTOMATIC` when `deployment_time` or `enforce_after_days` is specified, or `MANUAL` when `target_os_version` or `target_local_date_time` is specified.
 
 
 <a id="nestedblock--software_update_settings"></a>
@@ -470,13 +470,13 @@ Read-Only:
 Optional:
 
 - `allow_standard_user_os_updates` (Boolean) Allow standard users to install OS updates without administrator privileges.
-- `automatic_download` (String) Automatic download behavior for updates. Valid values: Allowed, AlwaysOn, AlwaysOff.
-- `automatic_install_os_updates` (String) Automatic installation behavior for OS updates. Valid values: Allowed, AlwaysOn, AlwaysOff.
-- `automatic_install_security_updates` (String) Automatic installation behavior for security updates. Valid values: Allowed, AlwaysOn, AlwaysOff.
+- `automatic_download` (String) Automatic download behavior for updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `automatic_install_os_updates` (String) Automatic installation behavior for OS updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `automatic_install_security_updates` (String) Automatic installation behavior for security updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `beta_offer_programs` (Block List) Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each). (see [below for nested schema](#nestedblock--software_update_settings--beta_offer_programs))
-- `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: Allowed, AlwaysOn, AlwaysOff.
-- `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with beta_require_program_token.
-- `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with beta_require_program_description.
+- `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.
+- `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.
 - `deferral_combined_period_days` (String) Number of days to defer combined updates (1-90 days).
 - `deferral_major_period_days` (String) Number of days to defer major updates (1-90 days).
 - `deferral_minor_period_days` (String) Number of days to defer minor updates (1-90 days).
@@ -484,7 +484,7 @@ Optional:
 - `notifications_enabled` (Boolean) Enable update notifications to users.
 - `rapid_security_response_enabled` (Boolean) Enable Rapid Security Response updates.
 - `rapid_security_response_rollback_enabled` (Boolean) Enable rollback capability for Rapid Security Response updates.
-- `recommended_cadence` (String) Recommended update cadence policy. Valid values: All, Oldest, Newest.
+- `recommended_cadence` (String) Recommended update cadence policy. Valid values: `All`, `Oldest`, `Newest`.
 
 <a id="nestedblock--software_update_settings--beta_offer_programs"></a>
 ### Nested Schema for `software_update_settings.beta_offer_programs`

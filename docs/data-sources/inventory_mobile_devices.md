@@ -3,12 +3,12 @@
 page_title: "jamfplatform_inventory_mobile_devices Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  
+  Returns a list of Jamf mobile devices from an Environment via the Mobile Device Inventory API. Requires Mobile Device Inventory API access.
 ---
 
 # jamfplatform_inventory_mobile_devices (Data Source)
 
-
+Returns a list of Jamf mobile devices from an Environment via the Mobile Device Inventory API. Requires **Mobile Device Inventory API** access.
 
 ## Example Usage
 
@@ -25,7 +25,7 @@ output "devices" {
 
 ### Optional
 
-- `section` (List of String) List of sections to include in the response (e.g., GENERAL, HARDWARE, etc.)
+- `section` (List of String) List of sections to include in the response (e.g., `GENERAL`, `HARDWARE`, etc.)
 
 ### Read-Only
 

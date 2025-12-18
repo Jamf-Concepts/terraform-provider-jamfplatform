@@ -3,12 +3,12 @@
 page_title: "jamfplatform_cbengine_baselines Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Returns list of the mSCP baselines allowed for the Compliance benchmarks.
+  Returns list of the mSCP baselines allowed for the Compliance benchmarks. Requires Compliance Benchmarks API access.
 ---
 
 # jamfplatform_cbengine_baselines (Data Source)
 
-Returns list of the mSCP baselines allowed for the Compliance benchmarks.
+Returns list of the mSCP baselines allowed for the Compliance benchmarks. Requires **Compliance Benchmarks API** access.
 
 ## Example Usage
 

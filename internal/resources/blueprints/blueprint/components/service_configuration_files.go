@@ -32,29 +32,29 @@ func ServiceConfigurationFilesComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Blocks: map[string]schema.Block{
 			"service_config_files": schema.ListNestedBlock{
-				Description: "List of service configuration files.",
+				MarkdownDescription: "List of service configuration files.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
 						"service_type": schema.StringAttribute{
-							Description: "The identifier of the system service with managed configuration files.",
-							Required:    true,
+							MarkdownDescription: "The identifier of the system service with managed configuration files.",
+							Required:            true,
 						},
 					},
 					Blocks: map[string]schema.Block{
 						"data_asset_reference": schema.SingleNestedBlock{
-							Description: "Reference to the configuration data asset.",
+							MarkdownDescription: "Reference to the configuration data asset.",
 							Attributes: map[string]schema.Attribute{
 								"data_url": schema.StringAttribute{
-									Description: "URL that hosts the configuration data.",
-									Required:    true,
+									MarkdownDescription: "URL that hosts the configuration data.",
+									Required:            true,
 								},
 								"hash_sha_256": schema.StringAttribute{
-									Description: "SHA-256 hash of the data.",
-									Optional:    true,
+									MarkdownDescription: "SHA-256 hash of the data.",
+									Optional:            true,
 								},
 								"content_type": schema.StringAttribute{
-									Description: "Media type of the data. Always 'application/zip' for service configuration files.",
-									Computed:    true,
+									MarkdownDescription: "Media type of the data. Always `application/zip` for service configuration files.",
+									Computed:            true,
 								},
 							},
 						},

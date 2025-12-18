@@ -30,19 +30,20 @@ func (d *DataSourceMobileDevices) Metadata(ctx context.Context, req datasource.M
 // Schema sets the data source schema for the mobile devices.
 func (d *DataSourceMobileDevices) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Returns a list of Jamf mobile devices from an Environment via the Mobile Device Inventory API. Requires **Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,
 			},
 			"section": schema.ListAttribute{
-				ElementType: types.StringType,
-				Optional:    true,
-				Description: "List of sections to include in the response (e.g., GENERAL, HARDWARE, etc.)",
+				ElementType:         types.StringType,
+				Optional:            true,
+				MarkdownDescription: "List of sections to include in the response (e.g., `GENERAL`, `HARDWARE`, etc.)",
 			},
 			"devices": schema.ListAttribute{
-				ElementType: types.MapType{ElemType: types.StringType},
-				Computed:    true,
-				Description: "List of mobile devices.",
+				ElementType:         types.MapType{ElemType: types.StringType},
+				Computed:            true,
+				MarkdownDescription: "List of mobile devices.",
 			},
 		},
 	}

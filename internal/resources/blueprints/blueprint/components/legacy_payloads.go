@@ -19,8 +19,8 @@ func LegacyPayloadsComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Attributes: map[string]schema.Attribute{
 			"payload_content": schema.StringAttribute{
-				Description: "JSON-encoded array of payload objects. Each payload must have payloadType and payloadIdentifier fields. The payload display name will automatically use the blueprint name.",
-				Required:    true,
+				MarkdownDescription: "JSON-encoded array of payload objects. Each payload must have `payloadType` and `payloadIdentifier` fields. The payload display name will automatically use the blueprint name.",
+				Required:            true,
 			},
 		},
 	}

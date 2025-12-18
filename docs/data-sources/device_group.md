@@ -3,12 +3,12 @@
 page_title: "jamfplatform_device_group Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lookup a Jamf device group by ID or name.
+  Lookup a Jamf device group by ID or name. Requires Device Group Inventory API access.
 ---
 
 # jamfplatform_device_group (Data Source)
 
-Lookup a Jamf device group by ID or name.
+Lookup a Jamf device group by ID or name. Requires **Device Group Inventory API** access.
 
 ## Example Usage
 
@@ -37,15 +37,15 @@ output "device_group_example_by_id" {
 
 ### Optional
 
-- `device_type` (String) Optional device type filter (computer or mobile). When set, the value is returned in lowercase.
-- `group_type` (String) Optional group type filter (static or smart). When set, the value is returned in lowercase.
+- `device_type` (String) Optional device type filter. When set, the value is returned in lowercase. Valid values are `computer` and `mobile`.
+- `group_type` (String) Optional group type filter. When set, the value is returned in lowercase. Valid values are `static` and `smart`.
 - `id` (String) Optional device group Platform ID to query.
 - `name` (String) Optional device group name to query (case-insensitive).
 
 ### Read-Only
 
 - `criteria` (Block List) Smart-group criteria returned by the API. (see [below for nested schema](#nestedblock--criteria))
-- `description` (String) Device group description.
+- `description` (String) Device group Description.
 - `member_count` (Number) Number of members in the group.
 - `members` (Set of String) Devices currently assigned to the group (Jamf Pro Management IDs).
 

@@ -29,12 +29,12 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 	return schema.NestedBlockObject{
 		Attributes: map[string]schema.Attribute{
 			"enforcement_type": schema.StringAttribute{
-				Description: "Type of enforcement. Automatically set to 'AUTOMATIC' when deployment_time or enforce_after_days is specified, or 'MANUAL' when target_os_version or target_local_date_time is specified.",
-				Computed:    true,
+				MarkdownDescription: "Type of enforcement. Automatically set to `AUTOMATIC` when `deployment_time` or `enforce_after_days` is specified, or `MANUAL` when `target_os_version` or `target_local_date_time` is specified.",
+				Computed:            true,
 			},
 			"deployment_time": schema.StringAttribute{
-				Description: "For automatic enforcement. Local device time to install the update. Format: HH:mm (24-hour). Cannot be used with target_os_version or target_local_date_time.",
-				Optional:    true,
+				MarkdownDescription: "For automatic enforcement. Local device time to install the update. Format: `HH:mm` (24-hour). Cannot be used with `target_os_version` or `target_local_date_time`.",
+				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
 						regexp.MustCompile(`^(?:[01]\d|2[0-3]):[0-5]\d$`),
@@ -50,8 +50,8 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 				},
 			},
 			"enforce_after_days": schema.Int64Attribute{
-				Description: "For automatic enforcement. Days after release to enforce the update. Maximum is 30. Cannot be used with target_os_version or target_local_date_time.",
-				Optional:    true,
+				MarkdownDescription: "For automatic enforcement. Days after release to enforce the update. Maximum is `30`. Cannot be used with `target_os_version` or `target_local_date_time`.",
+				Optional:            true,
 				Validators: []validator.Int64{
 					int64validator.Between(0, 30),
 					int64validator.AlsoRequires(
@@ -64,8 +64,8 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 				},
 			},
 			"target_os_version": schema.StringAttribute{
-				Description: "For manual enforcement. Target OS version. Format: major.minor[.patch]. Cannot be used with deployment_time or enforce_after_days.",
-				Optional:    true,
+				MarkdownDescription: "For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time` or `enforce_after_days`.",
+				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
 						regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`),
@@ -81,8 +81,8 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 				},
 			},
 			"target_local_date_time": schema.StringAttribute{
-				Description: "For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with deployment_time or enforce_after_days.",
-				Optional:    true,
+				MarkdownDescription: "For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time` or `enforce_after_days`.",
+				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
 						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`),
@@ -98,8 +98,8 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 				},
 			},
 			"details_url_value": schema.StringAttribute{
-				Description: "URL of a web page with the details about the software update.",
-				Optional:    true,
+				MarkdownDescription: "URL of a web page with the details about the software update.",
+				Optional:            true,
 			},
 		},
 	}
