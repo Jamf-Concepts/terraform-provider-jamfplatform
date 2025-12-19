@@ -6,15 +6,17 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
+
+const defaultDeviceGroupReadTimeout = 30 * time.Second
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceGroupDataSource{}
@@ -32,16 +34,14 @@ func (d *DeviceGroupDataSource) Metadata(ctx context.Context, req datasource.Met
 // Schema sets the Terraform schema for the data source.
 func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lookup a Jamf device group by ID or name. Requires **Device Group Inventory API** access.",
+		MarkdownDescription: "Lookup a Jamf device group by ID. Requires **Device Group Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Optional device group Platform ID to query.",
-				Optional:            true,
-				Computed:            true,
+				MarkdownDescription: "Device group Platform ID to query.",
+				Required:            true,
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "Optional device group name to query (case-insensitive).",
-				Optional:            true,
+				MarkdownDescription: "Device group name.",
 				Computed:            true,
 			},
 			"description": schema.StringAttribute{
@@ -49,20 +49,12 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:            true,
 			},
 			"device_type": schema.StringAttribute{
-				MarkdownDescription: "Optional device type filter. When set, the value is returned in lowercase. Valid values are `computer` and `mobile`.",
-				Optional:            true,
+				MarkdownDescription: "Device type value returned in lowercase.",
 				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("computer", "mobile"),
-				},
 			},
 			"group_type": schema.StringAttribute{
-				MarkdownDescription: "Optional group type filter. When set, the value is returned in lowercase. Valid values are `static` and `smart`.",
-				Optional:            true,
+				MarkdownDescription: "Group type value returned in lowercase.",
 				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("static", "smart"),
-				},
 			},
 			"member_count": schema.Int64Attribute{
 				MarkdownDescription: "Number of members in the group.",
@@ -110,6 +102,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 					},
 				},
 			},
+			"timeouts": timeouts.Block(ctx),
 		},
 	}
 }
@@ -133,7 +126,7 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 	d.client = client
 }
 
-// Read fetches a device group by ID or name and populates the Terraform state.
+// Read fetches a device group by ID and populates the Terraform state.
 func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data DeviceGroupDataSourceModel
 
@@ -150,75 +143,35 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	lookupID := ""
-	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		lookupID = data.ID.ValueString()
-	}
-
-	lookupName := ""
-	if !data.Name.IsNull() && data.Name.ValueString() != "" {
-		lookupName = data.Name.ValueString()
-	}
-
-	desiredDeviceType := ""
-	if !data.DeviceType.IsNull() && data.DeviceType.ValueString() != "" {
-		desiredDeviceType = strings.ToLower(data.DeviceType.ValueString())
-	}
-
-	desiredGroupType := ""
-	if !data.GroupType.IsNull() && data.GroupType.ValueString() != "" {
-		desiredGroupType = strings.ToLower(data.GroupType.ValueString())
-	}
-
-	if lookupID == "" && lookupName == "" {
+	if data.ID.IsNull() || data.ID.ValueString() == "" {
 		resp.Diagnostics.AddError(
-			"Missing query arguments",
-			"Either id or name must be provided to read a device group.",
+			"Missing ID",
+			"The id attribute must be provided to read a device group.",
 		)
 		return
 	}
 
-	if lookupID != "" && lookupName != "" {
-		resp.Diagnostics.AddError(
-			"Conflicting query arguments",
-			"Only one of id or name can be set when reading a device group.",
-		)
-		return
+	readTimeout := defaultDeviceGroupReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultDeviceGroupReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
 	}
 
-	var (
-		grp *client.DeviceGroupReadRepresentationV1
-		err error
-	)
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
 
-	if lookupID != "" {
-		grp, err = d.client.GetDeviceGroupByIDV1(ctx, lookupID)
-	} else {
-		grp, err = d.lookupDeviceGroupByFilters(ctx, lookupName, desiredDeviceType, desiredGroupType)
-	}
+	grp, err := d.client.GetDeviceGroupByIDV1(readCtx, data.ID.ValueString())
 
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to find device group", err.Error())
 		return
 	}
 
-	if desiredDeviceType != "" && !strings.EqualFold(grp.DeviceType, desiredDeviceType) {
-		resp.Diagnostics.AddError(
-			"Device type filter mismatch",
-			fmt.Sprintf("Device group %s has device_type %q, expected %q", grp.ID, grp.DeviceType, desiredDeviceType),
-		)
-		return
-	}
-
-	if desiredGroupType != "" && !strings.EqualFold(grp.GroupType, desiredGroupType) {
-		resp.Diagnostics.AddError(
-			"Group type filter mismatch",
-			fmt.Sprintf("Device group %s has group_type %q, expected %q", grp.ID, grp.GroupType, desiredGroupType),
-		)
-		return
-	}
-
-	members, err := d.client.GetDeviceGroupMembersV1(ctx, grp.ID)
+	members, err := d.client.GetDeviceGroupMembersV1(readCtx, grp.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read device group members", err.Error())
 		return
@@ -245,6 +198,8 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		groupType = types.StringValue(strings.ToLower(grp.GroupType))
 	}
 
+	timeoutsConfig := data.Timeouts
+
 	data = DeviceGroupDataSourceModel{
 		ID:          types.StringValue(grp.ID),
 		Name:        types.StringValue(grp.Name),
@@ -254,6 +209,7 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		Criteria:    flattenDeviceGroupCriteria(grp.Criteria, nil),
 		Members:     setMembers,
 		MemberCount: types.Int64Value(int64(grp.MemberCount)),
+		Timeouts:    timeoutsConfig,
 	}
 
 	tflog.Trace(ctx, "read device group data source", map[string]interface{}{
@@ -261,50 +217,4 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 	})
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-// lookupDeviceGroupByFilters searches for a device group by name and optional filters.
-func (d *DeviceGroupDataSource) lookupDeviceGroupByFilters(ctx context.Context, name, deviceType, groupType string) (*client.DeviceGroupReadRepresentationV1, error) {
-	clauses := []string{}
-	if name != "" {
-		clauses = append(clauses, fmt.Sprintf(`name=="%s"`, escapeFilterValue(name)))
-	}
-	if deviceType != "" {
-		clauses = append(clauses, fmt.Sprintf(`deviceType=="%s"`, escapeFilterValue(strings.ToUpper(deviceType))))
-	}
-	if groupType != "" {
-		clauses = append(clauses, fmt.Sprintf(`groupType=="%s"`, escapeFilterValue(strings.ToUpper(groupType))))
-	}
-	filter := strings.Join(clauses, " and ")
-
-	groups, err := d.client.GetDeviceGroupsV1(ctx, nil, filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search device groups: %w", err)
-	}
-
-	switch len(groups) {
-	case 0:
-		return nil, fmt.Errorf("no device groups matched filter %q", filter)
-	case 1:
-		group := groups[0]
-		needsFullFetch := group.GroupType == "SMART" && len(group.Criteria) == 0
-		if needsFullFetch {
-			return d.client.GetDeviceGroupByIDV1(ctx, group.ID)
-		}
-		return &client.DeviceGroupReadRepresentationV1{
-			ID:          group.ID,
-			Name:        group.Name,
-			Description: group.Description,
-			DeviceType:  group.DeviceType,
-			GroupType:   group.GroupType,
-			MemberCount: group.MemberCount,
-			Criteria:    group.Criteria,
-		}, nil
-	default:
-		return nil, fmt.Errorf("multiple device groups matched filter %q; please refine the query or use id", filter)
-	}
-}
-
-func escapeFilterValue(value string) string {
-	return strings.ReplaceAll(value, "\"", `\\"`)
 }
