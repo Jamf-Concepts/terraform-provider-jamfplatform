@@ -15,10 +15,8 @@ type DeviceGroupsDataSource struct {
 
 // DeviceGroupsDataSourceModel represents the Terraform data source model for Jamf device groups.
 type DeviceGroupsDataSourceModel struct {
-	Name         types.String                        `tfsdk:"name"`
-	Description  types.String                        `tfsdk:"description"`
-	DeviceType   types.String                        `tfsdk:"device_type"`
-	GroupType    types.String                        `tfsdk:"group_type"`
+	ID           types.String                        `tfsdk:"id"`
+	Filters      []DeviceGroupsFilterModel           `tfsdk:"filter"`
 	Timeouts     timeouts.Value                      `tfsdk:"timeouts"`
 	DeviceGroups []DeviceGroupsDataSourceResultModel `tfsdk:"device_groups"`
 }
@@ -31,4 +29,12 @@ type DeviceGroupsDataSourceResultModel struct {
 	DeviceType  types.String `tfsdk:"device_type"`
 	GroupType   types.String `tfsdk:"group_type"`
 	MemberCount types.Int64  `tfsdk:"member_count"`
+}
+
+// DeviceGroupsFilterModel represents a single declarative RSQL clause provided by the user.
+type DeviceGroupsFilterModel struct {
+	Selector types.String `tfsdk:"selector"`
+	Operator types.String `tfsdk:"operator"`
+	Argument types.String `tfsdk:"argument"`
+	JoinWith types.String `tfsdk:"join_with"`
 }

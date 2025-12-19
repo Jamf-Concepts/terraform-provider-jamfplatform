@@ -38,30 +38,41 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, req datasource.Sche
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Search Jamf device groups using optional filters. Requires **Device Group Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
-			"name": schema.StringAttribute{
-				MarkdownDescription: "Optional device group name filter (case-insensitive).",
-				Optional:            true,
-			},
-			"description": schema.StringAttribute{
-				MarkdownDescription: "Optional description filter (exact match).",
-				Optional:            true,
-			},
-			"device_type": schema.StringAttribute{
-				MarkdownDescription: "Optional device type filter. Valid values are `computer` and `mobile`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("computer", "mobile"),
-				},
-			},
-			"group_type": schema.StringAttribute{
-				MarkdownDescription: "Optional group type filter. Valid values are `static` and `smart`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf("static", "smart"),
-				},
+			"id": schema.StringAttribute{
+				MarkdownDescription: "Internal identifier for this data source read.",
+				Computed:            true,
 			},
 		},
 		Blocks: map[string]schema.Block{
+			"filter": schema.ListNestedBlock{
+				MarkdownDescription: "Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause.",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"selector": schema.StringAttribute{
+							MarkdownDescription: "RSQL selector for device groups. Valid values are `name`, `description`, `deviceType`, and `groupType`.",
+							Required:            true,
+							Validators: []validator.String{
+								stringvalidator.OneOf("name", "description", "deviceType", "groupType"),
+							},
+						},
+						"operator": schema.StringAttribute{
+							MarkdownDescription: "RSQL comparison operator such as `==`, `!=`, `=in=`, `>`, etc.",
+							Required:            true,
+						},
+						"argument": schema.StringAttribute{
+							MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as required by the API. The provider automatically escapes embedded double quotes and wraps the argument in double quotes whenever it contains RSQL-reserved characters (for example commas or spaces). Supply your own quoting only when you need custom list expressions such as those used with `=in=`.",
+							Required:            true,
+						},
+						"join_with": schema.StringAttribute{
+							MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
+							Optional:            true,
+							Validators: []validator.String{
+								stringvalidator.OneOf("and", "or"),
+							},
+						},
+					},
+				},
+			},
 			"device_groups": schema.ListNestedBlock{
 				MarkdownDescription: "Device groups that matched the applied filters.",
 				NestedObject: schema.NestedBlockObject{
@@ -183,6 +194,7 @@ func (d *DeviceGroupsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 
 	data.DeviceGroups = results
+	data.ID = types.StringValue("device_groups")
 
 	tflog.Trace(ctx, "listed device group data source", map[string]interface{}{
 		"filter": filter,
