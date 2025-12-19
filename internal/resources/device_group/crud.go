@@ -6,11 +6,17 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+)
+
+const (
+	deviceGroupCreateMaxAttempts = 5
+	deviceGroupCreateRetryDelay  = 2 * time.Second
 )
 
 // Create creates a new Jamf Platform device group resource.
@@ -67,6 +73,11 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	plan.ID = types.StringValue(created.ID)
+
+	if err := r.waitForDeviceGroupAvailability(ctx, created.ID); err != nil {
+		resp.Diagnostics.AddError("Device group not yet available", err.Error())
+		return
+	}
 
 	if !r.refreshDeviceGroupState(ctx, created.ID, &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
