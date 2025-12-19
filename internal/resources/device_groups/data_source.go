@@ -56,8 +56,8 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, req datasource.Sche
 							},
 						},
 						"operator": schema.StringAttribute{
-							MarkdownDescription: "RSQL comparison operator such as `==`, `!=`, `=in=`, `>`, etc.",
-							Required:            true,
+							MarkdownDescription: "RSQL comparison operator such as `==`, `!=`, `=in=`, `>`, etc. Defaults to `==` when omitted.",
+							Optional:            true,
 						},
 						"argument": schema.StringAttribute{
 							MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as required by the API. The provider automatically escapes embedded double quotes and wraps the argument in double quotes whenever it contains RSQL-reserved characters (for example commas or spaces). Supply your own quoting only when you need custom list expressions such as those used with `=in=`.",

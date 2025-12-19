@@ -17,13 +17,11 @@ Search Jamf device groups using optional filters. Requires **Device Group Invent
 data "jamfplatform_device_groups" "static_computer_groups" {
   filter {
     selector = "deviceType"
-    operator = "=="
     argument = "COMPUTER"
   }
   filter {
     join_with = "and"
     selector  = "groupType"
-    operator  = "=="
     argument  = "STATIC"
   }
 }
@@ -32,13 +30,11 @@ data "jamfplatform_device_groups" "static_computer_groups" {
 data "jamfplatform_device_groups" "smart_groups_name_wildcard_match" {
   filter {
     selector = "name"
-    operator = "=="
     argument = "My Group*"
   }
   filter {
     join_with = "and"
     selector  = "groupType"
-    operator  = "=="
     argument  = "SMART"
   }
 }
@@ -72,12 +68,12 @@ data "jamfplatform_device_groups" "name_does_not_contain" {
 Required:
 
 - `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API. The provider automatically escapes embedded double quotes and wraps the argument in double quotes whenever it contains RSQL-reserved characters (for example commas or spaces). Supply your own quoting only when you need custom list expressions such as those used with `=in=`.
-- `operator` (String) RSQL comparison operator such as `==`, `!=`, `=in=`, `>`, etc.
 - `selector` (String) RSQL selector for device groups. Valid values are `name`, `description`, `deviceType`, and `groupType`.
 
 Optional:
 
 - `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.
+- `operator` (String) RSQL comparison operator such as `==`, `!=`, `=in=`, `>`, etc. Defaults to `==` when omitted.
 
 
 <a id="nestedblock--timeouts"></a>

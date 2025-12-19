@@ -15,14 +15,19 @@ func buildDeviceGroupFilter(data *DeviceGroupsDataSourceModel) string {
 	joiners := []string{}
 	for _, filter := range data.Filters {
 		selector, hasSelector := configuredFilterValue(filter.Selector)
-		operator, hasOperator := configuredFilterValue(filter.Operator)
 		argument, hasArgument := configuredFilterValue(filter.Argument)
-		if !hasSelector || !hasOperator || !hasArgument {
+		if !hasSelector || !hasArgument {
 			continue
 		}
 		if !isValidDeviceGroupSelector(selector) {
 			continue
 		}
+
+		operator := "=="
+		if value, ok := configuredFilterValue(filter.Operator); ok {
+			operator = value
+		}
+
 		clause := fmt.Sprintf("%s%s%s", selector, operator, formatArgument(argument))
 		clauses = append(clauses, clause)
 

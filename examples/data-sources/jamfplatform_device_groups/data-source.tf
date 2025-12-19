@@ -2,13 +2,11 @@
 data "jamfplatform_device_groups" "static_computer_groups" {
   filter {
     selector = "deviceType"
-    operator = "=="
     argument = "COMPUTER"
   }
   filter {
     join_with = "and"
     selector  = "groupType"
-    operator  = "=="
     argument  = "STATIC"
   }
 }
@@ -17,13 +15,11 @@ data "jamfplatform_device_groups" "static_computer_groups" {
 data "jamfplatform_device_groups" "smart_groups_name_wildcard_match" {
   filter {
     selector = "name"
-    operator = "=="
     argument = "My Group*"
   }
   filter {
     join_with = "and"
     selector  = "groupType"
-    operator  = "=="
     argument  = "SMART"
   }
 }
