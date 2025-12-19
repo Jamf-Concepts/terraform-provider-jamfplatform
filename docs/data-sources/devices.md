@@ -13,11 +13,29 @@ List Jamf devices via the Device Inventory API. Requires **Device Inventory API*
 ## Example Usage
 
 ```terraform
+# All devices
 data "jamfplatform_devices" "all" {
 }
 
-data "jamfplatform_devices" "example_by_model" {
-  filter = "model==\"MacBook Pro\""
+# Virtual machines based on model identifier
+data "jamfplatform_devices" "virtual_machines" {
+  filter {
+    selector = "modelIdentifier"
+    argument = "VirtualMac*"
+  }
+}
+
+# iPhones with OS version 26 or higher
+data "jamfplatform_devices" "iphones_os_26_plus" {
+  filter {
+    selector = "model"
+    argument = "iPhone*"
+  }
+  filter {
+    selector = "operatingSystemVersion"
+    operator = ">="
+    argument = "26"
+  }
 }
 ```
 
@@ -26,12 +44,35 @@ data "jamfplatform_devices" "example_by_model" {
 
 ### Optional
 
-- `filter` (String) Optional filter expression to limit returned devices (e.g., `model=="MacBook Pro*"`).
+- `filter` (Block List) Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause. (see [below for nested schema](#nestedblock--filter))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
 - `devices` (Attributes List) Devices that matched the optional filter. (see [below for nested schema](#nestedatt--devices))
 - `id` (String) Internal identifier for this data source read.
+
+<a id="nestedblock--filter"></a>
+### Nested Schema for `filter`
+
+Required:
+
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `selector` (String) RSQL selector. Valid values are `id`, `name`, `model`, `modelIdentifier`, `serialNumber`, `lastInventoryUpdateTime`, `lastCheckInTime`, `operatingSystemVersion`, `userId`, `enrollmentType`, and `lastEnrollmentTime`.
+
+Optional:
+
+- `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.
+- `operator` (String) RSQL comparison operator. Valid values are `==`, `!=`, `=in=`, `=out=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.
+
+
+<a id="nestedblock--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
 
 <a id="nestedatt--devices"></a>
 ### Nested Schema for `devices`

@@ -5,16 +5,17 @@ package device
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
+
+const defaultDeviceReadTimeout = 30 * time.Second
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceDataSource{}
@@ -32,27 +33,15 @@ func (d *DeviceDataSource) Metadata(ctx context.Context, req datasource.Metadata
 // Schema defines the data source schema.
 func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lookup a Jamf device by ID or serial number via the Device Inventory API. Requires **Device Inventory API** access.",
+		MarkdownDescription: "Lookup a Jamf device by ID via the Device Inventory API. Requires **Device Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Optional device UUID (Jamf Pro Management ID) to query.",
-				Optional:            true,
-				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("serial_number"),
-					),
-				},
+				MarkdownDescription: "Device UUID (Jamf Pro Management ID) to query.",
+				Required:            true,
 			},
 			"serial_number": schema.StringAttribute{
-				MarkdownDescription: "Optional device serial number to query (case-sensitive).",
-				Optional:            true,
+				MarkdownDescription: "Device serial number reported by inventory (case-sensitive).",
 				Computed:            true,
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("id"),
-					),
-				},
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Device name reported by inventory.",
@@ -171,6 +160,9 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				Computed:            true,
 			},
 		},
+		Blocks: map[string]schema.Block{
+			"timeouts": timeouts.Block(ctx),
+		},
 	}
 }
 
@@ -192,7 +184,7 @@ func (d *DeviceDataSource) Configure(ctx context.Context, req datasource.Configu
 	d.client = client
 }
 
-// Read fetches a device by ID or serial number and populates the Terraform state.
+// Read fetches a device by ID and populates the Terraform state.
 func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data DeviceDataSourceModel
 
@@ -213,83 +205,51 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if !data.ID.IsNull() && !data.ID.IsUnknown() {
 		lookupID = data.ID.ValueString()
 	}
-
-	lookupSerial := ""
-	if !data.SerialNumber.IsNull() && !data.SerialNumber.IsUnknown() {
-		lookupSerial = data.SerialNumber.ValueString()
-	}
-
-	if lookupID == "" && lookupSerial == "" {
+	if lookupID == "" {
 		resp.Diagnostics.AddError(
-			"Missing query arguments",
-			"Either id or serial_number must be provided to read a device.",
+			"Missing device id",
+			"The id attribute must be provided to read a device.",
 		)
 		return
 	}
 
-	var (
-		deviceID      string
-		filter        string
-		matchedDevice *client.DeviceListReadRepresentationV1
-	)
-
-	if lookupID != "" {
-		deviceID = lookupID
-	} else {
-		filter = fmt.Sprintf(`serialNumber=="%s"`, escapeFilterValue(lookupSerial))
-		devices, err := d.client.GetDevicesV1(ctx, nil, filter)
-		if err != nil {
-			resp.Diagnostics.AddError("Unable to search devices", err.Error())
+	readTimeout := defaultDeviceReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultDeviceReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
-
-		switch len(devices) {
-		case 0:
-			resp.Diagnostics.AddError("Device not found", fmt.Sprintf("No devices matched filter %q", filter))
-			return
-		case 1:
-			matchedDevice = &devices[0]
-			deviceID = matchedDevice.ID
-		default:
-			resp.Diagnostics.AddError("Multiple devices matched", fmt.Sprintf("Filter %q returned %d devices; please refine your query", filter, len(devices)))
-			return
-		}
+		readTimeout = configuredTimeout
 	}
 
-	deviceDetail, err := d.client.GetDeviceByIDV1(ctx, deviceID)
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
+	deviceDetail, err := d.client.GetDeviceByIDV1(readCtx, lookupID)
 	if err != nil {
-		resp.Diagnostics.AddError("Unable to read device", fmt.Sprintf("Failed to get device %s: %s", deviceID, err))
+		resp.Diagnostics.AddError("Unable to read device", fmt.Sprintf("Failed to get device %s: %s", lookupID, err))
 		return
 	}
 
 	serialValue := ""
 	if deviceDetail.Hardware != nil && deviceDetail.Hardware.SerialNumber != "" {
 		serialValue = deviceDetail.Hardware.SerialNumber
-	} else if matchedDevice != nil && matchedDevice.SerialNumber != "" {
-		serialValue = matchedDevice.SerialNumber
-	} else if lookupSerial != "" {
-		serialValue = lookupSerial
 	}
 
 	modelValue := ""
 	if deviceDetail.Hardware != nil && deviceDetail.Hardware.Model != "" {
 		modelValue = deviceDetail.Hardware.Model
-	} else if matchedDevice != nil && matchedDevice.Model != "" {
-		modelValue = matchedDevice.Model
 	}
 
 	modelIdentifierValue := ""
 	if deviceDetail.Hardware != nil && deviceDetail.Hardware.ModelIdentifier != "" {
 		modelIdentifierValue = deviceDetail.Hardware.ModelIdentifier
-	} else if matchedDevice != nil && matchedDevice.ModelIdentifier != "" {
-		modelIdentifierValue = matchedDevice.ModelIdentifier
 	}
 
 	operatingSystemVersion := ""
 	if deviceDetail.OperatingSystem != nil && deviceDetail.OperatingSystem.Version != "" {
 		operatingSystemVersion = deviceDetail.OperatingSystem.Version
-	} else if matchedDevice != nil && matchedDevice.OperatingSystemVersion != "" {
-		operatingSystemVersion = matchedDevice.OperatingSystemVersion
 	}
 
 	data.ID = types.StringValue(deviceDetail.ID)
@@ -358,8 +318,7 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	tflog.Trace(ctx, "read device data source", map[string]interface{}{
-		"id":     deviceDetail.ID,
-		"filter": filter,
+		"id": deviceDetail.ID,
 	})
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
