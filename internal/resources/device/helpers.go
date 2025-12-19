@@ -3,8 +3,6 @@
 package device
 
 import (
-	"strings"
-
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -30,9 +28,4 @@ func boolPointerValueOrNull(value *bool) types.Bool {
 		return types.BoolNull()
 	}
 	return types.BoolValue(*value)
-}
-
-// escapeFilterValue escapes double quotes for use in API filter strings.
-func escapeFilterValue(value string) string {
-	return strings.ReplaceAll(value, "\"", `\\"`)
 }
