@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-const defaultDeviceReadTimeout = 90 * time.Second
+const defaultDeviceReadTimeout = 30 * time.Second
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceDataSource{}
