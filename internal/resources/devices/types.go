@@ -4,6 +4,7 @@ package devices
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -14,9 +15,10 @@ type DevicesDataSource struct {
 
 // DevicesDataSourceModel represents the Terraform data source model for Jamf devices lookups.
 type DevicesDataSourceModel struct {
-	ID      types.String       `tfsdk:"id"`
-	Filter  types.String       `tfsdk:"filter"`
-	Devices []DevicesListEntry `tfsdk:"devices"`
+	ID       types.String         `tfsdk:"id"`
+	Filters  []DevicesFilterModel `tfsdk:"filter"`
+	Timeouts timeouts.Value       `tfsdk:"timeouts"`
+	Devices  []DevicesListEntry   `tfsdk:"devices"`
 }
 
 // DeviceListEntry models a single device entry in the devices data source.
@@ -32,4 +34,12 @@ type DevicesListEntry struct {
 	UserID                 types.String `tfsdk:"user_id"`
 	EnrollmentType         types.String `tfsdk:"enrollment_type"`
 	LastEnrollmentTime     types.String `tfsdk:"last_enrollment_time"`
+}
+
+// DevicesFilterModel represents a single declarative filter clause for the devices data source.
+type DevicesFilterModel struct {
+	Selector types.String `tfsdk:"selector"`
+	Operator types.String `tfsdk:"operator"`
+	Argument types.String `tfsdk:"argument"`
+	JoinWith types.String `tfsdk:"join_with"`
 }

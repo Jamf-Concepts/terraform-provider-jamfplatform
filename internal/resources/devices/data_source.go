@@ -5,18 +5,24 @@ package devices
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
+const defaultDevicesReadTimeout = 90 * time.Second
+
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DevicesDataSource{}
 
-// NewDevicesDataSource returns a new instance of DevicesDataSource:.
+// NewDevicesDataSource returns a new instance of DevicesDataSource.
 func NewDevicesDataSource() datasource.DataSource {
 	return &DevicesDataSource{}
 }
@@ -34,10 +40,6 @@ func (d *DevicesDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",
 				Computed:            true,
-			},
-			"filter": schema.StringAttribute{
-				MarkdownDescription: "Optional filter expression to limit returned devices (e.g., `model==\"MacBook Pro*\"`).",
-				Optional:            true,
 			},
 			"devices": schema.ListNestedAttribute{
 				MarkdownDescription: "Devices that matched the optional filter.",
@@ -92,6 +94,41 @@ func (d *DevicesDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				},
 			},
 		},
+		Blocks: map[string]schema.Block{
+			"filter": schema.ListNestedBlock{
+				MarkdownDescription: "Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause.",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"selector": schema.StringAttribute{
+							MarkdownDescription: "RSQL selector. Valid values are `id`, `name`, `model`, `modelIdentifier`, `serialNumber`, `lastInventoryUpdateTime`, `lastCheckInTime`, `operatingSystemVersion`, `userId`, `enrollmentType`, and `lastEnrollmentTime`.",
+							Required:            true,
+							Validators: []validator.String{
+								stringvalidator.OneOf("id", "name", "model", "modelIdentifier", "serialNumber", "lastInventoryUpdateTime", "lastCheckInTime", "operatingSystemVersion", "userId", "enrollmentType", "lastEnrollmentTime"),
+							},
+						},
+						"operator": schema.StringAttribute{
+							MarkdownDescription: "RSQL comparison operator. Valid values are `==`, `!=`, `=in=`, `=out=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.",
+							Optional:            true,
+							Validators: []validator.String{
+								stringvalidator.OneOf("==", "!=", "=in=", "=out=", ">", "<", ">=", "<="),
+							},
+						},
+						"argument": schema.StringAttribute{
+							MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).",
+							Required:            true,
+						},
+						"join_with": schema.StringAttribute{
+							MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
+							Optional:            true,
+							Validators: []validator.String{
+								stringvalidator.OneOf("and", "or"),
+							},
+						},
+					},
+				},
+			},
+			"timeouts": timeouts.Block(ctx),
+		},
 	}
 }
 
@@ -130,12 +167,22 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	filter := ""
-	if !data.Filter.IsNull() && !data.Filter.IsUnknown() {
-		filter = data.Filter.ValueString()
+	readTimeout := defaultDevicesReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultDevicesReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
 	}
 
-	devices, err := d.client.GetDevicesV1(ctx, nil, filter)
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
+	filterExpression := buildDevicesFilter(&data)
+
+	devices, err := d.client.GetDevicesV1(readCtx, nil, filterExpression)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list devices", err.Error())
 		return
@@ -159,15 +206,10 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	data.ID = types.StringValue("devices")
-	if filter == "" {
-		data.Filter = types.StringNull()
-	} else {
-		data.Filter = types.StringValue(filter)
-	}
 	data.Devices = deviceEntries
 
 	tflog.Trace(ctx, "read devices data source", map[string]interface{}{
-		"filter": filter,
+		"filter": filterExpression,
 		"count":  len(deviceEntries),
 	})
 
