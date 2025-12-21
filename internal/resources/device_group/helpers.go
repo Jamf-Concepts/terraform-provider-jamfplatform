@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
@@ -33,6 +35,44 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 
 	diags.Append(assignDeviceGroupModel(ctx, model, grp, members, manageMembers, manageDescription)...)
 	return !diags.HasError()
+}
+
+// waitForDeviceGroupAvailability polls the API until the newly created device group is available.
+func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context, id string) error {
+	var lastErr error
+	for attempt := 1; attempt <= deviceGroupCreateMaxAttempts; attempt++ {
+		_, err := r.client.GetDeviceGroupByIDV1(ctx, id)
+		if err == nil {
+			return nil
+		}
+		if !isNotFoundError(err) {
+			return err
+		}
+
+		lastErr = err
+		if attempt == deviceGroupCreateMaxAttempts {
+			break
+		}
+
+		tflog.Debug(ctx, "device group not yet available, retrying", map[string]interface{}{
+			"id":      id,
+			"attempt": attempt,
+		})
+
+		timer := time.NewTimer(deviceGroupCreateRetryDelay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return fmt.Errorf("context cancelled while waiting for device group %s: %w", id, ctx.Err())
+		case <-timer.C:
+		}
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("device group %s not ready", id)
+	}
+
+	return fmt.Errorf("device group %s not yet available after %d attempts: %w", id, deviceGroupCreateMaxAttempts, lastErr)
 }
 
 // assignDeviceGroupModel maps API representation to Terraform model, respecting managed fields.
