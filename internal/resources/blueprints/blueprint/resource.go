@@ -6,9 +6,11 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -24,6 +26,13 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BlueprintResource{}
 var _ resource.ResourceWithImportState = &BlueprintResource{}
+
+const (
+	defaultCreateTimeout = 60 * time.Second
+	defaultReadTimeout   = 60 * time.Second
+	defaultUpdateTimeout = 60 * time.Second
+	defaultDeleteTimeout = 60 * time.Second
+)
 
 // NewBlueprintResource returns a new instance of BlueprintResource.
 func NewBlueprintResource() resource.Resource {
@@ -83,6 +92,12 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 				MarkdownDescription: "JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have `payloadType` and `payloadIdentifier` fields. The payload display name will automatically use the blueprint name.",
 				Optional:            true,
 			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Read:   true,
+				Update: true,
+				Delete: true,
+			}),
 		},
 		Blocks: map[string]schema.Block{
 			"raw_component": schema.ListNestedBlock{

@@ -31,6 +31,7 @@ output "blueprint_example_all" {
 
 - `id` (String) The blueprint ID to fetch. Optional if name is set.
 - `name` (String) The blueprint name to fetch. Optional if id is set.
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -41,6 +42,14 @@ output "blueprint_example_all" {
 - `description` (String) Description.
 - `device_groups` (Set of String) Device groups in scope.
 - `updated` (String) Updated at (RFC3339).
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
 
 <a id="nestedatt--component"></a>
 ### Nested Schema for `component`

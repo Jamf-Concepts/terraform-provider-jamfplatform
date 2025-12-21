@@ -154,6 +154,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 - `service_configuration_files` (Block List) Service configuration files component for managing configuration files for system services. (see [below for nested schema](#nestedblock--service_configuration_files))
 - `software_update` (Block List) Software update component for enforcing OS updates on devices. (see [below for nested schema](#nestedblock--software_update))
 - `software_update_settings` (Block List) Software update settings component for configuring system update behavior and policies. (see [below for nested schema](#nestedblock--software_update_settings))
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -493,6 +494,18 @@ Required:
 
 - `description` (String) Beta program description (1-1000 characters).
 - `token` (String) Beta program token (1-1000 characters).
+
+
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+- `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
+- `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
+- `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
 
 ## Import
 
