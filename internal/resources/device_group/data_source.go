@@ -65,6 +65,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
+			"timeouts": timeouts.Attributes(ctx),
 		},
 		Blocks: map[string]schema.Block{
 			"criteria": schema.ListNestedBlock{
@@ -102,7 +103,6 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 					},
 				},
 			},
-			"timeouts": timeouts.Block(ctx),
 		},
 	}
 }

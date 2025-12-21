@@ -159,9 +159,7 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				MarkdownDescription: "Indicates whether lost mode is enabled.",
 				Computed:            true,
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"timeouts": timeouts.Block(ctx),
+			"timeouts": timeouts.Attributes(ctx),
 		},
 	}
 }

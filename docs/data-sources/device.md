@@ -31,7 +31,7 @@ output "device_by_id" {
 
 ### Optional
 
-- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -66,7 +66,7 @@ output "device_by_id" {
 - `supervised` (Boolean) Indicates whether the device is supervised.
 - `user_id` (String) User ID associated with the device, if any.
 
-<a id="nestedblock--timeouts"></a>
+<a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
