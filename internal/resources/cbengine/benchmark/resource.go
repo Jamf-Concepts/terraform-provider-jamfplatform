@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -22,6 +24,12 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BenchmarkResource{}
 var _ resource.ResourceWithImportState = &BenchmarkResource{}
+
+const (
+	defaultCreateTimeout = 15 * time.Minute
+	defaultReadTimeout   = 60 * time.Second
+	defaultDeleteTimeout = 15 * time.Minute
+)
 
 // NewBenchmarkResource returns a new instance of BenchmarkResource.
 func NewBenchmarkResource() resource.Resource {
@@ -239,6 +247,11 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				MarkdownDescription: "Timestamp (RFC3339) of the last update to the benchmark.",
 				Computed:            true,
 			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Read:   true,
+				Delete: true,
+			}),
 		},
 	}
 }

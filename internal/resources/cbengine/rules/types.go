@@ -4,6 +4,7 @@ package rules
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -14,9 +15,10 @@ type RulesDataSource struct {
 
 // RulesDataSourceModel represents the Terraform data source model for mSCP rules.
 type RulesDataSourceModel struct {
-	BaselineID types.String  `tfsdk:"baseline_id"`
-	Sources    []SourceModel `tfsdk:"sources"`
-	Rules      []RuleModel   `tfsdk:"rules"`
+	BaselineID types.String   `tfsdk:"baseline_id"`
+	Sources    []SourceModel  `tfsdk:"sources"`
+	Rules      []RuleModel    `tfsdk:"rules"`
+	Timeouts   timeouts.Value `tfsdk:"timeouts"`
 }
 
 // SourceModel represents a source branch and revision for a rule.

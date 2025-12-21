@@ -31,10 +31,22 @@ output "rule_titles" {
 
 - `baseline_id` (String) The baseline ID to fetch rules for.
 
+### Optional
+
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
+
 ### Read-Only
 
 - `rules` (Attributes List) List of rules for the baseline. (see [below for nested schema](#nestedatt--rules))
 - `sources` (Attributes List) List of sources for the rules baseline. (see [below for nested schema](#nestedatt--sources))
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
 
 <a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`

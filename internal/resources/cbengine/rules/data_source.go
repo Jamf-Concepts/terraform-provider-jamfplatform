@@ -5,7 +5,9 @@ package rules
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -28,11 +30,14 @@ func (d *RulesDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 	resp.TypeName = req.ProviderTypeName + "_cbengine_rules"
 }
 
+const defaultReadTimeout = 90 * time.Second
+
 // Schema sets the Terraform schema for the data source.
 func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns list of rules for a given mSCP baseline. Requires **Compliance Benchmarks API** access.",
 		Attributes: map[string]schema.Attribute{
+			"timeouts": timeouts.Attributes(ctx),
 			"baseline_id": schema.StringAttribute{
 				MarkdownDescription: "The baseline ID to fetch rules for.",
 				Required:            true,
@@ -201,6 +206,21 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
+	timeoutsValue := data.Timeouts
+
+	readTimeout := defaultReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
+	}
+
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Provider not configured",
@@ -209,7 +229,7 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	rulesResp, err := d.client.GetCBEngineRulesV1(ctx, data.BaselineID.ValueString())
+	rulesResp, err := d.client.GetCBEngineRulesV1(readCtx, data.BaselineID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get rules",
@@ -341,6 +361,7 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		BaselineID: data.BaselineID,
 		Sources:    sources,
 		Rules:      rules,
+		Timeouts:   timeoutsValue,
 	}
 
 	tflog.Trace(ctx, "read a data source")

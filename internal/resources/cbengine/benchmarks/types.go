@@ -4,6 +4,7 @@ package benchmarks
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -16,6 +17,7 @@ type BenchmarksDataSource struct {
 type BenchmarksDataSourceModel struct {
 	ID         types.String        `tfsdk:"id"`
 	Benchmarks []BenchmarkListItem `tfsdk:"benchmarks"`
+	Timeouts   timeouts.Value      `tfsdk:"timeouts"`
 }
 
 // BenchmarkListItem captures the summary fields returned by GetCBEngineBenchmarksV2.
