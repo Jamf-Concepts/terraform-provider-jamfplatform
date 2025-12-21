@@ -6,17 +6,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-)
-
-const (
-	deviceGroupCreateMaxAttempts = 5
-	deviceGroupCreateRetryDelay  = 2 * time.Second
 )
 
 // Create creates a new Jamf Platform device group resource.
@@ -29,6 +23,19 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	createTimeout := defaultCreateTimeout
+	if !plan.Timeouts.IsNull() && !plan.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := plan.Timeouts.Create(ctx, defaultCreateTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createTimeout = configuredTimeout
+	}
+
+	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
 
 	if plan.Members.IsNull() && isConfiguredValue(config.Members) {
 		plan.Members = config.Members
@@ -54,7 +61,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		reqBody.Criteria = expandDeviceGroupCriteria(plan.Criteria)
 	case "static":
 		if manageMembers {
-			members, diags := membersSetToStrings(ctx, plan.Members)
+			members, diags := membersSetToStrings(createCtx, plan.Members)
 			resp.Diagnostics.Append(diags...)
 			if resp.Diagnostics.HasError() {
 				return
@@ -63,7 +70,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		}
 	}
 
-	created, err := r.client.CreateDeviceGroupV1(ctx, reqBody)
+	created, err := r.client.CreateDeviceGroupV1(createCtx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating device group",
@@ -74,12 +81,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 
 	plan.ID = types.StringValue(created.ID)
 
-	if err := r.waitForDeviceGroupAvailability(ctx, created.ID); err != nil {
-		resp.Diagnostics.AddError("Device group not yet available", err.Error())
-		return
-	}
-
-	if !r.refreshDeviceGroupState(ctx, created.ID, &plan, manageMembers, manageDescription, &resp.Diagnostics) {
+	if !r.refreshDeviceGroupState(createCtx, created.ID, &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
 
@@ -100,12 +102,25 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	readTimeout := defaultReadTimeout
+	if !state.Timeouts.IsNull() && !state.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := state.Timeouts.Read(ctx, defaultReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
+	}
+
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
 	if state.ID.IsNull() || state.ID.ValueString() == "" {
 		resp.Diagnostics.AddError("Missing ID", "Cannot read device group without ID.")
 		return
 	}
 
-	grp, err := r.client.GetDeviceGroupByIDV1(ctx, state.ID.ValueString())
+	grp, err := r.client.GetDeviceGroupByIDV1(readCtx, state.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "device group not found, removing from state", map[string]interface{}{
@@ -123,14 +138,14 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	manageDescription := isConfiguredValue(state.Description)
 	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
 		var err error
-		members, err = r.client.GetDeviceGroupMembersV1(ctx, grp.ID)
+		members, err = r.client.GetDeviceGroupMembersV1(readCtx, grp.ID)
 		if err != nil {
 			resp.Diagnostics.AddError("Error reading device group members", err.Error())
 			return
 		}
 	}
 
-	resp.Diagnostics.Append(assignDeviceGroupModel(ctx, &state, grp, members, manageMembers, manageDescription)...)
+	resp.Diagnostics.Append(assignDeviceGroupModel(readCtx, &state, grp, members, manageMembers, manageDescription)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -146,6 +161,19 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	updateTimeout := defaultUpdateTimeout
+	if !plan.Timeouts.IsNull() && !plan.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := plan.Timeouts.Update(ctx, defaultUpdateTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		updateTimeout = configuredTimeout
+	}
+
+	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
 
 	if err := validateDeviceGroupPlan(&plan); err != nil {
 		resp.Diagnostics.AddError("Invalid device group configuration", err.Error())
@@ -164,7 +192,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		updateReq.Criteria = expandDeviceGroupCriteria(plan.Criteria)
 	}
 
-	if err := r.client.UpdateDeviceGroupV1(ctx, plan.ID.ValueString(), updateReq); err != nil {
+	if err := r.client.UpdateDeviceGroupV1(updateCtx, plan.ID.ValueString(), updateReq); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating device group",
 			fmt.Sprintf("API error: %v", err),
@@ -173,13 +201,13 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	if strings.ToLower(plan.GroupType.ValueString()) == "static" && manageMembers {
-		desired, diags := membersSetToStrings(ctx, plan.Members)
+		desired, diags := membersSetToStrings(updateCtx, plan.Members)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		current, err := r.client.GetDeviceGroupMembersV1(ctx, plan.ID.ValueString())
+		current, err := r.client.GetDeviceGroupMembersV1(updateCtx, plan.ID.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("Error reading device group members", err.Error())
 			return
@@ -191,14 +219,14 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 				Added:   added,
 				Removed: removed,
 			}
-			if err := r.client.UpdateDeviceGroupMembersV1(ctx, plan.ID.ValueString(), patch); err != nil {
+			if err := r.client.UpdateDeviceGroupMembersV1(updateCtx, plan.ID.ValueString(), patch); err != nil {
 				resp.Diagnostics.AddError("Error updating device group members", err.Error())
 				return
 			}
 		}
 	}
 
-	if !r.refreshDeviceGroupState(ctx, plan.ID.ValueString(), &plan, manageMembers, manageDescription, &resp.Diagnostics) {
+	if !r.refreshDeviceGroupState(updateCtx, plan.ID.ValueString(), &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
 
@@ -214,12 +242,25 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
+	deleteTimeout := defaultDeleteTimeout
+	if !state.Timeouts.IsNull() && !state.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := state.Timeouts.Delete(ctx, defaultDeleteTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		deleteTimeout = configuredTimeout
+	}
+
+	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
 	if state.ID.IsNull() || state.ID.ValueString() == "" {
 		resp.Diagnostics.AddError("Missing ID", "Cannot delete device group without ID.")
 		return
 	}
 
-	err := r.client.DeleteDeviceGroupV1(ctx, state.ID.ValueString())
+	err := r.client.DeleteDeviceGroupV1(deleteCtx, state.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "device group already removed", map[string]interface{}{

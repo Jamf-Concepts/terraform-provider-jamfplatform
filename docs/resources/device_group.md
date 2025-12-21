@@ -69,6 +69,7 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 - `criteria` (Block List) Smart-group criteria evaluated by the Jamf inventory service. (see [below for nested schema](#nestedblock--criteria))
 - `description` (String) Optional Description for the device group.
 - `members` (Set of String) Optional device IDs to manage for static groups. When omitted, the provider leaves membership unchanged. Ignored for smart groups.
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -90,3 +91,14 @@ Optional:
 - `has_closing_parenthesis` (Boolean) Whether the criterion ends a parenthetical grouping.
 - `has_opening_parenthesis` (Boolean) Whether the criterion begins a parenthetical grouping.
 - `order` (Number) Execution order for the criterion. Defaults to the block index if omitted.
+
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+- `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
+- `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
+- `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).

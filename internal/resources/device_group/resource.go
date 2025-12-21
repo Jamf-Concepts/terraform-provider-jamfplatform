@@ -5,8 +5,10 @@ package device_group
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -22,6 +24,13 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &DeviceGroupResource{}
 var _ resource.ResourceWithImportState = &DeviceGroupResource{}
+
+const (
+	defaultCreateTimeout = 60 * time.Second
+	defaultReadTimeout   = 60 * time.Second
+	defaultUpdateTimeout = 60 * time.Second
+	defaultDeleteTimeout = 60 * time.Second
+)
 
 // NewDeviceGroupResource returns a new instance of DeviceGroupResource.
 func NewDeviceGroupResource() resource.Resource {
@@ -88,6 +97,12 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Total members reported by the API.",
 				Computed:            true,
 			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Read:   true,
+				Update: true,
+				Delete: true,
+			}),
 		},
 		Blocks: map[string]schema.Block{
 			"criteria": schema.ListNestedBlock{
