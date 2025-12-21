@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-const defaultDevicesReadTimeout = 90 * time.Second
+const defaultReadTimeout = 90 * time.Second
 
 var filterSelectors = []string{
 	"id",
@@ -152,9 +152,9 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	readTimeout := defaultDevicesReadTimeout
+	readTimeout := defaultReadTimeout
 	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultDevicesReadTimeout)
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
 		resp.Diagnostics.Append(timeoutDiags...)
 		if resp.Diagnostics.HasError() {
 			return

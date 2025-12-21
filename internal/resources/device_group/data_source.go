@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-const defaultDeviceGroupReadTimeout = 30 * time.Second
+const defaultReadTimeout = 30 * time.Second
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceGroupDataSource{}
@@ -151,9 +151,9 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	readTimeout := defaultDeviceGroupReadTimeout
+	readTimeout := defaultReadTimeout
 	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultDeviceGroupReadTimeout)
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
 		resp.Diagnostics.Append(timeoutDiags...)
 		if resp.Diagnostics.HasError() {
 			return
