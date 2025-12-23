@@ -15,6 +15,28 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
+// refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
+func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
+	grp, err := r.client.GetDeviceGroupByIDV1(ctx, id)
+	if err != nil {
+		diags.AddError("Error reading device group", err.Error())
+		return false
+	}
+
+	var members []string
+	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
+		var err error
+		members, err = r.client.GetDeviceGroupMembersV1(ctx, grp.ID)
+		if err != nil {
+			diags.AddError("Error reading device group members", err.Error())
+			return false
+		}
+	}
+
+	diags.Append(assignDeviceGroupModel(ctx, model, grp, members, manageMembers, manageDescription)...)
+	return !diags.HasError()
+}
+
 // waitForDeviceGroupAvailability polls the API until the newly created device group is available.
 func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context, id string) error {
 	var lastErr error
@@ -53,28 +75,6 @@ func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context
 	return fmt.Errorf("device group %s not yet available after %d attempts: %w", id, deviceGroupCreateMaxAttempts, lastErr)
 }
 
-// refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
-func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
-	grp, err := r.client.GetDeviceGroupByIDV1(ctx, id)
-	if err != nil {
-		diags.AddError("Error reading device group", err.Error())
-		return false
-	}
-
-	var members []string
-	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
-		var err error
-		members, err = r.client.GetDeviceGroupMembersV1(ctx, grp.ID)
-		if err != nil {
-			diags.AddError("Error reading device group members", err.Error())
-			return false
-		}
-	}
-
-	diags.Append(assignDeviceGroupModel(ctx, model, grp, members, manageMembers, manageDescription)...)
-	return !diags.HasError()
-}
-
 // assignDeviceGroupModel maps API representation to Terraform model, respecting managed fields.
 func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel, grp *client.DeviceGroupReadRepresentationV1, members []string, manageMembers bool, manageDescription bool) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -82,7 +82,6 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 	prevDescription := model.Description
 	prevCriteria := model.Criteria
 	model.ID = types.StringValue(grp.ID)
-	model.Name = types.StringValue(grp.Name)
 	if manageDescription {
 		model.Description = reconcileOptionalString(grp.Description, prevDescription)
 	} else {

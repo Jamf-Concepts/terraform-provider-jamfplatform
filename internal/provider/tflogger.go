@@ -4,6 +4,7 @@ package provider
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -35,9 +36,13 @@ func (l *TerraformLogger) LogRequest(ctx context.Context, method, url string, bo
 }
 
 // LogResponse logs HTTP response details using tflog at DEBUG level
-func (l *TerraformLogger) LogResponse(ctx context.Context, statusCode int, body []byte) {
+func (l *TerraformLogger) LogResponse(ctx context.Context, statusCode int, headers http.Header, body []byte) {
 	fields := map[string]interface{}{
 		"status_code": statusCode,
+	}
+
+	if len(headers) > 0 {
+		fields["response_headers"] = headers
 	}
 
 	if len(body) > 0 {

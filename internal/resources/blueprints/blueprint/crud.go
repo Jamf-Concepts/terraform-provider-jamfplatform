@@ -19,6 +19,19 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	createTimeout := defaultCreateTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Create(ctx, defaultCreateTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createTimeout = configuredTimeout
+	}
+
+	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
 	var deviceGroupsSet []string
 	diags := data.DeviceGroups.ElementsAs(ctx, &deviceGroupsSet, false)
 	if diags.HasError() {
@@ -48,7 +61,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		Steps: steps,
 	}
 
-	createResp, err := r.client.CreateBlueprintV1(ctx, reqBody)
+	createResp, err := r.client.CreateBlueprintV1(createCtx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating blueprint",
@@ -57,7 +70,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	err = r.client.DeployBlueprintV1(ctx, createResp.ID)
+	err = r.client.DeployBlueprintV1(createCtx, createResp.ID)
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Blueprint deployment failed",
@@ -66,7 +79,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		)
 	}
 
-	blueprint, err := r.client.GetBlueprintByIDV1(ctx, createResp.ID)
+	blueprint, err := r.client.GetBlueprintByIDV1(createCtx, createResp.ID)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading created blueprint",
@@ -91,7 +104,20 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	blueprint, err := r.client.GetBlueprintByIDV1(ctx, data.ID.ValueString())
+	readTimeout := defaultReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
+	}
+
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
+	blueprint, err := r.client.GetBlueprintByIDV1(readCtx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint not found, removing from state", map[string]interface{}{
@@ -122,6 +148,19 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
+	updateTimeout := defaultUpdateTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Update(ctx, defaultUpdateTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		updateTimeout = configuredTimeout
+	}
+
+	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
 	var deviceGroupsSet []string
 	diags := data.DeviceGroups.ElementsAs(ctx, &deviceGroupsSet, false)
 	if diags.HasError() {
@@ -151,7 +190,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		Steps: steps,
 	}
 
-	err := r.client.UpdateBlueprintV1(ctx, data.ID.ValueString(), updateReq)
+	err := r.client.UpdateBlueprintV1(updateCtx, data.ID.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating blueprint",
@@ -160,7 +199,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	err = r.client.DeployBlueprintV1(ctx, data.ID.ValueString())
+	err = r.client.DeployBlueprintV1(updateCtx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Blueprint deployment failed",
@@ -169,7 +208,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		)
 	}
 
-	blueprint, err := r.client.GetBlueprintByIDV1(ctx, data.ID.ValueString())
+	blueprint, err := r.client.GetBlueprintByIDV1(updateCtx, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading updated blueprint",
@@ -192,12 +231,25 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
+	deleteTimeout := defaultDeleteTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Delete(ctx, defaultDeleteTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		deleteTimeout = configuredTimeout
+	}
+
+	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
 	if data.ID.IsNull() || data.ID.ValueString() == "" {
 		resp.Diagnostics.AddError("Missing ID", "Cannot delete blueprint without ID.")
 		return
 	}
 
-	err := r.client.DeleteBlueprintV1(ctx, data.ID.ValueString())
+	err := r.client.DeleteBlueprintV1(deleteCtx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint already deleted", map[string]interface{}{

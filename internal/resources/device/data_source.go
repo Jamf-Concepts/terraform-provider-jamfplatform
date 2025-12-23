@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-const defaultDeviceReadTimeout = 30 * time.Second
+const defaultReadTimeout = 30 * time.Second
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceDataSource{}
@@ -159,9 +159,7 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				MarkdownDescription: "Indicates whether lost mode is enabled.",
 				Computed:            true,
 			},
-		},
-		Blocks: map[string]schema.Block{
-			"timeouts": timeouts.Block(ctx),
+			"timeouts": timeouts.Attributes(ctx),
 		},
 	}
 }
@@ -213,9 +211,9 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	readTimeout := defaultDeviceReadTimeout
+	readTimeout := defaultReadTimeout
 	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultDeviceReadTimeout)
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
 		resp.Diagnostics.Append(timeoutDiags...)
 		if resp.Diagnostics.HasError() {
 			return

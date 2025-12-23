@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -37,6 +38,7 @@ func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				MarkdownDescription: "The blueprint ID to fetch. Optional if name is set.",
 				Optional:            true,
 			},
+			"timeouts": timeouts.Attributes(ctx),
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The blueprint name to fetch. Optional if id is set.",
 				Optional:            true,
@@ -116,6 +118,19 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
+	readTimeout := defaultReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
+	}
+
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Provider not configured",
@@ -127,9 +142,9 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 	var bp *client.BlueprintDetailV1
 	var err error
 	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByIDV1(ctx, data.ID.ValueString())
+		bp, err = d.client.GetBlueprintByIDV1(readCtx, data.ID.ValueString())
 	} else if !data.Name.IsNull() && data.Name.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByNameV1(ctx, data.Name.ValueString())
+		bp, err = d.client.GetBlueprintByNameV1(readCtx, data.Name.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
@@ -168,6 +183,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		}
 	}
 
+	timeoutsValue := data.Timeouts
 	data = BlueprintDataSourceModel{
 		ID:              data.ID,
 		Name:            types.StringValue(bp.Name),
@@ -178,6 +194,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		DeploymentState: types.StringValue(bp.DeploymentState.State),
 		DeviceGroups:    deviceGroupsSet,
 		Components:      components,
+		Timeouts:        timeoutsValue,
 	}
 
 	tflog.Trace(ctx, "read a data source")

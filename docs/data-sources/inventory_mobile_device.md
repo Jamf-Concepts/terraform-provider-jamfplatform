@@ -3,12 +3,12 @@
 page_title: "jamfplatform_inventory_mobile_device Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lookup a Jamf mobile device by ID from an Environment via the Mobile Device Inventory API. Requires Mobile Device Inventory API access.
+  Lookup a Jamf mobile device by ID from an Environment via the Mobile Device Inventory API. Requires Inventory API access.
 ---
 
 # jamfplatform_inventory_mobile_device (Data Source)
 
-Lookup a Jamf mobile device by ID from an Environment via the Mobile Device Inventory API. Requires **Mobile Device Inventory API** access.
+Lookup a Jamf mobile device by ID from an Environment via the Mobile Device Inventory API. Requires **Inventory API** access.
 
 ## Example Usage
 

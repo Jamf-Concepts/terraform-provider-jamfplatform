@@ -33,7 +33,7 @@ import (
 // Logger is an interface for logging HTTP requests and responses
 type Logger interface {
 	LogRequest(ctx context.Context, method, url string, body []byte)
-	LogResponse(ctx context.Context, statusCode int, body []byte)
+	LogResponse(ctx context.Context, statusCode int, headers http.Header, body []byte)
 }
 
 // Client represents the main API client for Jamf Platform
@@ -162,7 +162,7 @@ func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, exp
 	}
 
 	if c.logger != nil {
-		c.logger.LogResponse(ctx, resp.StatusCode, body)
+		c.logger.LogResponse(ctx, resp.StatusCode, resp.Header, body)
 	}
 
 	if resp.StatusCode != expectedStatus {

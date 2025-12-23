@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
@@ -15,8 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
-
-const defaultDeviceGroupReadTimeout = 30 * time.Second
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceGroupDataSource{}
@@ -65,6 +62,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
+			"timeouts": timeouts.Attributes(ctx),
 		},
 		Blocks: map[string]schema.Block{
 			"criteria": schema.ListNestedBlock{
@@ -102,7 +100,6 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 					},
 				},
 			},
-			"timeouts": timeouts.Block(ctx),
 		},
 	}
 }
@@ -151,9 +148,9 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	readTimeout := defaultDeviceGroupReadTimeout
+	readTimeout := defaultReadTimeout
 	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultDeviceGroupReadTimeout)
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
 		resp.Diagnostics.Append(timeoutDiags...)
 		if resp.Diagnostics.HasError() {
 			return

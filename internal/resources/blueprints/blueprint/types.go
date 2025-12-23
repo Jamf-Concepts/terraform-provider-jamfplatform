@@ -5,6 +5,8 @@ package blueprint
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
+	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
+	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -36,6 +38,7 @@ type BlueprintResourceModel struct {
 	Created                   types.String                                    `tfsdk:"created"`
 	Updated                   types.String                                    `tfsdk:"updated"`
 	DeploymentState           types.String                                    `tfsdk:"deployment_state"`
+	Timeouts                  resourceTimeouts.Value                          `tfsdk:"timeouts"`
 }
 
 // BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
@@ -45,15 +48,16 @@ type BlueprintDataSource struct {
 
 // BlueprintDataSourceModel defines the data structure for the blueprint data source.
 type BlueprintDataSourceModel struct {
-	ID              types.String     `tfsdk:"id"`
-	Name            types.String     `tfsdk:"name"`
-	BlueprintID     types.String     `tfsdk:"blueprint_id"`
-	Description     types.String     `tfsdk:"description"`
-	Created         types.String     `tfsdk:"created"`
-	Updated         types.String     `tfsdk:"updated"`
-	DeploymentState types.String     `tfsdk:"deployment_state"`
-	DeviceGroups    types.Set        `tfsdk:"device_groups"`
-	Components      []ComponentModel `tfsdk:"component"`
+	ID              types.String             `tfsdk:"id"`
+	Name            types.String             `tfsdk:"name"`
+	BlueprintID     types.String             `tfsdk:"blueprint_id"`
+	Description     types.String             `tfsdk:"description"`
+	Created         types.String             `tfsdk:"created"`
+	Updated         types.String             `tfsdk:"updated"`
+	DeploymentState types.String             `tfsdk:"deployment_state"`
+	DeviceGroups    types.Set                `tfsdk:"device_groups"`
+	Components      []ComponentModel         `tfsdk:"component"`
+	Timeouts        datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // ComponentModel defines the data structure for a blueprint component.

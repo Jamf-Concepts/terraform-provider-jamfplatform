@@ -23,6 +23,19 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	createTimeout := defaultCreateTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Create(ctx, defaultCreateTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		createTimeout = configuredTimeout
+	}
+
+	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
 	reqBody := &client.CBEngineBenchmarkRequestV2{
 		Title:            data.Title.ValueString(),
 		Description:      data.Description.ValueString(),
@@ -57,7 +70,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		"title": data.Title.ValueString(),
 	})
 
-	bench, err := r.client.CreateCBEngineBenchmarkV2(ctx, reqBody)
+	bench, err := r.client.CreateCBEngineBenchmarkV2(createCtx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating benchmark", err.Error())
 		return
@@ -74,7 +87,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		"poll_interval": pollInterval.String(),
 	})
 
-	syncedBench, err := waitForBenchmarkSync(ctx, r.client, bench.BenchmarkID, pollInterval)
+	syncedBench, err := waitForBenchmarkSync(createCtx, r.client, bench.BenchmarkID, pollInterval)
 	if err != nil {
 		tflog.Warn(ctx, "wait for benchmark sync failed", map[string]interface{}{"error": err.Error(), "benchmark_id": bench.BenchmarkID})
 		resp.Diagnostics.AddWarning(
@@ -86,7 +99,10 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		tflog.Debug(ctx, "benchmark synced", map[string]interface{}{"benchmark_id": syncedBench.ID})
 	}
 
-	data.ID = types.StringValue(syncedBench.ID)
+	data.ID = types.StringValue(bench.BenchmarkID)
+	if syncedBench != nil {
+		data.ID = types.StringValue(syncedBench.ID)
+	}
 	data.TenantID = types.StringValue(bench.TenantID)
 	data.Deleted = types.BoolValue(bench.Deleted)
 	data.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
@@ -265,12 +281,25 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
+	readTimeout := defaultReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
+	}
+
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
 	if data.ID.IsNull() || data.ID.ValueString() == "" {
 		resp.Diagnostics.AddError("Missing ID", "Cannot read benchmark without ID.")
 		return
 	}
 
-	bench, err := r.client.GetCBEngineBenchmarkByIDV2(ctx, data.ID.ValueString())
+	bench, err := r.client.GetCBEngineBenchmarkByIDV2(readCtx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]interface{}{
@@ -483,12 +512,25 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
+	deleteTimeout := defaultDeleteTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Delete(ctx, defaultDeleteTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		deleteTimeout = configuredTimeout
+	}
+
+	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
 	if data.ID.IsNull() || data.ID.ValueString() == "" {
 		resp.Diagnostics.AddError("Missing ID", "Cannot delete benchmark without ID.")
 		return
 	}
 
-	err := r.client.DeleteCBEngineBenchmarkV1(ctx, data.ID.ValueString())
+	err := r.client.DeleteCBEngineBenchmarkV1(deleteCtx, data.ID.ValueString())
 	if err != nil {
 		if isNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark already deleted", map[string]interface{}{
@@ -505,7 +547,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 	}
 
 	pollInterval := 5 * time.Second
-	if err := waitForBenchmarkDeletion(ctx, r.client, data.ID.ValueString(), pollInterval); err != nil {
+	if err := waitForBenchmarkDeletion(deleteCtx, r.client, data.ID.ValueString(), pollInterval); err != nil {
 		if isNotFoundError(err) {
 			return
 		}

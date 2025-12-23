@@ -4,6 +4,8 @@ package benchmark
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
+	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -20,18 +22,19 @@ type SourceModel struct {
 
 // BenchmarkResourceModel represents the Terraform resource model for a Jamf Compliance Benchmark.
 type BenchmarkResourceModel struct {
-	ID                types.String  `tfsdk:"id"`
-	Title             types.String  `tfsdk:"title"`
-	Description       types.String  `tfsdk:"description"`
-	SourceBaselineID  types.String  `tfsdk:"source_baseline_id"`
-	Sources           []SourceModel `tfsdk:"sources"`
-	Rules             []RuleModel   `tfsdk:"rules"`
-	TargetDeviceGroup types.String  `tfsdk:"target_device_group"`
-	EnforcementMode   types.String  `tfsdk:"enforcement_mode"`
-	TenantID          types.String  `tfsdk:"tenant_id"`
-	Deleted           types.Bool    `tfsdk:"deleted"`
-	UpdateAvailable   types.Bool    `tfsdk:"update_available"`
-	LastUpdatedAt     types.String  `tfsdk:"last_updated_at"`
+	ID                types.String           `tfsdk:"id"`
+	Title             types.String           `tfsdk:"title"`
+	Description       types.String           `tfsdk:"description"`
+	SourceBaselineID  types.String           `tfsdk:"source_baseline_id"`
+	Sources           []SourceModel          `tfsdk:"sources"`
+	Rules             []RuleModel            `tfsdk:"rules"`
+	TargetDeviceGroup types.String           `tfsdk:"target_device_group"`
+	EnforcementMode   types.String           `tfsdk:"enforcement_mode"`
+	TenantID          types.String           `tfsdk:"tenant_id"`
+	Deleted           types.Bool             `tfsdk:"deleted"`
+	UpdateAvailable   types.Bool             `tfsdk:"update_available"`
+	LastUpdatedAt     types.String           `tfsdk:"last_updated_at"`
+	Timeouts          resourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // BenchmarkDataSource implements the Terraform data source for Jamf Compliance Benchmarks.
@@ -41,18 +44,19 @@ type BenchmarkDataSource struct {
 
 // BenchmarkDataSourceModel represents the Terraform data source model for a Jamf Compliance Benchmark.
 type BenchmarkDataSourceModel struct {
-	ID                types.String  `tfsdk:"id"`
-	Title             types.String  `tfsdk:"title"`
-	BenchmarkID       types.String  `tfsdk:"benchmark_id"`
-	TenantID          types.String  `tfsdk:"tenant_id"`
-	Description       types.String  `tfsdk:"description"`
-	Sources           []SourceModel `tfsdk:"sources"`
-	Rules             []RuleModel   `tfsdk:"rules"`
-	TargetDeviceGroup types.String  `tfsdk:"target_device_group"`
-	EnforcementMode   types.String  `tfsdk:"enforcement_mode"`
-	Deleted           types.Bool    `tfsdk:"deleted"`
-	UpdateAvailable   types.Bool    `tfsdk:"update_available"`
-	LastUpdatedAt     types.String  `tfsdk:"last_updated_at"`
+	ID                types.String             `tfsdk:"id"`
+	Title             types.String             `tfsdk:"title"`
+	BenchmarkID       types.String             `tfsdk:"benchmark_id"`
+	TenantID          types.String             `tfsdk:"tenant_id"`
+	Description       types.String             `tfsdk:"description"`
+	Sources           []SourceModel            `tfsdk:"sources"`
+	Rules             []RuleModel              `tfsdk:"rules"`
+	TargetDeviceGroup types.String             `tfsdk:"target_device_group"`
+	EnforcementMode   types.String             `tfsdk:"enforcement_mode"`
+	Deleted           types.Bool               `tfsdk:"deleted"`
+	UpdateAvailable   types.Bool               `tfsdk:"update_available"`
+	LastUpdatedAt     types.String             `tfsdk:"last_updated_at"`
+	Timeouts          datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // RuleModel represents a rule in the benchmark, including ODV and computed fields.
