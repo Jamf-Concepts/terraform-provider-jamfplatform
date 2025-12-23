@@ -55,7 +55,7 @@ data "jamfplatform_device_groups" "name_does_not_contain" {
 ### Optional
 
 - `filter` (Block List) Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause. (see [below for nested schema](#nestedblock--filter))
-- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -67,16 +67,18 @@ data "jamfplatform_device_groups" "name_does_not_contain" {
 
 Required:
 
-- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API. The provider automatically escapes embedded double quotes and wraps the argument in double quotes whenever it contains RSQL-reserved characters (for example commas or spaces). Supply your own quoting only when you need custom list expressions such as those used with `=in=`.
-- `selector` (String) RSQL selector for device groups. Valid values are `name`, `description`, `deviceType`, and `groupType`.
+- `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
+- `selector` (String) RSQL selector. Valid values are `name`, `description`, `deviceType`, `groupType`.
 
 Optional:
 
+- `has_closing_parenthesis` (Boolean) Whether to suffix this clause with `)` to close a grouped expression.
+- `has_opening_parenthesis` (Boolean) Whether to prefix this clause with `(` to start a grouped expression.
 - `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.
-- `operator` (String) RSQL comparison operator such as `==`, `!=`, `=in=`, `>`, etc. Defaults to `==` when omitted.
+- `operator` (String) RSQL comparison operator. Valid values are `==`, `!=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.
 
 
-<a id="nestedblock--timeouts"></a>
+<a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:

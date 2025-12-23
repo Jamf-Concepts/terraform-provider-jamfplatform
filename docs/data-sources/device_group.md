@@ -31,7 +31,7 @@ output "device_group_example_by_id" {
 
 ### Optional
 
-- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -43,7 +43,7 @@ output "device_group_example_by_id" {
 - `members` (Set of String) Devices currently assigned to the group (Jamf Pro Management IDs).
 - `name` (String) Device group name.
 
-<a id="nestedblock--timeouts"></a>
+<a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:

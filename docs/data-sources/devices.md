@@ -45,7 +45,7 @@ data "jamfplatform_devices" "iphones_os_26_plus" {
 ### Optional
 
 - `filter` (Block List) Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause. (see [below for nested schema](#nestedblock--filter))
-- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
@@ -58,15 +58,17 @@ data "jamfplatform_devices" "iphones_os_26_plus" {
 Required:
 
 - `argument` (String) RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).
-- `selector` (String) RSQL selector. Valid values are `id`, `name`, `model`, `modelIdentifier`, `serialNumber`, `lastInventoryUpdateTime`, `lastCheckInTime`, `operatingSystemVersion`, `userId`, `enrollmentType`, and `lastEnrollmentTime`.
+- `selector` (String) RSQL selector. Valid values are `id`, `name`, `model`, `modelIdentifier`, `serialNumber`, `lastInventoryUpdateTime`, `lastCheckInTime`, `operatingSystemVersion`, `userId`, `enrollmentType`, `lastEnrollmentTime`.
 
 Optional:
 
+- `has_closing_parenthesis` (Boolean) Whether to suffix this clause with `)` to close a grouped expression.
+- `has_opening_parenthesis` (Boolean) Whether to prefix this clause with `(` to start a grouped expression.
 - `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.
-- `operator` (String) RSQL comparison operator. Valid values are `==`, `!=`, `=in=`, `=out=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.
+- `operator` (String) RSQL comparison operator. Valid values are `==`, `!=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.
 
 
-<a id="nestedblock--timeouts"></a>
+<a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:

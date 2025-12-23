@@ -4,7 +4,9 @@ package benchmarks
 
 import (
 	"context"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -27,11 +29,14 @@ func (d *BenchmarksDataSource) Metadata(ctx context.Context, req datasource.Meta
 	resp.TypeName = req.ProviderTypeName + "_cbengine_benchmarks"
 }
 
+const defaultReadTimeout = 90 * time.Second
+
 // Schema defines the Terraform schema for listing CBEngine benchmarks.
 func (d *BenchmarksDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns all Compliance Benchmarks from Jamf Pro. Requires **Compliance Benchmarks API** access.",
 		Attributes: map[string]schema.Attribute{
+			"timeouts": timeouts.Attributes(ctx),
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",
 				Computed:            true,
@@ -100,6 +105,21 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
+	timeoutsValue := data.Timeouts
+
+	readTimeout := defaultReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
+	}
+
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Provider not configured",
@@ -108,7 +128,7 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	benchmarks, err := d.client.GetCBEngineBenchmarksV2(ctx)
+	benchmarks, err := d.client.GetCBEngineBenchmarksV2(readCtx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list CBEngine benchmarks", err.Error())
 		return
@@ -137,6 +157,7 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	data.ID = types.StringValue("cbengine_benchmarks")
 	data.Benchmarks = entries
+	data.Timeouts = timeoutsValue
 
 	tflog.Trace(ctx, "read cbengine benchmarks data source", map[string]interface{}{
 		"count": len(entries),

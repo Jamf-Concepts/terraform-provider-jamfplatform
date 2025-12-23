@@ -4,6 +4,7 @@ package device_groups
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -16,7 +17,7 @@ type DeviceGroupsDataSource struct {
 // DeviceGroupsDataSourceModel represents the Terraform data source model for Jamf device groups.
 type DeviceGroupsDataSourceModel struct {
 	ID           types.String                        `tfsdk:"id"`
-	Filters      []DeviceGroupsFilterModel           `tfsdk:"filter"`
+	Filters      []filters.FilterModel               `tfsdk:"filter"`
 	Timeouts     timeouts.Value                      `tfsdk:"timeouts"`
 	DeviceGroups []DeviceGroupsDataSourceResultModel `tfsdk:"device_groups"`
 }
@@ -29,12 +30,4 @@ type DeviceGroupsDataSourceResultModel struct {
 	DeviceType  types.String `tfsdk:"device_type"`
 	GroupType   types.String `tfsdk:"group_type"`
 	MemberCount types.Int64  `tfsdk:"member_count"`
-}
-
-// DeviceGroupsFilterModel represents a single declarative RSQL clause provided by the user.
-type DeviceGroupsFilterModel struct {
-	Selector types.String `tfsdk:"selector"`
-	Operator types.String `tfsdk:"operator"`
-	Argument types.String `tfsdk:"argument"`
-	JoinWith types.String `tfsdk:"join_with"`
 }

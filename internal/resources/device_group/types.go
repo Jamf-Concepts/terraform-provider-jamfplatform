@@ -4,7 +4,8 @@ package device_group
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
-	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
+	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
+	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -23,6 +24,7 @@ type DeviceGroupResourceModel struct {
 	Criteria    []DeviceGroupCriteriaModel `tfsdk:"criteria"`
 	Members     types.Set                  `tfsdk:"members"`
 	MemberCount types.Int64                `tfsdk:"member_count"`
+	Timeouts    resourceTimeouts.Value     `tfsdk:"timeouts"`
 }
 
 // DeviceGroupCriteriaModel represents a smart group criterion definition.
@@ -48,7 +50,7 @@ type DeviceGroupDataSourceModel struct {
 	Description types.String               `tfsdk:"description"`
 	DeviceType  types.String               `tfsdk:"device_type"`
 	GroupType   types.String               `tfsdk:"group_type"`
-	Timeouts    timeouts.Value             `tfsdk:"timeouts"`
+	Timeouts    datasourceTimeouts.Value   `tfsdk:"timeouts"`
 	Criteria    []DeviceGroupCriteriaModel `tfsdk:"criteria"`
 	Members     types.Set                  `tfsdk:"members"`
 	MemberCount types.Int64                `tfsdk:"member_count"`

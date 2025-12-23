@@ -4,6 +4,7 @@ package baselines
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -15,6 +16,7 @@ type BaselinesDataSource struct {
 // BaselinesDataSourceModel represents the Terraform data source model for mSCP baselines.
 type BaselinesDataSourceModel struct {
 	Baselines []BaselineModel `tfsdk:"baselines"`
+	Timeouts  timeouts.Value  `tfsdk:"timeouts"`
 }
 
 // BaselineModel represents a single mSCP baseline in the data source.

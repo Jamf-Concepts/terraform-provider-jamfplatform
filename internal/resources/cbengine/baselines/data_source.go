@@ -5,7 +5,9 @@ package baselines
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -27,11 +29,14 @@ func (d *BaselinesDataSource) Metadata(ctx context.Context, req datasource.Metad
 	resp.TypeName = req.ProviderTypeName + "_cbengine_baselines"
 }
 
+const defaultReadTimeout = 90 * time.Second
+
 // Schema sets the Terraform schema for the data source.
 func (d *BaselinesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns list of the mSCP baselines allowed for the Compliance benchmarks. Requires **Compliance Benchmarks API** access.",
 		Attributes: map[string]schema.Attribute{
+			"timeouts": timeouts.Attributes(ctx),
 			"baselines": schema.ListNestedAttribute{
 				MarkdownDescription: "List of baselines.",
 				Computed:            true,
@@ -93,6 +98,21 @@ func (d *BaselinesDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
+	timeoutsValue := data.Timeouts
+
+	readTimeout := defaultReadTimeout
+	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
+		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
+		resp.Diagnostics.Append(timeoutDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		readTimeout = configuredTimeout
+	}
+
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Provider not configured",
@@ -101,7 +121,7 @@ func (d *BaselinesDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	baselinesResp, err := d.client.GetCBEngineBaselinesV1(ctx)
+	baselinesResp, err := d.client.GetCBEngineBaselinesV1(readCtx)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get baselines",
@@ -122,6 +142,7 @@ func (d *BaselinesDataSource) Read(ctx context.Context, req datasource.ReadReque
 	}
 
 	data.Baselines = baselines
+	data.Timeouts = timeoutsValue
 
 	tflog.Trace(ctx, "read a data source")
 
