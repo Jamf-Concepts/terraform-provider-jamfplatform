@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -79,11 +80,11 @@ func (d *DataSourceMobileDevices) Read(ctx context.Context, req datasource.ReadR
 	}
 
 	var sections []string
-	if !data.Section.IsNull() && !data.Section.IsUnknown() {
+	if helpers.IsConfiguredValue(data.Section) {
 		var sectionVals []types.String
 		data.Section.ElementsAs(ctx, &sectionVals, false)
 		for _, s := range sectionVals {
-			if !s.IsNull() && !s.IsUnknown() {
+			if helpers.IsConfiguredValue(s) {
 				sections = append(sections, s.ValueString())
 			}
 		}

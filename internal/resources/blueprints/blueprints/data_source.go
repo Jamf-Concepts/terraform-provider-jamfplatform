@@ -121,7 +121,7 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	}
 
 	searchTerm := ""
-	if !data.Search.IsNull() && !data.Search.IsUnknown() {
+	if helpers.IsConfiguredValue(data.Search) {
 		searchTerm = strings.TrimSpace(data.Search.ValueString())
 	}
 	searchLower := strings.ToLower(searchTerm)

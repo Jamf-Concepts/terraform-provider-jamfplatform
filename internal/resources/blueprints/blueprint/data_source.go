@@ -138,9 +138,9 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	var bp *client.BlueprintDetailV1
 	var err error
-	if !data.ID.IsNull() && data.ID.ValueString() != "" {
+	if helpers.IsConfiguredValue(data.ID) && data.ID.ValueString() != "" {
 		bp, err = d.client.GetBlueprintByIDV1(readCtx, data.ID.ValueString())
-	} else if !data.Name.IsNull() && data.Name.ValueString() != "" {
+	} else if helpers.IsConfiguredValue(data.Name) && data.Name.ValueString() != "" {
 		bp, err = d.client.GetBlueprintByNameV1(readCtx, data.Name.ValueString())
 	} else {
 		resp.Diagnostics.AddError(

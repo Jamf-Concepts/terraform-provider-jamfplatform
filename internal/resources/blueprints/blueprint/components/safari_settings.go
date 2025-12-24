@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -83,51 +84,51 @@ func SafariSettingsComponentSchema() schema.NestedBlockObject {
 func (c *SafariSettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	if !c.AcceptCookies.IsNull() && !c.AcceptCookies.IsUnknown() {
+	if helpers.IsConfiguredValue(c.AcceptCookies) {
 		config["AcceptCookies"] = setStringField(c.AcceptCookies, "")
 	}
 
-	if !c.AllowDisablingFraudWarning.IsNull() && !c.AllowDisablingFraudWarning.IsUnknown() {
+	if helpers.IsConfiguredValue(c.AllowDisablingFraudWarning) {
 		config["AllowDisablingFraudWarning"] = setBoolFieldWithKey(c.AllowDisablingFraudWarning, "Value", false)
 	}
 
-	if !c.AllowHistoryClearing.IsNull() && !c.AllowHistoryClearing.IsUnknown() {
+	if helpers.IsConfiguredValue(c.AllowHistoryClearing) {
 		config["AllowHistoryClearing"] = setBoolFieldWithKey(c.AllowHistoryClearing, "Value", false)
 	}
 
-	if !c.AllowJavaScript.IsNull() && !c.AllowJavaScript.IsUnknown() {
+	if helpers.IsConfiguredValue(c.AllowJavaScript) {
 		config["AllowJavaScript"] = setBoolFieldWithKey(c.AllowJavaScript, "Value", false)
 	}
 
-	if !c.AllowPrivateBrowsing.IsNull() && !c.AllowPrivateBrowsing.IsUnknown() {
+	if helpers.IsConfiguredValue(c.AllowPrivateBrowsing) {
 		config["AllowPrivateBrowsing"] = setBoolFieldWithKey(c.AllowPrivateBrowsing, "Value", false)
 	}
 
-	if !c.AllowPopups.IsNull() && !c.AllowPopups.IsUnknown() {
+	if helpers.IsConfiguredValue(c.AllowPopups) {
 		config["AllowPopups"] = setBoolFieldWithKey(c.AllowPopups, "Value", false)
 	}
 
-	if !c.AllowSummary.IsNull() && !c.AllowSummary.IsUnknown() {
+	if helpers.IsConfiguredValue(c.AllowSummary) {
 		config["AllowSummary"] = setBoolFieldWithKey(c.AllowSummary, "Value", false)
 	}
 
-	if (!c.NewTabStartPageType.IsNull() && !c.NewTabStartPageType.IsUnknown()) ||
-		(!c.NewTabStartPageHomepageURL.IsNull() && !c.NewTabStartPageHomepageURL.IsUnknown()) ||
-		(!c.NewTabStartPageExtensionID.IsNull() && !c.NewTabStartPageExtensionID.IsUnknown()) {
+	if helpers.IsConfiguredValue(c.NewTabStartPageType) ||
+		helpers.IsConfiguredValue(c.NewTabStartPageHomepageURL) ||
+		helpers.IsConfiguredValue(c.NewTabStartPageExtensionID) {
 
 		newTabStartPage := map[string]interface{}{
 			"Included": true,
 		}
 
-		if !c.NewTabStartPageType.IsNull() && !c.NewTabStartPageType.IsUnknown() {
+		if helpers.IsConfiguredValue(c.NewTabStartPageType) {
 			newTabStartPage["PageType"] = c.NewTabStartPageType.ValueString()
 		}
 
-		if !c.NewTabStartPageHomepageURL.IsNull() && !c.NewTabStartPageHomepageURL.IsUnknown() {
+		if helpers.IsConfiguredValue(c.NewTabStartPageHomepageURL) {
 			newTabStartPage["HomepageURL"] = c.NewTabStartPageHomepageURL.ValueString()
 		}
 
-		if !c.NewTabStartPageExtensionID.IsNull() && !c.NewTabStartPageExtensionID.IsUnknown() {
+		if helpers.IsConfiguredValue(c.NewTabStartPageExtensionID) {
 			newTabStartPage["ExtensionIdentifier"] = c.NewTabStartPageExtensionID.ValueString()
 		}
 

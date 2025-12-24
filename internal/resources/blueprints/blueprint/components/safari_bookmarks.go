@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -114,11 +115,11 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{},
 		for _, group := range c.ManagedBookmarks {
 			groupMap := make(map[string]interface{})
 
-			if !group.GroupIdentifier.IsNull() && !group.GroupIdentifier.IsUnknown() {
+			if helpers.IsConfiguredValue(group.GroupIdentifier) {
 				groupMap["GroupIdentifier"] = group.GroupIdentifier.ValueString()
 			}
 
-			if !group.Title.IsNull() && !group.Title.IsUnknown() {
+			if helpers.IsConfiguredValue(group.Title) {
 				groupMap["Title"] = group.Title.ValueString()
 			}
 
@@ -128,7 +129,7 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{},
 				for _, bookmark := range group.Bookmarks {
 					bookmarkMap := make(map[string]interface{})
 
-					if !bookmark.Type.IsNull() && !bookmark.Type.IsUnknown() {
+					if helpers.IsConfiguredValue(bookmark.Type) {
 						typeValue := bookmark.Type.ValueString()
 						switch typeValue {
 						case "bookmark", "url":
@@ -140,11 +141,11 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{},
 						}
 					}
 
-					if !bookmark.Title.IsNull() && !bookmark.Title.IsUnknown() {
+					if helpers.IsConfiguredValue(bookmark.Title) {
 						bookmarkMap["Title"] = bookmark.Title.ValueString()
 					}
 
-					if !bookmark.URL.IsNull() && !bookmark.URL.IsUnknown() {
+					if helpers.IsConfiguredValue(bookmark.URL) {
 						bookmarkMap["URL"] = bookmark.URL.ValueString()
 					}
 
@@ -153,10 +154,10 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{},
 						for _, urlBookmark := range bookmark.Folder {
 							urlBookmarkMap := make(map[string]interface{})
 							urlBookmarkMap["Type"] = "BOOKMARK"
-							if !urlBookmark.Title.IsNull() && !urlBookmark.Title.IsUnknown() {
+							if helpers.IsConfiguredValue(urlBookmark.Title) {
 								urlBookmarkMap["Title"] = urlBookmark.Title.ValueString()
 							}
-							if !urlBookmark.URL.IsNull() && !urlBookmark.URL.IsUnknown() {
+							if helpers.IsConfiguredValue(urlBookmark.URL) {
 								urlBookmarkMap["URL"] = urlBookmark.URL.ValueString()
 							}
 							folder = append(folder, urlBookmarkMap)

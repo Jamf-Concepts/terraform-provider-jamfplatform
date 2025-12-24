@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	commonhelpers "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -60,30 +61,30 @@ func AudioAccessorySettingsComponentSchema() schema.NestedBlockObject {
 func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	hasTemporaryPairing := (!c.TemporaryPairingDisabled.IsNull() && !c.TemporaryPairingDisabled.IsUnknown()) ||
-		(!c.UnpairingTimePolicy.IsNull() && !c.UnpairingTimePolicy.IsUnknown()) ||
-		(!c.UnpairingTimeHour.IsNull() && !c.UnpairingTimeHour.IsUnknown())
+	hasTemporaryPairing := commonhelpers.IsConfiguredValue(c.TemporaryPairingDisabled) ||
+		commonhelpers.IsConfiguredValue(c.UnpairingTimePolicy) ||
+		commonhelpers.IsConfiguredValue(c.UnpairingTimeHour)
 
 	if hasTemporaryPairing {
 		temporaryPairing := make(map[string]interface{})
 		temporaryPairing["Included"] = true
 
-		if !c.TemporaryPairingDisabled.IsNull() && !c.TemporaryPairingDisabled.IsUnknown() {
+		if commonhelpers.IsConfiguredValue(c.TemporaryPairingDisabled) {
 			temporaryPairing["Disabled"] = c.TemporaryPairingDisabled.ValueBool()
 		}
 
-		hasUnpairingSettings := (!c.UnpairingTimePolicy.IsNull() && !c.UnpairingTimePolicy.IsUnknown()) ||
-			(!c.UnpairingTimeHour.IsNull() && !c.UnpairingTimeHour.IsUnknown())
+		hasUnpairingSettings := commonhelpers.IsConfiguredValue(c.UnpairingTimePolicy) ||
+			commonhelpers.IsConfiguredValue(c.UnpairingTimeHour)
 
 		if hasUnpairingSettings {
 			configuration := make(map[string]interface{})
 			unpairingTime := make(map[string]interface{})
 
-			if !c.UnpairingTimePolicy.IsNull() && !c.UnpairingTimePolicy.IsUnknown() {
+			if commonhelpers.IsConfiguredValue(c.UnpairingTimePolicy) {
 				unpairingTime["Policy"] = c.UnpairingTimePolicy.ValueString()
 			}
 
-			if !c.UnpairingTimeHour.IsNull() && !c.UnpairingTimeHour.IsUnknown() {
+			if commonhelpers.IsConfiguredValue(c.UnpairingTimeHour) {
 				unpairingTime["Hour"] = int(c.UnpairingTimeHour.ValueInt64())
 			}
 

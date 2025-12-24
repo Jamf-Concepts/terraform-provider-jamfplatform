@@ -227,7 +227,7 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
 	defer cancel()
 
-	if data.ID.IsNull() || data.ID.ValueString() == "" {
+	if !helpers.IsConfiguredValue(data.ID) || data.ID.ValueString() == "" {
 		resp.Diagnostics.AddError("Missing ID", "Cannot delete blueprint without ID.")
 		return
 	}

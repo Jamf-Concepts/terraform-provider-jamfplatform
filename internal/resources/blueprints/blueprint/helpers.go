@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -19,7 +20,7 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 	model.ID = types.StringValue(blueprint.ID)
 	model.Name = types.StringValue(blueprint.Name)
 
-	if model.Description.IsNull() && blueprint.Description == "" {
+	if !helpers.IsConfiguredValue(model.Description) && blueprint.Description == "" {
 		model.Description = types.StringNull()
 	} else {
 		model.Description = types.StringValue(blueprint.Description)
@@ -184,7 +185,7 @@ func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *Blue
 			Identifier: comp.Identifier.ValueString(),
 		}
 
-		if !comp.Configuration.IsNull() && !comp.Configuration.IsUnknown() {
+		if helpers.IsConfiguredValue(comp.Configuration) {
 			configMap := make(map[string]string)
 			configDiags := comp.Configuration.ElementsAs(ctx, &configMap, false)
 			if configDiags.HasError() {
@@ -267,7 +268,7 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]clie
 		r.collectSingleComponent(allComponents, diags, &data.SoftwareUpdateSettings[i], "software update settings")
 	}
 
-	if !data.LegacyPayloads.IsNull() && !data.LegacyPayloads.IsUnknown() {
+	if helpers.IsConfiguredValue(data.LegacyPayloads) {
 		r.collectLegacyPayloadsString(allComponents, diags, data.LegacyPayloads.ValueString(), data.Name.ValueString())
 	}
 }
@@ -388,7 +389,7 @@ func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComp
 	})
 
 	updateComponentsFromAPI("com.jamf.ddm-configuration-profile", apiComponentsByID, func(jsonObj map[string]interface{}) {
-		if !model.LegacyPayloads.IsNull() {
+		if helpers.IsConfiguredValue(model.LegacyPayloads) {
 			if payloadContent, exists := jsonObj["payloadContent"]; exists {
 				payloadJSON, err := json.Marshal(payloadContent)
 				if err == nil {

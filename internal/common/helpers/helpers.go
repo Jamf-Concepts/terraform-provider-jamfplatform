@@ -82,6 +82,51 @@ func ResolveTimeout(
 	return resolver(ctx, defaultDuration)
 }
 
+// IsConfiguredValue reports whether Terraform has a non-null, non-unknown value.
+func IsConfiguredValue(value interface {
+	IsNull() bool
+	IsUnknown() bool
+}) bool {
+	return !value.IsNull() && !value.IsUnknown()
+}
+
+// StringPointerValue returns a *string for configured Terraform strings, preserving empty strings.
+func StringPointerValue(v types.String) *string {
+	if !IsConfiguredValue(v) {
+		return nil
+	}
+	value := v.ValueString()
+	return &value
+}
+
+// ReconcileOptionalBool keeps the current value if not managed, otherwise sets to the API value.
+func ReconcileOptionalBool(apiValue bool, current types.Bool) types.Bool {
+	if IsConfiguredValue(current) {
+		return types.BoolValue(apiValue)
+	}
+	return types.BoolNull()
+}
+
+// ReconcileOptionalInt keeps the current value if not managed, otherwise sets to the API value.
+func ReconcileOptionalInt(apiValue int, current types.Int64) types.Int64 {
+	if IsConfiguredValue(current) {
+		return types.Int64Value(int64(apiValue))
+	}
+	return types.Int64Null()
+}
+
+// ReconcileOptionalString keeps explicit empty strings set by the user while allowing nulls when unset.
+func ReconcileOptionalString(apiValue string, current types.String) types.String {
+	if apiValue == "" {
+		if IsConfiguredValue(current) && current.ValueString() == "" {
+			return current
+		}
+		return types.StringNull()
+	}
+
+	return types.StringValue(apiValue)
+}
+
 // IsNotFoundError reports whether an error message indicates a 404/not found response from the Jamf API.
 func IsNotFoundError(err error) bool {
 	if err == nil {

@@ -40,12 +40,12 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	if plan.Members.IsNull() && isConfiguredValue(config.Members) {
+	if plan.Members.IsNull() && helpers.IsConfiguredValue(config.Members) {
 		plan.Members = config.Members
 	}
 
-	manageMembers := isConfiguredValue(plan.Members)
-	manageDescription := isConfiguredValue(plan.Description)
+	manageMembers := helpers.IsConfiguredValue(plan.Members)
+	manageDescription := helpers.IsConfiguredValue(plan.Description)
 
 	if err := validateDeviceGroupPlan(&plan); err != nil {
 		resp.Diagnostics.AddError("Invalid device group configuration", err.Error())
@@ -54,7 +54,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 
 	reqBody := &client.DeviceGroupCreateRepresentationV1{
 		Name:        plan.Name.ValueString(),
-		Description: stringPointerValue(plan.Description),
+		Description: helpers.StringPointerValue(plan.Description),
 		DeviceType:  strings.ToUpper(plan.DeviceType.ValueString()),
 		GroupType:   strings.ToUpper(plan.GroupType.ValueString()),
 	}
@@ -138,8 +138,8 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	var members []string
-	manageMembers := isConfiguredValue(state.Members)
-	manageDescription := isConfiguredValue(state.Description)
+	manageMembers := helpers.IsConfiguredValue(state.Members)
+	manageDescription := helpers.IsConfiguredValue(state.Description)
 	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
 		var err error
 		members, err = r.client.GetDeviceGroupMembersV1(readCtx, grp.ID)
@@ -180,12 +180,12 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	manageMembers := isConfiguredValue(plan.Members)
-	manageDescription := isConfiguredValue(plan.Description)
+	manageMembers := helpers.IsConfiguredValue(plan.Members)
+	manageDescription := helpers.IsConfiguredValue(plan.Description)
 
 	updateReq := &client.DeviceGroupUpdateRepresentationV1{
 		Name:        plan.Name.ValueString(),
-		Description: stringPointerValue(plan.Description),
+		Description: helpers.StringPointerValue(plan.Description),
 	}
 
 	if strings.ToLower(plan.GroupType.ValueString()) == "smart" {

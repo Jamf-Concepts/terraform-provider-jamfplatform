@@ -55,10 +55,8 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 			ID:      rule.ID.ValueString(),
 			Enabled: rule.Enabled.ValueBool(),
 		}
-		if !rule.ODVValue.IsNull() && rule.ODVValue.ValueString() != "" {
-			rr.ODV = &client.CBEngineODVRequestV2{
-				Value: rule.ODVValue.ValueString(),
-			}
+		if value := helpers.StringPointerValue(rule.ODVValue); value != nil {
+			rr.ODV = &client.CBEngineODVRequestV2{Value: *value}
 		}
 		reqBody.Rules[i] = rr
 	}

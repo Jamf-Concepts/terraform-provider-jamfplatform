@@ -72,7 +72,7 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 	prevCriteria := model.Criteria
 	model.ID = types.StringValue(grp.ID)
 	if manageDescription {
-		model.Description = reconcileOptionalString(grp.Description, prevDescription)
+		model.Description = helpers.ReconcileOptionalString(grp.Description, prevDescription)
 	} else {
 		model.Description = types.StringNull()
 	}
@@ -152,27 +152,27 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []client.Dev
 		}
 
 		operator := ""
-		if isConfiguredValue(c.Operator) {
+		if helpers.IsConfiguredValue(c.Operator) {
 			operator = strings.ToUpper(c.Operator.ValueString())
 		}
 
 		attributeValue := ""
-		if isConfiguredValue(c.AttributeValue) {
+		if helpers.IsConfiguredValue(c.AttributeValue) {
 			attributeValue = c.AttributeValue.ValueString()
 		}
 
 		joinType := ""
-		if isConfiguredValue(c.JoinType) {
+		if helpers.IsConfiguredValue(c.JoinType) {
 			joinType = strings.ToUpper(c.JoinType.ValueString())
 		}
 
 		hasOpening := false
-		if isConfiguredValue(c.HasOpeningParenthesis) {
+		if helpers.IsConfiguredValue(c.HasOpeningParenthesis) {
 			hasOpening = c.HasOpeningParenthesis.ValueBool()
 		}
 
 		hasClosing := false
-		if isConfiguredValue(c.HasClosingParenthesis) {
+		if helpers.IsConfiguredValue(c.HasClosingParenthesis) {
 			hasClosing = c.HasClosingParenthesis.ValueBool()
 		}
 		crit := client.DeviceGroupCriteriaRepresentationV1{
@@ -223,13 +223,13 @@ func flattenDeviceGroupCriteria(criteria []client.DeviceGroupCriteriaRepresentat
 			joinType = types.StringValue(strings.ToLower(c.JoinType))
 		}
 		result[i] = DeviceGroupCriteriaModel{
-			Order:                 reconcileOptionalInt(c.Order, prev.Order),
+			Order:                 helpers.ReconcileOptionalInt(c.Order, prev.Order),
 			AttributeName:         attributeName,
 			Operator:              operator,
-			AttributeValue:        reconcileOptionalString(c.AttributeValue, prev.AttributeValue),
+			AttributeValue:        helpers.ReconcileOptionalString(c.AttributeValue, prev.AttributeValue),
 			JoinType:              joinType,
-			HasOpeningParenthesis: reconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
-			HasClosingParenthesis: reconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),
+			HasOpeningParenthesis: helpers.ReconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
+			HasClosingParenthesis: helpers.ReconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),
 		}
 	}
 	return result
@@ -256,49 +256,4 @@ func diffStringSlices(current, desired []string) (added, removed []string) {
 	sort.Strings(added)
 	sort.Strings(removed)
 	return
-}
-
-// reconcileOptionalBool keeps the current value if not managed, otherwise sets to the API value.
-func reconcileOptionalBool(apiValue bool, current types.Bool) types.Bool {
-	if isConfiguredValue(current) {
-		return types.BoolValue(apiValue)
-	}
-	return types.BoolNull()
-}
-
-// reconcileOptionalInt keeps the current value if not managed, otherwise sets to the API value.
-func reconcileOptionalInt(apiValue int, current types.Int64) types.Int64 {
-	if isConfiguredValue(current) {
-		return types.Int64Value(int64(apiValue))
-	}
-	return types.Int64Null()
-}
-
-// reconcileOptionalString keeps explicit empty strings set by the user while allowing nulls when unset.
-func reconcileOptionalString(apiValue string, current types.String) types.String {
-	if apiValue == "" {
-		if isConfiguredValue(current) && current.ValueString() == "" {
-			return current
-		}
-		return types.StringNull()
-	}
-
-	return types.StringValue(apiValue)
-}
-
-// stringPointerValue returns a *string for non-null/unknown Terraform strings, preserving empty strings.
-func stringPointerValue(v types.String) *string {
-	if !isConfiguredValue(v) {
-		return nil
-	}
-	value := v.ValueString()
-	return &value
-}
-
-// isConfiguredValue reports whether Terraform has a non-null, non-unknown value.
-func isConfiguredValue(value interface {
-	IsNull() bool
-	IsUnknown() bool
-}) bool {
-	return !value.IsNull() && !value.IsUnknown()
 }

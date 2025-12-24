@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -120,11 +121,11 @@ func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]inter
 		for _, task := range c.BackgroundTasks {
 			taskMap := make(map[string]interface{})
 
-			if !task.TaskType.IsNull() && !task.TaskType.IsUnknown() {
+			if helpers.IsConfiguredValue(task.TaskType) {
 				taskMap["TaskType"] = task.TaskType.ValueString()
 			}
 
-			if !task.TaskDescription.IsNull() && !task.TaskDescription.IsUnknown() {
+			if helpers.IsConfiguredValue(task.TaskDescription) {
 				taskMap["TaskDescription"] = task.TaskDescription.ValueString()
 			}
 
@@ -132,10 +133,10 @@ func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]inter
 				execRef := make(map[string]interface{})
 
 				reference := make(map[string]interface{})
-				if !task.ExecutableAssetReference.DataURL.IsNull() && !task.ExecutableAssetReference.DataURL.IsUnknown() {
+				if helpers.IsConfiguredValue(task.ExecutableAssetReference.DataURL) {
 					reference["DataURL"] = task.ExecutableAssetReference.DataURL.ValueString()
 				}
-				if !task.ExecutableAssetReference.HashSHA256.IsNull() && !task.ExecutableAssetReference.HashSHA256.IsUnknown() {
+				if helpers.IsConfiguredValue(task.ExecutableAssetReference.HashSHA256) {
 					reference["Hash-SHA-256"] = task.ExecutableAssetReference.HashSHA256.ValueString()
 				}
 				reference["ContentType"] = "application/zip"
@@ -151,7 +152,7 @@ func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]inter
 				for _, launchd := range task.LaunchdConfigurations {
 					launchdMap := make(map[string]interface{})
 
-					if !launchd.Context.IsNull() && !launchd.Context.IsUnknown() {
+					if helpers.IsConfiguredValue(launchd.Context) {
 						launchdMap["Context"] = launchd.Context.ValueString()
 					}
 
@@ -159,13 +160,13 @@ func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]inter
 						fileRef := make(map[string]interface{})
 
 						reference := make(map[string]interface{})
-						if !launchd.FileAssetReference.DataURL.IsNull() && !launchd.FileAssetReference.DataURL.IsUnknown() {
+						if helpers.IsConfiguredValue(launchd.FileAssetReference.DataURL) {
 							reference["DataURL"] = launchd.FileAssetReference.DataURL.ValueString()
 						}
-						if !launchd.FileAssetReference.HashSHA256.IsNull() && !launchd.FileAssetReference.HashSHA256.IsUnknown() {
+						if helpers.IsConfiguredValue(launchd.FileAssetReference.HashSHA256) {
 							reference["Hash-SHA-256"] = launchd.FileAssetReference.HashSHA256.ValueString()
 						}
-						if !launchd.FileAssetReference.ContentType.IsNull() && !launchd.FileAssetReference.ContentType.IsUnknown() {
+						if helpers.IsConfiguredValue(launchd.FileAssetReference.ContentType) {
 							reference["ContentType"] = launchd.FileAssetReference.ContentType.ValueString()
 						}
 

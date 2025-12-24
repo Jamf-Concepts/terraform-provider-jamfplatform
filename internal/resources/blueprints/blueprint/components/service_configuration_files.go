@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -75,7 +76,7 @@ func (c *ServiceConfigurationFilesComponent) ToRawConfiguration() (map[string]in
 		for _, configFile := range c.ServiceConfigFiles {
 			configFileMap := make(map[string]interface{})
 
-			if !configFile.ServiceType.IsNull() && !configFile.ServiceType.IsUnknown() {
+			if helpers.IsConfiguredValue(configFile.ServiceType) {
 				configFileMap["ServiceType"] = configFile.ServiceType.ValueString()
 			}
 
@@ -83,10 +84,10 @@ func (c *ServiceConfigurationFilesComponent) ToRawConfiguration() (map[string]in
 				dataRef := make(map[string]interface{})
 
 				reference := make(map[string]interface{})
-				if !configFile.DataAssetReference.DataURL.IsNull() && !configFile.DataAssetReference.DataURL.IsUnknown() {
+				if helpers.IsConfiguredValue(configFile.DataAssetReference.DataURL) {
 					reference["DataURL"] = configFile.DataAssetReference.DataURL.ValueString()
 				}
-				if !configFile.DataAssetReference.HashSHA256.IsNull() && !configFile.DataAssetReference.HashSHA256.IsUnknown() {
+				if helpers.IsConfiguredValue(configFile.DataAssetReference.HashSHA256) {
 					reference["Hash-SHA-256"] = configFile.DataAssetReference.HashSHA256.ValueString()
 				}
 				reference["ContentType"] = "application/zip"
