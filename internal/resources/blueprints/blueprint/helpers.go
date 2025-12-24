@@ -328,6 +328,12 @@ func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComp
 		}
 	})
 
+	updateComponentsFromAPI("com.jamf.ddm.custom-declarations", apiComponentsByID, func(jsonObj map[string]interface{}) {
+		for i := range model.CustomDeclarations {
+			_ = model.CustomDeclarations[i].FromRawConfiguration(jsonObj)
+		}
+	})
+
 	updateComponentsFromAPI("com.jamf.ddm.disk-management", apiComponentsByID, func(jsonObj map[string]interface{}) {
 		for i := range model.DiskManagementSettings {
 			_ = model.DiskManagementSettings[i].FromRawConfiguration(jsonObj)
