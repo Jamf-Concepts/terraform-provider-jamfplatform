@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	deviceGroupCreateMaxAttempts = 10
+	deviceGroupCreateMaxAttempts = 12
 	deviceGroupCreateRetryDelay  = 5 * time.Second
 )
 
