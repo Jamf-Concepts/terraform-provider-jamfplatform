@@ -201,7 +201,7 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	lookupID := ""
-	if !data.ID.IsNull() && !data.ID.IsUnknown() {
+	if helpers.IsConfiguredValue(data.ID) {
 		lookupID = data.ID.ValueString()
 	}
 	if lookupID == "" {

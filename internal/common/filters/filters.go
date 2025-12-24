@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -168,7 +169,7 @@ func AllowList(validSelectors []string) SelectorValidator {
 
 // configuredFilterValue extracts the string value from a types.String, returning
 func configuredFilterValue(value types.String) (string, bool) {
-	if value.IsNull() || value.IsUnknown() {
+	if !helpers.IsConfiguredValue(value) {
 		return "", false
 	}
 	str := value.ValueString()
@@ -214,7 +215,7 @@ func argumentNeedsQuoting(value string) bool {
 
 // isTrue checks if a types.Bool is explicitly true.
 func isTrue(value types.Bool) bool {
-	if value.IsNull() || value.IsUnknown() {
+	if !helpers.IsConfiguredValue(value) {
 		return false
 	}
 	return value.ValueBool()

@@ -120,14 +120,14 @@ func validateDeviceGroupPlan(plan *DeviceGroupResourceModel) error {
 		if len(plan.Criteria) == 0 {
 			return fmt.Errorf("criteria must be supplied for smart groups")
 		}
-		if !plan.Members.IsNull() && !plan.Members.IsUnknown() {
+		if helpers.IsConfiguredValue(plan.Members) {
 			return fmt.Errorf("members cannot be set for smart groups")
 		}
 	case "static":
 		if len(plan.Criteria) > 0 {
 			return fmt.Errorf("criteria cannot be set for static groups")
 		}
-		if !plan.Members.IsNull() && plan.Members.IsUnknown() {
+		if plan.Members.IsUnknown() {
 			return fmt.Errorf("members cannot be unknown when provided")
 		}
 	default:
@@ -147,7 +147,7 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []client.Dev
 	}
 	result := make([]client.DeviceGroupCriteriaRepresentationV1, 0, len(criteria))
 	for idx, c := range criteria {
-		if c.AttributeName.IsNull() || c.AttributeName.IsUnknown() {
+		if !helpers.IsConfiguredValue(c.AttributeName) {
 			continue
 		}
 
@@ -183,7 +183,7 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []client.Dev
 			HasOpeningParenthesis: hasOpening,
 			HasClosingParenthesis: hasClosing,
 		}
-		if !c.Order.IsNull() && !c.Order.IsUnknown() {
+		if helpers.IsConfiguredValue(c.Order) {
 			crit.Order = int(c.Order.ValueInt64())
 		} else {
 			crit.Order = idx
