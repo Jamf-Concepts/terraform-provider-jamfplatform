@@ -164,17 +164,6 @@ func flattenJSON(obj map[string]interface{}, prefix string, result map[string]st
 	}
 }
 
-// isNotFoundError checks if the error is a 404 not found error
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errorStr := err.Error()
-	return strings.Contains(errorStr, "status 404") ||
-		strings.Contains(errorStr, "was not found") ||
-		strings.Contains(errorStr, "NOT_FOUND")
-}
-
 // isServerError checks if the error is a server error (500)
 func isServerError(err error) bool {
 	if err == nil {

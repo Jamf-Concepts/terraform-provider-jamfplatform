@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -19,23 +20,18 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createTimeout := defaultCreateTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Create(ctx, defaultCreateTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		createTimeout = configuredTimeout
+	createTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultCreateTimeout, data.Timeouts.Create)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	var deviceGroupsSet []string
-	diags := data.DeviceGroups.ElementsAs(ctx, &deviceGroupsSet, false)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+	deviceGroups, diags := helpers.SetToStringSlice(createCtx, data.DeviceGroups)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -56,7 +52,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
 		Scope: client.BlueprintCreateScopeV1{
-			DeviceGroups: deviceGroupsSet,
+			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
 	}
@@ -104,14 +100,10 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -119,7 +111,7 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	blueprint, err := r.client.GetBlueprintByIDV1(readCtx, data.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint not found, removing from state", map[string]interface{}{
 				"blueprint_id": data.ID.ValueString(),
 			})
@@ -148,23 +140,18 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	updateTimeout := defaultUpdateTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Update(ctx, defaultUpdateTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		updateTimeout = configuredTimeout
+	updateTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultUpdateTimeout, data.Timeouts.Update)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	var deviceGroupsSet []string
-	diags := data.DeviceGroups.ElementsAs(ctx, &deviceGroupsSet, false)
-	if diags.HasError() {
-		resp.Diagnostics.Append(diags...)
+	deviceGroups, diags := helpers.SetToStringSlice(updateCtx, data.DeviceGroups)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -185,7 +172,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
 		Scope: client.BlueprintUpdateScopeV1{
-			DeviceGroups: deviceGroupsSet,
+			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
 	}
@@ -231,14 +218,10 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	deleteTimeout := defaultDeleteTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Delete(ctx, defaultDeleteTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		deleteTimeout = configuredTimeout
+	deleteTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultDeleteTimeout, data.Timeouts.Delete)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
@@ -251,7 +234,7 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err := r.client.DeleteBlueprintV1(deleteCtx, data.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint already deleted", map[string]interface{}{
 				"blueprint_id": data.ID.ValueString(),
 			})

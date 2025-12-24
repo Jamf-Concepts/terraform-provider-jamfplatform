@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -211,14 +212,10 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -251,35 +248,35 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	data.ID = types.StringValue(deviceDetail.ID)
-	data.SerialNumber = stringValueOrNull(serialValue)
-	data.Name = stringValueOrNull(deviceDetail.Name)
-	data.Model = stringValueOrNull(modelValue)
-	data.ModelIdentifier = stringValueOrNull(modelIdentifierValue)
-	data.LastInventoryUpdate = stringValueOrNull(deviceDetail.LastInventoryUpdateTime)
-	data.LastCheckIn = stringPointerValueOrNull(deviceDetail.LastCheckInTime)
-	data.OperatingSystemVersion = stringValueOrNull(operatingSystemVersion)
+	data.SerialNumber = helpers.StringValueOrNull(serialValue)
+	data.Name = helpers.StringValueOrNull(deviceDetail.Name)
+	data.Model = helpers.StringValueOrNull(modelValue)
+	data.ModelIdentifier = helpers.StringValueOrNull(modelIdentifierValue)
+	data.LastInventoryUpdate = helpers.StringValueOrNull(deviceDetail.LastInventoryUpdateTime)
+	data.LastCheckIn = helpers.StringPointerValueOrNull(deviceDetail.LastCheckInTime)
+	data.OperatingSystemVersion = helpers.StringValueOrNull(operatingSystemVersion)
 	if deviceDetail.OperatingSystem != nil {
-		data.OperatingSystemName = stringValueOrNull(deviceDetail.OperatingSystem.Name)
-		data.OperatingSystemBuild = stringValueOrNull(deviceDetail.OperatingSystem.Build)
-		data.OperatingSystemSupplementalBuildVersion = stringPointerValueOrNull(deviceDetail.OperatingSystem.SupplementalBuildVersion)
-		data.OperatingSystemRapidSecurityResponse = stringPointerValueOrNull(deviceDetail.OperatingSystem.RapidSecurityResponse)
+		data.OperatingSystemName = helpers.StringValueOrNull(deviceDetail.OperatingSystem.Name)
+		data.OperatingSystemBuild = helpers.StringValueOrNull(deviceDetail.OperatingSystem.Build)
+		data.OperatingSystemSupplementalBuildVersion = helpers.StringPointerValueOrNull(deviceDetail.OperatingSystem.SupplementalBuildVersion)
+		data.OperatingSystemRapidSecurityResponse = helpers.StringPointerValueOrNull(deviceDetail.OperatingSystem.RapidSecurityResponse)
 	} else {
 		data.OperatingSystemName = types.StringNull()
 		data.OperatingSystemBuild = types.StringNull()
 		data.OperatingSystemSupplementalBuildVersion = types.StringNull()
 		data.OperatingSystemRapidSecurityResponse = types.StringNull()
 	}
-	data.UserID = stringPointerValueOrNull(deviceDetail.UserID)
-	data.EnrollmentType = stringValueOrNull(deviceDetail.EnrollmentType)
-	data.LastEnrollmentTime = stringValueOrNull(deviceDetail.LastEnrollmentTime)
+	data.UserID = helpers.StringPointerValueOrNull(deviceDetail.UserID)
+	data.EnrollmentType = helpers.StringValueOrNull(deviceDetail.EnrollmentType)
+	data.LastEnrollmentTime = helpers.StringValueOrNull(deviceDetail.LastEnrollmentTime)
 	data.Managed = types.BoolValue(deviceDetail.Managed)
 	data.Supervised = types.BoolValue(deviceDetail.Supervised)
 
 	if deviceDetail.Hardware != nil {
-		data.HardwareMake = stringValueOrNull(deviceDetail.Hardware.Make)
-		data.HardwareUDID = stringValueOrNull(deviceDetail.Hardware.UDID)
-		data.HardwareBatteryHealth = stringValueOrNull(deviceDetail.Hardware.BatteryHealth)
-		data.HardwareMacAddress = stringValueOrNull(deviceDetail.Hardware.MacAddress)
+		data.HardwareMake = helpers.StringValueOrNull(deviceDetail.Hardware.Make)
+		data.HardwareUDID = helpers.StringValueOrNull(deviceDetail.Hardware.UDID)
+		data.HardwareBatteryHealth = helpers.StringValueOrNull(deviceDetail.Hardware.BatteryHealth)
+		data.HardwareMacAddress = helpers.StringValueOrNull(deviceDetail.Hardware.MacAddress)
 		data.HardwareStorageCapacity = types.Int64Value(int64(deviceDetail.Hardware.StorageCapacity))
 		data.HardwareStorageUsed = types.Int64Value(int64(deviceDetail.Hardware.StorageUsed))
 	} else {
@@ -292,9 +289,9 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	if deviceDetail.Network != nil {
-		data.NetworkLastIPAddress = stringPointerValueOrNull(deviceDetail.Network.LastIPAddress)
-		data.NetworkLastReportedIPv4Address = stringPointerValueOrNull(deviceDetail.Network.LastReportedIPv4Address)
-		data.NetworkLastReportedIPv6Address = stringPointerValueOrNull(deviceDetail.Network.LastReportedIPv6Address)
+		data.NetworkLastIPAddress = helpers.StringPointerValueOrNull(deviceDetail.Network.LastIPAddress)
+		data.NetworkLastReportedIPv4Address = helpers.StringPointerValueOrNull(deviceDetail.Network.LastReportedIPv4Address)
+		data.NetworkLastReportedIPv6Address = helpers.StringPointerValueOrNull(deviceDetail.Network.LastReportedIPv6Address)
 	} else {
 		data.NetworkLastIPAddress = types.StringNull()
 		data.NetworkLastReportedIPv4Address = types.StringNull()
@@ -302,11 +299,11 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 
 	if deviceDetail.Security != nil {
-		data.SecurityBootstrapTokenEscrowedStatus = stringValueOrNull(deviceDetail.Security.BootstrapTokenEscrowedStatus)
-		data.SecurityHardwareEncryption = boolPointerValueOrNull(deviceDetail.Security.HardwareEncryption)
-		data.SecurityPasscodePresent = boolPointerValueOrNull(deviceDetail.Security.PasscodePresent)
-		data.SecurityPasscodeCompliant = boolPointerValueOrNull(deviceDetail.Security.PasscodeCompliant)
-		data.SecurityLostModeEnabled = boolPointerValueOrNull(deviceDetail.Security.LostModeEnabled)
+		data.SecurityBootstrapTokenEscrowedStatus = helpers.StringValueOrNull(deviceDetail.Security.BootstrapTokenEscrowedStatus)
+		data.SecurityHardwareEncryption = helpers.BoolPointerValueOrNull(deviceDetail.Security.HardwareEncryption)
+		data.SecurityPasscodePresent = helpers.BoolPointerValueOrNull(deviceDetail.Security.PasscodePresent)
+		data.SecurityPasscodeCompliant = helpers.BoolPointerValueOrNull(deviceDetail.Security.PasscodeCompliant)
+		data.SecurityLostModeEnabled = helpers.BoolPointerValueOrNull(deviceDetail.Security.LostModeEnabled)
 	} else {
 		data.SecurityBootstrapTokenEscrowedStatus = types.StringNull()
 		data.SecurityHardwareEncryption = types.BoolNull()

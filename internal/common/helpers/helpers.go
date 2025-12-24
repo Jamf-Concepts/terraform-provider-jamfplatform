@@ -1,0 +1,95 @@
+// Copyright 2025 Jamf Software LLC.
+
+package helpers
+
+import (
+	"context"
+	"strings"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+// StringValueOrNull converts a Go string into a Terraform string attribute, preserving null when empty.
+func StringValueOrNull(value string) types.String {
+	if value == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(value)
+}
+
+// StringPointerValueOrNull safely unwraps a *string and converts it to a Terraform string.
+func StringPointerValueOrNull(value *string) types.String {
+	if value == nil || *value == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(*value)
+}
+
+// BoolPointerValueOrNull safely unwraps a *bool and converts it to a Terraform bool.
+func BoolPointerValueOrNull(value *bool) types.Bool {
+	if value == nil {
+		return types.BoolNull()
+	}
+	return types.BoolValue(*value)
+}
+
+// PollUntil repeatedly invokes checker until it reports completion or returns an error.
+// Between attempts the function waits for the provided interval while respecting context cancellation.
+func PollUntil(ctx context.Context, interval time.Duration, checker func(context.Context) (bool, error)) error {
+	if interval <= 0 {
+		interval = time.Second
+	}
+	for {
+		done, err := checker(ctx)
+		if err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(interval):
+		}
+	}
+}
+
+// SetToStringSlice converts a Terraform set of strings into a Go slice, preserving diagnostics.
+func SetToStringSlice(ctx context.Context, set types.Set) ([]string, diag.Diagnostics) {
+	if set.IsNull() || set.IsUnknown() {
+		return nil, nil
+	}
+	var values []string
+	diags := set.ElementsAs(ctx, &values, false)
+	return values, diags
+}
+
+// ResolveTimeout returns either the configured timeout or the provided default when unset.
+// The resolver argument should be a method such as timeouts.Value.Read/Create/Update/Delete.
+func ResolveTimeout(
+	ctx context.Context,
+	isNull bool,
+	isUnknown bool,
+	defaultDuration time.Duration,
+	resolver func(context.Context, time.Duration) (time.Duration, diag.Diagnostics),
+) (time.Duration, diag.Diagnostics) {
+	if isNull || isUnknown || resolver == nil {
+		return defaultDuration, nil
+	}
+	return resolver(ctx, defaultDuration)
+}
+
+// IsNotFoundError reports whether an error message indicates a 404/not found response from the Jamf API.
+func IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errorStr := err.Error()
+	return strings.Contains(errorStr, "status 404") ||
+		strings.Contains(errorStr, "was not found") ||
+		strings.Contains(errorStr, "NOT_FOUND")
+}

@@ -5,10 +5,10 @@ package benchmark
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -16,88 +16,68 @@ import (
 // (SYNCED or FAILED) or the provided context is canceled. The interval
 // controls how often the API is polled.
 func waitForBenchmarkSync(ctx context.Context, c *client.Client, id string, interval time.Duration) (*client.CBEngineBenchmarkV2, error) {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(interval):
-			benchmarks, err := c.GetCBEngineBenchmarksV2(ctx)
-			if err != nil {
-				tflog.Debug(ctx, "polling benchmarks failed", map[string]interface{}{"error": err.Error()})
-				return nil, fmt.Errorf("failed to poll benchmarks: %w", err)
-			}
-			var found *client.CBEngineBenchmarkV2
-			for _, b := range benchmarks.Benchmarks {
-				if b.ID == id {
-					found = &b
-					break
-				}
-			}
-			if found == nil {
-				tflog.Debug(ctx, "benchmark not present yet", map[string]interface{}{"benchmark_id": id})
+	var synced *client.CBEngineBenchmarkV2
+	err := helpers.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
+		benchmarks, err := c.GetCBEngineBenchmarksV2(pollCtx)
+		if err != nil {
+			tflog.Debug(pollCtx, "polling benchmarks failed", map[string]interface{}{"error": err.Error()})
+			return false, fmt.Errorf("failed to poll benchmarks: %w", err)
+		}
+		for _, b := range benchmarks.Benchmarks {
+			if b.ID != id {
 				continue
 			}
-			tflog.Debug(ctx, "benchmark syncState", map[string]interface{}{"benchmark_id": id, "sync_state": found.SyncState})
-			switch found.SyncState {
+			benchCopy := b
+			tflog.Debug(pollCtx, "benchmark syncState", map[string]interface{}{"benchmark_id": id, "sync_state": benchCopy.SyncState})
+			switch benchCopy.SyncState {
 			case "PENDING":
-				continue
+				return false, nil
 			case "SYNCED":
-				return found, nil
+				synced = &benchCopy
+				return true, nil
 			case "FAILED":
-				return found, fmt.Errorf("benchmark %s in FAILED state", id)
+				return false, fmt.Errorf("benchmark %s in FAILED state", id)
 			default:
-				return found, fmt.Errorf("unexpected syncState for benchmark %s: %s", id, found.SyncState)
+				return false, fmt.Errorf("unexpected syncState for benchmark %s: %s", id, benchCopy.SyncState)
 			}
 		}
+		tflog.Debug(pollCtx, "benchmark not present yet", map[string]interface{}{"benchmark_id": id})
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
 	}
+	return synced, nil
 }
 
 // WaitForBenchmarkDeletion polls until the benchmark is no longer present or
 // the context is canceled. Returns nil when the benchmark is absent. If the
 // API reports a DELETE_FAILED state an error is returned.
 func waitForBenchmarkDeletion(ctx context.Context, c *client.Client, id string, interval time.Duration) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(interval):
-			benchmarks, err := c.GetCBEngineBenchmarksV2(ctx)
-			if err != nil {
-				tflog.Debug(ctx, "polling benchmarks failed", map[string]interface{}{"error": err.Error()})
-				return fmt.Errorf("failed to poll benchmarks: %w", err)
+	return helpers.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
+		benchmarks, err := c.GetCBEngineBenchmarksV2(pollCtx)
+		if err != nil {
+			tflog.Debug(pollCtx, "polling benchmarks failed", map[string]interface{}{"error": err.Error()})
+			return false, fmt.Errorf("failed to poll benchmarks: %w", err)
+		}
+		for _, b := range benchmarks.Benchmarks {
+			if b.ID != id {
+				continue
 			}
-			present := false
-			for _, b := range benchmarks.Benchmarks {
-				if b.ID == id {
-					present = true
-					tflog.Debug(ctx, "benchmark still present during deletion poll", map[string]interface{}{
-						"benchmark_id": b.ID,
-						"sync_state":   b.SyncState,
-					})
-					if b.SyncState == "DELETING" {
-						break
-					}
-					if b.SyncState == "DELETE_FAILED" {
-						return fmt.Errorf("benchmark %s deletion failed: syncState=DELETE_FAILED", id)
-					}
-					return fmt.Errorf("benchmark %s still present after delete, syncState=%s", id, b.SyncState)
-				}
-			}
-			if !present {
-				tflog.Debug(ctx, "benchmark absent after delete", map[string]interface{}{"benchmark_id": id})
-				return nil
+			tflog.Debug(pollCtx, "benchmark still present during deletion poll", map[string]interface{}{
+				"benchmark_id": b.ID,
+				"sync_state":   b.SyncState,
+			})
+			switch b.SyncState {
+			case "DELETING":
+				return false, nil
+			case "DELETE_FAILED":
+				return false, fmt.Errorf("benchmark %s deletion failed: syncState=DELETE_FAILED", id)
+			default:
+				return false, fmt.Errorf("benchmark %s still present after delete, syncState=%s", id, b.SyncState)
 			}
 		}
-	}
-}
-
-// isNotFoundError checks if the error is a 404 not found error
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errorStr := err.Error()
-	return strings.Contains(errorStr, "status 404") ||
-		strings.Contains(errorStr, "was not found") ||
-		strings.Contains(errorStr, "NOT_FOUND")
+		tflog.Debug(pollCtx, "benchmark absent after delete", map[string]interface{}{"benchmark_id": id})
+		return true, nil
+	})
 }

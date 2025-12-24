@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -148,14 +149,10 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -180,20 +177,9 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	description := types.StringNull()
-	if grp.Description != "" {
-		description = types.StringValue(grp.Description)
-	}
-
-	deviceType := types.StringNull()
-	if grp.DeviceType != "" {
-		deviceType = types.StringValue(strings.ToLower(grp.DeviceType))
-	}
-
-	groupType := types.StringNull()
-	if grp.GroupType != "" {
-		groupType = types.StringValue(strings.ToLower(grp.GroupType))
-	}
+	description := helpers.StringValueOrNull(grp.Description)
+	deviceType := helpers.StringValueOrNull(strings.ToLower(grp.DeviceType))
+	groupType := helpers.StringValueOrNull(strings.ToLower(grp.GroupType))
 
 	timeoutsConfig := data.Timeouts
 

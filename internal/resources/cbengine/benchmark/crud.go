@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -301,7 +302,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	bench, err := r.client.GetCBEngineBenchmarkByIDV2(readCtx, data.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]interface{}{
 				"benchmark_id": data.ID.ValueString(),
 			})
@@ -532,7 +533,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err := r.client.DeleteCBEngineBenchmarkV1(deleteCtx, data.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark already deleted", map[string]interface{}{
 				"benchmark_id": data.ID.ValueString(),
 			})
@@ -548,7 +549,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	pollInterval := 5 * time.Second
 	if err := waitForBenchmarkDeletion(deleteCtx, r.client, data.ID.ValueString(), pollInterval); err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			return
 		}
 		resp.Diagnostics.AddError(

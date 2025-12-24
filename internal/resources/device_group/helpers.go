@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -39,40 +39,29 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 
 // waitForDeviceGroupAvailability polls the API until the newly created device group is available.
 func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context, id string) error {
+	attempt := 0
 	var lastErr error
-	for attempt := 1; attempt <= deviceGroupCreateMaxAttempts; attempt++ {
-		_, err := r.client.GetDeviceGroupByIDV1(ctx, id)
+	return helpers.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
+		attempt++
+		_, err := r.client.GetDeviceGroupByIDV1(pollCtx, id)
 		if err == nil {
-			return nil
+			return true, nil
 		}
-		if !isNotFoundError(err) {
-			return err
+		if !helpers.IsNotFoundError(err) {
+			return false, err
 		}
 
 		lastErr = err
-		if attempt == deviceGroupCreateMaxAttempts {
-			break
+		if attempt >= deviceGroupCreateMaxAttempts {
+			return false, fmt.Errorf("device group %s not yet available after %d attempts: %w", id, deviceGroupCreateMaxAttempts, lastErr)
 		}
 
-		tflog.Debug(ctx, "device group not yet available, retrying", map[string]interface{}{
+		tflog.Debug(pollCtx, "device group not yet available, retrying", map[string]interface{}{
 			"id":      id,
 			"attempt": attempt,
 		})
-
-		timer := time.NewTimer(deviceGroupCreateRetryDelay)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return fmt.Errorf("context cancelled while waiting for device group %s: %w", id, ctx.Err())
-		case <-timer.C:
-		}
-	}
-
-	if lastErr == nil {
-		lastErr = fmt.Errorf("device group %s not ready", id)
-	}
-
-	return fmt.Errorf("device group %s not yet available after %d attempts: %w", id, deviceGroupCreateMaxAttempts, lastErr)
+		return false, nil
+	})
 }
 
 // assignDeviceGroupModel maps API representation to Terraform model, respecting managed fields.
@@ -246,16 +235,6 @@ func flattenDeviceGroupCriteria(criteria []client.DeviceGroupCriteriaRepresentat
 	return result
 }
 
-// membersSetToStrings converts a Terraform set of member IDs into a Go slice.
-func membersSetToStrings(ctx context.Context, set types.Set) ([]string, diag.Diagnostics) {
-	if set.IsNull() || set.IsUnknown() {
-		return nil, nil
-	}
-	var members []string
-	diags := set.ElementsAs(ctx, &members, false)
-	return members, diags
-}
-
 // diffStringSlices returns added/removed values between current and desired sets.
 func diffStringSlices(current, desired []string) (added, removed []string) {
 	currentSet := make(map[string]struct{}, len(current))
@@ -277,17 +256,6 @@ func diffStringSlices(current, desired []string) (added, removed []string) {
 	sort.Strings(added)
 	sort.Strings(removed)
 	return
-}
-
-// isNotFoundError checks if the error is a 404 not found error.
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errorStr := err.Error()
-	return strings.Contains(errorStr, "status 404") ||
-		strings.Contains(errorStr, "was not found") ||
-		strings.Contains(errorStr, "NOT_FOUND")
 }
 
 // reconcileOptionalBool keeps the current value if not managed, otherwise sets to the API value.

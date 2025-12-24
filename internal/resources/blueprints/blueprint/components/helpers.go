@@ -7,16 +7,7 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 // setBoolField sets a boolean field for the Jamf API request body.
 // If the field is null or unknown, it sets the field to the provided default value and marks it as not included.
 func setBoolField(field types.Bool, defaultValue bool) map[string]interface{} {
-	if !field.IsNull() && !field.IsUnknown() {
-		return map[string]interface{}{
-			"Enabled":  field.ValueBool(),
-			"Included": true,
-		}
-	}
-	return map[string]interface{}{
-		"Enabled":  defaultValue,
-		"Included": false,
-	}
+	return setBoolFieldWithKey(field, "Enabled", defaultValue)
 }
 
 // setStringField sets a string field for the Jamf API request body.

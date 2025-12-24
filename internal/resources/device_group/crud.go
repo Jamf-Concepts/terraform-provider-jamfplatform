@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -30,14 +31,10 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	createTimeout := defaultCreateTimeout
-	if !plan.Timeouts.IsNull() && !plan.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := plan.Timeouts.Create(ctx, defaultCreateTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		createTimeout = configuredTimeout
+	createTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, plan.Timeouts.IsNull(), plan.Timeouts.IsUnknown(), defaultCreateTimeout, plan.Timeouts.Create)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
@@ -67,7 +64,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		reqBody.Criteria = expandDeviceGroupCriteria(plan.Criteria)
 	case "static":
 		if manageMembers {
-			members, diags := membersSetToStrings(createCtx, plan.Members)
+			members, diags := helpers.SetToStringSlice(createCtx, plan.Members)
 			resp.Diagnostics.Append(diags...)
 			if resp.Diagnostics.HasError() {
 				return
@@ -113,14 +110,10 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	readTimeout := defaultReadTimeout
-	if !state.Timeouts.IsNull() && !state.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := state.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -133,7 +126,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 
 	grp, err := r.client.GetDeviceGroupByIDV1(readCtx, state.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "device group not found, removing from state", map[string]interface{}{
 				"id": state.ID.ValueString(),
 			})
@@ -173,14 +166,10 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	updateTimeout := defaultUpdateTimeout
-	if !plan.Timeouts.IsNull() && !plan.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := plan.Timeouts.Update(ctx, defaultUpdateTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		updateTimeout = configuredTimeout
+	updateTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, plan.Timeouts.IsNull(), plan.Timeouts.IsUnknown(), defaultUpdateTimeout, plan.Timeouts.Update)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
@@ -212,7 +201,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	if strings.ToLower(plan.GroupType.ValueString()) == "static" && manageMembers {
-		desired, diags := membersSetToStrings(updateCtx, plan.Members)
+		desired, diags := helpers.SetToStringSlice(updateCtx, plan.Members)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -253,14 +242,10 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	deleteTimeout := defaultDeleteTimeout
-	if !state.Timeouts.IsNull() && !state.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := state.Timeouts.Delete(ctx, defaultDeleteTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		deleteTimeout = configuredTimeout
+	deleteTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultDeleteTimeout, state.Timeouts.Delete)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
@@ -273,7 +258,7 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err := r.client.DeleteDeviceGroupV1(deleteCtx, state.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "device group already removed", map[string]interface{}{
 				"id": state.ID.ValueString(),
 			})
