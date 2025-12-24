@@ -24,14 +24,10 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createTimeout := defaultCreateTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Create(ctx, defaultCreateTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		createTimeout = configuredTimeout
+	createTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultCreateTimeout, data.Timeouts.Create)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
@@ -282,14 +278,10 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -513,14 +505,10 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	deleteTimeout := defaultDeleteTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Delete(ctx, defaultDeleteTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		deleteTimeout = configuredTimeout
+	deleteTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultDeleteTimeout, data.Timeouts.Delete)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)

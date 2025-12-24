@@ -108,14 +108,10 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	timeoutsValue := data.Timeouts
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
