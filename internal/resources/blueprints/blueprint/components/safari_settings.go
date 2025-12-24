@@ -84,52 +84,31 @@ func (c *SafariSettingsComponent) ToRawConfiguration() (map[string]interface{}, 
 	config := make(map[string]interface{})
 
 	if !c.AcceptCookies.IsNull() && !c.AcceptCookies.IsUnknown() {
-		config["AcceptCookies"] = map[string]interface{}{
-			"Value":    c.AcceptCookies.ValueString(),
-			"Included": true,
-		}
+		config["AcceptCookies"] = setStringField(c.AcceptCookies, "")
 	}
 
 	if !c.AllowDisablingFraudWarning.IsNull() && !c.AllowDisablingFraudWarning.IsUnknown() {
-		config["AllowDisablingFraudWarning"] = map[string]interface{}{
-			"Value":    c.AllowDisablingFraudWarning.ValueBool(),
-			"Included": true,
-		}
+		config["AllowDisablingFraudWarning"] = setBoolFieldWithKey(c.AllowDisablingFraudWarning, "Value", false)
 	}
 
 	if !c.AllowHistoryClearing.IsNull() && !c.AllowHistoryClearing.IsUnknown() {
-		config["AllowHistoryClearing"] = map[string]interface{}{
-			"Value":    c.AllowHistoryClearing.ValueBool(),
-			"Included": true,
-		}
+		config["AllowHistoryClearing"] = setBoolFieldWithKey(c.AllowHistoryClearing, "Value", false)
 	}
 
 	if !c.AllowJavaScript.IsNull() && !c.AllowJavaScript.IsUnknown() {
-		config["AllowJavaScript"] = map[string]interface{}{
-			"Value":    c.AllowJavaScript.ValueBool(),
-			"Included": true,
-		}
+		config["AllowJavaScript"] = setBoolFieldWithKey(c.AllowJavaScript, "Value", false)
 	}
 
 	if !c.AllowPrivateBrowsing.IsNull() && !c.AllowPrivateBrowsing.IsUnknown() {
-		config["AllowPrivateBrowsing"] = map[string]interface{}{
-			"Value":    c.AllowPrivateBrowsing.ValueBool(),
-			"Included": true,
-		}
+		config["AllowPrivateBrowsing"] = setBoolFieldWithKey(c.AllowPrivateBrowsing, "Value", false)
 	}
 
 	if !c.AllowPopups.IsNull() && !c.AllowPopups.IsUnknown() {
-		config["AllowPopups"] = map[string]interface{}{
-			"Value":    c.AllowPopups.ValueBool(),
-			"Included": true,
-		}
+		config["AllowPopups"] = setBoolFieldWithKey(c.AllowPopups, "Value", false)
 	}
 
 	if !c.AllowSummary.IsNull() && !c.AllowSummary.IsUnknown() {
-		config["AllowSummary"] = map[string]interface{}{
-			"Value":    c.AllowSummary.ValueBool(),
-			"Included": true,
-		}
+		config["AllowSummary"] = setBoolFieldWithKey(c.AllowSummary, "Value", false)
 	}
 
 	if (!c.NewTabStartPageType.IsNull() && !c.NewTabStartPageType.IsUnknown()) ||

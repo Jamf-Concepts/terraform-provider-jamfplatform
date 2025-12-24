@@ -130,14 +130,9 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, 
 		config["targetLocalDateTime"] = c.TargetLocalDateTime.ValueString()
 	}
 
-	detailsURL := map[string]interface{}{
-		"Included": false,
-		"Value":    "",
-	}
-
-	if !c.DetailsURLValue.IsNull() && !c.DetailsURLValue.IsUnknown() && c.DetailsURLValue.ValueString() != "" {
-		detailsURL["Included"] = true
-		detailsURL["Value"] = c.DetailsURLValue.ValueString()
+	detailsURL := setStringField(c.DetailsURLValue, "")
+	if !c.DetailsURLValue.IsNull() && !c.DetailsURLValue.IsUnknown() && c.DetailsURLValue.ValueString() == "" {
+		detailsURL["Included"] = false
 	}
 
 	config["detailsURL"] = detailsURL

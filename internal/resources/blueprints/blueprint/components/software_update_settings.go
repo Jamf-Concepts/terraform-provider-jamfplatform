@@ -187,10 +187,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 			}
 		}
 
-		config["Beta"] = map[string]interface{}{
-			"Value":    betaValue,
-			"Included": true,
-		}
+		config["Beta"] = setValueField(betaValue, true)
 	}
 
 	deferrals := map[string]interface{}{

@@ -39,3 +39,11 @@ func setBoolFieldWithKey(field types.Bool, key string, defaultValue bool) map[st
 		"Included": false,
 	}
 }
+
+// setValueField wraps a provided value in the Value/Included envelope expected by Jamf payloads.
+func setValueField(value interface{}, included bool) map[string]interface{} {
+	return map[string]interface{}{
+		"Value":    value,
+		"Included": included,
+	}
+}
