@@ -5,7 +5,7 @@ package components
 import (
 	"encoding/json"
 
-	commonhelpers "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -93,18 +93,18 @@ func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, er
 		"MathNotesMode":  setBoolField(c.CalculatorMathNotesModeEnabled, true),
 	}
 
-	hasInputModes := commonhelpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) ||
-		commonhelpers.IsConfiguredValue(c.CalculatorInputModesRPN)
+	hasInputModes := helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) ||
+		helpers.IsConfiguredValue(c.CalculatorInputModesRPN)
 
 	inputModes := make(map[string]interface{})
 	if hasInputModes {
 		inputModes["Included"] = true
-		if commonhelpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) {
+		if helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) {
 			inputModes["UnitConversion"] = c.CalculatorInputModesUnitConversion.ValueBool()
 		} else {
 			inputModes["UnitConversion"] = true
 		}
-		if commonhelpers.IsConfiguredValue(c.CalculatorInputModesRPN) {
+		if helpers.IsConfiguredValue(c.CalculatorInputModesRPN) {
 			inputModes["RPN"] = c.CalculatorInputModesRPN.ValueBool()
 		} else {
 			inputModes["RPN"] = true
@@ -118,18 +118,18 @@ func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, er
 
 	config["Calculator"] = calculator
 
-	hasSystemBehavior := commonhelpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) ||
-		commonhelpers.IsConfiguredValue(c.SystemBehaviorMathNotes)
+	hasSystemBehavior := helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) ||
+		helpers.IsConfiguredValue(c.SystemBehaviorMathNotes)
 
 	systemBehavior := make(map[string]interface{})
 	if hasSystemBehavior {
 		systemBehavior["Included"] = true
-		if commonhelpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) {
+		if helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) {
 			systemBehavior["KeyboardSuggestions"] = c.SystemBehaviorKeyboardSuggestions.ValueBool()
 		} else {
 			systemBehavior["KeyboardSuggestions"] = true
 		}
-		if commonhelpers.IsConfiguredValue(c.SystemBehaviorMathNotes) {
+		if helpers.IsConfiguredValue(c.SystemBehaviorMathNotes) {
 			systemBehavior["MathNotes"] = c.SystemBehaviorMathNotes.ValueBool()
 		} else {
 			systemBehavior["MathNotes"] = true

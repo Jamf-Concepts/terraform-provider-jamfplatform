@@ -5,7 +5,7 @@ package components
 import (
 	"encoding/json"
 
-	commonhelpers "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -99,51 +99,51 @@ func PasscodePolicyComponentSchema() schema.NestedBlockObject {
 func (c *PasscodePolicyComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	if commonhelpers.IsConfiguredValue(c.ChangeAtNextAuth) {
+	if helpers.IsConfiguredValue(c.ChangeAtNextAuth) {
 		config["ChangeAtNextAuth"] = c.ChangeAtNextAuth.ValueBool()
 	}
 
-	if commonhelpers.IsConfiguredValue(c.FailedAttemptsResetInMinutes) {
+	if helpers.IsConfiguredValue(c.FailedAttemptsResetInMinutes) {
 		config["FailedAttemptsResetInMinutes"] = int(c.FailedAttemptsResetInMinutes.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.MaximumFailedAttempts) {
+	if helpers.IsConfiguredValue(c.MaximumFailedAttempts) {
 		config["MaximumFailedAttempts"] = int(c.MaximumFailedAttempts.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.MaximumGracePeriodInMinutes) {
+	if helpers.IsConfiguredValue(c.MaximumGracePeriodInMinutes) {
 		config["MaximumGracePeriodInMinutes"] = int(c.MaximumGracePeriodInMinutes.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.MaximumInactivityInMinutes) {
+	if helpers.IsConfiguredValue(c.MaximumInactivityInMinutes) {
 		config["MaximumInactivityInMinutes"] = int(c.MaximumInactivityInMinutes.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.MaximumPasscodeAgeInDays) {
+	if helpers.IsConfiguredValue(c.MaximumPasscodeAgeInDays) {
 		config["MaximumPasscodeAgeInDays"] = int(c.MaximumPasscodeAgeInDays.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.MinimumComplexCharacters) {
+	if helpers.IsConfiguredValue(c.MinimumComplexCharacters) {
 		config["MinimumComplexCharacters"] = int(c.MinimumComplexCharacters.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.MinimumLength) {
+	if helpers.IsConfiguredValue(c.MinimumLength) {
 		config["MinimumLength"] = int(c.MinimumLength.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.PasscodeReuseLimit) {
+	if helpers.IsConfiguredValue(c.PasscodeReuseLimit) {
 		config["PasscodeReuseLimit"] = int(c.PasscodeReuseLimit.ValueInt64())
 	}
 
-	if commonhelpers.IsConfiguredValue(c.RequireAlphanumericPasscode) {
+	if helpers.IsConfiguredValue(c.RequireAlphanumericPasscode) {
 		config["RequireAlphanumericPasscode"] = c.RequireAlphanumericPasscode.ValueBool()
 	}
 
-	if commonhelpers.IsConfiguredValue(c.RequireComplexPasscode) {
+	if helpers.IsConfiguredValue(c.RequireComplexPasscode) {
 		config["RequireComplexPasscode"] = c.RequireComplexPasscode.ValueBool()
 	}
 
-	if commonhelpers.IsConfiguredValue(c.RequirePasscode) {
+	if helpers.IsConfiguredValue(c.RequirePasscode) {
 		config["RequirePasscode"] = c.RequirePasscode.ValueBool()
 	}
 
