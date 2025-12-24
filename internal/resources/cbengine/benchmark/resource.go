@@ -67,9 +67,11 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"source_baseline_id": schema.StringAttribute{
-				MarkdownDescription: "mSCP baseline identifier used as the source for rules. Required and immutable for this resource (replace on change). Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.",
-				Required:            true,
+				MarkdownDescription: "mSCP baseline identifier used as the source for rules. Required on creation, but computed for imports. Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.",
+				Optional:            true,
+				Computed:            true,
 				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 					stringplanmodifier.RequiresReplace(),
 				},
 			},

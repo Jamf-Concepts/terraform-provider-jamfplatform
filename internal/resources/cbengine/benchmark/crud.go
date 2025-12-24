@@ -24,6 +24,11 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
+	if data.SourceBaselineID.IsNull() || data.SourceBaselineID.IsUnknown() || data.SourceBaselineID.ValueString() == "" {
+		resp.Diagnostics.AddError("Missing source baseline", "Attribute source_baseline_id must be provided when creating a benchmark.")
+		return
+	}
+
 	createTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultCreateTimeout, data.Timeouts.Create)
 	resp.Diagnostics.Append(timeoutDiags...)
 	if resp.Diagnostics.HasError() {
