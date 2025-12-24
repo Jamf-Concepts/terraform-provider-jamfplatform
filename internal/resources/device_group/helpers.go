@@ -71,6 +71,11 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 	prevDescription := model.Description
 	prevCriteria := model.Criteria
 	model.ID = types.StringValue(grp.ID)
+	if grp.Name == "" {
+		model.Name = types.StringNull()
+	} else {
+		model.Name = types.StringValue(grp.Name)
+	}
 	if manageDescription {
 		model.Description = helpers.ReconcileOptionalString(grp.Description, prevDescription)
 	} else {
