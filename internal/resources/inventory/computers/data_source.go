@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -77,7 +78,7 @@ func (d *DataSourceComputers) Read(ctx context.Context, req datasource.ReadReque
 	}
 
 	filter := ""
-	if !data.Filter.IsNull() && !data.Filter.IsUnknown() {
+	if helpers.IsConfiguredValue(data.Filter) {
 		filter = data.Filter.ValueString()
 	}
 

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"regexp"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -157,14 +158,13 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 	}
 	config["AutomaticActions"] = automaticActions
 
-	hasBetaSettings := !c.BetaProgramEnrollment.IsNull() && !c.BetaProgramEnrollment.IsUnknown() ||
+	hasBetaSettings := helpers.IsConfiguredValue(c.BetaProgramEnrollment) ||
 		len(c.BetaOfferPrograms) > 0 ||
-		(!c.BetaRequireProgramToken.IsNull() && !c.BetaRequireProgramToken.IsUnknown() &&
-			!c.BetaRequireProgramDescription.IsNull() && !c.BetaRequireProgramDescription.IsUnknown())
+		(helpers.IsConfiguredValue(c.BetaRequireProgramToken) && helpers.IsConfiguredValue(c.BetaRequireProgramDescription))
 
 	if hasBetaSettings {
 		betaValue := make(map[string]interface{})
-		if !c.BetaProgramEnrollment.IsNull() && !c.BetaProgramEnrollment.IsUnknown() {
+		if helpers.IsConfiguredValue(c.BetaProgramEnrollment) {
 			betaValue["ProgramEnrollment"] = c.BetaProgramEnrollment.ValueString()
 		}
 
@@ -179,18 +179,14 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 			betaValue["OfferPrograms"] = offerPrograms
 		}
 
-		if !c.BetaRequireProgramToken.IsNull() && !c.BetaRequireProgramToken.IsUnknown() &&
-			!c.BetaRequireProgramDescription.IsNull() && !c.BetaRequireProgramDescription.IsUnknown() {
+		if helpers.IsConfiguredValue(c.BetaRequireProgramToken) && helpers.IsConfiguredValue(c.BetaRequireProgramDescription) {
 			betaValue["RequireProgram"] = map[string]interface{}{
 				"Token":       c.BetaRequireProgramToken.ValueString(),
 				"Description": c.BetaRequireProgramDescription.ValueString(),
 			}
 		}
 
-		config["Beta"] = map[string]interface{}{
-			"Value":    betaValue,
-			"Included": true,
-		}
+		config["Beta"] = setValueField(betaValue, true)
 	}
 
 	deferrals := map[string]interface{}{

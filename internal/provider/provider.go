@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -128,7 +129,9 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 
 	apiClient := client.NewClient(baseURL, clientID, clientSecret)
 
-	apiClient.SetLogger(NewTerraformLogger())
+	if shouldEnableHTTPLogging() {
+		apiClient.SetLogger(NewTerraformLogger())
+	}
 
 	if _, err := apiClient.OAuthClient().GetValidToken(ctx); err != nil {
 		resp.Diagnostics.AddError(
@@ -183,4 +186,19 @@ func New(version string) func() provider.Provider {
 func getenv(key string) string {
 	v, _ := os.LookupEnv(key)
 	return v
+}
+
+// shouldEnableHTTPLogging checks TF_LOG to determine whether HTTP logging should be wired up.
+func shouldEnableHTTPLogging() bool {
+	level, ok := os.LookupEnv("TF_LOG")
+	if !ok {
+		return false
+	}
+
+	switch strings.ToLower(level) {
+	case "debug", "trace":
+		return true
+	default:
+		return false
+	}
 }

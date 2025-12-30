@@ -9,6 +9,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -152,14 +153,10 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -181,16 +178,16 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	for _, device := range devices {
 		results = append(results, DevicesListEntry{
 			ID:                     types.StringValue(device.ID),
-			SerialNumber:           stringValueOrNull(device.SerialNumber),
-			Name:                   stringValueOrNull(device.Name),
-			Model:                  stringValueOrNull(device.Model),
-			ModelIdentifier:        stringValueOrNull(device.ModelIdentifier),
-			LastInventoryUpdate:    stringValueOrNull(device.LastInventoryUpdateTime),
-			LastCheckIn:            stringPointerValueOrNull(device.LastCheckInTime),
-			OperatingSystemVersion: stringValueOrNull(device.OperatingSystemVersion),
-			UserID:                 stringPointerValueOrNull(device.UserID),
-			EnrollmentType:         stringValueOrNull(device.EnrollmentType),
-			LastEnrollmentTime:     stringValueOrNull(device.LastEnrollmentTime),
+			SerialNumber:           helpers.StringValueOrNull(device.SerialNumber),
+			Name:                   helpers.StringValueOrNull(device.Name),
+			Model:                  helpers.StringValueOrNull(device.Model),
+			ModelIdentifier:        helpers.StringValueOrNull(device.ModelIdentifier),
+			LastInventoryUpdate:    helpers.StringValueOrNull(device.LastInventoryUpdateTime),
+			LastCheckIn:            helpers.StringPointerValueOrNull(device.LastCheckInTime),
+			OperatingSystemVersion: helpers.StringValueOrNull(device.OperatingSystemVersion),
+			UserID:                 helpers.StringPointerValueOrNull(device.UserID),
+			EnrollmentType:         helpers.StringValueOrNull(device.EnrollmentType),
+			LastEnrollmentTime:     helpers.StringValueOrNull(device.LastEnrollmentTime),
 		})
 	}
 

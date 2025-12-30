@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -444,7 +445,7 @@ func (d *DataSourceMobileDevice) Read(ctx context.Context, req datasource.ReadRe
 	}
 
 	var sections []string
-	if !data.Sections.IsNull() && !data.Sections.IsUnknown() {
+	if helpers.IsConfiguredValue(data.Sections) {
 		resp.Diagnostics.Append(data.Sections.ElementsAs(ctx, &sections, false)...)
 		if resp.Diagnostics.HasError() {
 			return

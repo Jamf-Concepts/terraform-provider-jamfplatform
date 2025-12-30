@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -97,7 +98,7 @@ func (d *ComponentDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	if data.ID.IsNull() || data.ID.ValueString() == "" {
+	if !helpers.IsConfiguredValue(data.ID) || data.ID.ValueString() == "" {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
 			"The 'id' attribute must be set to look up a component.",

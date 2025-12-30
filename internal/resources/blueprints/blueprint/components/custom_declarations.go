@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -67,15 +68,15 @@ func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]interface
 		for idx, declaration := range c.Declarations {
 			declarationMap := make(map[string]interface{})
 
-			if !declaration.ChannelType.IsNull() && !declaration.ChannelType.IsUnknown() {
+			if helpers.IsConfiguredValue(declaration.ChannelType) {
 				declarationMap["channelType"] = declaration.ChannelType.ValueString()
 			}
 
-			if !declaration.Kind.IsNull() && !declaration.Kind.IsUnknown() {
+			if helpers.IsConfiguredValue(declaration.Kind) {
 				declarationMap["kind"] = declaration.Kind.ValueString()
 			}
 
-			if !declaration.Payload.IsNull() && !declaration.Payload.IsUnknown() {
+			if helpers.IsConfiguredValue(declaration.Payload) {
 				var payloadObj interface{}
 				if err := json.Unmarshal([]byte(declaration.Payload.ValueString()), &payloadObj); err != nil {
 					return nil, err
@@ -83,7 +84,7 @@ func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]interface
 				declarationMap["payload"] = payloadObj
 			}
 
-			if !declaration.Type.IsNull() && !declaration.Type.IsUnknown() {
+			if helpers.IsConfiguredValue(declaration.Type) {
 				declarationMap["type"] = declaration.Type.ValueString()
 			}
 

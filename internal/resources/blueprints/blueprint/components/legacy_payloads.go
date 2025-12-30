@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -29,7 +30,7 @@ func LegacyPayloadsComponentSchema() schema.NestedBlockObject {
 // ToRawConfiguration converts the strongly-typed component to raw key-value configuration
 func (c *LegacyPayloadsComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
-	if !c.PayloadContent.IsNull() && !c.PayloadContent.IsUnknown() {
+	if helpers.IsConfiguredValue(c.PayloadContent) {
 		var payloadArray []interface{}
 		if err := json.Unmarshal([]byte(c.PayloadContent.ValueString()), &payloadArray); err != nil {
 			return nil, err

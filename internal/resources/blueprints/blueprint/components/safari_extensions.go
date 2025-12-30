@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -96,24 +97,24 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]interface{}
 		managedExtensions := make(map[string]interface{})
 
 		for _, ext := range c.ManagedExtensions {
-			if ext.ExtensionID.IsNull() || ext.ExtensionID.IsUnknown() {
+			if !helpers.IsConfiguredValue(ext.ExtensionID) {
 				continue
 			}
 
 			extConfig := make(map[string]interface{})
 
-			if !ext.State.IsNull() && !ext.State.IsUnknown() {
+			if helpers.IsConfiguredValue(ext.State) {
 				extConfig["State"] = ext.State.ValueString()
 			}
 
-			if !ext.PrivateBrowsing.IsNull() && !ext.PrivateBrowsing.IsUnknown() {
+			if helpers.IsConfiguredValue(ext.PrivateBrowsing) {
 				extConfig["PrivateBrowsing"] = ext.PrivateBrowsing.ValueString()
 			}
 
 			if len(ext.AllowedDomains) > 0 {
 				allowedDomains := make([]interface{}, 0, len(ext.AllowedDomains))
 				for _, domain := range ext.AllowedDomains {
-					if !domain.Domain.IsNull() && !domain.Domain.IsUnknown() {
+					if helpers.IsConfiguredValue(domain.Domain) {
 						allowedDomains = append(allowedDomains, map[string]interface{}{
 							"Domain": domain.Domain.ValueString(),
 						})
@@ -127,7 +128,7 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]interface{}
 			if len(ext.DeniedDomains) > 0 {
 				deniedDomains := make([]interface{}, 0, len(ext.DeniedDomains))
 				for _, domain := range ext.DeniedDomains {
-					if !domain.Domain.IsNull() && !domain.Domain.IsUnknown() {
+					if helpers.IsConfiguredValue(domain.Domain) {
 						deniedDomains = append(deniedDomains, map[string]interface{}{
 							"Domain": domain.Domain.ValueString(),
 						})
