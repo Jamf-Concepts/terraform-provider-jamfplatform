@@ -5,6 +5,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -92,18 +93,18 @@ func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, er
 		"MathNotesMode":  setBoolField(c.CalculatorMathNotesModeEnabled, true),
 	}
 
-	hasInputModes := (!c.CalculatorInputModesUnitConversion.IsNull() && !c.CalculatorInputModesUnitConversion.IsUnknown()) ||
-		(!c.CalculatorInputModesRPN.IsNull() && !c.CalculatorInputModesRPN.IsUnknown())
+	hasInputModes := helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) ||
+		helpers.IsConfiguredValue(c.CalculatorInputModesRPN)
 
 	inputModes := make(map[string]interface{})
 	if hasInputModes {
 		inputModes["Included"] = true
-		if !c.CalculatorInputModesUnitConversion.IsNull() && !c.CalculatorInputModesUnitConversion.IsUnknown() {
+		if helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) {
 			inputModes["UnitConversion"] = c.CalculatorInputModesUnitConversion.ValueBool()
 		} else {
 			inputModes["UnitConversion"] = true
 		}
-		if !c.CalculatorInputModesRPN.IsNull() && !c.CalculatorInputModesRPN.IsUnknown() {
+		if helpers.IsConfiguredValue(c.CalculatorInputModesRPN) {
 			inputModes["RPN"] = c.CalculatorInputModesRPN.ValueBool()
 		} else {
 			inputModes["RPN"] = true
@@ -117,18 +118,18 @@ func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, er
 
 	config["Calculator"] = calculator
 
-	hasSystemBehavior := (!c.SystemBehaviorKeyboardSuggestions.IsNull() && !c.SystemBehaviorKeyboardSuggestions.IsUnknown()) ||
-		(!c.SystemBehaviorMathNotes.IsNull() && !c.SystemBehaviorMathNotes.IsUnknown())
+	hasSystemBehavior := helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) ||
+		helpers.IsConfiguredValue(c.SystemBehaviorMathNotes)
 
 	systemBehavior := make(map[string]interface{})
 	if hasSystemBehavior {
 		systemBehavior["Included"] = true
-		if !c.SystemBehaviorKeyboardSuggestions.IsNull() && !c.SystemBehaviorKeyboardSuggestions.IsUnknown() {
+		if helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) {
 			systemBehavior["KeyboardSuggestions"] = c.SystemBehaviorKeyboardSuggestions.ValueBool()
 		} else {
 			systemBehavior["KeyboardSuggestions"] = true
 		}
-		if !c.SystemBehaviorMathNotes.IsNull() && !c.SystemBehaviorMathNotes.IsUnknown() {
+		if helpers.IsConfiguredValue(c.SystemBehaviorMathNotes) {
 			systemBehavior["MathNotes"] = c.SystemBehaviorMathNotes.ValueBool()
 		} else {
 			systemBehavior["MathNotes"] = true

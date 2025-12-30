@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -107,14 +108,10 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	timeoutsValue := data.Timeouts
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -140,17 +137,17 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		if len(bench.Target.DeviceGroups) > 0 {
 			values := make([]attr.Value, len(bench.Target.DeviceGroups))
 			for i, group := range bench.Target.DeviceGroups {
-				values[i] = stringValueOrNull(group)
+				values[i] = helpers.StringValueOrNull(group)
 			}
 			targetGroups, _ = types.ListValue(types.StringType, values)
 		}
 
 		entries = append(entries, BenchmarkListItem{
-			ID:                 stringValueOrNull(bench.ID),
-			Title:              stringValueOrNull(bench.Title),
-			Description:        stringValueOrNull(bench.Description),
+			ID:                 helpers.StringValueOrNull(bench.ID),
+			Title:              helpers.StringValueOrNull(bench.Title),
+			Description:        helpers.StringValueOrNull(bench.Description),
 			UpdateAvailable:    types.BoolValue(bench.UpdateAvailable),
-			SyncState:          stringValueOrNull(bench.SyncState),
+			SyncState:          helpers.StringValueOrNull(bench.SyncState),
 			TargetDeviceGroups: targetGroups,
 		})
 	}

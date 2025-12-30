@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -23,14 +24,15 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	createTimeout := defaultCreateTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Create(ctx, defaultCreateTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		createTimeout = configuredTimeout
+	if data.SourceBaselineID.IsNull() || data.SourceBaselineID.IsUnknown() || data.SourceBaselineID.ValueString() == "" {
+		resp.Diagnostics.AddError("Missing source baseline", "Attribute source_baseline_id must be provided when creating a benchmark.")
+		return
+	}
+
+	createTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultCreateTimeout, data.Timeouts.Create)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
@@ -58,10 +60,8 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 			ID:      rule.ID.ValueString(),
 			Enabled: rule.Enabled.ValueBool(),
 		}
-		if !rule.ODVValue.IsNull() && rule.ODVValue.ValueString() != "" {
-			rr.ODV = &client.CBEngineODVRequestV2{
-				Value: rule.ODVValue.ValueString(),
-			}
+		if value := helpers.StringPointerValue(rule.ODVValue); value != nil {
+			rr.ODV = &client.CBEngineODVRequestV2{Value: *value}
 		}
 		reqBody.Rules[i] = rr
 	}
@@ -281,14 +281,10 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	readTimeout := defaultReadTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Read(ctx, defaultReadTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		readTimeout = configuredTimeout
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
@@ -301,7 +297,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	bench, err := r.client.GetCBEngineBenchmarkByIDV2(readCtx, data.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]interface{}{
 				"benchmark_id": data.ID.ValueString(),
 			})
@@ -512,14 +508,10 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	deleteTimeout := defaultDeleteTimeout
-	if !data.Timeouts.IsNull() && !data.Timeouts.IsUnknown() {
-		configuredTimeout, timeoutDiags := data.Timeouts.Delete(ctx, defaultDeleteTimeout)
-		resp.Diagnostics.Append(timeoutDiags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		deleteTimeout = configuredTimeout
+	deleteTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultDeleteTimeout, data.Timeouts.Delete)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
@@ -532,7 +524,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	err := r.client.DeleteCBEngineBenchmarkV1(deleteCtx, data.ID.ValueString())
 	if err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark already deleted", map[string]interface{}{
 				"benchmark_id": data.ID.ValueString(),
 			})
@@ -548,7 +540,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 
 	pollInterval := 5 * time.Second
 	if err := waitForBenchmarkDeletion(deleteCtx, r.client, data.ID.ValueString(), pollInterval); err != nil {
-		if isNotFoundError(err) {
+		if helpers.IsNotFoundError(err) {
 			return
 		}
 		resp.Diagnostics.AddError(

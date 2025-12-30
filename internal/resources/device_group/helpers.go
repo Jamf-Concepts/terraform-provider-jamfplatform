@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -39,40 +39,29 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 
 // waitForDeviceGroupAvailability polls the API until the newly created device group is available.
 func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context, id string) error {
+	attempt := 0
 	var lastErr error
-	for attempt := 1; attempt <= deviceGroupCreateMaxAttempts; attempt++ {
-		_, err := r.client.GetDeviceGroupByIDV1(ctx, id)
+	return helpers.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
+		attempt++
+		_, err := r.client.GetDeviceGroupByIDV1(pollCtx, id)
 		if err == nil {
-			return nil
+			return true, nil
 		}
-		if !isNotFoundError(err) {
-			return err
+		if !helpers.IsNotFoundError(err) {
+			return false, err
 		}
 
 		lastErr = err
-		if attempt == deviceGroupCreateMaxAttempts {
-			break
+		if attempt >= deviceGroupCreateMaxAttempts {
+			return false, fmt.Errorf("device group %s not yet available after %d attempts: %w", id, deviceGroupCreateMaxAttempts, lastErr)
 		}
 
-		tflog.Debug(ctx, "device group not yet available, retrying", map[string]interface{}{
+		tflog.Debug(pollCtx, "device group not yet available, retrying", map[string]interface{}{
 			"id":      id,
 			"attempt": attempt,
 		})
-
-		timer := time.NewTimer(deviceGroupCreateRetryDelay)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return fmt.Errorf("context cancelled while waiting for device group %s: %w", id, ctx.Err())
-		case <-timer.C:
-		}
-	}
-
-	if lastErr == nil {
-		lastErr = fmt.Errorf("device group %s not ready", id)
-	}
-
-	return fmt.Errorf("device group %s not yet available after %d attempts: %w", id, deviceGroupCreateMaxAttempts, lastErr)
+		return false, nil
+	})
 }
 
 // assignDeviceGroupModel maps API representation to Terraform model, respecting managed fields.
@@ -82,8 +71,13 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 	prevDescription := model.Description
 	prevCriteria := model.Criteria
 	model.ID = types.StringValue(grp.ID)
+	if grp.Name == "" {
+		model.Name = types.StringNull()
+	} else {
+		model.Name = types.StringValue(grp.Name)
+	}
 	if manageDescription {
-		model.Description = reconcileOptionalString(grp.Description, prevDescription)
+		model.Description = helpers.ReconcileOptionalString(grp.Description, prevDescription)
 	} else {
 		model.Description = types.StringNull()
 	}
@@ -131,14 +125,14 @@ func validateDeviceGroupPlan(plan *DeviceGroupResourceModel) error {
 		if len(plan.Criteria) == 0 {
 			return fmt.Errorf("criteria must be supplied for smart groups")
 		}
-		if !plan.Members.IsNull() && !plan.Members.IsUnknown() {
+		if helpers.IsConfiguredValue(plan.Members) {
 			return fmt.Errorf("members cannot be set for smart groups")
 		}
 	case "static":
 		if len(plan.Criteria) > 0 {
 			return fmt.Errorf("criteria cannot be set for static groups")
 		}
-		if !plan.Members.IsNull() && plan.Members.IsUnknown() {
+		if plan.Members.IsUnknown() {
 			return fmt.Errorf("members cannot be unknown when provided")
 		}
 	default:
@@ -158,32 +152,32 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []client.Dev
 	}
 	result := make([]client.DeviceGroupCriteriaRepresentationV1, 0, len(criteria))
 	for idx, c := range criteria {
-		if c.AttributeName.IsNull() || c.AttributeName.IsUnknown() {
+		if !helpers.IsConfiguredValue(c.AttributeName) {
 			continue
 		}
 
 		operator := ""
-		if isConfiguredValue(c.Operator) {
+		if helpers.IsConfiguredValue(c.Operator) {
 			operator = strings.ToUpper(c.Operator.ValueString())
 		}
 
 		attributeValue := ""
-		if isConfiguredValue(c.AttributeValue) {
+		if helpers.IsConfiguredValue(c.AttributeValue) {
 			attributeValue = c.AttributeValue.ValueString()
 		}
 
 		joinType := ""
-		if isConfiguredValue(c.JoinType) {
+		if helpers.IsConfiguredValue(c.JoinType) {
 			joinType = strings.ToUpper(c.JoinType.ValueString())
 		}
 
 		hasOpening := false
-		if isConfiguredValue(c.HasOpeningParenthesis) {
+		if helpers.IsConfiguredValue(c.HasOpeningParenthesis) {
 			hasOpening = c.HasOpeningParenthesis.ValueBool()
 		}
 
 		hasClosing := false
-		if isConfiguredValue(c.HasClosingParenthesis) {
+		if helpers.IsConfiguredValue(c.HasClosingParenthesis) {
 			hasClosing = c.HasClosingParenthesis.ValueBool()
 		}
 		crit := client.DeviceGroupCriteriaRepresentationV1{
@@ -194,7 +188,7 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []client.Dev
 			HasOpeningParenthesis: hasOpening,
 			HasClosingParenthesis: hasClosing,
 		}
-		if !c.Order.IsNull() && !c.Order.IsUnknown() {
+		if helpers.IsConfiguredValue(c.Order) {
 			crit.Order = int(c.Order.ValueInt64())
 		} else {
 			crit.Order = idx
@@ -234,26 +228,16 @@ func flattenDeviceGroupCriteria(criteria []client.DeviceGroupCriteriaRepresentat
 			joinType = types.StringValue(strings.ToLower(c.JoinType))
 		}
 		result[i] = DeviceGroupCriteriaModel{
-			Order:                 reconcileOptionalInt(c.Order, prev.Order),
+			Order:                 helpers.ReconcileOptionalInt(c.Order, prev.Order),
 			AttributeName:         attributeName,
 			Operator:              operator,
-			AttributeValue:        reconcileOptionalString(c.AttributeValue, prev.AttributeValue),
+			AttributeValue:        helpers.ReconcileOptionalString(c.AttributeValue, prev.AttributeValue),
 			JoinType:              joinType,
-			HasOpeningParenthesis: reconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
-			HasClosingParenthesis: reconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),
+			HasOpeningParenthesis: helpers.ReconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
+			HasClosingParenthesis: helpers.ReconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),
 		}
 	}
 	return result
-}
-
-// membersSetToStrings converts a Terraform set of member IDs into a Go slice.
-func membersSetToStrings(ctx context.Context, set types.Set) ([]string, diag.Diagnostics) {
-	if set.IsNull() || set.IsUnknown() {
-		return nil, nil
-	}
-	var members []string
-	diags := set.ElementsAs(ctx, &members, false)
-	return members, diags
 }
 
 // diffStringSlices returns added/removed values between current and desired sets.
@@ -277,60 +261,4 @@ func diffStringSlices(current, desired []string) (added, removed []string) {
 	sort.Strings(added)
 	sort.Strings(removed)
 	return
-}
-
-// isNotFoundError checks if the error is a 404 not found error.
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errorStr := err.Error()
-	return strings.Contains(errorStr, "status 404") ||
-		strings.Contains(errorStr, "was not found") ||
-		strings.Contains(errorStr, "NOT_FOUND")
-}
-
-// reconcileOptionalBool keeps the current value if not managed, otherwise sets to the API value.
-func reconcileOptionalBool(apiValue bool, current types.Bool) types.Bool {
-	if isConfiguredValue(current) {
-		return types.BoolValue(apiValue)
-	}
-	return types.BoolNull()
-}
-
-// reconcileOptionalInt keeps the current value if not managed, otherwise sets to the API value.
-func reconcileOptionalInt(apiValue int, current types.Int64) types.Int64 {
-	if isConfiguredValue(current) {
-		return types.Int64Value(int64(apiValue))
-	}
-	return types.Int64Null()
-}
-
-// reconcileOptionalString keeps explicit empty strings set by the user while allowing nulls when unset.
-func reconcileOptionalString(apiValue string, current types.String) types.String {
-	if apiValue == "" {
-		if isConfiguredValue(current) && current.ValueString() == "" {
-			return current
-		}
-		return types.StringNull()
-	}
-
-	return types.StringValue(apiValue)
-}
-
-// stringPointerValue returns a *string for non-null/unknown Terraform strings, preserving empty strings.
-func stringPointerValue(v types.String) *string {
-	if !isConfiguredValue(v) {
-		return nil
-	}
-	value := v.ValueString()
-	return &value
-}
-
-// isConfiguredValue reports whether Terraform has a non-null, non-unknown value.
-func isConfiguredValue(value interface {
-	IsNull() bool
-	IsUnknown() bool
-}) bool {
-	return !value.IsNull() && !value.IsUnknown()
 }

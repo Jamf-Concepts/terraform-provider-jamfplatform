@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -120,7 +121,7 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	}
 
 	searchTerm := ""
-	if !data.Search.IsNull() && !data.Search.IsUnknown() {
+	if helpers.IsConfiguredValue(data.Search) {
 		searchTerm = strings.TrimSpace(data.Search.ValueString())
 	}
 	searchLower := strings.ToLower(searchTerm)
@@ -143,18 +144,18 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 		item := BlueprintListItem{
 			ID:                    types.StringValue(bp.ID),
-			Name:                  stringValueOrNull(bp.Name),
-			Description:           stringValueOrNull(bp.Description),
-			Created:               stringValueOrNull(bp.Created),
-			Updated:               stringValueOrNull(bp.Updated),
-			DeploymentState:       stringValueOrNull(bp.DeploymentState.State),
+			Name:                  helpers.StringValueOrNull(bp.Name),
+			Description:           helpers.StringValueOrNull(bp.Description),
+			Created:               helpers.StringValueOrNull(bp.Created),
+			Updated:               helpers.StringValueOrNull(bp.Updated),
+			DeploymentState:       helpers.StringValueOrNull(bp.DeploymentState.State),
 			LastDeploymentState:   types.StringNull(),
 			LastDeploymentStarted: types.StringNull(),
 		}
 
 		if bp.DeploymentState.LastDeployment != nil {
-			item.LastDeploymentState = stringValueOrNull(bp.DeploymentState.LastDeployment.State)
-			item.LastDeploymentStarted = stringValueOrNull(bp.DeploymentState.LastDeployment.Started)
+			item.LastDeploymentState = helpers.StringValueOrNull(bp.DeploymentState.LastDeployment.State)
+			item.LastDeploymentStarted = helpers.StringValueOrNull(bp.DeploymentState.LastDeployment.Started)
 		}
 
 		entries = append(entries, item)

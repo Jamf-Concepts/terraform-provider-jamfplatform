@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"regexp"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -109,35 +110,30 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	if (!c.DeploymentTime.IsNull() && !c.DeploymentTime.IsUnknown()) ||
-		(!c.EnforceAfterDays.IsNull() && !c.EnforceAfterDays.IsUnknown()) {
+	if helpers.IsConfiguredValue(c.DeploymentTime) ||
+		helpers.IsConfiguredValue(c.EnforceAfterDays) {
 		config["enforcementType"] = "AUTOMATIC"
 	}
 
-	if !c.DeploymentTime.IsNull() && !c.DeploymentTime.IsUnknown() {
+	if helpers.IsConfiguredValue(c.DeploymentTime) {
 		config["deploymentTime"] = c.DeploymentTime.ValueString()
 	}
 
-	if !c.EnforceAfterDays.IsNull() && !c.EnforceAfterDays.IsUnknown() {
+	if helpers.IsConfiguredValue(c.EnforceAfterDays) {
 		config["enforceAfterDays"] = c.EnforceAfterDays.ValueInt64()
 	}
 
-	if !c.TargetOSVersion.IsNull() && !c.TargetOSVersion.IsUnknown() {
+	if helpers.IsConfiguredValue(c.TargetOSVersion) {
 		config["targetOSVersion"] = c.TargetOSVersion.ValueString()
 	}
 
-	if !c.TargetLocalDateTime.IsNull() && !c.TargetLocalDateTime.IsUnknown() {
+	if helpers.IsConfiguredValue(c.TargetLocalDateTime) {
 		config["targetLocalDateTime"] = c.TargetLocalDateTime.ValueString()
 	}
 
-	detailsURL := map[string]interface{}{
-		"Included": false,
-		"Value":    "",
-	}
-
-	if !c.DetailsURLValue.IsNull() && !c.DetailsURLValue.IsUnknown() && c.DetailsURLValue.ValueString() != "" {
-		detailsURL["Included"] = true
-		detailsURL["Value"] = c.DetailsURLValue.ValueString()
+	detailsURL := setStringField(c.DetailsURLValue, "")
+	if helpers.IsConfiguredValue(c.DetailsURLValue) && c.DetailsURLValue.ValueString() == "" {
+		detailsURL["Included"] = false
 	}
 
 	config["detailsURL"] = detailsURL
@@ -187,8 +183,8 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]inte
 		}
 	}
 
-	if c.EnforcementType.IsNull() || c.EnforcementType.IsUnknown() {
-		if !c.TargetOSVersion.IsNull() || !c.TargetLocalDateTime.IsNull() {
+	if !helpers.IsConfiguredValue(c.EnforcementType) {
+		if helpers.IsConfiguredValue(c.TargetOSVersion) || helpers.IsConfiguredValue(c.TargetLocalDateTime) {
 			c.EnforcementType = types.StringValue("MANUAL")
 		}
 	}
