@@ -267,6 +267,11 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		data.Rules[i].DependsOn = dependsOn
 	}
 
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, benchmarkIdentityModel{ID: data.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	tflog.Trace(ctx, "created a resource")
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -276,9 +281,36 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data BenchmarkResourceModel
 
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
+	if req.State.Raw.IsNull() {
+		if req.Identity == nil {
+			resp.Diagnostics.AddError(
+				"Missing resource identity",
+				"Terraform requested a refresh for this benchmark without existing state or identity data, so the provider cannot determine which benchmark to read.",
+			)
+			return
+		}
+
+		var identity benchmarkIdentityModel
+		resp.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if identity.ID.IsNull() || identity.ID.IsUnknown() || identity.ID.ValueString() == "" {
+			resp.Diagnostics.AddError(
+				"Missing benchmark ID",
+				"The resource identity did not include an 'id' attribute, so the provider cannot refresh the benchmark.",
+			)
+			return
+		}
+
+		data.ID = identity.ID
+		data.Timeouts = helpers.NewResourceTimeoutsNullValue(benchmarkTimeoutAttributeTypes)
+	} else {
+		resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
@@ -490,6 +522,11 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		data.TargetDeviceGroup = types.StringNull()
 	}
 	data.EnforcementMode = types.StringValue(bench.EnforcementMode)
+
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, benchmarkIdentityModel{ID: data.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

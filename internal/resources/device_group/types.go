@@ -4,6 +4,7 @@ package device_group
 
 import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -54,4 +55,12 @@ type DeviceGroupDataSourceModel struct {
 	Criteria    []DeviceGroupCriteriaModel `tfsdk:"criteria"`
 	Members     types.Set                  `tfsdk:"members"`
 	MemberCount types.Int64                `tfsdk:"member_count"`
+}
+
+type deviceGroupIdentityModel struct {
+	ID types.String `tfsdk:"id"`
+}
+
+type DeviceGroupListResourceModel struct {
+	Filters []filters.FilterModel `tfsdk:"filter"`
 }

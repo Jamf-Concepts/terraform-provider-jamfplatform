@@ -20,7 +20,7 @@ import (
 
 const defaultReadTimeout = 90 * time.Second
 
-var filterSelectors = []string{
+var DeviceGroupFilterSelectors = []string{
 	"name",
 	"description",
 	"deviceType",
@@ -53,8 +53,8 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, req datasource.Sche
 		},
 		Blocks: map[string]schema.Block{
 			"filter": filters.FilterBlock(
-				filters.SelectorDescription(filterSelectors),
-				filterSelectors,
+				filters.SelectorDescription(DeviceGroupFilterSelectors),
+				DeviceGroupFilterSelectors,
 			),
 			"device_groups": schema.ListNestedBlock{
 				MarkdownDescription: "Device groups that matched the applied filters.",
@@ -136,7 +136,7 @@ func (d *DeviceGroupsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
-	filterExpression := filters.BuildRSQLExpression(data.Filters, filters.AllowList(filterSelectors))
+	filterExpression := filters.BuildRSQLExpression(data.Filters, filters.AllowList(DeviceGroupFilterSelectors))
 
 	tflog.Debug(ctx, "devices filter expression", map[string]interface{}{
 		"filter": filterExpression,

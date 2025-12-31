@@ -7,6 +7,7 @@ This directory contains integration tests for the `terraform-provider-jamfplatfo
 - [Overview](#overview)
 - [Test Structure](#test-structure)
 - [Running Tests Locally](#running-tests-locally)
+- [Query Tests](#query-tests)
 - [CI/CD Integration](#cicd-integration)
 - [Adding New Tests](#adding-new-tests)
 - [Best Practices](#best-practices)
@@ -126,6 +127,40 @@ terraform test -verbose -parallelism=1
 ```
 
 **Important**: Use `-parallelism=1` to avoid race conditions when creating/destroying resources.
+
+## Query Tests
+
+Terraform's list resource functionality is exercised with standalone `.tfquery.hcl` files and the `terraform query` command. These files live alongside the rest of the integration assets so you can validate list resources without waiting for `terraform test` (which does not yet drive queries).
+
+### Available Query Files
+
+| File | Target | Notes |
+|------|--------|-------|
+| `cbengine_benchmark.tfquery.hcl` | `jamfplatform_cbengine_benchmark` | Minimal query to ensure the list resource responds without filters. |
+| `blueprints_blueprint.tfquery.hcl` | `jamfplatform_blueprints_blueprint` | Demonstrates the optional `search` config block. |
+| `device_group.tfquery.hcl` | `jamfplatform_device_group` | Shows how to supply multiple `filter` blocks that mirror the data source semantics. |
+
+### Running a Query Test
+
+1. Export the same credentials described in [Running Tests Locally](#running-tests-locally).
+2. Ensure the provider binary is installed locally (also covered in [Step 2](#step-2-build-and-install-provider-locally)).
+3. From the `testing/` directory run:
+
+  ```bash
+  terraform query cbengine_benchmark.tfquery.hcl
+  terraform query blueprints_blueprint.tfquery.hcl
+  terraform query device_group.tfquery.hcl
+  ```
+
+  Add `-json` if you want machine-readable output for scripting.
+
+### Authoring New Query Files
+
+1. Create `<resource>.tfquery.hcl` next to the existing examples.
+2. Populate a `list "<type>" "<name>" { … }` block, mirroring any optional config arguments you want to exercise.
+3. Commit the file and mention it in the table above so other contributors can discover it easily.
+
+When we add Go acceptance tests, these same `.tfquery.hcl` snippets can be pulled into `terraform-plugin-testing` query steps using the new `querycheck` helpers described in [HashiCorp's documentation](https://developer.hashicorp.com/terraform/plugin/testing/acceptance-tests/query-checks).
 
 ## CI/CD Integration
 
