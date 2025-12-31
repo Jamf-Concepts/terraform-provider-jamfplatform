@@ -11,6 +11,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -29,6 +30,26 @@ var stronglyTypedComponentIdentifiers = map[string]struct{}{
 	"com.jamf.ddm.sw-updates":                  {},
 	"com.jamf.ddm.software-update-settings":    {},
 	"com.jamf.ddm-configuration-profile":       {},
+}
+
+var blueprintTimeoutAttributeTypes = map[string]attr.Type{
+	"create": types.StringType,
+	"read":   types.StringType,
+	"update": types.StringType,
+	"delete": types.StringType,
+}
+
+type identitySetter interface {
+	Set(context.Context, interface{}) diag.Diagnostics
+}
+
+func setBlueprintIdentity(ctx context.Context, target identitySetter, id types.String) diag.Diagnostics {
+	if target == nil {
+		return nil
+	}
+
+	identity := blueprintIdentityModel{ID: id}
+	return target.Set(ctx, identity)
 }
 
 // updateModelFromAPIResponse updates the Terraform model with data from the API response.
@@ -90,6 +111,7 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 
 	model.Components = rawComponents
 	updateStronglyTypedComponentsFromAPI(model, apiComponentsByID, stateRawIdentifiers)
+	model.Timeouts = helpers.EnsureResourceTimeouts(model.Timeouts, blueprintTimeoutAttributeTypes)
 }
 
 // normalizeJSON takes a JSON string and returns it with sorted keys to ensure consistent comparison

@@ -86,18 +86,50 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 
 	updateModelFromAPIResponse(&data, blueprint)
 
+	resp.Diagnostics.Append(setBlueprintIdentity(ctx, resp.Identity, data.ID)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	tflog.Trace(ctx, "created a resource")
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 // Read reads the Blueprint resource state from the API.
 func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data BlueprintResourceModel
 
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
+	if req.State.Raw.IsNull() {
+		if req.Identity == nil {
+			resp.Diagnostics.AddError(
+				"Missing resource identity",
+				"Terraform requested a refresh for this blueprint without existing state or identity data, so the provider cannot determine which blueprint to read.",
+			)
+			return
+		}
+
+		var identity blueprintIdentityModel
+		resp.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if identity.ID.IsNull() || identity.ID.IsUnknown() || identity.ID.ValueString() == "" {
+			resp.Diagnostics.AddError(
+				"Missing blueprint ID",
+				"The resource identity did not include an 'id' attribute, so the provider cannot refresh the blueprint.",
+			)
+			return
+		}
+
+		data.ID = identity.ID
+		data.Timeouts = helpers.NewResourceTimeoutsNullValue(blueprintTimeoutAttributeTypes)
+	} else {
+		resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
@@ -128,7 +160,12 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	updateModelFromAPIResponse(&data, blueprint)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+	resp.Diagnostics.Append(setBlueprintIdentity(ctx, resp.Identity, data.ID)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 // Update updates the Blueprint resource.
@@ -206,7 +243,12 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 
 	updateModelFromAPIResponse(&data, blueprint)
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+	resp.Diagnostics.Append(setBlueprintIdentity(ctx, resp.Identity, data.ID)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 // Delete deletes the Blueprint resource.

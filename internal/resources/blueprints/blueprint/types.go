@@ -65,3 +65,13 @@ type ComponentModel struct {
 	Identifier    types.String `tfsdk:"identifier"`
 	Configuration types.Map    `tfsdk:"configuration"`
 }
+
+// blueprintIdentityModel defines the resource identity shared with list results.
+type blueprintIdentityModel struct {
+	ID types.String `tfsdk:"id"`
+}
+
+// BlueprintListResourceModel captures supported list filters.
+type BlueprintListResourceModel struct {
+	Search types.String `tfsdk:"search"`
+}

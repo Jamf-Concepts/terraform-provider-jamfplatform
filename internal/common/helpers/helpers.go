@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	resourcetimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -137,4 +139,31 @@ func IsNotFoundError(err error) bool {
 	return strings.Contains(errorStr, "status 404") ||
 		strings.Contains(errorStr, "was not found") ||
 		strings.Contains(errorStr, "NOT_FOUND")
+}
+
+// EnsureResourceTimeouts guarantees the timeout object has the expected shape for resource timeouts.
+func EnsureResourceTimeouts(value resourcetimeouts.Value, attrTypes map[string]attr.Type) resourcetimeouts.Value {
+	if value.IsNull() && !value.IsUnknown() {
+		value.Object = types.ObjectNull(attrTypes)
+	}
+	return value
+}
+
+// NewResourceTimeoutsNullValue builds a null timeout object with the provided attribute types.
+func NewResourceTimeoutsNullValue(attrTypes map[string]attr.Type) resourcetimeouts.Value {
+	return EnsureResourceTimeouts(resourcetimeouts.Value{}, attrTypes)
+}
+
+// NormalizedFilterString trims whitespace and reports whether a string attribute is usable as a filter.
+func NormalizedFilterString(value types.String) (string, bool) {
+	if value.IsNull() || value.IsUnknown() {
+		return "", false
+	}
+
+	trimmed := strings.TrimSpace(value.ValueString())
+	if trimmed == "" {
+		return "", false
+	}
+
+	return trimmed, true
 }

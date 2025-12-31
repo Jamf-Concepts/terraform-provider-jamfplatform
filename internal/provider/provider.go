@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -42,6 +43,7 @@ const (
 
 // Ensure JamfPlatformProvider satisfies the various provider interfaces.
 var _ provider.Provider = &JamfPlatformProvider{}
+var _ provider.ProviderWithListResources = &JamfPlatformProvider{}
 
 // JamfPlatformProvider defines the provider implementation.
 type JamfPlatformProvider struct {
@@ -143,6 +145,7 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 
 	resp.DataSourceData = apiClient
 	resp.ResourceData = apiClient
+	resp.ListResourceData = apiClient
 }
 
 func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -171,6 +174,12 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		computers.NewDataSourceComputers,
 		computer.NewDataSourceComputer,
 		mobiledevice.NewDataSourceMobileDevice,
+	}
+}
+
+func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.ListResource {
+	return []func() list.ListResource{
+		blueprint.NewBlueprintListResource,
 	}
 }
 
