@@ -180,6 +180,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.ListResource {
 	return []func() list.ListResource{
 		blueprint.NewBlueprintListResource,
+		device_group.NewDeviceGroupListResource,
 	}
 }
 

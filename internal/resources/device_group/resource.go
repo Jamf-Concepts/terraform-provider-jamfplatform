@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
@@ -24,6 +25,7 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &DeviceGroupResource{}
 var _ resource.ResourceWithImportState = &DeviceGroupResource{}
+var _ resource.ResourceWithIdentity = &DeviceGroupResource{}
 
 const (
 	defaultCreateTimeout = 90 * time.Second
@@ -40,6 +42,18 @@ func NewDeviceGroupResource() resource.Resource {
 // Metadata sets the resource type name for the Terraform provider.
 func (r *DeviceGroupResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_device_group"
+}
+
+// IdentitySchema defines the unique identifier for device group resources.
+func (r *DeviceGroupResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{
+				Description:       "Device group ID used to uniquely reference Jamf device groups.",
+				RequiredForImport: true,
+			},
+		},
+	}
 }
 
 // Schema returns the Terraform schema for the device group resource.

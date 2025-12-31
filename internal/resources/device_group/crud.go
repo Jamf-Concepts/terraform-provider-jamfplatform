@@ -93,6 +93,11 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	tflog.Trace(ctx, "created device group", map[string]interface{}{
 		"id":         created.ID,
 		"group_type": plan.GroupType.ValueString(),
@@ -105,9 +110,36 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state DeviceGroupResourceModel
 
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
+	if req.State.Raw.IsNull() {
+		if req.Identity == nil {
+			resp.Diagnostics.AddError(
+				"Missing resource identity",
+				"Terraform requested a refresh for this device group without existing state or identity data, so the provider cannot determine which device group to read.",
+			)
+			return
+		}
+
+		var identity deviceGroupIdentityModel
+		resp.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if identity.ID.IsNull() || identity.ID.IsUnknown() || identity.ID.ValueString() == "" {
+			resp.Diagnostics.AddError(
+				"Missing device group ID",
+				"The resource identity did not include an 'id' attribute, so the provider cannot refresh the device group.",
+			)
+			return
+		}
+
+		state.ID = identity.ID
+		state.Timeouts = helpers.NewResourceTimeoutsNullValue(deviceGroupTimeoutAttributeTypes)
+	} else {
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)
@@ -150,6 +182,11 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	resp.Diagnostics.Append(assignDeviceGroupModel(readCtx, &state, grp, members, manageMembers, manageDescription)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -227,6 +264,11 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	if !r.refreshDeviceGroupState(updateCtx, plan.ID.ValueString(), &plan, manageMembers, manageDescription, &resp.Diagnostics) {
+		return
+	}
+
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 

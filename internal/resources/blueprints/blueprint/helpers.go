@@ -39,19 +39,6 @@ var blueprintTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
-type identitySetter interface {
-	Set(context.Context, interface{}) diag.Diagnostics
-}
-
-func setBlueprintIdentity(ctx context.Context, target identitySetter, id types.String) diag.Diagnostics {
-	if target == nil {
-		return nil
-	}
-
-	identity := blueprintIdentityModel{ID: id}
-	return target.Set(ctx, identity)
-}
-
 // updateModelFromAPIResponse updates the Terraform model with data from the API response.
 func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client.BlueprintDetailV1) {
 	stateRawIdentifiers := make(map[string]struct{}, len(model.Components))

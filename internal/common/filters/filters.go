@@ -9,6 +9,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -64,6 +65,53 @@ func FilterBlock(selectorDescription string, validSelectors []string) schema.Lis
 					Optional:            true,
 				},
 				"join_with": schema.StringAttribute{
+					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
+					Optional:            true,
+					Validators: []validator.String{
+						stringvalidator.OneOf("and", "or"),
+					},
+				},
+			},
+		},
+	}
+}
+
+// ListFilterBlock builds the shared schema block for list resources that support RSQL filters.
+func ListFilterBlock(selectorDescription string, validSelectors []string) listschema.ListNestedBlock {
+	var selectorValidators []validator.String
+	if len(validSelectors) > 0 {
+		selectorValidators = append(selectorValidators, stringvalidator.OneOf(validSelectors...))
+	}
+
+	return listschema.ListNestedBlock{
+		MarkdownDescription: filterBlockDescription,
+		NestedObject: listschema.NestedBlockObject{
+			Attributes: map[string]listschema.Attribute{
+				"selector": listschema.StringAttribute{
+					MarkdownDescription: selectorDescription,
+					Required:            true,
+					Validators:          selectorValidators,
+				},
+				"operator": listschema.StringAttribute{
+					MarkdownDescription: "RSQL comparison operator. Valid values are `==`, `!=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.",
+					Optional:            true,
+					Validators: []validator.String{
+						stringvalidator.OneOf("==", "!=", ">", "<", ">=", "<="),
+					},
+				},
+				"argument": listschema.StringAttribute{
+					MarkdownDescription: "RSQL argument portion for the selector/operator. Provide the value exactly as required by the API (the provider will escape double quotes automatically).",
+					Required:            true,
+				},
+				"has_opening_parenthesis": listschema.BoolAttribute{
+					MarkdownDescription: "Whether to prefix this clause with `(` to start a grouped expression.",
+					Optional:            true,
+				},
+				"has_closing_parenthesis": listschema.BoolAttribute{
+					MarkdownDescription: "Whether to suffix this clause with `)` to close a grouped expression.",
+					Optional:            true,
+				},
+				"join_with": listschema.StringAttribute{
 					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
 					Optional:            true,
 					Validators: []validator.String{

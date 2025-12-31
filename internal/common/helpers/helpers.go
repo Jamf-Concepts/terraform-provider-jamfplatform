@@ -37,6 +37,19 @@ func BoolPointerValueOrNull(value *bool) types.Bool {
 	return types.BoolValue(*value)
 }
 
+// IdentitySetter matches the identity setter interface exposed by Terraform resources and list results.
+type IdentitySetter interface {
+	Set(context.Context, interface{}) diag.Diagnostics
+}
+
+// SetIdentity assigns the provided identity object when the target setter is available.
+func SetIdentity(ctx context.Context, target IdentitySetter, identity interface{}) diag.Diagnostics {
+	if target == nil {
+		return nil
+	}
+	return target.Set(ctx, identity)
+}
+
 // PollUntil repeatedly invokes checker until it reports completion or returns an error.
 // Between attempts the function waits for the provided interval while respecting context cancellation.
 func PollUntil(ctx context.Context, interval time.Duration, checker func(context.Context) (bool, error)) error {

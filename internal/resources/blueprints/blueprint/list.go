@@ -126,7 +126,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 		identity := blueprintIdentityModel{
 			ID: types.StringValue(bp.ID),
 		}
-		result.Diagnostics.Append(result.Identity.Set(ctx, identity)...)
+		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, identity)...)
 
 		if req.IncludeResource {
 			detail, err := r.client.GetBlueprintByIDV1(ctx, bp.ID)
