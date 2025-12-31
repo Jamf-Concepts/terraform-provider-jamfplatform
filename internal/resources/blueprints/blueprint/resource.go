@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -26,6 +27,7 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BlueprintResource{}
 var _ resource.ResourceWithImportState = &BlueprintResource{}
+var _ resource.ResourceWithIdentity = &BlueprintResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -199,6 +201,18 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 				Validators: []validator.List{
 					listvalidator.SizeAtMost(1),
 				},
+			},
+		},
+	}
+}
+
+// IdentitySchema defines the blueprint identity used across CRUD and list.
+func (r *BlueprintResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{
+				Description:       "Blueprint ID used to uniquely reference Jamf blueprints.",
+				RequiredForImport: true,
 			},
 		},
 	}

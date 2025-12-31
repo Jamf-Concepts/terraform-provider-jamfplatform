@@ -10,10 +10,18 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
+
+var deviceGroupTimeoutAttributeTypes = map[string]attr.Type{
+	"create": types.StringType,
+	"read":   types.StringType,
+	"update": types.StringType,
+	"delete": types.StringType,
+}
 
 // refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
 func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
@@ -207,6 +215,7 @@ func flattenDeviceGroupCriteria(criteria []client.DeviceGroupCriteriaRepresentat
 		return nil
 	}
 	result := make([]DeviceGroupCriteriaModel, len(criteria))
+	stateAware := current != nil
 	for i, c := range criteria {
 		var prev DeviceGroupCriteriaModel
 		if i < len(current) {
@@ -227,11 +236,26 @@ func flattenDeviceGroupCriteria(criteria []client.DeviceGroupCriteriaRepresentat
 		if c.JoinType != "" {
 			joinType = types.StringValue(strings.ToLower(c.JoinType))
 		}
+
+		var order types.Int64
+		if stateAware {
+			order = helpers.ReconcileOptionalInt(c.Order, prev.Order)
+		} else {
+			order = types.Int64Value(int64(c.Order))
+		}
+
+		var attributeValue types.String
+		if stateAware {
+			attributeValue = helpers.ReconcileOptionalString(c.AttributeValue, prev.AttributeValue)
+		} else {
+			attributeValue = types.StringValue(c.AttributeValue)
+		}
+
 		result[i] = DeviceGroupCriteriaModel{
-			Order:                 helpers.ReconcileOptionalInt(c.Order, prev.Order),
+			Order:                 order,
 			AttributeName:         attributeName,
 			Operator:              operator,
-			AttributeValue:        helpers.ReconcileOptionalString(c.AttributeValue, prev.AttributeValue),
+			AttributeValue:        attributeValue,
 			JoinType:              joinType,
 			HasOpeningParenthesis: helpers.ReconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
 			HasClosingParenthesis: helpers.ReconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),

@@ -79,3 +79,11 @@ type RuleModel struct {
 	OSSpecificDefaults      types.Map    `tfsdk:"os_specific_defaults"`
 	DependsOn               types.List   `tfsdk:"depends_on"`
 }
+
+type benchmarkIdentityModel struct {
+	ID types.String `tfsdk:"id"`
+}
+
+type BenchmarkListResourceModel struct {
+	Search types.String `tfsdk:"search"`
+}

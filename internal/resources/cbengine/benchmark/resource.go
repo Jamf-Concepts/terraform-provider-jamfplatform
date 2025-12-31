@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -24,6 +25,7 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BenchmarkResource{}
 var _ resource.ResourceWithImportState = &BenchmarkResource{}
+var _ resource.ResourceWithIdentity = &BenchmarkResource{}
 
 const (
 	defaultCreateTimeout = 15 * time.Minute
@@ -39,6 +41,18 @@ func NewBenchmarkResource() resource.Resource {
 // Metadata sets the resource type name for the Terraform provider.
 func (r *BenchmarkResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_cbengine_benchmark"
+}
+
+// IdentitySchema defines the unique identifier for benchmark resources.
+func (r *BenchmarkResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{
+				Description:       "Benchmark ID used to uniquely reference Jamf Compliance Benchmarks.",
+				RequiredForImport: true,
+			},
+		},
+	}
 }
 
 // Schema returns the Terraform schema for the benchmark resource.
