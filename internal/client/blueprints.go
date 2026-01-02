@@ -246,6 +246,19 @@ func (c *Client) DeployBlueprintV1(ctx context.Context, blueprintID string) erro
 	return nil
 }
 
+// UndeployBlueprintV1 starts undeployment of a blueprint
+func (c *Client) UndeployBlueprintV1(ctx context.Context, blueprintID string) error {
+	endpoint := fmt.Sprintf("%s/%s/undeploy", blueprintV1Prefix, url.PathEscape(blueprintID))
+	resp, err := c.makeRequest(ctx, "POST", endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("failed to undeploy blueprint %s: %w", blueprintID, err)
+	}
+	if err := c.handleAPIResponse(ctx, resp, 202, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetBlueprintComponentsV1 returns all blueprint components, automatically handling pagination
 func (c *Client) GetBlueprintComponentsV1(ctx context.Context) ([]BlueprintComponentDescriptionV1, error) {
 	var allResults []BlueprintComponentDescriptionV1
