@@ -66,22 +66,22 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	err = r.client.DeployBlueprintV1(createCtx, createResp.ID)
+	desiredDeployed := desiredDeployedValue(data.Deployed)
+	blueprint, err := r.reconcileBlueprintDeployment(createCtx, createResp.ID, desiredDeployed)
 	if err != nil {
 		resp.Diagnostics.AddWarning(
-			"Blueprint deployment failed",
-			"Blueprint was created successfully but may not have been deployed: "+err.Error()+
-				". The blueprint may have been deployed despite the error. Check your Jamf instance to verify the blueprint status.",
+			"Blueprint deployment reconciliation failed",
+			"Blueprint was created successfully but deployment could not be fully reconciled: "+err.Error()+
+				". Check your Jamf instance to verify the blueprint deployment status.",
 		)
-	}
-
-	blueprint, err := r.client.GetBlueprintByIDV1(createCtx, createResp.ID)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading created blueprint",
-			"Could not read created blueprint: "+err.Error(),
-		)
-		return
+		blueprint, _ = r.client.GetBlueprintByIDV1(createCtx, createResp.ID)
+		if blueprint == nil {
+			resp.Diagnostics.AddError(
+				"Error reading created blueprint",
+				"Could not read created blueprint after deployment reconciliation failure: "+err.Error(),
+			)
+			return
+		}
 	}
 
 	updateModelFromAPIResponse(&data, blueprint)
@@ -218,8 +218,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		Steps: steps,
 	}
 
-	err := r.client.UpdateBlueprintV1(updateCtx, data.ID.ValueString(), updateReq)
-	if err != nil {
+	if err := r.client.UpdateBlueprintV1(updateCtx, data.ID.ValueString(), updateReq); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating blueprint",
 			"Could not update blueprint: "+err.Error(),
@@ -227,22 +226,22 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	err = r.client.DeployBlueprintV1(updateCtx, data.ID.ValueString())
+	desiredDeployed := desiredDeployedValue(data.Deployed)
+	blueprint, err := r.reconcileBlueprintDeployment(updateCtx, data.ID.ValueString(), desiredDeployed)
 	if err != nil {
 		resp.Diagnostics.AddWarning(
-			"Blueprint deployment failed",
-			"Blueprint was updated successfully but may not have been deployed: "+err.Error()+
-				". The blueprint may have been deployed despite the error. Check your Jamf instance to verify the blueprint status.",
+			"Blueprint deployment reconciliation failed",
+			"Blueprint was updated successfully but deployment could not be fully reconciled: "+err.Error()+
+				". Check your Jamf instance to verify the blueprint deployment status.",
 		)
-	}
-
-	blueprint, err := r.client.GetBlueprintByIDV1(updateCtx, data.ID.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading updated blueprint",
-			"Could not read updated blueprint: "+err.Error(),
-		)
-		return
+		blueprint, _ = r.client.GetBlueprintByIDV1(updateCtx, data.ID.ValueString())
+		if blueprint == nil {
+			resp.Diagnostics.AddError(
+				"Error reading updated blueprint",
+				"Could not read updated blueprint after deployment reconciliation failure: "+err.Error(),
+			)
+			return
+		}
 	}
 
 	updateModelFromAPIResponse(&data, blueprint)

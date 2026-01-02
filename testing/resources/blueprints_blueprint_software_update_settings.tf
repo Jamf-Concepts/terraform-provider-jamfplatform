@@ -1,6 +1,7 @@
 resource "jamfplatform_blueprints_blueprint" "test_software_update_settings" {
   name        = "Terraform Test Software Update Settings ${var.test_id}"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
