@@ -1,6 +1,7 @@
 resource "jamfplatform_blueprints_blueprint" "test_passcode_policy" {
   name        = "Terraform Test Passcode Policy ${var.test_id}"
   description = "Managed by Terraform"
+  deployed    = false
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id,
   jamfplatform_device_group.test_smart_mobile.id]
