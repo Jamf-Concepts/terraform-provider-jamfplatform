@@ -333,6 +333,10 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]interface{}{
 				"benchmark_id": data.ID.ValueString(),
 			})
+			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, benchmarkIdentityModel{ID: data.ID})...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
 			resp.State.RemoveResource(ctx)
 			return
 		}

@@ -162,6 +162,10 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 			tflog.Info(ctx, "device group not found, removing from state", map[string]interface{}{
 				"id": state.ID.ValueString(),
 			})
+			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: state.ID})...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
 			resp.State.RemoveResource(ctx)
 			return
 		}

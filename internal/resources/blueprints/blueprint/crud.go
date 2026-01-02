@@ -147,6 +147,10 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 			tflog.Info(ctx, "Blueprint not found, removing from state", map[string]interface{}{
 				"blueprint_id": data.ID.ValueString(),
 			})
+			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
 			resp.State.RemoveResource(ctx)
 			return
 		}
