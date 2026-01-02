@@ -1,6 +1,7 @@
 resource "jamfplatform_blueprints_blueprint" "test_service_configuration_files" {
   name        = "Terraform Test Service Configuration Files ${var.test_id}"
   description = "Managed by Terraform"
+  deployed    = false
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 

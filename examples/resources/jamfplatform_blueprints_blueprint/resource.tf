@@ -2,6 +2,7 @@
 resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   name        = "Software Update Settings"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -36,6 +37,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
 resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
   name        = "Latest OS version Software Updates"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -49,6 +51,7 @@ resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
 resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
   name        = "Specific OS Version and time Software Updates"
   description = "Managed by Terraform"
+  deployed    = false
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -62,6 +65,7 @@ resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
 resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
   name        = "Restrictions for Safari"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -79,6 +83,7 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
   name        = "Custom Declarations"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 

@@ -49,7 +49,7 @@ func (r *BlueprintResource) Metadata(ctx context.Context, req resource.MetadataR
 // Schema returns the Terraform schema for the blueprint resource.
 func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update. Requires **Blueprints API** access.",
+		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The unique identifier for the blueprint.",
@@ -65,6 +65,10 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 			"description": schema.StringAttribute{
 				MarkdownDescription: "Blueprint description.",
 				Optional:            true,
+			},
+			"deployed": schema.BoolAttribute{
+				MarkdownDescription: "Whether the blueprint should be deployed. If set to `true`, the provider will deploy the blueprint (and redeploy if it becomes `OUT_OF_DATE`). If set to `false`, the provider will undeploy the blueprint.",
+				Required:            true,
 			},
 			"device_groups": schema.SetAttribute{
 				MarkdownDescription: "Set of device group Platform IDs to target. Specified as a set of strings in UUID format.",

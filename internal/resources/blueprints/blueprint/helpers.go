@@ -16,6 +16,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// Constants for blueprint deployment states and component identifiers
+const (
+	blueprintDeploymentStateDeployed    = "DEPLOYED"
+	blueprintDeploymentStateNotDeployed = "NOT_DEPLOYED"
+)
+
+// stronglyTypedComponentIdentifiers lists all component identifiers that have strongly-typed representations
 var stronglyTypedComponentIdentifiers = map[string]struct{}{
 	"com.jamf.ddm.audio-accessory-settings":    {},
 	"com.jamf.ddm.custom-declarations":         {},
@@ -32,6 +39,7 @@ var stronglyTypedComponentIdentifiers = map[string]struct{}{
 	"com.jamf.ddm-configuration-profile":       {},
 }
 
+// blueprintTimeoutAttributeTypes defines the attribute types for blueprint timeouts
 var blueprintTimeoutAttributeTypes = map[string]attr.Type{
 	"create": types.StringType,
 	"read":   types.StringType,
@@ -61,6 +69,7 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 	model.Created = types.StringValue(blueprint.Created)
 	model.Updated = types.StringValue(blueprint.Updated)
 	model.DeploymentState = types.StringValue(blueprint.DeploymentState.State)
+	model.Deployed = types.BoolValue(strings.EqualFold(blueprint.DeploymentState.State, "DEPLOYED"))
 
 	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, blueprint.Scope.DeviceGroups)
 	model.DeviceGroups = deviceGroupsSet
@@ -401,6 +410,7 @@ func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComp
 	updateLegacyPayloadsFromAPI(model, apiComponentsByID, rawIdentifiers)
 }
 
+// buildTypedComponentSlice is a generic helper to build strongly-typed component slices
 func buildTypedComponentSlice[T any](apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]interface{}, *T) error) []T {
 	if _, handledAsRaw := rawIdentifiers[identifier]; handledAsRaw {
 		return nil
@@ -419,6 +429,7 @@ func buildTypedComponentSlice[T any](apiComponentsByID map[string]client.Bluepri
 	return []T{component}
 }
 
+// parseComponentConfiguration extracts and parses the configuration of a component by its identifier
 func parseComponentConfiguration(apiComponentsByID map[string]client.BlueprintComponentV1, identifier string) (map[string]interface{}, bool) {
 	apiComp, exists := apiComponentsByID[identifier]
 	if !exists || apiComp.Configuration == nil {
@@ -433,6 +444,7 @@ func parseComponentConfiguration(apiComponentsByID map[string]client.BlueprintCo
 	return jsonObj, true
 }
 
+// updateLegacyPayloadsFromAPI handles the special case of legacy payloads component
 func updateLegacyPayloadsFromAPI(model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
 	if _, handledAsRaw := rawIdentifiers["com.jamf.ddm-configuration-profile"]; handledAsRaw {
 		return
@@ -457,4 +469,40 @@ func updateLegacyPayloadsFromAPI(model *BlueprintResourceModel, apiComponentsByI
 	}
 
 	model.LegacyPayloads = types.StringValue(string(payloadJSON))
+}
+
+// desiredDeployedValue returns the desired deployed state based on the provided types.Bool value
+func desiredDeployedValue(v types.Bool) bool {
+	if !helpers.IsConfiguredValue(v) {
+		return true
+	}
+	return v.ValueBool()
+}
+
+// reconcileBlueprintDeployment ensures the blueprint's deployment state matches the desired state
+func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, blueprintID string, desiredDeployed bool) (*client.BlueprintDetailV1, error) {
+	blueprint, err := r.client.GetBlueprintByIDV1(ctx, blueprintID)
+	if err != nil {
+		return nil, err
+	}
+
+	if desiredDeployed {
+		if !strings.EqualFold(blueprint.DeploymentState.State, blueprintDeploymentStateDeployed) {
+			if err := r.client.DeployBlueprintV1(ctx, blueprintID); err != nil {
+				return blueprint, err
+			}
+			return r.client.GetBlueprintByIDV1(ctx, blueprintID)
+		}
+		return blueprint, nil
+	}
+
+	if strings.EqualFold(blueprint.DeploymentState.State, blueprintDeploymentStateNotDeployed) {
+		return blueprint, nil
+	}
+
+	if err := r.client.UndeployBlueprintV1(ctx, blueprintID); err != nil {
+		return blueprint, err
+	}
+
+	return r.client.GetBlueprintByIDV1(ctx, blueprintID)
 }

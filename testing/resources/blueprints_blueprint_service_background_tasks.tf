@@ -1,6 +1,7 @@
 resource "jamfplatform_blueprints_blueprint" "test_service_background_tasks" {
   name        = "Terraform Test Service Background Tasks ${var.test_id}"
   description = "Managed by Terraform"
+  deployed    = false
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 

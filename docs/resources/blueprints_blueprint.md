@@ -3,12 +3,12 @@
 page_title: "jamfplatform_blueprints_blueprint Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update. Requires Blueprints API access.
+  Resource schema for creating and managing Jamf Blueprints. Requires Blueprints API access.
 ---
 
 # jamfplatform_blueprints_blueprint (Resource)
 
-Resource schema for creating and managing Jamf Blueprints. Blueprints are automatically deployed after successful creation or update. Requires **Blueprints API** access.
+Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.
 
 ## Example Usage
 
@@ -17,6 +17,7 @@ Resource schema for creating and managing Jamf Blueprints. Blueprints are automa
 resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   name        = "Software Update Settings"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -51,6 +52,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
 resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
   name        = "Latest OS version Software Updates"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -64,6 +66,7 @@ resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
 resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
   name        = "Specific OS Version and time Software Updates"
   description = "Managed by Terraform"
+  deployed    = false
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -77,6 +80,7 @@ resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
 resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
   name        = "Restrictions for Safari"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -94,6 +98,7 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
   name        = "Custom Declarations"
   description = "Managed by Terraform"
+  deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
@@ -134,6 +139,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 
 ### Required
 
+- `deployed` (Boolean) Whether the blueprint should be deployed. If set to `true`, the provider will deploy the blueprint (and redeploy if it becomes `OUT_OF_DATE`). If set to `false`, the provider will undeploy the blueprint.
 - `device_groups` (Set of String) Set of device group Platform IDs to target. Specified as a set of strings in UUID format.
 - `name` (String) Blueprint name.
 
