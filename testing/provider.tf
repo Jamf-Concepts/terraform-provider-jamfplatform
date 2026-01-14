@@ -13,9 +13,11 @@ provider "jamfplatform" {
   client_secret = var.jamfplatform_client_secret
 }
 
+/*
 provider "jamfplatform" {
   alias         = "inventory"
   base_url      = var.jamfplatform_base_url
   client_id     = var.jamfplatform_inventory_client_id
   client_secret = var.jamfplatform_inventory_client_secret
 }
+*/
