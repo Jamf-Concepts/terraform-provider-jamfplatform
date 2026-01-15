@@ -6,8 +6,8 @@ resource "jamfplatform_blueprints_blueprint" "test_software_update" {
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
   software_update {
-    target_os_version      = "26.0.1"
-    target_local_date_time = "2025-10-10T12:00:00"
-    details_url_value      = "https://soundmacguy.wordpress.com"
+    ignore_major_versions = true
+    deployment_time       = "17:00"
+    enforce_after_days    = 7
   }
 }
