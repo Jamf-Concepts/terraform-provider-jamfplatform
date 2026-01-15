@@ -42,8 +42,9 @@ resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
   software_update {
-    deployment_time    = "02:00"
-    enforce_after_days = 7
+    ignore_major_versions = true
+    deployment_time       = "02:00"
+    enforce_after_days    = 7
   }
 }
 

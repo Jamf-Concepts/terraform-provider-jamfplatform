@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -20,6 +21,7 @@ type SoftwareUpdateComponent struct {
 	EnforcementType     types.String `tfsdk:"enforcement_type"`
 	DeploymentTime      types.String `tfsdk:"deployment_time"`
 	EnforceAfterDays    types.Int64  `tfsdk:"enforce_after_days"`
+	IgnoreMajorVersions types.Bool   `tfsdk:"ignore_major_versions"`
 	TargetOSVersion     types.String `tfsdk:"target_os_version"`
 	TargetLocalDateTime types.String `tfsdk:"target_local_date_time"`
 	DetailsURLValue     types.String `tfsdk:"details_url_value"`
@@ -43,8 +45,23 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 					),
 					stringvalidator.AlsoRequires(
 						path.MatchRelative().AtParent().AtName("enforce_after_days"),
+						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
 					),
 					stringvalidator.ConflictsWith(
+						path.MatchRelative().AtParent().AtName("target_os_version"),
+						path.MatchRelative().AtParent().AtName("target_local_date_time"),
+					),
+				},
+			},
+			"ignore_major_versions": schema.BoolAttribute{
+				MarkdownDescription: "Whether to ignore major OS versions when enforcing updates. Only applicable for automatic enforcement. Cannot be used with `target_os_version` or `target_local_date_time`.",
+				Optional:            true,
+				Validators: []validator.Bool{
+					boolvalidator.AlsoRequires(
+						path.MatchRelative().AtParent().AtName("deployment_time"),
+						path.MatchRelative().AtParent().AtName("enforce_after_days"),
+					),
+					boolvalidator.ConflictsWith(
 						path.MatchRelative().AtParent().AtName("target_os_version"),
 						path.MatchRelative().AtParent().AtName("target_local_date_time"),
 					),
@@ -57,6 +74,7 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 					int64validator.Between(0, 30),
 					int64validator.AlsoRequires(
 						path.MatchRelative().AtParent().AtName("deployment_time"),
+						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
 					),
 					int64validator.ConflictsWith(
 						path.MatchRelative().AtParent().AtName("target_os_version"),
@@ -65,7 +83,7 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 				},
 			},
 			"target_os_version": schema.StringAttribute{
-				MarkdownDescription: "For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time` or `enforce_after_days`.",
+				MarkdownDescription: "For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.",
 				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
@@ -78,11 +96,12 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 					stringvalidator.ConflictsWith(
 						path.MatchRelative().AtParent().AtName("deployment_time"),
 						path.MatchRelative().AtParent().AtName("enforce_after_days"),
+						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
 					),
 				},
 			},
 			"target_local_date_time": schema.StringAttribute{
-				MarkdownDescription: "For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time` or `enforce_after_days`.",
+				MarkdownDescription: "For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.",
 				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
@@ -95,6 +114,7 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 					stringvalidator.ConflictsWith(
 						path.MatchRelative().AtParent().AtName("deployment_time"),
 						path.MatchRelative().AtParent().AtName("enforce_after_days"),
+						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
 					),
 				},
 			},
@@ -110,17 +130,42 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, error) {
 	config := make(map[string]interface{})
 
-	if helpers.IsConfiguredValue(c.DeploymentTime) ||
-		helpers.IsConfiguredValue(c.EnforceAfterDays) {
+	isAutomatic := helpers.IsConfiguredValue(c.DeploymentTime) || helpers.IsConfiguredValue(c.EnforceAfterDays)
+	isManual := helpers.IsConfiguredValue(c.TargetOSVersion) || helpers.IsConfiguredValue(c.TargetLocalDateTime)
+	ignoreMajor := helpers.IsConfiguredValue(c.IgnoreMajorVersions) && c.IgnoreMajorVersions.ValueBool()
+
+	if isAutomatic {
 		config["enforcementType"] = "AUTOMATIC"
-	}
 
-	if helpers.IsConfiguredValue(c.DeploymentTime) {
-		config["deploymentTime"] = c.DeploymentTime.ValueString()
-	}
+		if ignoreMajor {
+			config["strategy"] = "SEMANTIC"
 
-	if helpers.IsConfiguredValue(c.EnforceAfterDays) {
-		config["enforceAfterDays"] = c.EnforceAfterDays.ValueInt64()
+			minorRule := make(map[string]interface{})
+			if helpers.IsConfiguredValue(c.DeploymentTime) {
+				minorRule["deploymentTime"] = c.DeploymentTime.ValueString()
+			}
+			if helpers.IsConfiguredValue(c.EnforceAfterDays) {
+				minorRule["enforceAfterDays"] = c.EnforceAfterDays.ValueInt64()
+			}
+
+			if len(minorRule) > 0 {
+				config["rules"] = map[string]interface{}{
+					"minor": minorRule,
+				}
+			}
+		} else {
+			config["strategy"] = "LATEST"
+
+			if helpers.IsConfiguredValue(c.DeploymentTime) {
+				config["deploymentTime"] = c.DeploymentTime.ValueString()
+			}
+
+			if helpers.IsConfiguredValue(c.EnforceAfterDays) {
+				config["enforceAfterDays"] = c.EnforceAfterDays.ValueInt64()
+			}
+		}
+	} else if isManual {
+		config["enforcementType"] = "MANUAL"
 	}
 
 	if helpers.IsConfiguredValue(c.TargetOSVersion) {
@@ -143,21 +188,65 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, 
 
 // FromRawConfiguration populates the strongly-typed component from raw configuration
 func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]interface{}) error {
+	c.IgnoreMajorVersions = types.BoolNull()
+
 	if enforcementType, exists := rawConfig["enforcementType"]; exists {
 		if enforcementTypeStr, ok := enforcementType.(string); ok {
 			c.EnforcementType = types.StringValue(enforcementTypeStr)
 		}
 	}
 
-	if deploymentTime, exists := rawConfig["deploymentTime"]; exists {
-		if deploymentTimeStr, ok := deploymentTime.(string); ok {
-			c.DeploymentTime = types.StringValue(deploymentTimeStr)
+	strategy := ""
+	if strategyValue, exists := rawConfig["strategy"]; exists {
+		if strategyStr, ok := strategyValue.(string); ok {
+			strategy = strategyStr
+			switch strategyStr {
+			case "SEMANTIC":
+				c.IgnoreMajorVersions = types.BoolValue(true)
+			case "LATEST":
+				c.IgnoreMajorVersions = types.BoolValue(false)
+			}
 		}
 	}
 
-	if enforceAfterDays, exists := rawConfig["enforceAfterDays"]; exists {
-		if enforceAfterDaysFloat, ok := enforceAfterDays.(float64); ok {
-			c.EnforceAfterDays = types.Int64Value(int64(enforceAfterDaysFloat))
+	automaticFieldsDetected := false
+	useSemanticRules := strategy == "SEMANTIC"
+
+	if useSemanticRules {
+		if rulesValue, exists := rawConfig["rules"]; exists {
+			if rulesMap, ok := rulesValue.(map[string]interface{}); ok {
+				if minorValue, exists := rulesMap["minor"]; exists {
+					if minorMap, ok := minorValue.(map[string]interface{}); ok {
+						if deploymentTime, exists := minorMap["deploymentTime"]; exists {
+							if deploymentTimeStr, ok := deploymentTime.(string); ok {
+								c.DeploymentTime = types.StringValue(deploymentTimeStr)
+								automaticFieldsDetected = true
+							}
+						}
+
+						if enforceAfterDays, exists := minorMap["enforceAfterDays"]; exists {
+							if enforceAfterDaysFloat, ok := enforceAfterDays.(float64); ok {
+								c.EnforceAfterDays = types.Int64Value(int64(enforceAfterDaysFloat))
+								automaticFieldsDetected = true
+							}
+						}
+					}
+				}
+			}
+		}
+	} else {
+		if deploymentTime, exists := rawConfig["deploymentTime"]; exists {
+			if deploymentTimeStr, ok := deploymentTime.(string); ok {
+				c.DeploymentTime = types.StringValue(deploymentTimeStr)
+				automaticFieldsDetected = true
+			}
+		}
+
+		if enforceAfterDays, exists := rawConfig["enforceAfterDays"]; exists {
+			if enforceAfterDaysFloat, ok := enforceAfterDays.(float64); ok {
+				c.EnforceAfterDays = types.Int64Value(int64(enforceAfterDaysFloat))
+				automaticFieldsDetected = true
+			}
 		}
 	}
 
@@ -183,9 +272,15 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]inte
 		}
 	}
 
+	if automaticFieldsDetected && !helpers.IsConfiguredValue(c.IgnoreMajorVersions) {
+		c.IgnoreMajorVersions = types.BoolValue(false)
+	}
+
 	if !helpers.IsConfiguredValue(c.EnforcementType) {
 		if helpers.IsConfiguredValue(c.TargetOSVersion) || helpers.IsConfiguredValue(c.TargetLocalDateTime) {
 			c.EnforcementType = types.StringValue("MANUAL")
+		} else if automaticFieldsDetected {
+			c.EnforcementType = types.StringValue("AUTOMATIC")
 		}
 	}
 
