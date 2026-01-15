@@ -57,8 +57,9 @@ resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
   software_update {
-    deployment_time    = "02:00"
-    enforce_after_days = 7
+    ignore_major_versions = true
+    deployment_time       = "02:00"
+    enforce_after_days    = 7
   }
 }
 
@@ -463,8 +464,9 @@ Optional:
 - `deployment_time` (String) For automatic enforcement. Local device time to install the update. Format: `HH:mm` (24-hour). Cannot be used with `target_os_version` or `target_local_date_time`.
 - `details_url_value` (String) URL of a web page with the details about the software update.
 - `enforce_after_days` (Number) For automatic enforcement. Days after release to enforce the update. Maximum is `30`. Cannot be used with `target_os_version` or `target_local_date_time`.
-- `target_local_date_time` (String) For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time` or `enforce_after_days`.
-- `target_os_version` (String) For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time` or `enforce_after_days`.
+- `ignore_major_versions` (Boolean) Whether to ignore major OS versions when enforcing updates. Only applicable for automatic enforcement. Cannot be used with `target_os_version` or `target_local_date_time`.
+- `target_local_date_time` (String) For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.
+- `target_os_version` (String) For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.
 
 Read-Only:
 
