@@ -1,4 +1,4 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright 2026 Jamf Software LLC.
 
 package helpers
 
@@ -111,6 +111,15 @@ func StringPointerValue(v types.String) *string {
 		return nil
 	}
 	value := v.ValueString()
+	return &value
+}
+
+// BoolPointerValue returns a *bool for configured Terraform bools, preserving nulls when unset.
+func BoolPointerValue(v types.Bool) *bool {
+	if !IsConfiguredValue(v) {
+		return nil
+	}
+	value := v.ValueBool()
 	return &value
 }
 

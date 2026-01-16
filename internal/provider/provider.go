@@ -1,4 +1,4 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright 2026 Jamf Software LLC.
 
 package provider
 
@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -15,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
@@ -44,6 +46,7 @@ const (
 // Ensure JamfPlatformProvider satisfies the various provider interfaces.
 var _ provider.Provider = &JamfPlatformProvider{}
 var _ provider.ProviderWithListResources = &JamfPlatformProvider{}
+var _ provider.ProviderWithActions = &JamfPlatformProvider{}
 
 // JamfPlatformProvider defines the provider implementation.
 type JamfPlatformProvider struct {
@@ -146,6 +149,7 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	resp.DataSourceData = apiClient
 	resp.ResourceData = apiClient
 	resp.ListResourceData = apiClient
+	resp.ActionData = apiClient
 }
 
 func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -182,6 +186,15 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		benchmark.NewBenchmarkListResource,
 		blueprint.NewBlueprintListResource,
 		device_group.NewDeviceGroupListResource,
+	}
+}
+
+func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Action {
+	return []func() action.Action{
+		deviceactions.NewEraseAction,
+		deviceactions.NewRestartAction,
+		deviceactions.NewShutdownAction,
+		deviceactions.NewUnmanageAction,
 	}
 }
 
