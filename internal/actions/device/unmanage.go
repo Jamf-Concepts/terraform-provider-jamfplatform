@@ -43,7 +43,7 @@ func (a *UnmanageAction) Schema(ctx context.Context, req action.SchemaRequest, r
 				Optional:            true,
 				MarkdownDescription: "The ID of the device in UUID format. Provide this or `serial_number`.",
 				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.MatchRelative().AtName("serial_number")),
+					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
 				},
 			},
 			"serial_number": actionschema.StringAttribute{
@@ -51,7 +51,7 @@ func (a *UnmanageAction) Schema(ctx context.Context, req action.SchemaRequest, r
 				MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
-					stringvalidator.ConflictsWith(path.MatchRelative().AtName("device_id")),
+					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("device_id")),
 				},
 			},
 		},
