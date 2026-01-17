@@ -79,10 +79,7 @@ func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp
 			},
 			"clear_activation_lock": actionschema.BoolAttribute{
 				Optional:            true,
-				MarkdownDescription: "Clear the activation lock on the device. Applies to mobile devices only.",
-				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
-				},
+				MarkdownDescription: "Clear the activation lock on the device.",
 			},
 			"return_to_service": actionschema.BoolAttribute{
 				Optional:            true,
@@ -99,7 +96,6 @@ func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp
 					stringvalidator.ConflictsWith(
 						path.MatchRelative().AtParent().AtName("preserve_data_plan"),
 						path.MatchRelative().AtParent().AtName("disallow_proximity_setup"),
-						path.MatchRelative().AtParent().AtName("clear_activation_lock"),
 						path.MatchRelative().AtParent().AtName("return_to_service"),
 					),
 				},

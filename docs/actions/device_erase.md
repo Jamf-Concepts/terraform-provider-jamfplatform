@@ -22,7 +22,6 @@ action "jamfplatform_device_erase" "return_device_to_service" {
     disallow_proximity_setup = false
     clear_activation_lock    = true
     return_to_service        = true
-    pin                      = null
   }
 }
 ```
@@ -32,7 +31,7 @@ action "jamfplatform_device_erase" "return_device_to_service" {
 
 ### Optional
 
-- `clear_activation_lock` (Boolean) Clear the activation lock on the device. Applies to mobile devices only.
+- `clear_activation_lock` (Boolean) Clear the activation lock on the device.
 - `device_id` (String) The ID of the device in UUID format. Provide this or `serial_number`.
 - `disallow_proximity_setup` (Boolean) Disable Proximity Setup on the next reboot and skip the pane in Setup Assistant. Applies to mobile devices only.
 - `pin` (String) The six-character PIN for Find My. Applies to computers only.
