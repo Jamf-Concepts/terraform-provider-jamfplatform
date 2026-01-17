@@ -35,12 +35,11 @@ func (a *RestartAction) Metadata(ctx context.Context, req action.MetadataRequest
 
 func (a *RestartAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		Description: "Requests that Jamf Platform restart a managed device.",
+		MarkdownDescription: "Requests that a device restart. Requires **Device Management Actions API access**.",
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
 				Required:            true,
-				Description:         "UUID of the device to restart.",
-				MarkdownDescription: "UUID of the device to restart.",
+				MarkdownDescription: "The ID of the device, in UUID format.",
 			},
 		},
 	}

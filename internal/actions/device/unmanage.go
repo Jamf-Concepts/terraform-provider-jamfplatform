@@ -33,12 +33,11 @@ func (a *UnmanageAction) Metadata(ctx context.Context, req action.MetadataReques
 
 func (a *UnmanageAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		Description: "Requests that Jamf Platform remove remote management from a device.",
+		MarkdownDescription: "Removes remote management from a device. Requires **Device Management Actions API access**.",
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
 				Required:            true,
-				Description:         "UUID of the device to unmanage.",
-				MarkdownDescription: "UUID of the device to unmanage.",
+				MarkdownDescription: "The ID of the device, in UUID format.",
 			},
 		},
 	}

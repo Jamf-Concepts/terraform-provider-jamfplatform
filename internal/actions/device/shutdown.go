@@ -33,12 +33,11 @@ func (a *ShutdownAction) Metadata(ctx context.Context, req action.MetadataReques
 
 func (a *ShutdownAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		Description: "Requests that Jamf Platform shut down a managed device.",
+		MarkdownDescription: "Requests that a device shut down. Requires **Device Management Actions API access**.",
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
 				Required:            true,
-				Description:         "UUID of the device to shut down.",
-				MarkdownDescription: "UUID of the device to shut down.",
+				MarkdownDescription: "The ID of the device, in UUID format.",
 			},
 		},
 	}
