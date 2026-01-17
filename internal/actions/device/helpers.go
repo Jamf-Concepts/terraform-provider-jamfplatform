@@ -5,12 +5,12 @@ package deviceactions
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -88,7 +88,7 @@ func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action
 }
 
 func (a *deviceAction) lookupDeviceIDBySerial(ctx context.Context, serial string) (string, error) {
-	filter := fmt.Sprintf(`serialNumber=="%s"`, escapeRSQLValue(serial))
+	filter := filters.Clause("serialNumber", "==", serial)
 	devices, err := a.client.GetDevicesV1(ctx, nil, filter)
 	if err != nil {
 		return "", fmt.Errorf("failed to query devices by serial number: %w", err)
@@ -102,10 +102,4 @@ func (a *deviceAction) lookupDeviceIDBySerial(ctx context.Context, serial string
 	default:
 		return "", fmt.Errorf("multiple devices (%d) returned for serial number %s", len(devices), serial)
 	}
-}
-
-func escapeRSQLValue(value string) string {
-	escaped := strings.ReplaceAll(value, `\\`, `\\\\`)
-	escaped = strings.ReplaceAll(escaped, `"`, `\\"`)
-	return escaped
 }
