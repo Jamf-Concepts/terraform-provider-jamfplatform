@@ -6,8 +6,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -21,7 +24,8 @@ type RestartAction struct {
 
 // RestartActionModel represents the action config schema.
 type RestartActionModel struct {
-	DeviceID types.String `tfsdk:"device_id"`
+	DeviceID     types.String `tfsdk:"device_id"`
+	SerialNumber types.String `tfsdk:"serial_number"`
 }
 
 // NewRestartAction constructs the action.
@@ -38,8 +42,19 @@ func (a *RestartAction) Schema(ctx context.Context, req action.SchemaRequest, re
 		MarkdownDescription: "Requests that a device restart. Requires **Device Management Actions API access**.",
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "The ID of the device, in UUID format.",
+				Optional:            true,
+				MarkdownDescription: "The ID of the device in UUID format. Provide this or `serial_number`.",
+				Validators: []validator.String{
+					stringvalidator.ConflictsWith(path.MatchRelative().AtName("serial_number")),
+				},
+			},
+			"serial_number": actionschema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.",
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+					stringvalidator.ConflictsWith(path.MatchRelative().AtName("device_id")),
+				},
 			},
 		},
 	}
@@ -60,7 +75,10 @@ func (a *RestartAction) Invoke(ctx context.Context, req action.InvokeRequest, re
 		return
 	}
 
-	deviceID := data.DeviceID.ValueString()
+	deviceID, ok := a.resolveDeviceIdentifier(ctx, resp, data.DeviceID, data.SerialNumber)
+	if !ok {
+		return
+	}
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting restart for device %s", deviceID)})
 
