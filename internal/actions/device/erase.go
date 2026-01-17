@@ -67,28 +67,28 @@ func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp
 				Optional:            true,
 				MarkdownDescription: "Preserve the data plan on an iPhone or iPad with eSIM functionality, if one exists. Applies to mobile devices only.",
 				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtName("pin")),
+					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
 				},
 			},
 			"disallow_proximity_setup": actionschema.BoolAttribute{
 				Optional:            true,
 				MarkdownDescription: "Disable Proximity Setup on the next reboot and skip the pane in Setup Assistant. Applies to mobile devices only.",
 				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtName("pin")),
+					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
 				},
 			},
 			"clear_activation_lock": actionschema.BoolAttribute{
 				Optional:            true,
 				MarkdownDescription: "Clear the activation lock on the device. Applies to mobile devices only.",
 				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtName("pin")),
+					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
 				},
 			},
 			"return_to_service": actionschema.BoolAttribute{
 				Optional:            true,
 				MarkdownDescription: "The device will be returned to service after the erase is complete. Applies to mobile devices only.",
 				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtName("pin")),
+					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
 				},
 			},
 			"pin": actionschema.StringAttribute{
@@ -97,10 +97,10 @@ func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(6, 6),
 					stringvalidator.ConflictsWith(
-						path.MatchRelative().AtName("preserve_data_plan"),
-						path.MatchRelative().AtName("disallow_proximity_setup"),
-						path.MatchRelative().AtName("clear_activation_lock"),
-						path.MatchRelative().AtName("return_to_service"),
+						path.MatchRelative().AtParent().AtName("preserve_data_plan"),
+						path.MatchRelative().AtParent().AtName("disallow_proximity_setup"),
+						path.MatchRelative().AtParent().AtName("clear_activation_lock"),
+						path.MatchRelative().AtParent().AtName("return_to_service"),
 					),
 				},
 			},
