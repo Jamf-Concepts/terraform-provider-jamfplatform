@@ -7,8 +7,11 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // deviceAction shares Configure logic across device action implementations.
@@ -45,4 +48,58 @@ func (a *deviceAction) ensureClient(resp *action.InvokeResponse) bool {
 		"The Jamf Platform client was not configured. Re-run terraform init/apply so the provider can configure successfully.",
 	)
 	return false
+}
+
+// resolveDeviceIdentifier ensures exactly one device identifier is provided and returns the device ID.
+func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action.InvokeResponse, deviceIDAttr, serialNumberAttr types.String) (string, bool) {
+	hasDeviceID := helpers.IsConfiguredValue(deviceIDAttr)
+	hasSerial := helpers.IsConfiguredValue(serialNumberAttr)
+
+	switch {
+	case hasDeviceID && hasSerial:
+		resp.Diagnostics.AddError(
+			"Multiple Device Identifiers Provided",
+			"Specify only one of device_id or serial_number when invoking this action.",
+		)
+		return "", false
+	case hasDeviceID:
+		return deviceIDAttr.ValueString(), true
+	case hasSerial:
+		serial := serialNumberAttr.ValueString()
+		resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Resolving serial number %s", serial)})
+
+		deviceID, err := a.lookupDeviceIDBySerial(ctx, serial)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Device Lookup Failed",
+				fmt.Sprintf("Unable to resolve serial number %s to a device ID: %s", serial, err),
+			)
+			return "", false
+		}
+
+		return deviceID, true
+	default:
+		resp.Diagnostics.AddError(
+			"Missing Device Identifier",
+			"Specify either device_id or serial_number to select the device.",
+		)
+		return "", false
+	}
+}
+
+func (a *deviceAction) lookupDeviceIDBySerial(ctx context.Context, serial string) (string, error) {
+	filter := filters.Clause("serialNumber", "==", serial)
+	devices, err := a.client.GetDevicesV1(ctx, nil, filter)
+	if err != nil {
+		return "", fmt.Errorf("failed to query devices by serial number: %w", err)
+	}
+
+	switch len(devices) {
+	case 0:
+		return "", fmt.Errorf("no device found with serial number %s", serial)
+	case 1:
+		return devices[0].ID, nil
+	default:
+		return "", fmt.Errorf("multiple devices (%d) returned for serial number %s", len(devices), serial)
+	}
 }

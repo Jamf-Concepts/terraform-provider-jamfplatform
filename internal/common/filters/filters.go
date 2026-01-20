@@ -1,4 +1,4 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright 2026 Jamf Software LLC.
 
 package filters
 
@@ -161,7 +161,7 @@ func BuildRSQLExpression(filters []FilterModel, selectorValidator SelectorValida
 			operator = value
 		}
 
-		clause := fmt.Sprintf("%s%s%s", selector, operator, formatArgument(argument))
+		clause := Clause(selector, operator, argument)
 		if isTrue(filter.HasOpeningParenthesis) {
 			clause = "(" + clause
 		}
@@ -215,6 +215,14 @@ func AllowList(validSelectors []string) SelectorValidator {
 	}
 }
 
+// Clause builds a selector/operator/argument clause using Terraform-style escaping.
+func Clause(selector, operator, argument string) string {
+	if operator == "" {
+		operator = "=="
+	}
+	return fmt.Sprintf("%s%s%s", selector, operator, FormatArgument(argument))
+}
+
 // configuredFilterValue extracts the string value from a types.String, returning
 func configuredFilterValue(value types.String) (string, bool) {
 	if !helpers.IsConfiguredValue(value) {
@@ -227,8 +235,8 @@ func configuredFilterValue(value types.String) (string, bool) {
 	return str, true
 }
 
-// formatArgument prepares an RSQL argument value, adding quotes if necessary.
-func formatArgument(value string) string {
+// FormatArgument prepares an RSQL argument value, adding quotes/escapes when needed.
+func FormatArgument(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return ""
@@ -236,13 +244,15 @@ func formatArgument(value string) string {
 	if alreadyWrappedArgument(trimmed) || looksLikeListArgument(trimmed) {
 		return trimmed
 	}
-	escaped := strings.ReplaceAll(trimmed, "\"", "\\\"")
+	escaped := strings.ReplaceAll(trimmed, `\\`, `\\\\`)
+	escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
 	if argumentNeedsQuoting(trimmed) {
 		return fmt.Sprintf("\"%s\"", escaped)
 	}
 	return escaped
 }
 
+// alreadyWrappedArgument checks if the value is already enclosed in quotes.
 func alreadyWrappedArgument(value string) bool {
 	if len(value) < 2 {
 		return false

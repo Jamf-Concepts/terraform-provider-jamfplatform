@@ -6,9 +6,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -26,6 +28,7 @@ type EraseAction struct {
 
 type EraseActionModel struct {
 	DeviceID               types.String `tfsdk:"device_id"`
+	SerialNumber           types.String `tfsdk:"serial_number"`
 	PreserveDataPlan       types.Bool   `tfsdk:"preserve_data_plan"`
 	DisallowProximitySetup types.Bool   `tfsdk:"disallow_proximity_setup"`
 	ClearActivationLock    types.Bool   `tfsdk:"clear_activation_lock"`
@@ -43,33 +46,58 @@ func (a *EraseAction) Metadata(ctx context.Context, req action.MetadataRequest, 
 
 func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		Description: "Requests that Jamf Platform erase a managed device.",
+		MarkdownDescription: "Requests that a device erase its content and settings. Requires **Device Management Actions API access**.",
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "UUID of the device to erase.",
+				Optional:            true,
+				MarkdownDescription: "The ID of the device in UUID format. Provide this or `serial_number`.",
+				Validators: []validator.String{
+					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
+				},
+			},
+			"serial_number": actionschema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.",
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("device_id")),
+				},
 			},
 			"preserve_data_plan": actionschema.BoolAttribute{
-				Optional:    true,
-				Description: "Preserve eSIM data plans on supported iPhone or iPad devices.",
+				Optional:            true,
+				MarkdownDescription: "Preserve the data plan on an iPhone or iPad with eSIM functionality, if one exists. Applies to mobile devices only.",
+				Validators: []validator.Bool{
+					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
+				},
 			},
 			"disallow_proximity_setup": actionschema.BoolAttribute{
-				Optional:    true,
-				Description: "Disable Proximity Setup on the next reboot for supported mobile devices.",
+				Optional:            true,
+				MarkdownDescription: "Disable Proximity Setup on the next reboot and skip the pane in Setup Assistant. Applies to mobile devices only.",
+				Validators: []validator.Bool{
+					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
+				},
 			},
 			"clear_activation_lock": actionschema.BoolAttribute{
-				Optional:    true,
-				Description: "Clear the Activation Lock for the device (mobile devices only).",
+				Optional:            true,
+				MarkdownDescription: "Clear the activation lock on the device.",
 			},
 			"return_to_service": actionschema.BoolAttribute{
-				Optional:    true,
-				Description: "Return the device to service after erase completes (mobile devices only).",
+				Optional:            true,
+				MarkdownDescription: "The device will be returned to service after the erase is complete. Applies to mobile devices only.",
+				Validators: []validator.Bool{
+					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
+				},
 			},
 			"pin": actionschema.StringAttribute{
-				Optional:    true,
-				Description: "Six-digit Find My PIN required for macOS erase operations.",
+				Optional:            true,
+				MarkdownDescription: "The six-character PIN for Find My. Applies to computers only.",
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(6, 6),
+					stringvalidator.ConflictsWith(
+						path.MatchRelative().AtParent().AtName("preserve_data_plan"),
+						path.MatchRelative().AtParent().AtName("disallow_proximity_setup"),
+						path.MatchRelative().AtParent().AtName("return_to_service"),
+					),
 				},
 			},
 		},
@@ -91,7 +119,10 @@ func (a *EraseAction) Invoke(ctx context.Context, req action.InvokeRequest, resp
 		return
 	}
 
-	deviceID := data.DeviceID.ValueString()
+	deviceID, ok := a.resolveDeviceIdentifier(ctx, resp, data.DeviceID, data.SerialNumber)
+	if !ok {
+		return
+	}
 	request := buildEraseRequestPayload(data)
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting erase for device %s", deviceID)})

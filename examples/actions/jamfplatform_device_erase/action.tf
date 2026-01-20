@@ -7,6 +7,5 @@ action "jamfplatform_device_erase" "return_device_to_service" {
     disallow_proximity_setup = false
     clear_activation_lock    = true
     return_to_service        = true
-    pin                      = "123456"
   }
 }
