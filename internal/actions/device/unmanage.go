@@ -6,8 +6,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -20,7 +23,8 @@ type UnmanageAction struct {
 }
 
 type UnmanageActionModel struct {
-	DeviceID types.String `tfsdk:"device_id"`
+	DeviceID     types.String `tfsdk:"device_id"`
+	SerialNumber types.String `tfsdk:"serial_number"`
 }
 
 func NewUnmanageAction() action.Action {
@@ -33,12 +37,22 @@ func (a *UnmanageAction) Metadata(ctx context.Context, req action.MetadataReques
 
 func (a *UnmanageAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		Description: "Requests that Jamf Platform remove remote management from a device.",
+		MarkdownDescription: "Removes remote management from a device. Requires **Device Management Actions API access**.",
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
-				Required:            true,
-				Description:         "UUID of the device to unmanage.",
-				MarkdownDescription: "UUID of the device to unmanage.",
+				Optional:            true,
+				MarkdownDescription: "The ID of the device in UUID format. Provide this or `serial_number`.",
+				Validators: []validator.String{
+					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
+				},
+			},
+			"serial_number": actionschema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.",
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("device_id")),
+				},
 			},
 		},
 	}
@@ -59,7 +73,10 @@ func (a *UnmanageAction) Invoke(ctx context.Context, req action.InvokeRequest, r
 		return
 	}
 
-	deviceID := data.DeviceID.ValueString()
+	deviceID, ok := a.resolveDeviceIdentifier(ctx, resp, data.DeviceID, data.SerialNumber)
+	if !ok {
+		return
+	}
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting unmanage for device %s", deviceID)})
 
