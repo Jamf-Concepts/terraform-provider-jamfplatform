@@ -313,7 +313,6 @@ Resource tests run during the `test_resources` run block with `command = apply`.
 
 - **Test realistic scenarios**: Use configuration values that represent real-world usage
 - **Validate dependencies**: If your resource depends on data sources, include them in tests
-- **Handle provider aliases**: Explicitly specify provider when using non-default configurations
 - **Include required fields**: Ensure all required arguments are populated
 
 ### Cleanup
