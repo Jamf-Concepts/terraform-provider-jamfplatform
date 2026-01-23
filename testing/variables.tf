@@ -15,19 +15,6 @@ variable "jamfplatform_client_secret" {
   sensitive   = true
 }
 
-variable "jamfplatform_inventory_client_id" {
-  description = "OAuth client ID for inventory APIs (set via TF_VAR_jamfplatform_inventory_client_id, defaults to null)"
-  type        = string
-  default     = null
-  sensitive   = true
-}
-
-variable "jamfplatform_inventory_client_secret" {
-  description = "OAuth client secret for inventory APIs (set via TF_VAR_jamfplatform_inventory_client_secret, defaults to null)"
-  type        = string
-  sensitive   = true
-}
-
 variable "test_id" {
   description = "Unique identifier for test resources to avoid naming conflicts"
   type        = string
