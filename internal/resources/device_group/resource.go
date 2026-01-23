@@ -28,7 +28,7 @@ var _ resource.ResourceWithImportState = &DeviceGroupResource{}
 var _ resource.ResourceWithIdentity = &DeviceGroupResource{}
 
 const (
-	defaultCreateTimeout = 90 * time.Second
+	defaultCreateTimeout = 120 * time.Second
 	defaultReadTimeout   = 60 * time.Second
 	defaultUpdateTimeout = 60 * time.Second
 	defaultDeleteTimeout = 60 * time.Second
