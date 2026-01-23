@@ -4,12 +4,12 @@ Provides resources and data sources for managing [Jamf Platform Services](https:
 
 * [Compliance Benchmark Engine](https://learn.jamf.com/en-US/bundle/jamf-compliance-benchmarks-configuration-guide/page/Compliance_Benchmarks_Configuration_Guide.html)
   * [API Reference](https://developer.jamf.com/platform-api/reference/getbenchmark)
-* Unified Inventory
-  * [API Reference](https://developer.jamf.com/platform-api/reference/computer-inventory)
 * [Blueprints](https://learn.jamf.com/en-US/bundle/jamf-pro-blueprints-configuration-guide/page/Jamf_Pro_Blueprints_Configuration_Guide.html)
   * [API Reference](https://developer.jamf.com/platform-api/reference/blueprints-1)
 * Device Groups
   * [API Reference](https://developer.jamf.com/platform-api/reference/device-groups)
+* [Devices](https://developer.jamf.com/platform-api/reference/devices)
+* [Device Actions](https://developer.jamf.com/platform-api/reference/device-actions)
 
 Note that some of these APIs are only available in private beta. Provider stability, functionality and schemas are subject to change without notice.
 
