@@ -39,7 +39,6 @@ testing/
 │   ├── variables.tf           # → Symlink to ../variables.tf
 │   ├── blueprints_components.tf
 │   ├── cbengine_baselines.tf
-│   ├── inventory_computers.tf
 │   └── ...
 └── resources/                 # Resource tests (CRUD operations)
     ├── provider.tf            # → Symlink to ../provider.tf
@@ -55,7 +54,7 @@ testing/
 | File | Purpose |
 |------|---------|
 | `integration.tftest.hcl` | Orchestrates test execution with `run` blocks |
-| `provider.tf` | Configures multiple provider instances (default, inventory alias) |
+| `provider.tf` | Configures provider instances |
 | `variables.tf` | Defines authentication credentials and test ID variable |
 | `data_sources/*.tf` | Individual data source test configurations |
 | `resources/*.tf` | Individual resource test configurations |
@@ -68,8 +67,7 @@ testing/
 1. **Go**: Version specified in `go.mod`
 2. **Terraform**: Latest stable version
 3. **Authentication credentials**:
-   - Jamf Platform OAuth client (compliance/blueprints APIs)
-   - Jamf Platform OAuth client (inventory APIs)
+   - Jamf Platform OAuth client
    - Jamf Pro OAuth client
 
 ### Step 1: Set Environment Variables
@@ -80,9 +78,6 @@ Export the required authentication variables:
 export TF_VAR_jamfplatform_base_url="https://your-instance.jamfcloud.com"
 export TF_VAR_jamfplatform_client_id="your-client-id"
 export TF_VAR_jamfplatform_client_secret="your-client-secret"
-
-export TF_VAR_jamfplatform_inventory_client_id="your-inventory-client-id"
-export TF_VAR_jamfplatform_inventory_client_secret="your-inventory-client-secret"
 
 # Optional: Unique test ID to avoid naming conflicts
 export TF_VAR_test_id="$(uuidgen)"
@@ -193,10 +188,8 @@ Configure these secrets in your repository settings:
 | Secret Name | Description |
 |-------------|-------------|
 | `JAMFPLATFORM_BASE_URL` | Jamf Platform instance URL |
-| `JAMFPLATFORM_CLIENT_ID` | OAuth client ID for compliance/blueprints |
-| `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret for compliance/blueprints |
-| `JAMFPLATFORM_INVENTORY_CLIENT_ID` | OAuth client ID for inventory APIs |
-| `JAMFPLATFORM_INVENTORY_CLIENT_SECRET` | OAuth client secret for inventory APIs |
+| `JAMFPLATFORM_CLIENT_ID` | OAuth client ID for Jamf Platform API |
+| `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret for Jamf Platform API |
 
 ## Adding New Tests
 
@@ -297,34 +290,6 @@ terraform test -verbose -parallelism=1
 ```
 
 Resource tests run during the `test_resources` run block with `command = apply`.
-
-### Using Shared Test Infrastructure
-
-The `resources/main.tf` file provides shared infrastructure that can be referenced in your tests:
-
-```hcl
-# Available shared resources:
-jamfplatform_device_group.test_smart_computer.id
-jamfplatform_device_group.test_smart_mobile.id
-```
-
-These groups are created via the `jamfpro` provider and can be used as target groups for blueprints, benchmarks, and other resources.
-
-### Using Provider Aliases
-
-Some resources require specific provider configurations:
-
-```hcl
-# Use the inventory provider alias
-data "jamfplatform_inventory_computers" "test" {
-  provider = jamfplatform.inventory
-}
-```
-
-The available provider aliases are:
-
-- `jamfplatform` (default) - For compliance/blueprints/device-group APIs
-- `jamfplatform.inventory` - For inventory APIs
 
 ## Best Practices
 
