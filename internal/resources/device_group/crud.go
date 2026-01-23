@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	deviceGroupCreateMaxAttempts = 12
-	deviceGroupCreateRetryDelay  = 10 * time.Second
+	deviceGroupCreateRetryDelay = 10 * time.Second
 )
 
 // Create creates a new Jamf Platform device group resource.
