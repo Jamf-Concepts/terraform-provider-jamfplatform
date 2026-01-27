@@ -60,8 +60,6 @@ jobs:
           TF_VAR_jamfplatform_base_url: ${{ secrets.JAMFPLATFORM_BASE_URL }}
           TF_VAR_jamfplatform_client_id: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
           TF_VAR_jamfplatform_client_secret: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
-          TF_VAR_jamfplatform_inventory_client_id: ${{ secrets.JAMFPLATFORM_INVENTORY_CLIENT_ID }}
-          TF_VAR_jamfplatform_inventory_client_secret: ${{ secrets.JAMFPLATFORM_INVENTORY_CLIENT_SECRET }}
         continue-on-error: false
 
       - name: Run Terraform Test
@@ -72,6 +70,4 @@ jobs:
           TF_VAR_jamfplatform_base_url: ${{ secrets.JAMFPLATFORM_BASE_URL }}
           TF_VAR_jamfplatform_client_id: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
           TF_VAR_jamfplatform_client_secret: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
-          TF_VAR_jamfplatform_inventory_client_id: ${{ secrets.JAMFPLATFORM_INVENTORY_CLIENT_ID }}
-          TF_VAR_jamfplatform_inventory_client_secret: ${{ secrets.JAMFPLATFORM_INVENTORY_CLIENT_SECRET }}
         continue-on-error: false

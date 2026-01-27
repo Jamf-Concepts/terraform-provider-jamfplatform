@@ -83,7 +83,6 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 // waitForDeviceGroupAvailability polls the API until the newly created device group is available.
 func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context, id string) error {
 	attempt := 0
-	var lastErr error
 	return helpers.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
 		attempt++
 		_, err := r.client.GetDeviceGroupByIDV1(pollCtx, id)
@@ -92,11 +91,6 @@ func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context
 		}
 		if !helpers.IsNotFoundError(err) {
 			return false, err
-		}
-
-		lastErr = err
-		if attempt >= deviceGroupCreateMaxAttempts {
-			return false, fmt.Errorf("device group %s not yet available after %d attempts: %w", id, deviceGroupCreateMaxAttempts, lastErr)
 		}
 
 		tflog.Debug(pollCtx, "device group not yet available, retrying", map[string]interface{}{
