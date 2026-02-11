@@ -117,7 +117,7 @@ func (c *OAuthClient) refreshToken(ctx context.Context) (string, error) {
 		data.Set("scope", strings.Join(c.config.Scopes, " "))
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.config.TokenURL, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.config.TokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return "", fmt.Errorf("failed to create token request: %w", err)
 	}
@@ -277,6 +277,7 @@ func (c *OAuthClient) Do(ctx context.Context, method, url string, body []byte) (
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
+		_, _ = io.Copy(io.Discard, resp.Body)
 		if err := resp.Body.Close(); err != nil {
 			if c.logger != nil {
 				c.logger.Printf("warning: error closing response body: %v", err)

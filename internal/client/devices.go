@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -166,13 +167,13 @@ func (c *Client) GetDevicesV1(ctx context.Context, sort []string, filter string)
 			endpoint += "?" + encoded
 		}
 
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list devices: %w", err)
 		}
 
 		var result PaginatedDeviceResponseRepresentation
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 
@@ -194,13 +195,13 @@ func (c *Client) GetDevicesV1(ctx context.Context, sort []string, filter string)
 // GetDeviceByIDV1 retrieves a device by ID.
 func (c *Client) GetDeviceByIDV1(ctx context.Context, id string) (*DeviceReadRepresentationV1, error) {
 	endpoint := fmt.Sprintf("%s/devices/%s", deviceInventoryV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device %s: %w", id, err)
 	}
 
 	var device DeviceReadRepresentationV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &device); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &device); err != nil {
 		return nil, err
 	}
 
@@ -210,12 +211,12 @@ func (c *Client) GetDeviceByIDV1(ctx context.Context, id string) (*DeviceReadRep
 // UpdateDeviceV1 updates an existing device.
 func (c *Client) UpdateDeviceV1(ctx context.Context, id string, payload *DeviceUpdateRepresentationV1) error {
 	endpoint := fmt.Sprintf("%s/devices/%s", deviceInventoryV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, "PATCH", endpoint, payload)
+	resp, err := c.makeRequest(ctx, http.MethodPatch, endpoint, payload)
 	if err != nil {
 		return fmt.Errorf("failed to update device %s: %w", id, err)
 	}
 
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 
@@ -225,12 +226,12 @@ func (c *Client) UpdateDeviceV1(ctx context.Context, id string, payload *DeviceU
 // DeleteDeviceV1 deletes a device by ID.
 func (c *Client) DeleteDeviceV1(ctx context.Context, id string) error {
 	endpoint := fmt.Sprintf("%s/devices/%s", deviceInventoryV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, "DELETE", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodDelete, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete device %s: %w", id, err)
 	}
 
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 
@@ -259,13 +260,13 @@ func (c *Client) GetDeviceInstalledApplicationsV1(ctx context.Context, deviceID 
 			endpoint += "?" + encoded
 		}
 
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list installed applications for device %s: %w", deviceID, err)
 		}
 
 		var result PaginatedDeviceInstalledApplicationReadRepresentationV1
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 
@@ -306,13 +307,13 @@ func (c *Client) GetDevicesForUserV1(ctx context.Context, userID string, sort []
 			endpoint += "?" + encoded
 		}
 
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list devices for user %s: %w", userID, err)
 		}
 
 		var result PaginatedDeviceResponseRepresentation
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 

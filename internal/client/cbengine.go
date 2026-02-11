@@ -8,8 +8,15 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
+)
+
+// CBEngine API path constants
+const (
+	cbEngineV1Prefix = "/api/compliance-benchmarks/preview/v1"
+	cbEngineV2Prefix = "/api/compliance-benchmarks/preview/v2"
 )
 
 // CBEngine Baseline Types
@@ -160,23 +167,17 @@ type CBEngineSourcedRulesV1 struct {
 	Rules   []CBEngineRuleInfoV1 `json:"rules"`
 }
 
-// CBEngine API path constants
-const (
-	cbEngineV1Prefix = "/api/cb/engine/v1"
-	cbEngineV2Prefix = "/api/cb/engine/v2"
-)
-
 // CBEngine Baseline operations
 
 // GetCBEngineBaselinesV1 returns list of available mSCP baselines
 func (c *Client) GetCBEngineBaselinesV1(ctx context.Context) (*CBEngineBaselinesResponseV1, error) {
-	resp, err := c.makeRequest(ctx, "GET", cbEngineV1Prefix+"/baselines", nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, cbEngineV1Prefix+"/baselines", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get baselines: %w", err)
 	}
 
 	var result CBEngineBaselinesResponseV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 		return nil, err
 	}
 
@@ -187,13 +188,13 @@ func (c *Client) GetCBEngineBaselinesV1(ctx context.Context) (*CBEngineBaselines
 
 // CreateCBEngineBenchmarkV2 creates a new benchmark
 func (c *Client) CreateCBEngineBenchmarkV2(ctx context.Context, request *CBEngineBenchmarkRequestV2) (*CBEngineBenchmarkResponseV2, error) {
-	resp, err := c.makeRequest(ctx, "POST", cbEngineV2Prefix+"/benchmarks", request)
+	resp, err := c.makeRequest(ctx, http.MethodPost, cbEngineV2Prefix+"/benchmarks", request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create benchmark: %w", err)
 	}
 
 	var result CBEngineBenchmarkResponseV2
-	if err := c.handleAPIResponse(ctx, resp, 202, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusAccepted, &result); err != nil {
 		return nil, err
 	}
 
@@ -202,13 +203,13 @@ func (c *Client) CreateCBEngineBenchmarkV2(ctx context.Context, request *CBEngin
 
 // GetCBEngineBenchmarksV2 retrieves all benchmarks for the tenant
 func (c *Client) GetCBEngineBenchmarksV2(ctx context.Context) (*CBEngineBenchmarksResponseV2, error) {
-	resp, err := c.makeRequest(ctx, "GET", cbEngineV2Prefix+"/benchmarks", nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, cbEngineV2Prefix+"/benchmarks", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get benchmarks: %w", err)
 	}
 
 	var result CBEngineBenchmarksResponseV2
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 		return nil, err
 	}
 
@@ -219,13 +220,13 @@ func (c *Client) GetCBEngineBenchmarksV2(ctx context.Context) (*CBEngineBenchmar
 func (c *Client) GetCBEngineBenchmarkByIDV2(ctx context.Context, id string) (*CBEngineBenchmarkResponseV2, error) {
 	endpoint := fmt.Sprintf("%s/benchmarks/%s", cbEngineV2Prefix, url.PathEscape(id))
 
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get benchmark %s: %w", id, err)
 	}
 
 	var result CBEngineBenchmarkResponseV2
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 		return nil, err
 	}
 
@@ -236,12 +237,12 @@ func (c *Client) GetCBEngineBenchmarkByIDV2(ctx context.Context, id string) (*CB
 func (c *Client) DeleteCBEngineBenchmarkV1(ctx context.Context, id string) error {
 	endpoint := fmt.Sprintf("%s/benchmarks/%s", cbEngineV1Prefix, url.PathEscape(id))
 
-	resp, err := c.makeRequest(ctx, "DELETE", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodDelete, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete benchmark %s: %w", id, err)
 	}
 
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 
@@ -270,13 +271,13 @@ func (c *Client) GetCBEngineBenchmarkByTitleV2(ctx context.Context, title string
 func (c *Client) GetCBEngineRulesV1(ctx context.Context, baselineID string) (*CBEngineSourcedRulesV1, error) {
 	endpoint := fmt.Sprintf("%s/rules?baselineId=%s", cbEngineV1Prefix, url.QueryEscape(baselineID))
 
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rules for baseline %s: %w", baselineID, err)
 	}
 
 	var result CBEngineSourcedRulesV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 		return nil, err
 	}
 

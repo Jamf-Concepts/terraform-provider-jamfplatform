@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -145,13 +146,13 @@ func (c *Client) GetDeviceGroupsV1(ctx context.Context, sort []string, filter st
 			endpoint += "?" + params.Encode()
 		}
 
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list device groups: %w", err)
 		}
 
 		var result DeviceGroupPagedResponseV1
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 
@@ -167,12 +168,12 @@ func (c *Client) GetDeviceGroupsV1(ctx context.Context, sort []string, filter st
 // GetDeviceGroupByIDV1 retrieves a device group by ID
 func (c *Client) GetDeviceGroupByIDV1(ctx context.Context, id string) (*DeviceGroupReadRepresentationV1, error) {
 	endpoint := fmt.Sprintf("%s/%s", deviceGroupsV1Prefix+"/device-groups", url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device group %s: %w", id, err)
 	}
 	var result DeviceGroupReadRepresentationV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -181,12 +182,12 @@ func (c *Client) GetDeviceGroupByIDV1(ctx context.Context, id string) (*DeviceGr
 // CreateDeviceGroupV1 creates a new device group
 func (c *Client) CreateDeviceGroupV1(ctx context.Context, request *DeviceGroupCreateRepresentationV1) (*DeviceGroupCreateResponseV1, error) {
 	endpoint := deviceGroupsV1Prefix + "/device-groups"
-	resp, err := c.makeRequest(ctx, "POST", endpoint, request)
+	resp, err := c.makeRequest(ctx, http.MethodPost, endpoint, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create device group: %w", err)
 	}
 	var result DeviceGroupCreateResponseV1
-	if err := c.handleAPIResponse(ctx, resp, 201, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusCreated, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -195,11 +196,11 @@ func (c *Client) CreateDeviceGroupV1(ctx context.Context, request *DeviceGroupCr
 // UpdateDeviceGroupV1 updates a device group
 func (c *Client) UpdateDeviceGroupV1(ctx context.Context, id string, request *DeviceGroupUpdateRepresentationV1) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s", deviceGroupsV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, "PATCH", endpoint, request)
+	resp, err := c.makeRequest(ctx, http.MethodPatch, endpoint, request)
 	if err != nil {
 		return fmt.Errorf("failed to update device group %s: %w", id, err)
 	}
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 	return nil
@@ -208,11 +209,11 @@ func (c *Client) UpdateDeviceGroupV1(ctx context.Context, id string, request *De
 // DeleteDeviceGroupV1 deletes a device group by ID
 func (c *Client) DeleteDeviceGroupV1(ctx context.Context, id string) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s", deviceGroupsV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, "DELETE", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodDelete, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete device group %s: %w", id, err)
 	}
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 	return nil
@@ -230,13 +231,13 @@ func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string) ([]stri
 		params.Set("page-size", fmt.Sprintf("%d", pageSize))
 
 		endpoint := fmt.Sprintf("%s/device-groups/%s/members?%s", deviceGroupsV1Prefix, url.PathEscape(id), params.Encode())
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get members for device group %s: %w", id, err)
 		}
 
 		var result ListDeviceGroupMemberReadRepresentationV1
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 
@@ -257,11 +258,11 @@ func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string) ([]stri
 // UpdateDeviceGroupMembersV1 patches the members of a static device group
 func (c *Client) UpdateDeviceGroupMembersV1(ctx context.Context, id string, patch *DeviceGroupMemberPatchRepresentationV1) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s/members", deviceGroupsV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, "PATCH", endpoint, patch)
+	resp, err := c.makeRequest(ctx, http.MethodPatch, endpoint, patch)
 	if err != nil {
 		return fmt.Errorf("failed to update members for device group %s: %w", id, err)
 	}
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 	return nil
@@ -279,13 +280,13 @@ func (c *Client) GetDeviceGroupsForDeviceV1(ctx context.Context, deviceID string
 		params.Set("page-size", fmt.Sprintf("%d", pageSize))
 
 		endpoint := fmt.Sprintf("%s/devices/%s/device-groups?%s", deviceGroupsV1Prefix, url.PathEscape(deviceID), params.Encode())
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get device groups for device %s: %w", deviceID, err)
 		}
 
 		var result ListDeviceGroupMemberOfResponseRepresentationV1
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 
