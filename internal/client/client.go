@@ -129,6 +129,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
+		_, _ = io.Copy(io.Discard, resp.Body)
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			fmt.Printf("warning: error closing response body: %v\n", closeErr)
 		}
@@ -167,6 +168,11 @@ func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, exp
 
 	if resp.StatusCode != expectedStatus {
 		requestInfo := fmt.Sprintf("method=%s, url=%s", resp.Request.Method, resp.Request.URL.String())
+		statusText := http.StatusText(resp.StatusCode)
+		statusDetail := fmt.Sprintf("%d", resp.StatusCode)
+		if statusText != "" {
+			statusDetail = fmt.Sprintf("%d %s", resp.StatusCode, statusText)
+		}
 
 		var apiErr ApiError
 		if err := json.Unmarshal(body, &apiErr); err == nil && len(apiErr.Errors) > 0 {
@@ -177,11 +183,7 @@ func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, exp
 			return fmt.Errorf("API request failed with status %d, traceId %s (%s): %s", apiErr.HTTPStatus, apiErr.TraceID, requestInfo, details)
 		}
 
-		if resp.StatusCode >= 500 {
-			return fmt.Errorf("server error (status %d) for %s: %s - this appears to be a server-side issue, consider retrying or checking server logs", resp.StatusCode, requestInfo, string(body))
-		}
-
-		return fmt.Errorf("API request failed with status %d (%s): %s", resp.StatusCode, requestInfo, string(body))
+		return fmt.Errorf("API request failed with status %s (%s): %s", statusDetail, requestInfo, string(body))
 	}
 
 	if result != nil {
