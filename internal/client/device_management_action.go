@@ -6,12 +6,13 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 )
 
 // Device Management Action API path constants
 const (
-	deviceManagementActionsV1Prefix = "management/actions/v1"
+	deviceManagementActionsV1Prefix = "/management/actions/v1"
 )
 
 // DeviceCommandResponseV1 captures the command metadata returned by device actions.
@@ -56,13 +57,13 @@ func (c *Client) invokeDeviceManagementActionV1(ctx context.Context, deviceID, a
 	}
 
 	endpoint := fmt.Sprintf("%s/devices/%s/%s", deviceManagementActionsV1Prefix, url.PathEscape(deviceID), action)
-	resp, err := c.makeRequest(ctx, "POST", endpoint, payload)
+	resp, err := c.makeRequest(ctx, http.MethodPost, endpoint, payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to %s device %s: %w", action, deviceID, err)
 	}
 
 	var result []DeviceCommandResponseV1
-	if err := c.handleAPIResponse(ctx, resp, 201, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusCreated, &result); err != nil {
 		return nil, err
 	}
 

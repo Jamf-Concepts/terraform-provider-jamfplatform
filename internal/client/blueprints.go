@@ -8,8 +8,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
+)
+
+// Blueprint API path constants
+const (
+	blueprintV1Prefix           = "/api/blueprints/v1/blueprints"
+	blueprintComponentsV1Prefix = "/api/blueprints/v1/blueprint-components"
 )
 
 // Blueprint API Types
@@ -122,12 +129,6 @@ type BlueprintCreateResponseV1 struct {
 	Href string `json:"href"`
 }
 
-// Blueprint API path constants
-const (
-	blueprintV1Prefix           = "/api/blueprints/v1/blueprints"
-	blueprintComponentsV1Prefix = "/api/blueprints/v1/blueprint-components"
-)
-
 // GetBlueprintsV1 returns all blueprints, automatically handling pagination
 func (c *Client) GetBlueprintsV1(ctx context.Context, sort []string, search string) ([]BlueprintOverviewV1, error) {
 	var allResults []BlueprintOverviewV1
@@ -145,12 +146,12 @@ func (c *Client) GetBlueprintsV1(ctx context.Context, sort []string, search stri
 		if len(params) > 0 {
 			endpoint += "?" + params.Encode()
 		}
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list blueprints: %w", err)
 		}
 		var result BlueprintOverviewPagedResponseV1
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 		allResults = append(allResults, result.Results...)
@@ -165,12 +166,12 @@ func (c *Client) GetBlueprintsV1(ctx context.Context, sort []string, search stri
 // GetBlueprintByIDV1 retrieves a blueprint by ID
 func (c *Client) GetBlueprintByIDV1(ctx context.Context, blueprintID string) (*BlueprintDetailV1, error) {
 	endpoint := fmt.Sprintf("%s/%s", blueprintV1Prefix, url.PathEscape(blueprintID))
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blueprint %s: %w", blueprintID, err)
 	}
 	var result BlueprintDetailV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -196,12 +197,12 @@ func (c *Client) GetBlueprintByNameV1(ctx context.Context, name string) (*Bluepr
 // CreateBlueprintV1 creates a new blueprint
 func (c *Client) CreateBlueprintV1(ctx context.Context, request *BlueprintCreateRequestV1) (*BlueprintCreateResponseV1, error) {
 	endpoint := blueprintV1Prefix
-	resp, err := c.makeRequest(ctx, "POST", endpoint, request)
+	resp, err := c.makeRequest(ctx, http.MethodPost, endpoint, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create blueprint: %w", err)
 	}
 	var result BlueprintCreateResponseV1
-	if err := c.handleAPIResponse(ctx, resp, 201, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusCreated, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -210,11 +211,11 @@ func (c *Client) CreateBlueprintV1(ctx context.Context, request *BlueprintCreate
 // UpdateBlueprintV1 updates a blueprint configuration
 func (c *Client) UpdateBlueprintV1(ctx context.Context, blueprintID string, request *BlueprintUpdateRequestV1) error {
 	endpoint := fmt.Sprintf("%s/%s", blueprintV1Prefix, url.PathEscape(blueprintID))
-	resp, err := c.makeRequest(ctx, "PATCH", endpoint, request)
+	resp, err := c.makeRequest(ctx, http.MethodPatch, endpoint, request)
 	if err != nil {
 		return fmt.Errorf("failed to update blueprint %s: %w", blueprintID, err)
 	}
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 	return nil
@@ -223,11 +224,11 @@ func (c *Client) UpdateBlueprintV1(ctx context.Context, blueprintID string, requ
 // DeleteBlueprintV1 deletes a blueprint by ID
 func (c *Client) DeleteBlueprintV1(ctx context.Context, blueprintID string) error {
 	endpoint := fmt.Sprintf("%s/%s", blueprintV1Prefix, url.PathEscape(blueprintID))
-	resp, err := c.makeRequest(ctx, "DELETE", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodDelete, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete blueprint %s: %w", blueprintID, err)
 	}
-	if err := c.handleAPIResponse(ctx, resp, 204, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusNoContent, nil); err != nil {
 		return err
 	}
 	return nil
@@ -236,11 +237,11 @@ func (c *Client) DeleteBlueprintV1(ctx context.Context, blueprintID string) erro
 // DeployBlueprintV1 starts deployment of a blueprint
 func (c *Client) DeployBlueprintV1(ctx context.Context, blueprintID string) error {
 	endpoint := fmt.Sprintf("%s/%s/deploy", blueprintV1Prefix, url.PathEscape(blueprintID))
-	resp, err := c.makeRequest(ctx, "POST", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodPost, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to deploy blueprint %s: %w", blueprintID, err)
 	}
-	if err := c.handleAPIResponse(ctx, resp, 202, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusAccepted, nil); err != nil {
 		return err
 	}
 	return nil
@@ -249,11 +250,11 @@ func (c *Client) DeployBlueprintV1(ctx context.Context, blueprintID string) erro
 // UndeployBlueprintV1 starts undeployment of a blueprint
 func (c *Client) UndeployBlueprintV1(ctx context.Context, blueprintID string) error {
 	endpoint := fmt.Sprintf("%s/%s/undeploy", blueprintV1Prefix, url.PathEscape(blueprintID))
-	resp, err := c.makeRequest(ctx, "POST", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodPost, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to undeploy blueprint %s: %w", blueprintID, err)
 	}
-	if err := c.handleAPIResponse(ctx, resp, 202, nil); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusAccepted, nil); err != nil {
 		return err
 	}
 	return nil
@@ -270,12 +271,12 @@ func (c *Client) GetBlueprintComponentsV1(ctx context.Context) ([]BlueprintCompo
 		if len(params) > 0 {
 			endpoint += "?" + params.Encode()
 		}
-		resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list blueprint components: %w", err)
 		}
 		var result BlueprintComponentDescriptionPagedResponseV1
-		if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+		if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 			return nil, err
 		}
 		allResults = append(allResults, result.Results...)
@@ -290,12 +291,12 @@ func (c *Client) GetBlueprintComponentsV1(ctx context.Context) ([]BlueprintCompo
 // GetBlueprintComponentByIDV1 gets a blueprint component by identifier
 func (c *Client) GetBlueprintComponentByIDV1(ctx context.Context, identifier string) (*BlueprintComponentDescriptionV1, error) {
 	endpoint := fmt.Sprintf("%s/%s", blueprintComponentsV1Prefix, url.PathEscape(identifier))
-	resp, err := c.makeRequest(ctx, "GET", endpoint, nil)
+	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blueprint component %s: %w", identifier, err)
 	}
 	var result BlueprintComponentDescriptionV1
-	if err := c.handleAPIResponse(ctx, resp, 200, &result); err != nil {
+	if err := c.handleAPIResponse(ctx, resp, http.StatusOK, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
