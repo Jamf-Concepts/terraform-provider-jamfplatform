@@ -60,7 +60,22 @@ func operatorDescription() string {
 
 // refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
 func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
-	grp, err := r.client.GetDeviceGroupByIDV1(ctx, id)
+	var grp *client.DeviceGroupReadRepresentationV1
+	err := helpers.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
+		var err error
+		grp, err = r.client.GetDeviceGroupByIDV1(pollCtx, id)
+		if err == nil {
+			return true, nil
+		}
+		if !helpers.IsNotFoundError(err) {
+			return false, err
+		}
+
+		tflog.Debug(pollCtx, "device group not yet available, retrying", map[string]interface{}{
+			"id": id,
+		})
+		return false, nil
+	})
 	if err != nil {
 		diags.AddError("Error reading device group", err.Error())
 		return false
@@ -78,27 +93,6 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 
 	diags.Append(assignDeviceGroupModel(ctx, model, grp, members, manageMembers, manageDescription)...)
 	return !diags.HasError()
-}
-
-// waitForDeviceGroupAvailability polls the API until the newly created device group is available.
-func (r *DeviceGroupResource) waitForDeviceGroupAvailability(ctx context.Context, id string) error {
-	attempt := 0
-	return helpers.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
-		attempt++
-		_, err := r.client.GetDeviceGroupByIDV1(pollCtx, id)
-		if err == nil {
-			return true, nil
-		}
-		if !helpers.IsNotFoundError(err) {
-			return false, err
-		}
-
-		tflog.Debug(pollCtx, "device group not yet available, retrying", map[string]interface{}{
-			"id":      id,
-			"attempt": attempt,
-		})
-		return false, nil
-	})
 }
 
 // assignDeviceGroupModel maps API representation to Terraform model, respecting managed fields.

@@ -83,11 +83,6 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 
 	plan.ID = types.StringValue(created.ID)
 
-	if err := r.waitForDeviceGroupAvailability(createCtx, created.ID); err != nil {
-		resp.Diagnostics.AddError("Device group not yet available", err.Error())
-		return
-	}
-
 	if !r.refreshDeviceGroupState(createCtx, created.ID, &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
