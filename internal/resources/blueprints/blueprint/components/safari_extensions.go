@@ -90,18 +90,18 @@ func SafariExtensionsComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI SafariExtensionsConfiguration schema
-func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	if len(c.ManagedExtensions) > 0 {
-		managedExtensions := make(map[string]interface{})
+		managedExtensions := make(map[string]any)
 
 		for _, ext := range c.ManagedExtensions {
 			if !helpers.IsConfiguredValue(ext.ExtensionID) {
 				continue
 			}
 
-			extConfig := make(map[string]interface{})
+			extConfig := make(map[string]any)
 
 			if helpers.IsConfiguredValue(ext.State) {
 				extConfig["State"] = ext.State.ValueString()
@@ -112,10 +112,10 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]interface{}
 			}
 
 			if len(ext.AllowedDomains) > 0 {
-				allowedDomains := make([]interface{}, 0, len(ext.AllowedDomains))
+				allowedDomains := make([]any, 0, len(ext.AllowedDomains))
 				for _, domain := range ext.AllowedDomains {
 					if helpers.IsConfiguredValue(domain.Domain) {
-						allowedDomains = append(allowedDomains, map[string]interface{}{
+						allowedDomains = append(allowedDomains, map[string]any{
 							"Domain": domain.Domain.ValueString(),
 						})
 					}
@@ -126,10 +126,10 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]interface{}
 			}
 
 			if len(ext.DeniedDomains) > 0 {
-				deniedDomains := make([]interface{}, 0, len(ext.DeniedDomains))
+				deniedDomains := make([]any, 0, len(ext.DeniedDomains))
 				for _, domain := range ext.DeniedDomains {
 					if helpers.IsConfiguredValue(domain.Domain) {
-						deniedDomains = append(deniedDomains, map[string]interface{}{
+						deniedDomains = append(deniedDomains, map[string]any{
 							"Domain": domain.Domain.ValueString(),
 						})
 					}
@@ -149,9 +149,9 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]interface{}
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *SafariExtensionsComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *SafariExtensionsComponent) FromRawConfiguration(raw map[string]any) error {
 	if managedExtensionsRaw, exists := raw["ManagedExtensions"]; exists {
-		if managedExtensionsMap, ok := managedExtensionsRaw.(map[string]interface{}); ok {
+		if managedExtensionsMap, ok := managedExtensionsRaw.(map[string]any); ok {
 			extensions := make([]ManagedExtensionModel, 0, len(managedExtensionsMap))
 
 			for extensionID, extConfigRaw := range managedExtensionsMap {
@@ -159,7 +159,7 @@ func (c *SafariExtensionsComponent) FromRawConfiguration(raw map[string]interfac
 					ExtensionID: types.StringValue(extensionID),
 				}
 
-				if extConfigMap, ok := extConfigRaw.(map[string]interface{}); ok {
+				if extConfigMap, ok := extConfigRaw.(map[string]any); ok {
 					if state, exists := extConfigMap["State"]; exists {
 						if stateStr, ok := state.(string); ok {
 							ext.State = types.StringValue(stateStr)
@@ -173,10 +173,10 @@ func (c *SafariExtensionsComponent) FromRawConfiguration(raw map[string]interfac
 					}
 
 					if allowedDomainsRaw, exists := extConfigMap["AllowedDomains"]; exists {
-						if allowedDomainsSlice, ok := allowedDomainsRaw.([]interface{}); ok {
+						if allowedDomainsSlice, ok := allowedDomainsRaw.([]any); ok {
 							allowedDomains := make([]ManagedExtensionDomainModel, 0, len(allowedDomainsSlice))
 							for _, domainRaw := range allowedDomainsSlice {
-								if domainMap, ok := domainRaw.(map[string]interface{}); ok {
+								if domainMap, ok := domainRaw.(map[string]any); ok {
 									if domain, exists := domainMap["Domain"]; exists {
 										if domainStr, ok := domain.(string); ok {
 											allowedDomains = append(allowedDomains, ManagedExtensionDomainModel{
@@ -191,10 +191,10 @@ func (c *SafariExtensionsComponent) FromRawConfiguration(raw map[string]interfac
 					}
 
 					if deniedDomainsRaw, exists := extConfigMap["DeniedDomains"]; exists {
-						if deniedDomainsSlice, ok := deniedDomainsRaw.([]interface{}); ok {
+						if deniedDomainsSlice, ok := deniedDomainsRaw.([]any); ok {
 							deniedDomains := make([]ManagedExtensionDomainModel, 0, len(deniedDomainsSlice))
 							for _, domainRaw := range deniedDomainsSlice {
-								if domainMap, ok := domainRaw.(map[string]interface{}); ok {
+								if domainMap, ok := domainRaw.(map[string]any); ok {
 									if domain, exists := domainMap["Domain"]; exists {
 										if domainStr, ok := domain.(string); ok {
 											deniedDomains = append(deniedDomains, ManagedExtensionDomainModel{

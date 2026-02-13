@@ -67,23 +67,23 @@ func ServiceConfigurationFilesComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI ServicesConfigurationFilesConfiguration schema
-func (c *ServiceConfigurationFilesComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *ServiceConfigurationFilesComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	if len(c.ServiceConfigFiles) > 0 {
-		serviceConfigFiles := make([]interface{}, 0, len(c.ServiceConfigFiles))
+		serviceConfigFiles := make([]any, 0, len(c.ServiceConfigFiles))
 
 		for _, configFile := range c.ServiceConfigFiles {
-			configFileMap := make(map[string]interface{})
+			configFileMap := make(map[string]any)
 
 			if helpers.IsConfiguredValue(configFile.ServiceType) {
 				configFileMap["ServiceType"] = configFile.ServiceType.ValueString()
 			}
 
 			if configFile.DataAssetReference != nil {
-				dataRef := make(map[string]interface{})
+				dataRef := make(map[string]any)
 
-				reference := make(map[string]interface{})
+				reference := make(map[string]any)
 				if helpers.IsConfiguredValue(configFile.DataAssetReference.DataURL) {
 					reference["DataURL"] = configFile.DataAssetReference.DataURL.ValueString()
 				}
@@ -107,13 +107,13 @@ func (c *ServiceConfigurationFilesComponent) ToRawConfiguration() (map[string]in
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *ServiceConfigurationFilesComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *ServiceConfigurationFilesComponent) FromRawConfiguration(raw map[string]any) error {
 	if serviceConfigFilesRaw, exists := raw["serviceConfigFiles"]; exists {
-		if serviceConfigFilesSlice, ok := serviceConfigFilesRaw.([]interface{}); ok {
+		if serviceConfigFilesSlice, ok := serviceConfigFilesRaw.([]any); ok {
 			serviceConfigFiles := make([]ServiceConfigFileModel, 0, len(serviceConfigFilesSlice))
 
 			for _, configFileRaw := range serviceConfigFilesSlice {
-				if configFileMap, ok := configFileRaw.(map[string]interface{}); ok {
+				if configFileMap, ok := configFileRaw.(map[string]any); ok {
 					configFile := ServiceConfigFileModel{}
 
 					if serviceType, exists := configFileMap["ServiceType"]; exists {
@@ -123,9 +123,9 @@ func (c *ServiceConfigurationFilesComponent) FromRawConfiguration(raw map[string
 					}
 
 					if dataAssetRefRaw, exists := configFileMap["DataAssetReference"]; exists {
-						if dataAssetRefMap, ok := dataAssetRefRaw.(map[string]interface{}); ok {
+						if dataAssetRefMap, ok := dataAssetRefRaw.(map[string]any); ok {
 							if refRaw, exists := dataAssetRefMap["Reference"]; exists {
-								if refMap, ok := refRaw.(map[string]interface{}); ok {
+								if refMap, ok := refRaw.(map[string]any); ok {
 									dataAssetRef := &ServiceConfigDataAssetRefModel{}
 
 									if dataURL, exists := refMap["DataURL"]; exists {

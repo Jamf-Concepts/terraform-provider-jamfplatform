@@ -95,7 +95,7 @@ type BlueprintDetailV1 struct {
 	ID              string                     `json:"id"`
 	Name            string                     `json:"name"`
 	Description     string                     `json:"description,omitempty"`
-	Scope           BlueprintUpdateScopeV1     `json:"scope,omitempty"`
+	Scope           BlueprintUpdateScopeV1     `json:"scope"`
 	Created         string                     `json:"created"`
 	Updated         string                     `json:"updated"`
 	DeploymentState BlueprintDeploymentStateV1 `json:"deploymentState"`

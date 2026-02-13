@@ -96,8 +96,8 @@ func PasscodePolicyComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI PasscodePolicyConfiguration schema
-func (c *PasscodePolicyComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *PasscodePolicyComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	if helpers.IsConfiguredValue(c.ChangeAtNextAuth) {
 		config["ChangeAtNextAuth"] = c.ChangeAtNextAuth.ValueBool()
@@ -151,7 +151,7 @@ func (c *PasscodePolicyComponent) ToRawConfiguration() (map[string]interface{}, 
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *PasscodePolicyComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *PasscodePolicyComponent) FromRawConfiguration(raw map[string]any) error {
 	if changeAtNextAuth, exists := raw["ChangeAtNextAuth"]; exists {
 		if changeAtNextAuthBool, ok := changeAtNextAuth.(bool); ok {
 			c.ChangeAtNextAuth = types.BoolValue(changeAtNextAuthBool)

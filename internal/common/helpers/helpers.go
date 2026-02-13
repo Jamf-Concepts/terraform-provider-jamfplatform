@@ -39,11 +39,11 @@ func BoolPointerValueOrNull(value *bool) types.Bool {
 
 // IdentitySetter matches the identity setter interface exposed by Terraform resources and list results.
 type IdentitySetter interface {
-	Set(context.Context, interface{}) diag.Diagnostics
+	Set(context.Context, any) diag.Diagnostics
 }
 
 // SetIdentity assigns the provided identity object when the target setter is available.
-func SetIdentity(ctx context.Context, target IdentitySetter, identity interface{}) diag.Diagnostics {
+func SetIdentity(ctx context.Context, target IdentitySetter, identity any) diag.Diagnostics {
 	if target == nil {
 		return nil
 	}

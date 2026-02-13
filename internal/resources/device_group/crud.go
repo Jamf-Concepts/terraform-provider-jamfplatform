@@ -92,7 +92,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	tflog.Trace(ctx, "created device group", map[string]interface{}{
+	tflog.Trace(ctx, "created device group", map[string]any{
 		"id":         created.ID,
 		"group_type": plan.GroupType.ValueString(),
 	})
@@ -153,7 +153,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	grp, err := r.client.GetDeviceGroupByIDV1(readCtx, state.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "device group not found, removing from state", map[string]interface{}{
+			tflog.Info(ctx, "device group not found, removing from state", map[string]any{
 				"id": state.ID.ValueString(),
 			})
 			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: state.ID})...)
@@ -299,7 +299,7 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 	err := r.client.DeleteDeviceGroupV1(deleteCtx, state.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "device group already removed", map[string]interface{}{
+			tflog.Info(ctx, "device group already removed", map[string]any{
 				"id": state.ID.ValueString(),
 			})
 			return

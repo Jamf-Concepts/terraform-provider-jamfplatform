@@ -91,7 +91,7 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 
 			configMap := make(map[string]string)
 			if comp.Configuration != nil {
-				var jsonObj map[string]interface{}
+				var jsonObj map[string]any
 				if err := json.Unmarshal(comp.Configuration, &jsonObj); err == nil {
 					flattenJSON(jsonObj, "", configMap)
 				}
@@ -116,7 +116,7 @@ func normalizeJSON(jsonStr string) string {
 		return ""
 	}
 
-	var obj interface{}
+	var obj any
 	if err := json.Unmarshal([]byte(jsonStr), &obj); err != nil {
 		return jsonStr
 	}
@@ -130,19 +130,19 @@ func normalizeJSON(jsonStr string) string {
 }
 
 // setNestedValue sets a value in a nested map structure using underscore notation
-func setNestedValue(obj map[string]interface{}, key string, value string) {
+func setNestedValue(obj map[string]any, key string, value string) {
 	parts := strings.Split(key, "_")
 	current := obj
 
 	for i := 0; i < len(parts)-1; i++ {
 		if current[parts[i]] == nil {
-			current[parts[i]] = make(map[string]interface{})
+			current[parts[i]] = make(map[string]any)
 		}
-		if nested, ok := current[parts[i]].(map[string]interface{}); ok {
+		if nested, ok := current[parts[i]].(map[string]any); ok {
 			current = nested
 		} else {
-			current[parts[i]] = make(map[string]interface{})
-			current = current[parts[i]].(map[string]interface{})
+			current[parts[i]] = make(map[string]any)
+			current = current[parts[i]].(map[string]any)
 		}
 	}
 
@@ -157,7 +157,7 @@ func setNestedValue(obj map[string]interface{}, key string, value string) {
 		current[finalKey] = num
 	} else {
 		if strings.HasPrefix(value, "[") || strings.HasPrefix(value, "{") {
-			var jsonValue interface{}
+			var jsonValue any
 			if err := json.Unmarshal([]byte(value), &jsonValue); err == nil {
 				current[finalKey] = jsonValue
 				return
@@ -168,7 +168,7 @@ func setNestedValue(obj map[string]interface{}, key string, value string) {
 }
 
 // flattenJSON flattens a nested JSON object into a flat map with underscore notation keys
-func flattenJSON(obj map[string]interface{}, prefix string, result map[string]string) {
+func flattenJSON(obj map[string]any, prefix string, result map[string]string) {
 	for key, value := range obj {
 		fullKey := key
 		if prefix != "" {
@@ -176,7 +176,7 @@ func flattenJSON(obj map[string]interface{}, prefix string, result map[string]st
 		}
 
 		switch v := value.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			flattenJSON(v, fullKey, result)
 		case nil:
 			result[fullKey] = ""
@@ -230,7 +230,7 @@ func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *Blue
 				continue
 			}
 
-			jsonObj := make(map[string]interface{})
+			jsonObj := make(map[string]any)
 			for key, value := range configMap {
 				setNestedValue(jsonObj, key, value)
 			}
@@ -328,7 +328,7 @@ func (r *BlueprintResource) collectSingleComponent(allComponents *[]client.Bluep
 
 // collectLegacyPayloadsString is a special helper for legacy payloads from string attribute
 func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.BlueprintComponentV1, diags *diag.Diagnostics, payloadContent string, blueprintName string) {
-	var payloadArray []interface{}
+	var payloadArray []any
 	if err := json.Unmarshal([]byte(payloadContent), &payloadArray); err != nil {
 		diags.AddError(
 			"Error parsing legacy payloads JSON",
@@ -337,7 +337,7 @@ func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.
 		return
 	}
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"payloadDisplayName": blueprintName,
 		"payloadContent":     payloadArray,
 	}
@@ -359,51 +359,51 @@ func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.
 
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components from API response
 func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
-	model.AudioAccessorySettings = buildTypedComponentSlice[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(cfg map[string]interface{}, target *components.AudioAccessorySettingsComponent) error {
+	model.AudioAccessorySettings = buildTypedComponentSlice[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(cfg map[string]any, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.CustomDeclarations = buildTypedComponentSlice[components.CustomDeclarationsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.custom-declarations", func(cfg map[string]interface{}, target *components.CustomDeclarationsComponent) error {
+	model.CustomDeclarations = buildTypedComponentSlice[components.CustomDeclarationsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.custom-declarations", func(cfg map[string]any, target *components.CustomDeclarationsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.DiskManagementSettings = buildTypedComponentSlice[components.DiskManagementPolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.disk-management", func(cfg map[string]interface{}, target *components.DiskManagementPolicyComponent) error {
+	model.DiskManagementSettings = buildTypedComponentSlice[components.DiskManagementPolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.disk-management", func(cfg map[string]any, target *components.DiskManagementPolicyComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.MathSettings = buildTypedComponentSlice[components.MathSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.math-settings", func(cfg map[string]interface{}, target *components.MathSettingsComponent) error {
+	model.MathSettings = buildTypedComponentSlice[components.MathSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.math-settings", func(cfg map[string]any, target *components.MathSettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.PasscodePolicy = buildTypedComponentSlice[components.PasscodePolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.passcode-settings", func(cfg map[string]interface{}, target *components.PasscodePolicyComponent) error {
+	model.PasscodePolicy = buildTypedComponentSlice[components.PasscodePolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.passcode-settings", func(cfg map[string]any, target *components.PasscodePolicyComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SafariBookmarks = buildTypedComponentSlice[components.SafariBookmarksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-bookmarks", func(cfg map[string]interface{}, target *components.SafariBookmarksComponent) error {
+	model.SafariBookmarks = buildTypedComponentSlice[components.SafariBookmarksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-bookmarks", func(cfg map[string]any, target *components.SafariBookmarksComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SafariExtensions = buildTypedComponentSlice[components.SafariExtensionsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-extensions", func(cfg map[string]interface{}, target *components.SafariExtensionsComponent) error {
+	model.SafariExtensions = buildTypedComponentSlice[components.SafariExtensionsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-extensions", func(cfg map[string]any, target *components.SafariExtensionsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SafariSettings = buildTypedComponentSlice[components.SafariSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-settings", func(cfg map[string]interface{}, target *components.SafariSettingsComponent) error {
+	model.SafariSettings = buildTypedComponentSlice[components.SafariSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-settings", func(cfg map[string]any, target *components.SafariSettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.ServiceBackgroundTasks = buildTypedComponentSlice[components.ServiceBackgroundTasksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-background-tasks", func(cfg map[string]interface{}, target *components.ServiceBackgroundTasksComponent) error {
+	model.ServiceBackgroundTasks = buildTypedComponentSlice[components.ServiceBackgroundTasksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-background-tasks", func(cfg map[string]any, target *components.ServiceBackgroundTasksComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.ServiceConfigurationFiles = buildTypedComponentSlice[components.ServiceConfigurationFilesComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-configuration-files", func(cfg map[string]interface{}, target *components.ServiceConfigurationFilesComponent) error {
+	model.ServiceConfigurationFiles = buildTypedComponentSlice[components.ServiceConfigurationFilesComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-configuration-files", func(cfg map[string]any, target *components.ServiceConfigurationFilesComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SoftwareUpdate = buildTypedComponentSlice[components.SoftwareUpdateComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.sw-updates", func(cfg map[string]interface{}, target *components.SoftwareUpdateComponent) error {
+	model.SoftwareUpdate = buildTypedComponentSlice[components.SoftwareUpdateComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.sw-updates", func(cfg map[string]any, target *components.SoftwareUpdateComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SoftwareUpdateSettings = buildTypedComponentSlice[components.SoftwareUpdateSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.software-update-settings", func(cfg map[string]interface{}, target *components.SoftwareUpdateSettingsComponent) error {
+	model.SoftwareUpdateSettings = buildTypedComponentSlice[components.SoftwareUpdateSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.software-update-settings", func(cfg map[string]any, target *components.SoftwareUpdateSettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
@@ -411,7 +411,7 @@ func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComp
 }
 
 // buildTypedComponentSlice is a generic helper to build strongly-typed component slices
-func buildTypedComponentSlice[T any](apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]interface{}, *T) error) []T {
+func buildTypedComponentSlice[T any](apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]any, *T) error) []T {
 	if _, handledAsRaw := rawIdentifiers[identifier]; handledAsRaw {
 		return nil
 	}
@@ -430,13 +430,13 @@ func buildTypedComponentSlice[T any](apiComponentsByID map[string]client.Bluepri
 }
 
 // parseComponentConfiguration extracts and parses the configuration of a component by its identifier
-func parseComponentConfiguration(apiComponentsByID map[string]client.BlueprintComponentV1, identifier string) (map[string]interface{}, bool) {
+func parseComponentConfiguration(apiComponentsByID map[string]client.BlueprintComponentV1, identifier string) (map[string]any, bool) {
 	apiComp, exists := apiComponentsByID[identifier]
 	if !exists || apiComp.Configuration == nil {
 		return nil, false
 	}
 
-	var jsonObj map[string]interface{}
+	var jsonObj map[string]any
 	if err := json.Unmarshal(apiComp.Configuration, &jsonObj); err != nil {
 		return nil, false
 	}

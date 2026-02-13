@@ -88,7 +88,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 
 	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(device_groups.DeviceGroupFilterSelectors))
 
-	tflog.Debug(ctx, "device group list filters", map[string]interface{}{
+	tflog.Debug(ctx, "device group list filters", map[string]any{
 		"filter": filterExpression,
 	})
 
@@ -175,7 +175,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 		emitted++
 	}
 
-	tflog.Debug(ctx, "Listed device groups", map[string]interface{}{
+	tflog.Debug(ctx, "Listed device groups", map[string]any{
 		"filter":   filterExpression,
 		"limit":    req.Limit,
 		"returned": len(results),

@@ -36,7 +36,7 @@ func main() {
 
 	// Example: create a new blueprint (customize as needed)
 	// Helper to marshal config to json.RawMessage
-	marshalConfig := func(cfg interface{}) json.RawMessage {
+	marshalConfig := func(cfg any) json.RawMessage {
 		b, err := json.Marshal(cfg)
 		if err != nil {
 			log.Fatalf("Error marshaling configuration: %v", err)
@@ -56,8 +56,8 @@ func main() {
 				Components: []client.BlueprintComponentV1{
 					{
 						Identifier: "com.jamf.ddm.sw-updates",
-						Configuration: marshalConfig(map[string]interface{}{
-							"detailsURL": map[string]interface{}{
+						Configuration: marshalConfig(map[string]any{
+							"detailsURL": map[string]any{
 								"Included": false,
 								"Value":    "",
 							},
@@ -67,8 +67,8 @@ func main() {
 					},
 					{
 						Identifier: "com.jamf.ddm-configuration-profile",
-						Configuration: marshalConfig(map[string]interface{}{
-							"payloadContent": []map[string]interface{}{
+						Configuration: marshalConfig(map[string]any{
+							"payloadContent": []map[string]any{
 								{
 									"allowAccountModification":     true,
 									"allowActivityContinuation":    true,
@@ -82,13 +82,13 @@ func main() {
 					},
 					{
 						Identifier: "com.jamf.ddm.disk-management",
-						Configuration: marshalConfig(map[string]interface{}{
-							"Restrictions": map[string]interface{}{
-								"ExternalStorage": map[string]interface{}{
+						Configuration: marshalConfig(map[string]any{
+							"Restrictions": map[string]any{
+								"ExternalStorage": map[string]any{
 									"Included": true,
 									"Value":    "ReadOnly",
 								},
-								"NetworkStorage": map[string]interface{}{
+								"NetworkStorage": map[string]any{
 									"Included": true,
 									"Value":    "Disallowed",
 								},

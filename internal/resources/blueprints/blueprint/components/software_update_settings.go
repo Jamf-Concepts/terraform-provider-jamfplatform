@@ -146,12 +146,12 @@ func SoftwareUpdateSettingsComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the strongly-typed component to the OpenAPI nested format
-func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	config["AllowStandardUserOSUpdates"] = setBoolField(c.AllowStandardUserOSUpdates, false)
 
-	automaticActions := map[string]interface{}{
+	automaticActions := map[string]any{
 		"Download":              setStringField(c.AutomaticDownload, "Allowed"),
 		"InstallOSUpdates":      setStringField(c.AutomaticInstallOSUpdates, "Allowed"),
 		"InstallSecurityUpdate": setStringField(c.AutomaticInstallSecurityUpdate, "Allowed"),
@@ -163,15 +163,15 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 		(helpers.IsConfiguredValue(c.BetaRequireProgramToken) && helpers.IsConfiguredValue(c.BetaRequireProgramDescription))
 
 	if hasBetaSettings {
-		betaValue := make(map[string]interface{})
+		betaValue := make(map[string]any)
 		if helpers.IsConfiguredValue(c.BetaProgramEnrollment) {
 			betaValue["ProgramEnrollment"] = c.BetaProgramEnrollment.ValueString()
 		}
 
 		if len(c.BetaOfferPrograms) > 0 {
-			offerPrograms := make([]map[string]interface{}, len(c.BetaOfferPrograms))
+			offerPrograms := make([]map[string]any, len(c.BetaOfferPrograms))
 			for i, program := range c.BetaOfferPrograms {
-				offerPrograms[i] = map[string]interface{}{
+				offerPrograms[i] = map[string]any{
 					"Token":       program.Token.ValueString(),
 					"Description": program.Description.ValueString(),
 				}
@@ -180,7 +180,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 		}
 
 		if helpers.IsConfiguredValue(c.BetaRequireProgramToken) && helpers.IsConfiguredValue(c.BetaRequireProgramDescription) {
-			betaValue["RequireProgram"] = map[string]interface{}{
+			betaValue["RequireProgram"] = map[string]any{
 				"Token":       c.BetaRequireProgramToken.ValueString(),
 				"Description": c.BetaRequireProgramDescription.ValueString(),
 			}
@@ -189,7 +189,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 		config["Beta"] = setValueField(betaValue, true)
 	}
 
-	deferrals := map[string]interface{}{
+	deferrals := map[string]any{
 		"CombinedPeriodInDays": setStringField(c.DeferralCombinedPeriod, ""),
 		"MajorPeriodInDays":    setStringField(c.DeferralMajorPeriod, ""),
 		"MinorPeriodInDays":    setStringField(c.DeferralMinorPeriod, ""),
@@ -199,7 +199,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 
 	config["Notifications"] = setBoolField(c.NotificationsEnabled, false)
 
-	rapidSecurityResponse := map[string]interface{}{
+	rapidSecurityResponse := map[string]any{
 		"Enable":         setBoolField(c.RapidSecurityResponseEnabled, false),
 		"EnableRollback": setBoolField(c.RapidSecurityResponseRollbackEnabled, false),
 	}
@@ -211,10 +211,10 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]inter
 }
 
 // FromRawConfiguration populates the strongly-typed component from OpenAPI nested configuration
-func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[string]interface{}) error {
+func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[string]any) error {
 	extractOptionallyEnabled := func(key string) types.Bool {
 		if obj, exists := rawConfig[key]; exists {
-			if objMap, ok := obj.(map[string]interface{}); ok {
+			if objMap, ok := obj.(map[string]any); ok {
 				if enabled, hasEnabled := objMap["Enabled"]; hasEnabled {
 					if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
 						return types.BoolValue(enabled.(bool))
@@ -225,11 +225,11 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 		return types.BoolNull()
 	}
 
-	extractValue := func(path ...string) interface{} {
+	extractValue := func(path ...string) any {
 		current := rawConfig
 		for _, key := range path[:len(path)-1] {
 			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]interface{}); ok {
+				if nextMap, ok := next.(map[string]any); ok {
 					current = nextMap
 				} else {
 					return nil
@@ -241,7 +241,7 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 
 		finalKey := path[len(path)-1]
 		if obj, exists := current[finalKey]; exists {
-			if objMap, ok := obj.(map[string]interface{}); ok {
+			if objMap, ok := obj.(map[string]any); ok {
 				if value, hasValue := objMap["Value"]; hasValue {
 					if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
 						return value
@@ -274,19 +274,19 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 	}
 
 	if beta, exists := rawConfig["Beta"]; exists {
-		if betaMap, ok := beta.(map[string]interface{}); ok {
+		if betaMap, ok := beta.(map[string]any); ok {
 			if value, hasValue := betaMap["Value"]; hasValue {
 				if included, hasIncluded := betaMap["Included"]; hasIncluded && included.(bool) {
-					if valueMap, ok := value.(map[string]interface{}); ok {
+					if valueMap, ok := value.(map[string]any); ok {
 						if enrollment, hasEnrollment := valueMap["ProgramEnrollment"]; hasEnrollment {
 							c.BetaProgramEnrollment = types.StringValue(enrollment.(string))
 						}
 
 						if offerPrograms, hasOffer := valueMap["OfferPrograms"]; hasOffer {
-							if programList, ok := offerPrograms.([]interface{}); ok {
+							if programList, ok := offerPrograms.([]any); ok {
 								c.BetaOfferPrograms = make([]BetaProgramModel, len(programList))
 								for i, program := range programList {
-									if progMap, ok := program.(map[string]interface{}); ok {
+									if progMap, ok := program.(map[string]any); ok {
 										c.BetaOfferPrograms[i] = BetaProgramModel{
 											Token:       types.StringValue(progMap["Token"].(string)),
 											Description: types.StringValue(progMap["Description"].(string)),
@@ -297,7 +297,7 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 						}
 
 						if requireProgram, hasRequire := valueMap["RequireProgram"]; hasRequire {
-							if progMap, ok := requireProgram.(map[string]interface{}); ok {
+							if progMap, ok := requireProgram.(map[string]any); ok {
 								if token, hasToken := progMap["Token"]; hasToken {
 									if tokenStr, ok := token.(string); ok {
 										c.BetaRequireProgramToken = types.StringValue(tokenStr)
@@ -341,9 +341,9 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 	}
 
 	if rsr, exists := rawConfig["RapidSecurityResponse"]; exists {
-		if rsrMap, ok := rsr.(map[string]interface{}); ok {
+		if rsrMap, ok := rsr.(map[string]any); ok {
 			if enable, hasEnable := rsrMap["Enable"]; hasEnable {
-				if enableMap, ok := enable.(map[string]interface{}); ok {
+				if enableMap, ok := enable.(map[string]any); ok {
 					if enabled, hasEnabled := enableMap["Enabled"]; hasEnabled {
 						if included, hasIncluded := enableMap["Included"]; hasIncluded && included.(bool) {
 							c.RapidSecurityResponseEnabled = types.BoolValue(enabled.(bool))
@@ -353,7 +353,7 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 			}
 
 			if rollback, hasRollback := rsrMap["EnableRollback"]; hasRollback {
-				if rollbackMap, ok := rollback.(map[string]interface{}); ok {
+				if rollbackMap, ok := rollback.(map[string]any); ok {
 					if enabled, hasEnabled := rollbackMap["Enabled"]; hasEnabled {
 						if included, hasIncluded := rollbackMap["Included"]; hasIncluded && included.(bool) {
 							c.RapidSecurityResponseRollbackEnabled = types.BoolValue(enabled.(bool))

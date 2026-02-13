@@ -83,10 +83,10 @@ func MathSettingsComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI MathSettingsConfiguration schema
-func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *MathSettingsComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
-	calculator := map[string]interface{}{
+	calculator := map[string]any{
 		"BasicMode":      setBoolFieldWithKey(c.CalculatorBasicModeAddSquareRoot, "AddSquareRoot", true),
 		"ScientificMode": setBoolField(c.CalculatorScientificModeEnabled, true),
 		"ProgrammerMode": setBoolField(c.CalculatorProgrammerModeEnabled, true),
@@ -96,7 +96,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, er
 	hasInputModes := helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) ||
 		helpers.IsConfiguredValue(c.CalculatorInputModesRPN)
 
-	inputModes := make(map[string]interface{})
+	inputModes := make(map[string]any)
 	if hasInputModes {
 		inputModes["Included"] = true
 		if helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) {
@@ -121,7 +121,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, er
 	hasSystemBehavior := helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) ||
 		helpers.IsConfiguredValue(c.SystemBehaviorMathNotes)
 
-	systemBehavior := make(map[string]interface{})
+	systemBehavior := make(map[string]any)
 	if hasSystemBehavior {
 		systemBehavior["Included"] = true
 		if helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) {
@@ -145,12 +145,12 @@ func (c *MathSettingsComponent) ToRawConfiguration() (map[string]interface{}, er
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *MathSettingsComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *MathSettingsComponent) FromRawConfiguration(raw map[string]any) error {
 	extractBool := func(path ...string) types.Bool {
 		current := raw
 		for i, key := range path {
 			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]interface{}); ok {
+				if nextMap, ok := next.(map[string]any); ok {
 					if i == len(path)-1 {
 						if included, hasIncluded := nextMap["Included"]; hasIncluded && included.(bool) {
 							for _, valueKey := range []string{"Enabled", "AddSquareRoot"} {
@@ -178,7 +178,7 @@ func (c *MathSettingsComponent) FromRawConfiguration(raw map[string]interface{})
 		current := raw
 		for _, key := range groupPath {
 			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]interface{}); ok {
+				if nextMap, ok := next.(map[string]any); ok {
 					current = nextMap
 				} else {
 					return types.BoolNull()

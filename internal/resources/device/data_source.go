@@ -312,7 +312,7 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		data.SecurityLostModeEnabled = types.BoolNull()
 	}
 
-	tflog.Trace(ctx, "read device data source", map[string]interface{}{
+	tflog.Trace(ctx, "read device data source", map[string]any{
 		"id": deviceDetail.ID,
 	})
 

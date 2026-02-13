@@ -42,7 +42,7 @@ func main() {
 
 	// Example: update blueprint (customize as needed)
 	// Helper to marshal config to json.RawMessage
-	marshalConfig := func(cfg interface{}) json.RawMessage {
+	marshalConfig := func(cfg any) json.RawMessage {
 		b, err := json.Marshal(cfg)
 		if err != nil {
 			log.Fatalf("Error marshaling configuration: %v", err)
@@ -62,8 +62,8 @@ func main() {
 				Components: []client.BlueprintComponentV1{
 					{
 						Identifier: "com.jamf.ddm.sw-updates",
-						Configuration: marshalConfig(map[string]interface{}{
-							"detailsURL": map[string]interface{}{
+						Configuration: marshalConfig(map[string]any{
+							"detailsURL": map[string]any{
 								"Included": false,
 								"Value":    "",
 							},
