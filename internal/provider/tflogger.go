@@ -23,7 +23,7 @@ func NewTerraformLogger() *TerraformLogger {
 
 // LogRequest logs HTTP request details using tflog at DEBUG level
 func (l *TerraformLogger) LogRequest(ctx context.Context, method, url string, body []byte) {
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"method": method,
 		"url":    url,
 	}
@@ -37,7 +37,7 @@ func (l *TerraformLogger) LogRequest(ctx context.Context, method, url string, bo
 
 // LogResponse logs HTTP response details using tflog at DEBUG level
 func (l *TerraformLogger) LogResponse(ctx context.Context, statusCode int, headers http.Header, body []byte) {
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"status_code": statusCode,
 	}
 

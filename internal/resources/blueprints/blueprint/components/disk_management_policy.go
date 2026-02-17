@@ -41,12 +41,12 @@ func DiskManagementPolicyComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI DiskManagementPolicyConfiguration schema
-func (c *DiskManagementPolicyComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *DiskManagementPolicyComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	config["version"] = int32(2)
 
-	restrictions := map[string]interface{}{
+	restrictions := map[string]any{
 		"ExternalStorage": setStringField(c.ExternalStorage, "Allowed"),
 		"NetworkStorage":  setStringField(c.NetworkStorage, "Allowed"),
 	}
@@ -56,12 +56,12 @@ func (c *DiskManagementPolicyComponent) ToRawConfiguration() (map[string]interfa
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *DiskManagementPolicyComponent) FromRawConfiguration(raw map[string]interface{}) error {
-	extractValue := func(path ...string) interface{} {
+func (c *DiskManagementPolicyComponent) FromRawConfiguration(raw map[string]any) error {
+	extractValue := func(path ...string) any {
 		current := raw
 		for _, key := range path[:len(path)-1] {
 			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]interface{}); ok {
+				if nextMap, ok := next.(map[string]any); ok {
 					current = nextMap
 				} else {
 					return nil
@@ -73,7 +73,7 @@ func (c *DiskManagementPolicyComponent) FromRawConfiguration(raw map[string]inte
 
 		finalKey := path[len(path)-1]
 		if obj, exists := current[finalKey]; exists {
-			if objMap, ok := obj.(map[string]interface{}); ok {
+			if objMap, ok := obj.(map[string]any); ok {
 				if value, hasValue := objMap["Value"]; hasValue {
 					if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
 						return value

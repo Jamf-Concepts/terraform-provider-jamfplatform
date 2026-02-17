@@ -101,7 +101,7 @@ func (c *Client) OAuthClient() *OAuthClient {
 }
 
 // makeRequest is a helper method for making authenticated API requests
-func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body interface{}) (*http.Response, error) {
+func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body any) (*http.Response, error) {
 	var requestBodyBytes []byte
 
 	var fullURL string
@@ -146,7 +146,7 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 }
 
 // handleAPIResponse processes API responses and handles common error cases
-func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, expectedStatus int, result interface{}) error {
+func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, expectedStatus int, result any) error {
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			if c.oauthClient != nil && c.oauthClient.logger != nil {

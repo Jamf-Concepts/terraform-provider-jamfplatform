@@ -51,7 +51,7 @@ func (c *Client) UnmanageDeviceV1(ctx context.Context, deviceID string) ([]Devic
 }
 
 // invokeDeviceManagementActionV1 is a helper to call device management action endpoints.
-func (c *Client) invokeDeviceManagementActionV1(ctx context.Context, deviceID, action string, payload interface{}) ([]DeviceCommandResponseV1, error) {
+func (c *Client) invokeDeviceManagementActionV1(ctx context.Context, deviceID, action string, payload any) ([]DeviceCommandResponseV1, error) {
 	if deviceID == "" {
 		return nil, fmt.Errorf("deviceID cannot be empty")
 	}

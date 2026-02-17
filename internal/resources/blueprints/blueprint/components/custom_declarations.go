@@ -59,14 +59,14 @@ func CustomDeclarationsComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI CustomDeclarationsConfiguration schema
-func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	if len(c.Declarations) > 0 {
-		declarations := make([]interface{}, 0, len(c.Declarations))
+		declarations := make([]any, 0, len(c.Declarations))
 
 		for idx, declaration := range c.Declarations {
-			declarationMap := make(map[string]interface{})
+			declarationMap := make(map[string]any)
 
 			if helpers.IsConfiguredValue(declaration.ChannelType) {
 				declarationMap["channelType"] = declaration.ChannelType.ValueString()
@@ -77,7 +77,7 @@ func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]interface
 			}
 
 			if helpers.IsConfiguredValue(declaration.Payload) {
-				var payloadObj interface{}
+				var payloadObj any
 				if err := json.Unmarshal([]byte(declaration.Payload.ValueString()), &payloadObj); err != nil {
 					return nil, err
 				}
@@ -100,13 +100,13 @@ func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]interface
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *CustomDeclarationsComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *CustomDeclarationsComponent) FromRawConfiguration(raw map[string]any) error {
 	if declarationsRaw, exists := raw["declarations"]; exists {
-		if declarationsSlice, ok := declarationsRaw.([]interface{}); ok {
+		if declarationsSlice, ok := declarationsRaw.([]any); ok {
 			declarations := make([]CustomDeclarationModel, 0, len(declarationsSlice))
 
 			for _, declarationRaw := range declarationsSlice {
-				if declarationMap, ok := declarationRaw.(map[string]interface{}); ok {
+				if declarationMap, ok := declarationRaw.(map[string]any); ok {
 					declaration := CustomDeclarationModel{}
 
 					if channelType, exists := declarationMap["channelType"]; exists {

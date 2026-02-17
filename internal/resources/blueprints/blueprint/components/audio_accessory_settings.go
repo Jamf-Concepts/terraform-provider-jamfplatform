@@ -58,15 +58,15 @@ func AudioAccessorySettingsComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching the actual API format
-func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	hasTemporaryPairing := helpers.IsConfiguredValue(c.TemporaryPairingDisabled) ||
 		helpers.IsConfiguredValue(c.UnpairingTimePolicy) ||
 		helpers.IsConfiguredValue(c.UnpairingTimeHour)
 
 	if hasTemporaryPairing {
-		temporaryPairing := make(map[string]interface{})
+		temporaryPairing := make(map[string]any)
 		temporaryPairing["Included"] = true
 
 		if helpers.IsConfiguredValue(c.TemporaryPairingDisabled) {
@@ -77,8 +77,8 @@ func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (map[string]inter
 			helpers.IsConfiguredValue(c.UnpairingTimeHour)
 
 		if hasUnpairingSettings {
-			configuration := make(map[string]interface{})
-			unpairingTime := make(map[string]interface{})
+			configuration := make(map[string]any)
+			unpairingTime := make(map[string]any)
 
 			if helpers.IsConfiguredValue(c.UnpairingTimePolicy) {
 				unpairingTime["Policy"] = c.UnpairingTimePolicy.ValueString()
@@ -99,13 +99,13 @@ func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (map[string]inter
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *AudioAccessorySettingsComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *AudioAccessorySettingsComponent) FromRawConfiguration(raw map[string]any) error {
 	c.TemporaryPairingDisabled = types.BoolNull()
 	c.UnpairingTimePolicy = types.StringNull()
 	c.UnpairingTimeHour = types.Int64Null()
 
 	if temporaryPairingRaw, exists := raw["TemporaryPairing"]; exists {
-		if temporaryPairing, ok := temporaryPairingRaw.(map[string]interface{}); ok {
+		if temporaryPairing, ok := temporaryPairingRaw.(map[string]any); ok {
 			if included, hasIncluded := temporaryPairing["Included"]; hasIncluded && included.(bool) {
 
 				if disabled, exists := temporaryPairing["Disabled"]; exists {
@@ -123,9 +123,9 @@ func (c *AudioAccessorySettingsComponent) FromRawConfiguration(raw map[string]in
 				}
 
 				if configRaw, exists := temporaryPairing["Configuration"]; exists {
-					if config, ok := configRaw.(map[string]interface{}); ok {
+					if config, ok := configRaw.(map[string]any); ok {
 						if unpairingTimeRaw, exists := config["UnpairingTime"]; exists {
-							if unpairingTime, ok := unpairingTimeRaw.(map[string]interface{}); ok {
+							if unpairingTime, ok := unpairingTimeRaw.(map[string]any); ok {
 
 								if policy, exists := unpairingTime["Policy"]; exists {
 									if policyStr, ok := policy.(string); ok {

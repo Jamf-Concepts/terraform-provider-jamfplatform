@@ -122,7 +122,7 @@ func main() {
 	fmt.Println("Summary (JSON)")
 	fmt.Println("==============")
 
-	summary := map[string]interface{}{
+	summary := map[string]any{
 		"base_url":          baseURL,
 		"token_retrieved":   true,
 		"token_length":      len(token),

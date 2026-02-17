@@ -66,7 +66,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		reqBody.Rules[i] = rr
 	}
 
-	tflog.Debug(ctx, "creating cbengine benchmark", map[string]interface{}{
+	tflog.Debug(ctx, "creating cbengine benchmark", map[string]any{
 		"title": data.Title.ValueString(),
 	})
 
@@ -76,27 +76,27 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	tflog.Debug(ctx, "created benchmark (async)", map[string]interface{}{
+	tflog.Debug(ctx, "created benchmark (async)", map[string]any{
 		"benchmark_id": bench.BenchmarkID,
 		"tenant_id":    bench.TenantID,
 	})
 
 	pollInterval := 5 * time.Second
-	tflog.Debug(ctx, "waiting for benchmark to reach SYNCED state", map[string]interface{}{
+	tflog.Debug(ctx, "waiting for benchmark to reach SYNCED state", map[string]any{
 		"benchmark_id":  bench.BenchmarkID,
 		"poll_interval": pollInterval.String(),
 	})
 
 	syncedBench, err := waitForBenchmarkSync(createCtx, r.client, bench.BenchmarkID, pollInterval)
 	if err != nil {
-		tflog.Warn(ctx, "wait for benchmark sync failed", map[string]interface{}{"error": err.Error(), "benchmark_id": bench.BenchmarkID})
+		tflog.Warn(ctx, "wait for benchmark sync failed", map[string]any{"error": err.Error(), "benchmark_id": bench.BenchmarkID})
 		resp.Diagnostics.AddWarning(
 			"Benchmark deployment failed.",
 			"The benchmark was successfully created but did not deploy successfully: "+err.Error()+
 				". Check your Jamf instance to verify the benchmark status.",
 		)
 	} else {
-		tflog.Debug(ctx, "benchmark synced", map[string]interface{}{"benchmark_id": syncedBench.ID})
+		tflog.Debug(ctx, "benchmark synced", map[string]any{"benchmark_id": syncedBench.ID})
 	}
 
 	data.ID = types.StringValue(bench.BenchmarkID)
@@ -330,7 +330,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 	bench, err := r.client.GetCBEngineBenchmarkByIDV2(readCtx, data.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]interface{}{
+			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]any{
 				"benchmark_id": data.ID.ValueString(),
 			})
 			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, benchmarkIdentityModel{ID: data.ID})...)
@@ -566,7 +566,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 	err := r.client.DeleteCBEngineBenchmarkV1(deleteCtx, data.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "Benchmark already deleted", map[string]interface{}{
+			tflog.Info(ctx, "Benchmark already deleted", map[string]any{
 				"benchmark_id": data.ID.ValueString(),
 			})
 			return

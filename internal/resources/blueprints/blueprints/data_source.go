@@ -169,7 +169,7 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	}
 	data.Blueprints = entries
 
-	tflog.Trace(ctx, "read blueprints data source", map[string]interface{}{
+	tflog.Trace(ctx, "read blueprints data source", map[string]any{
 		"search": searchTerm,
 		"count":  len(entries),
 	})

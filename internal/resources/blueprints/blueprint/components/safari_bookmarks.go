@@ -106,14 +106,14 @@ func SafariBookmarksComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI SafariBookmarksConfiguration schema
-func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	if len(c.ManagedBookmarks) > 0 {
-		managedBookmarks := make([]interface{}, 0, len(c.ManagedBookmarks))
+		managedBookmarks := make([]any, 0, len(c.ManagedBookmarks))
 
 		for _, group := range c.ManagedBookmarks {
-			groupMap := make(map[string]interface{})
+			groupMap := make(map[string]any)
 
 			if helpers.IsConfiguredValue(group.GroupIdentifier) {
 				groupMap["GroupIdentifier"] = group.GroupIdentifier.ValueString()
@@ -124,10 +124,10 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{},
 			}
 
 			if len(group.Bookmarks) > 0 {
-				bookmarks := make([]interface{}, 0, len(group.Bookmarks))
+				bookmarks := make([]any, 0, len(group.Bookmarks))
 
 				for _, bookmark := range group.Bookmarks {
-					bookmarkMap := make(map[string]interface{})
+					bookmarkMap := make(map[string]any)
 
 					if helpers.IsConfiguredValue(bookmark.Type) {
 						typeValue := bookmark.Type.ValueString()
@@ -150,9 +150,9 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{},
 					}
 
 					if len(bookmark.Folder) > 0 {
-						folder := make([]interface{}, 0, len(bookmark.Folder))
+						folder := make([]any, 0, len(bookmark.Folder))
 						for _, urlBookmark := range bookmark.Folder {
-							urlBookmarkMap := make(map[string]interface{})
+							urlBookmarkMap := make(map[string]any)
 							urlBookmarkMap["Type"] = "BOOKMARK"
 							if helpers.IsConfiguredValue(urlBookmark.Title) {
 								urlBookmarkMap["Title"] = urlBookmark.Title.ValueString()
@@ -181,13 +181,13 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (map[string]interface{},
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *SafariBookmarksComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *SafariBookmarksComponent) FromRawConfiguration(raw map[string]any) error {
 	if managedBookmarksRaw, exists := raw["ManagedBookmarks"]; exists {
-		if managedBookmarksSlice, ok := managedBookmarksRaw.([]interface{}); ok {
+		if managedBookmarksSlice, ok := managedBookmarksRaw.([]any); ok {
 			managedBookmarks := make([]BookmarkGroupModel, 0, len(managedBookmarksSlice))
 
 			for _, groupRaw := range managedBookmarksSlice {
-				if groupMap, ok := groupRaw.(map[string]interface{}); ok {
+				if groupMap, ok := groupRaw.(map[string]any); ok {
 					group := BookmarkGroupModel{}
 
 					if groupIdentifier, exists := groupMap["GroupIdentifier"]; exists {
@@ -203,11 +203,11 @@ func (c *SafariBookmarksComponent) FromRawConfiguration(raw map[string]interface
 					}
 
 					if bookmarksRaw, exists := groupMap["Bookmarks"]; exists {
-						if bookmarksSlice, ok := bookmarksRaw.([]interface{}); ok {
+						if bookmarksSlice, ok := bookmarksRaw.([]any); ok {
 							bookmarks := make([]BookmarkModel, 0, len(bookmarksSlice))
 
 							for _, bookmarkRaw := range bookmarksSlice {
-								if bookmarkMap, ok := bookmarkRaw.(map[string]interface{}); ok {
+								if bookmarkMap, ok := bookmarkRaw.(map[string]any); ok {
 									bookmark := BookmarkModel{}
 
 									if bookmarkType, exists := bookmarkMap["Type"]; exists {
@@ -237,11 +237,11 @@ func (c *SafariBookmarksComponent) FromRawConfiguration(raw map[string]interface
 									}
 
 									if folderRaw, exists := bookmarkMap["Folder"]; exists {
-										if folderSlice, ok := folderRaw.([]interface{}); ok {
+										if folderSlice, ok := folderRaw.([]any); ok {
 											folder := make([]UrlBookmarkModel, 0, len(folderSlice))
 
 											for _, urlBookmarkRaw := range folderSlice {
-												if urlBookmarkMap, ok := urlBookmarkRaw.(map[string]interface{}); ok {
+												if urlBookmarkMap, ok := urlBookmarkRaw.(map[string]any); ok {
 													urlBookmark := UrlBookmarkModel{}
 
 													if urlTitle, exists := urlBookmarkMap["Title"]; exists {
