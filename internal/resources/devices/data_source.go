@@ -164,7 +164,7 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	filterExpression := filters.BuildRSQLExpression(data.Filters, filters.AllowList(filterSelectors))
 
-	tflog.Debug(ctx, "devices filter expression", map[string]interface{}{
+	tflog.Debug(ctx, "devices filter expression", map[string]any{
 		"filter": filterExpression,
 	})
 
@@ -194,7 +194,7 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	data.ID = types.StringValue("devices")
 	data.Devices = results
 
-	tflog.Trace(ctx, "read devices data source", map[string]interface{}{
+	tflog.Trace(ctx, "read devices data source", map[string]any{
 		"filter": filterExpression,
 		"count":  len(results),
 	})

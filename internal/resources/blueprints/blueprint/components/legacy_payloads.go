@@ -28,10 +28,10 @@ func LegacyPayloadsComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the strongly-typed component to raw key-value configuration
-func (c *LegacyPayloadsComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *LegacyPayloadsComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 	if helpers.IsConfiguredValue(c.PayloadContent) {
-		var payloadArray []interface{}
+		var payloadArray []any
 		if err := json.Unmarshal([]byte(c.PayloadContent.ValueString()), &payloadArray); err != nil {
 			return nil, err
 		}
@@ -42,7 +42,7 @@ func (c *LegacyPayloadsComponent) ToRawConfiguration() (map[string]interface{}, 
 }
 
 // FromRawConfiguration populates the strongly-typed component from raw configuration
-func (c *LegacyPayloadsComponent) FromRawConfiguration(rawConfig map[string]interface{}) error {
+func (c *LegacyPayloadsComponent) FromRawConfiguration(rawConfig map[string]any) error {
 	if payloadContent, exists := rawConfig["payloadContent"]; exists {
 		payloadJSON, err := json.Marshal(payloadContent)
 		if err != nil {

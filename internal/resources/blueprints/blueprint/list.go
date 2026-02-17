@@ -149,7 +149,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 		emitted++
 	}
 
-	tflog.Debug(ctx, "Listed blueprints", map[string]interface{}{
+	tflog.Debug(ctx, "Listed blueprints", map[string]any{
 		"search":   searchTerm,
 		"limit":    req.Limit,
 		"returned": len(results),

@@ -81,8 +81,8 @@ func SafariSettingsComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI SafariSettingsConfiguration schema
-func (c *SafariSettingsComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *SafariSettingsComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	if helpers.IsConfiguredValue(c.AcceptCookies) {
 		config["AcceptCookies"] = setStringField(c.AcceptCookies, "")
@@ -116,7 +116,7 @@ func (c *SafariSettingsComponent) ToRawConfiguration() (map[string]interface{}, 
 		helpers.IsConfiguredValue(c.NewTabStartPageHomepageURL) ||
 		helpers.IsConfiguredValue(c.NewTabStartPageExtensionID) {
 
-		newTabStartPage := map[string]interface{}{
+		newTabStartPage := map[string]any{
 			"Included": true,
 		}
 
@@ -139,9 +139,9 @@ func (c *SafariSettingsComponent) ToRawConfiguration() (map[string]interface{}, 
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]any) error {
 	if acceptCookiesRaw, exists := raw["AcceptCookies"]; exists {
-		if acceptCookiesMap, ok := acceptCookiesRaw.(map[string]interface{}); ok {
+		if acceptCookiesMap, ok := acceptCookiesRaw.(map[string]any); ok {
 			if value, exists := acceptCookiesMap["Value"]; exists {
 				if valueStr, ok := value.(string); ok {
 					c.AcceptCookies = types.StringValue(valueStr)
@@ -151,7 +151,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{
 	}
 
 	if allowDisablingFraudWarningRaw, exists := raw["AllowDisablingFraudWarning"]; exists {
-		if allowDisablingFraudWarningMap, ok := allowDisablingFraudWarningRaw.(map[string]interface{}); ok {
+		if allowDisablingFraudWarningMap, ok := allowDisablingFraudWarningRaw.(map[string]any); ok {
 			if value, exists := allowDisablingFraudWarningMap["Value"]; exists {
 				if valueBool, ok := value.(bool); ok {
 					c.AllowDisablingFraudWarning = types.BoolValue(valueBool)
@@ -161,7 +161,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{
 	}
 
 	if allowHistoryClearingRaw, exists := raw["AllowHistoryClearing"]; exists {
-		if allowHistoryClearingMap, ok := allowHistoryClearingRaw.(map[string]interface{}); ok {
+		if allowHistoryClearingMap, ok := allowHistoryClearingRaw.(map[string]any); ok {
 			if value, exists := allowHistoryClearingMap["Value"]; exists {
 				if valueBool, ok := value.(bool); ok {
 					c.AllowHistoryClearing = types.BoolValue(valueBool)
@@ -171,7 +171,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{
 	}
 
 	if allowJavaScriptRaw, exists := raw["AllowJavaScript"]; exists {
-		if allowJavaScriptMap, ok := allowJavaScriptRaw.(map[string]interface{}); ok {
+		if allowJavaScriptMap, ok := allowJavaScriptRaw.(map[string]any); ok {
 			if value, exists := allowJavaScriptMap["Value"]; exists {
 				if valueBool, ok := value.(bool); ok {
 					c.AllowJavaScript = types.BoolValue(valueBool)
@@ -181,7 +181,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{
 	}
 
 	if allowPrivateBrowsingRaw, exists := raw["AllowPrivateBrowsing"]; exists {
-		if allowPrivateBrowsingMap, ok := allowPrivateBrowsingRaw.(map[string]interface{}); ok {
+		if allowPrivateBrowsingMap, ok := allowPrivateBrowsingRaw.(map[string]any); ok {
 			if value, exists := allowPrivateBrowsingMap["Value"]; exists {
 				if valueBool, ok := value.(bool); ok {
 					c.AllowPrivateBrowsing = types.BoolValue(valueBool)
@@ -191,7 +191,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{
 	}
 
 	if allowPopupsRaw, exists := raw["AllowPopups"]; exists {
-		if allowPopupsMap, ok := allowPopupsRaw.(map[string]interface{}); ok {
+		if allowPopupsMap, ok := allowPopupsRaw.(map[string]any); ok {
 			if value, exists := allowPopupsMap["Value"]; exists {
 				if valueBool, ok := value.(bool); ok {
 					c.AllowPopups = types.BoolValue(valueBool)
@@ -201,7 +201,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{
 	}
 
 	if allowSummaryRaw, exists := raw["AllowSummary"]; exists {
-		if allowSummaryMap, ok := allowSummaryRaw.(map[string]interface{}); ok {
+		if allowSummaryMap, ok := allowSummaryRaw.(map[string]any); ok {
 			if value, exists := allowSummaryMap["Value"]; exists {
 				if valueBool, ok := value.(bool); ok {
 					c.AllowSummary = types.BoolValue(valueBool)
@@ -211,7 +211,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]interface{
 	}
 
 	if newTabStartPageRaw, exists := raw["NewTabStartPage"]; exists {
-		if newTabStartPageMap, ok := newTabStartPageRaw.(map[string]interface{}); ok {
+		if newTabStartPageMap, ok := newTabStartPageRaw.(map[string]any); ok {
 			if pageType, exists := newTabStartPageMap["PageType"]; exists {
 				if pageTypeStr, ok := pageType.(string); ok {
 					c.NewTabStartPageType = types.StringValue(pageTypeStr)

@@ -195,7 +195,7 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		Timeouts:    timeoutsConfig,
 	}
 
-	tflog.Trace(ctx, "read device group data source", map[string]interface{}{
+	tflog.Trace(ctx, "read device group data source", map[string]any{
 		"id": grp.ID,
 	})
 

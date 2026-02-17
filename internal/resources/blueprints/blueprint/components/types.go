@@ -17,8 +17,8 @@ type BlueprintComponentData struct {
 // to convert between the user-friendly typed format and the raw API format
 type ComponentConverter interface {
 	GetIdentifier() string
-	ToRawConfiguration() (map[string]interface{}, error)
-	FromRawConfiguration(rawConfig map[string]interface{}) error
+	ToRawConfiguration() (map[string]any, error)
+	FromRawConfiguration(rawConfig map[string]any) error
 	ToClientComponent() (*BlueprintComponentData, error)
 }
 

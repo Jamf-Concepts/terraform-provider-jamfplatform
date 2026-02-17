@@ -156,7 +156,7 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	data.Benchmarks = entries
 	data.Timeouts = timeoutsValue
 
-	tflog.Trace(ctx, "read cbengine benchmarks data source", map[string]interface{}{
+	tflog.Trace(ctx, "read cbengine benchmarks data source", map[string]any{
 		"count": len(entries),
 	})
 

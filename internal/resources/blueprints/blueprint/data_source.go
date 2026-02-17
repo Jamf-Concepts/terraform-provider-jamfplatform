@@ -166,7 +166,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		for i, comp := range step.Components {
 			configMap := make(map[string]string)
 			if comp.Configuration != nil {
-				var jsonObj map[string]interface{}
+				var jsonObj map[string]any
 				if err := json.Unmarshal(comp.Configuration, &jsonObj); err == nil {
 					flattenJSON(jsonObj, "", configMap)
 				}

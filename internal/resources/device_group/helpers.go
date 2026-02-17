@@ -71,7 +71,7 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 			return false, err
 		}
 
-		tflog.Debug(pollCtx, "device group not yet available, retrying", map[string]interface{}{
+		tflog.Debug(pollCtx, "device group not yet available, retrying", map[string]any{
 			"id": id,
 		})
 		return false, nil

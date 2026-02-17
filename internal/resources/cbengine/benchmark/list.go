@@ -176,7 +176,7 @@ func (r *BenchmarkListResource) List(ctx context.Context, req list.ListRequest, 
 		emitted++
 	}
 
-	tflog.Debug(ctx, "Listed compliance benchmarks", map[string]interface{}{
+	tflog.Debug(ctx, "Listed compliance benchmarks", map[string]any{
 		"search":   searchTerm,
 		"limit":    req.Limit,
 		"returned": len(results),

@@ -112,14 +112,14 @@ func ServiceBackgroundTasksComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the typed component to raw configuration matching OpenAPI ServicesBackgroundTasksConfiguration schema
-func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	if len(c.BackgroundTasks) > 0 {
-		backgroundTasks := make([]interface{}, 0, len(c.BackgroundTasks))
+		backgroundTasks := make([]any, 0, len(c.BackgroundTasks))
 
 		for _, task := range c.BackgroundTasks {
-			taskMap := make(map[string]interface{})
+			taskMap := make(map[string]any)
 
 			if helpers.IsConfiguredValue(task.TaskType) {
 				taskMap["TaskType"] = task.TaskType.ValueString()
@@ -130,9 +130,9 @@ func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]inter
 			}
 
 			if task.ExecutableAssetReference != nil {
-				execRef := make(map[string]interface{})
+				execRef := make(map[string]any)
 
-				reference := make(map[string]interface{})
+				reference := make(map[string]any)
 				if helpers.IsConfiguredValue(task.ExecutableAssetReference.DataURL) {
 					reference["DataURL"] = task.ExecutableAssetReference.DataURL.ValueString()
 				}
@@ -147,19 +147,19 @@ func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]inter
 			}
 
 			if len(task.LaunchdConfigurations) > 0 {
-				launchdConfigs := make([]interface{}, 0, len(task.LaunchdConfigurations))
+				launchdConfigs := make([]any, 0, len(task.LaunchdConfigurations))
 
 				for _, launchd := range task.LaunchdConfigurations {
-					launchdMap := make(map[string]interface{})
+					launchdMap := make(map[string]any)
 
 					if helpers.IsConfiguredValue(launchd.Context) {
 						launchdMap["Context"] = launchd.Context.ValueString()
 					}
 
 					if launchd.FileAssetReference != nil {
-						fileRef := make(map[string]interface{})
+						fileRef := make(map[string]any)
 
-						reference := make(map[string]interface{})
+						reference := make(map[string]any)
 						if helpers.IsConfiguredValue(launchd.FileAssetReference.DataURL) {
 							reference["DataURL"] = launchd.FileAssetReference.DataURL.ValueString()
 						}
@@ -191,13 +191,13 @@ func (c *ServiceBackgroundTasksComponent) ToRawConfiguration() (map[string]inter
 }
 
 // FromRawConfiguration populates the typed component from raw configuration data
-func (c *ServiceBackgroundTasksComponent) FromRawConfiguration(raw map[string]interface{}) error {
+func (c *ServiceBackgroundTasksComponent) FromRawConfiguration(raw map[string]any) error {
 	if backgroundTasksRaw, exists := raw["backgroundTasks"]; exists {
-		if backgroundTasksSlice, ok := backgroundTasksRaw.([]interface{}); ok {
+		if backgroundTasksSlice, ok := backgroundTasksRaw.([]any); ok {
 			backgroundTasks := make([]ServiceBackgroundTaskModel, 0, len(backgroundTasksSlice))
 
 			for _, taskRaw := range backgroundTasksSlice {
-				if taskMap, ok := taskRaw.(map[string]interface{}); ok {
+				if taskMap, ok := taskRaw.(map[string]any); ok {
 					task := ServiceBackgroundTaskModel{}
 
 					if taskType, exists := taskMap["TaskType"]; exists {
@@ -213,9 +213,9 @@ func (c *ServiceBackgroundTasksComponent) FromRawConfiguration(raw map[string]in
 					}
 
 					if execRefRaw, exists := taskMap["ExecutableAssetReference"]; exists {
-						if execRefMap, ok := execRefRaw.(map[string]interface{}); ok {
+						if execRefMap, ok := execRefRaw.(map[string]any); ok {
 							if refRaw, exists := execRefMap["Reference"]; exists {
-								if refMap, ok := refRaw.(map[string]interface{}); ok {
+								if refMap, ok := refRaw.(map[string]any); ok {
 									execRef := &DataAssetRefModel{}
 
 									if dataURL, exists := refMap["DataURL"]; exists {
@@ -239,11 +239,11 @@ func (c *ServiceBackgroundTasksComponent) FromRawConfiguration(raw map[string]in
 					}
 
 					if launchdConfigsRaw, exists := taskMap["LaunchdConfigurations"]; exists {
-						if launchdConfigsSlice, ok := launchdConfigsRaw.([]interface{}); ok {
+						if launchdConfigsSlice, ok := launchdConfigsRaw.([]any); ok {
 							launchdConfigs := make([]LaunchdItemModel, 0, len(launchdConfigsSlice))
 
 							for _, launchdRaw := range launchdConfigsSlice {
-								if launchdMap, ok := launchdRaw.(map[string]interface{}); ok {
+								if launchdMap, ok := launchdRaw.(map[string]any); ok {
 									launchd := LaunchdItemModel{}
 
 									if context, exists := launchdMap["Context"]; exists {
@@ -253,9 +253,9 @@ func (c *ServiceBackgroundTasksComponent) FromRawConfiguration(raw map[string]in
 									}
 
 									if fileRefRaw, exists := launchdMap["FileAssetReference"]; exists {
-										if fileRefMap, ok := fileRefRaw.(map[string]interface{}); ok {
+										if fileRefMap, ok := fileRefRaw.(map[string]any); ok {
 											if refRaw, exists := fileRefMap["Reference"]; exists {
-												if refMap, ok := refRaw.(map[string]interface{}); ok {
+												if refMap, ok := refRaw.(map[string]any); ok {
 													fileRef := &DataAssetRefModel{}
 
 													if dataURL, exists := refMap["DataURL"]; exists {

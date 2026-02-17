@@ -127,8 +127,8 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 }
 
 // ToRawConfiguration converts the strongly-typed component to raw key-value configuration
-func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, error) {
-	config := make(map[string]interface{})
+func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]any, error) {
+	config := make(map[string]any)
 
 	isAutomatic := helpers.IsConfiguredValue(c.DeploymentTime) || helpers.IsConfiguredValue(c.EnforceAfterDays)
 	isManual := helpers.IsConfiguredValue(c.TargetOSVersion) || helpers.IsConfiguredValue(c.TargetLocalDateTime)
@@ -140,7 +140,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, 
 		if ignoreMajor {
 			config["strategy"] = "SEMANTIC"
 
-			minorRule := make(map[string]interface{})
+			minorRule := make(map[string]any)
 			if helpers.IsConfiguredValue(c.DeploymentTime) {
 				minorRule["deploymentTime"] = c.DeploymentTime.ValueString()
 			}
@@ -149,7 +149,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, 
 			}
 
 			if len(minorRule) > 0 {
-				config["rules"] = map[string]interface{}{
+				config["rules"] = map[string]any{
 					"minor": minorRule,
 				}
 			}
@@ -187,7 +187,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]interface{}, 
 }
 
 // FromRawConfiguration populates the strongly-typed component from raw configuration
-func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]interface{}) error {
+func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]any) error {
 	c.IgnoreMajorVersions = types.BoolNull()
 
 	if enforcementType, exists := rawConfig["enforcementType"]; exists {
@@ -214,9 +214,9 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]inte
 
 	if useSemanticRules {
 		if rulesValue, exists := rawConfig["rules"]; exists {
-			if rulesMap, ok := rulesValue.(map[string]interface{}); ok {
+			if rulesMap, ok := rulesValue.(map[string]any); ok {
 				if minorValue, exists := rulesMap["minor"]; exists {
-					if minorMap, ok := minorValue.(map[string]interface{}); ok {
+					if minorMap, ok := minorValue.(map[string]any); ok {
 						if deploymentTime, exists := minorMap["deploymentTime"]; exists {
 							if deploymentTimeStr, ok := deploymentTime.(string); ok {
 								c.DeploymentTime = types.StringValue(deploymentTimeStr)
@@ -263,7 +263,7 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]inte
 	}
 
 	if detailsURL, exists := rawConfig["detailsURL"]; exists {
-		if detailsURLMap, ok := detailsURL.(map[string]interface{}); ok {
+		if detailsURLMap, ok := detailsURL.(map[string]any); ok {
 			if value, exists := detailsURLMap["Value"]; exists {
 				if valueStr, ok := value.(string); ok && valueStr != "" {
 					c.DetailsURLValue = types.StringValue(valueStr)
