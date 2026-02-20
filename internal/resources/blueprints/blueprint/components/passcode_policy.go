@@ -34,9 +34,8 @@ func (c *PasscodePolicyComponent) GetIdentifier() string {
 }
 
 // PasscodePolicyComponentSchema returns the Terraform schema for passcode policy component
-func PasscodePolicyComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
+func PasscodePolicyComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
 			"change_at_next_auth": schema.BoolAttribute{
 				MarkdownDescription: "Change at next auth.",
 				Optional:            true,
@@ -91,7 +90,6 @@ func PasscodePolicyComponentSchema() schema.NestedBlockObject {
 				MarkdownDescription: "Require passcode.",
 				Optional:            true,
 			},
-		},
 	}
 }
 

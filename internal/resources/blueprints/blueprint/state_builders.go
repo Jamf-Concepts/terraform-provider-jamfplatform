@@ -71,66 +71,70 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 		}
 	}
 
-	model.Components = rawComponents
+	if len(rawComponents) > 0 {
+		model.Components = rawComponents
+	} else {
+		model.Components = nil
+	}
 	updateStronglyTypedComponentsFromAPI(model, apiComponentsByID, stateRawIdentifiers)
 	model.Timeouts = helpers.EnsureResourceTimeouts(model.Timeouts, blueprintTimeoutAttributeTypes)
 }
 
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components from API response.
 func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
-	model.AudioAccessorySettings = buildTypedComponentSlice[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(cfg map[string]any, target *components.AudioAccessorySettingsComponent) error {
+	model.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(cfg map[string]any, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.CustomDeclarations = buildTypedComponentSlice[components.CustomDeclarationsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.custom-declarations", func(cfg map[string]any, target *components.CustomDeclarationsComponent) error {
+	model.CustomDeclarations = buildTypedComponent[components.CustomDeclarationsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.custom-declarations", func(cfg map[string]any, target *components.CustomDeclarationsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.DiskManagementSettings = buildTypedComponentSlice[components.DiskManagementPolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.disk-management", func(cfg map[string]any, target *components.DiskManagementPolicyComponent) error {
+	model.DiskManagementSettings = buildTypedComponent[components.DiskManagementPolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.disk-management", func(cfg map[string]any, target *components.DiskManagementPolicyComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.MathSettings = buildTypedComponentSlice[components.MathSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.math-settings", func(cfg map[string]any, target *components.MathSettingsComponent) error {
+	model.MathSettings = buildTypedComponent[components.MathSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.math-settings", func(cfg map[string]any, target *components.MathSettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.PasscodePolicy = buildTypedComponentSlice[components.PasscodePolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.passcode-settings", func(cfg map[string]any, target *components.PasscodePolicyComponent) error {
+	model.PasscodePolicy = buildTypedComponent[components.PasscodePolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.passcode-settings", func(cfg map[string]any, target *components.PasscodePolicyComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SafariBookmarks = buildTypedComponentSlice[components.SafariBookmarksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-bookmarks", func(cfg map[string]any, target *components.SafariBookmarksComponent) error {
+	model.SafariBookmarks = buildTypedComponent[components.SafariBookmarksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-bookmarks", func(cfg map[string]any, target *components.SafariBookmarksComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SafariExtensions = buildTypedComponentSlice[components.SafariExtensionsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-extensions", func(cfg map[string]any, target *components.SafariExtensionsComponent) error {
+	model.SafariExtensions = buildTypedComponent[components.SafariExtensionsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-extensions", func(cfg map[string]any, target *components.SafariExtensionsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SafariSettings = buildTypedComponentSlice[components.SafariSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-settings", func(cfg map[string]any, target *components.SafariSettingsComponent) error {
+	model.SafariSettings = buildTypedComponent[components.SafariSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-settings", func(cfg map[string]any, target *components.SafariSettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.ServiceBackgroundTasks = buildTypedComponentSlice[components.ServiceBackgroundTasksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-background-tasks", func(cfg map[string]any, target *components.ServiceBackgroundTasksComponent) error {
+	model.ServiceBackgroundTasks = buildTypedComponent[components.ServiceBackgroundTasksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-background-tasks", func(cfg map[string]any, target *components.ServiceBackgroundTasksComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.ServiceConfigurationFiles = buildTypedComponentSlice[components.ServiceConfigurationFilesComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-configuration-files", func(cfg map[string]any, target *components.ServiceConfigurationFilesComponent) error {
+	model.ServiceConfigurationFiles = buildTypedComponent[components.ServiceConfigurationFilesComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-configuration-files", func(cfg map[string]any, target *components.ServiceConfigurationFilesComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SoftwareUpdate = buildTypedComponentSlice[components.SoftwareUpdateComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.sw-updates", func(cfg map[string]any, target *components.SoftwareUpdateComponent) error {
+	model.SoftwareUpdate = buildTypedComponent[components.SoftwareUpdateComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.sw-updates", func(cfg map[string]any, target *components.SoftwareUpdateComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
-	model.SoftwareUpdateSettings = buildTypedComponentSlice[components.SoftwareUpdateSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.software-update-settings", func(cfg map[string]any, target *components.SoftwareUpdateSettingsComponent) error {
+	model.SoftwareUpdateSettings = buildTypedComponent[components.SoftwareUpdateSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.software-update-settings", func(cfg map[string]any, target *components.SoftwareUpdateSettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
 
 	updateLegacyPayloadsFromAPI(model, apiComponentsByID, rawIdentifiers)
 }
 
-// buildTypedComponentSlice is a generic helper to build strongly-typed component slices.
-func buildTypedComponentSlice[T any](apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]any, *T) error) []T {
+// buildTypedComponent is a generic helper to build a strongly-typed singleton component pointer.
+func buildTypedComponent[T any](apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]any, *T) error) *T {
 	if _, handledAsRaw := rawIdentifiers[identifier]; handledAsRaw {
 		return nil
 	}
@@ -145,7 +149,7 @@ func buildTypedComponentSlice[T any](apiComponentsByID map[string]client.Bluepri
 		return nil
 	}
 
-	return []T{component}
+	return &component
 }
 
 // parseComponentConfiguration extracts and parses the configuration of a component by its identifier.

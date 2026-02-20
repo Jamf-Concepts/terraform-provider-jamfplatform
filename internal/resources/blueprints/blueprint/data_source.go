@@ -69,7 +69,7 @@ func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				MarkdownDescription: "Deployment state.",
 				Computed:            true,
 			},
-			"device_groups": schema.SetAttribute{
+			"device_groups": schema.ListAttribute{
 				MarkdownDescription: "Device groups in scope.",
 				ElementType:         types.StringType,
 				Computed:            true,
@@ -162,7 +162,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, bp.Scope.DeviceGroups)
+	deviceGroupsList, _ := types.ListValueFrom(context.Background(), types.StringType, bp.Scope.DeviceGroups)
 
 	var components []ComponentModel
 	if len(bp.Steps) > 0 {
@@ -194,7 +194,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		Created:         types.StringValue(bp.Created),
 		Updated:         types.StringValue(bp.Updated),
 		DeploymentState: types.StringValue(bp.DeploymentState.State),
-		DeviceGroups:    deviceGroupsSet,
+		DeviceGroups:    deviceGroupsList,
 		Components:      components,
 		Timeouts:        timeoutsValue,
 	}

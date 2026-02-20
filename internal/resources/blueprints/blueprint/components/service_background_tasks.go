@@ -39,66 +39,64 @@ type LaunchdItemModel struct {
 }
 
 // ServiceBackgroundTasksComponentSchema returns the Terraform schema for service background tasks component
-func ServiceBackgroundTasksComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Blocks: map[string]schema.Block{
-			"background_tasks": schema.ListNestedBlock{
-				MarkdownDescription: "List of background tasks.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"task_type": schema.StringAttribute{
-							MarkdownDescription: "Task type identifier.",
-							Required:            true,
-						},
-						"task_description": schema.StringAttribute{
-							MarkdownDescription: "Task description.",
-							Optional:            true,
-						},
+func ServiceBackgroundTasksComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"background_tasks": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of background tasks.",
+			Optional:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"task_type": schema.StringAttribute{
+						MarkdownDescription: "Task type identifier.",
+						Required:            true,
 					},
-					Blocks: map[string]schema.Block{
-						"executable_asset_reference": schema.SingleNestedBlock{
-							MarkdownDescription: "Reference to the executable asset.",
-							Attributes: map[string]schema.Attribute{
-								"data_url": schema.StringAttribute{
-									MarkdownDescription: "URL that hosts the executable data.",
-									Required:            true,
-								},
-								"hash_sha_256": schema.StringAttribute{
-									MarkdownDescription: "SHA-256 hash of the data.",
-									Optional:            true,
-								},
-								"content_type": schema.StringAttribute{
-									MarkdownDescription: "Media type of the data. Always `application/zip` for executable assets.",
-									Computed:            true,
-								},
+					"task_description": schema.StringAttribute{
+						MarkdownDescription: "Task description.",
+						Optional:            true,
+					},
+					"executable_asset_reference": schema.SingleNestedAttribute{
+						MarkdownDescription: "Reference to the executable asset.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"data_url": schema.StringAttribute{
+								MarkdownDescription: "URL that hosts the executable data.",
+								Required:            true,
+							},
+							"hash_sha_256": schema.StringAttribute{
+								MarkdownDescription: "SHA-256 hash of the data.",
+								Optional:            true,
+							},
+							"content_type": schema.StringAttribute{
+								MarkdownDescription: "Media type of the data. Always `application/zip` for executable assets.",
+								Computed:            true,
 							},
 						},
-						"launchd_configurations": schema.ListNestedBlock{
-							MarkdownDescription: "Launchd configuration items.",
-							NestedObject: schema.NestedBlockObject{
-								Attributes: map[string]schema.Attribute{
-									"context": schema.StringAttribute{
-										MarkdownDescription: "Launchd context. Valid values are `daemon`, `agent`.",
-										Required:            true,
-										Validators:          []validator.String{stringvalidator.OneOf("daemon", "agent")},
-									},
+					},
+					"launchd_configurations": schema.SetNestedAttribute{
+						MarkdownDescription: "Launchd configuration items.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"context": schema.StringAttribute{
+									MarkdownDescription: "Launchd context. Valid values are `daemon`, `agent`.",
+									Required:            true,
+									Validators:          []validator.String{stringvalidator.OneOf("daemon", "agent")},
 								},
-								Blocks: map[string]schema.Block{
-									"file_asset_reference": schema.SingleNestedBlock{
-										MarkdownDescription: "Reference to the configuration file asset.",
-										Attributes: map[string]schema.Attribute{
-											"data_url": schema.StringAttribute{
-												MarkdownDescription: "URL that hosts the configuration data.",
-												Required:            true,
-											},
-											"hash_sha_256": schema.StringAttribute{
-												MarkdownDescription: "SHA-256 hash of the data.",
-												Optional:            true,
-											},
-											"content_type": schema.StringAttribute{
-												MarkdownDescription: "Media type of the data.",
-												Optional:            true,
-											},
+								"file_asset_reference": schema.SingleNestedAttribute{
+									MarkdownDescription: "Reference to the configuration file asset.",
+									Optional:            true,
+									Attributes: map[string]schema.Attribute{
+										"data_url": schema.StringAttribute{
+											MarkdownDescription: "URL that hosts the configuration data.",
+											Required:            true,
+										},
+										"hash_sha_256": schema.StringAttribute{
+											MarkdownDescription: "SHA-256 hash of the data.",
+											Optional:            true,
+										},
+										"content_type": schema.StringAttribute{
+											MarkdownDescription: "Media type of the data.",
+											Optional:            true,
 										},
 									},
 								},

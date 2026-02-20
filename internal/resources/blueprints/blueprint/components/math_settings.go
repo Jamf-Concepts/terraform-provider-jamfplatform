@@ -31,9 +31,8 @@ func (c *MathSettingsComponent) GetIdentifier() string {
 }
 
 // MathSettingsComponentSchema returns the Terraform schema for math settings component
-func MathSettingsComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
+func MathSettingsComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
 			"calculator_basic_mode_add_square_root": schema.BoolAttribute{
 				MarkdownDescription: "Add the square root button to the basic calculator by replacing the +/- button.",
 				Optional:            true,
@@ -78,7 +77,6 @@ func MathSettingsComponentSchema() schema.NestedBlockObject {
 					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("system_behavior_keyboard_suggestions")),
 				},
 			},
-		},
 	}
 }
 

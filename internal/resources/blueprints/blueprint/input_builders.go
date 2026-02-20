@@ -57,52 +57,52 @@ func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *Blue
 
 // collectStronglyTypedComponents processes all strongly-typed components using a scalable approach.
 func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]client.BlueprintComponentV1, diags *diag.Diagnostics, data *BlueprintResourceModel) {
-	for i := range data.AudioAccessorySettings {
-		r.collectSingleComponent(allComponents, diags, &data.AudioAccessorySettings[i], "audio accessory settings")
+	if data.AudioAccessorySettings != nil {
+		r.collectSingleComponent(allComponents, diags, data.AudioAccessorySettings, "audio accessory settings")
 	}
 
-	for i := range data.CustomDeclarations {
-		r.collectSingleComponent(allComponents, diags, &data.CustomDeclarations[i], "custom declarations")
+	if data.CustomDeclarations != nil {
+		r.collectSingleComponent(allComponents, diags, data.CustomDeclarations, "custom declarations")
 	}
 
-	for i := range data.DiskManagementSettings {
-		r.collectSingleComponent(allComponents, diags, &data.DiskManagementSettings[i], "disk management settings")
+	if data.DiskManagementSettings != nil {
+		r.collectSingleComponent(allComponents, diags, data.DiskManagementSettings, "disk management settings")
 	}
 
-	for i := range data.MathSettings {
-		r.collectSingleComponent(allComponents, diags, &data.MathSettings[i], "math settings")
+	if data.MathSettings != nil {
+		r.collectSingleComponent(allComponents, diags, data.MathSettings, "math settings")
 	}
 
-	for i := range data.PasscodePolicy {
-		r.collectSingleComponent(allComponents, diags, &data.PasscodePolicy[i], "passcode policy")
+	if data.PasscodePolicy != nil {
+		r.collectSingleComponent(allComponents, diags, data.PasscodePolicy, "passcode policy")
 	}
 
-	for i := range data.SafariBookmarks {
-		r.collectSingleComponent(allComponents, diags, &data.SafariBookmarks[i], "safari bookmarks")
+	if data.SafariBookmarks != nil {
+		r.collectSingleComponent(allComponents, diags, data.SafariBookmarks, "safari bookmarks")
 	}
 
-	for i := range data.SafariExtensions {
-		r.collectSingleComponent(allComponents, diags, &data.SafariExtensions[i], "safari extensions")
+	if data.SafariExtensions != nil {
+		r.collectSingleComponent(allComponents, diags, data.SafariExtensions, "safari extensions")
 	}
 
-	for i := range data.SafariSettings {
-		r.collectSingleComponent(allComponents, diags, &data.SafariSettings[i], "safari settings")
+	if data.SafariSettings != nil {
+		r.collectSingleComponent(allComponents, diags, data.SafariSettings, "safari settings")
 	}
 
-	for i := range data.ServiceBackgroundTasks {
-		r.collectSingleComponent(allComponents, diags, &data.ServiceBackgroundTasks[i], "service background tasks")
+	if data.ServiceBackgroundTasks != nil {
+		r.collectSingleComponent(allComponents, diags, data.ServiceBackgroundTasks, "service background tasks")
 	}
 
-	for i := range data.ServiceConfigurationFiles {
-		r.collectSingleComponent(allComponents, diags, &data.ServiceConfigurationFiles[i], "service configuration files")
+	if data.ServiceConfigurationFiles != nil {
+		r.collectSingleComponent(allComponents, diags, data.ServiceConfigurationFiles, "service configuration files")
 	}
 
-	for i := range data.SoftwareUpdate {
-		r.collectSingleComponent(allComponents, diags, &data.SoftwareUpdate[i], "software update")
+	if data.SoftwareUpdate != nil {
+		r.collectSingleComponent(allComponents, diags, data.SoftwareUpdate, "software update")
 	}
 
-	for i := range data.SoftwareUpdateSettings {
-		r.collectSingleComponent(allComponents, diags, &data.SoftwareUpdateSettings[i], "software update settings")
+	if data.SoftwareUpdateSettings != nil {
+		r.collectSingleComponent(allComponents, diags, data.SoftwareUpdateSettings, "software update settings")
 	}
 
 	if helpers.IsConfiguredValue(data.LegacyPayloads) {

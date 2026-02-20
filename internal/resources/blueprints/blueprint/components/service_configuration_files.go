@@ -29,34 +29,32 @@ type ServiceConfigFileModel struct {
 }
 
 // ServiceConfigurationFilesComponentSchema returns the Terraform schema for service configuration files component
-func ServiceConfigurationFilesComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Blocks: map[string]schema.Block{
-			"service_config_files": schema.ListNestedBlock{
-				MarkdownDescription: "List of service configuration files.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"service_type": schema.StringAttribute{
-							MarkdownDescription: "The identifier of the system service with managed configuration files.",
-							Required:            true,
-						},
+func ServiceConfigurationFilesComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"service_config_files": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of service configuration files.",
+			Optional:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"service_type": schema.StringAttribute{
+						MarkdownDescription: "The identifier of the system service with managed configuration files.",
+						Required:            true,
 					},
-					Blocks: map[string]schema.Block{
-						"data_asset_reference": schema.SingleNestedBlock{
-							MarkdownDescription: "Reference to the configuration data asset.",
-							Attributes: map[string]schema.Attribute{
-								"data_url": schema.StringAttribute{
-									MarkdownDescription: "URL that hosts the configuration data.",
-									Required:            true,
-								},
-								"hash_sha_256": schema.StringAttribute{
-									MarkdownDescription: "SHA-256 hash of the data.",
-									Optional:            true,
-								},
-								"content_type": schema.StringAttribute{
-									MarkdownDescription: "Media type of the data. Always `application/zip` for service configuration files.",
-									Computed:            true,
-								},
+					"data_asset_reference": schema.SingleNestedAttribute{
+						MarkdownDescription: "Reference to the configuration data asset.",
+						Optional:            true,
+						Attributes: map[string]schema.Attribute{
+							"data_url": schema.StringAttribute{
+								MarkdownDescription: "URL that hosts the configuration data.",
+								Required:            true,
+							},
+							"hash_sha_256": schema.StringAttribute{
+								MarkdownDescription: "SHA-256 hash of the data.",
+								Optional:            true,
+							},
+							"content_type": schema.StringAttribute{
+								MarkdownDescription: "Media type of the data. Always `application/zip` for service configuration files.",
+								Computed:            true,
 							},
 						},
 					},

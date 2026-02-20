@@ -11,7 +11,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -54,6 +53,7 @@ func (r *BlueprintResource) Metadata(ctx context.Context, req resource.MetadataR
 // Schema returns the Terraform schema for the blueprint resource.
 func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -109,11 +109,10 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 				Update: true,
 				Delete: true,
 			}),
-		},
-		Blocks: map[string]schema.Block{
-			"raw_component": schema.ListNestedBlock{
+			"raw_component": schema.SetNestedAttribute{
 				MarkdownDescription: "Raw component configuration using key-value pairs.",
-				NestedObject: schema.NestedBlockObject{
+				Optional:            true,
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"identifier": schema.StringAttribute{
 							MarkdownDescription: "Component identifier (e.g., `com.jamf.ddm.disk-management`).",
@@ -127,89 +126,65 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 					},
 				},
 			},
-			"audio_accessory_settings": schema.ListNestedBlock{
+			"audio_accessory_settings": schema.SingleNestedAttribute{
 				MarkdownDescription: "Audio accessory settings component for managing temporary pairing and unpairing policies.",
-				NestedObject:        components.AudioAccessorySettingsComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.AudioAccessorySettingsComponentSchema(),
 			},
-			"custom_declarations": schema.ListNestedBlock{
+			"custom_declarations": schema.SingleNestedAttribute{
 				MarkdownDescription: "Custom declarations component for managing custom DDM declarations with system or user channel types.",
-				NestedObject:        components.CustomDeclarationsComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.CustomDeclarationsComponentSchema(),
 			},
-			"disk_management_settings": schema.ListNestedBlock{
+			"disk_management_settings": schema.SingleNestedAttribute{
 				MarkdownDescription: "Disk management settings component for controlling external and network storage restrictions.",
-				NestedObject:        components.DiskManagementPolicyComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.DiskManagementPolicyComponentSchema(),
 			},
-			"math_settings": schema.ListNestedBlock{
+			"math_settings": schema.SingleNestedAttribute{
 				MarkdownDescription: "Math settings component for managing calculator modes and system behavior.",
-				NestedObject:        components.MathSettingsComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.MathSettingsComponentSchema(),
 			},
-			"passcode_policy": schema.ListNestedBlock{
+			"passcode_policy": schema.SingleNestedAttribute{
 				MarkdownDescription: "Passcode policy component for managing device passcode requirements and restrictions.",
-				NestedObject:        components.PasscodePolicyComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.PasscodePolicyComponentSchema(),
 			},
-			"safari_bookmarks": schema.ListNestedBlock{
+			"safari_bookmarks": schema.SingleNestedAttribute{
 				MarkdownDescription: "Safari bookmarks component for managing Safari managed bookmarks and bookmark groups.",
-				NestedObject:        components.SafariBookmarksComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.SafariBookmarksComponentSchema(),
 			},
-			"safari_extensions": schema.ListNestedBlock{
+			"safari_extensions": schema.SingleNestedAttribute{
 				MarkdownDescription: "Safari extensions component for managing Safari extension permissions and states.",
-				NestedObject:        components.SafariExtensionsComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.SafariExtensionsComponentSchema(),
 			},
-			"safari_settings": schema.ListNestedBlock{
+			"safari_settings": schema.SingleNestedAttribute{
 				MarkdownDescription: "Safari settings component for managing Safari browser behavior and security settings.",
-				NestedObject:        components.SafariSettingsComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.SafariSettingsComponentSchema(),
 			},
-			"service_background_tasks": schema.ListNestedBlock{
+			"service_background_tasks": schema.SingleNestedAttribute{
 				MarkdownDescription: "Service background tasks component for managing background service tasks and launchd configurations.",
-				NestedObject:        components.ServiceBackgroundTasksComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.ServiceBackgroundTasksComponentSchema(),
 			},
-			"service_configuration_files": schema.ListNestedBlock{
+			"service_configuration_files": schema.SingleNestedAttribute{
 				MarkdownDescription: "Service configuration files component for managing configuration files for system services.",
-				NestedObject:        components.ServiceConfigurationFilesComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.ServiceConfigurationFilesComponentSchema(),
 			},
-			"software_update": schema.ListNestedBlock{
+			"software_update": schema.SingleNestedAttribute{
 				MarkdownDescription: "Software update component for enforcing OS updates on devices.",
-				NestedObject:        components.SoftwareUpdateComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.SoftwareUpdateComponentSchema(),
 			},
-			"software_update_settings": schema.ListNestedBlock{
+			"software_update_settings": schema.SingleNestedAttribute{
 				MarkdownDescription: "Software update settings component for configuring system update behavior and policies.",
-				NestedObject:        components.SoftwareUpdateSettingsComponentSchema(),
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(1),
-				},
+				Optional:            true,
+				Attributes:          components.SoftwareUpdateSettingsComponentSchema(),
 			},
 		},
 	}

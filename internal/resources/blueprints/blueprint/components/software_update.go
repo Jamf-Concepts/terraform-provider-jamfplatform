@@ -28,9 +28,8 @@ type SoftwareUpdateComponent struct {
 }
 
 // SoftwareUpdateComponentSchema returns the Terraform schema for software update component
-func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
+func SoftwareUpdateComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
 			"enforcement_type": schema.StringAttribute{
 				MarkdownDescription: "Type of enforcement. Automatically set to `AUTOMATIC` when `deployment_time` or `enforce_after_days` is specified, or `MANUAL` when `target_os_version` or `target_local_date_time` is specified.",
 				Computed:            true,
@@ -122,7 +121,6 @@ func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
 				MarkdownDescription: "URL of a web page with the details about the software update.",
 				Optional:            true,
 			},
-		},
 	}
 }
 

@@ -32,9 +32,8 @@ func (c *SafariSettingsComponent) GetIdentifier() string {
 }
 
 // SafariSettingsComponentSchema returns the Terraform schema for Safari settings component
-func SafariSettingsComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
+func SafariSettingsComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
 			"accept_cookies": schema.StringAttribute{
 				MarkdownDescription: "The policy Safari uses for managing cookies. Valid values are `Never`, `CurrentWebsite`, `VisitedWebsites`, `Always`.",
 				Optional:            true,
@@ -76,7 +75,6 @@ func SafariSettingsComponentSchema() schema.NestedBlockObject {
 				MarkdownDescription: "The composed identifier of the extension that provides the start page. Required when page type is `Extension`. Format: `com.example.extension (ABC1234567)`.",
 				Optional:            true,
 			},
-		},
 	}
 }
 

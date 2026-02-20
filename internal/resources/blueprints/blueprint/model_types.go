@@ -17,18 +17,18 @@ type BlueprintResourceModel struct {
 	Deployed                  types.Bool                                      `tfsdk:"deployed"`
 	DeviceGroups              types.Set                                       `tfsdk:"device_groups"`
 	Components                []ComponentModel                                `tfsdk:"raw_component"`
-	AudioAccessorySettings    []components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
-	CustomDeclarations        []components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
-	DiskManagementSettings    []components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
-	MathSettings              []components.MathSettingsComponent              `tfsdk:"math_settings"`
-	PasscodePolicy            []components.PasscodePolicyComponent            `tfsdk:"passcode_policy"`
-	SafariBookmarks           []components.SafariBookmarksComponent           `tfsdk:"safari_bookmarks"`
-	SafariExtensions          []components.SafariExtensionsComponent          `tfsdk:"safari_extensions"`
-	SafariSettings            []components.SafariSettingsComponent            `tfsdk:"safari_settings"`
-	ServiceBackgroundTasks    []components.ServiceBackgroundTasksComponent    `tfsdk:"service_background_tasks"`
-	ServiceConfigurationFiles []components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
-	SoftwareUpdate            []components.SoftwareUpdateComponent            `tfsdk:"software_update"`
-	SoftwareUpdateSettings    []components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
+	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
+	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
+	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
+	MathSettings              *components.MathSettingsComponent              `tfsdk:"math_settings"`
+	PasscodePolicy            *components.PasscodePolicyComponent            `tfsdk:"passcode_policy"`
+	SafariBookmarks           *components.SafariBookmarksComponent           `tfsdk:"safari_bookmarks"`
+	SafariExtensions          *components.SafariExtensionsComponent          `tfsdk:"safari_extensions"`
+	SafariSettings            *components.SafariSettingsComponent            `tfsdk:"safari_settings"`
+	ServiceBackgroundTasks    *components.ServiceBackgroundTasksComponent    `tfsdk:"service_background_tasks"`
+	ServiceConfigurationFiles *components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
+	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
+	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
 	LegacyPayloads            types.String                                    `tfsdk:"legacy_payloads"`
 	Created                   types.String                                    `tfsdk:"created"`
 	Updated                   types.String                                    `tfsdk:"updated"`
@@ -45,7 +45,7 @@ type BlueprintDataSourceModel struct {
 	Created         types.String             `tfsdk:"created"`
 	Updated         types.String             `tfsdk:"updated"`
 	DeploymentState types.String             `tfsdk:"deployment_state"`
-	DeviceGroups    types.Set                `tfsdk:"device_groups"`
+	DeviceGroups    types.List               `tfsdk:"device_groups"`
 	Components      []ComponentModel         `tfsdk:"component"`
 	Timeouts        datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
