@@ -3,17 +3,11 @@
 package blueprint
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-// BlueprintResource implements the Terraform resource for Jamf Blueprint.
-type BlueprintResource struct {
-	client *client.Client
-}
 
 // BlueprintResourceModel represents the Terraform resource model for a Jamf Blueprint.
 type BlueprintResourceModel struct {
@@ -40,11 +34,6 @@ type BlueprintResourceModel struct {
 	Updated                   types.String                                    `tfsdk:"updated"`
 	DeploymentState           types.String                                    `tfsdk:"deployment_state"`
 	Timeouts                  resourceTimeouts.Value                          `tfsdk:"timeouts"`
-}
-
-// BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
-type BlueprintDataSource struct {
-	client *client.Client
 }
 
 // BlueprintDataSourceModel defines the data structure for the blueprint data source.

@@ -3,16 +3,10 @@
 package benchmark
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-// BenchmarkResource implements the Terraform resource for Jamf Compliance Benchmark.
-type BenchmarkResource struct {
-	client *client.Client
-}
 
 // SourceModel represents a source branch and revision for a benchmark.
 type SourceModel struct {
@@ -35,11 +29,6 @@ type BenchmarkResourceModel struct {
 	UpdateAvailable   types.Bool             `tfsdk:"update_available"`
 	LastUpdatedAt     types.String           `tfsdk:"last_updated_at"`
 	Timeouts          resourceTimeouts.Value `tfsdk:"timeouts"`
-}
-
-// BenchmarkDataSource implements the Terraform data source for Jamf Compliance Benchmarks.
-type BenchmarkDataSource struct {
-	client *client.Client
 }
 
 // BenchmarkDataSourceModel represents the Terraform data source model for a Jamf Compliance Benchmark.
@@ -80,10 +69,12 @@ type RuleModel struct {
 	DependsOn               types.List   `tfsdk:"depends_on"`
 }
 
+// benchmarkIdentityModel represents the identity for benchmark resources and list results.
 type benchmarkIdentityModel struct {
 	ID types.String `tfsdk:"id"`
 }
 
+// BenchmarkListResourceModel represents the config model for benchmark list queries.
 type BenchmarkListResourceModel struct {
 	Search types.String `tfsdk:"search"`
 }

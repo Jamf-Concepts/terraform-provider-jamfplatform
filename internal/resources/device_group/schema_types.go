@@ -1,0 +1,16 @@
+// Copyright 2025 Jamf Software LLC.
+
+package device_group
+
+import (
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+// deviceGroupTimeoutAttributeTypes defines the timeout attribute types for device group resource operations.
+var deviceGroupTimeoutAttributeTypes = map[string]attr.Type{
+	"create": types.StringType,
+	"read":   types.StringType,
+	"update": types.StringType,
+	"delete": types.StringType,
+}

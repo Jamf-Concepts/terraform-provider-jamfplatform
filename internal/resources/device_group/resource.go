@@ -22,6 +22,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// DeviceGroupResource implements the Terraform resource for Jamf device groups.
+type DeviceGroupResource struct {
+	client *client.Client
+}
+
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &DeviceGroupResource{}
 var _ resource.ResourceWithImportState = &DeviceGroupResource{}

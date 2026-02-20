@@ -17,6 +17,11 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
+// BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
+type BlueprintDataSource struct {
+	client *client.Client
+}
+
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &BlueprintDataSource{}
 

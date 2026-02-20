@@ -16,6 +16,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
+// DeviceGroupDataSource implements the Terraform data source for Jamf device groups.
+type DeviceGroupDataSource struct {
+	client *client.Client
+}
+
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceGroupDataSource{}
 

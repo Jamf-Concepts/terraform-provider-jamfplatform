@@ -22,6 +22,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// BenchmarkResource implements the Terraform resource for Jamf Compliance Benchmark.
+type BenchmarkResource struct {
+	client *client.Client
+}
+
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BenchmarkResource{}
 var _ resource.ResourceWithImportState = &BenchmarkResource{}

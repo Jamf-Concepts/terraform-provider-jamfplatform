@@ -3,17 +3,11 @@
 package device_group
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-// DeviceGroupResource implements the Terraform resource for Jamf device groups.
-type DeviceGroupResource struct {
-	client *client.Client
-}
 
 // DeviceGroupResourceModel represents the Terraform resource model for a Jamf device group.
 type DeviceGroupResourceModel struct {
@@ -39,11 +33,6 @@ type DeviceGroupCriteriaModel struct {
 	HasClosingParenthesis types.Bool   `tfsdk:"has_closing_parenthesis"`
 }
 
-// DeviceGroupDataSource implements the Terraform data source for Jamf device groups.
-type DeviceGroupDataSource struct {
-	client *client.Client
-}
-
 // DeviceGroupDataSourceModel represents the Terraform data source model for a Jamf device group.
 type DeviceGroupDataSourceModel struct {
 	ID          types.String               `tfsdk:"id"`
@@ -57,10 +46,12 @@ type DeviceGroupDataSourceModel struct {
 	MemberCount types.Int64                `tfsdk:"member_count"`
 }
 
+// deviceGroupIdentityModel represents the identity for device group resources and list results.
 type deviceGroupIdentityModel struct {
 	ID types.String `tfsdk:"id"`
 }
 
+// DeviceGroupListResourceModel represents the config model for device group list queries.
 type DeviceGroupListResourceModel struct {
 	Filters []filters.FilterModel `tfsdk:"filter"`
 }
