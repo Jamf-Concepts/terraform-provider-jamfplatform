@@ -5,32 +5,29 @@ resource "jamfplatform_blueprints_blueprint" "test_safari_bookmarks" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  safari_bookmarks {
-    managed_bookmarks {
+  safari_bookmarks = {
+    managed_bookmarks = [{
       group_identifier = "work-bookmarks"
       title            = "Work Bookmarks"
-      bookmarks {
+      bookmarks = [{
         type  = "bookmark"
         title = "Company Portal"
         url   = "https://portal.company.com"
-      }
-      bookmarks {
+      }, {
         type  = "bookmark"
         title = "Internal Wiki"
         url   = "https://wiki.company.com"
-      }
-      bookmarks {
+      }, {
         type  = "folder"
         title = "Development Tools"
-        folder {
+        folder = [{
           title = "GitHub"
           url   = "https://github.com"
-        }
-        folder {
+        }, {
           title = "Stack Overflow"
           url   = "https://stackoverflow.com"
-        }
-      }
-    }
+        }]
+      }]
+    }]
   }
 }

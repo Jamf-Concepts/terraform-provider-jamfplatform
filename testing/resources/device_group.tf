@@ -11,27 +11,27 @@ resource "jamfplatform_device_group" "test_smart_computer" {
   device_type = "computer"
   description = "Managed by Terraform"
 
-  criteria {
-    criteria = "Operating System Version"
-    operator = "is"
-    value    = "13.4.1"
-  }
-
-  criteria {
-    and_or                  = "and"
-    criteria                = "Serial Number"
-    operator                = "is not"
-    value                   = ""
-    has_opening_parenthesis = true
-  }
-
-  criteria {
-    and_or                  = "or"
-    criteria                = "Last Enrollment"
-    operator                = "before (yyyy-mm-dd)"
-    value                   = "2025-01-01"
-    has_closing_parenthesis = true
-  }
+  criteria = [
+    {
+      criteria = "Operating System Version"
+      operator = "is"
+      value    = "13.4.1"
+    },
+    {
+      and_or                  = "and"
+      criteria                = "Serial Number"
+      operator                = "is not"
+      value                   = ""
+      has_opening_parenthesis = true
+    },
+    {
+      and_or                  = "or"
+      criteria                = "Last Enrollment"
+      operator                = "before (yyyy-mm-dd)"
+      value                   = "2025-01-01"
+      has_closing_parenthesis = true
+    },
+  ]
 }
 
 resource "jamfplatform_device_group" "test_static_mobile" {
@@ -47,25 +47,25 @@ resource "jamfplatform_device_group" "test_smart_mobile" {
   device_type = "mobile"
   description = "Managed by Terraform"
 
-  criteria {
-    criteria = "OS Version"
-    operator = "is"
-    value    = "13.4.1"
-  }
-
-  criteria {
-    and_or                  = "and"
-    criteria                = "Serial Number"
-    operator                = "is not"
-    value                   = ""
-    has_opening_parenthesis = true
-  }
-
-  criteria {
-    and_or                  = "or"
-    criteria                = "Last Enrollment"
-    operator                = "before (yyyy-mm-dd)"
-    value                   = "2025-01-01"
-    has_closing_parenthesis = true
-  }
+  criteria = [
+    {
+      criteria = "OS Version"
+      operator = "is"
+      value    = "13.4.1"
+    },
+    {
+      and_or                  = "and"
+      criteria                = "Serial Number"
+      operator                = "is not"
+      value                   = ""
+      has_opening_parenthesis = true
+    },
+    {
+      and_or                  = "or"
+      criteria                = "Last Enrollment"
+      operator                = "before (yyyy-mm-dd)"
+      value                   = "2025-01-01"
+      has_closing_parenthesis = true
+    },
+  ]
 }
