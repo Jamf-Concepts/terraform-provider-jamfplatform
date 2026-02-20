@@ -133,12 +133,14 @@ type BlueprintCreateResponseV1 struct {
 func (c *Client) GetBlueprintsV1(ctx context.Context, sort []string, search string) ([]BlueprintOverviewV1, error) {
 	var allResults []BlueprintOverviewV1
 	page := 0
+	pageSize := 100
 	for {
 		params := url.Values{}
+		params.Set("page", fmt.Sprintf("%d", page))
+		params.Set("page-size", fmt.Sprintf("%d", pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}
-		params.Set("page", fmt.Sprintf("%d", page))
 		if search != "" {
 			params.Set("search", search)
 		}
@@ -155,7 +157,7 @@ func (c *Client) GetBlueprintsV1(ctx context.Context, sort []string, search stri
 			return nil, err
 		}
 		allResults = append(allResults, result.Results...)
-		if len(result.Results) < 100 || len(result.Results) == 0 {
+		if len(result.Results) < pageSize || len(result.Results) == 0 {
 			break
 		}
 		page++
@@ -264,9 +266,11 @@ func (c *Client) UndeployBlueprintV1(ctx context.Context, blueprintID string) er
 func (c *Client) GetBlueprintComponentsV1(ctx context.Context) ([]BlueprintComponentDescriptionV1, error) {
 	var allResults []BlueprintComponentDescriptionV1
 	page := 0
+	pageSize := 100
 	for {
 		params := url.Values{}
 		params.Set("page", fmt.Sprintf("%d", page))
+		params.Set("page-size", fmt.Sprintf("%d", pageSize))
 		endpoint := blueprintComponentsV1Prefix
 		if len(params) > 0 {
 			endpoint += "?" + params.Encode()
@@ -280,7 +284,7 @@ func (c *Client) GetBlueprintComponentsV1(ctx context.Context) ([]BlueprintCompo
 			return nil, err
 		}
 		allResults = append(allResults, result.Results...)
-		if len(result.Results) < 100 || len(result.Results) == 0 {
+		if len(result.Results) < pageSize || len(result.Results) == 0 {
 			break
 		}
 		page++

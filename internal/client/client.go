@@ -15,42 +15,60 @@
 //   - Update resources to use V2 at their own pace
 //
 // Example:
-//   CreateBlueprintV1() - calls /api/blueprints/v1/blueprints
-//   GetCBEngineBaselinesV1() - calls /api/cb-engine/v1/baselines
-//   CreateCBEngineBenchmarkV2() - calls /api/cb-engine/v2/benchmarks
+//
+//	CreateBlueprintV1() - calls /api/blueprints/v1/blueprints
+//	GetCBEngineBaselinesV1() - calls /api/cb-engine/v1/baselines
+//	CreateCBEngineBenchmarkV2() - calls /api/cb-engine/v2/benchmarks
+//
 // https://developer.jamf.com/platform-api/docs/getting-started-with-the-platform-api
 
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+
+	"golang.org/x/oauth2/clientcredentials"
 )
 
-// Logger is an interface for logging HTTP requests and responses
+// Logger is an interface for logging HTTP requests and responses.
 type Logger interface {
 	LogRequest(ctx context.Context, method, url string, body []byte)
 	LogResponse(ctx context.Context, statusCode int, headers http.Header, body []byte)
 }
 
-// Client represents the main API client for Jamf Platform
+// Client represents the main API client for Jamf Platform.
 type Client struct {
-	oauthClient *OAuthClient
 	baseURL     string
+	httpClient  *http.Client
+	baseClient  *http.Client
+	oauthConfig *clientcredentials.Config
 	logger      Logger
+	userAgent   string
 }
 
-// ApiError represents an error response from the API
+// PaginatedResponseRepresentation captures pagination metadata shared by multiple endpoints.
+type PaginatedResponseRepresentation struct {
+	Page        int   `json:"page"`
+	PageSize    int   `json:"pageSize"`
+	TotalCount  int64 `json:"totalCount"`
+	TotalPages  int   `json:"totalPages"`
+	HasNext     bool  `json:"hasNext"`
+	HasPrevious bool  `json:"hasPrevious"`
+}
+
+// ApiError represents an error response from the API.
 type ApiError struct {
 	HTTPStatus int     `json:"httpStatus"`
 	TraceID    string  `json:"traceId"`
 	Errors     []Error `json:"errors"`
 }
 
-// Error represents an error response from the API
+// Error represents an individual error detail from an API response.
 type Error struct {
 	ID          string `json:"id,omitempty"`
 	Code        string `json:"code"`
@@ -60,56 +78,69 @@ type Error struct {
 
 // NewClient creates a new Jamf Platform API client.
 func NewClient(baseURL, clientID, clientSecret string) *Client {
-	tokenURL := baseURL + "/auth/token"
-
-	config := OAuthConfig{
-		TokenURL:     tokenURL,
+	oauthConfig := &clientcredentials.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
+		TokenURL:     baseURL + "/auth/token",
 	}
 
-	if config.UserAgent == "" {
-		config.UserAgent = "terraform-provider-jamfplatform"
-	}
+	userAgent := "terraform-provider-jamfplatform"
+	httpClient, baseClient := newOAuth2Client(oauthConfig, userAgent)
 
 	return &Client{
-		oauthClient: NewOAuthClient(config),
 		baseURL:     baseURL,
+		httpClient:  httpClient,
+		baseClient:  baseClient,
+		oauthConfig: oauthConfig,
+		userAgent:   userAgent,
 	}
 }
 
-// SetHTTPClient allows setting a custom HTTP client
-func (c *Client) SetHTTPClient(httpClient *http.Client) {
-	c.oauthClient.SetHTTPClient(httpClient)
+// ValidateCredentials tests authentication by requesting an OAuth token.
+func (c *Client) ValidateCredentials(ctx context.Context) error {
+	return validateCredentials(ctx, c.oauthConfig, c.baseClient)
 }
 
-// SetLogger sets the logger for the client
+// HTTPClient returns the underlying OAuth2-managed HTTP client for raw authenticated requests.
+func (c *Client) HTTPClient() *http.Client {
+	return c.httpClient
+}
+
+// SetHTTPClient sets a custom base HTTP client (useful for testing).
+func (c *Client) SetHTTPClient(httpClient *http.Client) {
+	c.baseClient = httpClient
+	c.httpClient = wrapWithOAuth2(c.oauthConfig, httpClient)
+}
+
+// SetLogger sets the logger for the client.
 func (c *Client) SetLogger(logger Logger) {
 	c.logger = logger
 }
 
 // SetUserAgent sets the User-Agent header value used for token and API requests.
 func (c *Client) SetUserAgent(ua string) {
-	if c.oauthClient != nil {
-		c.oauthClient.SetUserAgent(ua)
+	c.userAgent = ua
+	c.httpClient, c.baseClient = newOAuth2Client(c.oauthConfig, ua)
+}
+
+// buildURL constructs the full API URL from a relative endpoint.
+func (c *Client) buildURL(endpoint string) string {
+	if len(endpoint) > 0 && endpoint[0] == '/' {
+		return c.baseURL + endpoint
 	}
+	return c.baseURL + "/" + endpoint
 }
 
-// OAuthClient returns the OAuth client for authentication operations.
-func (c *Client) OAuthClient() *OAuthClient {
-	return c.oauthClient
-}
-
-// makeRequest is a helper method for making authenticated API requests
+// makeRequest is a helper method for making authenticated API requests.
 func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body any) (*http.Response, error) {
+	return c.doRequest(ctx, method, endpoint, body, "")
+}
+
+// doRequest performs an authenticated API request with an optional content type override.
+func (c *Client) doRequest(ctx context.Context, method, endpoint string, body any, contentType string) (*http.Response, error) {
 	var requestBodyBytes []byte
 
-	var fullURL string
-	if len(endpoint) > 0 && endpoint[0] == '/' {
-		fullURL = c.baseURL + endpoint
-	} else {
-		fullURL = c.baseURL + "/" + endpoint
-	}
+	fullURL := c.buildURL(endpoint)
 
 	if body != nil {
 		var err error
@@ -123,39 +154,37 @@ func (c *Client) makeRequest(ctx context.Context, method, endpoint string, body 
 		c.logger.LogRequest(ctx, method, fullURL, requestBodyBytes)
 	}
 
-	resp, err := c.oauthClient.Do(ctx, method, fullURL, requestBodyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("API request failed: %w", err)
+	var bodyReader io.Reader
+	if requestBodyBytes != nil {
+		bodyReader = bytes.NewReader(requestBodyBytes)
 	}
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			fmt.Printf("warning: error closing response body: %v\n", closeErr)
-		}
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
 
-		c.oauthClient.ClearToken()
-
-		resp, err = c.oauthClient.Do(ctx, method, fullURL, requestBodyBytes)
-		if err != nil {
-			return nil, fmt.Errorf("API request failed on retry: %w", err)
+	if requestBodyBytes != nil {
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		} else if method == http.MethodPatch {
+			req.Header.Set("Content-Type", "application/merge-patch+json")
+		} else {
+			req.Header.Set("Content-Type", "application/json")
 		}
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("API request failed: %w", err)
 	}
 
 	return resp, nil
 }
 
-// handleAPIResponse processes API responses and handles common error cases
+// handleAPIResponse processes API responses and handles common error cases.
 func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, expectedStatus int, result any) error {
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			if c.oauthClient != nil && c.oauthClient.logger != nil {
-				c.oauthClient.logger.Printf("warning: error closing response body: %v", err)
-			} else {
-				fmt.Printf("warning: error closing response body: %v\n", err)
-			}
-		}
-	}()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {

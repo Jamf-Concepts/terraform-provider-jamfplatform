@@ -99,16 +99,6 @@ type DeviceUpdateRepresentationV1 struct {
 	UserID *NullableString `json:"userId,omitempty"`
 }
 
-// PaginatedResponseRepresentation captures pagination metadata shared by multiple endpoints.
-type PaginatedResponseRepresentation struct {
-	Page        int   `json:"page"`
-	PageSize    int   `json:"pageSize"`
-	TotalCount  int64 `json:"totalCount"`
-	TotalPages  int   `json:"totalPages"`
-	HasNext     bool  `json:"hasNext"`
-	HasPrevious bool  `json:"hasPrevious"`
-}
-
 // PaginatedDeviceResponseRepresentation represents a paginated list of devices.
 type PaginatedDeviceResponseRepresentation struct {
 	PaginatedResponseRepresentation

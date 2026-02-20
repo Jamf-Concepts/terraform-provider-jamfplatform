@@ -40,7 +40,7 @@ type DeviceGroupCriteriaRepresentationV1 struct {
 	HasClosingParenthesis bool   `json:"hasClosingParenthesis,omitempty"`
 }
 
-// DeviceGroupListReadRepresentationV1 represents a device group in a list response
+// DeviceGroupReadRepresentationV1 represents a device group in a single-read response.
 type DeviceGroupReadRepresentationV1 struct {
 	ID          string                                `json:"id"`
 	Name        string                                `json:"name"`
@@ -114,15 +114,10 @@ type ListDeviceGroupMemberOfResponseRepresentationV1 struct {
 	HasPrevious bool                                  `json:"hasPrevious"`
 }
 
-// DeviceGroupPagedResponseV1 represents a paginated response for device groups
+// DeviceGroupPagedResponseV1 represents a paginated response for device groups.
 type DeviceGroupPagedResponseV1 struct {
-	Results     []DeviceGroupListReadRepresentationV1 `json:"results"`
-	TotalCount  int64                                 `json:"totalCount"`
-	Page        int                                   `json:"page"`
-	PageSize    int                                   `json:"pageSize"`
-	TotalPages  int                                   `json:"totalPages"`
-	HasNext     bool                                  `json:"hasNext"`
-	HasPrevious bool                                  `json:"hasPrevious"`
+	PaginatedResponseRepresentation
+	Results []DeviceGroupListReadRepresentationV1 `json:"results"`
 }
 
 // GetDeviceGroupsV1 returns all device groups, automatically handling pagination
@@ -157,7 +152,7 @@ func (c *Client) GetDeviceGroupsV1(ctx context.Context, sort []string, filter st
 		}
 
 		allResults = append(allResults, result.Results...)
-		if len(result.Results) < pageSize || len(result.Results) == 0 {
+		if !result.HasNext {
 			break
 		}
 		page++
@@ -196,7 +191,7 @@ func (c *Client) CreateDeviceGroupV1(ctx context.Context, request *DeviceGroupCr
 // UpdateDeviceGroupV1 updates a device group
 func (c *Client) UpdateDeviceGroupV1(ctx context.Context, id string, request *DeviceGroupUpdateRepresentationV1) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s", deviceGroupsV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, http.MethodPatch, endpoint, request)
+	resp, err := c.doRequest(ctx, http.MethodPatch, endpoint, request, "application/json")
 	if err != nil {
 		return fmt.Errorf("failed to update device group %s: %w", id, err)
 	}
@@ -258,7 +253,7 @@ func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string) ([]stri
 // UpdateDeviceGroupMembersV1 patches the members of a static device group
 func (c *Client) UpdateDeviceGroupMembersV1(ctx context.Context, id string, patch *DeviceGroupMemberPatchRepresentationV1) error {
 	endpoint := fmt.Sprintf("%s/device-groups/%s/members", deviceGroupsV1Prefix, url.PathEscape(id))
-	resp, err := c.makeRequest(ctx, http.MethodPatch, endpoint, patch)
+	resp, err := c.doRequest(ctx, http.MethodPatch, endpoint, patch, "application/json")
 	if err != nil {
 		return fmt.Errorf("failed to update members for device group %s: %w", id, err)
 	}
