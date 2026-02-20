@@ -29,16 +29,17 @@ type FilterModel struct {
 // SelectorValidator returns true when a selector is permitted for the data source.
 type SelectorValidator func(string) bool
 
-// FilterBlock builds the shared schema for declarative RSQL filter clauses.
-func FilterBlock(selectorDescription string, validSelectors []string) schema.ListNestedBlock {
+// FilterAttribute builds the shared schema for declarative RSQL filter clauses as a nested attribute.
+func FilterAttribute(selectorDescription string, validSelectors []string) schema.ListNestedAttribute {
 	var selectorValidators []validator.String
 	if len(validSelectors) > 0 {
 		selectorValidators = append(selectorValidators, stringvalidator.OneOf(validSelectors...))
 	}
 
-	return schema.ListNestedBlock{
+	return schema.ListNestedAttribute{
 		MarkdownDescription: filterBlockDescription,
-		NestedObject: schema.NestedBlockObject{
+		Optional:            true,
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				"selector": schema.StringAttribute{
 					MarkdownDescription: selectorDescription,
@@ -65,7 +66,7 @@ func FilterBlock(selectorDescription string, validSelectors []string) schema.Lis
 					Optional:            true,
 				},
 				"join_with": schema.StringAttribute{
-					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
+					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first clause.",
 					Optional:            true,
 					Validators: []validator.String{
 						stringvalidator.OneOf("and", "or"),
@@ -76,16 +77,17 @@ func FilterBlock(selectorDescription string, validSelectors []string) schema.Lis
 	}
 }
 
-// ListFilterBlock builds the shared schema block for list resources that support RSQL filters.
-func ListFilterBlock(selectorDescription string, validSelectors []string) listschema.ListNestedBlock {
+// ListFilterAttribute builds the shared schema for list resources that support RSQL filters.
+func ListFilterAttribute(selectorDescription string, validSelectors []string) listschema.ListNestedAttribute {
 	var selectorValidators []validator.String
 	if len(validSelectors) > 0 {
 		selectorValidators = append(selectorValidators, stringvalidator.OneOf(validSelectors...))
 	}
 
-	return listschema.ListNestedBlock{
+	return listschema.ListNestedAttribute{
 		MarkdownDescription: filterBlockDescription,
-		NestedObject: listschema.NestedBlockObject{
+		Optional:            true,
+		NestedObject: listschema.NestedAttributeObject{
 			Attributes: map[string]listschema.Attribute{
 				"selector": listschema.StringAttribute{
 					MarkdownDescription: selectorDescription,
@@ -112,7 +114,7 @@ func ListFilterBlock(selectorDescription string, validSelectors []string) listsc
 					Optional:            true,
 				},
 				"join_with": listschema.StringAttribute{
-					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
+					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first clause.",
 					Optional:            true,
 					Validators: []validator.String{
 						stringvalidator.OneOf("and", "or"),
