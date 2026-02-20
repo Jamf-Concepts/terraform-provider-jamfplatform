@@ -6,7 +6,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update_settings {
+  software_update_settings = {
     allow_standard_user_os_updates           = true
     automatic_download                       = "AlwaysOn"
     automatic_install_os_updates             = "AlwaysOn"
@@ -21,15 +21,13 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
     rapid_security_response_rollback_enabled = false
     recommended_cadence                      = "Newest"
 
-    beta_offer_programs {
+    beta_offer_programs = [{
       token       = "beta-token-1"
       description = "iOS 18 Beta Program"
-    }
-
-    beta_offer_programs {
+    }, {
       token       = "beta-token-2"
       description = "macOS Sequoia Beta Program"
-    }
+    }]
   }
 }
 
@@ -41,7 +39,7 @@ resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update {
+  software_update = {
     ignore_major_versions = true
     deployment_time       = "02:00"
     enforce_after_days    = 7
@@ -56,7 +54,7 @@ resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update {
+  software_update = {
     target_os_version      = "26.0.1"
     target_local_date_time = "2025-10-10T12:00:00"
   }
@@ -88,9 +86,9 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  custom_declarations {
+  custom_declarations = {
 
-    declaration {
+    declaration = [{
       channel = "SYSTEM"
       kind    = "CONFIGURATION"
       type    = "com.apple.configuration.softwareupdate.settings"
@@ -103,9 +101,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
           ProgramEnrollment = "AlwaysOn"
         }
       })
-    }
-
-    declaration {
+    }, {
       channel = "USER"
       kind    = "ASSET"
       type    = "com.apple.asset.credential.userpassword"
@@ -115,6 +111,6 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
           ContentType = "application/plist"
         }
       })
-    }
+    }]
   }
 }
