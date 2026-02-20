@@ -64,6 +64,7 @@ func (r *DeviceGroupResource) IdentitySchema(ctx context.Context, req resource.I
 // Schema returns the Terraform schema for the device group resource.
 func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -116,20 +117,13 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Total members reported by the API.",
 				Computed:            true,
 			},
-			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-			}),
-		},
-		Blocks: map[string]schema.Block{
-			"criteria": schema.ListNestedBlock{
+			"criteria": schema.SetNestedAttribute{
 				MarkdownDescription: "Smart-group criteria evaluated by the Jamf inventory service.",
-				NestedObject: schema.NestedBlockObject{
+				Optional:            true,
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"order": schema.Int64Attribute{
-							MarkdownDescription: "Execution order for the criterion. Defaults to the block index if omitted.",
+							MarkdownDescription: "Execution order for the criterion. Defaults to the element index if omitted.",
 							Optional:            true,
 						},
 						"criteria": schema.StringAttribute{
@@ -167,6 +161,12 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 					},
 				},
 			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Read:   true,
+				Update: true,
+				Delete: true,
+			}),
 		},
 	}
 }

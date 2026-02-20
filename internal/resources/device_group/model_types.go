@@ -42,7 +42,7 @@ type DeviceGroupDataSourceModel struct {
 	GroupType   types.String               `tfsdk:"group_type"`
 	Timeouts    datasourceTimeouts.Value   `tfsdk:"timeouts"`
 	Criteria    []DeviceGroupCriteriaModel `tfsdk:"criteria"`
-	Members     types.Set                  `tfsdk:"members"`
+	Members     types.List                 `tfsdk:"members"`
 	MemberCount types.Int64                `tfsdk:"member_count"`
 }
 
