@@ -108,9 +108,7 @@ func (d *DevicesDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				},
 			},
 			"timeouts": timeouts.Attributes(ctx),
-		},
-		Blocks: map[string]schema.Block{
-			"filter": filters.FilterBlock(
+			"filter": filters.FilterAttribute(
 				filters.SelectorDescription(filterSelectors),
 				filterSelectors,
 			),
