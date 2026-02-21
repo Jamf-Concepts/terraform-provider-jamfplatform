@@ -67,7 +67,7 @@ type BlueprintCreateRequestV1 struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description,omitempty"`
 	Scope       BlueprintCreateScopeV1 `json:"scope"`
-	Steps       []BlueprintStepV1      `json:"steps,omitempty"`
+	Steps       []BlueprintStepV1      `json:"steps"`
 }
 
 // BlueprintUpdateRequestV1 represents a request to update an existing blueprint
@@ -75,7 +75,7 @@ type BlueprintUpdateRequestV1 struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description,omitempty"`
 	Scope       BlueprintUpdateScopeV1 `json:"scope"`
-	Steps       []BlueprintStepV1      `json:"steps,omitempty"`
+	Steps       []BlueprintStepV1      `json:"steps"`
 }
 
 // BlueprintDeploymentV1 describes the deployment status of a blueprint
