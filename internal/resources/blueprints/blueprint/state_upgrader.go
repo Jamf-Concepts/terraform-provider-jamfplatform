@@ -49,7 +49,7 @@ func (r *BlueprintResource) UpgradeState(ctx context.Context) map[int64]resource
 					Created:                   old.Created,
 					Updated:                   old.Updated,
 					DeploymentState:           old.DeploymentState,
-					Timeouts:                  old.Timeouts,
+					Timeouts:                  resourceTimeouts.Value{Object: old.Timeouts},
 				}
 
 				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
@@ -90,7 +90,7 @@ type blueprintResourceModelV0 struct {
 	Created                   types.String                                    `tfsdk:"created"`
 	Updated                   types.String                                    `tfsdk:"updated"`
 	DeploymentState           types.String                                    `tfsdk:"deployment_state"`
-	Timeouts                  resourceTimeouts.Value                          `tfsdk:"timeouts"`
+	Timeouts                  types.Object                                    `tfsdk:"timeouts"`
 }
 
 // blueprintSchemaV0 returns the v0 schema where components were blocks instead of nested attributes.
