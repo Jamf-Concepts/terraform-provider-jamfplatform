@@ -40,7 +40,7 @@ output "blueprint_example_all" {
 - `created` (String) Created at (RFC3339).
 - `deployment_state` (String) Deployment state.
 - `description` (String) Description.
-- `device_groups` (Set of String) Device groups in scope.
+- `device_groups` (List of String) Device groups in scope.
 - `updated` (String) Updated at (RFC3339).
 
 <a id="nestedatt--timeouts"></a>

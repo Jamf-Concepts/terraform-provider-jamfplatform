@@ -19,23 +19,27 @@ data "jamfplatform_devices" "all" {
 
 # Virtual machines based on model identifier
 data "jamfplatform_devices" "virtual_machines" {
-  filter {
-    selector = "modelIdentifier"
-    argument = "VirtualMac*"
-  }
+  filter = [
+    {
+      selector = "modelIdentifier"
+      argument = "VirtualMac*"
+    }
+  ]
 }
 
 # iPhones with OS version 26 or higher
 data "jamfplatform_devices" "iphones_os_26_plus" {
-  filter {
-    selector = "model"
-    argument = "iPhone*"
-  }
-  filter {
-    selector = "operatingSystemVersion"
-    operator = ">="
-    argument = "26"
-  }
+  filter = [
+    {
+      selector = "model"
+      argument = "iPhone*"
+    },
+    {
+      selector = "operatingSystemVersion"
+      operator = ">="
+      argument = "26"
+    }
+  ]
 }
 ```
 
@@ -44,7 +48,7 @@ data "jamfplatform_devices" "iphones_os_26_plus" {
 
 ### Optional
 
-- `filter` (Block List) Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause. (see [below for nested schema](#nestedblock--filter))
+- `filter` (Attributes List) Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause. (see [below for nested schema](#nestedatt--filter))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -52,7 +56,7 @@ data "jamfplatform_devices" "iphones_os_26_plus" {
 - `devices` (Attributes List) Devices that matched the optional filter. (see [below for nested schema](#nestedatt--devices))
 - `id` (String) Internal identifier for this data source read.
 
-<a id="nestedblock--filter"></a>
+<a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`
 
 Required:
@@ -64,7 +68,7 @@ Optional:
 
 - `has_closing_parenthesis` (Boolean) Whether to suffix this clause with `)` to close a grouped expression.
 - `has_opening_parenthesis` (Boolean) Whether to prefix this clause with `(` to start a grouped expression.
-- `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.
+- `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first clause.
 - `operator` (String) RSQL comparison operator. Valid values are `==`, `!=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.
 
 
