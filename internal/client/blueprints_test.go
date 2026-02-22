@@ -301,3 +301,84 @@ func TestGetBlueprintByNameV1_NotFound(t *testing.T) {
 		t.Errorf("expected 'not found' in error, got: %v", err)
 	}
 }
+
+func TestGetBlueprintComponentsV1(t *testing.T) {
+	c := testhelpers.NewMockClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		testhelpers.RespondJSON(w, http.StatusOK, client.BlueprintComponentDescriptionPagedResponseV1{
+			TotalCount: 2,
+			Results: []client.BlueprintComponentDescriptionV1{
+				{Identifier: "com.jamf.ddm.passcode-settings", Name: "Passcode Policy"},
+				{Identifier: "com.jamf.ddm.sw-updates", Name: "Software Update"},
+			},
+		})
+	}))
+
+	components, err := c.GetBlueprintComponentsV1(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(components) != 2 {
+		t.Fatalf("expected 2 components, got %d", len(components))
+	}
+	if components[0].Identifier != "com.jamf.ddm.passcode-settings" {
+		t.Errorf("expected first identifier 'com.jamf.ddm.passcode-settings', got %q", components[0].Identifier)
+	}
+	if components[1].Name != "Software Update" {
+		t.Errorf("expected second name 'Software Update', got %q", components[1].Name)
+	}
+}
+
+func TestGetBlueprintComponentByIDV1(t *testing.T) {
+	c := testhelpers.NewMockClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if !strings.HasSuffix(r.URL.Path, "/com.jamf.ddm.passcode-settings") {
+			http.NotFound(w, r)
+			return
+		}
+		testhelpers.RespondJSON(w, http.StatusOK, client.BlueprintComponentDescriptionV1{
+			Identifier:  "com.jamf.ddm.passcode-settings",
+			Name:        "Passcode Policy",
+			Description: "Configures device passcode requirements",
+		})
+	}))
+
+	comp, err := c.GetBlueprintComponentByIDV1(context.Background(), "com.jamf.ddm.passcode-settings")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if comp.Identifier != "com.jamf.ddm.passcode-settings" {
+		t.Errorf("expected identifier 'com.jamf.ddm.passcode-settings', got %q", comp.Identifier)
+	}
+	if comp.Name != "Passcode Policy" {
+		t.Errorf("expected name 'Passcode Policy', got %q", comp.Name)
+	}
+	if comp.Description != "Configures device passcode requirements" {
+		t.Errorf("expected description 'Configures device passcode requirements', got %q", comp.Description)
+	}
+}
+
+func TestGetBlueprintComponentByIDV1_NotFound(t *testing.T) {
+	c := testhelpers.NewMockClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		testhelpers.RespondJSON(w, http.StatusNotFound, client.ApiError{
+			HTTPStatus: 404,
+			Errors: []client.Error{
+				{Code: "NOT_FOUND", Description: "Component not found"},
+			},
+		})
+	}))
+
+	_, err := c.GetBlueprintComponentByIDV1(context.Background(), "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for 404 response")
+	}
+	if !strings.Contains(err.Error(), "404") {
+		t.Errorf("expected error to contain '404', got: %v", err)
+	}
+}

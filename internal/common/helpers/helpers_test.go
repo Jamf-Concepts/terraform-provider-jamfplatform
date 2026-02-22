@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	resourcetimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -165,6 +168,134 @@ func TestNormalizedFilterString(t *testing.T) {
 		if str != tc.wantStr || ok != tc.wantBool {
 			t.Errorf("NormalizedFilterString(%v) = (%q, %v), want (%q, %v)", tc.input, str, ok, tc.wantStr, tc.wantBool)
 		}
+	}
+}
+
+func TestSetToStringSlice_Values(t *testing.T) {
+	ctx := context.Background()
+	set, _ := types.SetValueFrom(ctx, types.StringType, []string{"a", "b", "c"})
+	result, diags := SetToStringSlice(ctx, set)
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if len(result) != 3 {
+		t.Fatalf("expected 3 elements, got %d", len(result))
+	}
+}
+
+func TestSetToStringSlice_Null(t *testing.T) {
+	result, diags := SetToStringSlice(context.Background(), types.SetNull(types.StringType))
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if result != nil {
+		t.Errorf("expected nil for null set, got %v", result)
+	}
+}
+
+func TestSetToStringSlice_Unknown(t *testing.T) {
+	result, diags := SetToStringSlice(context.Background(), types.SetUnknown(types.StringType))
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if result != nil {
+		t.Errorf("expected nil for unknown set, got %v", result)
+	}
+}
+
+func TestResolveTimeout_NullReturnsDefault(t *testing.T) {
+	duration, diags := ResolveTimeout(context.Background(), true, false, 5*time.Minute, nil)
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if duration != 5*time.Minute {
+		t.Errorf("expected 5m, got %v", duration)
+	}
+}
+
+func TestResolveTimeout_UnknownReturnsDefault(t *testing.T) {
+	duration, diags := ResolveTimeout(context.Background(), false, true, 10*time.Minute, nil)
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if duration != 10*time.Minute {
+		t.Errorf("expected 10m, got %v", duration)
+	}
+}
+
+func TestResolveTimeout_NilResolverReturnsDefault(t *testing.T) {
+	duration, diags := ResolveTimeout(context.Background(), false, false, 3*time.Minute, nil)
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if duration != 3*time.Minute {
+		t.Errorf("expected 3m, got %v", duration)
+	}
+}
+
+func TestResolveTimeout_CallsResolver(t *testing.T) {
+	called := false
+	resolver := func(ctx context.Context, def time.Duration) (time.Duration, diag.Diagnostics) {
+		called = true
+		return 7 * time.Minute, nil
+	}
+	duration, diags := ResolveTimeout(context.Background(), false, false, 3*time.Minute, resolver)
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if !called {
+		t.Error("expected resolver to be called")
+	}
+	if duration != 7*time.Minute {
+		t.Errorf("expected 7m, got %v", duration)
+	}
+}
+
+func TestSetIdentity_NilTarget(t *testing.T) {
+	diags := SetIdentity(context.Background(), nil, "test")
+	if diags != nil {
+		t.Errorf("expected nil diags for nil target, got %v", diags)
+	}
+}
+
+func TestSetIdentity_WithTarget(t *testing.T) {
+	mock := &mockIdentitySetter{}
+	diags := SetIdentity(context.Background(), mock, "test-identity")
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if mock.value != "test-identity" {
+		t.Errorf("expected identity 'test-identity', got %v", mock.value)
+	}
+}
+
+type mockIdentitySetter struct {
+	value any
+}
+
+func (m *mockIdentitySetter) Set(ctx context.Context, v any) diag.Diagnostics {
+	m.value = v
+	return nil
+}
+
+func TestEnsureResourceTimeouts_NullValue(t *testing.T) {
+	attrTypes := map[string]attr.Type{
+		"create": types.StringType,
+		"read":   types.StringType,
+	}
+	result := EnsureResourceTimeouts(resourcetimeouts.Value{}, attrTypes)
+	if result.IsUnknown() {
+		t.Error("expected non-unknown result")
+	}
+}
+
+func TestNewResourceTimeoutsNullValue(t *testing.T) {
+	attrTypes := map[string]attr.Type{
+		"create": types.StringType,
+	}
+	result := NewResourceTimeoutsNullValue(attrTypes)
+	if result.IsUnknown() {
+		t.Error("expected non-unknown result")
 	}
 }
 
