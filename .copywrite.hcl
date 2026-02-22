@@ -8,9 +8,12 @@ project {
 
   header_ignore = [
     "docs/**",
-    "examples/**",
     "testing/**",
     ".github/**",
     "tools/go.sum",
+    "**/*.tf",
+    "**/*.hcl",
+    "**/*.yaml",
+    "**/*.yml"
   ]
 }
