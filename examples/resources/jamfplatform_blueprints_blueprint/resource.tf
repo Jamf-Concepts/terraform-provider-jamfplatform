@@ -24,7 +24,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
     beta_offer_programs = [{
       token       = "beta-token-1"
       description = "iOS 18 Beta Program"
-    }, {
+      }, {
       token       = "beta-token-2"
       description = "macOS Sequoia Beta Program"
     }]
@@ -101,7 +101,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
           ProgramEnrollment = "AlwaysOn"
         }
       })
-    }, {
+      }, {
       channel = "USER"
       kind    = "ASSET"
       type    = "com.apple.asset.credential.userpassword"
