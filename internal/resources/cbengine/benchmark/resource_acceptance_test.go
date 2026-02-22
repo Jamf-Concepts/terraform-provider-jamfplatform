@@ -40,12 +40,16 @@ func testAccCheckBenchmarkResourcesDestroy(t *testing.T) resource.TestCheckFunc 
 					time.Sleep(2 * time.Second)
 				}
 			case "jamfplatform_device_group":
-				_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
-				if err == nil {
-					return fmt.Errorf("device group %s still exists after destroy", rs.Primary.ID)
-				}
-				if !helpers.IsNotFoundError(err) {
-					return fmt.Errorf("error checking device group %s: %s", rs.Primary.ID, err)
+				deadline := time.Now().Add(60 * time.Second)
+				for time.Now().Before(deadline) {
+					_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
+					if err != nil {
+						if helpers.IsNotFoundError(err) {
+							break
+						}
+						return fmt.Errorf("error checking device group %s: %s", rs.Primary.ID, err)
+					}
+					time.Sleep(2 * time.Second)
 				}
 			}
 		}

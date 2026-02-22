@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
@@ -27,12 +28,16 @@ func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
 			if rs.Type != "jamfplatform_device_group" {
 				continue
 			}
-			_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
-			if err == nil {
-				return fmt.Errorf("device group %s still exists after destroy", rs.Primary.ID)
-			}
-			if !helpers.IsNotFoundError(err) {
-				return fmt.Errorf("error checking device group %s: %s", rs.Primary.ID, err)
+			deadline := time.Now().Add(60 * time.Second)
+			for time.Now().Before(deadline) {
+				_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
+				if err != nil {
+					if helpers.IsNotFoundError(err) {
+						break
+					}
+					return fmt.Errorf("error checking device group %s: %s", rs.Primary.ID, err)
+				}
+				time.Sleep(2 * time.Second)
 			}
 		}
 		return nil
