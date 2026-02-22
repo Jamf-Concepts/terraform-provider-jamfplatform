@@ -51,8 +51,10 @@ func waitForBenchmarkSync(ctx context.Context, c *client.Client, id string, inte
 }
 
 // waitForBenchmarkDeletion polls until the benchmark is no longer present or
-// the context is canceled. Returns nil when the benchmark is absent.
+// the context is canceled. Every 20 seconds it re-issues the delete command
+// to unstick benchmarks that remain in DELETING state.
 func waitForBenchmarkDeletion(ctx context.Context, c *client.Client, id string, interval time.Duration) error {
+	lastDelete := time.Now()
 	return helpers.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
 		benchmarks, err := c.GetCBEngineBenchmarksV2(pollCtx)
 		if err != nil {
@@ -69,6 +71,11 @@ func waitForBenchmarkDeletion(ctx context.Context, c *client.Client, id string, 
 			})
 			switch b.SyncState {
 			case "DELETING":
+				if time.Since(lastDelete) > 20*time.Second {
+					lastDelete = time.Now()
+					tflog.Debug(pollCtx, "retrying delete for stuck benchmark", map[string]any{"benchmark_id": id})
+					_ = c.DeleteCBEngineBenchmarkV1(pollCtx, id)
+				}
 				return false, nil
 			case "DELETE_FAILED":
 				return false, fmt.Errorf("benchmark %s deletion failed: syncState=DELETE_FAILED", id)
