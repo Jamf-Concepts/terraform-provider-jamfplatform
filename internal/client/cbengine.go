@@ -1,4 +1,6 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
 // https://developer.jamf.com/platform-api/reference/benchmarks
 // https://developer.jamf.com/platform-api/reference/rules
 // https://developer.jamf.com/platform-api/reference/baselines

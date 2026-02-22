@@ -1,4 +1,5 @@
-// Copyright 2026 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package device_group
 
@@ -32,7 +33,7 @@ func TestValidateDeviceGroupPlan_SmartGroupNoCriteria(t *testing.T) {
 	plan := &DeviceGroupResourceModel{
 		GroupType: types.StringValue("smart"),
 		Criteria:  nil,
-		Members:  types.SetNull(types.StringType),
+		Members:   types.SetNull(types.StringType),
 	}
 
 	err := validateDeviceGroupPlan(plan)
@@ -71,7 +72,7 @@ func TestValidateDeviceGroupPlan_StaticGroup(t *testing.T) {
 	members, _ := types.SetValueFrom(context.TODO(), types.StringType, []string{"device-1"})
 	plan := &DeviceGroupResourceModel{
 		GroupType: types.StringValue("static"),
-		Members:  members,
+		Members:   members,
 	}
 
 	if err := validateDeviceGroupPlan(plan); err != nil {
@@ -104,7 +105,7 @@ func TestValidateDeviceGroupPlan_StaticGroupWithCriteria(t *testing.T) {
 func TestValidateDeviceGroupPlan_UnsupportedGroupType(t *testing.T) {
 	plan := &DeviceGroupResourceModel{
 		GroupType: types.StringValue("dynamic"),
-		Members:  types.SetNull(types.StringType),
+		Members:   types.SetNull(types.StringType),
 	}
 
 	err := validateDeviceGroupPlan(plan)
@@ -119,7 +120,7 @@ func TestValidateDeviceGroupPlan_UnsupportedGroupType(t *testing.T) {
 func TestValidateDeviceGroupPlan_EmptyGroupType(t *testing.T) {
 	plan := &DeviceGroupResourceModel{
 		GroupType: types.StringValue(""),
-		Members:  types.SetNull(types.StringType),
+		Members:   types.SetNull(types.StringType),
 	}
 
 	err := validateDeviceGroupPlan(plan)

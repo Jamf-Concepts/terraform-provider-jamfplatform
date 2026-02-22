@@ -1,4 +1,6 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
 // Blueprint API client
 // https://developer.jamf.com/platform-api/reference/blueprints-1
 

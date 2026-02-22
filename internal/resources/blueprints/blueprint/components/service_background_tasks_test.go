@@ -1,4 +1,5 @@
-// Copyright 2026 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -117,9 +118,9 @@ func TestServiceBackgroundTasks_FromRawConfiguration(t *testing.T) {
 				"TaskDescription": "Background task",
 				"ExecutableAssetReference": map[string]any{
 					"Reference": map[string]any{
-						"DataURL":     "https://example.com/bin.zip",
+						"DataURL":      "https://example.com/bin.zip",
 						"Hash-SHA-256": "hash123",
-						"ContentType": "application/zip",
+						"ContentType":  "application/zip",
 					},
 				},
 				"LaunchdConfigurations": []any{
@@ -127,9 +128,9 @@ func TestServiceBackgroundTasks_FromRawConfiguration(t *testing.T) {
 						"Context": "agent",
 						"FileAssetReference": map[string]any{
 							"Reference": map[string]any{
-								"DataURL":     "https://example.com/config.zip",
+								"DataURL":      "https://example.com/config.zip",
 								"Hash-SHA-256": "hash456",
-								"ContentType": "application/xml",
+								"ContentType":  "application/xml",
 							},
 						},
 					},

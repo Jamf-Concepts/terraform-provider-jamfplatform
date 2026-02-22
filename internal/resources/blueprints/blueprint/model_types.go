@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package blueprint
 
@@ -11,12 +12,12 @@ import (
 
 // BlueprintResourceModel represents the Terraform resource model for a Jamf Blueprint.
 type BlueprintResourceModel struct {
-	ID                        types.String                                    `tfsdk:"id"`
-	Name                      types.String                                    `tfsdk:"name"`
-	Description               types.String                                    `tfsdk:"description"`
-	Deployed                  types.Bool                                      `tfsdk:"deployed"`
-	DeviceGroups              types.Set                                       `tfsdk:"device_groups"`
-	Components                []ComponentModel                                `tfsdk:"raw_component"`
+	ID                        types.String                                   `tfsdk:"id"`
+	Name                      types.String                                   `tfsdk:"name"`
+	Description               types.String                                   `tfsdk:"description"`
+	Deployed                  types.Bool                                     `tfsdk:"deployed"`
+	DeviceGroups              types.Set                                      `tfsdk:"device_groups"`
+	Components                []ComponentModel                               `tfsdk:"raw_component"`
 	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
 	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
 	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
@@ -29,11 +30,11 @@ type BlueprintResourceModel struct {
 	ServiceConfigurationFiles *components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
 	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
 	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
-	LegacyPayloads            types.String                                    `tfsdk:"legacy_payloads"`
-	Created                   types.String                                    `tfsdk:"created"`
-	Updated                   types.String                                    `tfsdk:"updated"`
-	DeploymentState           types.String                                    `tfsdk:"deployment_state"`
-	Timeouts                  resourceTimeouts.Value                          `tfsdk:"timeouts"`
+	LegacyPayloads            types.String                                   `tfsdk:"legacy_payloads"`
+	Created                   types.String                                   `tfsdk:"created"`
+	Updated                   types.String                                   `tfsdk:"updated"`
+	DeploymentState           types.String                                   `tfsdk:"deployment_state"`
+	Timeouts                  resourceTimeouts.Value                         `tfsdk:"timeouts"`
 }
 
 // BlueprintDataSourceModel defines the data structure for the blueprint data source.

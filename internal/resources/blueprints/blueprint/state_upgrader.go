@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package blueprint
 
@@ -251,15 +252,15 @@ func blueprintSchemaV0() *schema.Schema {
 			"safari_settings": schema.ListNestedBlock{
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
-						"accept_cookies":                   schema.StringAttribute{Optional: true},
-						"allow_disabling_fraud_warning":    schema.BoolAttribute{Optional: true},
-						"allow_history_clearing":           schema.BoolAttribute{Optional: true},
-						"allow_javascript":                 schema.BoolAttribute{Optional: true},
-						"allow_private_browsing":           schema.BoolAttribute{Optional: true},
-						"allow_popups":                     schema.BoolAttribute{Optional: true},
-						"allow_summary":                    schema.BoolAttribute{Optional: true},
-						"new_tab_start_page_type":          schema.StringAttribute{Optional: true},
-						"new_tab_start_page_homepage_url":  schema.StringAttribute{Optional: true},
+						"accept_cookies":                  schema.StringAttribute{Optional: true},
+						"allow_disabling_fraud_warning":   schema.BoolAttribute{Optional: true},
+						"allow_history_clearing":          schema.BoolAttribute{Optional: true},
+						"allow_javascript":                schema.BoolAttribute{Optional: true},
+						"allow_private_browsing":          schema.BoolAttribute{Optional: true},
+						"allow_popups":                    schema.BoolAttribute{Optional: true},
+						"allow_summary":                   schema.BoolAttribute{Optional: true},
+						"new_tab_start_page_type":         schema.StringAttribute{Optional: true},
+						"new_tab_start_page_homepage_url": schema.StringAttribute{Optional: true},
 						"new_tab_start_page_extension_id": schema.StringAttribute{Optional: true},
 					},
 				},

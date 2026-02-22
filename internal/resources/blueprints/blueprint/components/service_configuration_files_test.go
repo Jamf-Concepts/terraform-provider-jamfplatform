@@ -1,4 +1,5 @@
-// Copyright 2026 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -80,9 +81,9 @@ func TestServiceConfigurationFiles_FromRawConfiguration(t *testing.T) {
 				"ServiceType": "com.apple.httpd",
 				"DataAssetReference": map[string]any{
 					"Reference": map[string]any{
-						"DataURL":     "https://example.com/httpd.zip",
+						"DataURL":      "https://example.com/httpd.zip",
 						"Hash-SHA-256": "xyz789",
-						"ContentType": "application/zip",
+						"ContentType":  "application/zip",
 					},
 				},
 			},

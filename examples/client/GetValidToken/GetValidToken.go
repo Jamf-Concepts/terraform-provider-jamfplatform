@@ -1,6 +1,7 @@
-package main
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
-// Copyright 2025 Jamf Software LLC.
+package main
 
 import (
 	"context"

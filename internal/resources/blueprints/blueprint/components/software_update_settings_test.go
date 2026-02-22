@@ -1,4 +1,5 @@
-// Copyright 2026 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -18,13 +19,13 @@ func TestSoftwareUpdateSettings_GetIdentifier(t *testing.T) {
 
 func TestSoftwareUpdateSettings_ToRawConfiguration_AllFields(t *testing.T) {
 	c := &SoftwareUpdateSettingsComponent{
-		AllowStandardUserOSUpdates:           types.BoolValue(true),
-		AutomaticDownload:                    types.StringValue("AlwaysOn"),
-		AutomaticInstallOSUpdates:            types.StringValue("AlwaysOff"),
-		AutomaticInstallSecurityUpdate:       types.StringValue("Allowed"),
-		BetaProgramEnrollment:                types.StringValue("AlwaysOn"),
-		BetaRequireProgramToken:              types.StringValue("beta-token"),
-		BetaRequireProgramDescription:        types.StringValue("Beta Description"),
+		AllowStandardUserOSUpdates:     types.BoolValue(true),
+		AutomaticDownload:              types.StringValue("AlwaysOn"),
+		AutomaticInstallOSUpdates:      types.StringValue("AlwaysOff"),
+		AutomaticInstallSecurityUpdate: types.StringValue("Allowed"),
+		BetaProgramEnrollment:          types.StringValue("AlwaysOn"),
+		BetaRequireProgramToken:        types.StringValue("beta-token"),
+		BetaRequireProgramDescription:  types.StringValue("Beta Description"),
 		BetaOfferPrograms: []BetaProgramModel{
 			{
 				Token:       types.StringValue("offer-token-1"),

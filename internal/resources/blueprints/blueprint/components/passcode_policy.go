@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -36,60 +37,60 @@ func (c *PasscodePolicyComponent) GetIdentifier() string {
 // PasscodePolicyComponentSchema returns the Terraform schema for passcode policy component
 func PasscodePolicyComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
-			"change_at_next_auth": schema.BoolAttribute{
-				MarkdownDescription: "Change at next auth.",
-				Optional:            true,
-			},
-			"failed_attempts_reset_in_minutes": schema.Int64Attribute{
-				MarkdownDescription: "Failed attempts reset in minutes. Minimum: `0`.",
-				Optional:            true,
-			},
-			"maximum_failed_attempts": schema.Int64Attribute{
-				MarkdownDescription: "Maximum failed attempts. Range: `2`-`11`.",
-				Optional:            true,
-				Validators:          []validator.Int64{int64validator.Between(2, 11)},
-			},
-			"maximum_grace_period_in_minutes": schema.Int64Attribute{
-				MarkdownDescription: "Maximum grace period in minutes. Minimum: `0`.",
-				Optional:            true,
-			},
-			"maximum_inactivity_in_minutes": schema.Int64Attribute{
-				MarkdownDescription: "Maximum inactivity in minutes. Range: `0`-`15`.",
-				Optional:            true,
-				Validators:          []validator.Int64{int64validator.Between(0, 15)},
-			},
-			"maximum_passcode_age_in_days": schema.Int64Attribute{
-				MarkdownDescription: "Maximum passcode age in days. Range: `0`-`730`.",
-				Optional:            true,
-				Validators:          []validator.Int64{int64validator.Between(0, 730)},
-			},
-			"minimum_complex_characters": schema.Int64Attribute{
-				MarkdownDescription: "Minimum complex characters. Range: `0`-`4`.",
-				Optional:            true,
-				Validators:          []validator.Int64{int64validator.Between(0, 4)},
-			},
-			"minimum_length": schema.Int64Attribute{
-				MarkdownDescription: "Minimum length. Range: `0`-`16`.",
-				Optional:            true,
-				Validators:          []validator.Int64{int64validator.Between(0, 16)},
-			},
-			"passcode_reuse_limit": schema.Int64Attribute{
-				MarkdownDescription: "Passcode reuse limit. Range: `1`-`50`.",
-				Optional:            true,
-				Validators:          []validator.Int64{int64validator.Between(1, 50)},
-			},
-			"require_alphanumeric_passcode": schema.BoolAttribute{
-				MarkdownDescription: "Require alphanumeric passcode.",
-				Optional:            true,
-			},
-			"require_complex_passcode": schema.BoolAttribute{
-				MarkdownDescription: "Require complex passcode.",
-				Optional:            true,
-			},
-			"require_passcode": schema.BoolAttribute{
-				MarkdownDescription: "Require passcode.",
-				Optional:            true,
-			},
+		"change_at_next_auth": schema.BoolAttribute{
+			MarkdownDescription: "Change at next auth.",
+			Optional:            true,
+		},
+		"failed_attempts_reset_in_minutes": schema.Int64Attribute{
+			MarkdownDescription: "Failed attempts reset in minutes. Minimum: `0`.",
+			Optional:            true,
+		},
+		"maximum_failed_attempts": schema.Int64Attribute{
+			MarkdownDescription: "Maximum failed attempts. Range: `2`-`11`.",
+			Optional:            true,
+			Validators:          []validator.Int64{int64validator.Between(2, 11)},
+		},
+		"maximum_grace_period_in_minutes": schema.Int64Attribute{
+			MarkdownDescription: "Maximum grace period in minutes. Minimum: `0`.",
+			Optional:            true,
+		},
+		"maximum_inactivity_in_minutes": schema.Int64Attribute{
+			MarkdownDescription: "Maximum inactivity in minutes. Range: `0`-`15`.",
+			Optional:            true,
+			Validators:          []validator.Int64{int64validator.Between(0, 15)},
+		},
+		"maximum_passcode_age_in_days": schema.Int64Attribute{
+			MarkdownDescription: "Maximum passcode age in days. Range: `0`-`730`.",
+			Optional:            true,
+			Validators:          []validator.Int64{int64validator.Between(0, 730)},
+		},
+		"minimum_complex_characters": schema.Int64Attribute{
+			MarkdownDescription: "Minimum complex characters. Range: `0`-`4`.",
+			Optional:            true,
+			Validators:          []validator.Int64{int64validator.Between(0, 4)},
+		},
+		"minimum_length": schema.Int64Attribute{
+			MarkdownDescription: "Minimum length. Range: `0`-`16`.",
+			Optional:            true,
+			Validators:          []validator.Int64{int64validator.Between(0, 16)},
+		},
+		"passcode_reuse_limit": schema.Int64Attribute{
+			MarkdownDescription: "Passcode reuse limit. Range: `1`-`50`.",
+			Optional:            true,
+			Validators:          []validator.Int64{int64validator.Between(1, 50)},
+		},
+		"require_alphanumeric_passcode": schema.BoolAttribute{
+			MarkdownDescription: "Require alphanumeric passcode.",
+			Optional:            true,
+		},
+		"require_complex_passcode": schema.BoolAttribute{
+			MarkdownDescription: "Require complex passcode.",
+			Optional:            true,
+		},
+		"require_passcode": schema.BoolAttribute{
+			MarkdownDescription: "Require passcode.",
+			Optional:            true,
+		},
 	}
 }
 
