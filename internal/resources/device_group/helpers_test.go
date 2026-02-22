@@ -3,6 +3,7 @@
 package device_group
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -44,7 +45,7 @@ func TestValidateDeviceGroupPlan_SmartGroupNoCriteria(t *testing.T) {
 }
 
 func TestValidateDeviceGroupPlan_SmartGroupWithMembers(t *testing.T) {
-	members, _ := types.SetValueFrom(nil, types.StringType, []string{"device-1"})
+	members, _ := types.SetValueFrom(context.TODO(), types.StringType, []string{"device-1"})
 	plan := &DeviceGroupResourceModel{
 		GroupType: types.StringValue("smart"),
 		Criteria: []DeviceGroupCriteriaModel{
@@ -67,7 +68,7 @@ func TestValidateDeviceGroupPlan_SmartGroupWithMembers(t *testing.T) {
 }
 
 func TestValidateDeviceGroupPlan_StaticGroup(t *testing.T) {
-	members, _ := types.SetValueFrom(nil, types.StringType, []string{"device-1"})
+	members, _ := types.SetValueFrom(context.TODO(), types.StringType, []string{"device-1"})
 	plan := &DeviceGroupResourceModel{
 		GroupType: types.StringValue("static"),
 		Members:  members,

@@ -155,13 +155,11 @@ func TestPasscodePolicy_FromRawConfiguration_MissingFields(t *testing.T) {
 	if c.RequirePasscode.ValueBool() != true {
 		t.Errorf("expected RequirePasscode true")
 	}
-	if c.ChangeAtNextAuth.IsNull() || c.ChangeAtNextAuth.IsUnknown() {
-		if !c.ChangeAtNextAuth.IsNull() {
-		}
+	if !c.ChangeAtNextAuth.IsNull() && !c.ChangeAtNextAuth.IsUnknown() {
+		t.Error("expected ChangeAtNextAuth to be null or unknown when missing from raw config")
 	}
-	if c.MinimumLength.IsNull() || c.MinimumLength.IsUnknown() {
-		if !c.MinimumLength.IsNull() {
-		}
+	if !c.MinimumLength.IsNull() && !c.MinimumLength.IsUnknown() {
+		t.Error("expected MinimumLength to be null or unknown when missing from raw config")
 	}
 }
 
