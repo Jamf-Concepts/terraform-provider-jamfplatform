@@ -1,9 +1,9 @@
 name: Acceptance Tests
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Integration Tests"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -12,6 +12,7 @@ permissions:
 jobs:
   acceptance:
     name: Acceptance Tests (Terraform ${{ matrix.terraform }})
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: acceptance
