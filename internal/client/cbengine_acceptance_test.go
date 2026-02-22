@@ -66,7 +66,7 @@ func TestAcceptance_Benchmark_CreateAllRules(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		_ = c.DeleteCBEngineBenchmarkV1(ctx, benchmark.BenchmarkID)
+		testhelpers.EnsureBenchmarkDeletedByID(t, c, ctx, benchmark.BenchmarkID)
 	})
 
 	fetched, err := c.GetCBEngineBenchmarkByIDV2(ctx, benchmark.BenchmarkID)
@@ -141,7 +141,7 @@ func TestAcceptance_Benchmark_CreateCustomRules(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		_ = c.DeleteCBEngineBenchmarkV1(ctx, benchmark.BenchmarkID)
+		testhelpers.EnsureBenchmarkDeletedByID(t, c, ctx, benchmark.BenchmarkID)
 	})
 
 	fetched, err := c.GetCBEngineBenchmarkByIDV2(ctx, benchmark.BenchmarkID)
@@ -211,7 +211,7 @@ func TestAcceptance_Benchmark_GetByTitle(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		_ = c.DeleteCBEngineBenchmarkV1(ctx, benchmark.BenchmarkID)
+		testhelpers.EnsureBenchmarkDeletedByID(t, c, ctx, benchmark.BenchmarkID)
 	})
 
 	found, err := c.GetCBEngineBenchmarkByTitleV2(ctx, title)

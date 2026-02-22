@@ -127,10 +127,10 @@ func RequireSmartGroupFixture(t *testing.T) string {
 	return smartGroupID
 }
 
-// EnsureBenchmarkDeleted removes a CBEngine benchmark by title and polls until it
-// is fully deleted. Benchmark deletion is async — the API accepts the delete but the
-// benchmark lingers in a DELETING state. This helper waits up to 30 seconds for it
-// to disappear before returning.
+// EnsureBenchmarkDeleted removes a CBEngine benchmark by title. It waits for the
+// benchmark to reach a stable sync state (SYNCED or FAILED) before issuing the
+// delete — deleting while still in PENDING causes the benchmark to get stuck in a
+// DELETING state. After the delete is issued it polls until the benchmark disappears.
 func EnsureBenchmarkDeleted(t *testing.T, c *client.Client, ctx context.Context, title string) {
 	t.Helper()
 	existing, err := c.GetCBEngineBenchmarkByTitleV2(ctx, title)
@@ -138,7 +138,13 @@ func EnsureBenchmarkDeleted(t *testing.T, c *client.Client, ctx context.Context,
 		return
 	}
 	t.Logf("Cleaning up existing benchmark %q (ID: %s)", title, existing.BenchmarkID)
-	_ = c.DeleteCBEngineBenchmarkV1(ctx, existing.BenchmarkID)
+
+	waitForBenchmarkSyncState(t, c, ctx, existing.BenchmarkID)
+
+	if err := c.DeleteCBEngineBenchmarkV1(ctx, existing.BenchmarkID); err != nil {
+		t.Logf("Warning: failed to delete benchmark %q: %v", title, err)
+		return
+	}
 
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
@@ -150,4 +156,72 @@ func EnsureBenchmarkDeleted(t *testing.T, c *client.Client, ctx context.Context,
 		}
 	}
 	t.Logf("Warning: benchmark %q still exists after 30s — proceeding anyway", title)
+}
+
+// EnsureBenchmarkDeletedByID removes a CBEngine benchmark by ID. It waits for the
+// benchmark to reach a stable sync state before deleting, then polls until the
+// benchmark is fully removed.
+func EnsureBenchmarkDeletedByID(t *testing.T, c *client.Client, ctx context.Context, benchmarkID string) {
+	t.Helper()
+
+	waitForBenchmarkSyncState(t, c, ctx, benchmarkID)
+
+	if err := c.DeleteCBEngineBenchmarkV1(ctx, benchmarkID); err != nil {
+		t.Logf("Warning: failed to delete benchmark %s: %v", benchmarkID, err)
+		return
+	}
+	t.Logf("Delete issued for benchmark %s", benchmarkID)
+
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(2 * time.Second)
+		if _, found := benchmarkSyncState(c, ctx, benchmarkID); !found {
+			t.Logf("Benchmark %s fully deleted", benchmarkID)
+			return
+		}
+	}
+	t.Logf("Warning: benchmark %s still present after 30s", benchmarkID)
+}
+
+// waitForBenchmarkSyncState polls until the benchmark reaches SYNCED or FAILED,
+// or until a 2-minute timeout expires.
+func waitForBenchmarkSyncState(t *testing.T, c *client.Client, ctx context.Context, benchmarkID string) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Minute)
+	for time.Now().Before(deadline) {
+		state, found := benchmarkSyncState(c, ctx, benchmarkID)
+		if !found {
+			t.Logf("Benchmark %s not found in list, may already be deleted", benchmarkID)
+			return
+		}
+		if state == "SYNCED" || state == "FAILED" {
+			t.Logf("Benchmark %s reached state %s", benchmarkID, state)
+			return
+		}
+		t.Logf("Benchmark %s in state %q, waiting for SYNCED", benchmarkID, state)
+		time.Sleep(3 * time.Second)
+	}
+	t.Logf("Warning: benchmark %s did not reach SYNCED after 2m — proceeding anyway", benchmarkID)
+}
+
+// benchmarkSyncState returns the sync state of a benchmark by ID from the list endpoint.
+func benchmarkSyncState(c *client.Client, ctx context.Context, benchmarkID string) (string, bool) {
+	benchmarks, err := c.GetCBEngineBenchmarksV2(ctx)
+	if err != nil {
+		return "", false
+	}
+	for _, b := range benchmarks.Benchmarks {
+		if b.ID == benchmarkID {
+			return b.SyncState, true
+		}
+	}
+	return "", false
+}
+
+// CleanupSmartGroupFixture deletes the shared smart group fixture if it was created.
+// Call this from TestMain after all tests in the package have completed.
+func CleanupSmartGroupFixture() {
+	if acceptanceClient != nil && smartGroupID != "" {
+		_ = acceptanceClient.DeleteDeviceGroupV1(context.Background(), smartGroupID)
+	}
 }
