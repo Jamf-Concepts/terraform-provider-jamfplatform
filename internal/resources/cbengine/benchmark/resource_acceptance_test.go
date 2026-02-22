@@ -10,10 +10,48 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
+
+// testAccCheckBenchmarkResourcesDestroy verifies that benchmarks and device groups created
+// during the test have been destroyed. Benchmark deletion is async, so this polls briefly.
+func testAccCheckBenchmarkResourcesDestroy(t *testing.T) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		c := testhelpers.NewAcceptanceClient(t)
+		ctx := context.Background()
+
+		for _, rs := range s.RootModule().Resources {
+			switch rs.Type {
+			case "jamfplatform_cbengine_benchmark":
+				deadline := time.Now().Add(30 * time.Second)
+				for time.Now().Before(deadline) {
+					_, err := c.GetCBEngineBenchmarkByIDV2(ctx, rs.Primary.ID)
+					if err != nil {
+						if helpers.IsNotFoundError(err) {
+							break
+						}
+						return fmt.Errorf("error checking benchmark %s: %s", rs.Primary.ID, err)
+					}
+					time.Sleep(2 * time.Second)
+				}
+			case "jamfplatform_device_group":
+				_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
+				if err == nil {
+					return fmt.Errorf("device group %s still exists after destroy", rs.Primary.ID)
+				}
+				if !helpers.IsNotFoundError(err) {
+					return fmt.Errorf("error checking device group %s: %s", rs.Primary.ID, err)
+				}
+			}
+		}
+		return nil
+	}
+}
 
 // ensureBenchmarkCleanup deletes a benchmark by title and waits for async deletion to complete.
 func ensureBenchmarkCleanup(t *testing.T, title string) {
@@ -90,6 +128,7 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBenchmarkResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: config,
@@ -171,6 +210,7 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBenchmarkResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: config,
@@ -189,6 +229,7 @@ func TestAccDataSource_Baselines(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBenchmarkResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -207,6 +248,7 @@ func TestAccDataSource_Benchmarks(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBenchmarkResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -241,6 +283,7 @@ func TestAccDataSource_Rules(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBenchmarkResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: config,

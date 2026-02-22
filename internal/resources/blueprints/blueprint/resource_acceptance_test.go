@@ -6,10 +6,14 @@
 package blueprint_test
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 // testBlueprintConfig returns a helper that builds a blueprint config referencing a smart group.
@@ -17,10 +21,11 @@ func testBlueprintConfig(groupConfig string, blueprintBlock string) string {
 	return groupConfig + "\n" + blueprintBlock
 }
 
-// sharedSmartGroup returns HCL for a reusable smart group used as a blueprint scope target.
-const sharedSmartGroup = `
+// smartGroupHCL returns HCL for a smart group with a unique name derived from the test suffix.
+func smartGroupHCL(suffix string) string {
+	return fmt.Sprintf(`
 resource "jamfplatform_device_group" "scope" {
-	name        = "tf-acc-blueprint-scope"
+	name        = "tf-acc-bp-scope-%s"
 	group_type  = "smart"
 	device_type = "computer"
 	criteria = [{
@@ -29,16 +34,49 @@ resource "jamfplatform_device_group" "scope" {
 		value    = ""
 	}]
 }
-`
+`, suffix)
+}
+
+// testAccCheckBlueprintResourcesDestroy verifies that blueprints and device groups
+// created during the test have been destroyed.
+func testAccCheckBlueprintResourcesDestroy(t *testing.T) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		c := testhelpers.NewAcceptanceClient(t)
+		ctx := context.Background()
+
+		for _, rs := range s.RootModule().Resources {
+			switch rs.Type {
+			case "jamfplatform_blueprints_blueprint":
+				_, err := c.GetBlueprintByIDV1(ctx, rs.Primary.ID)
+				if err == nil {
+					return fmt.Errorf("blueprint %s still exists after destroy", rs.Primary.ID)
+				}
+				if !helpers.IsNotFoundError(err) {
+					return fmt.Errorf("error checking blueprint %s: %s", rs.Primary.ID, err)
+				}
+			case "jamfplatform_device_group":
+				_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
+				if err == nil {
+					return fmt.Errorf("device group %s still exists after destroy", rs.Primary.ID)
+				}
+				if !helpers.IsNotFoundError(err) {
+					return fmt.Errorf("error checking device group %s: %s", rs.Primary.ID, err)
+				}
+			}
+		}
+		return nil
+	}
+}
 
 func TestAccResource_Blueprint_CreateAndUpdate(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("update"), `
 					resource "jamfplatform_blueprints_blueprint" "test_update" {
 						name          = "tf-acc-create-update-blueprint"
 						description   = "Acceptance test — safe to delete"
@@ -58,7 +96,7 @@ func TestAccResource_Blueprint_CreateAndUpdate(t *testing.T) {
 				),
 			},
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("update"), `
 					resource "jamfplatform_blueprints_blueprint" "test_update" {
 						name          = "tf-acc-create-update-blueprint-renamed"
 						description   = "Updated description"
@@ -85,9 +123,10 @@ func TestAccResource_Blueprint_PasscodePolicy(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("passcode"), `
 					resource "jamfplatform_blueprints_blueprint" "test_passcode" {
 						name          = "tf-acc-passcode-policy"
 						description   = "Acceptance test — safe to delete"
@@ -116,9 +155,10 @@ func TestAccResource_Blueprint_MathSettings(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("math"), `
 					resource "jamfplatform_blueprints_blueprint" "test_math" {
 						name          = "tf-acc-math-settings"
 						description   = "Acceptance test — safe to delete"
@@ -151,9 +191,10 @@ func TestAccResource_Blueprint_AudioAccessorySettings(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("audio"), `
 					resource "jamfplatform_blueprints_blueprint" "test_audio" {
 						name          = "tf-acc-audio-accessory"
 						description   = "Acceptance test — safe to delete"
@@ -181,9 +222,10 @@ func TestAccResource_Blueprint_DiskManagement(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("disk"), `
 					resource "jamfplatform_blueprints_blueprint" "test_disk" {
 						name          = "tf-acc-disk-management"
 						description   = "Acceptance test — safe to delete"
@@ -210,9 +252,10 @@ func TestAccResource_Blueprint_SafariSettings(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("safari"), `
 					resource "jamfplatform_blueprints_blueprint" "test_safari" {
 						name          = "tf-acc-safari-settings"
 						description   = "Acceptance test — safe to delete"
@@ -242,9 +285,10 @@ func TestAccResource_Blueprint_SoftwareUpdateSettings(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("swu-settings"), `
 					resource "jamfplatform_blueprints_blueprint" "test_swu_settings" {
 						name          = "tf-acc-sw-update-settings"
 						description   = "Acceptance test — safe to delete"
@@ -281,9 +325,10 @@ func TestAccResource_Blueprint_SoftwareUpdate_Automatic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("swu-auto"), `
 					resource "jamfplatform_blueprints_blueprint" "test_swu_auto" {
 						name          = "tf-acc-sw-update-auto"
 						description   = "Acceptance test — safe to delete"
@@ -311,9 +356,10 @@ func TestAccResource_Blueprint_LegacyPayloads(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("legacy"), `
 					resource "jamfplatform_blueprints_blueprint" "test_legacy" {
 						name          = "tf-acc-legacy-payloads"
 						description   = "Acceptance test — safe to delete"
@@ -344,9 +390,10 @@ func TestAccResource_Blueprint_CustomDeclarations(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("custom"), `
 					resource "jamfplatform_blueprints_blueprint" "test_custom" {
 						name          = "tf-acc-custom-declarations"
 						description   = "Acceptance test — safe to delete"
@@ -381,9 +428,10 @@ func TestAccResource_Blueprint_SafariBookmarks(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("bookmarks"), `
 					resource "jamfplatform_blueprints_blueprint" "test_bookmarks" {
 						name          = "tf-acc-safari-bookmarks"
 						description   = "Acceptance test — safe to delete"
@@ -417,9 +465,10 @@ func TestAccResource_Blueprint_SafariExtensions(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("extensions"), `
 					resource "jamfplatform_blueprints_blueprint" "test_extensions" {
 						name          = "tf-acc-safari-extensions"
 						description   = "Acceptance test — safe to delete"
@@ -449,9 +498,10 @@ func TestAccDataSource_Blueprint(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: testBlueprintConfig(sharedSmartGroup, `
+				Config: testBlueprintConfig(smartGroupHCL("ds"), `
 					resource "jamfplatform_blueprints_blueprint" "source" {
 						name          = "tf-acc-ds-blueprint"
 						description   = "Acceptance test — safe to delete"
@@ -482,6 +532,7 @@ func TestAccDataSource_Blueprints(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -500,6 +551,7 @@ func TestAccDataSource_BlueprintComponents(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `

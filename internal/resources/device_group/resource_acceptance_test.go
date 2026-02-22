@@ -6,18 +6,45 @@
 package device_group_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
+
+// testAccCheckDeviceGroupDestroy verifies that device groups created during the test
+// have been destroyed.
+func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		c := testhelpers.NewAcceptanceClient(t)
+		ctx := context.Background()
+
+		for _, rs := range s.RootModule().Resources {
+			if rs.Type != "jamfplatform_device_group" {
+				continue
+			}
+			_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
+			if err == nil {
+				return fmt.Errorf("device group %s still exists after destroy", rs.Primary.ID)
+			}
+			if !helpers.IsNotFoundError(err) {
+				return fmt.Errorf("error checking device group %s: %s", rs.Primary.ID, err)
+			}
+		}
+		return nil
+	}
+}
 
 func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -58,6 +85,7 @@ func TestAccResource_DeviceGroup_SmartComputer(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -90,6 +118,7 @@ func TestAccResource_DeviceGroup_SmartMobile(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -120,6 +149,7 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -144,6 +174,7 @@ func TestAccDataSource_DeviceGroup(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: `
@@ -172,6 +203,7 @@ func TestAccDataSource_DeviceGroups(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`
