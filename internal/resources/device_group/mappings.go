@@ -4,7 +4,6 @@
 package device_group
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -37,7 +36,7 @@ var ValidOperators = []string{
 func operatorDescription() string {
 	quotedOperators := make([]string, len(ValidOperators))
 	for i, v := range ValidOperators {
-		quotedOperators[i] = fmt.Sprintf("`%s`", v)
+		quotedOperators[i] = "`" + v + "`"
 	}
-	return fmt.Sprintf("Operator to apply. Valid values are %s.", strings.Join(quotedOperators, ", "))
+	return "Operator to apply. Valid values are " + strings.Join(quotedOperators, ", ") + "."
 }

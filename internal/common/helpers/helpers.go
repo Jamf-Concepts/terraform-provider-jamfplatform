@@ -116,8 +116,7 @@ func StringPointerValue(v types.String) *string {
 	if !IsConfiguredValue(v) {
 		return nil
 	}
-	value := v.ValueString()
-	return &value
+	return new(v.ValueString())
 }
 
 // BoolPointerValue returns a *bool for configured Terraform bools, preserving nulls when unset.
@@ -125,8 +124,7 @@ func BoolPointerValue(v types.Bool) *bool {
 	if !IsConfiguredValue(v) {
 		return nil
 	}
-	value := v.ValueBool()
-	return &value
+	return new(v.ValueBool())
 }
 
 // ReconcileOptionalBool keeps the current value if not managed, otherwise sets to the API value.

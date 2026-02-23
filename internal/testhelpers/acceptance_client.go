@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -16,30 +17,35 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
 
-// runSuffixOnce ensures the run-wide unique suffix is generated only once.
-var runSuffixOnce sync.Once
-
-// runSuffix holds a unique suffix (epoch timestamp) for the entire test run.
-var runSuffix string
+// runSuffix computes a unique suffix (epoch timestamp) once for the entire test run.
+var runSuffix = sync.OnceValue(func() string {
+	return strconv.FormatInt(time.Now().Unix(), 10)
+})
 
 // RunSuffix returns a unique suffix for the current test run, generated once
 // from the epoch timestamp at the time of first call. All acceptance test
 // resource names should include this suffix to avoid cross-run collisions.
 func RunSuffix() string {
-	runSuffixOnce.Do(func() {
-		runSuffix = fmt.Sprintf("%d", time.Now().Unix())
-	})
-	return runSuffix
+	return runSuffix()
 }
 
-// acceptanceClientOnce ensures the acceptance client is initialized only once across all tests.
-var acceptanceClientOnce sync.Once
+// initAcceptanceClient creates and validates the singleton acceptance client once.
+var initAcceptanceClient = sync.OnceValues(func() (*client.Client, error) {
+	baseURL := os.Getenv("JAMFPLATFORM_BASE_URL")
+	clientID := os.Getenv("JAMFPLATFORM_CLIENT_ID")
+	clientSecret := os.Getenv("JAMFPLATFORM_CLIENT_SECRET")
 
-// acceptanceClient holds the singleton acceptance client instance.
-var acceptanceClient *client.Client
+	if baseURL == "" || clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("missing required environment variables (JAMFPLATFORM_BASE_URL, JAMFPLATFORM_CLIENT_ID, JAMFPLATFORM_CLIENT_SECRET)")
+	}
 
-// acceptanceClientErr captures any error during acceptance client initialization.
-var acceptanceClientErr error
+	c := client.NewClient(baseURL, clientID, clientSecret)
+	if err := c.ValidateCredentials(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to validate credentials: %w", err)
+	}
+
+	return c, nil
+})
 
 // NewAcceptanceClient returns a live Jamf Platform API client for acceptance testing.
 // It reads credentials from JAMFPLATFORM_BASE_URL, JAMFPLATFORM_CLIENT_ID, and
@@ -48,30 +54,12 @@ var acceptanceClientErr error
 func NewAcceptanceClient(t *testing.T) *client.Client {
 	t.Helper()
 
-	acceptanceClientOnce.Do(func() {
-		baseURL := os.Getenv("JAMFPLATFORM_BASE_URL")
-		clientID := os.Getenv("JAMFPLATFORM_CLIENT_ID")
-		clientSecret := os.Getenv("JAMFPLATFORM_CLIENT_SECRET")
-
-		if baseURL == "" || clientID == "" || clientSecret == "" {
-			acceptanceClientErr = fmt.Errorf("missing required environment variables (JAMFPLATFORM_BASE_URL, JAMFPLATFORM_CLIENT_ID, JAMFPLATFORM_CLIENT_SECRET)")
-			return
-		}
-
-		c := client.NewClient(baseURL, clientID, clientSecret)
-		if err := c.ValidateCredentials(context.Background()); err != nil {
-			acceptanceClientErr = fmt.Errorf("failed to validate credentials: %w", err)
-			return
-		}
-
-		acceptanceClient = c
-	})
-
-	if acceptanceClientErr != nil {
-		t.Skipf("Skipping acceptance test: %v", acceptanceClientErr)
+	c, err := initAcceptanceClient()
+	if err != nil {
+		t.Skipf("Skipping acceptance test: %v", err)
 	}
 
-	return acceptanceClient
+	return c
 }
 
 // smartGroupFixtureOnce ensures the fixture smart group is created only once.
@@ -113,10 +101,9 @@ func RequireSmartGroupFixture(t *testing.T) string {
 			}
 		}
 
-		desc := "Terraform provider acceptance test fixture — safe to delete"
 		req := &client.DeviceGroupCreateRepresentationV1{
 			Name:        smartGroupFixtureName(),
-			Description: &desc,
+			Description: new("Terraform provider acceptance test fixture — safe to delete"),
 			DeviceType:  "COMPUTER",
 			GroupType:   "SMART",
 			Criteria: []client.DeviceGroupCriteriaRepresentationV1{
@@ -253,7 +240,10 @@ func benchmarkSyncState(c *client.Client, ctx context.Context, benchmarkID strin
 // CleanupSmartGroupFixture deletes the shared smart group fixture if it was created.
 // Call this from TestMain after all tests in the package have completed.
 func CleanupSmartGroupFixture() {
-	if acceptanceClient != nil && smartGroupID != "" {
-		_ = acceptanceClient.DeleteDeviceGroupV1(context.Background(), smartGroupID)
+	if smartGroupID == "" {
+		return
+	}
+	if c, err := initAcceptanceClient(); err == nil {
+		_ = c.DeleteDeviceGroupV1(context.Background(), smartGroupID)
 	}
 }

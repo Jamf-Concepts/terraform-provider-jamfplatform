@@ -136,7 +136,7 @@ func SelectorDescription(selectors []string) string {
 func selectorsMarkdownList(selectors []string) string {
 	quoted := make([]string, len(selectors))
 	for i, selector := range selectors {
-		quoted[i] = fmt.Sprintf("`%s`", selector)
+		quoted[i] = "`" + selector + "`"
 	}
 	return strings.Join(quoted, ", ")
 }
@@ -219,7 +219,7 @@ func Clause(selector, operator, argument string) string {
 	if operator == "" {
 		operator = "=="
 	}
-	return fmt.Sprintf("%s%s%s", selector, operator, FormatArgument(argument))
+	return selector + operator + FormatArgument(argument)
 }
 
 // configuredFilterValue extracts the string value from a types.String, returning
@@ -246,7 +246,7 @@ func FormatArgument(value string) string {
 	escaped := strings.ReplaceAll(trimmed, `\\`, `\\\\`)
 	escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
 	if argumentNeedsQuoting(trimmed) {
-		return fmt.Sprintf("\"%s\"", escaped)
+		return "\"" + escaped + "\""
 	}
 	return escaped
 }
