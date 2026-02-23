@@ -6,7 +6,7 @@ package device_group
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
@@ -99,7 +99,7 @@ func diffStringSlices(current, desired []string) (added, removed []string) {
 			removed = append(removed, v)
 		}
 	}
-	sort.Strings(added)
-	sort.Strings(removed)
+	slices.Sort(added)
+	slices.Sort(removed)
 	return
 }

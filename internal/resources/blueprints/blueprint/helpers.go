@@ -106,16 +106,6 @@ func flattenJSON(obj map[string]any, prefix string, result map[string]string) {
 	}
 }
 
-// isServerError checks if the error is a server error (500).
-func isServerError(err error) bool {
-	if err == nil {
-		return false
-	}
-	errorStr := err.Error()
-	return strings.Contains(errorStr, "status 500") ||
-		strings.Contains(errorStr, "Internal Server Error")
-}
-
 // desiredDeployedValue returns the desired deployed state based on the provided types.Bool value.
 func desiredDeployedValue(v types.Bool) bool {
 	if !helpers.IsConfiguredValue(v) {

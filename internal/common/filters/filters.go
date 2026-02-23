@@ -5,6 +5,7 @@ package filters
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -208,13 +209,8 @@ func AllowList(validSelectors []string) SelectorValidator {
 	if len(validSelectors) == 0 {
 		return nil
 	}
-	allowed := make(map[string]struct{}, len(validSelectors))
-	for _, selector := range validSelectors {
-		allowed[selector] = struct{}{}
-	}
 	return func(selector string) bool {
-		_, ok := allowed[selector]
-		return ok
+		return slices.Contains(validSelectors, selector)
 	}
 }
 

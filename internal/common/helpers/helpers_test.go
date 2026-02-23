@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	resourcetimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -135,19 +136,43 @@ func TestReconcileOptionalString(t *testing.T) {
 
 func TestIsNotFoundError(t *testing.T) {
 	tests := []struct {
+		name     string
 		err      error
 		expected bool
 	}{
-		{nil, false},
-		{errors.New("some error"), false},
-		{errors.New("status 404"), true},
-		{errors.New("resource was not found"), true},
-		{errors.New("NOT_FOUND"), true},
+		{"nil", nil, false},
+		{"plain error", errors.New("some error"), false},
+		{"404 response", &client.APIResponseError{StatusCode: 404}, true},
+		{"500 response", &client.APIResponseError{StatusCode: 500}, false},
+		{"200 response", &client.APIResponseError{StatusCode: 200}, false},
 	}
 	for _, tc := range tests {
-		if result := IsNotFoundError(tc.err); result != tc.expected {
-			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, result, tc.expected)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			if result := IsNotFoundError(tc.err); result != tc.expected {
+				t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestIsServerError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"nil", nil, false},
+		{"plain error", errors.New("some error"), false},
+		{"500 response", &client.APIResponseError{StatusCode: 500}, true},
+		{"404 response", &client.APIResponseError{StatusCode: 404}, false},
+		{"502 response", &client.APIResponseError{StatusCode: 502}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if result := IsServerError(tc.err); result != tc.expected {
+				t.Errorf("IsServerError(%v) = %v, want %v", tc.err, result, tc.expected)
+			}
+		})
 	}
 }
 

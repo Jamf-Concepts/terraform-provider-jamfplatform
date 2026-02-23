@@ -287,7 +287,7 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 			return
 		}
 
-		if isServerError(err) {
+		if helpers.IsServerError(err) {
 			resp.Diagnostics.AddWarning(
 				"Blueprint deletion encountered server error",
 				"Delete operation encountered a server error: "+err.Error()+

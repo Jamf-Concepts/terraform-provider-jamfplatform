@@ -255,33 +255,6 @@ func TestSetNestedAndFlattenRoundtrip(t *testing.T) {
 	}
 }
 
-func TestIsServerError_Nil(t *testing.T) {
-	if isServerError(nil) {
-		t.Error("expected false for nil error")
-	}
-}
-
-func TestIsServerError_500(t *testing.T) {
-	err := &testError{msg: "API request failed with status 500 (method=POST)"}
-	if !isServerError(err) {
-		t.Error("expected true for status 500 error")
-	}
-}
-
-func TestIsServerError_InternalServerError(t *testing.T) {
-	err := &testError{msg: "Internal Server Error occurred"}
-	if !isServerError(err) {
-		t.Error("expected true for Internal Server Error")
-	}
-}
-
-func TestIsServerError_OtherError(t *testing.T) {
-	err := &testError{msg: "status 404 not found"}
-	if isServerError(err) {
-		t.Error("expected false for non-500 error")
-	}
-}
-
 func TestDesiredDeployedValue_Configured(t *testing.T) {
 	if desiredDeployedValue(types.BoolValue(true)) != true {
 		t.Error("expected true for configured true")
@@ -301,12 +274,4 @@ func TestDesiredDeployedValue_UnknownDefaults(t *testing.T) {
 	if desiredDeployedValue(types.BoolUnknown()) != true {
 		t.Error("expected true as default for unknown value")
 	}
-}
-
-type testError struct {
-	msg string
-}
-
-func (e *testError) Error() string {
-	return e.msg
 }

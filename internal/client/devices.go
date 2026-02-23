@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -145,8 +146,8 @@ func (c *Client) GetDevicesV1(ctx context.Context, sort []string, filter string)
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}
@@ -238,8 +239,8 @@ func (c *Client) GetDeviceInstalledApplicationsV1(ctx context.Context, deviceID 
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}
@@ -285,8 +286,8 @@ func (c *Client) GetDevicesForUserV1(ctx context.Context, userID string, sort []
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}

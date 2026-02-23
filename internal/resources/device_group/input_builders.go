@@ -4,7 +4,8 @@
 package device_group
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
@@ -61,8 +62,8 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []client.Dev
 		}
 		result = append(result, crit)
 	}
-	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].Order < result[j].Order
+	slices.SortStableFunc(result, func(a, b client.DeviceGroupCriteriaRepresentationV1) int {
+		return cmp.Compare(a.Order, b.Order)
 	})
 	return result
 }

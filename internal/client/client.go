@@ -33,6 +33,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"golang.org/x/oauth2/clientcredentials"
 )
@@ -76,6 +78,42 @@ type Error struct {
 	Code        string `json:"code"`
 	Field       string `json:"field"`
 	Description string `json:"description"`
+}
+
+// APIResponseError represents an unexpected HTTP status returned by the Jamf Platform API.
+type APIResponseError struct {
+	StatusCode int
+	Method     string
+	URL        string
+	Body       string
+	TraceID    string
+	Errors     []Error
+}
+
+// HasStatus reports whether the error carries the given HTTP status code.
+func (e *APIResponseError) HasStatus(code int) bool {
+	return e.StatusCode == code
+}
+
+// Error formats the API response error as a human-readable string.
+func (e *APIResponseError) Error() string {
+	requestInfo := fmt.Sprintf("method=%s, url=%s", e.Method, e.URL)
+	statusText := http.StatusText(e.StatusCode)
+	statusDetail := strconv.Itoa(e.StatusCode)
+	if statusText != "" {
+		statusDetail = strconv.Itoa(e.StatusCode) + " " + statusText
+	}
+
+	if len(e.Errors) > 0 {
+		details := make([]string, len(e.Errors))
+		for i, err := range e.Errors {
+			details[i] = fmt.Sprintf("[%s] %s: %s", err.Code, err.Field, err.Description)
+		}
+		return fmt.Sprintf("API request failed with status %d, traceId %s (%s): %s",
+			e.StatusCode, e.TraceID, requestInfo, strings.Join(details, "; "))
+	}
+
+	return fmt.Sprintf("API request failed with status %s (%s): %s", statusDetail, requestInfo, e.Body)
 }
 
 // NewClient creates a new Jamf Platform API client.
@@ -198,23 +236,21 @@ func (c *Client) handleAPIResponse(ctx context.Context, resp *http.Response, exp
 	}
 
 	if resp.StatusCode != expectedStatus {
-		requestInfo := fmt.Sprintf("method=%s, url=%s", resp.Request.Method, resp.Request.URL.String())
-		statusText := http.StatusText(resp.StatusCode)
-		statusDetail := fmt.Sprintf("%d", resp.StatusCode)
-		if statusText != "" {
-			statusDetail = fmt.Sprintf("%d %s", resp.StatusCode, statusText)
+		respErr := &APIResponseError{
+			StatusCode: resp.StatusCode,
+			Method:     resp.Request.Method,
+			URL:        resp.Request.URL.String(),
+			Body:       string(body),
 		}
 
 		var apiErr ApiError
 		if err := json.Unmarshal(body, &apiErr); err == nil && len(apiErr.Errors) > 0 {
-			var details []string
-			for _, e := range apiErr.Errors {
-				details = append(details, fmt.Sprintf("[%s] %s: %s", e.Code, e.Field, e.Description))
-			}
-			return fmt.Errorf("API request failed with status %d, traceId %s (%s): %s", apiErr.HTTPStatus, apiErr.TraceID, requestInfo, details)
+			respErr.StatusCode = apiErr.HTTPStatus
+			respErr.TraceID = apiErr.TraceID
+			respErr.Errors = apiErr.Errors
 		}
 
-		return fmt.Errorf("API request failed with status %s (%s): %s", statusDetail, requestInfo, string(body))
+		return respErr
 	}
 
 	if result != nil {

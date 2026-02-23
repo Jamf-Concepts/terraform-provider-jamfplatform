@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -132,8 +133,8 @@ func (c *Client) GetDeviceGroupsV1(ctx context.Context, sort []string, filter st
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if filter != "" {
 			params.Set("filter", filter)
 		}
@@ -224,8 +225,8 @@ func (c *Client) GetDeviceGroupMembersV1(ctx context.Context, id string) ([]stri
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 
 		endpoint := fmt.Sprintf("%s/device-groups/%s/members?%s", deviceGroupsV1Prefix, url.PathEscape(id), params.Encode())
 		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)
@@ -273,8 +274,8 @@ func (c *Client) GetDeviceGroupsForDeviceV1(ctx context.Context, deviceID string
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 
 		endpoint := fmt.Sprintf("%s/devices/%s/device-groups?%s", deviceGroupsV1Prefix, url.PathEscape(deviceID), params.Encode())
 		resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, nil)

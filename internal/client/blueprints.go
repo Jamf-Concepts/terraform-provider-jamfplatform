@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -138,8 +139,8 @@ func (c *Client) GetBlueprintsV1(ctx context.Context, sort []string, search stri
 	pageSize := 100
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}
@@ -271,8 +272,8 @@ func (c *Client) GetBlueprintComponentsV1(ctx context.Context) ([]BlueprintCompo
 	pageSize := 100
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		endpoint := blueprintComponentsV1Prefix
 		if len(params) > 0 {
 			endpoint += "?" + params.Encode()
