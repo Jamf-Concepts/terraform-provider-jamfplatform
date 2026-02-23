@@ -17,6 +17,7 @@ func TestAcceptance_Benchmark_CreateAllRules(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
 	baselines, err := c.GetCBEngineBaselinesV1(ctx)
 	if err != nil {
@@ -47,7 +48,7 @@ func TestAcceptance_Benchmark_CreateAllRules(t *testing.T) {
 		benchmarkRules = append(benchmarkRules, rr)
 	}
 
-	title := "tf-acc-benchmark-all-rules"
+	title := "tf-acc-benchmark-all-rules-" + suffix
 	testhelpers.EnsureBenchmarkDeleted(t, c, ctx, title)
 
 	createReq := &client.CBEngineBenchmarkRequestV2{
@@ -91,6 +92,7 @@ func TestAcceptance_Benchmark_CreateCustomRules(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
 	baselines, err := c.GetCBEngineBaselinesV1(ctx)
 	if err != nil {
@@ -122,7 +124,7 @@ func TestAcceptance_Benchmark_CreateCustomRules(t *testing.T) {
 		customRules = append(customRules, rr)
 	}
 
-	title := "tf-acc-benchmark-custom-rules"
+	title := "tf-acc-benchmark-custom-rules-" + suffix
 	testhelpers.EnsureBenchmarkDeleted(t, c, ctx, title)
 
 	createReq := &client.CBEngineBenchmarkRequestV2{
@@ -166,6 +168,7 @@ func TestAcceptance_Benchmark_GetByTitle(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
 	baselines, err := c.GetCBEngineBaselinesV1(ctx)
 	if err != nil {
@@ -192,7 +195,7 @@ func TestAcceptance_Benchmark_GetByTitle(t *testing.T) {
 		rr.ODV = &client.CBEngineODVRequestV2{Value: rules.Rules[0].ODV.Value}
 	}
 
-	title := "tf-acc-benchmark-find-by-title"
+	title := "tf-acc-benchmark-find-by-title-" + suffix
 	testhelpers.EnsureBenchmarkDeleted(t, c, ctx, title)
 
 	createReq := &client.CBEngineBenchmarkRequestV2{

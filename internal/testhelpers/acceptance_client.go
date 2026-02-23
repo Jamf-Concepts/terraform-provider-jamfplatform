@@ -16,6 +16,22 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
 
+// runSuffixOnce ensures the run-wide unique suffix is generated only once.
+var runSuffixOnce sync.Once
+
+// runSuffix holds a unique suffix (epoch timestamp) for the entire test run.
+var runSuffix string
+
+// RunSuffix returns a unique suffix for the current test run, generated once
+// from the epoch timestamp at the time of first call. All acceptance test
+// resource names should include this suffix to avoid cross-run collisions.
+func RunSuffix() string {
+	runSuffixOnce.Do(func() {
+		runSuffix = fmt.Sprintf("%d", time.Now().Unix())
+	})
+	return runSuffix
+}
+
 // acceptanceClientOnce ensures the acceptance client is initialized only once across all tests.
 var acceptanceClientOnce sync.Once
 
@@ -67,8 +83,11 @@ var smartGroupID string
 // smartGroupErr captures any error during fixture creation.
 var smartGroupErr error
 
-// smartGroupFixtureName is the name used for the shared smart group fixture.
-const smartGroupFixtureName = "tf-provider-test-fixture"
+// smartGroupFixtureName returns the name used for the shared smart group fixture,
+// incorporating the run-wide unique suffix.
+func smartGroupFixtureName() string {
+	return "tf-provider-test-fixture-" + RunSuffix()
+}
 
 // RequireSmartGroupFixture returns the ID of a smart device group for acceptance tests
 // that need a live smart group to target, such as benchmarks and blueprints. If the group
@@ -81,14 +100,14 @@ func RequireSmartGroupFixture(t *testing.T) string {
 	smartGroupFixtureOnce.Do(func() {
 		ctx := context.Background()
 
-		groups, err := c.GetDeviceGroupsV1(ctx, nil, fmt.Sprintf("name==%q", smartGroupFixtureName))
+		groups, err := c.GetDeviceGroupsV1(ctx, nil, fmt.Sprintf("name==%q", smartGroupFixtureName()))
 		if err != nil {
 			smartGroupErr = fmt.Errorf("failed to look up fixture smart group: %w", err)
 			return
 		}
 
 		for _, g := range groups {
-			if g.Name == smartGroupFixtureName {
+			if g.Name == smartGroupFixtureName() {
 				smartGroupID = g.ID
 				return
 			}
@@ -96,7 +115,7 @@ func RequireSmartGroupFixture(t *testing.T) string {
 
 		desc := "Terraform provider acceptance test fixture — safe to delete"
 		req := &client.DeviceGroupCreateRepresentationV1{
-			Name:        smartGroupFixtureName,
+			Name:        smartGroupFixtureName(),
 			Description: &desc,
 			DeviceType:  "COMPUTER",
 			GroupType:   "SMART",
@@ -130,7 +149,8 @@ func RequireSmartGroupFixture(t *testing.T) string {
 // EnsureBenchmarkDeleted removes a CBEngine benchmark by title. It waits for the
 // benchmark to reach a stable sync state (SYNCED or FAILED) before issuing the
 // delete — deleting while still in PENDING causes the benchmark to get stuck in a
-// DELETING state. After the delete is issued it polls until the benchmark disappears.
+// DELETING state. After the delete is issued it polls until the benchmark disappears,
+// re-issuing the delete every 20 seconds to unstick it if needed.
 func EnsureBenchmarkDeleted(t *testing.T, c *client.Client, ctx context.Context, title string) {
 	t.Helper()
 	existing, err := c.GetCBEngineBenchmarkByTitleV2(ctx, title)
@@ -146,7 +166,8 @@ func EnsureBenchmarkDeleted(t *testing.T, c *client.Client, ctx context.Context,
 		return
 	}
 
-	deadline := time.Now().Add(30 * time.Second)
+	lastDelete := time.Now()
+	deadline := time.Now().Add(2 * time.Minute)
 	for time.Now().Before(deadline) {
 		time.Sleep(2 * time.Second)
 		_, err := c.GetCBEngineBenchmarkByTitleV2(ctx, title)
@@ -154,13 +175,18 @@ func EnsureBenchmarkDeleted(t *testing.T, c *client.Client, ctx context.Context,
 			t.Logf("Benchmark %q fully deleted", title)
 			return
 		}
+		if time.Since(lastDelete) > 20*time.Second {
+			lastDelete = time.Now()
+			t.Logf("Retrying delete for stuck benchmark %q", title)
+			_ = c.DeleteCBEngineBenchmarkV1(ctx, existing.BenchmarkID)
+		}
 	}
-	t.Logf("Warning: benchmark %q still exists after 30s — proceeding anyway", title)
+	t.Logf("Warning: benchmark %q still exists after 2m — proceeding anyway", title)
 }
 
 // EnsureBenchmarkDeletedByID removes a CBEngine benchmark by ID. It waits for the
 // benchmark to reach a stable sync state before deleting, then polls until the
-// benchmark is fully removed.
+// benchmark is fully removed. Re-issues the delete every 20 seconds to unstick it.
 func EnsureBenchmarkDeletedByID(t *testing.T, c *client.Client, ctx context.Context, benchmarkID string) {
 	t.Helper()
 
@@ -172,15 +198,21 @@ func EnsureBenchmarkDeletedByID(t *testing.T, c *client.Client, ctx context.Cont
 	}
 	t.Logf("Delete issued for benchmark %s", benchmarkID)
 
-	deadline := time.Now().Add(30 * time.Second)
+	lastDelete := time.Now()
+	deadline := time.Now().Add(2 * time.Minute)
 	for time.Now().Before(deadline) {
 		time.Sleep(2 * time.Second)
 		if _, found := benchmarkSyncState(c, ctx, benchmarkID); !found {
 			t.Logf("Benchmark %s fully deleted", benchmarkID)
 			return
 		}
+		if time.Since(lastDelete) > 20*time.Second {
+			lastDelete = time.Now()
+			t.Logf("Retrying delete for stuck benchmark %s", benchmarkID)
+			_ = c.DeleteCBEngineBenchmarkV1(ctx, benchmarkID)
+		}
 	}
-	t.Logf("Warning: benchmark %s still present after 30s", benchmarkID)
+	t.Logf("Warning: benchmark %s still present after 2m", benchmarkID)
 }
 
 // waitForBenchmarkSyncState polls until the benchmark reaches SYNCED or FAILED,

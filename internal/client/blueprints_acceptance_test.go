@@ -63,11 +63,13 @@ func makeStep(identifier string, config any) []client.BlueprintStepV1 {
 func TestAcceptance_Blueprint_EmptyBlueprint(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
-	bp := createTestBlueprint(t, c, "tf-acc-empty-blueprint", groupID, []client.BlueprintStepV1{})
+	name := "tf-acc-empty-blueprint-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, []client.BlueprintStepV1{})
 
-	if bp.Name != "tf-acc-empty-blueprint" {
-		t.Errorf("expected name 'tf-acc-empty-blueprint', got %q", bp.Name)
+	if bp.Name != name {
+		t.Errorf("expected name %q, got %q", name, bp.Name)
 	}
 	if len(bp.Scope.DeviceGroups) != 1 || bp.Scope.DeviceGroups[0] != groupID {
 		t.Errorf("expected scope with group %q, got %v", groupID, bp.Scope.DeviceGroups)
@@ -79,6 +81,7 @@ func TestAcceptance_Blueprint_EmptyBlueprint(t *testing.T) {
 func TestAcceptance_Blueprint_PasscodePolicy(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"RequirePasscode":              true,
@@ -92,7 +95,8 @@ func TestAcceptance_Blueprint_PasscodePolicy(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.passcode-settings", config)
-	bp := createTestBlueprint(t, c, "tf-acc-passcode-policy", groupID, steps)
+	name := "tf-acc-passcode-policy-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -109,6 +113,7 @@ func TestAcceptance_Blueprint_PasscodePolicy(t *testing.T) {
 func TestAcceptance_Blueprint_MathSettings(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"Calculator": map[string]any{
@@ -142,7 +147,8 @@ func TestAcceptance_Blueprint_MathSettings(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.math-settings", config)
-	bp := createTestBlueprint(t, c, "tf-acc-math-settings", groupID, steps)
+	name := "tf-acc-math-settings-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -157,6 +163,7 @@ func TestAcceptance_Blueprint_MathSettings(t *testing.T) {
 func TestAcceptance_Blueprint_AudioAccessorySettings(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"TemporaryPairing": map[string]any{
@@ -172,7 +179,8 @@ func TestAcceptance_Blueprint_AudioAccessorySettings(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.audio-accessory-settings", config)
-	bp := createTestBlueprint(t, c, "tf-acc-audio-accessory", groupID, steps)
+	name := "tf-acc-audio-accessory-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -187,6 +195,7 @@ func TestAcceptance_Blueprint_AudioAccessorySettings(t *testing.T) {
 func TestAcceptance_Blueprint_DiskManagement(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"version": 2,
@@ -203,7 +212,8 @@ func TestAcceptance_Blueprint_DiskManagement(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.disk-management", config)
-	bp := createTestBlueprint(t, c, "tf-acc-disk-management", groupID, steps)
+	name := "tf-acc-disk-management-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -218,6 +228,7 @@ func TestAcceptance_Blueprint_DiskManagement(t *testing.T) {
 func TestAcceptance_Blueprint_SafariSettings(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"AcceptCookies": map[string]any{
@@ -243,7 +254,8 @@ func TestAcceptance_Blueprint_SafariSettings(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.safari-settings", config)
-	bp := createTestBlueprint(t, c, "tf-acc-safari-settings", groupID, steps)
+	name := "tf-acc-safari-settings-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -258,6 +270,7 @@ func TestAcceptance_Blueprint_SafariSettings(t *testing.T) {
 func TestAcceptance_Blueprint_SoftwareUpdateSettings(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"AllowStandardUserOSUpdates": map[string]any{
@@ -317,7 +330,8 @@ func TestAcceptance_Blueprint_SoftwareUpdateSettings(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.software-update-settings", config)
-	bp := createTestBlueprint(t, c, "tf-acc-sw-update-settings", groupID, steps)
+	name := "tf-acc-sw-update-settings-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -332,6 +346,7 @@ func TestAcceptance_Blueprint_SoftwareUpdateSettings(t *testing.T) {
 func TestAcceptance_Blueprint_SoftwareUpdate_Automatic(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"enforcementType":  "AUTOMATIC",
@@ -345,7 +360,8 @@ func TestAcceptance_Blueprint_SoftwareUpdate_Automatic(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.sw-updates", config)
-	bp := createTestBlueprint(t, c, "tf-acc-sw-update-automatic", groupID, steps)
+	name := "tf-acc-sw-update-automatic-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -360,6 +376,7 @@ func TestAcceptance_Blueprint_SoftwareUpdate_Automatic(t *testing.T) {
 func TestAcceptance_Blueprint_LegacyPayloads(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"payloadContent": []map[string]any{
@@ -370,11 +387,12 @@ func TestAcceptance_Blueprint_LegacyPayloads(t *testing.T) {
 				"payloadIdentifier":          "tf-acc-test-payload-001",
 			},
 		},
-		"payloadDisplayName": "tf-acc-legacy-payloads",
+		"payloadDisplayName": "tf-acc-legacy-payloads-" + suffix,
 	}
 
 	steps := makeStep("com.jamf.ddm-configuration-profile", config)
-	bp := createTestBlueprint(t, c, "tf-acc-legacy-payloads", groupID, steps)
+	name := "tf-acc-legacy-payloads-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -389,6 +407,7 @@ func TestAcceptance_Blueprint_LegacyPayloads(t *testing.T) {
 func TestAcceptance_Blueprint_CustomDeclarations(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"declarations": []map[string]any{
@@ -407,7 +426,8 @@ func TestAcceptance_Blueprint_CustomDeclarations(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.custom-declarations", config)
-	bp := createTestBlueprint(t, c, "tf-acc-custom-declarations", groupID, steps)
+	name := "tf-acc-custom-declarations-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -422,6 +442,7 @@ func TestAcceptance_Blueprint_CustomDeclarations(t *testing.T) {
 func TestAcceptance_Blueprint_SafariBookmarks(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"ManagedBookmarks": []map[string]any{
@@ -440,7 +461,8 @@ func TestAcceptance_Blueprint_SafariBookmarks(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.safari-bookmarks", config)
-	bp := createTestBlueprint(t, c, "tf-acc-safari-bookmarks", groupID, steps)
+	name := "tf-acc-safari-bookmarks-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -455,6 +477,7 @@ func TestAcceptance_Blueprint_SafariBookmarks(t *testing.T) {
 func TestAcceptance_Blueprint_SafariExtensions(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	config := map[string]any{
 		"ManagedExtensions": map[string]any{
@@ -466,7 +489,8 @@ func TestAcceptance_Blueprint_SafariExtensions(t *testing.T) {
 	}
 
 	steps := makeStep("com.jamf.ddm.safari-extensions", config)
-	bp := createTestBlueprint(t, c, "tf-acc-safari-extensions", groupID, steps)
+	name := "tf-acc-safari-extensions-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
 	if len(bp.Steps) == 0 || len(bp.Steps[0].Components) == 0 {
 		t.Fatal("expected at least one step with one component")
@@ -482,6 +506,7 @@ func TestAcceptance_Blueprint_MultipleComponents(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
 	passcodeConfig, _ := json.Marshal(map[string]any{
 		"RequirePasscode": true,
@@ -539,8 +564,9 @@ func TestAcceptance_Blueprint_MultipleComponents(t *testing.T) {
 		},
 	}
 
+	name := "tf-acc-multi-component-" + suffix
 	createReq := &client.BlueprintCreateRequestV1{
-		Name:        "tf-acc-multi-component",
+		Name:        name,
 		Description: "Acceptance test — safe to delete",
 		Scope:       client.BlueprintCreateScopeV1{DeviceGroups: []string{groupID}},
 		Steps:       steps,
@@ -585,15 +611,18 @@ func TestAcceptance_Blueprint_UpdateAndRead(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
 	steps := makeStep("com.jamf.ddm.passcode-settings", map[string]any{
 		"RequirePasscode": true,
 		"MinimumLength":   6,
 	})
-	bp := createTestBlueprint(t, c, "tf-acc-update-test", groupID, steps)
+	name := "tf-acc-update-test-" + suffix
+	bp := createTestBlueprint(t, c, name, groupID, steps)
 
+	renamedName := "tf-acc-update-test-renamed-" + suffix
 	updateReq := &client.BlueprintUpdateRequestV1{
-		Name:        "tf-acc-update-test-renamed",
+		Name:        renamedName,
 		Description: "Updated description",
 		Scope:       client.BlueprintUpdateScopeV1{DeviceGroups: []string{groupID}},
 		Steps:       steps,
@@ -609,8 +638,8 @@ func TestAcceptance_Blueprint_UpdateAndRead(t *testing.T) {
 		t.Fatalf("GetBlueprintByIDV1 after update failed: %v", err)
 	}
 
-	if updated.Name != "tf-acc-update-test-renamed" {
-		t.Errorf("expected name 'tf-acc-update-test-renamed', got %q", updated.Name)
+	if updated.Name != renamedName {
+		t.Errorf("expected name %q, got %q", renamedName, updated.Name)
 	}
 	if updated.Description != "Updated description" {
 		t.Errorf("expected description 'Updated description', got %q", updated.Description)
@@ -622,20 +651,22 @@ func TestAcceptance_Blueprint_UpdateAndRead(t *testing.T) {
 func TestAcceptance_Blueprint_GetByName(t *testing.T) {
 	groupID := testhelpers.RequireSmartGroupFixture(t)
 	c := testhelpers.NewAcceptanceClient(t)
+	suffix := testhelpers.RunSuffix()
 
 	steps := makeStep("com.jamf.ddm.passcode-settings", map[string]any{
 		"RequirePasscode": true,
 		"MinimumLength":   6,
 	})
-	_ = createTestBlueprint(t, c, "tf-acc-find-by-name", groupID, steps)
+	name := "tf-acc-find-by-name-" + suffix
+	_ = createTestBlueprint(t, c, name, groupID, steps)
 
-	found, err := c.GetBlueprintByNameV1(context.Background(), "tf-acc-find-by-name")
+	found, err := c.GetBlueprintByNameV1(context.Background(), name)
 	if err != nil {
 		t.Fatalf("GetBlueprintByNameV1 failed: %v", err)
 	}
 
-	if found.Name != "tf-acc-find-by-name" {
-		t.Errorf("expected name 'tf-acc-find-by-name', got %q", found.Name)
+	if found.Name != name {
+		t.Errorf("expected name %q, got %q", name, found.Name)
 	}
 
 	t.Logf("Found blueprint by name: ID %s", found.ID)

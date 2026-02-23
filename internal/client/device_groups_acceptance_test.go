@@ -25,9 +25,6 @@ func TestAcceptance_DeviceGroup_SmartGroupFixture(t *testing.T) {
 	if group.GroupType != "SMART" {
 		t.Errorf("expected group type 'SMART', got %q", group.GroupType)
 	}
-	if group.Name != "tf-provider-test-fixture" {
-		t.Errorf("expected name 'tf-provider-test-fixture', got %q", group.Name)
-	}
 	if group.DeviceType != "COMPUTER" {
 		t.Errorf("expected device type 'COMPUTER', got %q", group.DeviceType)
 	}
@@ -38,10 +35,12 @@ func TestAcceptance_DeviceGroup_SmartGroupFixture(t *testing.T) {
 func TestAcceptance_DeviceGroup_CreateAndDeleteStaticGroup(t *testing.T) {
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
+	name := "tf-acc-static-group-" + suffix
 	desc := "Acceptance test static group — safe to delete"
 	createReq := &client.DeviceGroupCreateRepresentationV1{
-		Name:        "tf-acc-static-group",
+		Name:        name,
 		Description: &desc,
 		DeviceType:  "COMPUTER",
 		GroupType:   "STATIC",
@@ -62,8 +61,8 @@ func TestAcceptance_DeviceGroup_CreateAndDeleteStaticGroup(t *testing.T) {
 		t.Fatalf("GetDeviceGroupByIDV1 failed: %v", err)
 	}
 
-	if group.Name != "tf-acc-static-group" {
-		t.Errorf("expected name 'tf-acc-static-group', got %q", group.Name)
+	if group.Name != name {
+		t.Errorf("expected name %q, got %q", name, group.Name)
 	}
 	if group.GroupType != "STATIC" {
 		t.Errorf("expected group type 'STATIC', got %q", group.GroupType)
@@ -78,10 +77,12 @@ func TestAcceptance_DeviceGroup_CreateAndDeleteStaticGroup(t *testing.T) {
 func TestAcceptance_DeviceGroup_UpdateGroup(t *testing.T) {
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
+	originalName := "tf-acc-update-group-original-" + suffix
 	desc := "Acceptance test — safe to delete"
 	createReq := &client.DeviceGroupCreateRepresentationV1{
-		Name:        "tf-acc-update-group-original",
+		Name:        originalName,
 		Description: &desc,
 		DeviceType:  "COMPUTER",
 		GroupType:   "STATIC",
@@ -97,9 +98,10 @@ func TestAcceptance_DeviceGroup_UpdateGroup(t *testing.T) {
 		_ = c.DeleteDeviceGroupV1(ctx, createResp.ID)
 	})
 
+	renamedName := "tf-acc-update-group-renamed-" + suffix
 	updatedDesc := "Updated description"
 	updateReq := &client.DeviceGroupUpdateRepresentationV1{
-		Name:        "tf-acc-update-group-renamed",
+		Name:        renamedName,
 		Description: &updatedDesc,
 	}
 
@@ -113,8 +115,8 @@ func TestAcceptance_DeviceGroup_UpdateGroup(t *testing.T) {
 		t.Fatalf("GetDeviceGroupByIDV1 after update failed: %v", err)
 	}
 
-	if group.Name != "tf-acc-update-group-renamed" {
-		t.Errorf("expected name 'tf-acc-update-group-renamed', got %q", group.Name)
+	if group.Name != renamedName {
+		t.Errorf("expected name %q, got %q", renamedName, group.Name)
 	}
 
 	t.Logf("Updated device group ID: %s", createResp.ID)
@@ -123,10 +125,12 @@ func TestAcceptance_DeviceGroup_UpdateGroup(t *testing.T) {
 func TestAcceptance_DeviceGroup_SmartGroupWithCriteria(t *testing.T) {
 	c := testhelpers.NewAcceptanceClient(t)
 	ctx := context.Background()
+	suffix := testhelpers.RunSuffix()
 
+	name := "tf-acc-smart-criteria-" + suffix
 	desc := "Acceptance test smart group with criteria — safe to delete"
 	createReq := &client.DeviceGroupCreateRepresentationV1{
-		Name:        "tf-acc-smart-criteria",
+		Name:        name,
 		Description: &desc,
 		DeviceType:  "COMPUTER",
 		GroupType:   "SMART",
