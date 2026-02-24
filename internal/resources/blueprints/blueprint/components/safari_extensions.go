@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -37,48 +38,47 @@ func (c *SafariExtensionsComponent) GetIdentifier() string {
 }
 
 // SafariExtensionsComponentSchema returns the Terraform schema for Safari extensions component
-func SafariExtensionsComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Blocks: map[string]schema.Block{
-			"managed_extensions": schema.ListNestedBlock{
-				MarkdownDescription: "List of managed Safari extensions.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"extension_id": schema.StringAttribute{
-							MarkdownDescription: "The extension identifier (bundle ID).",
-							Required:            true,
-						},
-						"state": schema.StringAttribute{
-							MarkdownDescription: "Extension state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
-							Optional:            true,
-							Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
-						},
-						"private_browsing": schema.StringAttribute{
-							MarkdownDescription: "Private browsing state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
-							Optional:            true,
-							Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
-						},
+func SafariExtensionsComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"managed_extensions": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of managed Safari extensions.",
+			Optional:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"extension_id": schema.StringAttribute{
+						MarkdownDescription: "The extension identifier (bundle ID).",
+						Required:            true,
 					},
-					Blocks: map[string]schema.Block{
-						"allowed_domains": schema.ListNestedBlock{
-							MarkdownDescription: "List of allowed domains for this extension.",
-							NestedObject: schema.NestedBlockObject{
-								Attributes: map[string]schema.Attribute{
-									"domain": schema.StringAttribute{
-										MarkdownDescription: "Domain name.",
-										Required:            true,
-									},
+					"state": schema.StringAttribute{
+						MarkdownDescription: "Extension state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+						Optional:            true,
+						Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+					},
+					"private_browsing": schema.StringAttribute{
+						MarkdownDescription: "Private browsing state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
+						Optional:            true,
+						Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+					},
+					"allowed_domains": schema.SetNestedAttribute{
+						MarkdownDescription: "Set of allowed domains for this extension.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"domain": schema.StringAttribute{
+									MarkdownDescription: "Domain name.",
+									Required:            true,
 								},
 							},
 						},
-						"denied_domains": schema.ListNestedBlock{
-							MarkdownDescription: "List of denied domains for this extension.",
-							NestedObject: schema.NestedBlockObject{
-								Attributes: map[string]schema.Attribute{
-									"domain": schema.StringAttribute{
-										MarkdownDescription: "Domain name.",
-										Required:            true,
-									},
+					},
+					"denied_domains": schema.SetNestedAttribute{
+						MarkdownDescription: "Set of denied domains for this extension.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"domain": schema.StringAttribute{
+									MarkdownDescription: "Domain name.",
+									Required:            true,
 								},
 							},
 						},

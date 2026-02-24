@@ -15,37 +15,43 @@ Search Jamf device groups using optional filters. Requires **Device Group Invent
 ```terraform
 # Filter to get all static computer groups
 data "jamfplatform_device_groups" "static_computer_groups" {
-  filter {
-    selector = "deviceType"
-    argument = "COMPUTER"
-  }
-  filter {
-    join_with = "and"
-    selector  = "groupType"
-    argument  = "STATIC"
-  }
+  filter = [
+    {
+      selector = "deviceType"
+      argument = "COMPUTER"
+    },
+    {
+      join_with = "and"
+      selector  = "groupType"
+      argument  = "STATIC"
+    }
+  ]
 }
 
 # Filter to get all smart groups where the name starts with a specific substring
 data "jamfplatform_device_groups" "smart_groups_name_wildcard_match" {
-  filter {
-    selector = "name"
-    argument = "My Group*"
-  }
-  filter {
-    join_with = "and"
-    selector  = "groupType"
-    argument  = "SMART"
-  }
+  filter = [
+    {
+      selector = "name"
+      argument = "My Group*"
+    },
+    {
+      join_with = "and"
+      selector  = "groupType"
+      argument  = "SMART"
+    }
+  ]
 }
 
 # Filter to get all device groups where the name does not contain a specific substring
 data "jamfplatform_device_groups" "name_does_not_contain" {
-  filter {
-    selector = "name"
-    operator = "!="
-    argument = "*My Group*"
-  }
+  filter = [
+    {
+      selector = "name"
+      operator = "!="
+      argument = "*My Group*"
+    }
+  ]
 }
 ```
 
@@ -54,15 +60,15 @@ data "jamfplatform_device_groups" "name_does_not_contain" {
 
 ### Optional
 
-- `filter` (Block List) Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause. (see [below for nested schema](#nestedblock--filter))
+- `filter` (Attributes List) Declarative RSQL filter clauses. Each block represents one selector/operator/argument clause. (see [below for nested schema](#nestedatt--filter))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
-- `device_groups` (Block List) Device groups that matched the applied filters. (see [below for nested schema](#nestedblock--device_groups))
+- `device_groups` (Attributes List) Device groups that matched the applied filters. (see [below for nested schema](#nestedatt--device_groups))
 - `id` (String) Internal identifier for this data source read.
 
-<a id="nestedblock--filter"></a>
+<a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`
 
 Required:
@@ -74,7 +80,7 @@ Optional:
 
 - `has_closing_parenthesis` (Boolean) Whether to suffix this clause with `)` to close a grouped expression.
 - `has_opening_parenthesis` (Boolean) Whether to prefix this clause with `(` to start a grouped expression.
-- `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.
+- `join_with` (String) Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first clause.
 - `operator` (String) RSQL comparison operator. Valid values are `==`, `!=`, `>`, `<`, `>=`, and `<=`. Defaults to `==` when omitted.
 
 
@@ -86,7 +92,7 @@ Optional:
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
 
 
-<a id="nestedblock--device_groups"></a>
+<a id="nestedatt--device_groups"></a>
 ### Nested Schema for `device_groups`
 
 Read-Only:

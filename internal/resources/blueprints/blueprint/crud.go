@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package blueprint
 
@@ -286,7 +287,7 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 			return
 		}
 
-		if isServerError(err) {
+		if helpers.IsServerError(err) {
 			resp.Diagnostics.AddWarning(
 				"Blueprint deletion encountered server error",
 				"Delete operation encountered a server error: "+err.Error()+

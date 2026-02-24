@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -23,19 +24,17 @@ func (c *DiskManagementPolicyComponent) GetIdentifier() string {
 }
 
 // DiskManagementPolicyComponentSchema returns the Terraform schema for disk management policy component
-func DiskManagementPolicyComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
-			"external_storage": schema.StringAttribute{
-				MarkdownDescription: "Storage mode for external storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
-				Optional:            true,
-				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
-			},
-			"network_storage": schema.StringAttribute{
-				MarkdownDescription: "Storage mode for network storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
-				Optional:            true,
-				Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
-			},
+func DiskManagementPolicyComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"external_storage": schema.StringAttribute{
+			MarkdownDescription: "Storage mode for external storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
+			Optional:            true,
+			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
+		},
+		"network_storage": schema.StringAttribute{
+			MarkdownDescription: "Storage mode for network storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.",
+			Optional:            true,
+			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "Disallowed", "ReadOnly")},
 		},
 	}
 }

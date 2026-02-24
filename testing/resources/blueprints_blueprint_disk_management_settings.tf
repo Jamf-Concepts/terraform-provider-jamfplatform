@@ -5,7 +5,7 @@ resource "jamfplatform_blueprints_blueprint" "test_disk_management" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  disk_management_settings {
+  disk_management_settings = {
     external_storage = "ReadOnly"
     network_storage  = "Disallowed"
   }

@@ -5,7 +5,7 @@ resource "jamfplatform_blueprints_blueprint" "test_math_settings" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  math_settings {
+  math_settings = {
     calculator_basic_mode_add_square_root  = true
     calculator_scientific_mode_enabled     = true
     calculator_programmer_mode_enabled     = false

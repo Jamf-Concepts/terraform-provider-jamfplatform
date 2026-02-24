@@ -1,0 +1,68 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package blueprint
+
+import (
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
+	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
+	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+// BlueprintResourceModel represents the Terraform resource model for a Jamf Blueprint.
+type BlueprintResourceModel struct {
+	ID                        types.String                                   `tfsdk:"id"`
+	Name                      types.String                                   `tfsdk:"name"`
+	Description               types.String                                   `tfsdk:"description"`
+	Deployed                  types.Bool                                     `tfsdk:"deployed"`
+	DeviceGroups              types.Set                                      `tfsdk:"device_groups"`
+	Components                []ComponentModel                               `tfsdk:"raw_component"`
+	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
+	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
+	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
+	MathSettings              *components.MathSettingsComponent              `tfsdk:"math_settings"`
+	PasscodePolicy            *components.PasscodePolicyComponent            `tfsdk:"passcode_policy"`
+	SafariBookmarks           *components.SafariBookmarksComponent           `tfsdk:"safari_bookmarks"`
+	SafariExtensions          *components.SafariExtensionsComponent          `tfsdk:"safari_extensions"`
+	SafariSettings            *components.SafariSettingsComponent            `tfsdk:"safari_settings"`
+	ServiceBackgroundTasks    *components.ServiceBackgroundTasksComponent    `tfsdk:"service_background_tasks"`
+	ServiceConfigurationFiles *components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
+	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
+	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
+	LegacyPayloads            types.String                                   `tfsdk:"legacy_payloads"`
+	Created                   types.String                                   `tfsdk:"created"`
+	Updated                   types.String                                   `tfsdk:"updated"`
+	DeploymentState           types.String                                   `tfsdk:"deployment_state"`
+	Timeouts                  resourceTimeouts.Value                         `tfsdk:"timeouts"`
+}
+
+// BlueprintDataSourceModel defines the data structure for the blueprint data source.
+type BlueprintDataSourceModel struct {
+	ID              types.String             `tfsdk:"id"`
+	Name            types.String             `tfsdk:"name"`
+	BlueprintID     types.String             `tfsdk:"blueprint_id"`
+	Description     types.String             `tfsdk:"description"`
+	Created         types.String             `tfsdk:"created"`
+	Updated         types.String             `tfsdk:"updated"`
+	DeploymentState types.String             `tfsdk:"deployment_state"`
+	DeviceGroups    types.List               `tfsdk:"device_groups"`
+	Components      []ComponentModel         `tfsdk:"component"`
+	Timeouts        datasourceTimeouts.Value `tfsdk:"timeouts"`
+}
+
+// ComponentModel defines the data structure for a blueprint component.
+type ComponentModel struct {
+	Identifier    types.String `tfsdk:"identifier"`
+	Configuration types.Map    `tfsdk:"configuration"`
+}
+
+// blueprintIdentityModel defines the resource identity shared with list results.
+type blueprintIdentityModel struct {
+	ID types.String `tfsdk:"id"`
+}
+
+// BlueprintListResourceModel captures supported list filters.
+type BlueprintListResourceModel struct {
+	Search types.String `tfsdk:"search"`
+}

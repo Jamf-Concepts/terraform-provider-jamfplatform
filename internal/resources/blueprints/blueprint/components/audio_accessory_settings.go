@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -28,30 +29,28 @@ func (c *AudioAccessorySettingsComponent) GetIdentifier() string {
 }
 
 // AudioAccessorySettingsComponentSchema returns the Terraform schema for audio accessory settings component
-func AudioAccessorySettingsComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
-			"temporary_pairing_disabled": schema.BoolAttribute{
-				MarkdownDescription: "If true, temporary pairing of audio accessories is disabled.",
-				Required:            true,
+func AudioAccessorySettingsComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"temporary_pairing_disabled": schema.BoolAttribute{
+			MarkdownDescription: "If true, temporary pairing of audio accessories is disabled.",
+			Required:            true,
+		},
+		"unpairing_time_policy": schema.StringAttribute{
+			MarkdownDescription: "Device's unpairing policy. Valid values are `None`, `Hour`. When set to `Hour`, `unpairing_time_hour` must also be provided.",
+			Optional:            true,
+			Computed:            true,
+			Default:             stringdefault.StaticString("None"),
+			Validators: []validator.String{
+				stringvalidator.OneOf("None", "Hour"),
 			},
-			"unpairing_time_policy": schema.StringAttribute{
-				MarkdownDescription: "Device's unpairing policy. Valid values are `None`, `Hour`. When set to `Hour`, `unpairing_time_hour` must also be provided.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("None"),
-				Validators: []validator.String{
-					stringvalidator.OneOf("None", "Hour"),
-				},
-			},
-			"unpairing_time_hour": schema.Int64Attribute{
-				MarkdownDescription: "The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is `Hour`. Range: `0`-`23`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             int64default.StaticInt64(0),
-				Validators: []validator.Int64{
-					int64validator.Between(0, 23),
-				},
+		},
+		"unpairing_time_hour": schema.Int64Attribute{
+			MarkdownDescription: "The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is `Hour`. Range: `0`-`23`.",
+			Optional:            true,
+			Computed:            true,
+			Default:             int64default.StaticInt64(0),
+			Validators: []validator.Int64{
+				int64validator.Between(0, 23),
 			},
 		},
 	}

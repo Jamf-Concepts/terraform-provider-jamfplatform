@@ -1,73 +1,61 @@
-name: "Terraform Tests"
+name: Integration Tests
 
 on:
   pull_request:
-    paths:
-      - "**.go"
-      - "**.tf"
-      - "testing/**"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/integration-tests.yml"
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  integration-tests:
-    name: "🔌 Integration Tests"
+  build:
+    name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6.0.2
-        with:
-          fetch-depth: 1
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: "go.mod"
+          cache: true
+      - run: go mod download
+      - run: go build -v .
+      - name: Run linters
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: latest
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+  generate:
+    name: Docs Generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_wrapper: false
-
-      - name: Compile Provider Binary
+      - run: make generate
+      - name: git diff
         run: |
-          mkdir -p ~/.terraform.d/plugins/local/jamf/jamfplatform/0.1.0/linux_amd64/
-          go build -buildvcs=false
-          mv ./terraform-provider-jamfplatform ~/.terraform.d/plugins/local/jamf/jamfplatform/0.1.0/linux_amd64/
-          chmod +x ~/.terraform.d/plugins/local/jamf/jamfplatform/0.1.0/linux_amd64/terraform-provider-jamfplatform
-        continue-on-error: false
+          git diff --compact-summary --exit-code || \
+            (echo; echo "Unexpected difference in directories after code generation. Run 'make generate' command and commit."; exit 1)
 
-      - name: Initialize Terraform
-        run: terraform init -upgrade
-        working-directory: testing
-
-      - name: Generate UUID
-        id: generate-uuid
-        run: |
-          generated_uuid=$(uuidgen)
-          echo "uuid=$generated_uuid" >> $GITHUB_OUTPUT
-          echo "Run ID: $generated_uuid"
-
-      - name: Run Terraform Query
-        run: terraform query
-        working-directory: testing
-        env:
-          TF_VAR_test_id: ${{ steps.generate-uuid.outputs.uuid }}
-          TF_VAR_jamfplatform_base_url: ${{ secrets.JAMFPLATFORM_BASE_URL }}
-          TF_VAR_jamfplatform_client_id: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
-          TF_VAR_jamfplatform_client_secret: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
-        continue-on-error: false
-
-      - name: Run Terraform Test
-        run: terraform test -verbose -parallelism=1
-        working-directory: testing
-        env:
-          TF_VAR_test_id: ${{ steps.generate-uuid.outputs.uuid }}
-          TF_VAR_jamfplatform_base_url: ${{ secrets.JAMFPLATFORM_BASE_URL }}
-          TF_VAR_jamfplatform_client_id: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
-          TF_VAR_jamfplatform_client_secret: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
-        continue-on-error: false
+  unit:
+    name: Unit Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - run: go mod download
+      - run: go test -v -cover -count=1 ./...

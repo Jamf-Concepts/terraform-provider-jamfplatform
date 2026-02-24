@@ -1,4 +1,6 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
 // https://developer.jamf.com/platform-api/reference/devices
 
 package client
@@ -9,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -99,16 +102,6 @@ type DeviceUpdateRepresentationV1 struct {
 	UserID *NullableString `json:"userId,omitempty"`
 }
 
-// PaginatedResponseRepresentation captures pagination metadata shared by multiple endpoints.
-type PaginatedResponseRepresentation struct {
-	Page        int   `json:"page"`
-	PageSize    int   `json:"pageSize"`
-	TotalCount  int64 `json:"totalCount"`
-	TotalPages  int   `json:"totalPages"`
-	HasNext     bool  `json:"hasNext"`
-	HasPrevious bool  `json:"hasPrevious"`
-}
-
 // PaginatedDeviceResponseRepresentation represents a paginated list of devices.
 type PaginatedDeviceResponseRepresentation struct {
 	PaginatedResponseRepresentation
@@ -153,8 +146,8 @@ func (c *Client) GetDevicesV1(ctx context.Context, sort []string, filter string)
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}
@@ -246,8 +239,8 @@ func (c *Client) GetDeviceInstalledApplicationsV1(ctx context.Context, deviceID 
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}
@@ -293,8 +286,8 @@ func (c *Client) GetDevicesForUserV1(ctx context.Context, userID string, sort []
 
 	for {
 		params := url.Values{}
-		params.Set("page", fmt.Sprintf("%d", page))
-		params.Set("page-size", fmt.Sprintf("%d", pageSize))
+		params.Set("page", strconv.Itoa(page))
+		params.Set("page-size", strconv.Itoa(pageSize))
 		if len(sort) > 0 {
 			params.Set("sort", strings.Join(sort, ","))
 		}

@@ -1,12 +1,16 @@
-// Copyright 2026 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package helpers
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	resourcetimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -56,6 +60,8 @@ func PollUntil(ctx context.Context, interval time.Duration, checker func(context
 	if interval <= 0 {
 		interval = time.Second
 	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 	for {
 		done, err := checker(ctx)
 		if err != nil {
@@ -67,7 +73,7 @@ func PollUntil(ctx context.Context, interval time.Duration, checker func(context
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(interval):
+		case <-ticker.C:
 		}
 	}
 }
@@ -110,8 +116,7 @@ func StringPointerValue(v types.String) *string {
 	if !IsConfiguredValue(v) {
 		return nil
 	}
-	value := v.ValueString()
-	return &value
+	return new(v.ValueString())
 }
 
 // BoolPointerValue returns a *bool for configured Terraform bools, preserving nulls when unset.
@@ -119,8 +124,7 @@ func BoolPointerValue(v types.Bool) *bool {
 	if !IsConfiguredValue(v) {
 		return nil
 	}
-	value := v.ValueBool()
-	return &value
+	return new(v.ValueBool())
 }
 
 // ReconcileOptionalBool keeps the current value if not managed, otherwise sets to the API value.
@@ -151,16 +155,20 @@ func ReconcileOptionalString(apiValue string, current types.String) types.String
 	return types.StringValue(apiValue)
 }
 
-// IsNotFoundError reports whether an error message indicates a 404/not found response from the Jamf API.
+// IsNotFoundError reports whether an error represents a 404/not found response from the Jamf API.
 func IsNotFoundError(err error) bool {
-	if err == nil {
-		return false
+	if apiErr, ok := errors.AsType[*client.APIResponseError](err); ok {
+		return apiErr.HasStatus(http.StatusNotFound)
 	}
+	return false
+}
 
-	errorStr := err.Error()
-	return strings.Contains(errorStr, "status 404") ||
-		strings.Contains(errorStr, "was not found") ||
-		strings.Contains(errorStr, "NOT_FOUND")
+// IsServerError reports whether an error represents a 500/internal server error from the Jamf API.
+func IsServerError(err error) bool {
+	if apiErr, ok := errors.AsType[*client.APIResponseError](err); ok {
+		return apiErr.HasStatus(http.StatusInternalServerError)
+	}
+	return false
 }
 
 // EnsureResourceTimeouts guarantees the timeout object has the expected shape for resource timeouts.

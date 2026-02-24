@@ -5,7 +5,7 @@ resource "jamfplatform_blueprints_blueprint" "test_software_update_settings" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  software_update_settings {
+  software_update_settings = {
     allow_standard_user_os_updates           = true
     automatic_download                       = "AlwaysOn"
     automatic_install_os_updates             = "AlwaysOn"
@@ -21,14 +21,12 @@ resource "jamfplatform_blueprints_blueprint" "test_software_update_settings" {
     recommended_cadence                      = "Newest"
 
     # Beta offer programs
-    beta_offer_programs {
+    beta_offer_programs = [{
       token       = "beta-token-1"
       description = "iOS 18 Beta Program"
-    }
-
-    beta_offer_programs {
+    }, {
       token       = "beta-token-2"
       description = "macOS Sequoia Beta Program"
-    }
+    }]
   }
 }

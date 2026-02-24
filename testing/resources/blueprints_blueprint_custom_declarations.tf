@@ -5,9 +5,9 @@ resource "jamfplatform_blueprints_blueprint" "test_custom_declarations" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  custom_declarations {
+  custom_declarations = {
 
-    declaration {
+    declaration = [{
       channel = "SYSTEM"
       kind    = "CONFIGURATION"
       type    = "com.apple.configuration.softwareupdate.settings"
@@ -20,9 +20,7 @@ resource "jamfplatform_blueprints_blueprint" "test_custom_declarations" {
           ProgramEnrollment = "AlwaysOn"
         }
       })
-    }
-
-    declaration {
+    }, {
       channel = "USER"
       kind    = "ASSET"
       type    = "com.apple.asset.credential.userpassword"
@@ -32,6 +30,6 @@ resource "jamfplatform_blueprints_blueprint" "test_custom_declarations" {
           ContentType = "application/plist"
         }
       })
-    }
+    }]
   }
 }

@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package benchmark
 
@@ -21,6 +22,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// BenchmarkResource implements the Terraform resource for Jamf Compliance Benchmark.
+type BenchmarkResource struct {
+	client *client.Client
+}
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &BenchmarkResource{}
@@ -58,6 +64,7 @@ func (r *BenchmarkResource) IdentitySchema(ctx context.Context, req resource.Ide
 // Schema returns the Terraform schema for the benchmark resource.
 func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             0,
 		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -90,7 +97,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"sources": schema.ListNestedAttribute{
-				MarkdownDescription: "List of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources.",
+				MarkdownDescription: "Set of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources.",
 				Required:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -112,7 +119,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"rules": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules.",
+				MarkdownDescription: "Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules.",
 				Required:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -220,7 +227,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 							Computed:            true,
 						},
 						"depends_on": schema.ListAttribute{
-							MarkdownDescription: "List of rule IDs this rule depends on.",
+							MarkdownDescription: "Rule IDs this rule depends on.",
 							ElementType:         types.StringType,
 							Computed:            true,
 						},
@@ -234,7 +241,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				MarkdownDescription: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).",
 				Required:            true,
 				Validators: []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`),
-					"Device group IDmust be a valid UUID")},
+					"Device group ID must be a valid UUID")},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

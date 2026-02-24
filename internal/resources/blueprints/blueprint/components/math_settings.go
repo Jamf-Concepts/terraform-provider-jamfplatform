@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -31,52 +32,50 @@ func (c *MathSettingsComponent) GetIdentifier() string {
 }
 
 // MathSettingsComponentSchema returns the Terraform schema for math settings component
-func MathSettingsComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
-			"calculator_basic_mode_add_square_root": schema.BoolAttribute{
-				MarkdownDescription: "Add the square root button to the basic calculator by replacing the +/- button.",
-				Optional:            true,
+func MathSettingsComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"calculator_basic_mode_add_square_root": schema.BoolAttribute{
+			MarkdownDescription: "Add the square root button to the basic calculator by replacing the +/- button.",
+			Optional:            true,
+		},
+		"calculator_scientific_mode_enabled": schema.BoolAttribute{
+			MarkdownDescription: "Controls whether the scientific mode is enabled in Calculator.",
+			Optional:            true,
+		},
+		"calculator_programmer_mode_enabled": schema.BoolAttribute{
+			MarkdownDescription: "Controls whether the programmer mode is enabled in Calculator.",
+			Optional:            true,
+		},
+		"calculator_math_notes_mode_enabled": schema.BoolAttribute{
+			MarkdownDescription: "Controls whether the Math Notes mode is enabled in Calculator.",
+			Optional:            true,
+		},
+		"calculator_input_modes_unit_conversion": schema.BoolAttribute{
+			MarkdownDescription: "Configures whether unit conversions are enabled in Calculator. Also requires `calculator_input_modes_rpn` to be set.",
+			Optional:            true,
+			Validators: []validator.Bool{
+				boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("calculator_input_modes_rpn")),
 			},
-			"calculator_scientific_mode_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Controls whether the scientific mode is enabled in Calculator.",
-				Optional:            true,
+		},
+		"calculator_input_modes_rpn": schema.BoolAttribute{
+			MarkdownDescription: "Configures whether RPN input is enabled in Calculator. Also requires `calculator_input_modes_unit_conversion` to be set.",
+			Optional:            true,
+			Validators: []validator.Bool{
+				boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("calculator_input_modes_unit_conversion")),
 			},
-			"calculator_programmer_mode_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Controls whether the programmer mode is enabled in Calculator.",
-				Optional:            true,
+		},
+		"system_behavior_keyboard_suggestions": schema.BoolAttribute{
+			MarkdownDescription: "Controls whether keyboard suggestions include math solutions. Also requires `system_behavior_math_notes` to be set.",
+			Optional:            true,
+			Validators: []validator.Bool{
+				boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("system_behavior_math_notes")),
 			},
-			"calculator_math_notes_mode_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Controls whether the Math Notes mode is enabled in Calculator.",
-				Optional:            true,
-			},
-			"calculator_input_modes_unit_conversion": schema.BoolAttribute{
-				MarkdownDescription: "Configures whether unit conversions are enabled in Calculator. Also requires `calculator_input_modes_rpn` to be set.",
-				Optional:            true,
-				Validators: []validator.Bool{
-					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("calculator_input_modes_rpn")),
-				},
-			},
-			"calculator_input_modes_rpn": schema.BoolAttribute{
-				MarkdownDescription: "Configures whether RPN input is enabled in Calculator. Also requires `calculator_input_modes_unit_conversion` to be set.",
-				Optional:            true,
-				Validators: []validator.Bool{
-					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("calculator_input_modes_unit_conversion")),
-				},
-			},
-			"system_behavior_keyboard_suggestions": schema.BoolAttribute{
-				MarkdownDescription: "Controls whether keyboard suggestions include math solutions. Also requires `system_behavior_math_notes` to be set.",
-				Optional:            true,
-				Validators: []validator.Bool{
-					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("system_behavior_math_notes")),
-				},
-			},
-			"system_behavior_math_notes": schema.BoolAttribute{
-				MarkdownDescription: "Controls whether Math Notes is allowed in other apps such as Notes. Also requires `system_behavior_keyboard_suggestions` to be set.",
-				Optional:            true,
-				Validators: []validator.Bool{
-					boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("system_behavior_keyboard_suggestions")),
-				},
+		},
+		"system_behavior_math_notes": schema.BoolAttribute{
+			MarkdownDescription: "Controls whether Math Notes is allowed in other apps such as Notes. Also requires `system_behavior_keyboard_suggestions` to be set.",
+			Optional:            true,
+			Validators: []validator.Bool{
+				boolvalidator.AlsoRequires(path.MatchRelative().AtParent().AtName("system_behavior_keyboard_suggestions")),
 			},
 		},
 	}
