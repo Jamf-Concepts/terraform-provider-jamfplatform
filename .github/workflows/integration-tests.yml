@@ -75,7 +75,7 @@ jobs:
           terraform_version: "1.14.*"
           terraform_wrapper: false
       - run: go mod download
-      - run: go test -v -cover -count=1 -p=1 ./...
+      - run: go test -v -cover -count=1 -tags=acceptance -p=1 ./...
         env:
           TF_ACC: "1"
           JAMFPLATFORM_BASE_URL: ${{ secrets.JAMFPLATFORM_BASE_URL }}
