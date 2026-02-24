@@ -1,4 +1,5 @@
-// Copyright 2026 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package provider
 
@@ -134,7 +135,7 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		apiClient.SetLogger(NewTerraformLogger())
 	}
 
-	if _, err := apiClient.OAuthClient().GetValidToken(ctx); err != nil {
+	if err := apiClient.ValidateCredentials(ctx); err != nil {
 		resp.Diagnostics.AddError(
 			"Authentication Failed",
 			fmt.Sprintf("Unable to authenticate with Jamf Platform API. Please verify your credentials are correct.\n\nError: %s", err.Error()),

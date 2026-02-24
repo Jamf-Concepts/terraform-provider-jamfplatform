@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package device_groups
 
@@ -50,15 +51,14 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, req datasource.Sche
 				Computed:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx),
-		},
-		Blocks: map[string]schema.Block{
-			"filter": filters.FilterBlock(
+			"filter": filters.FilterAttribute(
 				filters.SelectorDescription(DeviceGroupFilterSelectors),
 				DeviceGroupFilterSelectors,
 			),
-			"device_groups": schema.ListNestedBlock{
+			"device_groups": schema.ListNestedAttribute{
 				MarkdownDescription: "Device groups that matched the applied filters.",
-				NestedObject: schema.NestedBlockObject{
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
 							MarkdownDescription: "Device group Platform ID.",

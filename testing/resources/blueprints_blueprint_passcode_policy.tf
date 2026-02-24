@@ -6,7 +6,7 @@ resource "jamfplatform_blueprints_blueprint" "test_passcode_policy" {
   device_groups = [jamfplatform_device_group.test_smart_computer.id,
   jamfplatform_device_group.test_smart_mobile.id]
 
-  passcode_policy {
+  passcode_policy = {
     change_at_next_auth              = true
     failed_attempts_reset_in_minutes = 0
     maximum_failed_attempts          = 11

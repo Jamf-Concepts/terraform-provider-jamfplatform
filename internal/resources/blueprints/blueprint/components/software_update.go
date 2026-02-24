@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -28,100 +29,98 @@ type SoftwareUpdateComponent struct {
 }
 
 // SoftwareUpdateComponentSchema returns the Terraform schema for software update component
-func SoftwareUpdateComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Attributes: map[string]schema.Attribute{
-			"enforcement_type": schema.StringAttribute{
-				MarkdownDescription: "Type of enforcement. Automatically set to `AUTOMATIC` when `deployment_time` or `enforce_after_days` is specified, or `MANUAL` when `target_os_version` or `target_local_date_time` is specified.",
-				Computed:            true,
+func SoftwareUpdateComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"enforcement_type": schema.StringAttribute{
+			MarkdownDescription: "Type of enforcement. Automatically set to `AUTOMATIC` when `deployment_time` or `enforce_after_days` is specified, or `MANUAL` when `target_os_version` or `target_local_date_time` is specified.",
+			Computed:            true,
+		},
+		"deployment_time": schema.StringAttribute{
+			MarkdownDescription: "For automatic enforcement. Local device time to install the update. Format: `HH:mm` (24-hour). Cannot be used with `target_os_version` or `target_local_date_time`.",
+			Optional:            true,
+			Validators: []validator.String{
+				stringvalidator.RegexMatches(
+					regexp.MustCompile(`^(?:[01]\d|2[0-3]):[0-5]\d$`),
+					"Value must be in HH:mm format (e.g., 14:30)",
+				),
+				stringvalidator.AlsoRequires(
+					path.MatchRelative().AtParent().AtName("enforce_after_days"),
+					path.MatchRelative().AtParent().AtName("ignore_major_versions"),
+				),
+				stringvalidator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("target_os_version"),
+					path.MatchRelative().AtParent().AtName("target_local_date_time"),
+				),
 			},
-			"deployment_time": schema.StringAttribute{
-				MarkdownDescription: "For automatic enforcement. Local device time to install the update. Format: `HH:mm` (24-hour). Cannot be used with `target_os_version` or `target_local_date_time`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^(?:[01]\d|2[0-3]):[0-5]\d$`),
-						"Value must be in HH:mm format (e.g., 14:30)",
-					),
-					stringvalidator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("enforce_after_days"),
-						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
-					),
-					stringvalidator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("target_os_version"),
-						path.MatchRelative().AtParent().AtName("target_local_date_time"),
-					),
-				},
+		},
+		"ignore_major_versions": schema.BoolAttribute{
+			MarkdownDescription: "Whether to ignore major OS versions when enforcing updates. Only applicable for automatic enforcement. Cannot be used with `target_os_version` or `target_local_date_time`.",
+			Optional:            true,
+			Validators: []validator.Bool{
+				boolvalidator.AlsoRequires(
+					path.MatchRelative().AtParent().AtName("deployment_time"),
+					path.MatchRelative().AtParent().AtName("enforce_after_days"),
+				),
+				boolvalidator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("target_os_version"),
+					path.MatchRelative().AtParent().AtName("target_local_date_time"),
+				),
 			},
-			"ignore_major_versions": schema.BoolAttribute{
-				MarkdownDescription: "Whether to ignore major OS versions when enforcing updates. Only applicable for automatic enforcement. Cannot be used with `target_os_version` or `target_local_date_time`.",
-				Optional:            true,
-				Validators: []validator.Bool{
-					boolvalidator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("deployment_time"),
-						path.MatchRelative().AtParent().AtName("enforce_after_days"),
-					),
-					boolvalidator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("target_os_version"),
-						path.MatchRelative().AtParent().AtName("target_local_date_time"),
-					),
-				},
+		},
+		"enforce_after_days": schema.Int64Attribute{
+			MarkdownDescription: "For automatic enforcement. Days after release to enforce the update. Maximum is `30`. Cannot be used with `target_os_version` or `target_local_date_time`.",
+			Optional:            true,
+			Validators: []validator.Int64{
+				int64validator.Between(0, 30),
+				int64validator.AlsoRequires(
+					path.MatchRelative().AtParent().AtName("deployment_time"),
+					path.MatchRelative().AtParent().AtName("ignore_major_versions"),
+				),
+				int64validator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("target_os_version"),
+					path.MatchRelative().AtParent().AtName("target_local_date_time"),
+				),
 			},
-			"enforce_after_days": schema.Int64Attribute{
-				MarkdownDescription: "For automatic enforcement. Days after release to enforce the update. Maximum is `30`. Cannot be used with `target_os_version` or `target_local_date_time`.",
-				Optional:            true,
-				Validators: []validator.Int64{
-					int64validator.Between(0, 30),
-					int64validator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("deployment_time"),
-						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
-					),
-					int64validator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("target_os_version"),
-						path.MatchRelative().AtParent().AtName("target_local_date_time"),
-					),
-				},
+		},
+		"target_os_version": schema.StringAttribute{
+			MarkdownDescription: "For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.",
+			Optional:            true,
+			Validators: []validator.String{
+				stringvalidator.RegexMatches(
+					regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`),
+					"Value must be a valid semantic version (e.g., 10.15.7)",
+				),
+				stringvalidator.AlsoRequires(
+					path.MatchRelative().AtParent().AtName("target_local_date_time"),
+				),
+				stringvalidator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("deployment_time"),
+					path.MatchRelative().AtParent().AtName("enforce_after_days"),
+					path.MatchRelative().AtParent().AtName("ignore_major_versions"),
+				),
 			},
-			"target_os_version": schema.StringAttribute{
-				MarkdownDescription: "For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`),
-						"Value must be a valid semantic version (e.g., 10.15.7)",
-					),
-					stringvalidator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("target_local_date_time"),
-					),
-					stringvalidator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("deployment_time"),
-						path.MatchRelative().AtParent().AtName("enforce_after_days"),
-						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
-					),
-				},
+		},
+		"target_local_date_time": schema.StringAttribute{
+			MarkdownDescription: "For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.",
+			Optional:            true,
+			Validators: []validator.String{
+				stringvalidator.RegexMatches(
+					regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`),
+					"Value must be a valid RFC3339 date-time (e.g., 2023-10-05T14:48:00)",
+				),
+				stringvalidator.AlsoRequires(
+					path.MatchRelative().AtParent().AtName("target_os_version"),
+				),
+				stringvalidator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("deployment_time"),
+					path.MatchRelative().AtParent().AtName("enforce_after_days"),
+					path.MatchRelative().AtParent().AtName("ignore_major_versions"),
+				),
 			},
-			"target_local_date_time": schema.StringAttribute{
-				MarkdownDescription: "For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`),
-						"Value must be a valid RFC3339 date-time (e.g., 2023-10-05T14:48:00)",
-					),
-					stringvalidator.AlsoRequires(
-						path.MatchRelative().AtParent().AtName("target_os_version"),
-					),
-					stringvalidator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("deployment_time"),
-						path.MatchRelative().AtParent().AtName("enforce_after_days"),
-						path.MatchRelative().AtParent().AtName("ignore_major_versions"),
-					),
-				},
-			},
-			"details_url_value": schema.StringAttribute{
-				MarkdownDescription: "URL of a web page with the details about the software update.",
-				Optional:            true,
-			},
+		},
+		"details_url_value": schema.StringAttribute{
+			MarkdownDescription: "URL of a web page with the details about the software update.",
+			Optional:            true,
 		},
 	}
 }

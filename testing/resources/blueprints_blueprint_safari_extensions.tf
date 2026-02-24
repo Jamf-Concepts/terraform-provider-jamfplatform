@@ -5,17 +5,17 @@ resource "jamfplatform_blueprints_blueprint" "test_safari_extensions" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  safari_extensions {
-    managed_extensions {
+  safari_extensions = {
+    managed_extensions = [{
       extension_id     = "com.example.adblock"
       state            = "Allowed"
       private_browsing = "AlwaysOff"
-      allowed_domains {
+      allowed_domains = [{
         domain = "*.company.com"
-      }
-      denied_domains {
+      }]
+      denied_domains = [{
         domain = "*.social-media.com"
-      }
-    }
+      }]
+    }]
   }
 }

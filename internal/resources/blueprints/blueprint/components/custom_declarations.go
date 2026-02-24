@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -26,31 +27,30 @@ type CustomDeclarationModel struct {
 }
 
 // CustomDeclarationsComponentSchema returns the Terraform schema for custom declarations component
-func CustomDeclarationsComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Blocks: map[string]schema.Block{
-			"declaration": schema.ListNestedBlock{
-				MarkdownDescription: "Custom DDM declaration.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"channel": schema.StringAttribute{
-							MarkdownDescription: "The channel type for the declaration. Valid values are `SYSTEM`, `USER`.",
-							Required:            true,
-							Validators:          []validator.String{stringvalidator.OneOf("SYSTEM", "USER")},
-						},
-						"kind": schema.StringAttribute{
-							MarkdownDescription: "The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.",
-							Required:            true,
-							Validators:          []validator.String{stringvalidator.OneOf("CONFIGURATION", "ASSET")},
-						},
-						"payload": schema.StringAttribute{
-							MarkdownDescription: "JSON-encoded payload object for the declaration.",
-							Required:            true,
-						},
-						"type": schema.StringAttribute{
-							MarkdownDescription: "The declaration type identifier (e.g., `com.apple.configuration.softwareupdate.settings`).",
-							Required:            true,
-						},
+func CustomDeclarationsComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"declaration": schema.SetNestedAttribute{
+			MarkdownDescription: "Custom DDM declaration.",
+			Optional:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"channel": schema.StringAttribute{
+						MarkdownDescription: "The channel type for the declaration. Valid values are `SYSTEM`, `USER`.",
+						Required:            true,
+						Validators:          []validator.String{stringvalidator.OneOf("SYSTEM", "USER")},
+					},
+					"kind": schema.StringAttribute{
+						MarkdownDescription: "The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.",
+						Required:            true,
+						Validators:          []validator.String{stringvalidator.OneOf("CONFIGURATION", "ASSET")},
+					},
+					"payload": schema.StringAttribute{
+						MarkdownDescription: "JSON-encoded payload object for the declaration.",
+						Required:            true,
+					},
+					"type": schema.StringAttribute{
+						MarkdownDescription: "The declaration type identifier (e.g., `com.apple.configuration.softwareupdate.settings`).",
+						Required:            true,
 					},
 				},
 			},

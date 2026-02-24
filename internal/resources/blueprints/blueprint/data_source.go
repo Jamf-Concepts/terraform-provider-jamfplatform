@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package blueprint
 
@@ -16,6 +17,11 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
+
+// BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
+type BlueprintDataSource struct {
+	client *client.Client
+}
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &BlueprintDataSource{}
@@ -64,7 +70,7 @@ func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				MarkdownDescription: "Deployment state.",
 				Computed:            true,
 			},
-			"device_groups": schema.SetAttribute{
+			"device_groups": schema.ListAttribute{
 				MarkdownDescription: "Device groups in scope.",
 				ElementType:         types.StringType,
 				Computed:            true,
@@ -157,7 +163,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, bp.Scope.DeviceGroups)
+	deviceGroupsList, _ := types.ListValueFrom(context.Background(), types.StringType, bp.Scope.DeviceGroups)
 
 	var components []ComponentModel
 	if len(bp.Steps) > 0 {
@@ -189,7 +195,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		Created:         types.StringValue(bp.Created),
 		Updated:         types.StringValue(bp.Updated),
 		DeploymentState: types.StringValue(bp.DeploymentState.State),
-		DeviceGroups:    deviceGroupsSet,
+		DeviceGroups:    deviceGroupsList,
 		Components:      components,
 		Timeouts:        timeoutsValue,
 	}

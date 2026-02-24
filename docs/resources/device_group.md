@@ -33,25 +33,27 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
   group_type  = "smart"
   device_type = "computer"
   description = "An example smart computer group"
-  criteria {
-    criteria = "Operating System Version"
-    operator = "greater than or equal"
-    value    = "26.0"
-  }
-  criteria {
-    and_or                  = "or"
-    has_opening_parenthesis = true
-    criteria                = "Serial Number"
-    operator                = "is"
-    value                   = "ABC123456"
-  }
-  criteria {
-    and_or                  = "and"
-    criteria                = "Last Enrollment"
-    operator                = "before (yyyy-mm-dd)"
-    value                   = "2025-01-01"
-    has_closing_parenthesis = true
-  }
+  criteria = [
+    {
+      criteria = "Operating System Version"
+      operator = "greater than or equal"
+      value    = "26.0"
+    },
+    {
+      and_or                  = "or"
+      has_opening_parenthesis = true
+      criteria                = "Serial Number"
+      operator                = "is"
+      value                   = "ABC123456"
+    },
+    {
+      and_or                  = "and"
+      criteria                = "Last Enrollment"
+      operator                = "before (yyyy-mm-dd)"
+      value                   = "2025-01-01"
+      has_closing_parenthesis = true
+    },
+  ]
 }
 ```
 
@@ -66,7 +68,7 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 
 ### Optional
 
-- `criteria` (Block List) Smart-group criteria evaluated by the Jamf inventory service. (see [below for nested schema](#nestedblock--criteria))
+- `criteria` (Attributes Set) Smart-group criteria evaluated by the Jamf inventory service. (see [below for nested schema](#nestedatt--criteria))
 - `description` (String) Optional Description for the device group.
 - `members` (Set of String) Optional device IDs to manage for static groups. When omitted, the provider leaves membership unchanged. Ignored for smart groups.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -76,7 +78,7 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
 - `id` (String) Unique identifier assigned by the API.
 - `member_count` (Number) Total members reported by the API.
 
-<a id="nestedblock--criteria"></a>
+<a id="nestedatt--criteria"></a>
 ### Nested Schema for `criteria`
 
 Required:
@@ -90,7 +92,7 @@ Optional:
 - `and_or` (String) How this criterion joins to the next. Valid values are `and` or `or`. Defaults to `and` if omitted.
 - `has_closing_parenthesis` (Boolean) Whether the criterion ends a parenthetical grouping.
 - `has_opening_parenthesis` (Boolean) Whether the criterion begins a parenthetical grouping.
-- `order` (Number) Execution order for the criterion. Defaults to the block index if omitted.
+- `order` (Number) Execution order for the criterion. Defaults to the element index if omitted.
 
 
 <a id="nestedatt--timeouts"></a>

@@ -21,7 +21,7 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update_settings {
+  software_update_settings = {
     allow_standard_user_os_updates           = true
     automatic_download                       = "AlwaysOn"
     automatic_install_os_updates             = "AlwaysOn"
@@ -36,15 +36,13 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
     rapid_security_response_rollback_enabled = false
     recommended_cadence                      = "Newest"
 
-    beta_offer_programs {
+    beta_offer_programs = [{
       token       = "beta-token-1"
       description = "iOS 18 Beta Program"
-    }
-
-    beta_offer_programs {
+      }, {
       token       = "beta-token-2"
       description = "macOS Sequoia Beta Program"
-    }
+    }]
   }
 }
 
@@ -56,7 +54,7 @@ resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update {
+  software_update = {
     ignore_major_versions = true
     deployment_time       = "02:00"
     enforce_after_days    = 7
@@ -71,7 +69,7 @@ resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update {
+  software_update = {
     target_os_version      = "26.0.1"
     target_local_date_time = "2025-10-10T12:00:00"
   }
@@ -103,9 +101,9 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  custom_declarations {
+  custom_declarations = {
 
-    declaration {
+    declaration = [{
       channel = "SYSTEM"
       kind    = "CONFIGURATION"
       type    = "com.apple.configuration.softwareupdate.settings"
@@ -118,9 +116,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
           ProgramEnrollment = "AlwaysOn"
         }
       })
-    }
-
-    declaration {
+      }, {
       channel = "USER"
       kind    = "ASSET"
       type    = "com.apple.asset.credential.userpassword"
@@ -130,7 +126,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
           ContentType = "application/plist"
         }
       })
-    }
+    }]
   }
 }
 ```
@@ -146,21 +142,21 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 
 ### Optional
 
-- `audio_accessory_settings` (Block List) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedblock--audio_accessory_settings))
-- `custom_declarations` (Block List) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedblock--custom_declarations))
+- `audio_accessory_settings` (Attributes) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedatt--audio_accessory_settings))
+- `custom_declarations` (Attributes) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedatt--custom_declarations))
 - `description` (String) Blueprint description.
-- `disk_management_settings` (Block List) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedblock--disk_management_settings))
+- `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--disk_management_settings))
 - `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have `payloadType` and `payloadIdentifier` fields. The payload display name will automatically use the blueprint name.
-- `math_settings` (Block List) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedblock--math_settings))
-- `passcode_policy` (Block List) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedblock--passcode_policy))
-- `raw_component` (Block List) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedblock--raw_component))
-- `safari_bookmarks` (Block List) Safari bookmarks component for managing Safari managed bookmarks and bookmark groups. (see [below for nested schema](#nestedblock--safari_bookmarks))
-- `safari_extensions` (Block List) Safari extensions component for managing Safari extension permissions and states. (see [below for nested schema](#nestedblock--safari_extensions))
-- `safari_settings` (Block List) Safari settings component for managing Safari browser behavior and security settings. (see [below for nested schema](#nestedblock--safari_settings))
-- `service_background_tasks` (Block List) Service background tasks component for managing background service tasks and launchd configurations. (see [below for nested schema](#nestedblock--service_background_tasks))
-- `service_configuration_files` (Block List) Service configuration files component for managing configuration files for system services. (see [below for nested schema](#nestedblock--service_configuration_files))
-- `software_update` (Block List) Software update component for enforcing OS updates on devices. (see [below for nested schema](#nestedblock--software_update))
-- `software_update_settings` (Block List) Software update settings component for configuring system update behavior and policies. (see [below for nested schema](#nestedblock--software_update_settings))
+- `math_settings` (Attributes) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedatt--math_settings))
+- `passcode_policy` (Attributes) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedatt--passcode_policy))
+- `raw_component` (Attributes Set) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedatt--raw_component))
+- `safari_bookmarks` (Attributes) Safari bookmarks component for managing Safari managed bookmarks and bookmark groups. (see [below for nested schema](#nestedatt--safari_bookmarks))
+- `safari_extensions` (Attributes) Safari extensions component for managing Safari extension permissions and states. (see [below for nested schema](#nestedatt--safari_extensions))
+- `safari_settings` (Attributes) Safari settings component for managing Safari browser behavior and security settings. (see [below for nested schema](#nestedatt--safari_settings))
+- `service_background_tasks` (Attributes) Service background tasks component for managing background service tasks and launchd configurations. (see [below for nested schema](#nestedatt--service_background_tasks))
+- `service_configuration_files` (Attributes) Service configuration files component for managing configuration files for system services. (see [below for nested schema](#nestedatt--service_configuration_files))
+- `software_update` (Attributes) Software update component for enforcing OS updates on devices. (see [below for nested schema](#nestedatt--software_update))
+- `software_update_settings` (Attributes) Software update settings component for configuring system update behavior and policies. (see [below for nested schema](#nestedatt--software_update_settings))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -170,7 +166,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 - `id` (String) The unique identifier for the blueprint.
 - `updated` (String) Last updated timestamp.
 
-<a id="nestedblock--audio_accessory_settings"></a>
+<a id="nestedatt--audio_accessory_settings"></a>
 ### Nested Schema for `audio_accessory_settings`
 
 Required:
@@ -183,14 +179,14 @@ Optional:
 - `unpairing_time_policy` (String) Device's unpairing policy. Valid values are `None`, `Hour`. When set to `Hour`, `unpairing_time_hour` must also be provided.
 
 
-<a id="nestedblock--custom_declarations"></a>
+<a id="nestedatt--custom_declarations"></a>
 ### Nested Schema for `custom_declarations`
 
 Optional:
 
-- `declaration` (Block List) Custom DDM declaration. (see [below for nested schema](#nestedblock--custom_declarations--declaration))
+- `declaration` (Attributes Set) Custom DDM declaration. (see [below for nested schema](#nestedatt--custom_declarations--declaration))
 
-<a id="nestedblock--custom_declarations--declaration"></a>
+<a id="nestedatt--custom_declarations--declaration"></a>
 ### Nested Schema for `custom_declarations.declaration`
 
 Required:
@@ -202,7 +198,7 @@ Required:
 
 
 
-<a id="nestedblock--disk_management_settings"></a>
+<a id="nestedatt--disk_management_settings"></a>
 ### Nested Schema for `disk_management_settings`
 
 Optional:
@@ -211,7 +207,7 @@ Optional:
 - `network_storage` (String) Storage mode for network storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.
 
 
-<a id="nestedblock--math_settings"></a>
+<a id="nestedatt--math_settings"></a>
 ### Nested Schema for `math_settings`
 
 Optional:
@@ -226,7 +222,7 @@ Optional:
 - `system_behavior_math_notes` (Boolean) Controls whether Math Notes is allowed in other apps such as Notes. Also requires `system_behavior_keyboard_suggestions` to be set.
 
 
-<a id="nestedblock--passcode_policy"></a>
+<a id="nestedatt--passcode_policy"></a>
 ### Nested Schema for `passcode_policy`
 
 Optional:
@@ -245,7 +241,7 @@ Optional:
 - `require_passcode` (Boolean) Require passcode.
 
 
-<a id="nestedblock--raw_component"></a>
+<a id="nestedatt--raw_component"></a>
 ### Nested Schema for `raw_component`
 
 Required:
@@ -257,14 +253,14 @@ Optional:
 - `configuration` (Map of String) Component configuration as key-value pairs. Each component has its own unique configuration options.
 
 
-<a id="nestedblock--safari_bookmarks"></a>
+<a id="nestedatt--safari_bookmarks"></a>
 ### Nested Schema for `safari_bookmarks`
 
 Optional:
 
-- `managed_bookmarks` (Block List) List of managed bookmark groups. (see [below for nested schema](#nestedblock--safari_bookmarks--managed_bookmarks))
+- `managed_bookmarks` (Attributes Set) Set of managed bookmark groups. (see [below for nested schema](#nestedatt--safari_bookmarks--managed_bookmarks))
 
-<a id="nestedblock--safari_bookmarks--managed_bookmarks"></a>
+<a id="nestedatt--safari_bookmarks--managed_bookmarks"></a>
 ### Nested Schema for `safari_bookmarks.managed_bookmarks`
 
 Required:
@@ -274,9 +270,9 @@ Required:
 
 Optional:
 
-- `bookmarks` (Block List) List of bookmarks in this group. (see [below for nested schema](#nestedblock--safari_bookmarks--managed_bookmarks--bookmarks))
+- `bookmarks` (Attributes Set) Set of bookmarks in this group. (see [below for nested schema](#nestedatt--safari_bookmarks--managed_bookmarks--bookmarks))
 
-<a id="nestedblock--safari_bookmarks--managed_bookmarks--bookmarks"></a>
+<a id="nestedatt--safari_bookmarks--managed_bookmarks--bookmarks"></a>
 ### Nested Schema for `safari_bookmarks.managed_bookmarks.bookmarks`
 
 Required:
@@ -285,11 +281,11 @@ Required:
 
 Optional:
 
-- `folder` (Block List) Bookmarks within this folder. (see [below for nested schema](#nestedblock--safari_bookmarks--managed_bookmarks--bookmarks--folder))
+- `folder` (Attributes Set) Bookmarks within this folder. (see [below for nested schema](#nestedatt--safari_bookmarks--managed_bookmarks--bookmarks--folder))
 - `type` (String) Type of bookmark. Valid values are `bookmark` (URL bookmark) or `folder` (bookmark folder).
 - `url` (String) The URL for direct bookmarks (not used for folders).
 
-<a id="nestedblock--safari_bookmarks--managed_bookmarks--bookmarks--folder"></a>
+<a id="nestedatt--safari_bookmarks--managed_bookmarks--bookmarks--folder"></a>
 ### Nested Schema for `safari_bookmarks.managed_bookmarks.bookmarks.folder`
 
 Required:
@@ -301,14 +297,14 @@ Required:
 
 
 
-<a id="nestedblock--safari_extensions"></a>
+<a id="nestedatt--safari_extensions"></a>
 ### Nested Schema for `safari_extensions`
 
 Optional:
 
-- `managed_extensions` (Block List) List of managed Safari extensions. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions))
+- `managed_extensions` (Attributes Set) Set of managed Safari extensions. (see [below for nested schema](#nestedatt--safari_extensions--managed_extensions))
 
-<a id="nestedblock--safari_extensions--managed_extensions"></a>
+<a id="nestedatt--safari_extensions--managed_extensions"></a>
 ### Nested Schema for `safari_extensions.managed_extensions`
 
 Required:
@@ -317,12 +313,12 @@ Required:
 
 Optional:
 
-- `allowed_domains` (Block List) List of allowed domains for this extension. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions--allowed_domains))
-- `denied_domains` (Block List) List of denied domains for this extension. (see [below for nested schema](#nestedblock--safari_extensions--managed_extensions--denied_domains))
+- `allowed_domains` (Attributes Set) Set of allowed domains for this extension. (see [below for nested schema](#nestedatt--safari_extensions--managed_extensions--allowed_domains))
+- `denied_domains` (Attributes Set) Set of denied domains for this extension. (see [below for nested schema](#nestedatt--safari_extensions--managed_extensions--denied_domains))
 - `private_browsing` (String) Private browsing state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `state` (String) Extension state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.
 
-<a id="nestedblock--safari_extensions--managed_extensions--allowed_domains"></a>
+<a id="nestedatt--safari_extensions--managed_extensions--allowed_domains"></a>
 ### Nested Schema for `safari_extensions.managed_extensions.allowed_domains`
 
 Required:
@@ -330,7 +326,7 @@ Required:
 - `domain` (String) Domain name.
 
 
-<a id="nestedblock--safari_extensions--managed_extensions--denied_domains"></a>
+<a id="nestedatt--safari_extensions--managed_extensions--denied_domains"></a>
 ### Nested Schema for `safari_extensions.managed_extensions.denied_domains`
 
 Required:
@@ -340,7 +336,7 @@ Required:
 
 
 
-<a id="nestedblock--safari_settings"></a>
+<a id="nestedatt--safari_settings"></a>
 ### Nested Schema for `safari_settings`
 
 Optional:
@@ -357,14 +353,14 @@ Optional:
 - `new_tab_start_page_type` (String) Sets the start page type in Safari. Valid values are `Start`, `Home`, `Extension`.
 
 
-<a id="nestedblock--service_background_tasks"></a>
+<a id="nestedatt--service_background_tasks"></a>
 ### Nested Schema for `service_background_tasks`
 
 Optional:
 
-- `background_tasks` (Block List) List of background tasks. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks))
+- `background_tasks` (Attributes Set) Set of background tasks. (see [below for nested schema](#nestedatt--service_background_tasks--background_tasks))
 
-<a id="nestedblock--service_background_tasks--background_tasks"></a>
+<a id="nestedatt--service_background_tasks--background_tasks"></a>
 ### Nested Schema for `service_background_tasks.background_tasks`
 
 Required:
@@ -373,11 +369,11 @@ Required:
 
 Optional:
 
-- `executable_asset_reference` (Block, Optional) Reference to the executable asset. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks--executable_asset_reference))
-- `launchd_configurations` (Block List) Launchd configuration items. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks--launchd_configurations))
+- `executable_asset_reference` (Attributes) Reference to the executable asset. (see [below for nested schema](#nestedatt--service_background_tasks--background_tasks--executable_asset_reference))
+- `launchd_configurations` (Attributes Set) Launchd configuration items. (see [below for nested schema](#nestedatt--service_background_tasks--background_tasks--launchd_configurations))
 - `task_description` (String) Task description.
 
-<a id="nestedblock--service_background_tasks--background_tasks--executable_asset_reference"></a>
+<a id="nestedatt--service_background_tasks--background_tasks--executable_asset_reference"></a>
 ### Nested Schema for `service_background_tasks.background_tasks.executable_asset_reference`
 
 Required:
@@ -393,7 +389,7 @@ Read-Only:
 - `content_type` (String) Media type of the data. Always `application/zip` for executable assets.
 
 
-<a id="nestedblock--service_background_tasks--background_tasks--launchd_configurations"></a>
+<a id="nestedatt--service_background_tasks--background_tasks--launchd_configurations"></a>
 ### Nested Schema for `service_background_tasks.background_tasks.launchd_configurations`
 
 Required:
@@ -402,9 +398,9 @@ Required:
 
 Optional:
 
-- `file_asset_reference` (Block, Optional) Reference to the configuration file asset. (see [below for nested schema](#nestedblock--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference))
+- `file_asset_reference` (Attributes) Reference to the configuration file asset. (see [below for nested schema](#nestedatt--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference))
 
-<a id="nestedblock--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference"></a>
+<a id="nestedatt--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference"></a>
 ### Nested Schema for `service_background_tasks.background_tasks.launchd_configurations.file_asset_reference`
 
 Required:
@@ -420,14 +416,14 @@ Optional:
 
 
 
-<a id="nestedblock--service_configuration_files"></a>
+<a id="nestedatt--service_configuration_files"></a>
 ### Nested Schema for `service_configuration_files`
 
 Optional:
 
-- `service_config_files` (Block List) List of service configuration files. (see [below for nested schema](#nestedblock--service_configuration_files--service_config_files))
+- `service_config_files` (Attributes Set) Set of service configuration files. (see [below for nested schema](#nestedatt--service_configuration_files--service_config_files))
 
-<a id="nestedblock--service_configuration_files--service_config_files"></a>
+<a id="nestedatt--service_configuration_files--service_config_files"></a>
 ### Nested Schema for `service_configuration_files.service_config_files`
 
 Required:
@@ -436,9 +432,9 @@ Required:
 
 Optional:
 
-- `data_asset_reference` (Block, Optional) Reference to the configuration data asset. (see [below for nested schema](#nestedblock--service_configuration_files--service_config_files--data_asset_reference))
+- `data_asset_reference` (Attributes) Reference to the configuration data asset. (see [below for nested schema](#nestedatt--service_configuration_files--service_config_files--data_asset_reference))
 
-<a id="nestedblock--service_configuration_files--service_config_files--data_asset_reference"></a>
+<a id="nestedatt--service_configuration_files--service_config_files--data_asset_reference"></a>
 ### Nested Schema for `service_configuration_files.service_config_files.data_asset_reference`
 
 Required:
@@ -456,7 +452,7 @@ Read-Only:
 
 
 
-<a id="nestedblock--software_update"></a>
+<a id="nestedatt--software_update"></a>
 ### Nested Schema for `software_update`
 
 Optional:
@@ -473,7 +469,7 @@ Read-Only:
 - `enforcement_type` (String) Type of enforcement. Automatically set to `AUTOMATIC` when `deployment_time` or `enforce_after_days` is specified, or `MANUAL` when `target_os_version` or `target_local_date_time` is specified.
 
 
-<a id="nestedblock--software_update_settings"></a>
+<a id="nestedatt--software_update_settings"></a>
 ### Nested Schema for `software_update_settings`
 
 Optional:
@@ -482,7 +478,7 @@ Optional:
 - `automatic_download` (String) Automatic download behavior for updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `automatic_install_os_updates` (String) Automatic installation behavior for OS updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `automatic_install_security_updates` (String) Automatic installation behavior for security updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
-- `beta_offer_programs` (Block List) Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each). (see [below for nested schema](#nestedblock--software_update_settings--beta_offer_programs))
+- `beta_offer_programs` (Attributes Set) Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each). (see [below for nested schema](#nestedatt--software_update_settings--beta_offer_programs))
 - `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.
 - `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.
@@ -495,7 +491,7 @@ Optional:
 - `rapid_security_response_rollback_enabled` (Boolean) Enable rollback capability for Rapid Security Response updates.
 - `recommended_cadence` (String) Recommended update cadence policy. Valid values: `All`, `Oldest`, `Newest`.
 
-<a id="nestedblock--software_update_settings--beta_offer_programs"></a>
+<a id="nestedatt--software_update_settings--beta_offer_programs"></a>
 ### Nested Schema for `software_update_settings.beta_offer_programs`
 
 Required:
@@ -522,6 +518,8 @@ Import is supported using the following syntax:
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 
 ```shell
-# Copyright 2025 Jamf Software LLC
+# Copyright Jamf Software LLC 2026
+# SPDX-License-Identifier: MPL-2.0
+
 terraform import jamfplatform_blueprints_blueprint.example "013d8b7c-e12d-4086-b309-8fd99058e5b0"
 ```

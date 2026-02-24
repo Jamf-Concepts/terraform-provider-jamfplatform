@@ -1,9 +1,11 @@
-// Copyright 2026 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package filters
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -29,16 +31,17 @@ type FilterModel struct {
 // SelectorValidator returns true when a selector is permitted for the data source.
 type SelectorValidator func(string) bool
 
-// FilterBlock builds the shared schema for declarative RSQL filter clauses.
-func FilterBlock(selectorDescription string, validSelectors []string) schema.ListNestedBlock {
+// FilterAttribute builds the shared schema for declarative RSQL filter clauses as a nested attribute.
+func FilterAttribute(selectorDescription string, validSelectors []string) schema.ListNestedAttribute {
 	var selectorValidators []validator.String
 	if len(validSelectors) > 0 {
 		selectorValidators = append(selectorValidators, stringvalidator.OneOf(validSelectors...))
 	}
 
-	return schema.ListNestedBlock{
+	return schema.ListNestedAttribute{
 		MarkdownDescription: filterBlockDescription,
-		NestedObject: schema.NestedBlockObject{
+		Optional:            true,
+		NestedObject: schema.NestedAttributeObject{
 			Attributes: map[string]schema.Attribute{
 				"selector": schema.StringAttribute{
 					MarkdownDescription: selectorDescription,
@@ -65,7 +68,7 @@ func FilterBlock(selectorDescription string, validSelectors []string) schema.Lis
 					Optional:            true,
 				},
 				"join_with": schema.StringAttribute{
-					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
+					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first clause.",
 					Optional:            true,
 					Validators: []validator.String{
 						stringvalidator.OneOf("and", "or"),
@@ -76,16 +79,17 @@ func FilterBlock(selectorDescription string, validSelectors []string) schema.Lis
 	}
 }
 
-// ListFilterBlock builds the shared schema block for list resources that support RSQL filters.
-func ListFilterBlock(selectorDescription string, validSelectors []string) listschema.ListNestedBlock {
+// ListFilterAttribute builds the shared schema for list resources that support RSQL filters.
+func ListFilterAttribute(selectorDescription string, validSelectors []string) listschema.ListNestedAttribute {
 	var selectorValidators []validator.String
 	if len(validSelectors) > 0 {
 		selectorValidators = append(selectorValidators, stringvalidator.OneOf(validSelectors...))
 	}
 
-	return listschema.ListNestedBlock{
+	return listschema.ListNestedAttribute{
 		MarkdownDescription: filterBlockDescription,
-		NestedObject: listschema.NestedBlockObject{
+		Optional:            true,
+		NestedObject: listschema.NestedAttributeObject{
 			Attributes: map[string]listschema.Attribute{
 				"selector": listschema.StringAttribute{
 					MarkdownDescription: selectorDescription,
@@ -112,7 +116,7 @@ func ListFilterBlock(selectorDescription string, validSelectors []string) listsc
 					Optional:            true,
 				},
 				"join_with": listschema.StringAttribute{
-					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first block.",
+					MarkdownDescription: "Logical operator used to join this clause with the previous one. Valid values are `and` and `or`. Defaults to `and` when omitted or for the first clause.",
 					Optional:            true,
 					Validators: []validator.String{
 						stringvalidator.OneOf("and", "or"),
@@ -132,7 +136,7 @@ func SelectorDescription(selectors []string) string {
 func selectorsMarkdownList(selectors []string) string {
 	quoted := make([]string, len(selectors))
 	for i, selector := range selectors {
-		quoted[i] = fmt.Sprintf("`%s`", selector)
+		quoted[i] = "`" + selector + "`"
 	}
 	return strings.Join(quoted, ", ")
 }
@@ -205,13 +209,8 @@ func AllowList(validSelectors []string) SelectorValidator {
 	if len(validSelectors) == 0 {
 		return nil
 	}
-	allowed := make(map[string]struct{}, len(validSelectors))
-	for _, selector := range validSelectors {
-		allowed[selector] = struct{}{}
-	}
 	return func(selector string) bool {
-		_, ok := allowed[selector]
-		return ok
+		return slices.Contains(validSelectors, selector)
 	}
 }
 
@@ -220,7 +219,7 @@ func Clause(selector, operator, argument string) string {
 	if operator == "" {
 		operator = "=="
 	}
-	return fmt.Sprintf("%s%s%s", selector, operator, FormatArgument(argument))
+	return selector + operator + FormatArgument(argument)
 }
 
 // configuredFilterValue extracts the string value from a types.String, returning
@@ -247,7 +246,7 @@ func FormatArgument(value string) string {
 	escaped := strings.ReplaceAll(trimmed, `\\`, `\\\\`)
 	escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
 	if argumentNeedsQuoting(trimmed) {
-		return fmt.Sprintf("\"%s\"", escaped)
+		return "\"" + escaped + "\""
 	}
 	return escaped
 }

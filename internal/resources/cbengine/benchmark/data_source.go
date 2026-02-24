@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package benchmark
 
@@ -6,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -14,6 +14,11 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 )
+
+// BenchmarkDataSource implements the Terraform data source for Jamf Compliance Benchmarks.
+type BenchmarkDataSource struct {
+	client *client.Client
+}
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &BenchmarkDataSource{}
@@ -266,195 +271,9 @@ func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	sources := make([]SourceModel, 0, len(bench.Sources))
-	for _, s := range bench.Sources {
-		sources = append(sources, SourceModel{
-			Branch:   types.StringValue(s.Branch),
-			Revision: types.StringValue(s.Revision),
-		})
-	}
-
-	rules := make([]RuleModel, 0, len(bench.Rules))
-	for _, r := range bench.Rules {
-		var references types.List
-		if len(r.References) == 0 {
-			references = types.ListNull(types.StringType)
-		} else {
-			vals := make([]attr.Value, len(r.References))
-			for j, ref := range r.References {
-				vals[j] = types.StringValue(ref)
-			}
-			references, _ = types.ListValue(types.StringType, vals)
-		}
-
-		var odvValue, odvHint, odvPlaceholder, odvType, odvValidationRegex types.String
-		var odvValidationMin, odvValidationMax types.Int64
-		var odvValidationEnumValues types.List
-		if r.ODV != nil {
-			odvValue = types.StringValue(r.ODV.Value)
-			odvHint = types.StringValue(r.ODV.Hint)
-			odvPlaceholder = types.StringValue(r.ODV.Placeholder)
-			odvType = types.StringValue(r.ODV.Type)
-			if r.ODV.Validation != nil {
-				if r.ODV.Validation.Min != nil {
-					odvValidationMin = types.Int64Value(int64(*r.ODV.Validation.Min))
-				} else {
-					odvValidationMin = types.Int64Null()
-				}
-				if r.ODV.Validation.Max != nil {
-					odvValidationMax = types.Int64Value(int64(*r.ODV.Validation.Max))
-				} else {
-					odvValidationMax = types.Int64Null()
-				}
-				enumValues := make([]attr.Value, len(r.ODV.Validation.EnumValues))
-				for k, v := range r.ODV.Validation.EnumValues {
-					enumValues[k] = types.StringValue(v)
-				}
-				if len(enumValues) == 0 {
-					odvValidationEnumValues = types.ListNull(types.StringType)
-				} else {
-					odvValidationEnumValues, _ = types.ListValue(types.StringType, enumValues)
-				}
-				odvValidationRegex = types.StringValue(r.ODV.Validation.Regex)
-			} else {
-				odvValidationMin = types.Int64Null()
-				odvValidationMax = types.Int64Null()
-				odvValidationEnumValues = types.ListNull(types.StringType)
-				odvValidationRegex = types.StringNull()
-			}
-		} else {
-			odvValue = types.StringNull()
-			odvHint = types.StringNull()
-			odvPlaceholder = types.StringNull()
-			odvType = types.StringNull()
-			odvValidationMin = types.Int64Null()
-			odvValidationMax = types.Int64Null()
-			odvValidationEnumValues = types.ListNull(types.StringType)
-			odvValidationRegex = types.StringNull()
-		}
-
-		var supportedOS types.List
-		osInfoObjType := types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"os_type":         types.StringType,
-				"os_version":      types.Int64Type,
-				"management_type": types.StringType,
-			},
-		}
-		if len(r.SupportedOS) == 0 {
-			supportedOS = types.ListNull(osInfoObjType)
-		} else {
-			osVals := make([]attr.Value, len(r.SupportedOS))
-			for j, os := range r.SupportedOS {
-				osVals[j], _ = types.ObjectValue(
-					map[string]attr.Type{
-						"os_type":         types.StringType,
-						"os_version":      types.Int64Type,
-						"management_type": types.StringType,
-					},
-					map[string]attr.Value{
-						"os_type":         types.StringValue(os.OSType),
-						"os_version":      types.Int64Value(int64(os.OSVersion)),
-						"management_type": types.StringValue(os.ManagementType),
-					},
-				)
-			}
-			supportedOS, _ = types.ListValue(osInfoObjType, osVals)
-		}
-
-		osSpecObjType := types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"title":       types.StringType,
-				"description": types.StringType,
-				"odv_value":   types.StringType,
-				"odv_hint":    types.StringType,
-			},
-		}
-		var osSpecificDefaults types.Map
-		if len(r.OSSpecificDefaults) == 0 {
-			osSpecificDefaults = types.MapNull(osSpecObjType)
-		} else {
-			vals := make(map[string]attr.Value, len(r.OSSpecificDefaults))
-			for k, v := range r.OSSpecificDefaults {
-				var odvValue, odvHint types.String
-				if v.ODV != nil {
-					odvValue = types.StringValue(v.ODV.Value)
-					odvHint = types.StringValue(v.ODV.Hint)
-				} else {
-					odvValue = types.StringNull()
-					odvHint = types.StringNull()
-				}
-				vals[k], _ = types.ObjectValue(
-					map[string]attr.Type{
-						"title":       types.StringType,
-						"description": types.StringType,
-						"odv_value":   types.StringType,
-						"odv_hint":    types.StringType,
-					},
-					map[string]attr.Value{
-						"title":       types.StringValue(v.Title),
-						"description": types.StringValue(v.Description),
-						"odv_value":   odvValue,
-						"odv_hint":    odvHint,
-					},
-				)
-			}
-			osSpecificDefaults, _ = types.MapValue(osSpecObjType, vals)
-		}
-
-		var dependsOn types.List
-		if r.RuleRelation == nil || len(r.RuleRelation.DependsOn) == 0 {
-			dependsOn = types.ListNull(types.StringType)
-		} else {
-			vals := make([]attr.Value, len(r.RuleRelation.DependsOn))
-			for j, dep := range r.RuleRelation.DependsOn {
-				vals[j] = types.StringValue(dep)
-			}
-			dependsOn, _ = types.ListValue(types.StringType, vals)
-		}
-
-		rules = append(rules, RuleModel{
-			ID:                      types.StringValue(r.ID),
-			SectionName:             types.StringValue(r.SectionName),
-			Enabled:                 types.BoolValue(r.Enabled),
-			Title:                   types.StringValue(r.Title),
-			Description:             types.StringValue(r.Description),
-			References:              references,
-			ODVValue:                odvValue,
-			ODVHint:                 odvHint,
-			ODVPlaceholder:          odvPlaceholder,
-			ODVType:                 odvType,
-			ODVValidationMin:        odvValidationMin,
-			ODVValidationMax:        odvValidationMax,
-			ODVValidationEnumValues: odvValidationEnumValues,
-			ODVValidationRegex:      odvValidationRegex,
-			SupportedOS:             supportedOS,
-			OSSpecificDefaults:      osSpecificDefaults,
-			DependsOn:               dependsOn,
-		})
-	}
-
-	var targetDeviceGroup types.String
-	if len(bench.Target.DeviceGroups) > 0 {
-		targetDeviceGroup = types.StringValue(bench.Target.DeviceGroups[0])
-	} else {
-		targetDeviceGroup = types.StringNull()
-	}
-
-	data = BenchmarkDataSourceModel{
-		ID:                data.ID,
-		BenchmarkID:       types.StringValue(bench.BenchmarkID),
-		TenantID:          types.StringValue(bench.TenantID),
-		Title:             types.StringValue(bench.Title),
-		Description:       types.StringValue(bench.Description),
-		Sources:           sources,
-		Rules:             rules,
-		TargetDeviceGroup: targetDeviceGroup,
-		EnforcementMode:   types.StringValue(bench.EnforcementMode),
-		Deleted:           types.BoolValue(bench.Deleted),
-		UpdateAvailable:   types.BoolValue(bench.UpdateAvailable),
-		LastUpdatedAt:     types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00")),
-	}
+	prevID := data.ID
+	assignBenchmarkDataSourceFromResponse(&data, bench)
+	data.ID = prevID
 
 	tflog.Trace(ctx, "read a data source")
 

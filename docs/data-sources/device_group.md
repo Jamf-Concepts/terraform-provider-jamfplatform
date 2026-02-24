@@ -35,12 +35,12 @@ output "device_group_example_by_id" {
 
 ### Read-Only
 
-- `criteria` (Block List) Smart-group criteria returned by the API. (see [below for nested schema](#nestedblock--criteria))
+- `criteria` (Attributes List) Smart-group criteria returned by the API. (see [below for nested schema](#nestedatt--criteria))
 - `description` (String) Device group Description.
 - `device_type` (String) Device type value returned in lowercase.
 - `group_type` (String) Group type value returned in lowercase.
 - `member_count` (Number) Number of members in the group.
-- `members` (Set of String) Devices currently assigned to the group (Jamf Pro Management IDs).
+- `members` (List of String) Devices currently assigned to the group (Jamf Pro Management IDs).
 - `name` (String) Device group name.
 
 <a id="nestedatt--timeouts"></a>
@@ -51,7 +51,7 @@ Optional:
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
 
 
-<a id="nestedblock--criteria"></a>
+<a id="nestedatt--criteria"></a>
 ### Nested Schema for `criteria`
 
 Read-Only:

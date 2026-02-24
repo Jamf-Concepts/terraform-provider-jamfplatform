@@ -3,15 +3,16 @@ list "jamfplatform_device_group" "test_device_group" {
 
   config {
 
-    filter {
-      selector = "deviceType"
-      argument = "COMPUTER"
-    }
-
-    filter {
-      join_with = "and"
-      selector  = "groupType"
-      argument  = "STATIC"
-    }
+    filter = [
+      {
+        selector = "deviceType"
+        argument = "COMPUTER"
+      },
+      {
+        join_with = "and"
+        selector  = "groupType"
+        argument  = "STATIC"
+      }
+    ]
   }
 }

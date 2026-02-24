@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package device_group
 
@@ -15,6 +16,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
+
+// DeviceGroupDataSource implements the Terraform data source for Jamf device groups.
+type DeviceGroupDataSource struct {
+	client *client.Client
+}
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ datasource.DataSource = &DeviceGroupDataSource{}
@@ -58,17 +64,15 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 				MarkdownDescription: "Number of members in the group.",
 				Computed:            true,
 			},
-			"members": schema.SetAttribute{
+			"members": schema.ListAttribute{
 				MarkdownDescription: "Devices currently assigned to the group (Jamf Pro Management IDs).",
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
-			"timeouts": timeouts.Attributes(ctx),
-		},
-		Blocks: map[string]schema.Block{
-			"criteria": schema.ListNestedBlock{
+			"criteria": schema.ListNestedAttribute{
 				MarkdownDescription: "Smart-group criteria returned by the API.",
-				NestedObject: schema.NestedBlockObject{
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"order": schema.Int64Attribute{
 							MarkdownDescription: "Server-evaluated order for the criterion.",
@@ -101,6 +105,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 					},
 				},
 			},
+			"timeouts": timeouts.Attributes(ctx),
 		},
 	}
 }
@@ -171,7 +176,7 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	setMembers, diags := types.SetValueFrom(ctx, types.StringType, members)
+	listMembers, diags := types.ListValueFrom(ctx, types.StringType, members)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -190,7 +195,7 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		DeviceType:  deviceType,
 		GroupType:   groupType,
 		Criteria:    flattenDeviceGroupCriteria(grp.Criteria, nil),
-		Members:     setMembers,
+		Members:     listMembers,
 		MemberCount: types.Int64Value(int64(grp.MemberCount)),
 		Timeouts:    timeoutsConfig,
 	}

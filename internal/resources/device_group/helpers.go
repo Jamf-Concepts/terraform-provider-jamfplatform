@@ -1,62 +1,19 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package device_group
 
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
-
-// deviceGroupTimeoutAttributeTypes defines the timeout attribute types for device group resource operations
-var deviceGroupTimeoutAttributeTypes = map[string]attr.Type{
-	"create": types.StringType,
-	"read":   types.StringType,
-	"update": types.StringType,
-	"delete": types.StringType,
-}
-
-// ValidOperators contains all valid search type values for criteria validation
-var ValidOperators = []string{
-	"is",
-	"is not",
-	"has",
-	"does not have",
-	"member of",
-	"not member of",
-	"before (yyyy-mm-dd)",
-	"after (yyyy-mm-dd)",
-	"in less than x days",
-	"in more than x days",
-	"more than x days ago",
-	"less than x days ago",
-	"like",
-	"not like",
-	"greater than",
-	"more than",
-	"less than",
-	"greater than or equal",
-	"less than or equal",
-	"matches regex",
-	"does not match regex",
-}
-
-// operatorDescription returns a formatted description string listing all valid operators
-func operatorDescription() string {
-	quotedOperators := make([]string, len(ValidOperators))
-	for i, v := range ValidOperators {
-		quotedOperators[i] = fmt.Sprintf("`%s`", v)
-	}
-	return fmt.Sprintf("Operator to apply. Valid values are %s.", strings.Join(quotedOperators, ", "))
-}
 
 // refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
 func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
@@ -95,58 +52,6 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 	return !diags.HasError()
 }
 
-// assignDeviceGroupModel maps API representation to Terraform model, respecting managed fields.
-func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel, grp *client.DeviceGroupReadRepresentationV1, members []string, manageMembers bool, manageDescription bool) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	prevDescription := model.Description
-	prevCriteria := model.Criteria
-	model.ID = types.StringValue(grp.ID)
-	if grp.Name == "" {
-		model.Name = types.StringNull()
-	} else {
-		model.Name = types.StringValue(grp.Name)
-	}
-	if manageDescription {
-		model.Description = helpers.ReconcileOptionalString(grp.Description, prevDescription)
-	} else {
-		model.Description = types.StringNull()
-	}
-	if grp.DeviceType == "" {
-		model.DeviceType = types.StringNull()
-	} else {
-		model.DeviceType = types.StringValue(strings.ToLower(grp.DeviceType))
-	}
-
-	if grp.GroupType == "" {
-		model.GroupType = types.StringNull()
-	} else {
-		model.GroupType = types.StringValue(strings.ToLower(grp.GroupType))
-	}
-	model.MemberCount = types.Int64Value(int64(grp.MemberCount))
-	model.Criteria = flattenDeviceGroupCriteria(grp.Criteria, prevCriteria)
-
-	if strings.EqualFold(grp.GroupType, "STATIC") {
-		if manageMembers {
-			memberValues := members
-			if memberValues == nil {
-				memberValues = []string{}
-			}
-			set, setDiags := types.SetValueFrom(ctx, types.StringType, memberValues)
-			diags.Append(setDiags...)
-			if !diags.HasError() {
-				model.Members = set
-			}
-		} else {
-			model.Members = types.SetNull(types.StringType)
-		}
-	} else {
-		model.Members = types.SetNull(types.StringType)
-	}
-
-	return diags
-}
-
 // validateDeviceGroupPlan checks that the plan is valid based on group type.
 func validateDeviceGroupPlan(plan *DeviceGroupResourceModel) error {
 	groupType := strings.ToLower(plan.GroupType.ValueString())
@@ -176,117 +81,6 @@ func validateDeviceGroupPlan(plan *DeviceGroupResourceModel) error {
 	return nil
 }
 
-// expandDeviceGroupCriteria converts Terraform models into API representations.
-func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []client.DeviceGroupCriteriaRepresentationV1 {
-	if len(criteria) == 0 {
-		return nil
-	}
-	result := make([]client.DeviceGroupCriteriaRepresentationV1, 0, len(criteria))
-	for idx, c := range criteria {
-		if !helpers.IsConfiguredValue(c.AttributeName) {
-			continue
-		}
-
-		operator := ""
-		if helpers.IsConfiguredValue(c.Operator) {
-			operator = strings.ToUpper(c.Operator.ValueString())
-		}
-
-		attributeValue := ""
-		if helpers.IsConfiguredValue(c.AttributeValue) {
-			attributeValue = c.AttributeValue.ValueString()
-		}
-
-		joinType := ""
-		if helpers.IsConfiguredValue(c.JoinType) {
-			joinType = strings.ToUpper(c.JoinType.ValueString())
-		}
-
-		hasOpening := false
-		if helpers.IsConfiguredValue(c.HasOpeningParenthesis) {
-			hasOpening = c.HasOpeningParenthesis.ValueBool()
-		}
-
-		hasClosing := false
-		if helpers.IsConfiguredValue(c.HasClosingParenthesis) {
-			hasClosing = c.HasClosingParenthesis.ValueBool()
-		}
-		crit := client.DeviceGroupCriteriaRepresentationV1{
-			AttributeName:         c.AttributeName.ValueString(),
-			Operator:              operator,
-			AttributeValue:        attributeValue,
-			JoinType:              joinType,
-			HasOpeningParenthesis: hasOpening,
-			HasClosingParenthesis: hasClosing,
-		}
-		if helpers.IsConfiguredValue(c.Order) {
-			crit.Order = int(c.Order.ValueInt64())
-		} else {
-			crit.Order = idx
-		}
-		result = append(result, crit)
-	}
-	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].Order < result[j].Order
-	})
-	return result
-}
-
-// flattenDeviceGroupCriteria converts API criteria into Terraform models.
-func flattenDeviceGroupCriteria(criteria []client.DeviceGroupCriteriaRepresentationV1, current []DeviceGroupCriteriaModel) []DeviceGroupCriteriaModel {
-	if len(criteria) == 0 {
-		return nil
-	}
-	result := make([]DeviceGroupCriteriaModel, len(criteria))
-	stateAware := current != nil
-	for i, c := range criteria {
-		var prev DeviceGroupCriteriaModel
-		if i < len(current) {
-			prev = current[i]
-		}
-
-		attributeName := types.StringNull()
-		if c.AttributeName != "" {
-			attributeName = types.StringValue(c.AttributeName)
-		}
-
-		operator := types.StringNull()
-		if c.Operator != "" {
-			operator = types.StringValue(strings.ToLower(c.Operator))
-		}
-
-		joinType := types.StringNull()
-		if c.JoinType != "" {
-			joinType = types.StringValue(strings.ToLower(c.JoinType))
-		}
-
-		var order types.Int64
-		if stateAware {
-			order = helpers.ReconcileOptionalInt(c.Order, prev.Order)
-		} else {
-			order = types.Int64Value(int64(c.Order))
-		}
-
-		var attributeValue types.String
-		if stateAware {
-			attributeValue = helpers.ReconcileOptionalString(c.AttributeValue, prev.AttributeValue)
-		} else {
-			attributeValue = types.StringValue(c.AttributeValue)
-		}
-
-		result[i] = DeviceGroupCriteriaModel{
-			Order:                 order,
-			AttributeName:         attributeName,
-			Operator:              operator,
-			AttributeValue:        attributeValue,
-			JoinType:              joinType,
-			HasOpeningParenthesis: helpers.ReconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
-			HasClosingParenthesis: helpers.ReconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),
-		}
-	}
-	return result
-}
-
 // diffStringSlices returns added/removed values between current and desired sets.
 func diffStringSlices(current, desired []string) (added, removed []string) {
 	currentSet := make(map[string]struct{}, len(current))
@@ -305,7 +99,7 @@ func diffStringSlices(current, desired []string) (added, removed []string) {
 			removed = append(removed, v)
 		}
 	}
-	sort.Strings(added)
-	sort.Strings(removed)
+	slices.Sort(added)
+	slices.Sort(removed)
 	return
 }

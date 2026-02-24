@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package devices
 
@@ -108,9 +109,7 @@ func (d *DevicesDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				},
 			},
 			"timeouts": timeouts.Attributes(ctx),
-		},
-		Blocks: map[string]schema.Block{
-			"filter": filters.FilterBlock(
+			"filter": filters.FilterAttribute(
 				filters.SelectorDescription(filterSelectors),
 				filterSelectors,
 			),

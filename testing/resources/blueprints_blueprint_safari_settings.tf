@@ -5,7 +5,7 @@ resource "jamfplatform_blueprints_blueprint" "test_safari_settings" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  safari_settings {
+  safari_settings = {
     accept_cookies                  = "VisitedWebsites"
     allow_disabling_fraud_warning   = false
     allow_history_clearing          = false

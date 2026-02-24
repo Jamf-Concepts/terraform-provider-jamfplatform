@@ -1,4 +1,5 @@
-// Copyright 2025 Jamf Software LLC.
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
 
 package components
 
@@ -44,54 +45,51 @@ func (c *SafariBookmarksComponent) GetIdentifier() string {
 }
 
 // SafariBookmarksComponentSchema returns the Terraform schema for Safari bookmarks component
-func SafariBookmarksComponentSchema() schema.NestedBlockObject {
-	return schema.NestedBlockObject{
-		Blocks: map[string]schema.Block{
-			"managed_bookmarks": schema.ListNestedBlock{
-				MarkdownDescription: "List of managed bookmark groups.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"group_identifier": schema.StringAttribute{
-							MarkdownDescription: "Unique identifier for this group of managed bookmarks.",
-							Required:            true,
-						},
-						"title": schema.StringAttribute{
-							MarkdownDescription: "The name of the bookmarks folder.",
-							Required:            true,
-						},
+func SafariBookmarksComponentSchema() map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"managed_bookmarks": schema.SetNestedAttribute{
+			MarkdownDescription: "Set of managed bookmark groups.",
+			Optional:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"group_identifier": schema.StringAttribute{
+						MarkdownDescription: "Unique identifier for this group of managed bookmarks.",
+						Required:            true,
 					},
-					Blocks: map[string]schema.Block{
-						"bookmarks": schema.ListNestedBlock{
-							MarkdownDescription: "List of bookmarks in this group.",
-							NestedObject: schema.NestedBlockObject{
-								Attributes: map[string]schema.Attribute{
-									"type": schema.StringAttribute{
-										MarkdownDescription: "Type of bookmark. Valid values are `bookmark` (URL bookmark) or `folder` (bookmark folder).",
-										Optional:            true,
-										Validators:          []validator.String{stringvalidator.OneOf("bookmark", "folder")},
-									},
-									"title": schema.StringAttribute{
-										MarkdownDescription: "The title of the folder shown in Safari.",
-										Required:            true,
-									},
-									"url": schema.StringAttribute{
-										MarkdownDescription: "The URL for direct bookmarks (not used for folders).",
-										Optional:            true,
-									},
+					"title": schema.StringAttribute{
+						MarkdownDescription: "The name of the bookmarks folder.",
+						Required:            true,
+					},
+					"bookmarks": schema.SetNestedAttribute{
+						MarkdownDescription: "Set of bookmarks in this group.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"type": schema.StringAttribute{
+									MarkdownDescription: "Type of bookmark. Valid values are `bookmark` (URL bookmark) or `folder` (bookmark folder).",
+									Optional:            true,
+									Validators:          []validator.String{stringvalidator.OneOf("bookmark", "folder")},
 								},
-								Blocks: map[string]schema.Block{
-									"folder": schema.ListNestedBlock{
-										MarkdownDescription: "Bookmarks within this folder.",
-										NestedObject: schema.NestedBlockObject{
-											Attributes: map[string]schema.Attribute{
-												"title": schema.StringAttribute{
-													MarkdownDescription: "The title of the bookmark shown in Safari.",
-													Required:            true,
-												},
-												"url": schema.StringAttribute{
-													MarkdownDescription: "The URL for the bookmark item.",
-													Required:            true,
-												},
+								"title": schema.StringAttribute{
+									MarkdownDescription: "The title of the folder shown in Safari.",
+									Required:            true,
+								},
+								"url": schema.StringAttribute{
+									MarkdownDescription: "The URL for direct bookmarks (not used for folders).",
+									Optional:            true,
+								},
+								"folder": schema.SetNestedAttribute{
+									MarkdownDescription: "Bookmarks within this folder.",
+									Optional:            true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"title": schema.StringAttribute{
+												MarkdownDescription: "The title of the bookmark shown in Safari.",
+												Required:            true,
+											},
+											"url": schema.StringAttribute{
+												MarkdownDescription: "The URL for the bookmark item.",
+												Required:            true,
 											},
 										},
 									},
