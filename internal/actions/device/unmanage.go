@@ -42,7 +42,7 @@ func (a *UnmanageAction) Schema(ctx context.Context, req action.SchemaRequest, r
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
 				Optional:            true,
-				MarkdownDescription: "The ID of the device in UUID format. Provide this or `serial_number`.",
+				MarkdownDescription: "Jamf Pro Management ID. Provide this or `serial_number`.",
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
 				},
