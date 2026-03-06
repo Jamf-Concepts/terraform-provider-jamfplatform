@@ -5,7 +5,9 @@ package blueprint
 
 import (
 	"context"
+	"encoding/json"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -46,7 +48,45 @@ func (r *BlueprintResource) UpgradeState(ctx context.Context) map[int64]resource
 					ServiceConfigurationFiles: sliceToPointer(old.ServiceConfigurationFiles),
 					SoftwareUpdate:            sliceToPointer(old.SoftwareUpdate),
 					SoftwareUpdateSettings:    sliceToPointer(old.SoftwareUpdateSettings),
-					LegacyPayloads:            old.LegacyPayloads,
+					LegacyPayloads:            upgradeLegacyPayloadsFromString(old.LegacyPayloads),
+					Created:                   old.Created,
+					Updated:                   old.Updated,
+					DeploymentState:           old.DeploymentState,
+					Timeouts:                  resourceTimeouts.Value{Object: old.Timeouts},
+				}
+
+				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
+			},
+		},
+		1: {
+			PriorSchema: blueprintSchemaV1(),
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var old blueprintResourceModelV1
+				resp.Diagnostics.Append(req.State.Get(ctx, &old)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				upgraded := BlueprintResourceModel{
+					ID:                        old.ID,
+					Name:                      old.Name,
+					Description:               old.Description,
+					Deployed:                  old.Deployed,
+					DeviceGroups:              old.DeviceGroups,
+					Components:                old.Components,
+					AudioAccessorySettings:    old.AudioAccessorySettings,
+					CustomDeclarations:        old.CustomDeclarations,
+					DiskManagementSettings:    old.DiskManagementSettings,
+					MathSettings:              old.MathSettings,
+					PasscodePolicy:            old.PasscodePolicy,
+					SafariBookmarks:           old.SafariBookmarks,
+					SafariExtensions:          old.SafariExtensions,
+					SafariSettings:            old.SafariSettings,
+					ServiceBackgroundTasks:    old.ServiceBackgroundTasks,
+					ServiceConfigurationFiles: old.ServiceConfigurationFiles,
+					SoftwareUpdate:            old.SoftwareUpdate,
+					SoftwareUpdateSettings:    old.SoftwareUpdateSettings,
+					LegacyPayloads:            upgradeLegacyPayloadsFromString(old.LegacyPayloads),
 					Created:                   old.Created,
 					Updated:                   old.Updated,
 					DeploymentState:           old.DeploymentState,
@@ -65,6 +105,51 @@ func sliceToPointer[T any](s []T) *T {
 		return &s[0]
 	}
 	return nil
+}
+
+// upgradeLegacyPayloadsFromString converts the v0/v1 JSON string format to the v2 dynamic format.
+func upgradeLegacyPayloadsFromString(legacyPayloads types.String) types.Dynamic {
+	if legacyPayloads.IsNull() || legacyPayloads.IsUnknown() || legacyPayloads.ValueString() == "" {
+		return types.DynamicNull()
+	}
+
+	var payloadArray []map[string]any
+	if err := json.Unmarshal([]byte(legacyPayloads.ValueString()), &payloadArray); err != nil {
+		return types.DynamicNull()
+	}
+
+	if len(payloadArray) == 0 {
+		return types.DynamicNull()
+	}
+
+	var resultItems []any
+	for _, payload := range payloadArray {
+		payloadType, _ := payload["payloadType"].(string)
+
+		settingsMap := make(map[string]any, len(payload))
+		for k, v := range payload {
+			if k == "payloadType" || k == "payloadIdentifier" {
+				continue
+			}
+			settingsMap[k] = v
+		}
+
+		entry := map[string]any{
+			"payload_type": payloadType,
+		}
+		if len(settingsMap) > 0 {
+			entry["settings"] = settingsMap
+		}
+
+		resultItems = append(resultItems, entry)
+	}
+
+	dynVal, err := helpers.JSONToTerraformDynamic(resultItems)
+	if err != nil {
+		return types.DynamicNull()
+	}
+
+	return dynVal
 }
 
 // blueprintResourceModelV0 is the v0 resource model where typed components were ListNestedBlocks.
@@ -92,6 +177,33 @@ type blueprintResourceModelV0 struct {
 	Updated                   types.String                                    `tfsdk:"updated"`
 	DeploymentState           types.String                                    `tfsdk:"deployment_state"`
 	Timeouts                  types.Object                                    `tfsdk:"timeouts"`
+}
+
+// blueprintResourceModelV1 is the v1 resource model where legacy_payloads was a JSON string.
+type blueprintResourceModelV1 struct {
+	ID                        types.String                                   `tfsdk:"id"`
+	Name                      types.String                                   `tfsdk:"name"`
+	Description               types.String                                   `tfsdk:"description"`
+	Deployed                  types.Bool                                     `tfsdk:"deployed"`
+	DeviceGroups              types.Set                                      `tfsdk:"device_groups"`
+	Components                []ComponentModel                               `tfsdk:"raw_component"`
+	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
+	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
+	DiskManagementSettings    *components.DiskManagementPolicyComponent      `tfsdk:"disk_management_settings"`
+	MathSettings              *components.MathSettingsComponent              `tfsdk:"math_settings"`
+	PasscodePolicy            *components.PasscodePolicyComponent            `tfsdk:"passcode_policy"`
+	SafariBookmarks           *components.SafariBookmarksComponent           `tfsdk:"safari_bookmarks"`
+	SafariExtensions          *components.SafariExtensionsComponent          `tfsdk:"safari_extensions"`
+	SafariSettings            *components.SafariSettingsComponent            `tfsdk:"safari_settings"`
+	ServiceBackgroundTasks    *components.ServiceBackgroundTasksComponent    `tfsdk:"service_background_tasks"`
+	ServiceConfigurationFiles *components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
+	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
+	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
+	LegacyPayloads            types.String                                   `tfsdk:"legacy_payloads"`
+	Created                   types.String                                   `tfsdk:"created"`
+	Updated                   types.String                                   `tfsdk:"updated"`
+	DeploymentState           types.String                                   `tfsdk:"deployment_state"`
+	Timeouts                  types.Object                                   `tfsdk:"timeouts"`
 }
 
 // blueprintSchemaV0 returns the v0 schema where components were blocks instead of nested attributes.
@@ -370,6 +482,81 @@ func blueprintSchemaV0() *schema.Schema {
 					},
 				},
 			},
+		},
+	}
+}
+
+// blueprintSchemaV1 returns the v1 schema where legacy_payloads was a JSON string attribute.
+func blueprintSchemaV1() *schema.Schema {
+	return &schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id":               schema.StringAttribute{Computed: true},
+			"name":             schema.StringAttribute{Required: true},
+			"description":      schema.StringAttribute{Optional: true},
+			"deployed":         schema.BoolAttribute{Required: true},
+			"device_groups":    schema.SetAttribute{Required: true, ElementType: types.StringType},
+			"legacy_payloads":  schema.StringAttribute{Optional: true},
+			"created":          schema.StringAttribute{Computed: true},
+			"updated":          schema.StringAttribute{Computed: true},
+			"deployment_state": schema.StringAttribute{Computed: true},
+			"raw_component": schema.SetNestedAttribute{
+				Optional: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"identifier":    schema.StringAttribute{Required: true},
+						"configuration": schema.MapAttribute{Optional: true, ElementType: types.StringType},
+					},
+				},
+			},
+			"audio_accessory_settings": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.AudioAccessorySettingsComponentSchema(),
+			},
+			"custom_declarations": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.CustomDeclarationsComponentSchema(),
+			},
+			"disk_management_settings": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.DiskManagementPolicyComponentSchema(),
+			},
+			"math_settings": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.MathSettingsComponentSchema(),
+			},
+			"passcode_policy": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.PasscodePolicyComponentSchema(),
+			},
+			"safari_bookmarks": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.SafariBookmarksComponentSchema(),
+			},
+			"safari_extensions": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.SafariExtensionsComponentSchema(),
+			},
+			"safari_settings": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.SafariSettingsComponentSchema(),
+			},
+			"service_background_tasks": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.ServiceBackgroundTasksComponentSchema(),
+			},
+			"service_configuration_files": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.ServiceConfigurationFilesComponentSchema(),
+			},
+			"software_update": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.SoftwareUpdateComponentSchema(),
+			},
+			"software_update_settings": schema.SingleNestedAttribute{
+				Optional:   true,
+				Attributes: components.SoftwareUpdateSettingsComponentSchema(),
+			},
+			"timeouts": schema.ObjectAttribute{Optional: true, AttributeTypes: blueprintTimeoutAttributeTypes},
 		},
 	}
 }
