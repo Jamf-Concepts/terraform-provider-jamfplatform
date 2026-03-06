@@ -4,6 +4,7 @@
 package helpers
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -63,7 +64,7 @@ func jsonArrayToTuple(arr []any) (basetypes.TupleValue, error) {
 		if err != nil {
 			return types.TupleUnknown(nil), fmt.Errorf("array index %d: %w", i, err)
 		}
-		elemTypes[i] = val.Type(nil)
+		elemTypes[i] = val.Type(context.TODO())
 		elemValues[i] = val
 	}
 
@@ -80,7 +81,7 @@ func jsonObjectToTerraformObject(obj map[string]any) (basetypes.ObjectValue, err
 		if err != nil {
 			return types.ObjectUnknown(nil), fmt.Errorf("key %q: %w", key, err)
 		}
-		attrTypes[key] = tfVal.Type(nil)
+		attrTypes[key] = tfVal.Type(context.TODO())
 		attrValues[key] = tfVal
 	}
 

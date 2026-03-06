@@ -207,8 +207,12 @@ func TestRoundTrip_ComplexPayload(t *testing.T) {
 	inputJSON, _ := json.Marshal(input)
 
 	var resultParsed, inputParsed any
-	json.Unmarshal(resultJSON, &resultParsed)
-	json.Unmarshal(inputJSON, &inputParsed)
+	if err := json.Unmarshal(resultJSON, &resultParsed); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
+	}
+	if err := json.Unmarshal(inputJSON, &inputParsed); err != nil {
+		t.Fatalf("failed to unmarshal input: %v", err)
+	}
 
 	resultNorm, _ := json.Marshal(resultParsed)
 	inputNorm, _ := json.Marshal(inputParsed)

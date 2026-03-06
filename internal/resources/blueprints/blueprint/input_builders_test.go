@@ -122,7 +122,9 @@ func TestCollectLegacyPayloads_MixedTypeSettings(t *testing.T) {
 	}
 
 	var config map[string]any
-	json.Unmarshal(components[0].Configuration, &config)
+	if err := json.Unmarshal(components[0].Configuration, &config); err != nil {
+		t.Fatalf("failed to unmarshal configuration: %v", err)
+	}
 	payloadContent := config["payloadContent"].([]any)
 	payload := payloadContent[0].(map[string]any)
 
@@ -154,7 +156,9 @@ func TestCollectLegacyPayloads_EmptyList(t *testing.T) {
 	}
 
 	var config map[string]any
-	json.Unmarshal(components[0].Configuration, &config)
+	if err := json.Unmarshal(components[0].Configuration, &config); err != nil {
+		t.Fatalf("failed to unmarshal configuration: %v", err)
+	}
 	payloadContent, ok := config["payloadContent"].([]any)
 	if !ok {
 		t.Fatal("expected payloadContent to be an array")
