@@ -9,39 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestNormalizeJSON_SortedKeys(t *testing.T) {
-	input := `{"z":1,"a":2,"m":3}`
-	result := normalizeJSON(input)
-	expected := `{"a":2,"m":3,"z":1}`
-	if result != expected {
-		t.Errorf("expected %q, got %q", expected, result)
-	}
-}
-
-func TestNormalizeJSON_EmptyString(t *testing.T) {
-	result := normalizeJSON("")
-	if result != "" {
-		t.Errorf("expected empty string, got %q", result)
-	}
-}
-
-func TestNormalizeJSON_InvalidJSON(t *testing.T) {
-	input := "{not valid json"
-	result := normalizeJSON(input)
-	if result != input {
-		t.Errorf("expected original string back for invalid JSON, got %q", result)
-	}
-}
-
-func TestNormalizeJSON_NestedObject(t *testing.T) {
-	input := `{"b":{"d":1,"c":2},"a":3}`
-	result := normalizeJSON(input)
-	expected := `{"a":3,"b":{"c":2,"d":1}}`
-	if result != expected {
-		t.Errorf("expected %q, got %q", expected, result)
-	}
-}
-
 func TestSetNestedValue_SimpleString(t *testing.T) {
 	obj := make(map[string]any)
 	setNestedValue(obj, "name", "test")

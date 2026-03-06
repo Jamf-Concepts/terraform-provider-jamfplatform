@@ -41,6 +41,9 @@ const (
 	defaultDeleteTimeout = 60 * time.Second
 )
 
+// uuidRegex matches UUID strings used to validate device group IDs.
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
 // NewBlueprintResource returns a new instance of BlueprintResource.
 func NewBlueprintResource() resource.Resource {
 	return &BlueprintResource{}
@@ -54,7 +57,7 @@ func (r *BlueprintResource) Metadata(ctx context.Context, req resource.MetadataR
 // Schema returns the Terraform schema for the blueprint resource.
 func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Version:             1,
+		Version:             2,
 		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -83,7 +86,7 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
 					setvalidator.ValueStringsAre(stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`),
+						uuidRegex,
 						"Each device group ID must be a valid UUID",
 					)),
 				},
@@ -100,8 +103,8 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 				MarkdownDescription: "Current deployment state.",
 				Computed:            true,
 			},
-			"legacy_payloads": schema.StringAttribute{
-				MarkdownDescription: "JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have `payloadType` and `payloadIdentifier` fields. The payload display name will automatically use the blueprint name.",
+			"legacy_payloads": schema.DynamicAttribute{
+				MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.",
 				Optional:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{

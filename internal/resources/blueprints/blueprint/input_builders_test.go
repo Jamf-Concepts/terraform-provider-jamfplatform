@@ -8,15 +8,28 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestCollectLegacyPayloadsString_ValidJSON(t *testing.T) {
+func TestCollectLegacyPayloads_ValidPayload(t *testing.T) {
 	r := &BlueprintResource{}
 	var components []client.BlueprintComponentV1
 	var diags diag.Diagnostics
 
-	r.collectLegacyPayloadsString(&components, &diags, `[{"payloadType":"com.apple.wifi.managed","payloadIdentifier":"com.example.wifi"}]`, "My Blueprint")
+	input := []any{
+		map[string]any{
+			"payload_type": "com.apple.applicationaccess",
+			"settings": map[string]any{
+				"allowSafariHistoryClearing": false,
+				"allowSafariPrivateBrowsing": false,
+			},
+		},
+	}
+	dynVal, _ := helpers.JSONToTerraformDynamic(input)
+
+	r.collectLegacyPayloads(&components, &diags, dynVal, "My Blueprint")
 
 	if diags.HasError() {
 		t.Fatalf("unexpected error: %v", diags)
@@ -35,29 +48,37 @@ func TestCollectLegacyPayloadsString_ValidJSON(t *testing.T) {
 	if config["payloadDisplayName"] != "My Blueprint" {
 		t.Errorf("expected payloadDisplayName 'My Blueprint', got %v", config["payloadDisplayName"])
 	}
+
+	payloadContent, ok := config["payloadContent"].([]any)
+	if !ok {
+		t.Fatal("expected payloadContent to be an array")
+	}
+	if len(payloadContent) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(payloadContent))
+	}
+
+	payload := payloadContent[0].(map[string]any)
+	if payload["payloadType"] != "com.apple.applicationaccess" {
+		t.Errorf("expected payloadType 'com.apple.applicationaccess', got %v", payload["payloadType"])
+	}
+	if payload["allowSafariHistoryClearing"] != false {
+		t.Errorf("expected allowSafariHistoryClearing false, got %v", payload["allowSafariHistoryClearing"])
+	}
 }
 
-func TestCollectLegacyPayloadsString_InvalidJSON(t *testing.T) {
+func TestCollectLegacyPayloads_NoSettings(t *testing.T) {
 	r := &BlueprintResource{}
 	var components []client.BlueprintComponentV1
 	var diags diag.Diagnostics
 
-	r.collectLegacyPayloadsString(&components, &diags, `not-valid-json`, "Blueprint")
-
-	if !diags.HasError() {
-		t.Error("expected error for invalid JSON")
+	input := []any{
+		map[string]any{
+			"payload_type": "com.apple.wifi.managed",
+		},
 	}
-	if len(components) != 0 {
-		t.Errorf("expected 0 components on error, got %d", len(components))
-	}
-}
+	dynVal, _ := helpers.JSONToTerraformDynamic(input)
 
-func TestCollectLegacyPayloadsString_EmptyArray(t *testing.T) {
-	r := &BlueprintResource{}
-	var components []client.BlueprintComponentV1
-	var diags diag.Diagnostics
-
-	r.collectLegacyPayloadsString(&components, &diags, `[]`, "Empty Blueprint")
+	r.collectLegacyPayloads(&components, &diags, dynVal, "Blueprint")
 
 	if diags.HasError() {
 		t.Fatalf("unexpected error: %v", diags)
@@ -70,11 +91,87 @@ func TestCollectLegacyPayloadsString_EmptyArray(t *testing.T) {
 	if err := json.Unmarshal(components[0].Configuration, &config); err != nil {
 		t.Fatalf("failed to unmarshal config: %v", err)
 	}
+	payloadContent := config["payloadContent"].([]any)
+	payload := payloadContent[0].(map[string]any)
+	if payload["payloadType"] != "com.apple.wifi.managed" {
+		t.Errorf("expected payloadType 'com.apple.wifi.managed', got %v", payload["payloadType"])
+	}
+}
+
+func TestCollectLegacyPayloads_MixedTypeSettings(t *testing.T) {
+	r := &BlueprintResource{}
+	var components []client.BlueprintComponentV1
+	var diags diag.Diagnostics
+
+	input := []any{
+		map[string]any{
+			"payload_type": "com.apple.applicationaccess",
+			"settings": map[string]any{
+				"boolSetting":   true,
+				"stringSetting": "hello",
+				"numberSetting": float64(42),
+			},
+		},
+	}
+	dynVal, _ := helpers.JSONToTerraformDynamic(input)
+
+	r.collectLegacyPayloads(&components, &diags, dynVal, "Test")
+
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+
+	var config map[string]any
+	json.Unmarshal(components[0].Configuration, &config)
+	payloadContent := config["payloadContent"].([]any)
+	payload := payloadContent[0].(map[string]any)
+
+	if payload["boolSetting"] != true {
+		t.Errorf("expected boolSetting true, got %v", payload["boolSetting"])
+	}
+	if payload["stringSetting"] != "hello" {
+		t.Errorf("expected stringSetting 'hello', got %v", payload["stringSetting"])
+	}
+	if payload["numberSetting"] != float64(42) {
+		t.Errorf("expected numberSetting 42, got %v", payload["numberSetting"])
+	}
+}
+
+func TestCollectLegacyPayloads_EmptyList(t *testing.T) {
+	r := &BlueprintResource{}
+	var components []client.BlueprintComponentV1
+	var diags diag.Diagnostics
+
+	dynVal, _ := helpers.JSONToTerraformDynamic([]any{})
+
+	r.collectLegacyPayloads(&components, &diags, dynVal, "Empty Blueprint")
+
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags)
+	}
+	if len(components) != 1 {
+		t.Fatalf("expected 1 component, got %d", len(components))
+	}
+
+	var config map[string]any
+	json.Unmarshal(components[0].Configuration, &config)
 	payloadContent, ok := config["payloadContent"].([]any)
 	if !ok {
 		t.Fatal("expected payloadContent to be an array")
 	}
 	if len(payloadContent) != 0 {
 		t.Errorf("expected empty payload content, got %d items", len(payloadContent))
+	}
+}
+
+func TestCollectLegacyPayloads_NullDynamic(t *testing.T) {
+	r := &BlueprintResource{}
+	var components []client.BlueprintComponentV1
+	var diags diag.Diagnostics
+
+	r.collectLegacyPayloads(&components, &diags, types.DynamicNull(), "Blueprint")
+
+	if !diags.HasError() {
+		t.Error("expected error for null dynamic value")
 	}
 }

@@ -391,14 +391,15 @@ func TestAccResource_Blueprint_LegacyPayloads(t *testing.T) {
 						deployed      = false
 						device_groups = [jamfplatform_device_group.scope.id]
 
-						legacy_payloads = jsonencode([
+						legacy_payloads = [
 							{
-								allowSafariHistoryClearing = false
-								allowSafariPrivateBrowsing = false
-								payloadType                = "com.apple.applicationaccess"
-								payloadIdentifier          = "tf-acc-test-payload-001"
+								payload_type = "com.apple.applicationaccess"
+								settings = {
+									allowSafariHistoryClearing = false
+									allowSafariPrivateBrowsing = false
+								}
 							}
-						])
+						]
 					}
 				`, name)),
 				Check: resource.ComposeAggregateTestCheckFunc(

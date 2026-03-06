@@ -6,11 +6,13 @@ package blueprint
 import (
 	"context"
 	"encoding/json"
+	"maps"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // collectAllComponents gathers components from both raw and strongly-typed sources.
@@ -45,8 +47,7 @@ func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *Blue
 				continue
 			}
 
-			normalizedConfig := normalizeJSON(string(jsonBytes))
-			component.Configuration = json.RawMessage(normalizedConfig)
+			component.Configuration = json.RawMessage(jsonBytes)
 		}
 		allComponents = append(allComponents, component)
 	}
@@ -106,8 +107,8 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]clie
 		r.collectSingleComponent(allComponents, diags, data.SoftwareUpdateSettings, "software update settings")
 	}
 
-	if helpers.IsConfiguredValue(data.LegacyPayloads) {
-		r.collectLegacyPayloadsString(allComponents, diags, data.LegacyPayloads.ValueString(), data.Name.ValueString())
+	if !data.LegacyPayloads.IsNull() && !data.LegacyPayloads.IsUnknown() {
+		r.collectLegacyPayloads(allComponents, diags, data.LegacyPayloads, data.Name.ValueString())
 	}
 }
 
@@ -127,15 +128,46 @@ func (r *BlueprintResource) collectSingleComponent(allComponents *[]client.Bluep
 	})
 }
 
-// collectLegacyPayloadsString is a special helper for legacy payloads from string attribute.
-func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.BlueprintComponentV1, diags *diag.Diagnostics, payloadContent string, blueprintName string) {
-	var payloadArray []any
-	if err := json.Unmarshal([]byte(payloadContent), &payloadArray); err != nil {
-		diags.AddError(
-			"Error parsing legacy payloads JSON",
-			"Could not parse payload_content as JSON array: "+err.Error(),
-		)
+// collectLegacyPayloads builds the API component from a dynamic legacy payloads value.
+func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]client.BlueprintComponentV1, diags *diag.Diagnostics, legacyPayloads types.Dynamic, blueprintName string) {
+	raw, err := helpers.TerraformDynamicToJSON(legacyPayloads)
+	if err != nil {
+		diags.AddError("Error reading legacy payloads", "Could not convert legacy payloads to JSON: "+err.Error())
 		return
+	}
+
+	items, ok := raw.([]any)
+	if !ok {
+		diags.AddError("Invalid legacy_payloads", "Expected a list of objects, got a non-list value.")
+		return
+	}
+
+	payloadArray := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			diags.AddError("Invalid legacy_payloads entry", "Each legacy payload must be an object.")
+			return
+		}
+
+		payloadType, _ := obj["payload_type"].(string)
+		if payloadType == "" {
+			diags.AddError("Missing payload_type", "Each legacy payload must include a payload_type key.")
+			return
+		}
+
+		entry := map[string]any{
+			"payloadType":       payloadType,
+			"payloadIdentifier": generatePayloadIdentifier(payloadType),
+		}
+
+		if settings, exists := obj["settings"]; exists {
+			if settingsMap, ok := settings.(map[string]any); ok {
+				maps.Copy(entry, settingsMap)
+			}
+		}
+
+		payloadArray = append(payloadArray, entry)
 	}
 
 	config := map[string]any{
@@ -145,10 +177,7 @@ func (r *BlueprintResource) collectLegacyPayloadsString(allComponents *[]client.
 
 	configJSON, err := json.Marshal(config)
 	if err != nil {
-		diags.AddError(
-			"Error encoding legacy payloads configuration",
-			"Could not encode configuration to JSON: "+err.Error(),
-		)
+		diags.AddError("Error encoding legacy payloads configuration", "Could not encode configuration to JSON: "+err.Error())
 		return
 	}
 

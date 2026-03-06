@@ -14,6 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// deferralDaysRegex validates deferral period values between 1 and 90.
+var deferralDaysRegex = regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`)
+
 // SoftwareUpdateSettingsComponent represents a strongly-typed software update settings component
 type SoftwareUpdateSettingsComponent struct {
 	AllowStandardUserOSUpdates           types.Bool         `tfsdk:"allow_standard_user_os_updates"`
@@ -71,7 +74,7 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 			MarkdownDescription: "Number of days to defer combined updates (1-90 days).",
 			Optional:            true,
 			Validators: []validator.String{stringvalidator.RegexMatches(
-				regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+				deferralDaysRegex,
 				"Value must be a number between 1 and 90",
 			)},
 		},
@@ -79,7 +82,7 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 			MarkdownDescription: "Number of days to defer major updates (1-90 days).",
 			Optional:            true,
 			Validators: []validator.String{stringvalidator.RegexMatches(
-				regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+				deferralDaysRegex,
 				"Value must be a number between 1 and 90",
 			)},
 		},
@@ -87,7 +90,7 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 			MarkdownDescription: "Number of days to defer minor updates (1-90 days).",
 			Optional:            true,
 			Validators: []validator.String{stringvalidator.RegexMatches(
-				regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+				deferralDaysRegex,
 				"Value must be a number between 1 and 90",
 			)},
 		},
@@ -95,7 +98,7 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 			MarkdownDescription: "Number of days to defer system updates (1-90 days).",
 			Optional:            true,
 			Validators: []validator.String{stringvalidator.RegexMatches(
-				regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`),
+				deferralDaysRegex,
 				"Value must be a number between 1 and 90",
 			)},
 		},

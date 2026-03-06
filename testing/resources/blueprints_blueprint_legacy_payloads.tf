@@ -5,12 +5,13 @@ resource "jamfplatform_blueprints_blueprint" "test_legacy_payloads" {
 
   device_groups = [jamfplatform_device_group.test_smart_computer.id]
 
-  legacy_payloads = jsonencode([
+  legacy_payloads = [
     {
-      allowSafariHistoryClearing = false
-      allowSafariPrivateBrowsing = false
-      payloadType                = "com.apple.applicationaccess"
-      payloadIdentifier          = "da0ac44c-419e-43ff-b300-00b0e645fa7e"
+      payload_type = "com.apple.applicationaccess"
+      settings = {
+        allowSafariHistoryClearing = false
+        allowSafariPrivateBrowsing = false
+      }
     }
-  ])
+  ]
 }
