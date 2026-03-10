@@ -17,6 +17,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+var (
+	// timeHHMMRegex validates HH:mm 24-hour time format.
+	timeHHMMRegex = regexp.MustCompile(`^(?:[01]\d|2[0-3]):[0-5]\d$`)
+	// semverRegex validates semantic version strings (major.minor or major.minor.patch).
+	semverRegex = regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`)
+	// dateTimeRegex validates RFC3339 date-time format without timezone.
+	dateTimeRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`)
+)
+
 // SoftwareUpdateComponent represents a strongly-typed software update enforcement component
 type SoftwareUpdateComponent struct {
 	EnforcementType     types.String `tfsdk:"enforcement_type"`
@@ -40,7 +49,7 @@ func SoftwareUpdateComponentSchema() map[string]schema.Attribute {
 			Optional:            true,
 			Validators: []validator.String{
 				stringvalidator.RegexMatches(
-					regexp.MustCompile(`^(?:[01]\d|2[0-3]):[0-5]\d$`),
+					timeHHMMRegex,
 					"Value must be in HH:mm format (e.g., 14:30)",
 				),
 				stringvalidator.AlsoRequires(
@@ -87,7 +96,7 @@ func SoftwareUpdateComponentSchema() map[string]schema.Attribute {
 			Optional:            true,
 			Validators: []validator.String{
 				stringvalidator.RegexMatches(
-					regexp.MustCompile(`^\d+\.\d+(\.\d+)?$`),
+					semverRegex,
 					"Value must be a valid semantic version (e.g., 10.15.7)",
 				),
 				stringvalidator.AlsoRequires(
@@ -105,7 +114,7 @@ func SoftwareUpdateComponentSchema() map[string]schema.Attribute {
 			Optional:            true,
 			Validators: []validator.String{
 				stringvalidator.RegexMatches(
-					regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`),
+					dateTimeRegex,
 					"Value must be a valid RFC3339 date-time (e.g., 2023-10-05T14:48:00)",
 				),
 				stringvalidator.AlsoRequires(

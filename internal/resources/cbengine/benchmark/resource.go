@@ -39,6 +39,9 @@ const (
 	defaultDeleteTimeout = 15 * time.Minute
 )
 
+// uuidRegex matches UUID strings used to validate device group IDs.
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
 // NewBenchmarkResource returns a new instance of BenchmarkResource.
 func NewBenchmarkResource() resource.Resource {
 	return &BenchmarkResource{}
@@ -240,7 +243,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 			"target_device_group": schema.StringAttribute{
 				MarkdownDescription: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).",
 				Required:            true,
-				Validators: []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`),
+				Validators: []validator.String{stringvalidator.RegexMatches(uuidRegex,
 					"Device group ID must be a valid UUID")},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

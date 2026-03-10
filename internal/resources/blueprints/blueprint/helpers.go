@@ -5,7 +5,9 @@ package blueprint
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -14,23 +16,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// normalizeJSON takes a JSON string and returns it with sorted keys to ensure consistent comparison.
-func normalizeJSON(jsonStr string) string {
-	if jsonStr == "" {
-		return ""
-	}
-
-	var obj any
-	if err := json.Unmarshal([]byte(jsonStr), &obj); err != nil {
-		return jsonStr
-	}
-
-	normalized, err := json.Marshal(obj)
-	if err != nil {
-		return jsonStr
-	}
-
-	return string(normalized)
+// generatePayloadIdentifier produces a deterministic UUID-formatted identifier from a payload type string.
+func generatePayloadIdentifier(payloadType string) string {
+	hash := sha256.Sum256([]byte(payloadType))
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		hash[0:4], hash[4:6], hash[6:8], hash[8:10], hash[10:16])
 }
 
 // setNestedValue sets a value in a nested map structure using underscore notation.
@@ -38,7 +28,7 @@ func setNestedValue(obj map[string]any, key string, value string) {
 	parts := strings.Split(key, "_")
 	current := obj
 
-	for i := 0; i < len(parts)-1; i++ {
+	for i := range len(parts) - 1 {
 		if current[parts[i]] == nil {
 			current[parts[i]] = make(map[string]any)
 		}
@@ -85,11 +75,7 @@ func flattenJSON(obj map[string]any, prefix string, result map[string]string) {
 		case nil:
 			result[fullKey] = ""
 		case bool:
-			if v {
-				result[fullKey] = "true"
-			} else {
-				result[fullKey] = "false"
-			}
+			result[fullKey] = strconv.FormatBool(v)
 		case float64:
 			result[fullKey] = strconv.FormatFloat(v, 'f', -1, 64)
 		case int:

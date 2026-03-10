@@ -12,10 +12,11 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // updateModelFromAPIResponse updates the Terraform model with data from the API response.
-func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client.BlueprintDetailV1) {
+func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceModel, blueprint *client.BlueprintDetailV1) {
 	stateRawIdentifiers := make(map[string]struct{}, len(model.Components))
 	for _, comp := range model.Components {
 		identifier := comp.Identifier.ValueString()
@@ -77,12 +78,12 @@ func updateModelFromAPIResponse(model *BlueprintResourceModel, blueprint *client
 	} else {
 		model.Components = nil
 	}
-	updateStronglyTypedComponentsFromAPI(model, apiComponentsByID, stateRawIdentifiers)
+	updateStronglyTypedComponentsFromAPI(ctx, model, apiComponentsByID, stateRawIdentifiers)
 	model.Timeouts = helpers.EnsureResourceTimeouts(model.Timeouts, blueprintTimeoutAttributeTypes)
 }
 
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components from API response.
-func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
+func updateStronglyTypedComponentsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
 	model.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(cfg map[string]any, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
@@ -131,7 +132,7 @@ func updateStronglyTypedComponentsFromAPI(model *BlueprintResourceModel, apiComp
 		return target.FromRawConfiguration(cfg)
 	})
 
-	updateLegacyPayloadsFromAPI(model, apiComponentsByID, rawIdentifiers)
+	updateLegacyPayloadsFromAPI(ctx, model, apiComponentsByID, rawIdentifiers)
 }
 
 // buildTypedComponent is a generic helper to build a strongly-typed singleton component pointer.
@@ -169,28 +170,67 @@ func parseComponentConfiguration(apiComponentsByID map[string]client.BlueprintCo
 }
 
 // updateLegacyPayloadsFromAPI handles the special case of legacy payloads component.
-func updateLegacyPayloadsFromAPI(model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
+func updateLegacyPayloadsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
 	if _, handledAsRaw := rawIdentifiers["com.jamf.ddm-configuration-profile"]; handledAsRaw {
 		return
 	}
 
 	config, ok := parseComponentConfiguration(apiComponentsByID, "com.jamf.ddm-configuration-profile")
 	if !ok {
-		model.LegacyPayloads = types.StringNull()
+		model.LegacyPayloads = types.DynamicNull()
 		return
 	}
 
 	payloadContent, exists := config["payloadContent"]
 	if !exists {
-		model.LegacyPayloads = types.StringNull()
+		model.LegacyPayloads = types.DynamicNull()
 		return
 	}
 
-	payloadJSON, err := json.Marshal(payloadContent)
-	if err != nil {
-		model.LegacyPayloads = types.StringNull()
+	payloadArray, ok := payloadContent.([]any)
+	if !ok {
+		model.LegacyPayloads = types.DynamicNull()
 		return
 	}
 
-	model.LegacyPayloads = types.StringValue(string(payloadJSON))
+	var resultItems []any
+	for _, item := range payloadArray {
+		payloadMap, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		payloadType, _ := payloadMap["payloadType"].(string)
+
+		settingsMap := make(map[string]any, len(payloadMap))
+		for k, v := range payloadMap {
+			if k == "payloadType" || k == "payloadIdentifier" {
+				continue
+			}
+			settingsMap[k] = v
+		}
+
+		entry := map[string]any{
+			"payload_type": payloadType,
+		}
+		if len(settingsMap) > 0 {
+			entry["settings"] = settingsMap
+		}
+
+		resultItems = append(resultItems, entry)
+	}
+
+	if len(resultItems) > 0 {
+		dynVal, err := helpers.JSONToTerraformDynamic(resultItems)
+		if err != nil {
+			tflog.Warn(ctx, "Failed to convert legacy payloads to dynamic", map[string]any{
+				"error": err.Error(),
+			})
+			model.LegacyPayloads = types.DynamicNull()
+			return
+		}
+		model.LegacyPayloads = dynVal
+	} else {
+		model.LegacyPayloads = types.DynamicNull()
+	}
 }

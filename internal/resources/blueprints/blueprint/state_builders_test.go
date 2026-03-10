@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -66,36 +67,64 @@ func TestParseComponentConfiguration_InvalidJSON(t *testing.T) {
 }
 
 func TestUpdateLegacyPayloadsFromAPI_WithPayloads(t *testing.T) {
+	ctx := t.Context()
 	apiComponents := map[string]client.BlueprintComponentV1{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
-			Configuration: json.RawMessage(`{"payloadDisplayName":"Test","payloadContent":[{"payloadType":"com.apple.wifi.managed"}]}`),
+			Configuration: json.RawMessage(`{"payloadDisplayName":"Test","payloadContent":[{"payloadType":"com.apple.wifi.managed","payloadIdentifier":"test-uuid","SSID_STR":"TestNetwork"}]}`),
 		},
 	}
 	rawIdentifiers := map[string]struct{}{}
 
 	model := &BlueprintResourceModel{}
-	updateLegacyPayloadsFromAPI(model, apiComponents, rawIdentifiers)
+	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
 
 	if model.LegacyPayloads.IsNull() {
 		t.Fatal("expected non-null legacy payloads")
 	}
 
-	var payloads []any
-	if err := json.Unmarshal([]byte(model.LegacyPayloads.ValueString()), &payloads); err != nil {
-		t.Fatalf("expected valid JSON array, got error: %v", err)
+	raw, err := helpers.TerraformDynamicToJSON(model.LegacyPayloads)
+	if err != nil {
+		t.Fatalf("failed to convert dynamic to JSON: %v", err)
 	}
-	if len(payloads) != 1 {
-		t.Errorf("expected 1 payload, got %d", len(payloads))
+	items, ok := raw.([]any)
+	if !ok {
+		t.Fatalf("expected list, got %T", raw)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(items))
+	}
+
+	payload, ok := items[0].(map[string]any)
+	if !ok {
+		t.Fatal("expected payload to be a map")
+	}
+	if payload["payload_type"] != "com.apple.wifi.managed" {
+		t.Errorf("expected payload_type 'com.apple.wifi.managed', got %v", payload["payload_type"])
+	}
+
+	settings, ok := payload["settings"].(map[string]any)
+	if !ok {
+		t.Fatal("expected settings to be a map")
+	}
+	if settings["SSID_STR"] != "TestNetwork" {
+		t.Errorf("expected SSID_STR 'TestNetwork', got %v", settings["SSID_STR"])
+	}
+	if _, exists := settings["payloadType"]; exists {
+		t.Error("payloadType should not be in settings")
 	}
 }
 
 func TestUpdateLegacyPayloadsFromAPI_NoComponent(t *testing.T) {
+	ctx := t.Context()
 	apiComponents := map[string]client.BlueprintComponentV1{}
 	rawIdentifiers := map[string]struct{}{}
 
-	model := &BlueprintResourceModel{LegacyPayloads: types.StringValue("should be cleared")}
-	updateLegacyPayloadsFromAPI(model, apiComponents, rawIdentifiers)
+	existingDyn, _ := helpers.JSONToTerraformDynamic([]any{map[string]any{"payload_type": "should be cleared"}})
+	model := &BlueprintResourceModel{
+		LegacyPayloads: existingDyn,
+	}
+	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
 
 	if !model.LegacyPayloads.IsNull() {
 		t.Error("expected null legacy payloads when component is absent")
@@ -103,6 +132,7 @@ func TestUpdateLegacyPayloadsFromAPI_NoComponent(t *testing.T) {
 }
 
 func TestUpdateLegacyPayloadsFromAPI_HandledAsRaw(t *testing.T) {
+	ctx := t.Context()
 	apiComponents := map[string]client.BlueprintComponentV1{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
@@ -113,15 +143,22 @@ func TestUpdateLegacyPayloadsFromAPI_HandledAsRaw(t *testing.T) {
 		"com.jamf.ddm-configuration-profile": {},
 	}
 
-	model := &BlueprintResourceModel{LegacyPayloads: types.StringValue("existing")}
-	updateLegacyPayloadsFromAPI(model, apiComponents, rawIdentifiers)
+	existingDyn, _ := helpers.JSONToTerraformDynamic([]any{map[string]any{"payload_type": "existing"}})
+	model := &BlueprintResourceModel{LegacyPayloads: existingDyn}
+	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
 
-	if model.LegacyPayloads.ValueString() != "existing" {
+	raw, err := helpers.TerraformDynamicToJSON(model.LegacyPayloads)
+	if err != nil {
+		t.Fatalf("failed to convert: %v", err)
+	}
+	items := raw.([]any)
+	if len(items) != 1 {
 		t.Error("expected legacy payloads to remain unchanged when handled as raw")
 	}
 }
 
 func TestUpdateLegacyPayloadsFromAPI_NoPayloadContent(t *testing.T) {
+	ctx := t.Context()
 	apiComponents := map[string]client.BlueprintComponentV1{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
@@ -131,7 +168,7 @@ func TestUpdateLegacyPayloadsFromAPI_NoPayloadContent(t *testing.T) {
 	rawIdentifiers := map[string]struct{}{}
 
 	model := &BlueprintResourceModel{}
-	updateLegacyPayloadsFromAPI(model, apiComponents, rawIdentifiers)
+	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
 
 	if !model.LegacyPayloads.IsNull() {
 		t.Error("expected null legacy payloads when payloadContent is absent")
@@ -139,6 +176,7 @@ func TestUpdateLegacyPayloadsFromAPI_NoPayloadContent(t *testing.T) {
 }
 
 func TestUpdateModelFromAPIResponse_BasicFields(t *testing.T) {
+	ctx := t.Context()
 	model := &BlueprintResourceModel{}
 	blueprint := &client.BlueprintDetailV1{
 		ID:          "bp-123",
@@ -155,7 +193,7 @@ func TestUpdateModelFromAPIResponse_BasicFields(t *testing.T) {
 		Steps: []client.BlueprintStepV1{},
 	}
 
-	updateModelFromAPIResponse(model, blueprint)
+	updateModelFromAPIResponse(ctx, model, blueprint)
 
 	if model.ID.ValueString() != "bp-123" {
 		t.Errorf("expected ID 'bp-123', got %q", model.ID.ValueString())
@@ -178,6 +216,7 @@ func TestUpdateModelFromAPIResponse_BasicFields(t *testing.T) {
 }
 
 func TestUpdateModelFromAPIResponse_EmptyDescription(t *testing.T) {
+	ctx := t.Context()
 	model := &BlueprintResourceModel{Description: types.StringNull()}
 	blueprint := &client.BlueprintDetailV1{
 		Description:     "",
@@ -185,7 +224,7 @@ func TestUpdateModelFromAPIResponse_EmptyDescription(t *testing.T) {
 		Steps:           []client.BlueprintStepV1{},
 	}
 
-	updateModelFromAPIResponse(model, blueprint)
+	updateModelFromAPIResponse(ctx, model, blueprint)
 
 	if !model.Description.IsNull() {
 		t.Error("expected Description to remain null when API returns empty and model is null")
@@ -193,13 +232,14 @@ func TestUpdateModelFromAPIResponse_EmptyDescription(t *testing.T) {
 }
 
 func TestUpdateModelFromAPIResponse_NotDeployed(t *testing.T) {
+	ctx := t.Context()
 	model := &BlueprintResourceModel{}
 	blueprint := &client.BlueprintDetailV1{
 		DeploymentState: client.BlueprintDeploymentStateV1{State: "NOT_DEPLOYED"},
 		Steps:           []client.BlueprintStepV1{},
 	}
 
-	updateModelFromAPIResponse(model, blueprint)
+	updateModelFromAPIResponse(ctx, model, blueprint)
 
 	if model.Deployed.ValueBool() {
 		t.Error("expected Deployed to be false for NOT_DEPLOYED state")
@@ -207,6 +247,7 @@ func TestUpdateModelFromAPIResponse_NotDeployed(t *testing.T) {
 }
 
 func TestUpdateModelFromAPIResponse_RawComponents(t *testing.T) {
+	ctx := t.Context()
 	model := &BlueprintResourceModel{
 		Components: []ComponentModel{
 			{Identifier: types.StringValue("com.jamf.ddm.disk-management")},
@@ -227,7 +268,7 @@ func TestUpdateModelFromAPIResponse_RawComponents(t *testing.T) {
 		},
 	}
 
-	updateModelFromAPIResponse(model, blueprint)
+	updateModelFromAPIResponse(ctx, model, blueprint)
 
 	if len(model.Components) != 1 {
 		t.Fatalf("expected 1 raw component, got %d", len(model.Components))
@@ -238,13 +279,14 @@ func TestUpdateModelFromAPIResponse_RawComponents(t *testing.T) {
 }
 
 func TestUpdateModelFromAPIResponse_NoSteps(t *testing.T) {
+	ctx := t.Context()
 	model := &BlueprintResourceModel{}
 	blueprint := &client.BlueprintDetailV1{
 		DeploymentState: client.BlueprintDeploymentStateV1{State: "DEPLOYED"},
 		Steps:           []client.BlueprintStepV1{},
 	}
 
-	updateModelFromAPIResponse(model, blueprint)
+	updateModelFromAPIResponse(ctx, model, blueprint)
 
 	if model.Components != nil {
 		t.Error("expected nil components when no steps")

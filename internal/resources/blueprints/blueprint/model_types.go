@@ -30,7 +30,7 @@ type BlueprintResourceModel struct {
 	ServiceConfigurationFiles *components.ServiceConfigurationFilesComponent `tfsdk:"service_configuration_files"`
 	SoftwareUpdate            *components.SoftwareUpdateComponent            `tfsdk:"software_update"`
 	SoftwareUpdateSettings    *components.SoftwareUpdateSettingsComponent    `tfsdk:"software_update_settings"`
-	LegacyPayloads            types.String                                   `tfsdk:"legacy_payloads"`
+	LegacyPayloads            types.Dynamic                                  `tfsdk:"legacy_payloads"`
 	Created                   types.String                                   `tfsdk:"created"`
 	Updated                   types.String                                   `tfsdk:"updated"`
 	DeploymentState           types.String                                   `tfsdk:"deployment_state"`
