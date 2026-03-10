@@ -85,7 +85,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	updateModelFromAPIResponse(&data, blueprint)
+	updateModelFromAPIResponse(ctx, &data, blueprint)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -163,7 +163,7 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	updateModelFromAPIResponse(&data, blueprint)
+	updateModelFromAPIResponse(ctx, &data, blueprint)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -245,7 +245,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	updateModelFromAPIResponse(&data, blueprint)
+	updateModelFromAPIResponse(ctx, &data, blueprint)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
 	if resp.Diagnostics.HasError() {

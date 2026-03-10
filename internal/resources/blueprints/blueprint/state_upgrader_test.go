@@ -6,7 +6,9 @@ package blueprint
 import (
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestSliceToPointer_Empty(t *testing.T) {
@@ -177,5 +179,119 @@ func TestBlueprintSchemaV0_ServiceBackgroundTasksNestedBlocks(t *testing.T) {
 	}
 	if _, ok := fileRef.(schema.SingleNestedBlock); !ok {
 		t.Errorf("file_asset_reference should be SingleNestedBlock, got %T", fileRef)
+	}
+}
+
+func TestBlueprintSchemaV1_LegacyPayloadsIsString(t *testing.T) {
+	s := blueprintSchemaV1()
+	if s == nil {
+		t.Fatal("v1 schema is nil")
+	}
+
+	attr, ok := s.Attributes["legacy_payloads"]
+	if !ok {
+		t.Fatal("v1 schema missing legacy_payloads attribute")
+	}
+	if _, ok := attr.(schema.StringAttribute); !ok {
+		t.Errorf("v1 legacy_payloads should be StringAttribute, got %T", attr)
+	}
+}
+
+func TestBlueprintSchemaV1_ComponentsAreAttributes(t *testing.T) {
+	s := blueprintSchemaV1()
+
+	componentAttrs := []string{
+		"audio_accessory_settings",
+		"custom_declarations",
+		"disk_management_settings",
+		"math_settings",
+		"passcode_policy",
+		"safari_bookmarks",
+		"safari_extensions",
+		"safari_settings",
+		"service_background_tasks",
+		"service_configuration_files",
+		"software_update",
+		"software_update_settings",
+		"raw_component",
+	}
+
+	for _, name := range componentAttrs {
+		if _, ok := s.Attributes[name]; !ok {
+			t.Errorf("v1 schema missing attribute %q", name)
+		}
+	}
+}
+
+func TestUpgradeLegacyPayloadsFromString_ValidJSON(t *testing.T) {
+	input := types.StringValue(`[{"payloadType":"com.apple.applicationaccess","payloadIdentifier":"test-uuid","allowSafariHistoryClearing":false}]`)
+
+	result := upgradeLegacyPayloadsFromString(input)
+
+	if result.IsNull() {
+		t.Fatal("expected non-null result")
+	}
+
+	raw, err := helpers.TerraformDynamicToJSON(result)
+	if err != nil {
+		t.Fatalf("failed to convert: %v", err)
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		t.Fatalf("expected list, got %T", raw)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(items))
+	}
+	payload := items[0].(map[string]any)
+	if payload["payload_type"] != "com.apple.applicationaccess" {
+		t.Errorf("expected payload_type 'com.apple.applicationaccess', got %v", payload["payload_type"])
+	}
+	if _, ok := payload["settings"]; !ok {
+		t.Error("expected settings key")
+	}
+}
+
+func TestUpgradeLegacyPayloadsFromString_NullString(t *testing.T) {
+	result := upgradeLegacyPayloadsFromString(types.StringNull())
+	if !result.IsNull() {
+		t.Error("expected null for null string")
+	}
+}
+
+func TestUpgradeLegacyPayloadsFromString_EmptyArray(t *testing.T) {
+	result := upgradeLegacyPayloadsFromString(types.StringValue("[]"))
+	if !result.IsNull() {
+		t.Error("expected null for empty array")
+	}
+}
+
+func TestUpgradeLegacyPayloadsFromString_InvalidJSON(t *testing.T) {
+	result := upgradeLegacyPayloadsFromString(types.StringValue("not-json"))
+	if !result.IsNull() {
+		t.Error("expected null for invalid JSON")
+	}
+}
+
+func TestUpgradeLegacyPayloadsFromString_NoSettings(t *testing.T) {
+	input := types.StringValue(`[{"payloadType":"com.apple.wifi.managed","payloadIdentifier":"uuid"}]`)
+
+	result := upgradeLegacyPayloadsFromString(input)
+
+	if result.IsNull() {
+		t.Fatal("expected non-null result")
+	}
+
+	raw, err := helpers.TerraformDynamicToJSON(result)
+	if err != nil {
+		t.Fatalf("failed to convert: %v", err)
+	}
+	items := raw.([]any)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(items))
+	}
+	payload := items[0].(map[string]any)
+	if _, ok := payload["settings"]; ok {
+		t.Error("expected no settings key when no extra keys")
 	}
 }

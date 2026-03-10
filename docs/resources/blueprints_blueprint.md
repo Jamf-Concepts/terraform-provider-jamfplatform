@@ -83,14 +83,15 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  legacy_payloads = jsonencode([
+  legacy_payloads = [
     {
-      allowSafariHistoryClearing = false
-      allowSafariPrivateBrowsing = false
-      payloadType                = "com.apple.applicationaccess"
-      payloadIdentifier          = "da0ac44c-419e-43ff-b300-00b0e645fa7e"
+      payload_type = "com.apple.applicationaccess"
+      settings = {
+        allowSafariHistoryClearing = false
+        allowSafariPrivateBrowsing = false
+      }
     }
-  ])
+  ]
 }
 
 # Custom Declaration Example Blueprint
@@ -146,7 +147,7 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 - `custom_declarations` (Attributes) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedatt--custom_declarations))
 - `description` (String) Blueprint description.
 - `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--disk_management_settings))
-- `legacy_payloads` (String) JSON-encoded array of legacy configuration profile payload objects. Refer to https://github.com/apple/device-management/tree/release/mdm/profiles for individual payload schemas. Each payload must have `payloadType` and `payloadIdentifier` fields. The payload display name will automatically use the blueprint name.
+- `legacy_payloads` (Dynamic) Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.
 - `math_settings` (Attributes) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedatt--math_settings))
 - `passcode_policy` (Attributes) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedatt--passcode_policy))
 - `raw_component` (Attributes Set) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedatt--raw_component))

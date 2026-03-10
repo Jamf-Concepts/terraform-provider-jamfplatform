@@ -68,14 +68,15 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  legacy_payloads = jsonencode([
+  legacy_payloads = [
     {
-      allowSafariHistoryClearing = false
-      allowSafariPrivateBrowsing = false
-      payloadType                = "com.apple.applicationaccess"
-      payloadIdentifier          = "da0ac44c-419e-43ff-b300-00b0e645fa7e"
+      payload_type = "com.apple.applicationaccess"
+      settings = {
+        allowSafariHistoryClearing = false
+        allowSafariPrivateBrowsing = false
+      }
     }
-  ])
+  ]
 }
 
 # Custom Declaration Example Blueprint
