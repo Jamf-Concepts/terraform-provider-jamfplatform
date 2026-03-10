@@ -104,8 +104,9 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 // Read syncs the Terraform state with the latest API representation.
 func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state DeviceGroupResourceModel
+	isImport := req.State.Raw.IsNull()
 
-	if req.State.Raw.IsNull() {
+	if isImport {
 		if req.Identity == nil {
 			resp.Diagnostics.AddError(
 				"Missing resource identity",
@@ -169,8 +170,8 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	var members []string
-	manageMembers := helpers.IsConfiguredValue(state.Members)
-	manageDescription := helpers.IsConfiguredValue(state.Description)
+	manageMembers := isImport || helpers.IsConfiguredValue(state.Members)
+	manageDescription := isImport || helpers.IsConfiguredValue(state.Description)
 	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
 		var err error
 		members, err = r.client.GetDeviceGroupMembersV1(readCtx, grp.ID)
