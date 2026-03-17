@@ -42,7 +42,7 @@ func testAccCheckBenchmarkResourcesDestroy(t *testing.T) resource.TestCheckFunc 
 			case "jamfplatform_device_group":
 				deadline := time.Now().Add(60 * time.Second)
 				for time.Now().Before(deadline) {
-					_, err := c.GetDeviceGroupByIDV1(ctx, rs.Primary.ID)
+					_, err := c.GetDeviceGroup(ctx, rs.Primary.ID)
 					if err != nil {
 						if helpers.IsNotFoundError(err) {
 							break
