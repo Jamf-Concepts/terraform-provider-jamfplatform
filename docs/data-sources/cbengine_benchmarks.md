@@ -30,7 +30,7 @@ output "all_cbengine_benchmarks" {
 
 ### Read-Only
 
-- `benchmarks` (Attributes List) CBEngine benchmarks returned by GetCBEngineBenchmarksV2. (see [below for nested schema](#nestedatt--benchmarks))
+- `benchmarks` (Attributes List) CBEngine benchmarks returned by ListBenchmarks. (see [below for nested schema](#nestedatt--benchmarks))
 - `id` (String) Internal identifier for this data source read.
 
 <a id="nestedatt--timeouts"></a>
