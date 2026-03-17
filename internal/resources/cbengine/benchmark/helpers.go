@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -17,7 +16,7 @@ import (
 // (SYNCED or FAILED) or the provided context is canceled.
 func waitForBenchmarkSync(ctx context.Context, c *jamfplatform.Client, id string, interval time.Duration) (*jamfplatform.CBEngineBenchmarkV2, error) {
 	var synced *jamfplatform.CBEngineBenchmarkV2
-	err := helpers.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
+	err := jamfplatform.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
 		benchmarks, err := c.ListBenchmarks(pollCtx)
 		if err != nil {
 			tflog.Debug(pollCtx, "polling benchmarks failed", map[string]any{"error": err.Error()})
@@ -55,7 +54,7 @@ func waitForBenchmarkSync(ctx context.Context, c *jamfplatform.Client, id string
 // to unstick benchmarks that remain in DELETING state.
 func waitForBenchmarkDeletion(ctx context.Context, c *jamfplatform.Client, id string, interval time.Duration) error {
 	lastDelete := time.Now()
-	return helpers.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
+	return jamfplatform.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
 		benchmarks, err := c.ListBenchmarks(pollCtx)
 		if err != nil {
 			tflog.Debug(pollCtx, "polling benchmarks failed", map[string]any{"error": err.Error()})
