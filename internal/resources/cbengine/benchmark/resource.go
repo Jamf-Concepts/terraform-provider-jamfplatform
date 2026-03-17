@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -25,7 +25,7 @@ import (
 
 // BenchmarkResource implements the Terraform resource for Jamf Compliance Benchmark.
 type BenchmarkResource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -288,12 +288,12 @@ func (r *BenchmarkResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return

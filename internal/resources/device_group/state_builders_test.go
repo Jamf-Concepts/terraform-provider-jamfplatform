@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -17,7 +17,7 @@ func TestAssignDeviceGroupModel_StaticWithMembers(t *testing.T) {
 		Description: types.StringValue("original"),
 	}
 
-	grp := &client.DeviceGroupReadRepresentationV1{
+	grp := &jamfplatform.DeviceGroupReadRepresentationV1{
 		ID:          "grp-1",
 		Name:        "Static Group",
 		Description: "API description",
@@ -67,7 +67,7 @@ func TestAssignDeviceGroupModel_StaticUnmanagedMembers(t *testing.T) {
 		Description: types.StringNull(),
 	}
 
-	grp := &client.DeviceGroupReadRepresentationV1{
+	grp := &jamfplatform.DeviceGroupReadRepresentationV1{
 		ID:          "grp-2",
 		Name:        "Static Unmanaged",
 		DeviceType:  "MOBILE",
@@ -94,12 +94,12 @@ func TestAssignDeviceGroupModel_SmartGroup(t *testing.T) {
 		Description: types.StringValue("desc"),
 	}
 
-	grp := &client.DeviceGroupReadRepresentationV1{
+	grp := &jamfplatform.DeviceGroupReadRepresentationV1{
 		ID:         "grp-3",
 		Name:       "Smart Group",
 		DeviceType: "COMPUTER",
 		GroupType:  "SMART",
-		Criteria: []client.DeviceGroupCriteriaRepresentationV1{
+		Criteria: []jamfplatform.DeviceGroupCriteriaRepresentationV1{
 			{
 				Order:          0,
 				AttributeName:  "Device Name",
@@ -138,7 +138,7 @@ func TestAssignDeviceGroupModel_EmptyName(t *testing.T) {
 		Members: types.SetNull(types.StringType),
 	}
 
-	grp := &client.DeviceGroupReadRepresentationV1{
+	grp := &jamfplatform.DeviceGroupReadRepresentationV1{
 		ID:        "grp-4",
 		GroupType: "STATIC",
 	}
@@ -156,7 +156,7 @@ func TestAssignDeviceGroupModel_EmptyName(t *testing.T) {
 }
 
 func TestFlattenDeviceGroupCriteria(t *testing.T) {
-	criteria := []client.DeviceGroupCriteriaRepresentationV1{
+	criteria := []jamfplatform.DeviceGroupCriteriaRepresentationV1{
 		{
 			Order:                 0,
 			AttributeName:         "Device Name",
@@ -223,7 +223,7 @@ func TestFlattenDeviceGroupCriteria_StateAware(t *testing.T) {
 		},
 	}
 
-	apiCriteria := []client.DeviceGroupCriteriaRepresentationV1{
+	apiCriteria := []jamfplatform.DeviceGroupCriteriaRepresentationV1{
 		{
 			Order:          0,
 			AttributeName:  "Device Name",
@@ -247,7 +247,7 @@ func TestFlattenDeviceGroupCriteria_StateAware(t *testing.T) {
 }
 
 func TestFlattenDeviceGroupCriteria_NullFields(t *testing.T) {
-	criteria := []client.DeviceGroupCriteriaRepresentationV1{
+	criteria := []jamfplatform.DeviceGroupCriteriaRepresentationV1{
 		{
 			Order:    0,
 			Operator: "",

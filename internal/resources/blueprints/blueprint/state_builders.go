@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -16,7 +16,7 @@ import (
 )
 
 // updateModelFromAPIResponse updates the Terraform model with data from the API response.
-func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceModel, blueprint *client.BlueprintDetailV1) {
+func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceModel, blueprint *jamfplatform.BlueprintDetailV1) {
 	stateRawIdentifiers := make(map[string]struct{}, len(model.Components))
 	for _, comp := range model.Components {
 		identifier := comp.Identifier.ValueString()
@@ -42,7 +42,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, blueprint.Scope.DeviceGroups)
 	model.DeviceGroups = deviceGroupsSet
 
-	apiComponentsByID := make(map[string]client.BlueprintComponentV1)
+	apiComponentsByID := make(map[string]jamfplatform.BlueprintComponentV1)
 	var rawComponents []ComponentModel
 
 	if len(blueprint.Steps) > 0 {
@@ -83,7 +83,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 }
 
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components from API response.
-func updateStronglyTypedComponentsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
+func updateStronglyTypedComponentsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]jamfplatform.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
 	model.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(cfg map[string]any, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
@@ -136,7 +136,7 @@ func updateStronglyTypedComponentsFromAPI(ctx context.Context, model *BlueprintR
 }
 
 // buildTypedComponent is a generic helper to build a strongly-typed singleton component pointer.
-func buildTypedComponent[T any](apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]any, *T) error) *T {
+func buildTypedComponent[T any](apiComponentsByID map[string]jamfplatform.BlueprintComponentV1, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]any, *T) error) *T {
 	if _, handledAsRaw := rawIdentifiers[identifier]; handledAsRaw {
 		return nil
 	}
@@ -155,7 +155,7 @@ func buildTypedComponent[T any](apiComponentsByID map[string]client.BlueprintCom
 }
 
 // parseComponentConfiguration extracts and parses the configuration of a component by its identifier.
-func parseComponentConfiguration(apiComponentsByID map[string]client.BlueprintComponentV1, identifier string) (map[string]any, bool) {
+func parseComponentConfiguration(apiComponentsByID map[string]jamfplatform.BlueprintComponentV1, identifier string) (map[string]any, bool) {
 	apiComp, exists := apiComponentsByID[identifier]
 	if !exists || apiComp.Configuration == nil {
 		return nil, false
@@ -170,7 +170,7 @@ func parseComponentConfiguration(apiComponentsByID map[string]client.BlueprintCo
 }
 
 // updateLegacyPayloadsFromAPI handles the special case of legacy payloads component.
-func updateLegacyPayloadsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]client.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
+func updateLegacyPayloadsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]jamfplatform.BlueprintComponentV1, rawIdentifiers map[string]struct{}) {
 	if _, handledAsRaw := rawIdentifiers["com.jamf.ddm-configuration-profile"]; handledAsRaw {
 		return
 	}

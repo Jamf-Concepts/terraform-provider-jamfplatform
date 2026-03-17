@@ -4,14 +4,14 @@
 package device
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // DeviceDataSource implements the Terraform data source for Jamf devices.
 type DeviceDataSource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // DeviceDataSourceModel represents the Terraform data source model for a Jamf device lookup.

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -19,7 +19,7 @@ import (
 
 // DeviceGroupDataSource implements the Terraform data source for Jamf device groups.
 type DeviceGroupDataSource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -116,11 +116,11 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -163,14 +163,14 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
-	grp, err := d.client.GetDeviceGroupByIDV1(readCtx, data.ID.ValueString())
+	grp, err := d.client.GetDeviceGroup(readCtx, data.ID.ValueString())
 
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to find device group", err.Error())
 		return
 	}
 
-	members, err := d.client.GetDeviceGroupMembersV1(readCtx, grp.ID)
+	members, err := d.client.ListDeviceGroupMembers(readCtx, grp.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read device group members", err.Error())
 		return

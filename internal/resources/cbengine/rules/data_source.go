@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -185,11 +185,11 @@ func (d *RulesDataSource) Configure(ctx context.Context, req datasource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -227,7 +227,7 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		return
 	}
 
-	rulesResp, err := d.client.GetCBEngineRulesV1(readCtx, data.BaselineID.ValueString())
+	rulesResp, err := d.client.GetBaselineRules(readCtx, data.BaselineID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get rules",

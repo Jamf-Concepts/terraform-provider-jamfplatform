@@ -17,8 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/component"
@@ -129,11 +129,13 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	apiClient := client.NewClient(baseURL, clientID, clientSecret)
-
-	if shouldEnableHTTPLogging() {
-		apiClient.SetLogger(NewTerraformLogger())
+	opts := []jamfplatform.Option{
+		jamfplatform.WithUserAgent("terraform-provider-jamfplatform/" + p.version),
 	}
+	if shouldEnableHTTPLogging() {
+		opts = append(opts, jamfplatform.WithLogger(NewTerraformLogger()))
+	}
+	apiClient := jamfplatform.NewClient(baseURL, clientID, clientSecret, opts...)
 
 	if err := apiClient.ValidateCredentials(ctx); err != nil {
 		resp.Diagnostics.AddError(

@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -28,7 +28,7 @@ func NewBlueprintListResource() list.ListResource {
 
 // BlueprintListResource implements terraform query list support for blueprints.
 type BlueprintListResource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // Metadata sets the list resource type name.
@@ -42,11 +42,11 @@ func (r *BlueprintListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
-			"Expected *client.Client. Please report this issue to the provider developers.",
+			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
 		)
 		return
 	}
@@ -89,7 +89,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 	searchTerm, hasSearch := helpers.NormalizedFilterString(config.Search)
 	searchLower := strings.ToLower(searchTerm)
 
-	blueprints, err := r.client.GetBlueprintsV1(ctx, nil, "")
+	blueprints, err := r.client.ListBlueprints(ctx, nil, "")
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic(
@@ -130,7 +130,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, identity)...)
 
 		if req.IncludeResource {
-			detail, err := r.client.GetBlueprintByIDV1(ctx, bp.ID)
+			detail, err := r.client.GetBlueprint(ctx, bp.ID)
 			if err != nil {
 				stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 					diag.NewErrorDiagnostic(

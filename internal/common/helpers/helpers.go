@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	resourcetimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -157,7 +157,7 @@ func ReconcileOptionalString(apiValue string, current types.String) types.String
 
 // IsNotFoundError reports whether an error represents a 404/not found response from the Jamf API.
 func IsNotFoundError(err error) bool {
-	if apiErr, ok := errors.AsType[*client.APIResponseError](err); ok {
+	if apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err); ok {
 		return apiErr.HasStatus(http.StatusNotFound)
 	}
 	return false
@@ -165,7 +165,7 @@ func IsNotFoundError(err error) bool {
 
 // IsServerError reports whether an error represents a 500/internal server error from the Jamf API.
 func IsServerError(err error) bool {
-	if apiErr, ok := errors.AsType[*client.APIResponseError](err); ok {
+	if apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err); ok {
 		return apiErr.HasStatus(http.StatusInternalServerError)
 	}
 	return false

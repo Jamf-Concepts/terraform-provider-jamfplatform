@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -128,7 +128,7 @@ func (a *EraseAction) Invoke(ctx context.Context, req action.InvokeRequest, resp
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting erase for device %s", deviceID)})
 
-	commands, err := a.client.EraseDeviceV1(ctx, deviceID, request)
+	commands, err := a.client.EraseDevice(ctx, deviceID, request)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Erase Device Failed",
@@ -140,8 +140,8 @@ func (a *EraseAction) Invoke(ctx context.Context, req action.InvokeRequest, resp
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Erase request accepted for device %s (%d command(s))", deviceID, len(commands))})
 }
 
-func buildEraseRequestPayload(data EraseActionModel) *client.EraseDeviceRequestV1 {
-	req := &client.EraseDeviceRequestV1{}
+func buildEraseRequestPayload(data EraseActionModel) *jamfplatform.EraseDeviceRequestV1 {
+	req := &jamfplatform.EraseDeviceRequestV1{}
 	var hasOptions bool
 
 	if val := helpers.BoolPointerValue(data.PreserveDataPlan); val != nil {

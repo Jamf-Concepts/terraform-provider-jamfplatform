@@ -12,12 +12,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 )
 
 // BenchmarkDataSource implements the Terraform data source for Jamf Compliance Benchmarks.
 type BenchmarkDataSource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -219,11 +219,11 @@ func (d *BenchmarkDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -250,12 +250,12 @@ func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bench *client.CBEngineBenchmarkResponseV2
+	var bench *jamfplatform.CBEngineBenchmarkResponseV2
 	var err error
 	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		bench, err = d.client.GetCBEngineBenchmarkByIDV2(ctx, data.ID.ValueString())
+		bench, err = d.client.GetBenchmark(ctx, data.ID.ValueString())
 	} else if !data.Title.IsNull() && data.Title.ValueString() != "" {
-		bench, err = d.client.GetCBEngineBenchmarkByTitleV2(ctx, data.Title.ValueString())
+		bench, err = d.client.GetBenchmarkByTitle(ctx, data.Title.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
