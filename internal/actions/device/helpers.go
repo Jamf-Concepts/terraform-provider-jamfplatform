@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -89,18 +88,9 @@ func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action
 }
 
 func (a *deviceAction) lookupDeviceIDBySerial(ctx context.Context, serial string) (string, error) {
-	filter := filters.Clause("serialNumber", "==", serial)
-	devices, err := a.client.ListDevices(ctx, nil, filter)
+	device, err := a.client.GetDeviceBySerialNumber(ctx, serial)
 	if err != nil {
-		return "", fmt.Errorf("failed to query devices by serial number: %w", err)
+		return "", fmt.Errorf("failed to resolve serial number %s: %w", serial, err)
 	}
-
-	switch len(devices) {
-	case 0:
-		return "", fmt.Errorf("no device found with serial number %s", serial)
-	case 1:
-		return devices[0].ID, nil
-	default:
-		return "", fmt.Errorf("multiple devices (%d) returned for serial number %s", len(devices), serial)
-	}
+	return device.ID, nil
 }

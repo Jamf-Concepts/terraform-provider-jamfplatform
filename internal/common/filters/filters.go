@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -141,15 +142,14 @@ func selectorsMarkdownList(selectors []string) string {
 	return strings.Join(quoted, ", ")
 }
 
-// BuildRSQLExpression concatenates filter clauses into a reusable RSQL string.
+// BuildRSQLExpression converts Terraform filter models into RSQL clauses and delegates
+// expression building to the SDK.
 func BuildRSQLExpression(filters []FilterModel, selectorValidator SelectorValidator) string {
 	if selectorValidator == nil {
 		selectorValidator = func(string) bool { return true }
 	}
 
-	clauses := []string{}
-	joiners := []string{}
-
+	var clauses []jamfplatform.RSQLClause
 	for _, filter := range filters {
 		selector, hasSelector := configuredFilterValue(filter.Selector)
 		argument, hasArgument := configuredFilterValue(filter.Argument)
@@ -160,48 +160,22 @@ func BuildRSQLExpression(filters []FilterModel, selectorValidator SelectorValida
 			continue
 		}
 
-		operator := "=="
+		clause := jamfplatform.RSQLClause{
+			Selector:              selector,
+			Argument:              argument,
+			HasOpeningParenthesis: isTrue(filter.HasOpeningParenthesis),
+			HasClosingParenthesis: isTrue(filter.HasClosingParenthesis),
+		}
 		if value, ok := configuredFilterValue(filter.Operator); ok {
-			operator = value
+			clause.Operator = value
 		}
-
-		clause := Clause(selector, operator, argument)
-		if isTrue(filter.HasOpeningParenthesis) {
-			clause = "(" + clause
-		}
-		if isTrue(filter.HasClosingParenthesis) {
-			clause = clause + ")"
+		if value, ok := configuredFilterValue(filter.JoinWith); ok {
+			clause.JoinWith = value
 		}
 		clauses = append(clauses, clause)
-
-		joinWith := "and"
-		if value, ok := configuredFilterValue(filter.JoinWith); ok {
-			logic := strings.ToLower(value)
-			if logic == "or" {
-				joinWith = "or"
-			}
-		}
-		joiners = append(joiners, joinWith)
 	}
 
-	if len(clauses) == 0 {
-		return ""
-	}
-
-	var builder strings.Builder
-	builder.WriteString(clauses[0])
-	for i := 1; i < len(clauses); i++ {
-		logic := "and"
-		if i < len(joiners) {
-			logic = joiners[i]
-		}
-		builder.WriteString(" ")
-		builder.WriteString(logic)
-		builder.WriteString(" ")
-		builder.WriteString(clauses[i])
-	}
-
-	return builder.String()
+	return jamfplatform.BuildRSQLExpression(clauses)
 }
 
 // AllowList returns a selector validator that permits only selectors from the provided list.
@@ -214,15 +188,14 @@ func AllowList(validSelectors []string) SelectorValidator {
 	}
 }
 
-// Clause builds a selector/operator/argument clause using Terraform-style escaping.
+// Clause builds a single selector/operator/argument RSQL clause.
 func Clause(selector, operator, argument string) string {
-	if operator == "" {
-		operator = "=="
-	}
-	return selector + operator + FormatArgument(argument)
+	return jamfplatform.BuildRSQLExpression([]jamfplatform.RSQLClause{
+		{Selector: selector, Operator: operator, Argument: argument},
+	})
 }
 
-// configuredFilterValue extracts the string value from a types.String, returning
+// configuredFilterValue extracts the string value from a types.String.
 func configuredFilterValue(value types.String) (string, bool) {
 	if !helpers.IsConfiguredValue(value) {
 		return "", false
@@ -232,42 +205,6 @@ func configuredFilterValue(value types.String) (string, bool) {
 		return "", false
 	}
 	return str, true
-}
-
-// FormatArgument prepares an RSQL argument value, adding quotes/escapes when needed.
-func FormatArgument(value string) string {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return ""
-	}
-	if alreadyWrappedArgument(trimmed) || looksLikeListArgument(trimmed) {
-		return trimmed
-	}
-	escaped := strings.ReplaceAll(trimmed, `\\`, `\\\\`)
-	escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
-	if argumentNeedsQuoting(trimmed) {
-		return "\"" + escaped + "\""
-	}
-	return escaped
-}
-
-// alreadyWrappedArgument checks if the value is already enclosed in quotes.
-func alreadyWrappedArgument(value string) bool {
-	if len(value) < 2 {
-		return false
-	}
-	return (strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"")) ||
-		(strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'"))
-}
-
-// looksLikeListArgument checks if the value appears to be a list argument enclosed in parentheses.
-func looksLikeListArgument(value string) bool {
-	return strings.HasPrefix(value, "(") && strings.HasSuffix(value, ")")
-}
-
-// argumentNeedsQuoting determines if the argument contains characters that require it to be quoted.
-func argumentNeedsQuoting(value string) bool {
-	return strings.ContainsAny(value, " ,;()\t")
 }
 
 // isTrue checks if a types.Bool is explicitly true.

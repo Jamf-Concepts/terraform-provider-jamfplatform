@@ -18,7 +18,7 @@ import (
 // refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
 func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
 	var grp *jamfplatform.DeviceGroupReadRepresentationV1
-	err := helpers.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
+	err := jamfplatform.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
 		var err error
 		grp, err = r.client.GetDeviceGroup(pollCtx, id)
 		if err == nil {

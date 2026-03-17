@@ -155,52 +155,6 @@ func TestBuildRSQLExpression_SkipsNullValues(t *testing.T) {
 	}
 }
 
-func TestFormatArgument_SimpleValue(t *testing.T) {
-	result := FormatArgument("hello")
-	if result != "hello" {
-		t.Errorf("expected %q, got %q", "hello", result)
-	}
-}
-
-func TestFormatArgument_ValueWithSpaces(t *testing.T) {
-	result := FormatArgument("hello world")
-	expected := `"hello world"`
-	if result != expected {
-		t.Errorf("expected %q, got %q", expected, result)
-	}
-}
-
-func TestFormatArgument_AlreadyQuoted(t *testing.T) {
-	result := FormatArgument(`"already quoted"`)
-	expected := `"already quoted"`
-	if result != expected {
-		t.Errorf("expected %q, got %q", expected, result)
-	}
-}
-
-func TestFormatArgument_ListArgument(t *testing.T) {
-	result := FormatArgument("(a,b,c)")
-	expected := "(a,b,c)"
-	if result != expected {
-		t.Errorf("expected %q, got %q", expected, result)
-	}
-}
-
-func TestFormatArgument_Empty(t *testing.T) {
-	result := FormatArgument("")
-	if result != "" {
-		t.Errorf("expected empty string, got %q", result)
-	}
-}
-
-func TestFormatArgument_EscapeQuotes(t *testing.T) {
-	result := FormatArgument(`has"quote`)
-	expected := `has\"quote`
-	if result != expected {
-		t.Errorf("expected %q, got %q", expected, result)
-	}
-}
-
 func TestClause_DefaultOperator(t *testing.T) {
 	result := Clause("name", "", "value")
 	expected := "name==value"
