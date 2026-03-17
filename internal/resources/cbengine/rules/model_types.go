@@ -4,14 +4,14 @@
 package rules
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // RulesDataSource implements the Terraform data source for mSCP rules.
 type RulesDataSource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // RulesDataSourceModel represents the Terraform data source model for mSCP rules.

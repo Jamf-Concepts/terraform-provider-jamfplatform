@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -71,11 +71,11 @@ func (d *ComponentsDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -101,7 +101,7 @@ func (d *ComponentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	components, err := d.client.GetBlueprintComponentsV1(ctx)
+	components, err := d.client.ListBlueprintComponents(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to get components",

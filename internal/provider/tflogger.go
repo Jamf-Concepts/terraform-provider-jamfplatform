@@ -7,12 +7,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure TerraformLogger implements client.Logger interface
-var _ client.Logger = (*TerraformLogger)(nil)
+var _ jamfplatform.Logger = (*TerraformLogger)(nil)
 
 // TerraformLogger implements the client.Logger interface using tflog
 type TerraformLogger struct{}

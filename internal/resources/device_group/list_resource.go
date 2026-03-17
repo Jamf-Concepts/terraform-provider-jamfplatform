@@ -7,7 +7,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
@@ -29,7 +29,7 @@ func NewDeviceGroupListResource() list.ListResource {
 
 // DeviceGroupListResource implements Terraform query list support for device groups.
 type DeviceGroupListResource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // Metadata sets the list resource type name.
@@ -43,11 +43,11 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
-			"Expected *client.Client. Please report this issue to the provider developers.",
+			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
 		)
 		return
 	}
@@ -93,7 +93,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 		"filter": filterExpression,
 	})
 
-	groups, err := r.client.GetDeviceGroupsV1(ctx, nil, filterExpression)
+	groups, err := r.client.ListDeviceGroups(ctx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic(
@@ -127,7 +127,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 		}
 
 		if req.IncludeResource {
-			detail, err := r.client.GetDeviceGroupByIDV1(ctx, grp.ID)
+			detail, err := r.client.GetDeviceGroup(ctx, grp.ID)
 			if err != nil {
 				stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 					diag.NewErrorDiagnostic(
@@ -141,7 +141,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 			manageMembers := strings.EqualFold(detail.GroupType, "STATIC")
 			var members []string
 			if manageMembers {
-				members, err = r.client.GetDeviceGroupMembersV1(ctx, detail.ID)
+				members, err = r.client.ListDeviceGroupMembers(ctx, detail.ID)
 				if err != nil {
 					stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 						diag.NewErrorDiagnostic(

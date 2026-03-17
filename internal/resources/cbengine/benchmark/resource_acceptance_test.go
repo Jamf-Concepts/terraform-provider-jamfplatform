@@ -30,7 +30,7 @@ func testAccCheckBenchmarkResourcesDestroy(t *testing.T) resource.TestCheckFunc 
 			case "jamfplatform_cbengine_benchmark":
 				deadline := time.Now().Add(30 * time.Second)
 				for time.Now().Before(deadline) {
-					_, err := c.GetCBEngineBenchmarkByIDV2(ctx, rs.Primary.ID)
+					_, err := c.GetBenchmark(ctx, rs.Primary.ID)
 					if err != nil {
 						if helpers.IsNotFoundError(err) {
 							break
@@ -71,7 +71,7 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 
 	ctx := context.Background()
 	c := testhelpers.NewAcceptanceClient(t)
-	baselines, err := c.GetCBEngineBaselinesV1(ctx)
+	baselines, err := c.ListBaselines(ctx)
 	if err != nil {
 		t.Fatalf("Failed to check baselines: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 	}
 
 	baselineID := baselines.Baselines[0].BaselineID
-	rules, err := c.GetCBEngineRulesV1(ctx, baselineID)
+	rules, err := c.GetBaselineRules(ctx, baselineID)
 	if err != nil {
 		t.Fatalf("Failed to get rules: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 
 	ctx := context.Background()
 	c := testhelpers.NewAcceptanceClient(t)
-	baselines, err := c.GetCBEngineBaselinesV1(ctx)
+	baselines, err := c.ListBaselines(ctx)
 	if err != nil {
 		t.Fatalf("Failed to check baselines: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 	}
 
 	baselineID := baselines.Baselines[0].BaselineID
-	rules, err := c.GetCBEngineRulesV1(ctx, baselineID)
+	rules, err := c.GetBaselineRules(ctx, baselineID)
 	if err != nil {
 		t.Fatalf("Failed to get rules: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestAccDataSource_Rules(t *testing.T) {
 
 	ctx := context.Background()
 	c := testhelpers.NewAcceptanceClient(t)
-	baselines, err := c.GetCBEngineBaselinesV1(ctx)
+	baselines, err := c.ListBaselines(ctx)
 	if err != nil {
 		t.Fatalf("Failed to check baselines: %v", err)
 	}

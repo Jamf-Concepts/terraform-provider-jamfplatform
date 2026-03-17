@@ -14,13 +14,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
 type BlueprintDataSource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -102,11 +102,11 @@ func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -142,12 +142,12 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bp *client.BlueprintDetailV1
+	var bp *jamfplatform.BlueprintDetailV1
 	var err error
 	if helpers.IsConfiguredValue(data.ID) && data.ID.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByIDV1(readCtx, data.ID.ValueString())
+		bp, err = d.client.GetBlueprint(readCtx, data.ID.ValueString())
 	} else if helpers.IsConfiguredValue(data.Name) && data.Name.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByNameV1(readCtx, data.Name.ValueString())
+		bp, err = d.client.GetBlueprintByName(readCtx, data.Name.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",

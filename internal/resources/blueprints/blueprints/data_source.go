@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -92,11 +92,11 @@ func (d *BlueprintsDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			"Expected *client.Client. Please report this issue to the provider developers.",
+			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
 		)
 		return
 	}
@@ -127,7 +127,7 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	}
 	searchLower := strings.ToLower(searchTerm)
 
-	blueprints, err := d.client.GetBlueprintsV1(ctx, nil, "")
+	blueprints, err := d.client.ListBlueprints(ctx, nil, "")
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list blueprints", err.Error())
 		return
