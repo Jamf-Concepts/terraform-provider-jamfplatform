@@ -324,4 +324,3 @@ func TestNewResourceTimeoutsNullValue(t *testing.T) {
 		t.Error("expected non-unknown result")
 	}
 }
-
