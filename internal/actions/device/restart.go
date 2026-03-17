@@ -83,7 +83,7 @@ func (a *RestartAction) Invoke(ctx context.Context, req action.InvokeRequest, re
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting restart for device %s", deviceID)})
 
-	if _, err := a.client.RestartDeviceV1(ctx, deviceID); err != nil {
+	if _, err := a.client.RestartDevice(ctx, deviceID); err != nil {
 		resp.Diagnostics.AddError(
 			"Restart Device Failed",
 			fmt.Sprintf("Unable to restart device %s: %s", deviceID, err),

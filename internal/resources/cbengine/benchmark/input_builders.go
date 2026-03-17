@@ -4,36 +4,36 @@
 package benchmark
 
 import (
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // buildBenchmarkRequest constructs the API request body from the Terraform plan model.
-func buildBenchmarkRequest(data *BenchmarkResourceModel) *client.CBEngineBenchmarkRequestV2 {
-	reqBody := &client.CBEngineBenchmarkRequestV2{
+func buildBenchmarkRequest(data *BenchmarkResourceModel) *jamfplatform.CBEngineBenchmarkRequestV2 {
+	reqBody := &jamfplatform.CBEngineBenchmarkRequestV2{
 		Title:            data.Title.ValueString(),
 		Description:      data.Description.ValueString(),
 		SourceBaselineID: data.SourceBaselineID.ValueString(),
-		Sources:          make([]client.CBEngineSourceV1, len(data.Sources)),
-		Rules:            make([]client.CBEngineRuleRequestV2, len(data.Rules)),
-		Target: client.CBEngineTargetV2{
+		Sources:          make([]jamfplatform.CBEngineSourceV1, len(data.Sources)),
+		Rules:            make([]jamfplatform.CBEngineRuleRequestV2, len(data.Rules)),
+		Target: jamfplatform.CBEngineTargetV2{
 			DeviceGroups: []string{data.TargetDeviceGroup.ValueString()},
 		},
 		EnforcementMode: data.EnforcementMode.ValueString(),
 	}
 	for i, s := range data.Sources {
-		reqBody.Sources[i] = client.CBEngineSourceV1{
+		reqBody.Sources[i] = jamfplatform.CBEngineSourceV1{
 			Branch:   s.Branch.ValueString(),
 			Revision: s.Revision.ValueString(),
 		}
 	}
 	for i, rule := range data.Rules {
-		rr := client.CBEngineRuleRequestV2{
+		rr := jamfplatform.CBEngineRuleRequestV2{
 			ID:      rule.ID.ValueString(),
 			Enabled: rule.Enabled.ValueBool(),
 		}
 		if value := helpers.StringPointerValue(rule.ODVValue); value != nil {
-			rr.ODV = &client.CBEngineODVRequestV2{Value: *value}
+			rr.ODV = &jamfplatform.CBEngineODVRequestV2{Value: *value}
 		}
 		reqBody.Rules[i] = rr
 	}

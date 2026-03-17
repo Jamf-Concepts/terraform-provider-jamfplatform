@@ -10,14 +10,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // deviceAction shares Configure logic across device action implementations.
 type deviceAction struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // configure binds the provider-supplied client to the action.
@@ -26,11 +26,11 @@ func (a *deviceAction) configure(_ context.Context, req action.ConfigureRequest,
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(*client.Client)
+	apiClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Provider Data Type",
-			fmt.Sprintf("Expected *client.Client, got %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *jamfplatform.Client, got %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -90,7 +90,7 @@ func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action
 
 func (a *deviceAction) lookupDeviceIDBySerial(ctx context.Context, serial string) (string, error) {
 	filter := filters.Clause("serialNumber", "==", serial)
-	devices, err := a.client.GetDevicesV1(ctx, nil, filter)
+	devices, err := a.client.ListDevices(ctx, nil, filter)
 	if err != nil {
 		return "", fmt.Errorf("failed to query devices by serial number: %w", err)
 	}

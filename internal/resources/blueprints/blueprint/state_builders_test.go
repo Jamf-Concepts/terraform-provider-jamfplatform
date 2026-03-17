@@ -7,13 +7,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestParseComponentConfiguration_Found(t *testing.T) {
-	apiComponents := map[string]client.BlueprintComponentV1{
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{
 		"com.jamf.ddm.disk-management": {
 			Identifier:    "com.jamf.ddm.disk-management",
 			Configuration: json.RawMessage(`{"externalStorage":"deny","networkStorage":"deny"}`),
@@ -30,7 +30,7 @@ func TestParseComponentConfiguration_Found(t *testing.T) {
 }
 
 func TestParseComponentConfiguration_NotFound(t *testing.T) {
-	apiComponents := map[string]client.BlueprintComponentV1{}
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{}
 
 	_, ok := parseComponentConfiguration(apiComponents, "com.jamf.ddm.disk-management")
 	if ok {
@@ -39,7 +39,7 @@ func TestParseComponentConfiguration_NotFound(t *testing.T) {
 }
 
 func TestParseComponentConfiguration_NilConfiguration(t *testing.T) {
-	apiComponents := map[string]client.BlueprintComponentV1{
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{
 		"com.jamf.ddm.disk-management": {
 			Identifier:    "com.jamf.ddm.disk-management",
 			Configuration: nil,
@@ -53,7 +53,7 @@ func TestParseComponentConfiguration_NilConfiguration(t *testing.T) {
 }
 
 func TestParseComponentConfiguration_InvalidJSON(t *testing.T) {
-	apiComponents := map[string]client.BlueprintComponentV1{
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{
 		"com.jamf.ddm.disk-management": {
 			Identifier:    "com.jamf.ddm.disk-management",
 			Configuration: json.RawMessage(`{invalid`),
@@ -68,7 +68,7 @@ func TestParseComponentConfiguration_InvalidJSON(t *testing.T) {
 
 func TestUpdateLegacyPayloadsFromAPI_WithPayloads(t *testing.T) {
 	ctx := t.Context()
-	apiComponents := map[string]client.BlueprintComponentV1{
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
 			Configuration: json.RawMessage(`{"payloadDisplayName":"Test","payloadContent":[{"payloadType":"com.apple.wifi.managed","payloadIdentifier":"test-uuid","SSID_STR":"TestNetwork"}]}`),
@@ -117,7 +117,7 @@ func TestUpdateLegacyPayloadsFromAPI_WithPayloads(t *testing.T) {
 
 func TestUpdateLegacyPayloadsFromAPI_NoComponent(t *testing.T) {
 	ctx := t.Context()
-	apiComponents := map[string]client.BlueprintComponentV1{}
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{}
 	rawIdentifiers := map[string]struct{}{}
 
 	existingDyn, _ := helpers.JSONToTerraformDynamic([]any{map[string]any{"payload_type": "should be cleared"}})
@@ -133,7 +133,7 @@ func TestUpdateLegacyPayloadsFromAPI_NoComponent(t *testing.T) {
 
 func TestUpdateLegacyPayloadsFromAPI_HandledAsRaw(t *testing.T) {
 	ctx := t.Context()
-	apiComponents := map[string]client.BlueprintComponentV1{
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
 			Configuration: json.RawMessage(`{"payloadContent":[{"payloadType":"com.apple.wifi.managed"}]}`),
@@ -159,7 +159,7 @@ func TestUpdateLegacyPayloadsFromAPI_HandledAsRaw(t *testing.T) {
 
 func TestUpdateLegacyPayloadsFromAPI_NoPayloadContent(t *testing.T) {
 	ctx := t.Context()
-	apiComponents := map[string]client.BlueprintComponentV1{
+	apiComponents := map[string]jamfplatform.BlueprintComponentV1{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
 			Configuration: json.RawMessage(`{"payloadDisplayName":"Test"}`),
@@ -178,19 +178,19 @@ func TestUpdateLegacyPayloadsFromAPI_NoPayloadContent(t *testing.T) {
 func TestUpdateModelFromAPIResponse_BasicFields(t *testing.T) {
 	ctx := t.Context()
 	model := &BlueprintResourceModel{}
-	blueprint := &client.BlueprintDetailV1{
+	blueprint := &jamfplatform.BlueprintDetailV1{
 		ID:          "bp-123",
 		Name:        "Test Blueprint",
 		Description: "A test blueprint",
 		Created:     "2025-01-01T00:00:00Z",
 		Updated:     "2025-01-02T00:00:00Z",
-		DeploymentState: client.BlueprintDeploymentStateV1{
+		DeploymentState: jamfplatform.BlueprintDeploymentStateV1{
 			State: "DEPLOYED",
 		},
-		Scope: client.BlueprintUpdateScopeV1{
+		Scope: jamfplatform.BlueprintUpdateScopeV1{
 			DeviceGroups: []string{"group-1", "group-2"},
 		},
-		Steps: []client.BlueprintStepV1{},
+		Steps: []jamfplatform.BlueprintStepV1{},
 	}
 
 	updateModelFromAPIResponse(ctx, model, blueprint)
@@ -218,10 +218,10 @@ func TestUpdateModelFromAPIResponse_BasicFields(t *testing.T) {
 func TestUpdateModelFromAPIResponse_EmptyDescription(t *testing.T) {
 	ctx := t.Context()
 	model := &BlueprintResourceModel{Description: types.StringNull()}
-	blueprint := &client.BlueprintDetailV1{
+	blueprint := &jamfplatform.BlueprintDetailV1{
 		Description:     "",
-		DeploymentState: client.BlueprintDeploymentStateV1{State: "NOT_DEPLOYED"},
-		Steps:           []client.BlueprintStepV1{},
+		DeploymentState: jamfplatform.BlueprintDeploymentStateV1{State: "NOT_DEPLOYED"},
+		Steps:           []jamfplatform.BlueprintStepV1{},
 	}
 
 	updateModelFromAPIResponse(ctx, model, blueprint)
@@ -234,9 +234,9 @@ func TestUpdateModelFromAPIResponse_EmptyDescription(t *testing.T) {
 func TestUpdateModelFromAPIResponse_NotDeployed(t *testing.T) {
 	ctx := t.Context()
 	model := &BlueprintResourceModel{}
-	blueprint := &client.BlueprintDetailV1{
-		DeploymentState: client.BlueprintDeploymentStateV1{State: "NOT_DEPLOYED"},
-		Steps:           []client.BlueprintStepV1{},
+	blueprint := &jamfplatform.BlueprintDetailV1{
+		DeploymentState: jamfplatform.BlueprintDeploymentStateV1{State: "NOT_DEPLOYED"},
+		Steps:           []jamfplatform.BlueprintStepV1{},
 	}
 
 	updateModelFromAPIResponse(ctx, model, blueprint)
@@ -254,11 +254,11 @@ func TestUpdateModelFromAPIResponse_RawComponents(t *testing.T) {
 		},
 	}
 
-	blueprint := &client.BlueprintDetailV1{
-		DeploymentState: client.BlueprintDeploymentStateV1{State: "DEPLOYED"},
-		Steps: []client.BlueprintStepV1{
+	blueprint := &jamfplatform.BlueprintDetailV1{
+		DeploymentState: jamfplatform.BlueprintDeploymentStateV1{State: "DEPLOYED"},
+		Steps: []jamfplatform.BlueprintStepV1{
 			{
-				Components: []client.BlueprintComponentV1{
+				Components: []jamfplatform.BlueprintComponentV1{
 					{
 						Identifier:    "com.jamf.ddm.disk-management",
 						Configuration: json.RawMessage(`{"externalStorage":"deny"}`),
@@ -281,9 +281,9 @@ func TestUpdateModelFromAPIResponse_RawComponents(t *testing.T) {
 func TestUpdateModelFromAPIResponse_NoSteps(t *testing.T) {
 	ctx := t.Context()
 	model := &BlueprintResourceModel{}
-	blueprint := &client.BlueprintDetailV1{
-		DeploymentState: client.BlueprintDeploymentStateV1{State: "DEPLOYED"},
-		Steps:           []client.BlueprintStepV1{},
+	blueprint := &jamfplatform.BlueprintDetailV1{
+		DeploymentState: jamfplatform.BlueprintDeploymentStateV1{State: "DEPLOYED"},
+		Steps:           []jamfplatform.BlueprintStepV1{},
 	}
 
 	updateModelFromAPIResponse(ctx, model, blueprint)

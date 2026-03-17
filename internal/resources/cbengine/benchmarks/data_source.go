@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -44,7 +44,7 @@ func (d *BenchmarksDataSource) Schema(ctx context.Context, req datasource.Schema
 				Computed:            true,
 			},
 			"benchmarks": schema.ListNestedAttribute{
-				MarkdownDescription: "CBEngine benchmarks returned by GetCBEngineBenchmarksV2.",
+				MarkdownDescription: "CBEngine benchmarks returned by ListBenchmarks.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -86,11 +86,11 @@ func (d *BenchmarksDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			"Expected *client.Client. Please report this issue to the provider developers.",
+			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
 		)
 		return
 	}
@@ -98,7 +98,7 @@ func (d *BenchmarksDataSource) Configure(ctx context.Context, req datasource.Con
 	d.client = client
 }
 
-// Read invokes GetCBEngineBenchmarksV2 and maps the response into Terraform state.
+// Read invokes ListBenchmarks and maps the response into Terraform state.
 func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data BenchmarksDataSourceModel
 
@@ -126,7 +126,7 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	benchmarks, err := d.client.GetCBEngineBenchmarksV2(readCtx)
+	benchmarks, err := d.client.ListBenchmarks(readCtx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list CBEngine benchmarks", err.Error())
 		return

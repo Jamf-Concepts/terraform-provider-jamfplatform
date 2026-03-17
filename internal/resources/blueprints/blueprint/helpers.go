@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -101,18 +101,18 @@ func desiredDeployedValue(v types.Bool) bool {
 }
 
 // reconcileBlueprintDeployment ensures the blueprint's deployment state matches the desired state.
-func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, blueprintID string, desiredDeployed bool) (*client.BlueprintDetailV1, error) {
-	blueprint, err := r.client.GetBlueprintByIDV1(ctx, blueprintID)
+func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, blueprintID string, desiredDeployed bool) (*jamfplatform.BlueprintDetailV1, error) {
+	blueprint, err := r.client.GetBlueprint(ctx, blueprintID)
 	if err != nil {
 		return nil, err
 	}
 
 	if desiredDeployed {
 		if !strings.EqualFold(blueprint.DeploymentState.State, blueprintDeploymentStateDeployed) {
-			if err := r.client.DeployBlueprintV1(ctx, blueprintID); err != nil {
+			if err := r.client.DeployBlueprint(ctx, blueprintID); err != nil {
 				return blueprint, err
 			}
-			return r.client.GetBlueprintByIDV1(ctx, blueprintID)
+			return r.client.GetBlueprint(ctx, blueprintID)
 		}
 		return blueprint, nil
 	}
@@ -121,9 +121,9 @@ func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, bl
 		return blueprint, nil
 	}
 
-	if err := r.client.UndeployBlueprintV1(ctx, blueprintID); err != nil {
+	if err := r.client.UndeployBlueprint(ctx, blueprintID); err != nil {
 		return blueprint, err
 	}
 
-	return r.client.GetBlueprintByIDV1(ctx, blueprintID)
+	return r.client.GetBlueprint(ctx, blueprintID)
 }

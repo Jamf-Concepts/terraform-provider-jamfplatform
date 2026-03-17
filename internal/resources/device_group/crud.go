@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -52,7 +52,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	reqBody := &client.DeviceGroupCreateRepresentationV1{
+	reqBody := &jamfplatform.DeviceGroupCreateRepresentationV1{
 		Name:        plan.Name.ValueString(),
 		Description: helpers.StringPointerValue(plan.Description),
 		DeviceType:  strings.ToUpper(plan.DeviceType.ValueString()),
@@ -73,7 +73,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		}
 	}
 
-	created, err := r.client.CreateDeviceGroupV1(createCtx, reqBody)
+	created, err := r.client.CreateDeviceGroup(createCtx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating device group",
@@ -152,7 +152,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	grp, err := r.client.GetDeviceGroupByIDV1(readCtx, state.ID.ValueString())
+	grp, err := r.client.GetDeviceGroup(readCtx, state.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "device group not found, removing from state", map[string]any{
@@ -174,7 +174,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	manageDescription := isImport || helpers.IsConfiguredValue(state.Description)
 	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
 		var err error
-		members, err = r.client.GetDeviceGroupMembersV1(readCtx, grp.ID)
+		members, err = r.client.ListDeviceGroupMembers(readCtx, grp.ID)
 		if err != nil {
 			resp.Diagnostics.AddError("Error reading device group members", err.Error())
 			return
@@ -220,7 +220,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	manageMembers := helpers.IsConfiguredValue(plan.Members)
 	manageDescription := helpers.IsConfiguredValue(plan.Description)
 
-	updateReq := &client.DeviceGroupUpdateRepresentationV1{
+	updateReq := &jamfplatform.DeviceGroupUpdateRepresentationV1{
 		Name:        plan.Name.ValueString(),
 		Description: helpers.StringPointerValue(plan.Description),
 	}
@@ -229,7 +229,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		updateReq.Criteria = expandDeviceGroupCriteria(plan.Criteria)
 	}
 
-	if err := r.client.UpdateDeviceGroupV1(updateCtx, plan.ID.ValueString(), updateReq); err != nil {
+	if err := r.client.UpdateDeviceGroup(updateCtx, plan.ID.ValueString(), updateReq); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating device group",
 			fmt.Sprintf("API error: %v", err),
@@ -244,7 +244,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 
-		current, err := r.client.GetDeviceGroupMembersV1(updateCtx, plan.ID.ValueString())
+		current, err := r.client.ListDeviceGroupMembers(updateCtx, plan.ID.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("Error reading device group members", err.Error())
 			return
@@ -252,11 +252,11 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 
 		added, removed := diffStringSlices(current, desired)
 		if len(added) > 0 || len(removed) > 0 {
-			patch := &client.DeviceGroupMemberPatchRepresentationV1{
+			patch := &jamfplatform.DeviceGroupMemberPatchRepresentationV1{
 				Added:   added,
 				Removed: removed,
 			}
-			if err := r.client.UpdateDeviceGroupMembersV1(updateCtx, plan.ID.ValueString(), patch); err != nil {
+			if err := r.client.UpdateDeviceGroupMembers(updateCtx, plan.ID.ValueString(), patch); err != nil {
 				resp.Diagnostics.AddError("Error updating device group members", err.Error())
 				return
 			}
@@ -298,7 +298,7 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	err := r.client.DeleteDeviceGroupV1(deleteCtx, state.ID.ValueString())
+	err := r.client.DeleteDeviceGroup(deleteCtx, state.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "device group already removed", map[string]any{

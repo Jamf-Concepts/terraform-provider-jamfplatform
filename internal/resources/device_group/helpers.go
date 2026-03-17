@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -17,10 +17,10 @@ import (
 
 // refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
 func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
-	var grp *client.DeviceGroupReadRepresentationV1
+	var grp *jamfplatform.DeviceGroupReadRepresentationV1
 	err := helpers.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
 		var err error
-		grp, err = r.client.GetDeviceGroupByIDV1(pollCtx, id)
+		grp, err = r.client.GetDeviceGroup(pollCtx, id)
 		if err == nil {
 			return true, nil
 		}
@@ -41,7 +41,7 @@ func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id st
 	var members []string
 	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
 		var err error
-		members, err = r.client.GetDeviceGroupMembersV1(ctx, grp.ID)
+		members, err = r.client.ListDeviceGroupMembers(ctx, grp.ID)
 		if err != nil {
 			diags.AddError("Error reading device group members", err.Error())
 			return false

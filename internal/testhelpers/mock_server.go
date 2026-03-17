@@ -9,14 +9,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 )
 
 // NewMockClient creates a test HTTP server with automatic OAuth2 token handling
-// and returns a configured *client.Client pointed at the mock server.
+// and returns a configured *jamfplatform.Client pointed at the mock server.
 // The provided handler receives all non-token requests.
 // The server is automatically closed when the test completes.
-func NewMockClient(t *testing.T, handler http.Handler) *client.Client {
+func NewMockClient(t *testing.T, handler http.Handler) *jamfplatform.Client {
 	t.Helper()
 
 	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +35,7 @@ func NewMockClient(t *testing.T, handler http.Handler) *client.Client {
 	server := httptest.NewServer(wrapped)
 	t.Cleanup(server.Close)
 
-	c := client.NewClient(server.URL, "test-id", "test-secret")
+	c := jamfplatform.NewClient(server.URL, "test-id", "test-secret")
 	return c
 }
 

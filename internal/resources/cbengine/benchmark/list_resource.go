@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -28,7 +28,7 @@ func NewBenchmarkListResource() list.ListResource {
 
 // BenchmarkListResource implements Terraform list support for compliance benchmarks.
 type BenchmarkListResource struct {
-	client *client.Client
+	client *jamfplatform.Client
 }
 
 // Metadata configures the resource type name for Terraform.
@@ -42,11 +42,11 @@ func (r *BenchmarkListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*client.Client)
+	client, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
-			"Expected *client.Client. Please report this issue to the provider developers.",
+			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
 		)
 		return
 	}
@@ -89,7 +89,7 @@ func (r *BenchmarkListResource) List(ctx context.Context, req list.ListRequest, 
 	searchTerm, hasSearch := helpers.NormalizedFilterString(config.Search)
 	searchLower := strings.ToLower(searchTerm)
 
-	resp, err := r.client.GetCBEngineBenchmarksV2(ctx)
+	resp, err := r.client.ListBenchmarks(ctx)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic(
@@ -148,7 +148,7 @@ func (r *BenchmarkListResource) List(ctx context.Context, req list.ListRequest, 
 		}
 
 		if req.IncludeResource {
-			detail, err := r.client.GetCBEngineBenchmarkByIDV2(ctx, bench.ID)
+			detail, err := r.client.GetBenchmark(ctx, bench.ID)
 			if err != nil {
 				stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 					diag.NewErrorDiagnostic(

@@ -6,7 +6,7 @@ package blueprint
 import (
 	"context"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -42,23 +42,23 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	steps := []client.BlueprintStepV1{
+	steps := []jamfplatform.BlueprintStepV1{
 		{
 			Name:       "Declaration group",
 			Components: allComponents,
 		},
 	}
 
-	reqBody := &client.BlueprintCreateRequestV1{
+	reqBody := &jamfplatform.BlueprintCreateRequestV1{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
-		Scope: client.BlueprintCreateScopeV1{
+		Scope: jamfplatform.BlueprintCreateScopeV1{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
 	}
 
-	createResp, err := r.client.CreateBlueprintV1(createCtx, reqBody)
+	createResp, err := r.client.CreateBlueprint(createCtx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating blueprint",
@@ -75,7 +75,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 			"Blueprint was created successfully but deployment could not be fully reconciled: "+err.Error()+
 				". Check your Jamf instance to verify the blueprint deployment status.",
 		)
-		blueprint, _ = r.client.GetBlueprintByIDV1(createCtx, createResp.ID)
+		blueprint, _ = r.client.GetBlueprint(createCtx, createResp.ID)
 		if blueprint == nil {
 			resp.Diagnostics.AddError(
 				"Error reading created blueprint",
@@ -142,7 +142,7 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
-	blueprint, err := r.client.GetBlueprintByIDV1(readCtx, data.ID.ValueString())
+	blueprint, err := r.client.GetBlueprint(readCtx, data.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint not found, removing from state", map[string]any{
@@ -203,23 +203,23 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	steps := []client.BlueprintStepV1{
+	steps := []jamfplatform.BlueprintStepV1{
 		{
 			Name:       "Declaration group",
 			Components: allComponents,
 		},
 	}
 
-	updateReq := &client.BlueprintUpdateRequestV1{
+	updateReq := &jamfplatform.BlueprintUpdateRequestV1{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueString(),
-		Scope: client.BlueprintUpdateScopeV1{
+		Scope: jamfplatform.BlueprintUpdateScopeV1{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
 	}
 
-	if err := r.client.UpdateBlueprintV1(updateCtx, data.ID.ValueString(), updateReq); err != nil {
+	if err := r.client.UpdateBlueprint(updateCtx, data.ID.ValueString(), updateReq); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating blueprint",
 			"Could not update blueprint: "+err.Error(),
@@ -235,7 +235,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 			"Blueprint was updated successfully but deployment could not be fully reconciled: "+err.Error()+
 				". Check your Jamf instance to verify the blueprint deployment status.",
 		)
-		blueprint, _ = r.client.GetBlueprintByIDV1(updateCtx, data.ID.ValueString())
+		blueprint, _ = r.client.GetBlueprint(updateCtx, data.ID.ValueString())
 		if blueprint == nil {
 			resp.Diagnostics.AddError(
 				"Error reading updated blueprint",
@@ -278,7 +278,7 @@ func (r *BlueprintResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	err := r.client.DeleteBlueprintV1(deleteCtx, data.ID.ValueString())
+	err := r.client.DeleteBlueprint(deleteCtx, data.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Blueprint already deleted", map[string]any{

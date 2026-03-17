@@ -7,14 +7,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // assignDeviceGroupModel maps API representation to Terraform model, respecting managed fields.
-func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel, grp *client.DeviceGroupReadRepresentationV1, members []string, manageMembers bool, manageDescription bool) diag.Diagnostics {
+func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel, grp *jamfplatform.DeviceGroupReadRepresentationV1, members []string, manageMembers bool, manageDescription bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	prevDescription := model.Description
@@ -66,7 +66,7 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 }
 
 // flattenDeviceGroupCriteria converts API criteria into Terraform models.
-func flattenDeviceGroupCriteria(criteria []client.DeviceGroupCriteriaRepresentationV1, current []DeviceGroupCriteriaModel) []DeviceGroupCriteriaModel {
+func flattenDeviceGroupCriteria(criteria []jamfplatform.DeviceGroupCriteriaRepresentationV1, current []DeviceGroupCriteriaModel) []DeviceGroupCriteriaModel {
 	if len(criteria) == 0 {
 		return nil
 	}

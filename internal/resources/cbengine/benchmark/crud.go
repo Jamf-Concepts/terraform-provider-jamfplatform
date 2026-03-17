@@ -43,7 +43,7 @@ func (r *BenchmarkResource) Create(ctx context.Context, req resource.CreateReque
 		"title": data.Title.ValueString(),
 	})
 
-	bench, err := r.client.CreateCBEngineBenchmarkV2(createCtx, reqBody)
+	bench, err := r.client.CreateBenchmark(createCtx, reqBody)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating benchmark", err.Error())
 		return
@@ -137,7 +137,7 @@ func (r *BenchmarkResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	bench, err := r.client.GetCBEngineBenchmarkByIDV2(readCtx, data.ID.ValueString())
+	bench, err := r.client.GetBenchmark(readCtx, data.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark not found, removing from state", map[string]any{
@@ -193,7 +193,7 @@ func (r *BenchmarkResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	err := r.client.DeleteCBEngineBenchmarkV1(deleteCtx, data.ID.ValueString())
+	err := r.client.DeleteBenchmark(deleteCtx, data.ID.ValueString())
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Benchmark already deleted", map[string]any{

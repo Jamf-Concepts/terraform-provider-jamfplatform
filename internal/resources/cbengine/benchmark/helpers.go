@@ -8,17 +8,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/client"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // waitForBenchmarkSync polls until the benchmark reaches a terminal state
 // (SYNCED or FAILED) or the provided context is canceled.
-func waitForBenchmarkSync(ctx context.Context, c *client.Client, id string, interval time.Duration) (*client.CBEngineBenchmarkV2, error) {
-	var synced *client.CBEngineBenchmarkV2
+func waitForBenchmarkSync(ctx context.Context, c *jamfplatform.Client, id string, interval time.Duration) (*jamfplatform.CBEngineBenchmarkV2, error) {
+	var synced *jamfplatform.CBEngineBenchmarkV2
 	err := helpers.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
-		benchmarks, err := c.GetCBEngineBenchmarksV2(pollCtx)
+		benchmarks, err := c.ListBenchmarks(pollCtx)
 		if err != nil {
 			tflog.Debug(pollCtx, "polling benchmarks failed", map[string]any{"error": err.Error()})
 			return false, fmt.Errorf("failed to poll benchmarks: %w", err)
@@ -53,10 +53,10 @@ func waitForBenchmarkSync(ctx context.Context, c *client.Client, id string, inte
 // waitForBenchmarkDeletion polls until the benchmark is no longer present or
 // the context is canceled. Every 20 seconds it re-issues the delete command
 // to unstick benchmarks that remain in DELETING state.
-func waitForBenchmarkDeletion(ctx context.Context, c *client.Client, id string, interval time.Duration) error {
+func waitForBenchmarkDeletion(ctx context.Context, c *jamfplatform.Client, id string, interval time.Duration) error {
 	lastDelete := time.Now()
 	return helpers.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
-		benchmarks, err := c.GetCBEngineBenchmarksV2(pollCtx)
+		benchmarks, err := c.ListBenchmarks(pollCtx)
 		if err != nil {
 			tflog.Debug(pollCtx, "polling benchmarks failed", map[string]any{"error": err.Error()})
 			return false, fmt.Errorf("failed to poll benchmarks: %w", err)
@@ -74,7 +74,7 @@ func waitForBenchmarkDeletion(ctx context.Context, c *client.Client, id string, 
 				if time.Since(lastDelete) > 20*time.Second {
 					lastDelete = time.Now()
 					tflog.Debug(pollCtx, "retrying delete for stuck benchmark", map[string]any{"benchmark_id": id})
-					_ = c.DeleteCBEngineBenchmarkV1(pollCtx, id)
+					_ = c.DeleteBenchmark(pollCtx, id)
 				}
 				return false, nil
 			case "DELETE_FAILED":
