@@ -5,6 +5,7 @@ package benchmark
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -21,6 +22,7 @@ func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *jamf
 	model.TenantID = types.StringValue(bench.TenantID)
 	model.Deleted = types.BoolValue(bench.Deleted)
 	model.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
+	model.CanSwitchToEnforce = types.BoolValue(bench.CanSwitchToEnforce)
 	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
 	model.Sources = buildSourceModels(bench.Sources)
 	model.Rules = buildRuleModels(bench.Rules)
@@ -44,6 +46,7 @@ func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, benc
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
 	model.Deleted = types.BoolValue(bench.Deleted)
 	model.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
+	model.CanSwitchToEnforce = types.BoolValue(bench.CanSwitchToEnforce)
 	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
 }
 
@@ -88,6 +91,8 @@ func buildRuleModel(r jamfplatform.CBEngineRuleInfoV1) RuleModel {
 		ODVValidationEnumValues: buildODVValidationEnumValues(r.ODV),
 		ODVValidationRegex:      buildODVValidationRegex(r.ODV),
 		DependsOn:               buildDependsOnList(r.RuleRelation),
+		Reportable:              helpers.BoolPointerValueOrNull(r.Reportable),
+		SmartCard:               helpers.BoolPointerValueOrNull(r.SmartCard),
 	}
 }
 

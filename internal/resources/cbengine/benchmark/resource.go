@@ -234,6 +234,14 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 							ElementType:         types.StringType,
 							Computed:            true,
 						},
+						"reportable": schema.BoolAttribute{
+							MarkdownDescription: "Whether the rule produces reportable compliance data.",
+							Computed:            true,
+						},
+						"smart_card": schema.BoolAttribute{
+							MarkdownDescription: "Whether the rule is related to smart card configuration.",
+							Computed:            true,
+						},
 					},
 				},
 				PlanModifiers: []planmodifier.List{
@@ -267,6 +275,10 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 			},
 			"update_available": schema.BoolAttribute{
 				MarkdownDescription: "Whether an update is available for the benchmark relative to current mSCP sources.",
+				Computed:            true,
+			},
+			"can_switch_to_enforce": schema.BoolAttribute{
+				MarkdownDescription: "Whether the benchmark can be switched to MONITOR_AND_ENFORCE enforcement mode.",
 				Computed:            true,
 			},
 			"last_updated_at": schema.StringAttribute{

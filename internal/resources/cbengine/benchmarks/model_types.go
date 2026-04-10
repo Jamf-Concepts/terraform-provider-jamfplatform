@@ -27,6 +27,7 @@ type BenchmarkListItem struct {
 	Title              types.String `tfsdk:"title"`
 	Description        types.String `tfsdk:"description"`
 	UpdateAvailable    types.Bool   `tfsdk:"update_available"`
+	Modified           types.Bool   `tfsdk:"modified"`
 	SyncState          types.String `tfsdk:"sync_state"`
 	TargetDeviceGroups types.List   `tfsdk:"target_device_groups"`
 }
