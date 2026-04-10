@@ -48,6 +48,7 @@ Read-Only:
 
 - `description` (String) Benchmark description, if provided.
 - `id` (String) Benchmark identifier.
+- `modified` (Boolean) Indicates whether the benchmark has been modified from its baseline.
 - `sync_state` (String) Current synchronization state reported by CBEngine.
 - `target_device_groups` (List of String) Device groups targeted by the benchmark.
 - `title` (String) Benchmark title.

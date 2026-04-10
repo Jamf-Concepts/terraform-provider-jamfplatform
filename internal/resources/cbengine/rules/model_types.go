@@ -47,6 +47,8 @@ type RuleModel struct {
 	SupportedOS             []OSInfoModel  `tfsdk:"supported_os"`
 	OSSpecificDefaults      types.Map      `tfsdk:"os_specific_defaults"`
 	DependsOn               []types.String `tfsdk:"depends_on"`
+	Reportable              types.Bool     `tfsdk:"reportable"`
+	SmartCard               types.Bool     `tfsdk:"smart_card"`
 }
 
 // OSInfoModel represents supported OS information for a rule.

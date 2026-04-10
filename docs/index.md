@@ -33,5 +33,6 @@ provider "jamfplatform" {
 ### Optional
 
 - `base_url` (String) The Jamf Platform base URL to use (e.g., https://us.apigw.jamf.com for production US region or https://us.stage.apigw.jamfnebula.com for internal staging US region). Can also be set via the JAMFPLATFORM_BASE_URL environment variable.
-- `client_id` (String, Sensitive) OAuth client ID for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_ID environment variable.
+- `client_id` (String) OAuth client ID for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_ID environment variable.
 - `client_secret` (String, Sensitive) OAuth client secret for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_SECRET environment variable.
+- `tenant_id` (String) Tenant UUID used to scope all API requests. Can also be set via the JAMFPLATFORM_TENANT_ID environment variable.
