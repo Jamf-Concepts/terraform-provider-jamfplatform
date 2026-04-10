@@ -53,6 +53,7 @@ output "benchmark_by_title_rules" {
 ### Read-Only
 
 - `benchmark_id` (String) Benchmark ID.
+- `can_switch_to_enforce` (Boolean) Whether the benchmark can be switched to MONITOR_AND_ENFORCE enforcement mode.
 - `deleted` (Boolean) Deleted flag.
 - `description` (String) Description.
 - `enforcement_mode` (String) Enforcement mode.
@@ -82,7 +83,9 @@ Read-Only:
 - `odv_value` (String) ODV value.
 - `os_specific_defaults` (Attributes Map) OS-specific rule defaults. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
 - `references` (List of String) References for the rule.
+- `reportable` (Boolean) Whether the rule produces reportable compliance data.
 - `section_name` (String) Section name for the rule.
+- `smart_card` (Boolean) Whether the rule is related to smart card configuration.
 - `supported_os` (Attributes List) Supported operating systems. (see [below for nested schema](#nestedatt--rules--supported_os))
 - `title` (String) Title of the rule.
 

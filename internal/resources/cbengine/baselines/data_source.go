@@ -135,7 +135,7 @@ func (d *BaselinesDataSource) Read(ctx context.Context, req datasource.ReadReque
 			BaselineID:  types.StringValue(b.BaselineID),
 			Title:       types.StringValue(b.Title),
 			Description: types.StringValue(b.Description),
-			RuleCount:   types.Int64Value(b.RuleCount),
+			RuleCount:   types.Int64Value(int64(b.RuleCount)),
 		})
 	}
 
