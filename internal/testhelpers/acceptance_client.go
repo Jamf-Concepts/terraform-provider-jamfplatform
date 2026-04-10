@@ -39,7 +39,12 @@ var initAcceptanceClient = sync.OnceValues(func() (*jamfplatform.Client, error) 
 		return nil, fmt.Errorf("missing required environment variables (JAMFPLATFORM_BASE_URL, JAMFPLATFORM_CLIENT_ID, JAMFPLATFORM_CLIENT_SECRET)")
 	}
 
-	c := jamfplatform.NewClient(baseURL, clientID, clientSecret)
+	var opts []jamfplatform.Option
+	if tenantID := os.Getenv("JAMFPLATFORM_TENANT_ID"); tenantID != "" {
+		opts = append(opts, jamfplatform.WithTenantID(tenantID))
+	}
+
+	c := jamfplatform.NewClient(baseURL, clientID, clientSecret, opts...)
 	if err := c.ValidateCredentials(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to validate credentials: %w", err)
 	}

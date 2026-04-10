@@ -221,7 +221,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	manageDescription := helpers.IsConfiguredValue(plan.Description)
 
 	updateReq := &jamfplatform.DeviceGroupUpdateRepresentationV1{
-		Name:        plan.Name.ValueString(),
+		Name:        helpers.StringPointerValue(plan.Name),
 		Description: helpers.StringPointerValue(plan.Description),
 	}
 

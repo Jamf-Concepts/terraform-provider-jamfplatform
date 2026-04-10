@@ -89,6 +89,7 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
 ### Read-Only
 
+- `can_switch_to_enforce` (Boolean) Whether the benchmark can be switched to MONITOR_AND_ENFORCE enforcement mode.
 - `deleted` (Boolean) Whether the benchmark is marked deleted by the API.
 - `id` (String) Unique identifier assigned by the API (maps to benchmarkId).
 - `last_updated_at` (String) Timestamp (RFC3339) of the last update to the benchmark.
@@ -120,7 +121,9 @@ Read-Only:
 - `odv_validation_regex` (String) Regex pattern for `REGEX` ODV types.
 - `os_specific_defaults` (Attributes Map) OS-specific defaults for the rule. (see [below for nested schema](#nestedatt--rules--os_specific_defaults))
 - `references` (List of String) Reference URLs or identifiers for the rule.
+- `reportable` (Boolean) Whether the rule produces reportable compliance data.
 - `section_name` (String) Section name of the rule from the baseline.
+- `smart_card` (Boolean) Whether the rule is related to smart card configuration.
 - `supported_os` (Attributes List) Operating systems supported by the rule. (see [below for nested schema](#nestedatt--rules--supported_os))
 - `title` (String) Rule title resolved from the baseline.
 
