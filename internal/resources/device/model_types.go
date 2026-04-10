@@ -33,6 +33,7 @@ type DeviceDataSourceModel struct {
 	EnrollmentType                          types.String   `tfsdk:"enrollment_type"`
 	LastEnrollmentTime                      types.String   `tfsdk:"last_enrollment_time"`
 	Managed                                 types.Bool     `tfsdk:"managed"`
+	MDMCapable                              types.Bool     `tfsdk:"mdm_capable"`
 	Supervised                              types.Bool     `tfsdk:"supervised"`
 	HardwareMake                            types.String   `tfsdk:"hardware_make"`
 	HardwareUDID                            types.String   `tfsdk:"hardware_udid"`

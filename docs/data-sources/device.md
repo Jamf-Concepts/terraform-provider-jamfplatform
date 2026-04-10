@@ -46,6 +46,7 @@ output "device_by_id" {
 - `last_enrollment_time` (String) Timestamp of the last enrollment in ISO 8601 format.
 - `last_inventory_update_time` (String) Timestamp of the last inventory update in ISO 8601 format.
 - `managed` (Boolean) Indicates whether the device is managed.
+- `mdm_capable` (Boolean) Indicates whether the device is MDM capable.
 - `model` (String) Marketing model string.
 - `model_identifier` (String) Model identifier (e.g., Mac14,6).
 - `name` (String) Device name reported by inventory.

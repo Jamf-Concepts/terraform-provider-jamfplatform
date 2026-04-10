@@ -64,6 +64,10 @@ func (d *BenchmarksDataSource) Schema(ctx context.Context, req datasource.Schema
 							MarkdownDescription: "Indicates whether an update is available for the benchmark.",
 							Computed:            true,
 						},
+						"modified": schema.BoolAttribute{
+							MarkdownDescription: "Indicates whether the benchmark has been modified from its baseline.",
+							Computed:            true,
+						},
 						"sync_state": schema.StringAttribute{
 							MarkdownDescription: "Current synchronization state reported by CBEngine.",
 							Computed:            true,
@@ -148,6 +152,7 @@ func (d *BenchmarksDataSource) Read(ctx context.Context, req datasource.ReadRequ
 			Title:              helpers.StringValueOrNull(bench.Title),
 			Description:        helpers.StringValueOrNull(bench.Description),
 			UpdateAvailable:    types.BoolValue(bench.UpdateAvailable),
+			Modified:           types.BoolValue(bench.Modified),
 			SyncState:          helpers.StringValueOrNull(bench.SyncState),
 			TargetDeviceGroups: targetGroups,
 		})

@@ -85,6 +85,10 @@ func (d *DeviceDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				MarkdownDescription: "Indicates whether the device is managed.",
 				Computed:            true,
 			},
+			"mdm_capable": schema.BoolAttribute{
+				MarkdownDescription: "Indicates whether the device is MDM capable.",
+				Computed:            true,
+			},
 			"supervised": schema.BoolAttribute{
 				MarkdownDescription: "Indicates whether the device is supervised.",
 				Computed:            true,
@@ -271,6 +275,7 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	data.EnrollmentType = helpers.StringValueOrNull(deviceDetail.EnrollmentType)
 	data.LastEnrollmentTime = helpers.StringValueOrNull(deviceDetail.LastEnrollmentTime)
 	data.Managed = types.BoolValue(deviceDetail.Managed)
+	data.MDMCapable = types.BoolValue(deviceDetail.MDMCapable)
 	data.Supervised = types.BoolValue(deviceDetail.Supervised)
 
 	if deviceDetail.Hardware != nil {

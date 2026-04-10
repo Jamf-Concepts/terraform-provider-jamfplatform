@@ -172,6 +172,14 @@ func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 							ElementType:         types.StringType,
 							Computed:            true,
 						},
+						"reportable": schema.BoolAttribute{
+							MarkdownDescription: "Whether the rule produces reportable compliance data.",
+							Computed:            true,
+						},
+						"smart_card": schema.BoolAttribute{
+							MarkdownDescription: "Whether the rule is related to smart card configuration.",
+							Computed:            true,
+						},
 					},
 				},
 			},
@@ -352,6 +360,8 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			SupportedOS:             supportedOS,
 			OSSpecificDefaults:      osSpecificDefaults,
 			DependsOn:               dependsOn,
+			Reportable:              helpers.BoolPointerValueOrNull(r.Reportable),
+			SmartCard:               helpers.BoolPointerValueOrNull(r.SmartCard),
 		})
 	}
 

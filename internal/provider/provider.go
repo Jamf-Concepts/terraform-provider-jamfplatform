@@ -38,6 +38,7 @@ const (
 	envBaseURL      = "JAMFPLATFORM_BASE_URL"
 	envClientID     = "JAMFPLATFORM_CLIENT_ID"
 	envClientSecret = "JAMFPLATFORM_CLIENT_SECRET"
+	envTenantID     = "JAMFPLATFORM_TENANT_ID"
 )
 
 // Ensure JamfPlatformProvider satisfies the various provider interfaces.
@@ -55,6 +56,7 @@ type JamfPlatformProviderModel struct {
 	BaseURL      types.String `tfsdk:"base_url"`
 	ClientID     types.String `tfsdk:"client_id"`
 	ClientSecret types.String `tfsdk:"client_secret"`
+	TenantID     types.String `tfsdk:"tenant_id"`
 }
 
 func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -72,13 +74,16 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			},
 			"client_id": schema.StringAttribute{
 				Optional:    true,
-				Sensitive:   true,
 				Description: "OAuth client ID for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_ID environment variable.",
 			},
 			"client_secret": schema.StringAttribute{
 				Optional:    true,
 				Sensitive:   true,
 				Description: "OAuth client secret for Jamf Platform API. Can also be set via the JAMFPLATFORM_CLIENT_SECRET environment variable.",
+			},
+			"tenant_id": schema.StringAttribute{
+				Optional:    true,
+				Description: "Tenant UUID used to scope all API requests. Can also be set via the JAMFPLATFORM_TENANT_ID environment variable.",
 			},
 		},
 	}
@@ -129,8 +134,21 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
+	tenantID := data.TenantID.ValueString()
+	if tenantID == "" {
+		tenantID = getenv(envTenantID)
+	}
+	if tenantID == "" {
+		resp.Diagnostics.AddError(
+			"Missing Required Provider Configuration",
+			"tenant_id must be set either in the provider block or via the JAMFPLATFORM_TENANT_ID environment variable.",
+		)
+		return
+	}
+
 	opts := []jamfplatform.Option{
 		jamfplatform.WithUserAgent("terraform-provider-jamfplatform/" + p.version),
+		jamfplatform.WithTenantID(tenantID),
 	}
 	if shouldEnableHTTPLogging() {
 		opts = append(opts, jamfplatform.WithLogger(NewTerraformLogger()))

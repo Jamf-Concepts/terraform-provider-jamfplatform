@@ -211,9 +211,9 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	updateReq := &jamfplatform.BlueprintUpdateRequestV1{
-		Name:        data.Name.ValueString(),
-		Description: data.Description.ValueString(),
-		Scope: jamfplatform.BlueprintUpdateScopeV1{
+		Name:        helpers.StringPointerValue(data.Name),
+		Description: helpers.StringPointerValue(data.Description),
+		Scope: &jamfplatform.BlueprintUpdateScopeV1{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
