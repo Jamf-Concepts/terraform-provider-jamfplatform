@@ -28,13 +28,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 	model.ID = types.StringValue(blueprint.ID)
 	model.Name = types.StringValue(blueprint.Name)
 
-	if !helpers.IsConfiguredValue(model.Description) && (blueprint.Description == nil || *blueprint.Description == "") {
-		model.Description = types.StringNull()
-	} else if blueprint.Description != nil {
-		model.Description = types.StringValue(*blueprint.Description)
-	} else {
-		model.Description = types.StringNull()
-	}
+	model.Description = helpers.ReconcileOptionalStringPointer(blueprint.Description, model.Description)
 
 	model.Created = types.StringValue(blueprint.Created)
 	model.Updated = types.StringValue(blueprint.Updated)
@@ -46,12 +40,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 		model.Deployed = types.BoolValue(false)
 	}
 
-	var deviceGroupsSet types.Set
-	if blueprint.Scope != nil {
-		deviceGroupsSet, _ = types.SetValueFrom(context.Background(), types.StringType, blueprint.Scope.DeviceGroups)
-	} else {
-		deviceGroupsSet, _ = types.SetValueFrom(context.Background(), types.StringType, []string{})
-	}
+	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, scopeDeviceGroups(blueprint.Scope))
 	model.DeviceGroups = deviceGroupsSet
 
 	apiComponentsByID := make(map[string]jamfplatform.Component)

@@ -133,6 +133,14 @@ func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, bl
 	return r.client.GetBlueprint(ctx, blueprintID)
 }
 
+// scopeDeviceGroups safely extracts device group IDs from an optional blueprint scope.
+func scopeDeviceGroups(scope *jamfplatform.BlueprintScope) []string {
+	if scope == nil {
+		return []string{}
+	}
+	return scope.DeviceGroups
+}
+
 // getBlueprintByName looks up a blueprint by name using the list API.
 func getBlueprintByName(ctx context.Context, c *jamfplatform.Client, name string) (*jamfplatform.BlueprintDetail, error) {
 	blueprints, err := c.ListBlueprints(ctx, nil, name)

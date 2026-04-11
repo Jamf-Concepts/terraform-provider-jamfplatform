@@ -119,6 +119,19 @@ func ReconcileOptionalInt(apiValue int, current types.Int64) types.Int64 {
 	return types.Int64Null()
 }
 
+// DerefString safely unwraps a *string, returning an empty string if nil.
+func DerefString(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
+}
+
+// ReconcileOptionalStringPointer behaves like ReconcileOptionalString but accepts a *string API value.
+func ReconcileOptionalStringPointer(apiValue *string, current types.String) types.String {
+	return ReconcileOptionalString(DerefString(apiValue), current)
+}
+
 // ReconcileOptionalString keeps explicit empty strings set by the user while allowing nulls when unset.
 func ReconcileOptionalString(apiValue string, current types.String) types.String {
 	if apiValue == "" {

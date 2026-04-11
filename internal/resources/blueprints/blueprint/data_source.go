@@ -163,12 +163,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var deviceGroupsList types.List
-	if bp.Scope != nil {
-		deviceGroupsList, _ = types.ListValueFrom(context.Background(), types.StringType, bp.Scope.DeviceGroups)
-	} else {
-		deviceGroupsList, _ = types.ListValueFrom(context.Background(), types.StringType, []string{})
-	}
+	deviceGroupsList, _ := types.ListValueFrom(context.Background(), types.StringType, scopeDeviceGroups(bp.Scope))
 
 	var components []ComponentModel
 	if len(bp.Steps) > 0 {
@@ -191,10 +186,6 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		}
 	}
 
-	descStr := ""
-	if bp.Description != nil {
-		descStr = *bp.Description
-	}
 	deployState := ""
 	if bp.DeploymentState != nil {
 		deployState = bp.DeploymentState.State
@@ -205,7 +196,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		ID:              data.ID,
 		Name:            types.StringValue(bp.Name),
 		BlueprintID:     types.StringValue(bp.ID),
-		Description:     types.StringValue(descStr),
+		Description:     types.StringValue(helpers.DerefString(bp.Description)),
 		Created:         types.StringValue(bp.Created),
 		Updated:         types.StringValue(bp.Updated),
 		DeploymentState: types.StringValue(deployState),
