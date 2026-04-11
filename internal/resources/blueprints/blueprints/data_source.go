@@ -137,11 +137,7 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	for _, bp := range blueprints {
 		if searchLower != "" {
 			nameMatch := strings.Contains(strings.ToLower(bp.Name), searchLower)
-			bpDesc := ""
-			if bp.Description != nil {
-				bpDesc = *bp.Description
-			}
-			descMatch := strings.Contains(strings.ToLower(bpDesc), searchLower)
+			descMatch := strings.Contains(strings.ToLower(helpers.DerefString(bp.Description)), searchLower)
 			if !nameMatch && !descMatch {
 				continue
 			}
