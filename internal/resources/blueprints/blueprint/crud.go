@@ -42,17 +42,18 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	steps := []jamfplatform.BlueprintStepV1{
+	stepName := "Declaration group"
+	steps := []jamfplatform.BlueprintStep{
 		{
-			Name:       "Declaration group",
+			Name:       &stepName,
 			Components: allComponents,
 		},
 	}
 
-	reqBody := &jamfplatform.BlueprintCreateRequestV1{
+	reqBody := &jamfplatform.CreateBlueprintRequest{
 		Name:        data.Name.ValueString(),
-		Description: data.Description.ValueString(),
-		Scope: jamfplatform.BlueprintCreateScopeV1{
+		Description: helpers.StringPointerValue(data.Description),
+		Scope: &jamfplatform.CreateScope{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
@@ -203,17 +204,18 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	steps := []jamfplatform.BlueprintStepV1{
+	stepName := "Declaration group"
+	steps := []jamfplatform.BlueprintStep{
 		{
-			Name:       "Declaration group",
+			Name:       &stepName,
 			Components: allComponents,
 		},
 	}
 
-	updateReq := &jamfplatform.BlueprintUpdateRequestV1{
-		Name:        helpers.StringPointerValue(data.Name),
+	updateReq := &jamfplatform.UpdateBlueprintRequest{
+		Name:        data.Name.ValueString(),
 		Description: helpers.StringPointerValue(data.Description),
-		Scope: &jamfplatform.BlueprintUpdateScopeV1{
+		Scope: &jamfplatform.BlueprintScope{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,

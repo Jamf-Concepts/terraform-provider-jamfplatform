@@ -15,7 +15,7 @@ import (
 
 func TestCollectLegacyPayloads_ValidPayload(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	input := []any{
@@ -68,7 +68,7 @@ func TestCollectLegacyPayloads_ValidPayload(t *testing.T) {
 
 func TestCollectLegacyPayloads_NoSettings(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	input := []any{
@@ -100,7 +100,7 @@ func TestCollectLegacyPayloads_NoSettings(t *testing.T) {
 
 func TestCollectLegacyPayloads_MixedTypeSettings(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	input := []any{
@@ -141,7 +141,7 @@ func TestCollectLegacyPayloads_MixedTypeSettings(t *testing.T) {
 
 func TestCollectLegacyPayloads_EmptyList(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	dynVal, _ := helpers.JSONToTerraformDynamic([]any{})
@@ -170,7 +170,7 @@ func TestCollectLegacyPayloads_EmptyList(t *testing.T) {
 
 func TestCollectLegacyPayloads_NullDynamic(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	r.collectLegacyPayloads(&components, &diags, types.DynamicNull(), "Blueprint")

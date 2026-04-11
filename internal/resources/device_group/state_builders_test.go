@@ -99,7 +99,7 @@ func TestAssignDeviceGroupModel_SmartGroup(t *testing.T) {
 		Name:       "Smart Group",
 		DeviceType: "COMPUTER",
 		GroupType:  "SMART",
-		Criteria: []jamfplatform.DeviceGroupCriteriaRepresentationV1{
+		Criteria: &[]jamfplatform.DeviceGroupCriteriaRepresentationV1{
 			{
 				Order:          0,
 				AttributeName:  "Device Name",

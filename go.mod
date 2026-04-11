@@ -12,6 +12,8 @@ require (
 	github.com/hashicorp/terraform-plugin-testing v1.15.0
 )
 
+replace github.com/Jamf-Concepts/jamfplatform-go-sdk => ../jamfplatform-go-sdk
+
 require (
 	github.com/ProtonMail/go-crypto v1.4.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
