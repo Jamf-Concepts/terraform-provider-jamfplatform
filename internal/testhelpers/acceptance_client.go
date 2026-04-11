@@ -30,6 +30,9 @@ func RunSuffix() string {
 	return runSuffix()
 }
 
+// strPtr returns a pointer to the given string literal.
+func strPtr(s string) *string { return &s }
+
 // initAcceptanceClient creates and validates the singleton acceptance client once.
 var initAcceptanceClient = sync.OnceValues(func() (*jamfplatform.Client, error) {
 	baseURL := os.Getenv("JAMFPLATFORM_BASE_URL")
@@ -109,7 +112,7 @@ func RequireSmartGroupFixture(t *testing.T) string {
 
 		req := &jamfplatform.DeviceGroupCreateRepresentationV1{
 			Name:        smartGroupFixtureName(),
-			Description: "Terraform provider acceptance test fixture — safe to delete",
+			Description: strPtr("Terraform provider acceptance test fixture — safe to delete"),
 			DeviceType:  "COMPUTER",
 			GroupType:   "SMART",
 			Criteria: []jamfplatform.DeviceGroupCriteriaRepresentationV1{

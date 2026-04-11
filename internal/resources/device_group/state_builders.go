@@ -117,8 +117,8 @@ func flattenDeviceGroupCriteria(criteria []jamfplatform.DeviceGroupCriteriaRepre
 			Operator:              operator,
 			AttributeValue:        attributeValue,
 			JoinType:              joinType,
-			HasOpeningParenthesis: helpers.ReconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
-			HasClosingParenthesis: helpers.ReconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),
+			HasOpeningParenthesis: helpers.ReconcileOptionalBoolPointer(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
+			HasClosingParenthesis: helpers.ReconcileOptionalBoolPointer(c.HasClosingParenthesis, prev.HasClosingParenthesis),
 		}
 	}
 	return result

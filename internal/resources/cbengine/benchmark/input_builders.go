@@ -5,14 +5,13 @@ package benchmark
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // buildBenchmarkRequest constructs the API request body from the Terraform plan model.
 func buildBenchmarkRequest(data *BenchmarkResourceModel) *jamfplatform.BenchmarkRequestV2 {
 	reqBody := &jamfplatform.BenchmarkRequestV2{
 		Title:            data.Title.ValueString(),
-		Description:      data.Description.ValueString(),
+		Description:      data.Description.ValueStringPointer(),
 		SourceBaselineID: data.SourceBaselineID.ValueString(),
 		Sources:          make([]jamfplatform.Source, len(data.Sources)),
 		Rules:            make([]jamfplatform.RuleRequest, len(data.Rules)),
@@ -32,8 +31,8 @@ func buildBenchmarkRequest(data *BenchmarkResourceModel) *jamfplatform.Benchmark
 			ID:      rule.ID.ValueString(),
 			Enabled: rule.Enabled.ValueBool(),
 		}
-		if value := helpers.StringPointerValue(rule.ODVValue); value != nil {
-			rr.ODV = &jamfplatform.OdvRequest{Value: *value}
+		if v := rule.ODVValue.ValueString(); v != "" {
+			rr.ODV = &jamfplatform.OdvRequest{Value: v}
 		}
 		reqBody.Rules[i] = rr
 	}
