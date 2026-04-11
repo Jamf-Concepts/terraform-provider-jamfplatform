@@ -140,24 +140,24 @@ func (a *EraseAction) Invoke(ctx context.Context, req action.InvokeRequest, resp
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Erase request accepted for device %s (%d command(s))", deviceID, len(commands))})
 }
 
-func buildEraseRequestPayload(data EraseActionModel) *jamfplatform.EraseDeviceRequestV1 {
-	req := &jamfplatform.EraseDeviceRequestV1{}
+func buildEraseRequestPayload(data EraseActionModel) *jamfplatform.EraseDeviceRequest {
+	req := &jamfplatform.EraseDeviceRequest{}
 	var hasOptions bool
 
-	if val := helpers.BoolPointerValue(data.PreserveDataPlan); val != nil {
-		req.PreserveDataPlan = val
+	if helpers.IsConfiguredValue(data.PreserveDataPlan) {
+		req.PreserveDataPlan = data.PreserveDataPlan.ValueBool()
 		hasOptions = true
 	}
-	if val := helpers.BoolPointerValue(data.DisallowProximitySetup); val != nil {
-		req.DisallowProximitySetup = val
+	if helpers.IsConfiguredValue(data.DisallowProximitySetup) {
+		req.DisallowProximitySetup = data.DisallowProximitySetup.ValueBool()
 		hasOptions = true
 	}
-	if val := helpers.BoolPointerValue(data.ClearActivationLock); val != nil {
-		req.ClearActivationLock = val
+	if helpers.IsConfiguredValue(data.ClearActivationLock) {
+		req.ClearActivationLock = data.ClearActivationLock.ValueBool()
 		hasOptions = true
 	}
-	if val := helpers.BoolPointerValue(data.ReturnToService); val != nil {
-		req.ReturnToService = val
+	if helpers.IsConfiguredValue(data.ReturnToService) {
+		req.ReturnToService = data.ReturnToService.ValueBool()
 		hasOptions = true
 	}
 	if val := helpers.StringPointerValue(data.Pin); val != nil {

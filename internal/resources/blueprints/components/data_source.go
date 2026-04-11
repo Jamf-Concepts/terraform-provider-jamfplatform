@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -135,7 +136,7 @@ func (d *ComponentsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		componentsList = append(componentsList, ComponentListModel{
 			Identifier:  types.StringValue(comp.Identifier),
 			Name:        types.StringValue(comp.Name),
-			Description: types.StringValue(comp.Description),
+			Description: helpers.StringPointerValueOrNull(comp.Description),
 			SupportedOs: supportedOsMap.(types.Map),
 		})
 	}

@@ -5,19 +5,14 @@ package benchmark
 
 import (
 	"testing"
-	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
-	ts := time.Date(2025, 6, 15, 10, 30, 0, 0, time.UTC)
-	minVal := 1
-	maxVal := 100
-
 	model := &BenchmarkResourceModel{}
-	bench := &jamfplatform.CBEngineBenchmarkResponseV2{
+	bench := &jamfplatform.BenchmarkResponseV2{
 		BenchmarkID:     "bench-1",
 		TenantID:        "tenant-1",
 		Title:           "Test Benchmark",
@@ -25,14 +20,14 @@ func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 		EnforcementMode: "audit",
 		Deleted:         false,
 		UpdateAvailable: true,
-		LastUpdatedAt:   ts,
-		Sources: []jamfplatform.CBEngineSourceV1{
+		LastUpdatedAt:   "2025-06-15T10:30:00Z",
+		Sources: []jamfplatform.Source{
 			{Branch: "main", Revision: "abc123"},
 		},
-		Target: jamfplatform.CBEngineTargetV2{
+		Target: &jamfplatform.TargetV2{
 			DeviceGroups: []string{"group-1"},
 		},
-		Rules: []jamfplatform.CBEngineRuleInfoV1{
+		Rules: []jamfplatform.RuleInfo{
 			{
 				ID:          "rule-1",
 				SectionName: "Section A",
@@ -40,32 +35,32 @@ func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 				Title:       "Rule Title",
 				Description: "Rule Description",
 				References:  []string{"ref-1", "ref-2"},
-				ODV: &jamfplatform.CBEngineOrganizationDefinedValueV1{
+				ODV: &jamfplatform.OrganizationDefinedValue{
 					Value:       "30",
 					Hint:        "Enter a number",
 					Placeholder: "30",
 					Type:        "int",
-					Validation: &jamfplatform.CBEngineValidationConstraintsV1{
-						Min:        &minVal,
-						Max:        &maxVal,
+					Validation: &jamfplatform.ValidationConstraints{
+						Min:        1,
+						Max:        100,
 						EnumValues: []string{"10", "20", "30"},
 						Regex:      `^\d+$`,
 					},
 				},
-				SupportedOS: []jamfplatform.CBEngineOSInfoV1{
-					{OSType: "macOS", OSVersion: 15, ManagementType: "SUPERVISED"},
+				SupportedOs: []jamfplatform.OsInfo{
+					{OsType: "macOS", OsVersion: 15, ManagementType: "SUPERVISED"},
 				},
-				OSSpecificDefaults: map[string]jamfplatform.CBEngineOSSpecificRuleInfoV1{
+				OsSpecificDefaults: map[string]jamfplatform.OsSpecificRuleInfo{
 					"macOS_15": {
 						Title:       "macOS 15 Rule",
 						Description: "macOS 15 specific",
-						ODV: &jamfplatform.CBEngineODVRecommendationV1{
+						ODV: &jamfplatform.OdvRecommendation{
 							Value: "30",
 							Hint:  "Recommended: 30",
 						},
 					},
 				},
-				RuleRelation: &jamfplatform.CBEngineRuleRelationV1{
+				RuleRelation: &jamfplatform.RuleRelation{
 					DependsOn: []string{"rule-0"},
 				},
 			},
@@ -154,14 +149,13 @@ func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 }
 
 func TestAssignBenchmarkModelFromResponse_NilInputs(t *testing.T) {
-	assignBenchmarkModelFromResponse(nil, &jamfplatform.CBEngineBenchmarkResponseV2{})
+	assignBenchmarkModelFromResponse(nil, &jamfplatform.BenchmarkResponseV2{})
 	assignBenchmarkModelFromResponse(&BenchmarkResourceModel{}, nil)
 }
 
 func TestAssignBenchmarkDataSourceFromResponse(t *testing.T) {
-	ts := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	model := &BenchmarkDataSourceModel{}
-	bench := &jamfplatform.CBEngineBenchmarkResponseV2{
+	bench := &jamfplatform.BenchmarkResponseV2{
 		BenchmarkID:     "bench-ds-1",
 		TenantID:        "tenant-2",
 		Title:           "DS Benchmark",
@@ -169,9 +163,9 @@ func TestAssignBenchmarkDataSourceFromResponse(t *testing.T) {
 		EnforcementMode: "enforce",
 		Deleted:         true,
 		UpdateAvailable: false,
-		LastUpdatedAt:   ts,
-		Sources:         []jamfplatform.CBEngineSourceV1{{Branch: "dev", Revision: "xyz"}},
-		Target:          jamfplatform.CBEngineTargetV2{DeviceGroups: []string{"dg-1"}},
+		LastUpdatedAt:   "2025-01-01T00:00:00Z",
+		Sources:         []jamfplatform.Source{{Branch: "dev", Revision: "xyz"}},
+		Target:          &jamfplatform.TargetV2{DeviceGroups: []string{"dg-1"}},
 		Rules:           nil,
 	}
 
@@ -192,7 +186,7 @@ func TestAssignBenchmarkDataSourceFromResponse(t *testing.T) {
 }
 
 func TestBuildSourceModels(t *testing.T) {
-	sources := []jamfplatform.CBEngineSourceV1{
+	sources := []jamfplatform.Source{
 		{Branch: "main", Revision: "aaa"},
 		{Branch: "release", Revision: "bbb"},
 	}
@@ -216,7 +210,7 @@ func TestBuildSourceModels_Empty(t *testing.T) {
 }
 
 func TestBuildRuleModel_NoODV(t *testing.T) {
-	rule := jamfplatform.CBEngineRuleInfoV1{
+	rule := jamfplatform.RuleInfo{
 		ID:          "rule-no-odv",
 		SectionName: "Section B",
 		Enabled:     false,
@@ -246,10 +240,10 @@ func TestBuildRuleModel_NoODV(t *testing.T) {
 }
 
 func TestBuildRuleModel_ODVWithoutValidation(t *testing.T) {
-	rule := jamfplatform.CBEngineRuleInfoV1{
+	rule := jamfplatform.RuleInfo{
 		ID:      "rule-odv-no-val",
 		Enabled: true,
-		ODV: &jamfplatform.CBEngineOrganizationDefinedValueV1{
+		ODV: &jamfplatform.OrganizationDefinedValue{
 			Value: "custom",
 			Type:  "string",
 		},
@@ -303,9 +297,9 @@ func TestBuildStringList_Empty(t *testing.T) {
 }
 
 func TestBuildSupportedOSList(t *testing.T) {
-	osInfo := []jamfplatform.CBEngineOSInfoV1{
-		{OSType: "macOS", OSVersion: 14, ManagementType: "SUPERVISED"},
-		{OSType: "iOS", OSVersion: 17, ManagementType: "UNSUPERVISED"},
+	osInfo := []jamfplatform.OsInfo{
+		{OsType: "macOS", OsVersion: 14, ManagementType: "SUPERVISED"},
+		{OsType: "iOS", OsVersion: 17, ManagementType: "UNSUPERVISED"},
 	}
 	result := buildSupportedOSList(osInfo)
 	if result.IsNull() {
@@ -325,11 +319,11 @@ func TestBuildSupportedOSList_Empty(t *testing.T) {
 }
 
 func TestBuildOSSpecificDefaultsMap(t *testing.T) {
-	defaults := map[string]jamfplatform.CBEngineOSSpecificRuleInfoV1{
+	defaults := map[string]jamfplatform.OsSpecificRuleInfo{
 		"macOS_15": {
 			Title:       "macOS 15",
 			Description: "For macOS 15",
-			ODV: &jamfplatform.CBEngineODVRecommendationV1{
+			ODV: &jamfplatform.OdvRecommendation{
 				Value: "recommended",
 				Hint:  "Use recommended",
 			},
@@ -346,7 +340,7 @@ func TestBuildOSSpecificDefaultsMap(t *testing.T) {
 }
 
 func TestBuildOSSpecificDefaultsMap_NilODV(t *testing.T) {
-	defaults := map[string]jamfplatform.CBEngineOSSpecificRuleInfoV1{
+	defaults := map[string]jamfplatform.OsSpecificRuleInfo{
 		"macOS_14": {
 			Title:       "macOS 14",
 			Description: "No ODV",
@@ -367,23 +361,23 @@ func TestBuildOSSpecificDefaultsMap_Empty(t *testing.T) {
 }
 
 func TestOdvStringValue_NilODV(t *testing.T) {
-	result := odvStringValue(nil, func(o *jamfplatform.CBEngineOrganizationDefinedValueV1) string { return o.Value })
+	result := odvStringValue(nil, func(o *jamfplatform.OrganizationDefinedValue) string { return o.Value })
 	if !result.IsNull() {
 		t.Error("expected null when ODV is nil")
 	}
 }
 
 func TestOdvStringValue_WithODV(t *testing.T) {
-	odv := &jamfplatform.CBEngineOrganizationDefinedValueV1{Value: "test-val", Hint: "test-hint"}
-	result := odvStringValue(odv, func(o *jamfplatform.CBEngineOrganizationDefinedValueV1) string { return o.Hint })
+	odv := &jamfplatform.OrganizationDefinedValue{Value: "test-val", Hint: "test-hint"}
+	result := odvStringValue(odv, func(o *jamfplatform.OrganizationDefinedValue) string { return o.Hint })
 	if result.ValueString() != "test-hint" {
 		t.Errorf("expected 'test-hint', got %q", result.ValueString())
 	}
 }
 
 func TestBuildODVValidationEnumValues(t *testing.T) {
-	odv := &jamfplatform.CBEngineOrganizationDefinedValueV1{
-		Validation: &jamfplatform.CBEngineValidationConstraintsV1{
+	odv := &jamfplatform.OrganizationDefinedValue{
+		Validation: &jamfplatform.ValidationConstraints{
 			EnumValues: []string{"low", "medium", "high"},
 		},
 	}
@@ -398,8 +392,8 @@ func TestBuildODVValidationEnumValues(t *testing.T) {
 }
 
 func TestBuildODVValidationEnumValues_Empty(t *testing.T) {
-	odv := &jamfplatform.CBEngineOrganizationDefinedValueV1{
-		Validation: &jamfplatform.CBEngineValidationConstraintsV1{},
+	odv := &jamfplatform.OrganizationDefinedValue{
+		Validation: &jamfplatform.ValidationConstraints{},
 	}
 	result := buildODVValidationEnumValues(odv)
 	if !result.IsNull() {
@@ -415,7 +409,7 @@ func TestBuildODVValidationEnumValues_NilODV(t *testing.T) {
 }
 
 func TestBuildDependsOnList(t *testing.T) {
-	relation := &jamfplatform.CBEngineRuleRelationV1{
+	relation := &jamfplatform.RuleRelation{
 		DependsOn: []string{"dep-1", "dep-2"},
 	}
 	result := buildDependsOnList(relation)
@@ -436,7 +430,7 @@ func TestBuildDependsOnList_NilRelation(t *testing.T) {
 }
 
 func TestBuildDependsOnList_EmptyDependsOn(t *testing.T) {
-	relation := &jamfplatform.CBEngineRuleRelationV1{DependsOn: nil}
+	relation := &jamfplatform.RuleRelation{DependsOn: nil}
 	result := buildDependsOnList(relation)
 	if !result.IsNull() {
 		t.Error("expected null for empty depends_on")
@@ -449,7 +443,7 @@ func TestBuildODVValidationRegex_NilValidation(t *testing.T) {
 		t.Error("expected null for nil ODV")
 	}
 
-	odv := &jamfplatform.CBEngineOrganizationDefinedValueV1{}
+	odv := &jamfplatform.OrganizationDefinedValue{}
 	result = buildODVValidationRegex(odv)
 	if !result.IsNull() {
 		t.Error("expected null for nil validation")
@@ -457,8 +451,8 @@ func TestBuildODVValidationRegex_NilValidation(t *testing.T) {
 }
 
 func TestBuildODVValidationRegex_WithRegex(t *testing.T) {
-	odv := &jamfplatform.CBEngineOrganizationDefinedValueV1{
-		Validation: &jamfplatform.CBEngineValidationConstraintsV1{
+	odv := &jamfplatform.OrganizationDefinedValue{
+		Validation: &jamfplatform.ValidationConstraints{
 			Regex: `^[a-z]+$`,
 		},
 	}
@@ -472,13 +466,17 @@ func TestBuildODVValidationMin_NilChain(t *testing.T) {
 	if !buildODVValidationMin(nil).IsNull() {
 		t.Error("expected null for nil ODV")
 	}
-	if !buildODVValidationMin(&jamfplatform.CBEngineOrganizationDefinedValueV1{}).IsNull() {
+	if !buildODVValidationMin(&jamfplatform.OrganizationDefinedValue{}).IsNull() {
 		t.Error("expected null for nil validation")
 	}
-	if !buildODVValidationMin(&jamfplatform.CBEngineOrganizationDefinedValueV1{
-		Validation: &jamfplatform.CBEngineValidationConstraintsV1{},
-	}).IsNull() {
-		t.Error("expected null for nil min")
+	result := buildODVValidationMin(&jamfplatform.OrganizationDefinedValue{
+		Validation: &jamfplatform.ValidationConstraints{},
+	})
+	if result.IsNull() {
+		t.Error("expected non-null Int64 when validation is set")
+	}
+	if result.ValueInt64() != 0 {
+		t.Errorf("expected 0 for default min, got %d", result.ValueInt64())
 	}
 }
 
@@ -486,12 +484,11 @@ func TestBuildODVValidationMax_NilChain(t *testing.T) {
 	if !buildODVValidationMax(nil).IsNull() {
 		t.Error("expected null for nil ODV")
 	}
-	if !buildODVValidationMax(&jamfplatform.CBEngineOrganizationDefinedValueV1{}).IsNull() {
+	if !buildODVValidationMax(&jamfplatform.OrganizationDefinedValue{}).IsNull() {
 		t.Error("expected null for nil validation")
 	}
-	maxVal := 50
-	result := buildODVValidationMax(&jamfplatform.CBEngineOrganizationDefinedValueV1{
-		Validation: &jamfplatform.CBEngineValidationConstraintsV1{Max: &maxVal},
+	result := buildODVValidationMax(&jamfplatform.OrganizationDefinedValue{
+		Validation: &jamfplatform.ValidationConstraints{Max: 50},
 	})
 	if result.ValueInt64() != 50 {
 		t.Errorf("expected max 50, got %d", result.ValueInt64())

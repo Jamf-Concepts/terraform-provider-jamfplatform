@@ -137,24 +137,33 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	for _, bp := range blueprints {
 		if searchLower != "" {
 			nameMatch := strings.Contains(strings.ToLower(bp.Name), searchLower)
-			descMatch := strings.Contains(strings.ToLower(bp.Description), searchLower)
+			bpDesc := ""
+			if bp.Description != nil {
+				bpDesc = *bp.Description
+			}
+			descMatch := strings.Contains(strings.ToLower(bpDesc), searchLower)
 			if !nameMatch && !descMatch {
 				continue
 			}
 		}
 
+		deployState := ""
+		if bp.DeploymentState != nil {
+			deployState = bp.DeploymentState.State
+		}
+
 		item := BlueprintListItem{
 			ID:                    types.StringValue(bp.ID),
 			Name:                  helpers.StringValueOrNull(bp.Name),
-			Description:           helpers.StringValueOrNull(bp.Description),
+			Description:           helpers.StringPointerValueOrNull(bp.Description),
 			Created:               helpers.StringValueOrNull(bp.Created),
 			Updated:               helpers.StringValueOrNull(bp.Updated),
-			DeploymentState:       helpers.StringValueOrNull(bp.DeploymentState.State),
+			DeploymentState:       helpers.StringValueOrNull(deployState),
 			LastDeploymentState:   types.StringNull(),
 			LastDeploymentStarted: types.StringNull(),
 		}
 
-		if bp.DeploymentState.LastDeployment != nil {
+		if bp.DeploymentState != nil && bp.DeploymentState.LastDeployment != nil {
 			item.LastDeploymentState = helpers.StringValueOrNull(bp.DeploymentState.LastDeployment.State)
 			item.LastDeploymentStarted = helpers.StringValueOrNull(bp.DeploymentState.LastDeployment.Started)
 		}

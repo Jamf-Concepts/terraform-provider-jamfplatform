@@ -9,31 +9,31 @@ import (
 )
 
 // buildBenchmarkRequest constructs the API request body from the Terraform plan model.
-func buildBenchmarkRequest(data *BenchmarkResourceModel) *jamfplatform.CBEngineBenchmarkRequestV2 {
-	reqBody := &jamfplatform.CBEngineBenchmarkRequestV2{
+func buildBenchmarkRequest(data *BenchmarkResourceModel) *jamfplatform.BenchmarkRequestV2 {
+	reqBody := &jamfplatform.BenchmarkRequestV2{
 		Title:            data.Title.ValueString(),
 		Description:      data.Description.ValueString(),
 		SourceBaselineID: data.SourceBaselineID.ValueString(),
-		Sources:          make([]jamfplatform.CBEngineSourceV1, len(data.Sources)),
-		Rules:            make([]jamfplatform.CBEngineRuleRequestV2, len(data.Rules)),
-		Target: jamfplatform.CBEngineTargetV2{
+		Sources:          make([]jamfplatform.Source, len(data.Sources)),
+		Rules:            make([]jamfplatform.RuleRequest, len(data.Rules)),
+		Target: &jamfplatform.TargetV2{
 			DeviceGroups: []string{data.TargetDeviceGroup.ValueString()},
 		},
 		EnforcementMode: data.EnforcementMode.ValueString(),
 	}
 	for i, s := range data.Sources {
-		reqBody.Sources[i] = jamfplatform.CBEngineSourceV1{
+		reqBody.Sources[i] = jamfplatform.Source{
 			Branch:   s.Branch.ValueString(),
 			Revision: s.Revision.ValueString(),
 		}
 	}
 	for i, rule := range data.Rules {
-		rr := jamfplatform.CBEngineRuleRequestV2{
+		rr := jamfplatform.RuleRequest{
 			ID:      rule.ID.ValueString(),
 			Enabled: rule.Enabled.ValueBool(),
 		}
 		if value := helpers.StringPointerValue(rule.ODVValue); value != nil {
-			rr.ODV = &jamfplatform.CBEngineODVRequestV2{Value: *value}
+			rr.ODV = &jamfplatform.OdvRequest{Value: *value}
 		}
 		reqBody.Rules[i] = rr
 	}
