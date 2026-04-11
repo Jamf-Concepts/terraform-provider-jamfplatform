@@ -52,10 +52,10 @@ func TestExpandDeviceGroupCriteria(t *testing.T) {
 	if c0.Order != 0 {
 		t.Errorf("expected Order 0, got %d", c0.Order)
 	}
-	if !c0.HasOpeningParenthesis {
+	if c0.HasOpeningParenthesis == nil || !*c0.HasOpeningParenthesis {
 		t.Error("expected HasOpeningParenthesis true")
 	}
-	if c0.HasClosingParenthesis {
+	if c0.HasClosingParenthesis != nil && *c0.HasClosingParenthesis {
 		t.Error("expected HasClosingParenthesis false")
 	}
 
@@ -66,10 +66,10 @@ func TestExpandDeviceGroupCriteria(t *testing.T) {
 	if c1.JoinType != "OR" {
 		t.Errorf("expected JoinType 'OR', got %q", c1.JoinType)
 	}
-	if c1.HasOpeningParenthesis {
+	if c1.HasOpeningParenthesis != nil && *c1.HasOpeningParenthesis {
 		t.Error("expected HasOpeningParenthesis false for null input")
 	}
-	if !c1.HasClosingParenthesis {
+	if c1.HasClosingParenthesis == nil || !*c1.HasClosingParenthesis {
 		t.Error("expected HasClosingParenthesis true")
 	}
 }
@@ -185,10 +185,10 @@ func TestExpandDeviceGroupCriteria_NullOptionalFields(t *testing.T) {
 	if result[0].JoinType != "" {
 		t.Errorf("expected empty JoinType for null, got %q", result[0].JoinType)
 	}
-	if result[0].HasOpeningParenthesis {
+	if result[0].HasOpeningParenthesis != nil && *result[0].HasOpeningParenthesis {
 		t.Error("expected false HasOpeningParenthesis for null")
 	}
-	if result[0].HasClosingParenthesis {
+	if result[0].HasClosingParenthesis != nil && *result[0].HasClosingParenthesis {
 		t.Error("expected false HasClosingParenthesis for null")
 	}
 }

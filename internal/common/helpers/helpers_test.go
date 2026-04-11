@@ -80,30 +80,6 @@ func TestIsConfiguredValue(t *testing.T) {
 	}
 }
 
-func TestStringPointerValue(t *testing.T) {
-	if result := StringPointerValue(types.StringNull()); result != nil {
-		t.Error("null should produce nil pointer")
-	}
-	result := StringPointerValue(types.StringValue("test"))
-	if result == nil || *result != "test" {
-		t.Error("expected pointer to 'test'")
-	}
-	result = StringPointerValue(types.StringValue(""))
-	if result == nil || *result != "" {
-		t.Error("expected pointer to empty string")
-	}
-}
-
-func TestBoolPointerValue(t *testing.T) {
-	if result := BoolPointerValue(types.BoolNull()); result != nil {
-		t.Error("null should produce nil pointer")
-	}
-	result := BoolPointerValue(types.BoolValue(true))
-	if result == nil || *result != true {
-		t.Error("expected pointer to true")
-	}
-}
-
 func TestReconcileOptionalBool(t *testing.T) {
 	if result := ReconcileOptionalBool(true, types.BoolNull()); !result.IsNull() {
 		t.Error("unmanaged field should stay null")

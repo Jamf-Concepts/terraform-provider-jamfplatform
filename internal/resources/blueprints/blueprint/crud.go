@@ -52,7 +52,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 
 	reqBody := &jamfplatform.CreateBlueprintRequest{
 		Name:        data.Name.ValueString(),
-		Description: helpers.StringPointerValue(data.Description),
+		Description: data.Description.ValueStringPointer(),
 		Scope: &jamfplatform.CreateScope{
 			DeviceGroups: deviceGroups,
 		},
@@ -213,8 +213,8 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	updateReq := &jamfplatform.UpdateBlueprintRequest{
-		Name:        data.Name.ValueString(),
-		Description: helpers.StringPointerValue(data.Description),
+		Name:        data.Name.ValueStringPointer(),
+		Description: data.Description.ValueStringPointer(),
 		Scope: &jamfplatform.BlueprintScope{
 			DeviceGroups: deviceGroups,
 		},
