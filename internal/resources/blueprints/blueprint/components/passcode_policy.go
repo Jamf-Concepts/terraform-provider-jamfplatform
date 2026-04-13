@@ -4,6 +4,7 @@
 package components
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -261,7 +262,7 @@ func (c *PasscodePolicyComponent) FromRawConfiguration(raw map[string]any) error
 							}
 						}
 						if len(elems) > 0 {
-							tfMap, diags := types.MapValueFrom(nil, types.StringType, elems)
+							tfMap, diags := types.MapValueFrom(context.Background(), types.StringType, elems)
 							if !diags.HasError() {
 								c.CustomRegexDescription = tfMap
 							}

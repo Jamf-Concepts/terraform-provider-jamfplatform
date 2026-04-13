@@ -4,6 +4,7 @@
 package components
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -129,7 +130,7 @@ func TestPasscodePolicy_ToRawConfiguration_CustomRegex(t *testing.T) {
 		"default": types.StringValue("Must be 16 digits"),
 		"en-US":   types.StringValue("Must be 16 digits long"),
 	}
-	descMap, _ := types.MapValueFrom(nil, types.StringType, descElems)
+	descMap, _ := types.MapValueFrom(context.Background(), types.StringType, descElems)
 
 	c := &PasscodePolicyComponent{
 		RequirePasscode:        types.BoolValue(true),
