@@ -193,22 +193,22 @@ func upgradeLegacyPayloadsFromString(legacyPayloads types.String) types.Dynamic 
 
 // softwareUpdateSettingsComponentPrior is the v0-v2 software update settings model with string deferral fields.
 type softwareUpdateSettingsComponentPrior struct {
-	AllowStandardUserOSUpdates           types.Bool                      `tfsdk:"allow_standard_user_os_updates"`
-	AutomaticDownload                    types.String                    `tfsdk:"automatic_download"`
-	AutomaticInstallOSUpdates            types.String                    `tfsdk:"automatic_install_os_updates"`
-	AutomaticInstallSecurityUpdate       types.String                    `tfsdk:"automatic_install_security_updates"`
-	BetaProgramEnrollment                types.String                    `tfsdk:"beta_program_enrollment"`
-	BetaOfferPrograms                    []components.BetaProgramModel   `tfsdk:"beta_offer_programs"`
-	BetaRequireProgramToken              types.String                    `tfsdk:"beta_require_program_token"`
-	BetaRequireProgramDescription        types.String                    `tfsdk:"beta_require_program_description"`
-	DeferralCombinedPeriod               types.String                    `tfsdk:"deferral_combined_period_days"`
-	DeferralMajorPeriod                  types.String                    `tfsdk:"deferral_major_period_days"`
-	DeferralMinorPeriod                  types.String                    `tfsdk:"deferral_minor_period_days"`
-	DeferralSystemPeriod                 types.String                    `tfsdk:"deferral_system_period_days"`
-	NotificationsEnabled                 types.Bool                      `tfsdk:"notifications_enabled"`
-	RapidSecurityResponseEnabled         types.Bool                      `tfsdk:"rapid_security_response_enabled"`
-	RapidSecurityResponseRollbackEnabled types.Bool                      `tfsdk:"rapid_security_response_rollback_enabled"`
-	RecommendedCadence                   types.String                    `tfsdk:"recommended_cadence"`
+	AllowStandardUserOSUpdates           types.Bool                    `tfsdk:"allow_standard_user_os_updates"`
+	AutomaticDownload                    types.String                  `tfsdk:"automatic_download"`
+	AutomaticInstallOSUpdates            types.String                  `tfsdk:"automatic_install_os_updates"`
+	AutomaticInstallSecurityUpdate       types.String                  `tfsdk:"automatic_install_security_updates"`
+	BetaProgramEnrollment                types.String                  `tfsdk:"beta_program_enrollment"`
+	BetaOfferPrograms                    []components.BetaProgramModel `tfsdk:"beta_offer_programs"`
+	BetaRequireProgramToken              types.String                  `tfsdk:"beta_require_program_token"`
+	BetaRequireProgramDescription        types.String                  `tfsdk:"beta_require_program_description"`
+	DeferralCombinedPeriod               types.String                  `tfsdk:"deferral_combined_period_days"`
+	DeferralMajorPeriod                  types.String                  `tfsdk:"deferral_major_period_days"`
+	DeferralMinorPeriod                  types.String                  `tfsdk:"deferral_minor_period_days"`
+	DeferralSystemPeriod                 types.String                  `tfsdk:"deferral_system_period_days"`
+	NotificationsEnabled                 types.Bool                    `tfsdk:"notifications_enabled"`
+	RapidSecurityResponseEnabled         types.Bool                    `tfsdk:"rapid_security_response_enabled"`
+	RapidSecurityResponseRollbackEnabled types.Bool                    `tfsdk:"rapid_security_response_rollback_enabled"`
+	RecommendedCadence                   types.String                  `tfsdk:"recommended_cadence"`
 }
 
 // upgradeSoftwareUpdateSettings converts v0-v2 string deferral fields to v3 int64 fields.
