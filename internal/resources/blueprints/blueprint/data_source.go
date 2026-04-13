@@ -142,12 +142,12 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bp *jamfplatform.BlueprintDetailV1
+	var bp *jamfplatform.BlueprintDetail
 	var err error
 	if helpers.IsConfiguredValue(data.ID) && data.ID.ValueString() != "" {
 		bp, err = d.client.GetBlueprint(readCtx, data.ID.ValueString())
 	} else if helpers.IsConfiguredValue(data.Name) && data.Name.ValueString() != "" {
-		bp, err = d.client.GetBlueprintByName(readCtx, data.Name.ValueString())
+		bp, err = getBlueprintByName(readCtx, d.client, data.Name.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
@@ -163,7 +163,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	deviceGroupsList, _ := types.ListValueFrom(context.Background(), types.StringType, bp.Scope.DeviceGroups)
+	deviceGroupsList, _ := types.ListValueFrom(context.Background(), types.StringType, scopeDeviceGroups(bp.Scope))
 
 	var components []ComponentModel
 	if len(bp.Steps) > 0 {
@@ -186,15 +186,20 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		}
 	}
 
+	deployState := ""
+	if bp.DeploymentState != nil {
+		deployState = bp.DeploymentState.State
+	}
+
 	timeoutsValue := data.Timeouts
 	data = BlueprintDataSourceModel{
 		ID:              data.ID,
 		Name:            types.StringValue(bp.Name),
 		BlueprintID:     types.StringValue(bp.ID),
-		Description:     types.StringValue(bp.Description),
+		Description:     types.StringValue(helpers.DerefString(bp.Description)),
 		Created:         types.StringValue(bp.Created),
 		Updated:         types.StringValue(bp.Updated),
-		DeploymentState: types.StringValue(bp.DeploymentState.State),
+		DeploymentState: types.StringValue(deployState),
 		DeviceGroups:    deviceGroupsList,
 		Components:      components,
 		Timeouts:        timeoutsValue,

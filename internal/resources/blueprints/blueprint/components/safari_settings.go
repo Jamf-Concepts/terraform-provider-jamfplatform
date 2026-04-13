@@ -38,6 +38,7 @@ func SafariSettingsComponentSchema() map[string]schema.Attribute {
 		"accept_cookies": schema.StringAttribute{
 			MarkdownDescription: "The policy Safari uses for managing cookies. Valid values are `Never`, `CurrentWebsite`, `VisitedWebsites`, `Always`.",
 			Optional:            true,
+			Validators:          []validator.String{stringvalidator.OneOf("Never", "CurrentWebsite", "VisitedWebsites", "Always")},
 		},
 		"allow_disabling_fraud_warning": schema.BoolAttribute{
 			MarkdownDescription: "If false, the system forces fraud warnings on in Safari.",

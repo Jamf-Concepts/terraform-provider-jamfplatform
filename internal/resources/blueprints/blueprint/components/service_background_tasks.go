@@ -85,7 +85,7 @@ func ServiceBackgroundTasksComponentSchema() map[string]schema.Attribute {
 								},
 								"file_asset_reference": schema.SingleNestedAttribute{
 									MarkdownDescription: "Reference to the configuration file asset.",
-									Optional:            true,
+									Required:            true,
 									Attributes: map[string]schema.Attribute{
 										"data_url": schema.StringAttribute{
 											MarkdownDescription: "URL that hosts the configuration data.",

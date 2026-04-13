@@ -88,9 +88,14 @@ func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action
 }
 
 func (a *deviceAction) lookupDeviceIDBySerial(ctx context.Context, serial string) (string, error) {
-	device, err := a.client.GetDeviceBySerialNumber(ctx, serial)
+	devices, err := a.client.ListDevices(ctx, nil, fmt.Sprintf("serialNumber==%q", serial))
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve serial number %s: %w", serial, err)
 	}
-	return device.ID, nil
+	for _, d := range devices {
+		if d.SerialNumber == serial {
+			return d.ID, nil
+		}
+	}
+	return "", fmt.Errorf("device with serial number %s not found", serial)
 }

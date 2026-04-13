@@ -38,22 +38,13 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []jamfplatfo
 			joinType = strings.ToUpper(c.JoinType.ValueString())
 		}
 
-		hasOpening := false
-		if helpers.IsConfiguredValue(c.HasOpeningParenthesis) {
-			hasOpening = c.HasOpeningParenthesis.ValueBool()
-		}
-
-		hasClosing := false
-		if helpers.IsConfiguredValue(c.HasClosingParenthesis) {
-			hasClosing = c.HasClosingParenthesis.ValueBool()
-		}
 		crit := jamfplatform.DeviceGroupCriteriaRepresentationV1{
 			AttributeName:         c.AttributeName.ValueString(),
 			Operator:              operator,
 			AttributeValue:        attributeValue,
 			JoinType:              joinType,
-			HasOpeningParenthesis: hasOpening,
-			HasClosingParenthesis: hasClosing,
+			HasOpeningParenthesis: c.HasOpeningParenthesis.ValueBoolPointer(),
+			HasClosingParenthesis: c.HasClosingParenthesis.ValueBoolPointer(),
 		}
 		if helpers.IsConfiguredValue(c.Order) {
 			crit.Order = int(c.Order.ValueInt64())

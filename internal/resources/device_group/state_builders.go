@@ -42,7 +42,11 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 		model.GroupType = types.StringValue(strings.ToLower(grp.GroupType))
 	}
 	model.MemberCount = types.Int64Value(int64(grp.MemberCount))
-	model.Criteria = flattenDeviceGroupCriteria(grp.Criteria, prevCriteria)
+	var criteria []jamfplatform.DeviceGroupCriteriaRepresentationV1
+	if grp.Criteria != nil {
+		criteria = *grp.Criteria
+	}
+	model.Criteria = flattenDeviceGroupCriteria(criteria, prevCriteria)
 
 	if strings.EqualFold(grp.GroupType, "STATIC") {
 		if manageMembers {
@@ -113,8 +117,8 @@ func flattenDeviceGroupCriteria(criteria []jamfplatform.DeviceGroupCriteriaRepre
 			Operator:              operator,
 			AttributeValue:        attributeValue,
 			JoinType:              joinType,
-			HasOpeningParenthesis: helpers.ReconcileOptionalBool(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
-			HasClosingParenthesis: helpers.ReconcileOptionalBool(c.HasClosingParenthesis, prev.HasClosingParenthesis),
+			HasOpeningParenthesis: helpers.ReconcileOptionalBoolPointer(c.HasOpeningParenthesis, prev.HasOpeningParenthesis),
+			HasClosingParenthesis: helpers.ReconcileOptionalBoolPointer(c.HasClosingParenthesis, prev.HasClosingParenthesis),
 		}
 	}
 	return result

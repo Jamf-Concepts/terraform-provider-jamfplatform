@@ -39,8 +39,8 @@ func TestBuildBenchmarkRequest_Full(t *testing.T) {
 	if req.Title != "My Benchmark" {
 		t.Errorf("expected Title 'My Benchmark', got %q", req.Title)
 	}
-	if req.Description != "My Description" {
-		t.Errorf("expected Description 'My Description', got %q", req.Description)
+	if req.Description == nil || *req.Description != "My Description" {
+		t.Errorf("expected Description 'My Description', got %v", req.Description)
 	}
 	if req.SourceBaselineID != "baseline-1" {
 		t.Errorf("expected SourceBaselineID 'baseline-1', got %q", req.SourceBaselineID)
@@ -104,15 +104,15 @@ func TestBuildBenchmarkRequest_EmptyRulesAndSources(t *testing.T) {
 	}
 }
 
-func TestBuildBenchmarkRequest_ODVUnknown(t *testing.T) {
+func TestBuildBenchmarkRequest_ODVNull(t *testing.T) {
 	data := &BenchmarkResourceModel{
-		Title:            types.StringValue("ODV Unknown"),
+		Title:            types.StringValue("ODV Null"),
 		SourceBaselineID: types.StringValue("bl-1"),
 		Rules: []RuleModel{
 			{
 				ID:       types.StringValue("rule-u"),
 				Enabled:  types.BoolValue(true),
-				ODVValue: types.StringUnknown(),
+				ODVValue: types.StringNull(),
 			},
 		},
 		TargetDeviceGroup: types.StringValue("dg-1"),
@@ -122,6 +122,28 @@ func TestBuildBenchmarkRequest_ODVUnknown(t *testing.T) {
 	req := buildBenchmarkRequest(data)
 
 	if req.Rules[0].ODV != nil {
-		t.Error("expected nil ODV for unknown ODVValue")
+		t.Error("expected nil ODV for null ODVValue")
+	}
+}
+
+func TestBuildBenchmarkRequest_ODVEmpty(t *testing.T) {
+	data := &BenchmarkResourceModel{
+		Title:            types.StringValue("ODV Empty"),
+		SourceBaselineID: types.StringValue("bl-1"),
+		Rules: []RuleModel{
+			{
+				ID:       types.StringValue("rule-u"),
+				Enabled:  types.BoolValue(true),
+				ODVValue: types.StringValue(""),
+			},
+		},
+		TargetDeviceGroup: types.StringValue("dg-1"),
+		EnforcementMode:   types.StringValue("audit"),
+	}
+
+	req := buildBenchmarkRequest(data)
+
+	if req.Rules[0].ODV != nil {
+		t.Error("expected nil ODV for empty ODVValue — API rejects odv:{value:\"\"}")
 	}
 }

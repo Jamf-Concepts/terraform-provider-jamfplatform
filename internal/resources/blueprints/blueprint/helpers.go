@@ -101,14 +101,19 @@ func desiredDeployedValue(v types.Bool) bool {
 }
 
 // reconcileBlueprintDeployment ensures the blueprint's deployment state matches the desired state.
-func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, blueprintID string, desiredDeployed bool) (*jamfplatform.BlueprintDetailV1, error) {
+func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, blueprintID string, desiredDeployed bool) (*jamfplatform.BlueprintDetail, error) {
 	blueprint, err := r.client.GetBlueprint(ctx, blueprintID)
 	if err != nil {
 		return nil, err
 	}
 
+	deployedState := ""
+	if blueprint.DeploymentState != nil {
+		deployedState = blueprint.DeploymentState.State
+	}
+
 	if desiredDeployed {
-		if !strings.EqualFold(blueprint.DeploymentState.State, blueprintDeploymentStateDeployed) {
+		if !strings.EqualFold(deployedState, blueprintDeploymentStateDeployed) {
 			if err := r.client.DeployBlueprint(ctx, blueprintID); err != nil {
 				return blueprint, err
 			}
@@ -117,7 +122,7 @@ func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, bl
 		return blueprint, nil
 	}
 
-	if strings.EqualFold(blueprint.DeploymentState.State, blueprintDeploymentStateNotDeployed) {
+	if strings.EqualFold(deployedState, blueprintDeploymentStateNotDeployed) {
 		return blueprint, nil
 	}
 
@@ -126,4 +131,26 @@ func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, bl
 	}
 
 	return r.client.GetBlueprint(ctx, blueprintID)
+}
+
+// scopeDeviceGroups safely extracts device group IDs from an optional blueprint scope.
+func scopeDeviceGroups(scope *jamfplatform.BlueprintScope) []string {
+	if scope == nil {
+		return []string{}
+	}
+	return scope.DeviceGroups
+}
+
+// getBlueprintByName looks up a blueprint by name using the list API.
+func getBlueprintByName(ctx context.Context, c *jamfplatform.Client, name string) (*jamfplatform.BlueprintDetail, error) {
+	blueprints, err := c.ListBlueprints(ctx, nil, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list blueprints: %w", err)
+	}
+	for _, bp := range blueprints {
+		if bp.Name == name {
+			return c.GetBlueprint(ctx, bp.ID)
+		}
+	}
+	return nil, fmt.Errorf("blueprint with name %q not found", name)
 }

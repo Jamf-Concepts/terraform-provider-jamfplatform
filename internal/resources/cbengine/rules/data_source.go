@@ -269,16 +269,8 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			odvPlaceholder = types.StringValue(r.ODV.Placeholder)
 			odvType = types.StringValue(r.ODV.Type)
 			if r.ODV.Validation != nil {
-				if r.ODV.Validation.Min != nil {
-					odvValidationMin = types.Int64Value(int64(*r.ODV.Validation.Min))
-				} else {
-					odvValidationMin = types.Int64Null()
-				}
-				if r.ODV.Validation.Max != nil {
-					odvValidationMax = types.Int64Value(int64(*r.ODV.Validation.Max))
-				} else {
-					odvValidationMax = types.Int64Null()
-				}
+				odvValidationMin = types.Int64Value(int64(r.ODV.Validation.Min))
+				odvValidationMax = types.Int64Value(int64(r.ODV.Validation.Max))
 				for _, v := range r.ODV.Validation.EnumValues {
 					odvValidationEnumValues = append(odvValidationEnumValues, types.StringValue(v))
 				}
@@ -287,10 +279,10 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		}
 
 		var supportedOS []OSInfoModel
-		for _, os := range r.SupportedOS {
+		for _, os := range r.SupportedOs {
 			supportedOS = append(supportedOS, OSInfoModel{
-				OSType:         types.StringValue(os.OSType),
-				OSVersion:      types.Int64Value(int64(os.OSVersion)),
+				OSType:         types.StringValue(os.OsType),
+				OSVersion:      types.Int64Value(int64(os.OsVersion)),
 				ManagementType: types.StringValue(os.ManagementType),
 			})
 		}
@@ -304,11 +296,11 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			},
 		}
 		var osSpecificDefaults types.Map
-		if len(r.OSSpecificDefaults) == 0 {
+		if len(r.OsSpecificDefaults) == 0 {
 			osSpecificDefaults = types.MapNull(osSpecObjType)
 		} else {
-			vals := make(map[string]attr.Value, len(r.OSSpecificDefaults))
-			for k, v := range r.OSSpecificDefaults {
+			vals := make(map[string]attr.Value, len(r.OsSpecificDefaults))
+			for k, v := range r.OsSpecificDefaults {
 				var odvValue, odvHint types.String
 				if v.ODV != nil {
 					odvValue = types.StringValue(v.ODV.Value)
@@ -360,8 +352,8 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 			SupportedOS:             supportedOS,
 			OSSpecificDefaults:      osSpecificDefaults,
 			DependsOn:               dependsOn,
-			Reportable:              helpers.BoolPointerValueOrNull(r.Reportable),
-			SmartCard:               helpers.BoolPointerValueOrNull(r.SmartCard),
+			Reportable:              types.BoolValue(r.Reportable),
+			SmartCard:               types.BoolValue(r.SmartCard),
 		})
 	}
 

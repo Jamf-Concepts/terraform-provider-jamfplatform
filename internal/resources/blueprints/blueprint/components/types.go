@@ -34,7 +34,7 @@ var CommonComponentRegistries = []ComponentRegistry{
 	{"com.jamf.ddm.audio-accessory-settings", "Audio Accessory Settings"},
 	{"com.jamf.ddm.disk-management", "Disk Management Settings"},
 	{"com.jamf.ddm.math-settings", "Math Settings"},
-	{"com.jamf.ddm.passcode", "Passcode Policy"},
+	{"com.jamf.ddm.passcode-settings", "Passcode Policy"},
 	{"com.jamf.ddm.safari-bookmarks", "Safari Bookmarks"},
 	{"com.jamf.ddm.safari-extensions", "Safari Extensions"},
 	{"com.jamf.ddm.safari-settings", "Safari Settings"},
@@ -43,6 +43,4 @@ var CommonComponentRegistries = []ComponentRegistry{
 	{"com.jamf.ddm.sw-updates", "Software Update"},
 	{"com.jamf.ddm.software-update-settings", "Software Update Settings"},
 	{"com.jamf.ddm-configuration-profile", "Legacy Payloads"},
-	// Future components can be added here by following the template in README.md:
-	// {"com.jamf.ddm.passcode", "Passcode Settings"},
 }
