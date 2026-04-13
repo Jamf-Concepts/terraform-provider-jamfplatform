@@ -5,17 +5,14 @@ package components
 
 import (
 	"encoding/json"
-	"regexp"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-// deferralDaysRegex validates deferral period values between 1 and 90.
-var deferralDaysRegex = regexp.MustCompile(`^(?:[1-9]|[1-8]\d|90)$`)
 
 // SoftwareUpdateSettingsComponent represents a strongly-typed software update settings component
 type SoftwareUpdateSettingsComponent struct {
@@ -27,10 +24,10 @@ type SoftwareUpdateSettingsComponent struct {
 	BetaOfferPrograms                    []BetaProgramModel `tfsdk:"beta_offer_programs"`
 	BetaRequireProgramToken              types.String       `tfsdk:"beta_require_program_token"`
 	BetaRequireProgramDescription        types.String       `tfsdk:"beta_require_program_description"`
-	DeferralCombinedPeriod               types.String       `tfsdk:"deferral_combined_period_days"`
-	DeferralMajorPeriod                  types.String       `tfsdk:"deferral_major_period_days"`
-	DeferralMinorPeriod                  types.String       `tfsdk:"deferral_minor_period_days"`
-	DeferralSystemPeriod                 types.String       `tfsdk:"deferral_system_period_days"`
+	DeferralCombinedPeriod               types.Int64        `tfsdk:"deferral_combined_period_days"`
+	DeferralMajorPeriod                  types.Int64        `tfsdk:"deferral_major_period_days"`
+	DeferralMinorPeriod                  types.Int64        `tfsdk:"deferral_minor_period_days"`
+	DeferralSystemPeriod                 types.Int64        `tfsdk:"deferral_system_period_days"`
 	NotificationsEnabled                 types.Bool         `tfsdk:"notifications_enabled"`
 	RapidSecurityResponseEnabled         types.Bool         `tfsdk:"rapid_security_response_enabled"`
 	RapidSecurityResponseRollbackEnabled types.Bool         `tfsdk:"rapid_security_response_rollback_enabled"`
@@ -70,37 +67,25 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 			Optional:            true,
 			Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
 		},
-		"deferral_combined_period_days": schema.StringAttribute{
-			MarkdownDescription: "Number of days to defer combined updates (1-90 days).",
+		"deferral_combined_period_days": schema.Int64Attribute{
+			MarkdownDescription: "Number of days to defer combined updates. Range: `1`-`90`.",
 			Optional:            true,
-			Validators: []validator.String{stringvalidator.RegexMatches(
-				deferralDaysRegex,
-				"Value must be a number between 1 and 90",
-			)},
+			Validators:          []validator.Int64{int64validator.Between(1, 90)},
 		},
-		"deferral_major_period_days": schema.StringAttribute{
-			MarkdownDescription: "Number of days to defer major updates (1-90 days).",
+		"deferral_major_period_days": schema.Int64Attribute{
+			MarkdownDescription: "Number of days to defer major updates. Range: `1`-`90`.",
 			Optional:            true,
-			Validators: []validator.String{stringvalidator.RegexMatches(
-				deferralDaysRegex,
-				"Value must be a number between 1 and 90",
-			)},
+			Validators:          []validator.Int64{int64validator.Between(1, 90)},
 		},
-		"deferral_minor_period_days": schema.StringAttribute{
-			MarkdownDescription: "Number of days to defer minor updates (1-90 days).",
+		"deferral_minor_period_days": schema.Int64Attribute{
+			MarkdownDescription: "Number of days to defer minor updates. Range: `1`-`90`.",
 			Optional:            true,
-			Validators: []validator.String{stringvalidator.RegexMatches(
-				deferralDaysRegex,
-				"Value must be a number between 1 and 90",
-			)},
+			Validators:          []validator.Int64{int64validator.Between(1, 90)},
 		},
-		"deferral_system_period_days": schema.StringAttribute{
-			MarkdownDescription: "Number of days to defer system updates (1-90 days).",
+		"deferral_system_period_days": schema.Int64Attribute{
+			MarkdownDescription: "Number of days to defer system updates. Range: `1`-`90`.",
 			Optional:            true,
-			Validators: []validator.String{stringvalidator.RegexMatches(
-				deferralDaysRegex,
-				"Value must be a number between 1 and 90",
-			)},
+			Validators:          []validator.Int64{int64validator.Between(1, 90)},
 		},
 		"notifications_enabled": schema.BoolAttribute{
 			MarkdownDescription: "Enable update notifications to users.",
@@ -191,10 +176,10 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]any, 
 	}
 
 	deferrals := map[string]any{
-		"CombinedPeriodInDays": setStringField(c.DeferralCombinedPeriod, ""),
-		"MajorPeriodInDays":    setStringField(c.DeferralMajorPeriod, ""),
-		"MinorPeriodInDays":    setStringField(c.DeferralMinorPeriod, ""),
-		"SystemPeriodInDays":   setStringField(c.DeferralSystemPeriod, ""),
+		"CombinedPeriodInDays": setInt64Field(c.DeferralCombinedPeriod, 0),
+		"MajorPeriodInDays":    setInt64Field(c.DeferralMajorPeriod, 0),
+		"MinorPeriodInDays":    setInt64Field(c.DeferralMinorPeriod, 0),
+		"SystemPeriodInDays":   setInt64Field(c.DeferralSystemPeriod, 0),
 	}
 	config["Deferrals"] = deferrals
 
@@ -251,6 +236,22 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 			}
 		}
 		return nil
+	}
+
+	extractInt64Value := func(path ...string) types.Int64 {
+		val := extractValue(path...)
+		if val == nil {
+			return types.Int64Null()
+		}
+		switch v := val.(type) {
+		case float64:
+			return types.Int64Value(int64(v))
+		case int:
+			return types.Int64Value(int64(v))
+		case int64:
+			return types.Int64Value(v)
+		}
+		return types.Int64Null()
 	}
 
 	c.AllowStandardUserOSUpdates = extractOptionallyEnabled("AllowStandardUserOSUpdates")
@@ -317,29 +318,10 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[str
 		}
 	}
 
-	if val := extractValue("Deferrals", "CombinedPeriodInDays"); val != nil {
-		c.DeferralCombinedPeriod = types.StringValue(val.(string))
-	} else {
-		c.DeferralCombinedPeriod = types.StringNull()
-	}
-
-	if val := extractValue("Deferrals", "MajorPeriodInDays"); val != nil {
-		c.DeferralMajorPeriod = types.StringValue(val.(string))
-	} else {
-		c.DeferralMajorPeriod = types.StringNull()
-	}
-
-	if val := extractValue("Deferrals", "MinorPeriodInDays"); val != nil {
-		c.DeferralMinorPeriod = types.StringValue(val.(string))
-	} else {
-		c.DeferralMinorPeriod = types.StringNull()
-	}
-
-	if val := extractValue("Deferrals", "SystemPeriodInDays"); val != nil {
-		c.DeferralSystemPeriod = types.StringValue(val.(string))
-	} else {
-		c.DeferralSystemPeriod = types.StringNull()
-	}
+	c.DeferralCombinedPeriod = extractInt64Value("Deferrals", "CombinedPeriodInDays")
+	c.DeferralMajorPeriod = extractInt64Value("Deferrals", "MajorPeriodInDays")
+	c.DeferralMinorPeriod = extractInt64Value("Deferrals", "MinorPeriodInDays")
+	c.DeferralSystemPeriod = extractInt64Value("Deferrals", "SystemPeriodInDays")
 
 	if rsr, exists := rawConfig["RapidSecurityResponse"]; exists {
 		if rsrMap, ok := rsr.(map[string]any); ok {

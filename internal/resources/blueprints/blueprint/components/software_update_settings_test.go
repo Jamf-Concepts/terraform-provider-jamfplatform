@@ -32,10 +32,10 @@ func TestSoftwareUpdateSettings_ToRawConfiguration_AllFields(t *testing.T) {
 				Description: types.StringValue("Offer 1"),
 			},
 		},
-		DeferralCombinedPeriod:               types.StringValue("30"),
-		DeferralMajorPeriod:                  types.StringValue("60"),
-		DeferralMinorPeriod:                  types.StringValue("14"),
-		DeferralSystemPeriod:                 types.StringValue("7"),
+		DeferralCombinedPeriod:               types.Int64Value(30),
+		DeferralMajorPeriod:                  types.Int64Value(60),
+		DeferralMinorPeriod:                  types.Int64Value(14),
+		DeferralSystemPeriod:                 types.Int64Value(7),
 		NotificationsEnabled:                 types.BoolValue(true),
 		RapidSecurityResponseEnabled:         types.BoolValue(true),
 		RapidSecurityResponseRollbackEnabled: types.BoolValue(false),
@@ -103,8 +103,8 @@ func TestSoftwareUpdateSettings_ToRawConfiguration_AllFields(t *testing.T) {
 		t.Fatal("expected Deferrals to be a map")
 	}
 	combined := deferrals["CombinedPeriodInDays"].(map[string]any)
-	if combined["Value"] != "30" {
-		t.Errorf("expected CombinedPeriodInDays Value '30', got %v", combined["Value"])
+	if combined["Value"] != 30 {
+		t.Errorf("expected CombinedPeriodInDays Value 30, got %v", combined["Value"])
 	}
 
 	notifications := config["Notifications"].(map[string]any)
@@ -198,19 +198,19 @@ func TestSoftwareUpdateSettings_FromRawConfiguration(t *testing.T) {
 		},
 		"Deferrals": map[string]any{
 			"CombinedPeriodInDays": map[string]any{
-				"Value":    "30",
+				"Value":    float64(30),
 				"Included": true,
 			},
 			"MajorPeriodInDays": map[string]any{
-				"Value":    "60",
+				"Value":    float64(60),
 				"Included": true,
 			},
 			"MinorPeriodInDays": map[string]any{
-				"Value":    "14",
+				"Value":    float64(14),
 				"Included": true,
 			},
 			"SystemPeriodInDays": map[string]any{
-				"Value":    "7",
+				"Value":    float64(7),
 				"Included": true,
 			},
 		},
@@ -269,17 +269,17 @@ func TestSoftwareUpdateSettings_FromRawConfiguration(t *testing.T) {
 	if c.BetaRequireProgramDescription.ValueString() != "Req Desc" {
 		t.Errorf("expected BetaRequireProgramDescription 'Req Desc', got %q", c.BetaRequireProgramDescription.ValueString())
 	}
-	if c.DeferralCombinedPeriod.ValueString() != "30" {
-		t.Errorf("expected DeferralCombinedPeriod '30', got %q", c.DeferralCombinedPeriod.ValueString())
+	if c.DeferralCombinedPeriod.ValueInt64() != 30 {
+		t.Errorf("expected DeferralCombinedPeriod 30, got %d", c.DeferralCombinedPeriod.ValueInt64())
 	}
-	if c.DeferralMajorPeriod.ValueString() != "60" {
-		t.Errorf("expected DeferralMajorPeriod '60', got %q", c.DeferralMajorPeriod.ValueString())
+	if c.DeferralMajorPeriod.ValueInt64() != 60 {
+		t.Errorf("expected DeferralMajorPeriod 60, got %d", c.DeferralMajorPeriod.ValueInt64())
 	}
-	if c.DeferralMinorPeriod.ValueString() != "14" {
-		t.Errorf("expected DeferralMinorPeriod '14', got %q", c.DeferralMinorPeriod.ValueString())
+	if c.DeferralMinorPeriod.ValueInt64() != 14 {
+		t.Errorf("expected DeferralMinorPeriod 14, got %d", c.DeferralMinorPeriod.ValueInt64())
 	}
-	if c.DeferralSystemPeriod.ValueString() != "7" {
-		t.Errorf("expected DeferralSystemPeriod '7', got %q", c.DeferralSystemPeriod.ValueString())
+	if c.DeferralSystemPeriod.ValueInt64() != 7 {
+		t.Errorf("expected DeferralSystemPeriod 7, got %d", c.DeferralSystemPeriod.ValueInt64())
 	}
 	if c.NotificationsEnabled.ValueBool() != true {
 		t.Errorf("expected NotificationsEnabled true, got %v", c.NotificationsEnabled.ValueBool())
@@ -317,19 +317,19 @@ func TestSoftwareUpdateSettings_FromRawConfiguration_NotIncluded(t *testing.T) {
 		},
 		"Deferrals": map[string]any{
 			"CombinedPeriodInDays": map[string]any{
-				"Value":    "",
+				"Value":    float64(0),
 				"Included": false,
 			},
 			"MajorPeriodInDays": map[string]any{
-				"Value":    "",
+				"Value":    float64(0),
 				"Included": false,
 			},
 			"MinorPeriodInDays": map[string]any{
-				"Value":    "",
+				"Value":    float64(0),
 				"Included": false,
 			},
 			"SystemPeriodInDays": map[string]any{
-				"Value":    "",
+				"Value":    float64(0),
 				"Included": false,
 			},
 		},
@@ -367,6 +367,15 @@ func TestSoftwareUpdateSettings_FromRawConfiguration_NotIncluded(t *testing.T) {
 	if !c.DeferralCombinedPeriod.IsNull() {
 		t.Error("expected null DeferralCombinedPeriod when not included")
 	}
+	if !c.DeferralMajorPeriod.IsNull() {
+		t.Error("expected null DeferralMajorPeriod when not included")
+	}
+	if !c.DeferralMinorPeriod.IsNull() {
+		t.Error("expected null DeferralMinorPeriod when not included")
+	}
+	if !c.DeferralSystemPeriod.IsNull() {
+		t.Error("expected null DeferralSystemPeriod when not included")
+	}
 	if !c.NotificationsEnabled.IsNull() {
 		t.Error("expected null NotificationsEnabled when not included")
 	}
@@ -381,10 +390,10 @@ func TestSoftwareUpdateSettings_Roundtrip(t *testing.T) {
 		AutomaticDownload:                    types.StringValue("AlwaysOn"),
 		AutomaticInstallOSUpdates:            types.StringValue("AlwaysOff"),
 		AutomaticInstallSecurityUpdate:       types.StringValue("Allowed"),
-		DeferralCombinedPeriod:               types.StringValue("15"),
-		DeferralMajorPeriod:                  types.StringValue("30"),
-		DeferralMinorPeriod:                  types.StringValue("7"),
-		DeferralSystemPeriod:                 types.StringValue("14"),
+		DeferralCombinedPeriod:               types.Int64Value(15),
+		DeferralMajorPeriod:                  types.Int64Value(30),
+		DeferralMinorPeriod:                  types.Int64Value(7),
+		DeferralSystemPeriod:                 types.Int64Value(14),
 		NotificationsEnabled:                 types.BoolValue(true),
 		RapidSecurityResponseEnabled:         types.BoolValue(true),
 		RapidSecurityResponseRollbackEnabled: types.BoolValue(false),
@@ -419,8 +428,8 @@ func TestSoftwareUpdateSettings_Roundtrip(t *testing.T) {
 	if restored.AutomaticInstallOSUpdates.ValueString() != "AlwaysOff" {
 		t.Errorf("roundtrip: expected AutomaticInstallOSUpdates 'AlwaysOff', got %q", restored.AutomaticInstallOSUpdates.ValueString())
 	}
-	if restored.DeferralCombinedPeriod.ValueString() != "15" {
-		t.Errorf("roundtrip: expected DeferralCombinedPeriod '15', got %q", restored.DeferralCombinedPeriod.ValueString())
+	if restored.DeferralCombinedPeriod.ValueInt64() != 15 {
+		t.Errorf("roundtrip: expected DeferralCombinedPeriod 15, got %d", restored.DeferralCombinedPeriod.ValueInt64())
 	}
 	if restored.NotificationsEnabled.ValueBool() != true {
 		t.Errorf("roundtrip: expected NotificationsEnabled true, got %v", restored.NotificationsEnabled.ValueBool())

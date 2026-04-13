@@ -229,6 +229,8 @@ Optional:
 Optional:
 
 - `change_at_next_auth` (Boolean) Change at next auth.
+- `custom_regex_description` (Map of String) Localized descriptions for the custom regex. Map of OS language ID to description string. Use the `default` key for languages not explicitly listed.
+- `custom_regex_pattern` (String) Custom regular expression for passcode validation. Maximum length: `2048`.
 - `failed_attempts_reset_in_minutes` (Number) Failed attempts reset in minutes. Minimum: `0`.
 - `maximum_failed_attempts` (Number) Maximum failed attempts. Range: `2`-`11`.
 - `maximum_grace_period_in_minutes` (Number) Maximum grace period in minutes. Minimum: `0`.
@@ -266,12 +268,9 @@ Optional:
 
 Required:
 
+- `bookmarks` (Attributes Set) Set of bookmarks in this group. (see [below for nested schema](#nestedatt--safari_bookmarks--managed_bookmarks--bookmarks))
 - `group_identifier` (String) Unique identifier for this group of managed bookmarks.
 - `title` (String) The name of the bookmarks folder.
-
-Optional:
-
-- `bookmarks` (Attributes Set) Set of bookmarks in this group. (see [below for nested schema](#nestedatt--safari_bookmarks--managed_bookmarks--bookmarks))
 
 <a id="nestedatt--safari_bookmarks--managed_bookmarks--bookmarks"></a>
 ### Nested Schema for `safari_bookmarks.managed_bookmarks.bookmarks`
@@ -396,9 +395,6 @@ Read-Only:
 Required:
 
 - `context` (String) Launchd context. Valid values are `daemon`, `agent`.
-
-Optional:
-
 - `file_asset_reference` (Attributes) Reference to the configuration file asset. (see [below for nested schema](#nestedatt--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference))
 
 <a id="nestedatt--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference"></a>
@@ -483,10 +479,10 @@ Optional:
 - `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
 - `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.
 - `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.
-- `deferral_combined_period_days` (String) Number of days to defer combined updates (1-90 days).
-- `deferral_major_period_days` (String) Number of days to defer major updates (1-90 days).
-- `deferral_minor_period_days` (String) Number of days to defer minor updates (1-90 days).
-- `deferral_system_period_days` (String) Number of days to defer system updates (1-90 days).
+- `deferral_combined_period_days` (Number) Number of days to defer combined updates. Range: `1`-`90`.
+- `deferral_major_period_days` (Number) Number of days to defer major updates. Range: `1`-`90`.
+- `deferral_minor_period_days` (Number) Number of days to defer minor updates. Range: `1`-`90`.
+- `deferral_system_period_days` (Number) Number of days to defer system updates. Range: `1`-`90`.
 - `notifications_enabled` (Boolean) Enable update notifications to users.
 - `rapid_security_response_enabled` (Boolean) Enable Rapid Security Response updates.
 - `rapid_security_response_rollback_enabled` (Boolean) Enable rollback capability for Rapid Security Response updates.

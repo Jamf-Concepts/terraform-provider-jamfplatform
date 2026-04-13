@@ -8,6 +8,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -15,18 +16,20 @@ import (
 
 // PasscodePolicyComponent represents a strongly-typed passcode policy component
 type PasscodePolicyComponent struct {
-	ChangeAtNextAuth             types.Bool  `tfsdk:"change_at_next_auth"`
-	FailedAttemptsResetInMinutes types.Int64 `tfsdk:"failed_attempts_reset_in_minutes"`
-	MaximumFailedAttempts        types.Int64 `tfsdk:"maximum_failed_attempts"`
-	MaximumGracePeriodInMinutes  types.Int64 `tfsdk:"maximum_grace_period_in_minutes"`
-	MaximumInactivityInMinutes   types.Int64 `tfsdk:"maximum_inactivity_in_minutes"`
-	MaximumPasscodeAgeInDays     types.Int64 `tfsdk:"maximum_passcode_age_in_days"`
-	MinimumComplexCharacters     types.Int64 `tfsdk:"minimum_complex_characters"`
-	MinimumLength                types.Int64 `tfsdk:"minimum_length"`
-	PasscodeReuseLimit           types.Int64 `tfsdk:"passcode_reuse_limit"`
-	RequireAlphanumericPasscode  types.Bool  `tfsdk:"require_alphanumeric_passcode"`
-	RequireComplexPasscode       types.Bool  `tfsdk:"require_complex_passcode"`
-	RequirePasscode              types.Bool  `tfsdk:"require_passcode"`
+	ChangeAtNextAuth             types.Bool   `tfsdk:"change_at_next_auth"`
+	CustomRegexPattern           types.String `tfsdk:"custom_regex_pattern"`
+	CustomRegexDescription       types.Map    `tfsdk:"custom_regex_description"`
+	FailedAttemptsResetInMinutes types.Int64  `tfsdk:"failed_attempts_reset_in_minutes"`
+	MaximumFailedAttempts        types.Int64  `tfsdk:"maximum_failed_attempts"`
+	MaximumGracePeriodInMinutes  types.Int64  `tfsdk:"maximum_grace_period_in_minutes"`
+	MaximumInactivityInMinutes   types.Int64  `tfsdk:"maximum_inactivity_in_minutes"`
+	MaximumPasscodeAgeInDays     types.Int64  `tfsdk:"maximum_passcode_age_in_days"`
+	MinimumComplexCharacters     types.Int64  `tfsdk:"minimum_complex_characters"`
+	MinimumLength                types.Int64  `tfsdk:"minimum_length"`
+	PasscodeReuseLimit           types.Int64  `tfsdk:"passcode_reuse_limit"`
+	RequireAlphanumericPasscode  types.Bool   `tfsdk:"require_alphanumeric_passcode"`
+	RequireComplexPasscode       types.Bool   `tfsdk:"require_complex_passcode"`
+	RequirePasscode              types.Bool   `tfsdk:"require_passcode"`
 }
 
 // GetIdentifier returns the component identifier for passcode policy
@@ -40,6 +43,16 @@ func PasscodePolicyComponentSchema() map[string]schema.Attribute {
 		"change_at_next_auth": schema.BoolAttribute{
 			MarkdownDescription: "Change at next auth.",
 			Optional:            true,
+		},
+		"custom_regex_pattern": schema.StringAttribute{
+			MarkdownDescription: "Custom regular expression for passcode validation. Maximum length: `2048`.",
+			Optional:            true,
+			Validators:          []validator.String{stringvalidator.LengthAtMost(2048)},
+		},
+		"custom_regex_description": schema.MapAttribute{
+			MarkdownDescription: "Localized descriptions for the custom regex. Map of OS language ID to description string. Use the `default` key for languages not explicitly listed.",
+			Optional:            true,
+			ElementType:         types.StringType,
 		},
 		"failed_attempts_reset_in_minutes": schema.Int64Attribute{
 			MarkdownDescription: "Failed attempts reset in minutes. Minimum: `0`.",
@@ -94,148 +107,144 @@ func PasscodePolicyComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the typed component to raw configuration matching OpenAPI PasscodePolicyConfiguration schema
+// ToRawConfiguration converts the typed component to raw configuration matching OpenAPI PasscodeSettingsConfigurationV2 schema
 func (c *PasscodePolicyComponent) ToRawConfiguration() (map[string]any, error) {
 	config := make(map[string]any)
 
-	if helpers.IsConfiguredValue(c.ChangeAtNextAuth) {
-		config["ChangeAtNextAuth"] = c.ChangeAtNextAuth.ValueBool()
-	}
+	config["version"] = "2"
 
-	if helpers.IsConfiguredValue(c.FailedAttemptsResetInMinutes) {
-		config["FailedAttemptsResetInMinutes"] = int(c.FailedAttemptsResetInMinutes.ValueInt64())
-	}
+	config["ChangeAtNextAuth"] = setBoolFieldWithKey(c.ChangeAtNextAuth, "Value", false)
+	config["FailedAttemptsResetInMinutes"] = setInt64Field(c.FailedAttemptsResetInMinutes, 0)
+	config["MaximumFailedAttempts"] = setInt64Field(c.MaximumFailedAttempts, 11)
+	config["MaximumGracePeriodInMinutes"] = setInt64Field(c.MaximumGracePeriodInMinutes, 0)
+	config["MaximumInactivityInMinutes"] = setInt64Field(c.MaximumInactivityInMinutes, 0)
+	config["MaximumPasscodeAgeInDays"] = setInt64Field(c.MaximumPasscodeAgeInDays, 0)
+	config["MinimumComplexCharacters"] = setInt64Field(c.MinimumComplexCharacters, 0)
+	config["MinimumLength"] = setInt64Field(c.MinimumLength, 0)
+	config["PasscodeReuseLimit"] = setInt64Field(c.PasscodeReuseLimit, 0)
+	config["RequireAlphanumericPasscode"] = setBoolFieldWithKey(c.RequireAlphanumericPasscode, "Value", false)
+	config["RequireComplexPasscode"] = setBoolFieldWithKey(c.RequireComplexPasscode, "Value", false)
+	config["RequirePasscode"] = setBoolFieldWithKey(c.RequirePasscode, "Value", false)
 
-	if helpers.IsConfiguredValue(c.MaximumFailedAttempts) {
-		config["MaximumFailedAttempts"] = int(c.MaximumFailedAttempts.ValueInt64())
-	}
+	hasCustomRegex := helpers.IsConfiguredValue(c.CustomRegexPattern) ||
+		(!c.CustomRegexDescription.IsNull() && !c.CustomRegexDescription.IsUnknown())
 
-	if helpers.IsConfiguredValue(c.MaximumGracePeriodInMinutes) {
-		config["MaximumGracePeriodInMinutes"] = int(c.MaximumGracePeriodInMinutes.ValueInt64())
-	}
-
-	if helpers.IsConfiguredValue(c.MaximumInactivityInMinutes) {
-		config["MaximumInactivityInMinutes"] = int(c.MaximumInactivityInMinutes.ValueInt64())
-	}
-
-	if helpers.IsConfiguredValue(c.MaximumPasscodeAgeInDays) {
-		config["MaximumPasscodeAgeInDays"] = int(c.MaximumPasscodeAgeInDays.ValueInt64())
-	}
-
-	if helpers.IsConfiguredValue(c.MinimumComplexCharacters) {
-		config["MinimumComplexCharacters"] = int(c.MinimumComplexCharacters.ValueInt64())
-	}
-
-	if helpers.IsConfiguredValue(c.MinimumLength) {
-		config["MinimumLength"] = int(c.MinimumLength.ValueInt64())
-	}
-
-	if helpers.IsConfiguredValue(c.PasscodeReuseLimit) {
-		config["PasscodeReuseLimit"] = int(c.PasscodeReuseLimit.ValueInt64())
-	}
-
-	if helpers.IsConfiguredValue(c.RequireAlphanumericPasscode) {
-		config["RequireAlphanumericPasscode"] = c.RequireAlphanumericPasscode.ValueBool()
-	}
-
-	if helpers.IsConfiguredValue(c.RequireComplexPasscode) {
-		config["RequireComplexPasscode"] = c.RequireComplexPasscode.ValueBool()
-	}
-
-	if helpers.IsConfiguredValue(c.RequirePasscode) {
-		config["RequirePasscode"] = c.RequirePasscode.ValueBool()
+	if hasCustomRegex {
+		customRegex := map[string]any{
+			"Included": true,
+		}
+		if helpers.IsConfiguredValue(c.CustomRegexPattern) {
+			customRegex["Regex"] = c.CustomRegexPattern.ValueString()
+		}
+		if !c.CustomRegexDescription.IsNull() && !c.CustomRegexDescription.IsUnknown() {
+			descMap := make(map[string]string)
+			for k, v := range c.CustomRegexDescription.Elements() {
+				if strVal, ok := v.(types.String); ok {
+					descMap[k] = strVal.ValueString()
+				}
+			}
+			customRegex["Description"] = descMap
+		}
+		config["CustomRegex"] = customRegex
 	}
 
 	return config, nil
 }
 
-// FromRawConfiguration populates the typed component from raw configuration data
+// FromRawConfiguration populates the typed component from raw configuration data.
+// Handles both V2 envelope format ({Value, Included}) and V1 flat format for backwards compatibility.
 func (c *PasscodePolicyComponent) FromRawConfiguration(raw map[string]any) error {
-	if changeAtNextAuth, exists := raw["ChangeAtNextAuth"]; exists {
-		if changeAtNextAuthBool, ok := changeAtNextAuth.(bool); ok {
-			c.ChangeAtNextAuth = types.BoolValue(changeAtNextAuthBool)
+	extractBoolValue := func(key string) types.Bool {
+		obj, exists := raw[key]
+		if !exists {
+			return types.BoolNull()
 		}
+		if boolVal, ok := obj.(bool); ok {
+			return types.BoolValue(boolVal)
+		}
+		if objMap, ok := obj.(map[string]any); ok {
+			if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
+				if value, hasValue := objMap["Value"]; hasValue {
+					if boolVal, ok := value.(bool); ok {
+						return types.BoolValue(boolVal)
+					}
+				}
+			}
+		}
+		return types.BoolNull()
 	}
 
-	if failedAttemptsReset, exists := raw["FailedAttemptsResetInMinutes"]; exists {
-		if failedAttemptsResetFloat, ok := failedAttemptsReset.(float64); ok {
-			c.FailedAttemptsResetInMinutes = types.Int64Value(int64(failedAttemptsResetFloat))
-		} else if failedAttemptsResetInt, ok := failedAttemptsReset.(int); ok {
-			c.FailedAttemptsResetInMinutes = types.Int64Value(int64(failedAttemptsResetInt))
+	extractInt64Value := func(key string) types.Int64 {
+		obj, exists := raw[key]
+		if !exists {
+			return types.Int64Null()
 		}
+		switch v := obj.(type) {
+		case float64:
+			return types.Int64Value(int64(v))
+		case int:
+			return types.Int64Value(int64(v))
+		case int64:
+			return types.Int64Value(v)
+		}
+		if objMap, ok := obj.(map[string]any); ok {
+			if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
+				if value, hasValue := objMap["Value"]; hasValue {
+					switch v := value.(type) {
+					case float64:
+						return types.Int64Value(int64(v))
+					case int:
+						return types.Int64Value(int64(v))
+					case int64:
+						return types.Int64Value(v)
+					}
+				}
+			}
+		}
+		return types.Int64Null()
 	}
 
-	if maximumFailedAttempts, exists := raw["MaximumFailedAttempts"]; exists {
-		if maximumFailedAttemptsFloat, ok := maximumFailedAttempts.(float64); ok {
-			c.MaximumFailedAttempts = types.Int64Value(int64(maximumFailedAttemptsFloat))
-		} else if maximumFailedAttemptsInt, ok := maximumFailedAttempts.(int); ok {
-			c.MaximumFailedAttempts = types.Int64Value(int64(maximumFailedAttemptsInt))
-		}
-	}
+	c.ChangeAtNextAuth = extractBoolValue("ChangeAtNextAuth")
+	c.FailedAttemptsResetInMinutes = extractInt64Value("FailedAttemptsResetInMinutes")
+	c.MaximumFailedAttempts = extractInt64Value("MaximumFailedAttempts")
+	c.MaximumGracePeriodInMinutes = extractInt64Value("MaximumGracePeriodInMinutes")
+	c.MaximumInactivityInMinutes = extractInt64Value("MaximumInactivityInMinutes")
+	c.MaximumPasscodeAgeInDays = extractInt64Value("MaximumPasscodeAgeInDays")
+	c.MinimumComplexCharacters = extractInt64Value("MinimumComplexCharacters")
+	c.MinimumLength = extractInt64Value("MinimumLength")
+	c.PasscodeReuseLimit = extractInt64Value("PasscodeReuseLimit")
+	c.RequireAlphanumericPasscode = extractBoolValue("RequireAlphanumericPasscode")
+	c.RequireComplexPasscode = extractBoolValue("RequireComplexPasscode")
+	c.RequirePasscode = extractBoolValue("RequirePasscode")
 
-	if maximumGracePeriod, exists := raw["MaximumGracePeriodInMinutes"]; exists {
-		if maximumGracePeriodFloat, ok := maximumGracePeriod.(float64); ok {
-			c.MaximumGracePeriodInMinutes = types.Int64Value(int64(maximumGracePeriodFloat))
-		} else if maximumGracePeriodInt, ok := maximumGracePeriod.(int); ok {
-			c.MaximumGracePeriodInMinutes = types.Int64Value(int64(maximumGracePeriodInt))
-		}
-	}
+	c.CustomRegexPattern = types.StringNull()
+	c.CustomRegexDescription = types.MapNull(types.StringType)
 
-	if maximumInactivity, exists := raw["MaximumInactivityInMinutes"]; exists {
-		if maximumInactivityFloat, ok := maximumInactivity.(float64); ok {
-			c.MaximumInactivityInMinutes = types.Int64Value(int64(maximumInactivityFloat))
-		} else if maximumInactivityInt, ok := maximumInactivity.(int); ok {
-			c.MaximumInactivityInMinutes = types.Int64Value(int64(maximumInactivityInt))
-		}
-	}
-
-	if maximumPasscodeAge, exists := raw["MaximumPasscodeAgeInDays"]; exists {
-		if maximumPasscodeAgeFloat, ok := maximumPasscodeAge.(float64); ok {
-			c.MaximumPasscodeAgeInDays = types.Int64Value(int64(maximumPasscodeAgeFloat))
-		} else if maximumPasscodeAgeInt, ok := maximumPasscodeAge.(int); ok {
-			c.MaximumPasscodeAgeInDays = types.Int64Value(int64(maximumPasscodeAgeInt))
-		}
-	}
-
-	if minimumComplexCharacters, exists := raw["MinimumComplexCharacters"]; exists {
-		if minimumComplexCharactersFloat, ok := minimumComplexCharacters.(float64); ok {
-			c.MinimumComplexCharacters = types.Int64Value(int64(minimumComplexCharactersFloat))
-		} else if minimumComplexCharactersInt, ok := minimumComplexCharacters.(int); ok {
-			c.MinimumComplexCharacters = types.Int64Value(int64(minimumComplexCharactersInt))
-		}
-	}
-
-	if minimumLength, exists := raw["MinimumLength"]; exists {
-		if minimumLengthFloat, ok := minimumLength.(float64); ok {
-			c.MinimumLength = types.Int64Value(int64(minimumLengthFloat))
-		} else if minimumLengthInt, ok := minimumLength.(int); ok {
-			c.MinimumLength = types.Int64Value(int64(minimumLengthInt))
-		}
-	}
-
-	if passcodeReuseLimit, exists := raw["PasscodeReuseLimit"]; exists {
-		if passcodeReuseLimitFloat, ok := passcodeReuseLimit.(float64); ok {
-			c.PasscodeReuseLimit = types.Int64Value(int64(passcodeReuseLimitFloat))
-		} else if passcodeReuseLimitInt, ok := passcodeReuseLimit.(int); ok {
-			c.PasscodeReuseLimit = types.Int64Value(int64(passcodeReuseLimitInt))
-		}
-	}
-
-	if requireAlphanumeric, exists := raw["RequireAlphanumericPasscode"]; exists {
-		if requireAlphanumericBool, ok := requireAlphanumeric.(bool); ok {
-			c.RequireAlphanumericPasscode = types.BoolValue(requireAlphanumericBool)
-		}
-	}
-
-	if requireComplex, exists := raw["RequireComplexPasscode"]; exists {
-		if requireComplexBool, ok := requireComplex.(bool); ok {
-			c.RequireComplexPasscode = types.BoolValue(requireComplexBool)
-		}
-	}
-
-	if requirePasscode, exists := raw["RequirePasscode"]; exists {
-		if requirePasscodeBool, ok := requirePasscode.(bool); ok {
-			c.RequirePasscode = types.BoolValue(requirePasscodeBool)
+	if customRegexRaw, exists := raw["CustomRegex"]; exists {
+		if customRegexMap, ok := customRegexRaw.(map[string]any); ok {
+			if included, hasIncluded := customRegexMap["Included"]; !hasIncluded || included.(bool) {
+				if regex, hasRegex := customRegexMap["Regex"]; hasRegex {
+					if regexStr, ok := regex.(string); ok {
+						c.CustomRegexPattern = types.StringValue(regexStr)
+					}
+				}
+				if descRaw, hasDesc := customRegexMap["Description"]; hasDesc {
+					if descMap, ok := descRaw.(map[string]any); ok {
+						elems := make(map[string]types.String, len(descMap))
+						for k, v := range descMap {
+							if vStr, ok := v.(string); ok {
+								elems[k] = types.StringValue(vStr)
+							}
+						}
+						if len(elems) > 0 {
+							tfMap, diags := types.MapValueFrom(nil, types.StringType, elems)
+							if !diags.HasError() {
+								c.CustomRegexDescription = tfMap
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 

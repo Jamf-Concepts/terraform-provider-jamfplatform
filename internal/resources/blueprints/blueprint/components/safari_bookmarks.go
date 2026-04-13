@@ -62,7 +62,7 @@ func SafariBookmarksComponentSchema() map[string]schema.Attribute {
 					},
 					"bookmarks": schema.SetNestedAttribute{
 						MarkdownDescription: "Set of bookmarks in this group.",
-						Optional:            true,
+						Required:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"type": schema.StringAttribute{
