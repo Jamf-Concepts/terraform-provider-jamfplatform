@@ -99,7 +99,7 @@ func TestAssignDeviceGroupModel_SmartGroup(t *testing.T) {
 		Name:       "Smart Group",
 		DeviceType: "COMPUTER",
 		GroupType:  "SMART",
-		Criteria: []jamfplatform.DeviceGroupCriteriaRepresentationV1{
+		Criteria: &[]jamfplatform.DeviceGroupCriteriaRepresentationV1{
 			{
 				Order:          0,
 				AttributeName:  "Device Name",
@@ -163,8 +163,8 @@ func TestFlattenDeviceGroupCriteria(t *testing.T) {
 			Operator:              "LIKE",
 			AttributeValue:        "Mac",
 			JoinType:              "AND",
-			HasOpeningParenthesis: true,
-			HasClosingParenthesis: false,
+			HasOpeningParenthesis: new(true),
+			HasClosingParenthesis: new(false),
 		},
 		{
 			Order:                 1,
@@ -172,8 +172,8 @@ func TestFlattenDeviceGroupCriteria(t *testing.T) {
 			Operator:              "GREATER THAN",
 			AttributeValue:        "14.0",
 			JoinType:              "OR",
-			HasOpeningParenthesis: false,
-			HasClosingParenthesis: true,
+			HasOpeningParenthesis: new(false),
+			HasClosingParenthesis: new(true),
 		},
 	}
 

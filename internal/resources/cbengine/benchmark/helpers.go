@@ -14,8 +14,8 @@ import (
 
 // waitForBenchmarkSync polls until the benchmark reaches a terminal state
 // (SYNCED or FAILED) or the provided context is canceled.
-func waitForBenchmarkSync(ctx context.Context, c *jamfplatform.Client, id string, interval time.Duration) (*jamfplatform.CBEngineBenchmarkV2, error) {
-	var synced *jamfplatform.CBEngineBenchmarkV2
+func waitForBenchmarkSync(ctx context.Context, c *jamfplatform.Client, id string, interval time.Duration) (*jamfplatform.BenchmarkV2, error) {
+	var synced *jamfplatform.BenchmarkV2
 	err := jamfplatform.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
 		benchmarks, err := c.ListBenchmarks(pollCtx)
 		if err != nil {

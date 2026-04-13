@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // BenchmarkDataSource implements the Terraform data source for Jamf Compliance Benchmarks.
@@ -262,12 +263,12 @@ func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bench *jamfplatform.CBEngineBenchmarkResponseV2
+	var bench *jamfplatform.BenchmarkResponseV2
 	var err error
 	if !data.ID.IsNull() && data.ID.ValueString() != "" {
 		bench, err = d.client.GetBenchmark(ctx, data.ID.ValueString())
 	} else if !data.Title.IsNull() && data.Title.ValueString() != "" {
-		bench, err = d.client.GetBenchmarkByTitle(ctx, data.Title.ValueString())
+		bench, err = helpers.GetBenchmarkByTitle(ctx, d.client, data.Title.ValueString())
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",

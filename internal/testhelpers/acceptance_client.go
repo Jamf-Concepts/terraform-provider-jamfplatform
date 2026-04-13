@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // runSuffix computes a unique suffix (epoch timestamp) once for the entire test run.
@@ -28,6 +29,9 @@ var runSuffix = sync.OnceValue(func() string {
 func RunSuffix() string {
 	return runSuffix()
 }
+
+// strPtr returns a pointer to the given string literal.
+func strPtr(s string) *string { return &s }
 
 // initAcceptanceClient creates and validates the singleton acceptance client once.
 var initAcceptanceClient = sync.OnceValues(func() (*jamfplatform.Client, error) {
@@ -108,7 +112,7 @@ func RequireSmartGroupFixture(t *testing.T) string {
 
 		req := &jamfplatform.DeviceGroupCreateRepresentationV1{
 			Name:        smartGroupFixtureName(),
-			Description: new("Terraform provider acceptance test fixture — safe to delete"),
+			Description: strPtr("Terraform provider acceptance test fixture — safe to delete"),
 			DeviceType:  "COMPUTER",
 			GroupType:   "SMART",
 			Criteria: []jamfplatform.DeviceGroupCriteriaRepresentationV1{
@@ -145,7 +149,7 @@ func RequireSmartGroupFixture(t *testing.T) string {
 // re-issuing the delete every 20 seconds to unstick it if needed.
 func EnsureBenchmarkDeleted(t *testing.T, c *jamfplatform.Client, ctx context.Context, title string) {
 	t.Helper()
-	existing, err := c.GetBenchmarkByTitle(ctx, title)
+	existing, err := helpers.GetBenchmarkByTitle(ctx, c, title)
 	if err != nil {
 		return
 	}
@@ -162,7 +166,7 @@ func EnsureBenchmarkDeleted(t *testing.T, c *jamfplatform.Client, ctx context.Co
 	deadline := time.Now().Add(2 * time.Minute)
 	for time.Now().Before(deadline) {
 		time.Sleep(2 * time.Second)
-		_, err := c.GetBenchmarkByTitle(ctx, title)
+		_, err := helpers.GetBenchmarkByTitle(ctx, c, title)
 		if err != nil {
 			t.Logf("Benchmark %q fully deleted", title)
 			return

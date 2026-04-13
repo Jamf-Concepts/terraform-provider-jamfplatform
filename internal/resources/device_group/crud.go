@@ -54,7 +54,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 
 	reqBody := &jamfplatform.DeviceGroupCreateRepresentationV1{
 		Name:        plan.Name.ValueString(),
-		Description: helpers.StringPointerValue(plan.Description),
+		Description: plan.Description.ValueStringPointer(),
 		DeviceType:  strings.ToUpper(plan.DeviceType.ValueString()),
 		GroupType:   strings.ToUpper(plan.GroupType.ValueString()),
 	}
@@ -221,8 +221,8 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	manageDescription := helpers.IsConfiguredValue(plan.Description)
 
 	updateReq := &jamfplatform.DeviceGroupUpdateRepresentationV1{
-		Name:        helpers.StringPointerValue(plan.Name),
-		Description: helpers.StringPointerValue(plan.Description),
+		Name:        plan.Name.ValueStringPointer(),
+		Description: plan.Description.ValueStringPointer(),
 	}
 
 	if strings.ToLower(plan.GroupType.ValueString()) == "smart" {

@@ -296,8 +296,8 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	if deviceDetail.Network != nil {
 		data.NetworkLastIPAddress = helpers.StringPointerValueOrNull(deviceDetail.Network.LastIPAddress)
-		data.NetworkLastReportedIPv4Address = helpers.StringPointerValueOrNull(deviceDetail.Network.LastReportedIPv4Address)
-		data.NetworkLastReportedIPv6Address = helpers.StringPointerValueOrNull(deviceDetail.Network.LastReportedIPv6Address)
+		data.NetworkLastReportedIPv4Address = helpers.StringPointerValueOrNull(deviceDetail.Network.LastReportedIPV4Address)
+		data.NetworkLastReportedIPv6Address = helpers.StringPointerValueOrNull(deviceDetail.Network.LastReportedIPV6Address)
 	} else {
 		data.NetworkLastIPAddress = types.StringNull()
 		data.NetworkLastReportedIPv4Address = types.StringNull()

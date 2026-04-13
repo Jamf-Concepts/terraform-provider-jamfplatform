@@ -111,7 +111,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 	for _, bp := range blueprints {
 		if hasSearch {
 			nameMatch := strings.Contains(strings.ToLower(bp.Name), searchLower)
-			descMatch := strings.Contains(strings.ToLower(bp.Description), searchLower)
+			descMatch := strings.Contains(strings.ToLower(helpers.DerefString(bp.Description)), searchLower)
 			if !nameMatch && !descMatch {
 				continue
 			}

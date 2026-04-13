@@ -321,10 +321,10 @@ func TestAccResource_Blueprint_SoftwareUpdateSettings(t *testing.T) {
 							automatic_download                       = "AlwaysOn"
 							automatic_install_os_updates             = "AlwaysOn"
 							automatic_install_security_updates       = "AlwaysOn"
-							deferral_combined_period_days            = "7"
-							deferral_major_period_days               = "30"
-							deferral_minor_period_days               = "14"
-							deferral_system_period_days              = "3"
+							deferral_combined_period_days            = 7
+							deferral_major_period_days               = 30
+							deferral_minor_period_days               = 14
+							deferral_system_period_days              = 3
 							notifications_enabled                    = true
 							rapid_security_response_enabled          = true
 							rapid_security_response_rollback_enabled = false

@@ -186,6 +186,11 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 	deviceType := helpers.StringValueOrNull(strings.ToLower(grp.DeviceType))
 	groupType := helpers.StringValueOrNull(strings.ToLower(grp.GroupType))
 
+	var grpCriteria []jamfplatform.DeviceGroupCriteriaRepresentationV1
+	if grp.Criteria != nil {
+		grpCriteria = *grp.Criteria
+	}
+
 	timeoutsConfig := data.Timeouts
 
 	data = DeviceGroupDataSourceModel{
@@ -194,7 +199,7 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		Description: description,
 		DeviceType:  deviceType,
 		GroupType:   groupType,
-		Criteria:    flattenDeviceGroupCriteria(grp.Criteria, nil),
+		Criteria:    flattenDeviceGroupCriteria(grpCriteria, nil),
 		Members:     listMembers,
 		MemberCount: types.Int64Value(int64(grp.MemberCount)),
 		Timeouts:    timeoutsConfig,

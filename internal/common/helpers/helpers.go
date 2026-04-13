@@ -87,22 +87,6 @@ func IsConfiguredValue(value interface {
 	return !value.IsNull() && !value.IsUnknown()
 }
 
-// StringPointerValue returns a *string for configured Terraform strings, preserving empty strings.
-func StringPointerValue(v types.String) *string {
-	if !IsConfiguredValue(v) {
-		return nil
-	}
-	return new(v.ValueString())
-}
-
-// BoolPointerValue returns a *bool for configured Terraform bools, preserving nulls when unset.
-func BoolPointerValue(v types.Bool) *bool {
-	if !IsConfiguredValue(v) {
-		return nil
-	}
-	return new(v.ValueBool())
-}
-
 // ReconcileOptionalBool keeps the current value if not managed, otherwise sets to the API value.
 func ReconcileOptionalBool(apiValue bool, current types.Bool) types.Bool {
 	if IsConfiguredValue(current) {
@@ -117,6 +101,27 @@ func ReconcileOptionalInt(apiValue int, current types.Int64) types.Int64 {
 		return types.Int64Value(int64(apiValue))
 	}
 	return types.Int64Null()
+}
+
+// DerefString safely unwraps a *string, returning an empty string if nil.
+func DerefString(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
+}
+
+// ReconcileOptionalBoolPointer behaves like ReconcileOptionalBool but accepts a *bool API value.
+func ReconcileOptionalBoolPointer(apiValue *bool, current types.Bool) types.Bool {
+	if apiValue == nil {
+		return types.BoolNull()
+	}
+	return ReconcileOptionalBool(*apiValue, current)
+}
+
+// ReconcileOptionalStringPointer behaves like ReconcileOptionalString but accepts a *string API value.
+func ReconcileOptionalStringPointer(apiValue *string, current types.String) types.String {
+	return ReconcileOptionalString(DerefString(apiValue), current)
 }
 
 // ReconcileOptionalString keeps explicit empty strings set by the user while allowing nulls when unset.

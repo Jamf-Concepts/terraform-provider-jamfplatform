@@ -140,7 +140,7 @@ func (d *ComponentDataSource) Read(ctx context.Context, req datasource.ReadReque
 		ID:          data.ID,
 		Identifier:  types.StringValue(comp.Identifier),
 		Name:        types.StringValue(comp.Name),
-		Description: types.StringValue(comp.Description),
+		Description: helpers.StringPointerValueOrNull(comp.Description),
 		SupportedOs: supportedOsMap.(types.Map),
 	}
 

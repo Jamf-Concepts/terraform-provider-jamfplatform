@@ -5,13 +5,12 @@ package benchmark
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // assignBenchmarkModelFromResponse maps the API response into the Terraform benchmark resource model.
-func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *jamfplatform.CBEngineBenchmarkResponseV2) {
+func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *jamfplatform.BenchmarkResponseV2) {
 	if model == nil || bench == nil {
 		return
 	}
@@ -23,15 +22,19 @@ func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *jamf
 	model.Deleted = types.BoolValue(bench.Deleted)
 	model.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
 	model.CanSwitchToEnforce = types.BoolValue(bench.CanSwitchToEnforce)
-	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt)
 	model.Sources = buildSourceModels(bench.Sources)
 	model.Rules = buildRuleModels(bench.Rules)
-	model.TargetDeviceGroup = buildTargetDeviceGroup(bench.Target.DeviceGroups)
+	if bench.Target != nil {
+		model.TargetDeviceGroup = buildTargetDeviceGroup(bench.Target.DeviceGroups)
+	} else {
+		model.TargetDeviceGroup = types.StringNull()
+	}
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
 }
 
 // assignBenchmarkDataSourceFromResponse maps the API response into the Terraform benchmark data source model.
-func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, bench *jamfplatform.CBEngineBenchmarkResponseV2) {
+func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, bench *jamfplatform.BenchmarkResponseV2) {
 	if model == nil || bench == nil {
 		return
 	}
@@ -42,16 +45,20 @@ func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, benc
 	model.Description = types.StringValue(bench.Description)
 	model.Sources = buildSourceModels(bench.Sources)
 	model.Rules = buildRuleModels(bench.Rules)
-	model.TargetDeviceGroup = buildTargetDeviceGroup(bench.Target.DeviceGroups)
+	if bench.Target != nil {
+		model.TargetDeviceGroup = buildTargetDeviceGroup(bench.Target.DeviceGroups)
+	} else {
+		model.TargetDeviceGroup = types.StringNull()
+	}
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
 	model.Deleted = types.BoolValue(bench.Deleted)
 	model.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
 	model.CanSwitchToEnforce = types.BoolValue(bench.CanSwitchToEnforce)
-	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format("2006-01-02T15:04:05Z07:00"))
+	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt)
 }
 
 // buildSourceModels converts API source representations into Terraform source models.
-func buildSourceModels(sources []jamfplatform.CBEngineSourceV1) []SourceModel {
+func buildSourceModels(sources []jamfplatform.Source) []SourceModel {
 	result := make([]SourceModel, len(sources))
 	for i, s := range sources {
 		result[i] = SourceModel{
@@ -63,7 +70,7 @@ func buildSourceModels(sources []jamfplatform.CBEngineSourceV1) []SourceModel {
 }
 
 // buildRuleModels converts API rule responses into Terraform rule models.
-func buildRuleModels(rules []jamfplatform.CBEngineRuleInfoV1) []RuleModel {
+func buildRuleModels(rules []jamfplatform.RuleInfo) []RuleModel {
 	result := make([]RuleModel, len(rules))
 	for i, r := range rules {
 		result[i] = buildRuleModel(r)
@@ -72,7 +79,7 @@ func buildRuleModels(rules []jamfplatform.CBEngineRuleInfoV1) []RuleModel {
 }
 
 // buildRuleModel converts a single API rule response into a Terraform rule model.
-func buildRuleModel(r jamfplatform.CBEngineRuleInfoV1) RuleModel {
+func buildRuleModel(r jamfplatform.RuleInfo) RuleModel {
 	return RuleModel{
 		ID:                      types.StringValue(r.ID),
 		SectionName:             types.StringValue(r.SectionName),
@@ -80,19 +87,19 @@ func buildRuleModel(r jamfplatform.CBEngineRuleInfoV1) RuleModel {
 		Title:                   types.StringValue(r.Title),
 		Description:             types.StringValue(r.Description),
 		References:              buildStringList(r.References),
-		SupportedOS:             buildSupportedOSList(r.SupportedOS),
-		OSSpecificDefaults:      buildOSSpecificDefaultsMap(r.OSSpecificDefaults),
-		ODVValue:                odvStringValue(r.ODV, func(o *jamfplatform.CBEngineOrganizationDefinedValueV1) string { return o.Value }),
-		ODVHint:                 odvStringValue(r.ODV, func(o *jamfplatform.CBEngineOrganizationDefinedValueV1) string { return o.Hint }),
-		ODVPlaceholder:          odvStringValue(r.ODV, func(o *jamfplatform.CBEngineOrganizationDefinedValueV1) string { return o.Placeholder }),
-		ODVType:                 odvStringValue(r.ODV, func(o *jamfplatform.CBEngineOrganizationDefinedValueV1) string { return o.Type }),
+		SupportedOS:             buildSupportedOSList(r.SupportedOs),
+		OSSpecificDefaults:      buildOSSpecificDefaultsMap(r.OsSpecificDefaults),
+		ODVValue:                odvStringValue(r.ODV, func(o *jamfplatform.OrganizationDefinedValue) string { return o.Value }),
+		ODVHint:                 odvStringValue(r.ODV, func(o *jamfplatform.OrganizationDefinedValue) string { return o.Hint }),
+		ODVPlaceholder:          odvStringValue(r.ODV, func(o *jamfplatform.OrganizationDefinedValue) string { return o.Placeholder }),
+		ODVType:                 odvStringValue(r.ODV, func(o *jamfplatform.OrganizationDefinedValue) string { return o.Type }),
 		ODVValidationMin:        buildODVValidationMin(r.ODV),
 		ODVValidationMax:        buildODVValidationMax(r.ODV),
 		ODVValidationEnumValues: buildODVValidationEnumValues(r.ODV),
 		ODVValidationRegex:      buildODVValidationRegex(r.ODV),
 		DependsOn:               buildDependsOnList(r.RuleRelation),
-		Reportable:              helpers.BoolPointerValueOrNull(r.Reportable),
-		SmartCard:               helpers.BoolPointerValueOrNull(r.SmartCard),
+		Reportable:              types.BoolValue(r.Reportable),
+		SmartCard:               types.BoolValue(r.SmartCard),
 	}
 }
 
@@ -118,7 +125,7 @@ func buildStringList(values []string) types.List {
 }
 
 // buildSupportedOSList converts API OS info into a Terraform list of objects.
-func buildSupportedOSList(supportedOS []jamfplatform.CBEngineOSInfoV1) types.List {
+func buildSupportedOSList(supportedOS []jamfplatform.OsInfo) types.List {
 	if len(supportedOS) == 0 {
 		return types.ListNull(osInfoObjectType)
 	}
@@ -127,8 +134,8 @@ func buildSupportedOSList(supportedOS []jamfplatform.CBEngineOSInfoV1) types.Lis
 		osVals[i], _ = types.ObjectValue(
 			osInfoObjectType.AttrTypes,
 			map[string]attr.Value{
-				"os_type":         types.StringValue(osInfo.OSType),
-				"os_version":      types.Int64Value(int64(osInfo.OSVersion)),
+				"os_type":         types.StringValue(osInfo.OsType),
+				"os_version":      types.Int64Value(int64(osInfo.OsVersion)),
 				"management_type": types.StringValue(osInfo.ManagementType),
 			},
 		)
@@ -138,7 +145,7 @@ func buildSupportedOSList(supportedOS []jamfplatform.CBEngineOSInfoV1) types.Lis
 }
 
 // buildOSSpecificDefaultsMap converts API OS-specific defaults into a Terraform map of objects.
-func buildOSSpecificDefaultsMap(defaults map[string]jamfplatform.CBEngineOSSpecificRuleInfoV1) types.Map {
+func buildOSSpecificDefaultsMap(defaults map[string]jamfplatform.OsSpecificRuleInfo) types.Map {
 	if len(defaults) == 0 {
 		return types.MapNull(osSpecificDefaultObjectType)
 	}
@@ -167,7 +174,7 @@ func buildOSSpecificDefaultsMap(defaults map[string]jamfplatform.CBEngineOSSpeci
 }
 
 // odvStringValue extracts a string field from an ODV response, returning null if ODV is nil.
-func odvStringValue(odv *jamfplatform.CBEngineOrganizationDefinedValueV1, getter func(*jamfplatform.CBEngineOrganizationDefinedValueV1) string) types.String {
+func odvStringValue(odv *jamfplatform.OrganizationDefinedValue, getter func(*jamfplatform.OrganizationDefinedValue) string) types.String {
 	if odv == nil {
 		return types.StringNull()
 	}
@@ -175,23 +182,23 @@ func odvStringValue(odv *jamfplatform.CBEngineOrganizationDefinedValueV1, getter
 }
 
 // buildODVValidationMin extracts the min validation value from the ODV response.
-func buildODVValidationMin(odv *jamfplatform.CBEngineOrganizationDefinedValueV1) types.Int64 {
-	if odv == nil || odv.Validation == nil || odv.Validation.Min == nil {
+func buildODVValidationMin(odv *jamfplatform.OrganizationDefinedValue) types.Int64 {
+	if odv == nil || odv.Validation == nil {
 		return types.Int64Null()
 	}
-	return types.Int64Value(int64(*odv.Validation.Min))
+	return types.Int64Value(int64(odv.Validation.Min))
 }
 
 // buildODVValidationMax extracts the max validation value from the ODV response.
-func buildODVValidationMax(odv *jamfplatform.CBEngineOrganizationDefinedValueV1) types.Int64 {
-	if odv == nil || odv.Validation == nil || odv.Validation.Max == nil {
+func buildODVValidationMax(odv *jamfplatform.OrganizationDefinedValue) types.Int64 {
+	if odv == nil || odv.Validation == nil {
 		return types.Int64Null()
 	}
-	return types.Int64Value(int64(*odv.Validation.Max))
+	return types.Int64Value(int64(odv.Validation.Max))
 }
 
 // buildODVValidationEnumValues extracts the enum validation values from the ODV response.
-func buildODVValidationEnumValues(odv *jamfplatform.CBEngineOrganizationDefinedValueV1) types.List {
+func buildODVValidationEnumValues(odv *jamfplatform.OrganizationDefinedValue) types.List {
 	if odv == nil || odv.Validation == nil || len(odv.Validation.EnumValues) == 0 {
 		return types.ListNull(types.StringType)
 	}
@@ -199,7 +206,7 @@ func buildODVValidationEnumValues(odv *jamfplatform.CBEngineOrganizationDefinedV
 }
 
 // buildODVValidationRegex extracts the regex validation pattern from the ODV response.
-func buildODVValidationRegex(odv *jamfplatform.CBEngineOrganizationDefinedValueV1) types.String {
+func buildODVValidationRegex(odv *jamfplatform.OrganizationDefinedValue) types.String {
 	if odv == nil || odv.Validation == nil {
 		return types.StringNull()
 	}
@@ -207,7 +214,7 @@ func buildODVValidationRegex(odv *jamfplatform.CBEngineOrganizationDefinedValueV
 }
 
 // buildDependsOnList extracts the depends_on list from a rule relation.
-func buildDependsOnList(relation *jamfplatform.CBEngineRuleRelationV1) types.List {
+func buildDependsOnList(relation *jamfplatform.RuleRelation) types.List {
 	if relation == nil || len(relation.DependsOn) == 0 {
 		return types.ListNull(types.StringType)
 	}

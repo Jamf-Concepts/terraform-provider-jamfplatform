@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 var _ action.Action = (*EraseAction)(nil)
@@ -140,28 +139,28 @@ func (a *EraseAction) Invoke(ctx context.Context, req action.InvokeRequest, resp
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Erase request accepted for device %s (%d command(s))", deviceID, len(commands))})
 }
 
-func buildEraseRequestPayload(data EraseActionModel) *jamfplatform.EraseDeviceRequestV1 {
-	req := &jamfplatform.EraseDeviceRequestV1{}
+func buildEraseRequestPayload(data EraseActionModel) *jamfplatform.EraseDeviceRequest {
+	req := &jamfplatform.EraseDeviceRequest{}
 	var hasOptions bool
 
-	if val := helpers.BoolPointerValue(data.PreserveDataPlan); val != nil {
-		req.PreserveDataPlan = val
+	if v := data.PreserveDataPlan.ValueBoolPointer(); v != nil {
+		req.PreserveDataPlan = v
 		hasOptions = true
 	}
-	if val := helpers.BoolPointerValue(data.DisallowProximitySetup); val != nil {
-		req.DisallowProximitySetup = val
+	if v := data.DisallowProximitySetup.ValueBoolPointer(); v != nil {
+		req.DisallowProximitySetup = v
 		hasOptions = true
 	}
-	if val := helpers.BoolPointerValue(data.ClearActivationLock); val != nil {
-		req.ClearActivationLock = val
+	if v := data.ClearActivationLock.ValueBoolPointer(); v != nil {
+		req.ClearActivationLock = v
 		hasOptions = true
 	}
-	if val := helpers.BoolPointerValue(data.ReturnToService); val != nil {
-		req.ReturnToService = val
+	if v := data.ReturnToService.ValueBoolPointer(); v != nil {
+		req.ReturnToService = v
 		hasOptions = true
 	}
-	if val := helpers.StringPointerValue(data.Pin); val != nil {
-		req.Pin = val
+	if v := data.Pin.ValueStringPointer(); v != nil {
+		req.Pin = v
 		hasOptions = true
 	}
 

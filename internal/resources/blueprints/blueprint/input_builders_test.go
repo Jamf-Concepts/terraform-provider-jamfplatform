@@ -15,7 +15,7 @@ import (
 
 func TestCollectLegacyPayloads_ValidPayload(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	input := []any{
@@ -68,7 +68,7 @@ func TestCollectLegacyPayloads_ValidPayload(t *testing.T) {
 
 func TestCollectLegacyPayloads_NoSettings(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	input := []any{
@@ -100,7 +100,7 @@ func TestCollectLegacyPayloads_NoSettings(t *testing.T) {
 
 func TestCollectLegacyPayloads_MixedTypeSettings(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	input := []any{
@@ -141,7 +141,7 @@ func TestCollectLegacyPayloads_MixedTypeSettings(t *testing.T) {
 
 func TestCollectLegacyPayloads_EmptyList(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	dynVal, _ := helpers.JSONToTerraformDynamic([]any{})
@@ -168,9 +168,48 @@ func TestCollectLegacyPayloads_EmptyList(t *testing.T) {
 	}
 }
 
+func TestCollectLegacyPayloads_DuplicatePayloadType(t *testing.T) {
+	r := &BlueprintResource{}
+	var components []jamfplatform.Component
+	var diags diag.Diagnostics
+
+	input := []any{
+		map[string]any{
+			"payload_type": "com.apple.wifi.managed",
+			"settings": map[string]any{
+				"networkName": "Office",
+			},
+		},
+		map[string]any{
+			"payload_type": "com.apple.wifi.managed",
+			"settings": map[string]any{
+				"networkName": "Guest",
+			},
+		},
+	}
+	dynVal, _ := helpers.JSONToTerraformDynamic(input)
+
+	r.collectLegacyPayloads(&components, &diags, dynVal, "Blueprint")
+
+	if !diags.HasError() {
+		t.Fatal("expected error for duplicate payload_type, got none")
+	}
+
+	found := false
+	for _, d := range diags.Errors() {
+		if d.Summary() == "Duplicate payload_type" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected 'Duplicate payload_type' error, got: %v", diags)
+	}
+}
+
 func TestCollectLegacyPayloads_NullDynamic(t *testing.T) {
 	r := &BlueprintResource{}
-	var components []jamfplatform.BlueprintComponentV1
+	var components []jamfplatform.Component
 	var diags diag.Diagnostics
 
 	r.collectLegacyPayloads(&components, &diags, types.DynamicNull(), "Blueprint")
