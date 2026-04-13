@@ -113,18 +113,42 @@ func (c *PasscodePolicyComponent) ToRawConfiguration() (map[string]any, error) {
 
 	config["version"] = "2"
 
-	config["ChangeAtNextAuth"] = setBoolFieldWithKey(c.ChangeAtNextAuth, "Value", false)
-	config["FailedAttemptsResetInMinutes"] = setInt64Field(c.FailedAttemptsResetInMinutes, 0)
-	config["MaximumFailedAttempts"] = setInt64Field(c.MaximumFailedAttempts, 11)
-	config["MaximumGracePeriodInMinutes"] = setInt64Field(c.MaximumGracePeriodInMinutes, 0)
-	config["MaximumInactivityInMinutes"] = setInt64Field(c.MaximumInactivityInMinutes, 0)
-	config["MaximumPasscodeAgeInDays"] = setInt64Field(c.MaximumPasscodeAgeInDays, 0)
-	config["MinimumComplexCharacters"] = setInt64Field(c.MinimumComplexCharacters, 0)
-	config["MinimumLength"] = setInt64Field(c.MinimumLength, 0)
-	config["PasscodeReuseLimit"] = setInt64Field(c.PasscodeReuseLimit, 0)
-	config["RequireAlphanumericPasscode"] = setBoolFieldWithKey(c.RequireAlphanumericPasscode, "Value", false)
-	config["RequireComplexPasscode"] = setBoolFieldWithKey(c.RequireComplexPasscode, "Value", false)
-	config["RequirePasscode"] = setBoolFieldWithKey(c.RequirePasscode, "Value", false)
+	if helpers.IsConfiguredValue(c.ChangeAtNextAuth) {
+		config["ChangeAtNextAuth"] = setBoolFieldWithKey(c.ChangeAtNextAuth, "Value", false)
+	}
+	if helpers.IsConfiguredValue(c.FailedAttemptsResetInMinutes) {
+		config["FailedAttemptsResetInMinutes"] = setInt64Field(c.FailedAttemptsResetInMinutes, 0)
+	}
+	if helpers.IsConfiguredValue(c.MaximumFailedAttempts) {
+		config["MaximumFailedAttempts"] = setInt64Field(c.MaximumFailedAttempts, 0)
+	}
+	if helpers.IsConfiguredValue(c.MaximumGracePeriodInMinutes) {
+		config["MaximumGracePeriodInMinutes"] = setInt64Field(c.MaximumGracePeriodInMinutes, 0)
+	}
+	if helpers.IsConfiguredValue(c.MaximumInactivityInMinutes) {
+		config["MaximumInactivityInMinutes"] = setInt64Field(c.MaximumInactivityInMinutes, 0)
+	}
+	if helpers.IsConfiguredValue(c.MaximumPasscodeAgeInDays) {
+		config["MaximumPasscodeAgeInDays"] = setInt64Field(c.MaximumPasscodeAgeInDays, 0)
+	}
+	if helpers.IsConfiguredValue(c.MinimumComplexCharacters) {
+		config["MinimumComplexCharacters"] = setInt64Field(c.MinimumComplexCharacters, 0)
+	}
+	if helpers.IsConfiguredValue(c.MinimumLength) {
+		config["MinimumLength"] = setInt64Field(c.MinimumLength, 0)
+	}
+	if helpers.IsConfiguredValue(c.PasscodeReuseLimit) {
+		config["PasscodeReuseLimit"] = setInt64Field(c.PasscodeReuseLimit, 0)
+	}
+	if helpers.IsConfiguredValue(c.RequireAlphanumericPasscode) {
+		config["RequireAlphanumericPasscode"] = setBoolFieldWithKey(c.RequireAlphanumericPasscode, "Value", false)
+	}
+	if helpers.IsConfiguredValue(c.RequireComplexPasscode) {
+		config["RequireComplexPasscode"] = setBoolFieldWithKey(c.RequireComplexPasscode, "Value", false)
+	}
+	if helpers.IsConfiguredValue(c.RequirePasscode) {
+		config["RequirePasscode"] = setBoolFieldWithKey(c.RequirePasscode, "Value", false)
+	}
 
 	hasCustomRegex := helpers.IsConfiguredValue(c.CustomRegexPattern) ||
 		(!c.CustomRegexDescription.IsNull() && !c.CustomRegexDescription.IsUnknown())

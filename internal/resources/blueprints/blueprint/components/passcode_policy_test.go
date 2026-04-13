@@ -90,7 +90,7 @@ func TestPasscodePolicy_ToRawConfiguration_AllFields(t *testing.T) {
 	}
 }
 
-func TestPasscodePolicy_ToRawConfiguration_NullFieldsIncludedFalse(t *testing.T) {
+func TestPasscodePolicy_ToRawConfiguration_NullFieldsOmitted(t *testing.T) {
 	c := &PasscodePolicyComponent{
 		RequirePasscode:        types.BoolValue(true),
 		MinimumLength:          types.Int64Value(6),
@@ -113,14 +113,14 @@ func TestPasscodePolicy_ToRawConfiguration_NullFieldsIncludedFalse(t *testing.T)
 		t.Errorf("expected MinimumLength Included true, got %v", minLength["Included"])
 	}
 
-	changeAtNextAuth := config["ChangeAtNextAuth"].(map[string]any)
-	if changeAtNextAuth["Included"] != false {
-		t.Errorf("expected ChangeAtNextAuth Included false for null, got %v", changeAtNextAuth["Included"])
+	if _, exists := config["ChangeAtNextAuth"]; exists {
+		t.Error("expected ChangeAtNextAuth to be omitted for null")
 	}
-
-	maxFailed := config["MaximumFailedAttempts"].(map[string]any)
-	if maxFailed["Included"] != false {
-		t.Errorf("expected MaximumFailedAttempts Included false for null, got %v", maxFailed["Included"])
+	if _, exists := config["MaximumFailedAttempts"]; exists {
+		t.Error("expected MaximumFailedAttempts to be omitted for null")
+	}
+	if _, exists := config["PasscodeReuseLimit"]; exists {
+		t.Error("expected PasscodeReuseLimit to be omitted for null")
 	}
 }
 
