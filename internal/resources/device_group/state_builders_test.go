@@ -155,8 +155,6 @@ func TestAssignDeviceGroupModel_EmptyName(t *testing.T) {
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
-
 func TestFlattenDeviceGroupCriteria(t *testing.T) {
 	criteria := []jamfplatform.DeviceGroupCriteriaRepresentationV1{
 		{
@@ -165,8 +163,8 @@ func TestFlattenDeviceGroupCriteria(t *testing.T) {
 			Operator:              "LIKE",
 			AttributeValue:        "Mac",
 			JoinType:              "AND",
-			HasOpeningParenthesis: boolPtr(true),
-			HasClosingParenthesis: boolPtr(false),
+			HasOpeningParenthesis: new(true),
+			HasClosingParenthesis: new(false),
 		},
 		{
 			Order:                 1,
@@ -174,8 +172,8 @@ func TestFlattenDeviceGroupCriteria(t *testing.T) {
 			Operator:              "GREATER THAN",
 			AttributeValue:        "14.0",
 			JoinType:              "OR",
-			HasOpeningParenthesis: boolPtr(false),
-			HasClosingParenthesis: boolPtr(true),
+			HasOpeningParenthesis: new(false),
+			HasClosingParenthesis: new(true),
 		},
 	}
 
