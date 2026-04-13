@@ -44,6 +44,21 @@ func setBoolFieldWithKey(field types.Bool, key string, defaultValue bool) map[st
 	}
 }
 
+// setInt64Field sets an integer field for the Jamf API request body.
+// If the field is null or unknown, it sets the field to the provided default value and marks it as not included.
+func setInt64Field(field types.Int64, defaultValue int) map[string]any {
+	if helpers.IsConfiguredValue(field) {
+		return map[string]any{
+			"Value":    int(field.ValueInt64()),
+			"Included": true,
+		}
+	}
+	return map[string]any{
+		"Value":    defaultValue,
+		"Included": false,
+	}
+}
+
 // setValueField wraps a provided value in the Value/Included envelope expected by Jamf payloads.
 func setValueField(value any, included bool) map[string]any {
 	return map[string]any{
