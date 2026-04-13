@@ -142,6 +142,7 @@ func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]jamfplatform.
 		return
 	}
 
+	seenPayloadTypes := make(map[string]bool, len(items))
 	payloadArray := make([]map[string]any, 0, len(items))
 	for _, item := range items {
 		obj, ok := item.(map[string]any)
@@ -155,6 +156,15 @@ func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]jamfplatform.
 			diags.AddError("Missing payload_type", "Each legacy payload must include a payload_type key.")
 			return
 		}
+
+		if seenPayloadTypes[payloadType] {
+			diags.AddError(
+				"Duplicate payload_type",
+				"Legacy payloads must not contain duplicate payload types. Found duplicate: "+payloadType,
+			)
+			return
+		}
+		seenPayloadTypes[payloadType] = true
 
 		entry := map[string]any{
 			"payloadType":       payloadType,
