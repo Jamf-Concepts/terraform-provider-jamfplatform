@@ -14,6 +14,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -227,6 +228,92 @@ func TestAccDataSource_DeviceGroups(t *testing.T) {
 				`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_groups.all", "device_groups.#"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccResource_DeviceGroup_DescriptionNullVsEmpty(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-desc-nullempty-" + suffix
+	rn := "jamfplatform_device_group.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
+		Steps: []resource.TestStep{
+			// Step 1: create with a real description value
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_device_group" "test" {
+						name        = %q
+						description = "initial value"
+						group_type  = "static"
+						device_type = "computer"
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(rn, "id"),
+					resource.TestCheckResourceAttr(rn, "description", "initial value"),
+				),
+			},
+			// Step 2: set description to explicit empty string — must be preserved as ""
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_device_group" "test" {
+						name        = %q
+						description = ""
+						group_type  = "static"
+						device_type = "computer"
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(rn, "description", ""),
+				),
+			},
+			// Step 3: set description to explicit null — must become unset in state
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_device_group" "test" {
+						name        = %q
+						description = null
+						group_type  = "static"
+						device_type = "computer"
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(rn, "description"),
+				),
+			},
+			// Step 4: omit description entirely — equivalent to null, plan must be empty
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_device_group" "test" {
+						name        = %q
+						group_type  = "static"
+						device_type = "computer"
+					}
+				`, name),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+			// Step 5: re-add description to verify it can be restored after being unset
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_device_group" "test" {
+						name        = %q
+						description = "restored"
+						group_type  = "static"
+						device_type = "computer"
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(rn, "description", "restored"),
 				),
 			},
 		},
