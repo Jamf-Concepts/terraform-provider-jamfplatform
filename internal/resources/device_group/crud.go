@@ -61,7 +61,8 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 
 	switch strings.ToLower(plan.GroupType.ValueString()) {
 	case "smart":
-		reqBody.Criteria = expandDeviceGroupCriteria(plan.Criteria)
+		criteria := expandDeviceGroupCriteria(plan.Criteria)
+		reqBody.Criteria = &criteria
 	case "static":
 		if manageMembers {
 			members, diags := helpers.SetToStringSlice(createCtx, plan.Members)
@@ -69,7 +70,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 			if resp.Diagnostics.HasError() {
 				return
 			}
-			reqBody.Members = members
+			reqBody.Members = &members
 		}
 	}
 
@@ -226,7 +227,8 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	if strings.ToLower(plan.GroupType.ValueString()) == "smart" {
-		updateReq.Criteria = expandDeviceGroupCriteria(plan.Criteria)
+		criteria := expandDeviceGroupCriteria(plan.Criteria)
+		updateReq.Criteria = &criteria
 	}
 
 	if err := r.client.UpdateDeviceGroup(updateCtx, plan.ID.ValueString(), updateReq); err != nil {
@@ -252,9 +254,12 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 
 		added, removed := diffStringSlices(current, desired)
 		if len(added) > 0 || len(removed) > 0 {
-			patch := &jamfplatform.DeviceGroupMemberPatchRepresentationV1{
-				Added:   added,
-				Removed: removed,
+			patch := &jamfplatform.DeviceGroupMemberPatchRepresentationV1{}
+			if len(added) > 0 {
+				patch.Added = &added
+			}
+			if len(removed) > 0 {
+				patch.Removed = &removed
 			}
 			if err := r.client.UpdateDeviceGroupMembers(updateCtx, plan.ID.ValueString(), patch); err != nil {
 				resp.Diagnostics.AddError("Error updating device group members", err.Error())

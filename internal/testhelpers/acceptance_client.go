@@ -115,7 +115,7 @@ func RequireSmartGroupFixture(t *testing.T) string {
 			Description: strPtr("Terraform provider acceptance test fixture — safe to delete"),
 			DeviceType:  "COMPUTER",
 			GroupType:   "SMART",
-			Criteria: []jamfplatform.DeviceGroupCriteriaRepresentationV1{
+			Criteria: &[]jamfplatform.DeviceGroupCriteriaRepresentationV1{
 				{
 					Order:          0,
 					AttributeName:  "Serial Number",
