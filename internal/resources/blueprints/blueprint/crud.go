@@ -53,7 +53,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 	reqBody := &jamfplatform.CreateBlueprintRequest{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueStringPointer(),
-		Scope: &jamfplatform.CreateScope{
+		Scope: jamfplatform.CreateScope{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
@@ -218,7 +218,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		Scope: &jamfplatform.BlueprintScope{
 			DeviceGroups: deviceGroups,
 		},
-		Steps: steps,
+		Steps: &steps,
 	}
 
 	if err := r.client.UpdateBlueprint(updateCtx, data.ID.ValueString(), updateReq); err != nil {

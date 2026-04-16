@@ -15,7 +15,7 @@ func buildBenchmarkRequest(data *BenchmarkResourceModel) *jamfplatform.Benchmark
 		SourceBaselineID: data.SourceBaselineID.ValueString(),
 		Sources:          make([]jamfplatform.Source, len(data.Sources)),
 		Rules:            make([]jamfplatform.RuleRequest, len(data.Rules)),
-		Target: &jamfplatform.TargetV2{
+		Target: jamfplatform.TargetV2{
 			DeviceGroups: []string{data.TargetDeviceGroup.ValueString()},
 		},
 		EnforcementMode: data.EnforcementMode.ValueString(),
