@@ -6,6 +6,8 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -14,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// SoftwareUpdateSettingsComponent represents a strongly-typed software update settings component
+// SoftwareUpdateSettingsComponent represents a strongly-typed software update settings component.
 type SoftwareUpdateSettingsComponent struct {
 	AllowStandardUserOSUpdates           types.Bool         `tfsdk:"allow_standard_user_os_updates"`
 	AutomaticDownload                    types.String       `tfsdk:"automatic_download"`
@@ -34,13 +36,13 @@ type SoftwareUpdateSettingsComponent struct {
 	RecommendedCadence                   types.String       `tfsdk:"recommended_cadence"`
 }
 
-// BetaProgramModel represents a beta program configuration
+// BetaProgramModel represents a beta program configuration.
 type BetaProgramModel struct {
 	Token       types.String `tfsdk:"token"`
 	Description types.String `tfsdk:"description"`
 }
 
-// SoftwareUpdateSettingsComponentSchema returns the Terraform schema for software update component
+// SoftwareUpdateSettingsComponentSchema returns the Terraform schema for software update component.
 func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"allow_standard_user_os_updates": schema.BoolAttribute{
@@ -131,250 +133,220 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the strongly-typed component to the OpenAPI nested format
-func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (map[string]any, error) {
-	config := make(map[string]any)
-
-	config["AllowStandardUserOSUpdates"] = setBoolField(c.AllowStandardUserOSUpdates, false)
-
-	automaticActions := map[string]any{
-		"Download":              setStringField(c.AutomaticDownload, "Allowed"),
-		"InstallOSUpdates":      setStringField(c.AutomaticInstallOSUpdates, "Allowed"),
-		"InstallSecurityUpdate": setStringField(c.AutomaticInstallSecurityUpdate, "Allowed"),
+// buildOptionallyEnabled builds an OptionallyEnabled wrapper for a bool field.
+func buildOptionallyEnabled(field types.Bool, defaultValue bool) *declarations.OptionallyEnabled {
+	enabled := defaultValue
+	if helpers.IsConfiguredValue(field) {
+		enabled = field.ValueBool()
 	}
-	config["AutomaticActions"] = automaticActions
+	return &declarations.OptionallyEnabled{
+		Enabled:  enabled,
+		Included: boolPtr(helpers.IsConfiguredValue(field)),
+	}
+}
+
+// buildAutomaticAction builds an AutomaticAction wrapper for a string field.
+func buildAutomaticAction(field types.String, defaultValue string) *declarations.AutomaticAction {
+	value := defaultValue
+	if helpers.IsConfiguredValue(field) {
+		value = field.ValueString()
+	}
+	return &declarations.AutomaticAction{
+		Included: boolPtr(helpers.IsConfiguredValue(field)),
+		Value:    value,
+	}
+}
+
+// buildOptionalPeriodInDays builds an OptionalPeriodInDays wrapper for an int64 field.
+func buildOptionalPeriodInDays(field types.Int64) *declarations.OptionalPeriodInDays {
+	if !helpers.IsConfiguredValue(field) {
+		v := 0
+		return &declarations.OptionalPeriodInDays{Included: boolPtr(false), Value: &v}
+	}
+	v := int(field.ValueInt64())
+	return &declarations.OptionalPeriodInDays{Included: boolPtr(true), Value: &v}
+}
+
+// ToRawConfiguration converts the strongly-typed component to the OpenAPI nested format.
+func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
+	cfg := declarations.SoftwareUpdateSettingsConfiguration{}
+
+	cfg.AllowStandardUserOSUpdates = buildOptionallyEnabled(c.AllowStandardUserOSUpdates, false)
+
+	cfg.AutomaticActions = &declarations.AutomaticActions{
+		Download:              buildAutomaticAction(c.AutomaticDownload, "Allowed"),
+		InstallOSUpdates:      buildAutomaticAction(c.AutomaticInstallOSUpdates, "Allowed"),
+		InstallSecurityUpdate: buildAutomaticAction(c.AutomaticInstallSecurityUpdate, "Allowed"),
+	}
 
 	hasBetaSettings := helpers.IsConfiguredValue(c.BetaProgramEnrollment) ||
 		len(c.BetaOfferPrograms) > 0 ||
 		(helpers.IsConfiguredValue(c.BetaRequireProgramToken) && helpers.IsConfiguredValue(c.BetaRequireProgramDescription))
 
 	if hasBetaSettings {
-		betaValue := make(map[string]any)
+		trueVal := true
+		betaValue := &declarations.BetaSettings{}
+
 		if helpers.IsConfiguredValue(c.BetaProgramEnrollment) {
-			betaValue["ProgramEnrollment"] = c.BetaProgramEnrollment.ValueString()
+			betaValue.ProgramEnrollment = c.BetaProgramEnrollment.ValueString()
 		}
 
 		if len(c.BetaOfferPrograms) > 0 {
-			offerPrograms := make([]map[string]any, len(c.BetaOfferPrograms))
-			for i, program := range c.BetaOfferPrograms {
-				offerPrograms[i] = map[string]any{
-					"Token":       program.Token.ValueString(),
-					"Description": program.Description.ValueString(),
+			offerPrograms := make([]declarations.BetaProgram, len(c.BetaOfferPrograms))
+			for i, p := range c.BetaOfferPrograms {
+				offerPrograms[i] = declarations.BetaProgram{
+					Token:       p.Token.ValueString(),
+					Description: p.Description.ValueString(),
 				}
 			}
-			betaValue["OfferPrograms"] = offerPrograms
+			betaValue.OfferPrograms = &offerPrograms
 		}
 
 		if helpers.IsConfiguredValue(c.BetaRequireProgramToken) && helpers.IsConfiguredValue(c.BetaRequireProgramDescription) {
-			betaValue["RequireProgram"] = map[string]any{
-				"Token":       c.BetaRequireProgramToken.ValueString(),
-				"Description": c.BetaRequireProgramDescription.ValueString(),
+			betaValue.RequireProgram = &declarations.BetaProgram{
+				Token:       c.BetaRequireProgramToken.ValueString(),
+				Description: c.BetaRequireProgramDescription.ValueString(),
 			}
 		}
 
-		config["Beta"] = setValueField(betaValue, true)
+		cfg.Beta = &declarations.Beta{Included: &trueVal, Value: betaValue}
 	}
 
-	deferrals := map[string]any{
-		"CombinedPeriodInDays": setInt64Field(c.DeferralCombinedPeriod, 0),
-		"MajorPeriodInDays":    setInt64Field(c.DeferralMajorPeriod, 0),
-		"MinorPeriodInDays":    setInt64Field(c.DeferralMinorPeriod, 0),
-		"SystemPeriodInDays":   setInt64Field(c.DeferralSystemPeriod, 0),
+	cfg.Deferrals = &declarations.Deferrals{
+		CombinedPeriodInDays: buildOptionalPeriodInDays(c.DeferralCombinedPeriod),
+		MajorPeriodInDays:    buildOptionalPeriodInDays(c.DeferralMajorPeriod),
+		MinorPeriodInDays:    buildOptionalPeriodInDays(c.DeferralMinorPeriod),
+		SystemPeriodInDays:   buildOptionalPeriodInDays(c.DeferralSystemPeriod),
 	}
-	config["Deferrals"] = deferrals
 
-	config["Notifications"] = setBoolField(c.NotificationsEnabled, false)
+	cfg.Notifications = buildOptionallyEnabled(c.NotificationsEnabled, false)
 
-	rapidSecurityResponse := map[string]any{
-		"Enable":         setBoolField(c.RapidSecurityResponseEnabled, false),
-		"EnableRollback": setBoolField(c.RapidSecurityResponseRollbackEnabled, false),
+	cfg.RapidSecurityResponse = &declarations.RapidSecurityResponse{
+		Enable:         buildOptionallyEnabled(c.RapidSecurityResponseEnabled, false),
+		EnableRollback: buildOptionallyEnabled(c.RapidSecurityResponseRollbackEnabled, false),
 	}
-	config["RapidSecurityResponse"] = rapidSecurityResponse
 
-	config["RecommendedCadence"] = setStringField(c.RecommendedCadence, "All")
+	cadenceValue := "All"
+	if helpers.IsConfiguredValue(c.RecommendedCadence) {
+		cadenceValue = c.RecommendedCadence.ValueString()
+	}
+	cfg.RecommendedCadence = &declarations.RecommendedCadence{
+		Included: boolPtr(helpers.IsConfiguredValue(c.RecommendedCadence)),
+		Value:    cadenceValue,
+	}
 
-	return config, nil
+	return json.Marshal(cfg)
 }
 
-// FromRawConfiguration populates the strongly-typed component from OpenAPI nested configuration
-func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(rawConfig map[string]any) error {
-	extractOptionallyEnabled := func(key string) types.Bool {
-		if obj, exists := rawConfig[key]; exists {
-			if objMap, ok := obj.(map[string]any); ok {
-				if enabled, hasEnabled := objMap["Enabled"]; hasEnabled {
-					if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
-						return types.BoolValue(enabled.(bool))
-					}
+// FromRawConfiguration populates the strongly-typed component from OpenAPI nested configuration.
+func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(raw json.RawMessage) error {
+	var cfg declarations.SoftwareUpdateSettingsConfiguration
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
+	}
+
+	c.AllowStandardUserOSUpdates = types.BoolNull()
+	c.AutomaticDownload = types.StringNull()
+	c.AutomaticInstallOSUpdates = types.StringNull()
+	c.AutomaticInstallSecurityUpdate = types.StringNull()
+	c.BetaProgramEnrollment = types.StringNull()
+	c.BetaOfferPrograms = nil
+	c.BetaRequireProgramToken = types.StringNull()
+	c.BetaRequireProgramDescription = types.StringNull()
+	c.DeferralCombinedPeriod = types.Int64Null()
+	c.DeferralMajorPeriod = types.Int64Null()
+	c.DeferralMinorPeriod = types.Int64Null()
+	c.DeferralSystemPeriod = types.Int64Null()
+	c.NotificationsEnabled = types.BoolNull()
+	c.RapidSecurityResponseEnabled = types.BoolNull()
+	c.RapidSecurityResponseRollbackEnabled = types.BoolNull()
+	c.RecommendedCadence = types.StringNull()
+
+	if f := cfg.AllowStandardUserOSUpdates; f != nil && f.Included != nil && *f.Included {
+		c.AllowStandardUserOSUpdates = types.BoolValue(f.Enabled)
+	}
+
+	if aa := cfg.AutomaticActions; aa != nil {
+		if f := aa.Download; f != nil && f.Included != nil && *f.Included {
+			c.AutomaticDownload = types.StringValue(f.Value)
+		}
+		if f := aa.InstallOSUpdates; f != nil && f.Included != nil && *f.Included {
+			c.AutomaticInstallOSUpdates = types.StringValue(f.Value)
+		}
+		if f := aa.InstallSecurityUpdate; f != nil && f.Included != nil && *f.Included {
+			c.AutomaticInstallSecurityUpdate = types.StringValue(f.Value)
+		}
+	}
+
+	if beta := cfg.Beta; beta != nil && beta.Included != nil && *beta.Included && beta.Value != nil {
+		bv := beta.Value
+		if bv.ProgramEnrollment != "" {
+			c.BetaProgramEnrollment = types.StringValue(bv.ProgramEnrollment)
+		}
+		if bv.OfferPrograms != nil {
+			programs := make([]BetaProgramModel, len(*bv.OfferPrograms))
+			for i, p := range *bv.OfferPrograms {
+				programs[i] = BetaProgramModel{
+					Token:       types.StringValue(p.Token),
+					Description: types.StringValue(p.Description),
 				}
 			}
+			c.BetaOfferPrograms = programs
 		}
-		return types.BoolNull()
-	}
-
-	extractValue := func(path ...string) any {
-		current := rawConfig
-		for _, key := range path[:len(path)-1] {
-			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]any); ok {
-					current = nextMap
-				} else {
-					return nil
-				}
-			} else {
-				return nil
-			}
-		}
-
-		finalKey := path[len(path)-1]
-		if obj, exists := current[finalKey]; exists {
-			if objMap, ok := obj.(map[string]any); ok {
-				if value, hasValue := objMap["Value"]; hasValue {
-					if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
-						return value
-					}
-				}
-			}
-		}
-		return nil
-	}
-
-	extractInt64Value := func(path ...string) types.Int64 {
-		val := extractValue(path...)
-		if val == nil {
-			return types.Int64Null()
-		}
-		switch v := val.(type) {
-		case float64:
-			return types.Int64Value(int64(v))
-		case int:
-			return types.Int64Value(int64(v))
-		case int64:
-			return types.Int64Value(v)
-		}
-		return types.Int64Null()
-	}
-
-	c.AllowStandardUserOSUpdates = extractOptionallyEnabled("AllowStandardUserOSUpdates")
-	c.NotificationsEnabled = extractOptionallyEnabled("Notifications")
-
-	if val := extractValue("AutomaticActions", "Download"); val != nil {
-		c.AutomaticDownload = types.StringValue(val.(string))
-	} else {
-		c.AutomaticDownload = types.StringNull()
-	}
-
-	if val := extractValue("AutomaticActions", "InstallOSUpdates"); val != nil {
-		c.AutomaticInstallOSUpdates = types.StringValue(val.(string))
-	} else {
-		c.AutomaticInstallOSUpdates = types.StringNull()
-	}
-
-	if val := extractValue("AutomaticActions", "InstallSecurityUpdate"); val != nil {
-		c.AutomaticInstallSecurityUpdate = types.StringValue(val.(string))
-	} else {
-		c.AutomaticInstallSecurityUpdate = types.StringNull()
-	}
-
-	if beta, exists := rawConfig["Beta"]; exists {
-		if betaMap, ok := beta.(map[string]any); ok {
-			if value, hasValue := betaMap["Value"]; hasValue {
-				if included, hasIncluded := betaMap["Included"]; hasIncluded && included.(bool) {
-					if valueMap, ok := value.(map[string]any); ok {
-						if enrollment, hasEnrollment := valueMap["ProgramEnrollment"]; hasEnrollment {
-							c.BetaProgramEnrollment = types.StringValue(enrollment.(string))
-						}
-
-						if offerPrograms, hasOffer := valueMap["OfferPrograms"]; hasOffer {
-							if programList, ok := offerPrograms.([]any); ok {
-								c.BetaOfferPrograms = make([]BetaProgramModel, len(programList))
-								for i, program := range programList {
-									if progMap, ok := program.(map[string]any); ok {
-										c.BetaOfferPrograms[i] = BetaProgramModel{
-											Token:       types.StringValue(progMap["Token"].(string)),
-											Description: types.StringValue(progMap["Description"].(string)),
-										}
-									}
-								}
-							}
-						}
-
-						if requireProgram, hasRequire := valueMap["RequireProgram"]; hasRequire {
-							if progMap, ok := requireProgram.(map[string]any); ok {
-								if token, hasToken := progMap["Token"]; hasToken {
-									if tokenStr, ok := token.(string); ok {
-										c.BetaRequireProgramToken = types.StringValue(tokenStr)
-									}
-								}
-								if desc, hasDesc := progMap["Description"]; hasDesc {
-									if descStr, ok := desc.(string); ok {
-										c.BetaRequireProgramDescription = types.StringValue(descStr)
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		if bv.RequireProgram != nil {
+			c.BetaRequireProgramToken = types.StringValue(bv.RequireProgram.Token)
+			c.BetaRequireProgramDescription = types.StringValue(bv.RequireProgram.Description)
 		}
 	}
 
-	c.DeferralCombinedPeriod = extractInt64Value("Deferrals", "CombinedPeriodInDays")
-	c.DeferralMajorPeriod = extractInt64Value("Deferrals", "MajorPeriodInDays")
-	c.DeferralMinorPeriod = extractInt64Value("Deferrals", "MinorPeriodInDays")
-	c.DeferralSystemPeriod = extractInt64Value("Deferrals", "SystemPeriodInDays")
-
-	if rsr, exists := rawConfig["RapidSecurityResponse"]; exists {
-		if rsrMap, ok := rsr.(map[string]any); ok {
-			if enable, hasEnable := rsrMap["Enable"]; hasEnable {
-				if enableMap, ok := enable.(map[string]any); ok {
-					if enabled, hasEnabled := enableMap["Enabled"]; hasEnabled {
-						if included, hasIncluded := enableMap["Included"]; hasIncluded && included.(bool) {
-							c.RapidSecurityResponseEnabled = types.BoolValue(enabled.(bool))
-						}
-					}
-				}
-			}
-
-			if rollback, hasRollback := rsrMap["EnableRollback"]; hasRollback {
-				if rollbackMap, ok := rollback.(map[string]any); ok {
-					if enabled, hasEnabled := rollbackMap["Enabled"]; hasEnabled {
-						if included, hasIncluded := rollbackMap["Included"]; hasIncluded && included.(bool) {
-							c.RapidSecurityResponseRollbackEnabled = types.BoolValue(enabled.(bool))
-						}
-					}
-				}
-			}
+	if d := cfg.Deferrals; d != nil {
+		if f := d.CombinedPeriodInDays; f != nil && f.Included != nil && *f.Included && f.Value != nil {
+			c.DeferralCombinedPeriod = types.Int64Value(int64(*f.Value))
+		}
+		if f := d.MajorPeriodInDays; f != nil && f.Included != nil && *f.Included && f.Value != nil {
+			c.DeferralMajorPeriod = types.Int64Value(int64(*f.Value))
+		}
+		if f := d.MinorPeriodInDays; f != nil && f.Included != nil && *f.Included && f.Value != nil {
+			c.DeferralMinorPeriod = types.Int64Value(int64(*f.Value))
+		}
+		if f := d.SystemPeriodInDays; f != nil && f.Included != nil && *f.Included && f.Value != nil {
+			c.DeferralSystemPeriod = types.Int64Value(int64(*f.Value))
 		}
 	}
 
-	if val := extractValue("RecommendedCadence"); val != nil {
-		c.RecommendedCadence = types.StringValue(val.(string))
-	} else {
-		c.RecommendedCadence = types.StringNull()
+	if f := cfg.Notifications; f != nil && f.Included != nil && *f.Included {
+		c.NotificationsEnabled = types.BoolValue(f.Enabled)
+	}
+
+	if rsr := cfg.RapidSecurityResponse; rsr != nil {
+		if f := rsr.Enable; f != nil && f.Included != nil && *f.Included {
+			c.RapidSecurityResponseEnabled = types.BoolValue(f.Enabled)
+		}
+		if f := rsr.EnableRollback; f != nil && f.Included != nil && *f.Included {
+			c.RapidSecurityResponseRollbackEnabled = types.BoolValue(f.Enabled)
+		}
+	}
+
+	if f := cfg.RecommendedCadence; f != nil && f.Included != nil && *f.Included {
+		c.RecommendedCadence = types.StringValue(f.Value)
 	}
 
 	return nil
 }
 
-// GetIdentifier returns the component identifier for software update settings
+// GetIdentifier returns the component identifier for software update settings.
 func (c *SoftwareUpdateSettingsComponent) GetIdentifier() string {
 	return "com.jamf.ddm.software-update-settings"
 }
 
-// ToClientComponent converts the strongly-typed component to a client.BlueprintComponent
-func (c *SoftwareUpdateSettingsComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the strongly-typed component to a blueprints.Component.
+func (c *SoftwareUpdateSettingsComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }

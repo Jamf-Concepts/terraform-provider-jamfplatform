@@ -29,9 +29,13 @@ func TestCustomDeclarations_ToRawConfiguration_WithDeclarations(t *testing.T) {
 		},
 	}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	declarations, ok := config["declarations"].([]any)
@@ -52,11 +56,11 @@ func TestCustomDeclarations_ToRawConfiguration_WithDeclarations(t *testing.T) {
 	if decl["kind"] != "CONFIGURATION" {
 		t.Errorf("expected kind 'CONFIGURATION', got %v", decl["kind"])
 	}
+	if decl["payloadKey"] != float64(1) {
+		t.Errorf("expected payloadKey 1, got %v", decl["payloadKey"])
+	}
 	if decl["type"] != "com.apple.configuration.test" {
 		t.Errorf("expected type 'com.apple.configuration.test', got %v", decl["type"])
-	}
-	if decl["payloadKey"] != 1 {
-		t.Errorf("expected payloadKey 1, got %v", decl["payloadKey"])
 	}
 
 	payload, ok := decl["payload"].(map[string]any)
@@ -71,9 +75,13 @@ func TestCustomDeclarations_ToRawConfiguration_WithDeclarations(t *testing.T) {
 func TestCustomDeclarations_ToRawConfiguration_Empty(t *testing.T) {
 	c := &CustomDeclarationsComponent{}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	if _, exists := config["declarations"]; exists {
@@ -100,17 +108,18 @@ func TestCustomDeclarations_ToRawConfiguration_InvalidPayloadJSON(t *testing.T) 
 }
 
 func TestCustomDeclarations_FromRawConfiguration(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"declarations": []any{
 			map[string]any{
 				"channelType": "USER",
 				"kind":        "ASSET",
 				"payload":     map[string]any{"setting": true},
-				"type":        "com.apple.asset.test",
 				"payloadKey":  float64(1),
+				"type":        "com.apple.asset.test",
 			},
 		},
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &CustomDeclarationsComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -143,12 +152,37 @@ func TestCustomDeclarations_FromRawConfiguration(t *testing.T) {
 
 func TestCustomDeclarations_FromRawConfiguration_Empty(t *testing.T) {
 	c := &CustomDeclarationsComponent{}
-	if err := c.FromRawConfiguration(map[string]any{}); err != nil {
+	if err := c.FromRawConfiguration(json.RawMessage("{}")); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	if len(c.Declarations) != 0 {
 		t.Errorf("expected 0 declarations, got %d", len(c.Declarations))
+	}
+}
+
+func TestCustomDeclarations_ToRawConfiguration_PayloadKeyIndexed(t *testing.T) {
+	c := &CustomDeclarationsComponent{
+		Declarations: []CustomDeclarationModel{
+			{ChannelType: types.StringValue("SYSTEM"), Kind: types.StringValue("CONFIGURATION"), Payload: types.StringValue(`{}`), Type: types.StringValue("com.apple.configuration.a")},
+			{ChannelType: types.StringValue("SYSTEM"), Kind: types.StringValue("CONFIGURATION"), Payload: types.StringValue(`{}`), Type: types.StringValue("com.apple.configuration.b")},
+		},
+	}
+
+	rawCfg, err := c.ToRawConfiguration()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+	declarations := config["declarations"].([]any)
+	for i, raw := range declarations {
+		decl := raw.(map[string]any)
+		if decl["payloadKey"] != float64(i+1) {
+			t.Errorf("declaration[%d]: expected payloadKey %d, got %v", i, i+1, decl["payloadKey"])
+		}
 	}
 }
 
@@ -170,22 +204,13 @@ func TestCustomDeclarations_Roundtrip(t *testing.T) {
 		},
 	}
 
-	config, err := original.ToRawConfiguration()
+	rawCfg, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &CustomDeclarationsComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(rawCfg); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 

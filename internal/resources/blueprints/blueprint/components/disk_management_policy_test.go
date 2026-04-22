@@ -23,12 +23,17 @@ func TestDiskManagementPolicy_ToRawConfiguration_AllFields(t *testing.T) {
 		NetworkStorage:  types.StringValue("ReadOnly"),
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if config["version"] != int32(2) {
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+
+	if config["version"] != float64(2) {
 		t.Errorf("expected version 2, got %v", config["version"])
 	}
 
@@ -66,9 +71,14 @@ func TestDiskManagementPolicy_ToRawConfiguration_NullFieldsDefaults(t *testing.T
 		NetworkStorage:  types.StringNull(),
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
 	}
 
 	restrictions := config["Restrictions"].(map[string]any)
@@ -91,7 +101,7 @@ func TestDiskManagementPolicy_ToRawConfiguration_NullFieldsDefaults(t *testing.T
 }
 
 func TestDiskManagementPolicy_FromRawConfiguration(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"Restrictions": map[string]any{
 			"ExternalStorage": map[string]any{
 				"Value":    "ReadOnly",
@@ -103,6 +113,7 @@ func TestDiskManagementPolicy_FromRawConfiguration(t *testing.T) {
 			},
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &DiskManagementPolicyComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -118,7 +129,7 @@ func TestDiskManagementPolicy_FromRawConfiguration(t *testing.T) {
 }
 
 func TestDiskManagementPolicy_FromRawConfiguration_NotIncluded(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"Restrictions": map[string]any{
 			"ExternalStorage": map[string]any{
 				"Value":    "Allowed",
@@ -130,6 +141,7 @@ func TestDiskManagementPolicy_FromRawConfiguration_NotIncluded(t *testing.T) {
 			},
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &DiskManagementPolicyComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -145,8 +157,10 @@ func TestDiskManagementPolicy_FromRawConfiguration_NotIncluded(t *testing.T) {
 }
 
 func TestDiskManagementPolicy_FromRawConfiguration_Empty(t *testing.T) {
+	raw, _ := json.Marshal(map[string]any{})
+
 	c := &DiskManagementPolicyComponent{}
-	if err := c.FromRawConfiguration(map[string]any{}); err != nil {
+	if err := c.FromRawConfiguration(raw); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -164,22 +178,13 @@ func TestDiskManagementPolicy_Roundtrip(t *testing.T) {
 		NetworkStorage:  types.StringValue("ReadOnly"),
 	}
 
-	config, err := original.ToRawConfiguration()
+	raw, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &DiskManagementPolicyComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(raw); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 

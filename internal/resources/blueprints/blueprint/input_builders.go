@@ -116,16 +116,10 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blue
 func (r *BlueprintResource) collectSingleComponent(allComponents *[]blueprints.Component, diags *diag.Diagnostics, comp components.ComponentConverter, componentName string) {
 	clientComp, err := comp.ToClientComponent()
 	if err != nil {
-		diags.AddError(
-			"Error converting "+componentName+" component",
-			"Could not convert "+componentName+" to client format: "+err.Error(),
-		)
+		diags.AddError("Failed to build "+componentName+" component", err.Error())
 		return
 	}
-	*allComponents = append(*allComponents, blueprints.Component{
-		Identifier:    clientComp.Identifier,
-		Configuration: clientComp.Configuration,
-	})
+	*allComponents = append(*allComponents, *clientComp)
 }
 
 // collectLegacyPayloads builds the API component from a dynamic legacy payloads value.

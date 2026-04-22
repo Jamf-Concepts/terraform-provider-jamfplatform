@@ -42,9 +42,13 @@ func TestSoftwareUpdateSettings_ToRawConfiguration_AllFields(t *testing.T) {
 		RecommendedCadence:                   types.StringValue("Newest"),
 	}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	allowUpdates, ok := config["AllowStandardUserOSUpdates"].(map[string]any)
@@ -82,12 +86,13 @@ func TestSoftwareUpdateSettings_ToRawConfiguration_AllFields(t *testing.T) {
 		t.Errorf("expected ProgramEnrollment 'AlwaysOn', got %v", betaValue["ProgramEnrollment"])
 	}
 
-	offerPrograms := betaValue["OfferPrograms"].([]map[string]any)
+	offerPrograms := betaValue["OfferPrograms"].([]any)
 	if len(offerPrograms) != 1 {
 		t.Fatalf("expected 1 offer program, got %d", len(offerPrograms))
 	}
-	if offerPrograms[0]["Token"] != "offer-token-1" {
-		t.Errorf("expected Token 'offer-token-1', got %v", offerPrograms[0]["Token"])
+	offerProg := offerPrograms[0].(map[string]any)
+	if offerProg["Token"] != "offer-token-1" {
+		t.Errorf("expected Token 'offer-token-1', got %v", offerProg["Token"])
 	}
 
 	requireProgram := betaValue["RequireProgram"].(map[string]any)
@@ -103,7 +108,7 @@ func TestSoftwareUpdateSettings_ToRawConfiguration_AllFields(t *testing.T) {
 		t.Fatal("expected Deferrals to be a map")
 	}
 	combined := deferrals["CombinedPeriodInDays"].(map[string]any)
-	if combined["Value"] != 30 {
+	if combined["Value"] != float64(30) {
 		t.Errorf("expected CombinedPeriodInDays Value 30, got %v", combined["Value"])
 	}
 
@@ -131,9 +136,13 @@ func TestSoftwareUpdateSettings_ToRawConfiguration_AllFields(t *testing.T) {
 func TestSoftwareUpdateSettings_ToRawConfiguration_NullDefaults(t *testing.T) {
 	c := &SoftwareUpdateSettingsComponent{}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	allowUpdates := config["AllowStandardUserOSUpdates"].(map[string]any)
@@ -161,7 +170,7 @@ func TestSoftwareUpdateSettings_ToRawConfiguration_NullDefaults(t *testing.T) {
 }
 
 func TestSoftwareUpdateSettings_FromRawConfiguration(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"AllowStandardUserOSUpdates": map[string]any{
 			"Enabled":  true,
 			"Included": true,
@@ -233,6 +242,7 @@ func TestSoftwareUpdateSettings_FromRawConfiguration(t *testing.T) {
 			"Included": true,
 		},
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &SoftwareUpdateSettingsComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -296,7 +306,7 @@ func TestSoftwareUpdateSettings_FromRawConfiguration(t *testing.T) {
 }
 
 func TestSoftwareUpdateSettings_FromRawConfiguration_NotIncluded(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"AllowStandardUserOSUpdates": map[string]any{
 			"Enabled":  false,
 			"Included": false,
@@ -352,6 +362,7 @@ func TestSoftwareUpdateSettings_FromRawConfiguration_NotIncluded(t *testing.T) {
 			"Included": false,
 		},
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &SoftwareUpdateSettingsComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -400,22 +411,13 @@ func TestSoftwareUpdateSettings_Roundtrip(t *testing.T) {
 		RecommendedCadence:                   types.StringValue("Oldest"),
 	}
 
-	config, err := original.ToRawConfiguration()
+	rawCfg, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &SoftwareUpdateSettingsComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(rawCfg); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 

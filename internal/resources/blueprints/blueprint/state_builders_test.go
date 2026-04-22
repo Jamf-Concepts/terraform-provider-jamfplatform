@@ -21,9 +21,13 @@ func TestParseComponentConfiguration_Found(t *testing.T) {
 		},
 	}
 
-	config, ok := parseComponentConfiguration(apiComponents, "com.jamf.ddm.disk-management")
+	rawConfig, ok := parseComponentConfiguration(apiComponents, "com.jamf.ddm.disk-management")
 	if !ok {
 		t.Fatal("expected to find configuration")
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawConfig, &config); err != nil {
+		t.Fatalf("failed to unmarshal configuration: %v", err)
 	}
 	if config["externalStorage"] != "deny" {
 		t.Errorf("expected externalStorage 'deny', got %v", config["externalStorage"])
@@ -61,9 +65,12 @@ func TestParseComponentConfiguration_InvalidJSON(t *testing.T) {
 		},
 	}
 
-	_, ok := parseComponentConfiguration(apiComponents, "com.jamf.ddm.disk-management")
-	if ok {
-		t.Error("expected not found for invalid JSON")
+	rawConfig, ok := parseComponentConfiguration(apiComponents, "com.jamf.ddm.disk-management")
+	if !ok {
+		t.Error("expected to find raw bytes even for invalid JSON — validation is caller's responsibility")
+	}
+	if string(rawConfig) != "{invalid" {
+		t.Errorf("expected raw bytes returned as-is, got %q", string(rawConfig))
 	}
 }
 
