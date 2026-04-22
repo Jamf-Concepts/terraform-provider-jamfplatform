@@ -141,16 +141,3 @@ func scopeDeviceGroups(scope *blueprints.BlueprintScope) []string {
 	return scope.DeviceGroups
 }
 
-// getBlueprintByName looks up a blueprint by name using the list API.
-func getBlueprintByName(ctx context.Context, c *blueprints.Client, name string) (*blueprints.BlueprintDetail, error) {
-	blueprints, err := c.ListBlueprints(ctx, nil, name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list blueprints: %w", err)
-	}
-	for _, bp := range blueprints {
-		if bp.Name == name {
-			return c.GetBlueprint(ctx, bp.ID)
-		}
-	}
-	return nil, fmt.Errorf("blueprint with name %q not found", name)
-}
