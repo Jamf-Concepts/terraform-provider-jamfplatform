@@ -24,9 +24,14 @@ func TestAudioAccessorySettings_ToRawConfiguration_Full(t *testing.T) {
 		UnpairingTimeHour:        types.Int64Value(14),
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
 	}
 
 	tp, ok := config["TemporaryPairing"].(map[string]any)
@@ -51,7 +56,7 @@ func TestAudioAccessorySettings_ToRawConfiguration_Full(t *testing.T) {
 	if ut["Policy"] != "Hour" {
 		t.Errorf("expected Policy 'Hour', got %v", ut["Policy"])
 	}
-	if ut["Hour"] != 14 {
+	if ut["Hour"] != float64(14) {
 		t.Errorf("expected Hour 14, got %v", ut["Hour"])
 	}
 }
@@ -63,9 +68,14 @@ func TestAudioAccessorySettings_ToRawConfiguration_NullFields(t *testing.T) {
 		UnpairingTimeHour:        types.Int64Null(),
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
 	}
 
 	if _, exists := config["TemporaryPairing"]; exists {
@@ -74,7 +84,7 @@ func TestAudioAccessorySettings_ToRawConfiguration_NullFields(t *testing.T) {
 }
 
 func TestAudioAccessorySettings_FromRawConfiguration_Full(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"TemporaryPairing": map[string]any{
 			"Included": true,
 			"Disabled": true,
@@ -86,6 +96,7 @@ func TestAudioAccessorySettings_FromRawConfiguration_Full(t *testing.T) {
 			},
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &AudioAccessorySettingsComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -104,11 +115,12 @@ func TestAudioAccessorySettings_FromRawConfiguration_Full(t *testing.T) {
 }
 
 func TestAudioAccessorySettings_FromRawConfiguration_NotIncluded(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"TemporaryPairing": map[string]any{
 			"Included": false,
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &AudioAccessorySettingsComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -121,8 +133,10 @@ func TestAudioAccessorySettings_FromRawConfiguration_NotIncluded(t *testing.T) {
 }
 
 func TestAudioAccessorySettings_FromRawConfiguration_Empty(t *testing.T) {
+	raw, _ := json.Marshal(map[string]any{})
+
 	c := &AudioAccessorySettingsComponent{}
-	if err := c.FromRawConfiguration(map[string]any{}); err != nil {
+	if err := c.FromRawConfiguration(raw); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -141,22 +155,13 @@ func TestAudioAccessorySettings_Roundtrip(t *testing.T) {
 		UnpairingTimeHour:        types.Int64Value(9),
 	}
 
-	config, err := original.ToRawConfiguration()
+	raw, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &AudioAccessorySettingsComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(raw); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 

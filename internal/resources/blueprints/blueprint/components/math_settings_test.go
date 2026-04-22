@@ -29,9 +29,14 @@ func TestMathSettings_ToRawConfiguration_AllConfigured(t *testing.T) {
 		SystemBehaviorMathNotes:            types.BoolValue(false),
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
 	}
 
 	calc, ok := config["Calculator"].(map[string]any)
@@ -82,9 +87,14 @@ func TestMathSettings_ToRawConfiguration_AllConfigured(t *testing.T) {
 func TestMathSettings_ToRawConfiguration_NullDefaults(t *testing.T) {
 	c := &MathSettingsComponent{}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
 	}
 
 	calc := config["Calculator"].(map[string]any)
@@ -103,7 +113,7 @@ func TestMathSettings_ToRawConfiguration_NullDefaults(t *testing.T) {
 }
 
 func TestMathSettings_FromRawConfiguration(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"Calculator": map[string]any{
 			"BasicMode": map[string]any{
 				"Included":      true,
@@ -132,6 +142,7 @@ func TestMathSettings_FromRawConfiguration(t *testing.T) {
 			"MathNotes":           true,
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &MathSettingsComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -176,22 +187,13 @@ func TestMathSettings_Roundtrip(t *testing.T) {
 		SystemBehaviorMathNotes:            types.BoolValue(true),
 	}
 
-	config, err := original.ToRawConfiguration()
+	raw, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &MathSettingsComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(raw); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 

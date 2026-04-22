@@ -41,9 +41,13 @@ func TestServiceBackgroundTasks_ToRawConfiguration_Full(t *testing.T) {
 		},
 	}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	tasks, ok := config["backgroundTasks"].([]any)
@@ -100,18 +104,23 @@ func TestServiceBackgroundTasks_ToRawConfiguration_Full(t *testing.T) {
 func TestServiceBackgroundTasks_ToRawConfiguration_Empty(t *testing.T) {
 	c := &ServiceBackgroundTasksComponent{}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
+	}
 
-	if _, exists := config["backgroundTasks"]; exists {
-		t.Error("expected no backgroundTasks key for empty component")
+	tasks, ok := config["backgroundTasks"].([]any)
+	if !ok || len(tasks) != 0 {
+		t.Error("expected empty backgroundTasks slice for empty component")
 	}
 }
 
 func TestServiceBackgroundTasks_FromRawConfiguration(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"backgroundTasks": []any{
 			map[string]any{
 				"TaskType":        "com.example.bg",
@@ -138,6 +147,7 @@ func TestServiceBackgroundTasks_FromRawConfiguration(t *testing.T) {
 			},
 		},
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &ServiceBackgroundTasksComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -185,7 +195,7 @@ func TestServiceBackgroundTasks_FromRawConfiguration(t *testing.T) {
 
 func TestServiceBackgroundTasks_FromRawConfiguration_Empty(t *testing.T) {
 	c := &ServiceBackgroundTasksComponent{}
-	if err := c.FromRawConfiguration(map[string]any{}); err != nil {
+	if err := c.FromRawConfiguration(json.RawMessage("{}")); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -208,22 +218,13 @@ func TestServiceBackgroundTasks_Roundtrip(t *testing.T) {
 		},
 	}
 
-	config, err := original.ToRawConfiguration()
+	rawCfg, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &ServiceBackgroundTasksComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(rawCfg); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 

@@ -6,6 +6,8 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -13,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// SafariSettingsComponent represents a strongly-typed Safari settings component
+// SafariSettingsComponent represents a strongly-typed Safari settings component.
 type SafariSettingsComponent struct {
 	AcceptCookies              types.String `tfsdk:"accept_cookies"`
 	AllowDisablingFraudWarning types.Bool   `tfsdk:"allow_disabling_fraud_warning"`
@@ -27,12 +29,12 @@ type SafariSettingsComponent struct {
 	NewTabStartPageExtensionID types.String `tfsdk:"new_tab_start_page_extension_id"`
 }
 
-// GetIdentifier returns the component identifier for Safari settings
+// GetIdentifier returns the component identifier for Safari settings.
 func (c *SafariSettingsComponent) GetIdentifier() string {
 	return "com.jamf.ddm.safari-settings"
 }
 
-// SafariSettingsComponentSchema returns the Terraform schema for Safari settings component
+// SafariSettingsComponentSchema returns the Terraform schema for Safari settings component.
 func SafariSettingsComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"accept_cookies": schema.StringAttribute{
@@ -80,173 +82,147 @@ func SafariSettingsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the typed component to raw configuration matching OpenAPI SafariSettingsConfiguration schema
-func (c *SafariSettingsComponent) ToRawConfiguration() (map[string]any, error) {
-	config := make(map[string]any)
+// buildOptBoolField builds a *bool value from a configured types.Bool with Included envelope.
+func buildOptBoolField(field types.Bool) *bool {
+	if !helpers.IsConfiguredValue(field) {
+		return nil
+	}
+	v := field.ValueBool()
+	return &v
+}
+
+// ToRawConfiguration converts the typed component to raw JSON configuration.
+func (c *SafariSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
+	cfg := declarations.SafariSettingsConfiguration{}
 
 	if helpers.IsConfiguredValue(c.AcceptCookies) {
-		config["AcceptCookies"] = setStringField(c.AcceptCookies, "")
+		v := c.AcceptCookies.ValueString()
+		t := true
+		cfg.AcceptCookies = &declarations.AcceptCookies{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowDisablingFraudWarning) {
-		config["AllowDisablingFraudWarning"] = setBoolFieldWithKey(c.AllowDisablingFraudWarning, "Value", false)
+		v := c.AllowDisablingFraudWarning.ValueBool()
+		t := true
+		cfg.AllowDisablingFraudWarning = &declarations.AllowDisablingFraudWarning{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowHistoryClearing) {
-		config["AllowHistoryClearing"] = setBoolFieldWithKey(c.AllowHistoryClearing, "Value", false)
+		v := c.AllowHistoryClearing.ValueBool()
+		t := true
+		cfg.AllowHistoryClearing = &declarations.AllowHistoryClearing{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowJavaScript) {
-		config["AllowJavaScript"] = setBoolFieldWithKey(c.AllowJavaScript, "Value", false)
+		v := c.AllowJavaScript.ValueBool()
+		t := true
+		cfg.AllowJavaScript = &declarations.AllowJavaScript{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowPrivateBrowsing) {
-		config["AllowPrivateBrowsing"] = setBoolFieldWithKey(c.AllowPrivateBrowsing, "Value", false)
+		v := c.AllowPrivateBrowsing.ValueBool()
+		t := true
+		cfg.AllowPrivateBrowsing = &declarations.AllowPrivateBrowsing{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowPopups) {
-		config["AllowPopups"] = setBoolFieldWithKey(c.AllowPopups, "Value", false)
+		v := c.AllowPopups.ValueBool()
+		t := true
+		cfg.AllowPopups = &declarations.AllowPopups{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowSummary) {
-		config["AllowSummary"] = setBoolFieldWithKey(c.AllowSummary, "Value", false)
+		v := c.AllowSummary.ValueBool()
+		t := true
+		cfg.AllowSummary = &declarations.AllowSummary{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.NewTabStartPageType) ||
 		helpers.IsConfiguredValue(c.NewTabStartPageHomepageURL) ||
 		helpers.IsConfiguredValue(c.NewTabStartPageExtensionID) {
 
-		newTabStartPage := map[string]any{
-			"Included": true,
+		trueVal := true
+		ntsp := &declarations.NewTabStartPage{
+			Included: &trueVal,
 		}
-
 		if helpers.IsConfiguredValue(c.NewTabStartPageType) {
-			newTabStartPage["PageType"] = c.NewTabStartPageType.ValueString()
+			ntsp.PageType = c.NewTabStartPageType.ValueString()
 		}
-
 		if helpers.IsConfiguredValue(c.NewTabStartPageHomepageURL) {
-			newTabStartPage["HomepageURL"] = c.NewTabStartPageHomepageURL.ValueString()
+			u := c.NewTabStartPageHomepageURL.ValueString()
+			ntsp.HomepageURL = &u
 		}
-
 		if helpers.IsConfiguredValue(c.NewTabStartPageExtensionID) {
-			newTabStartPage["ExtensionIdentifier"] = c.NewTabStartPageExtensionID.ValueString()
+			e := c.NewTabStartPageExtensionID.ValueString()
+			ntsp.ExtensionIdentifier = &e
 		}
-
-		config["NewTabStartPage"] = newTabStartPage
+		cfg.NewTabStartPage = ntsp
 	}
 
-	return config, nil
+	return json.Marshal(cfg)
 }
 
-// FromRawConfiguration populates the typed component from raw configuration data
-func (c *SafariSettingsComponent) FromRawConfiguration(raw map[string]any) error {
-	if acceptCookiesRaw, exists := raw["AcceptCookies"]; exists {
-		if acceptCookiesMap, ok := acceptCookiesRaw.(map[string]any); ok {
-			if value, exists := acceptCookiesMap["Value"]; exists {
-				if valueStr, ok := value.(string); ok {
-					c.AcceptCookies = types.StringValue(valueStr)
-				}
-			}
-		}
+// FromRawConfiguration populates the typed component from raw JSON configuration.
+func (c *SafariSettingsComponent) FromRawConfiguration(raw json.RawMessage) error {
+	var cfg declarations.SafariSettingsConfiguration
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
 	}
 
-	if allowDisablingFraudWarningRaw, exists := raw["AllowDisablingFraudWarning"]; exists {
-		if allowDisablingFraudWarningMap, ok := allowDisablingFraudWarningRaw.(map[string]any); ok {
-			if value, exists := allowDisablingFraudWarningMap["Value"]; exists {
-				if valueBool, ok := value.(bool); ok {
-					c.AllowDisablingFraudWarning = types.BoolValue(valueBool)
-				}
-			}
-		}
+	c.AcceptCookies = types.StringNull()
+	c.AllowDisablingFraudWarning = types.BoolNull()
+	c.AllowHistoryClearing = types.BoolNull()
+	c.AllowJavaScript = types.BoolNull()
+	c.AllowPrivateBrowsing = types.BoolNull()
+	c.AllowPopups = types.BoolNull()
+	c.AllowSummary = types.BoolNull()
+	c.NewTabStartPageType = types.StringNull()
+	c.NewTabStartPageHomepageURL = types.StringNull()
+	c.NewTabStartPageExtensionID = types.StringNull()
+
+	if f := cfg.AcceptCookies; f != nil && f.Value != nil {
+		c.AcceptCookies = types.StringValue(*f.Value)
+	}
+	if f := cfg.AllowDisablingFraudWarning; f != nil && f.Value != nil {
+		c.AllowDisablingFraudWarning = types.BoolValue(*f.Value)
+	}
+	if f := cfg.AllowHistoryClearing; f != nil && f.Value != nil {
+		c.AllowHistoryClearing = types.BoolValue(*f.Value)
+	}
+	if f := cfg.AllowJavaScript; f != nil && f.Value != nil {
+		c.AllowJavaScript = types.BoolValue(*f.Value)
+	}
+	if f := cfg.AllowPrivateBrowsing; f != nil && f.Value != nil {
+		c.AllowPrivateBrowsing = types.BoolValue(*f.Value)
+	}
+	if f := cfg.AllowPopups; f != nil && f.Value != nil {
+		c.AllowPopups = types.BoolValue(*f.Value)
+	}
+	if f := cfg.AllowSummary; f != nil && f.Value != nil {
+		c.AllowSummary = types.BoolValue(*f.Value)
 	}
 
-	if allowHistoryClearingRaw, exists := raw["AllowHistoryClearing"]; exists {
-		if allowHistoryClearingMap, ok := allowHistoryClearingRaw.(map[string]any); ok {
-			if value, exists := allowHistoryClearingMap["Value"]; exists {
-				if valueBool, ok := value.(bool); ok {
-					c.AllowHistoryClearing = types.BoolValue(valueBool)
-				}
-			}
+	if ntsp := cfg.NewTabStartPage; ntsp != nil {
+		c.NewTabStartPageType = types.StringValue(ntsp.PageType)
+		if ntsp.HomepageURL != nil {
+			c.NewTabStartPageHomepageURL = types.StringValue(*ntsp.HomepageURL)
 		}
-	}
-
-	if allowJavaScriptRaw, exists := raw["AllowJavaScript"]; exists {
-		if allowJavaScriptMap, ok := allowJavaScriptRaw.(map[string]any); ok {
-			if value, exists := allowJavaScriptMap["Value"]; exists {
-				if valueBool, ok := value.(bool); ok {
-					c.AllowJavaScript = types.BoolValue(valueBool)
-				}
-			}
-		}
-	}
-
-	if allowPrivateBrowsingRaw, exists := raw["AllowPrivateBrowsing"]; exists {
-		if allowPrivateBrowsingMap, ok := allowPrivateBrowsingRaw.(map[string]any); ok {
-			if value, exists := allowPrivateBrowsingMap["Value"]; exists {
-				if valueBool, ok := value.(bool); ok {
-					c.AllowPrivateBrowsing = types.BoolValue(valueBool)
-				}
-			}
-		}
-	}
-
-	if allowPopupsRaw, exists := raw["AllowPopups"]; exists {
-		if allowPopupsMap, ok := allowPopupsRaw.(map[string]any); ok {
-			if value, exists := allowPopupsMap["Value"]; exists {
-				if valueBool, ok := value.(bool); ok {
-					c.AllowPopups = types.BoolValue(valueBool)
-				}
-			}
-		}
-	}
-
-	if allowSummaryRaw, exists := raw["AllowSummary"]; exists {
-		if allowSummaryMap, ok := allowSummaryRaw.(map[string]any); ok {
-			if value, exists := allowSummaryMap["Value"]; exists {
-				if valueBool, ok := value.(bool); ok {
-					c.AllowSummary = types.BoolValue(valueBool)
-				}
-			}
-		}
-	}
-
-	if newTabStartPageRaw, exists := raw["NewTabStartPage"]; exists {
-		if newTabStartPageMap, ok := newTabStartPageRaw.(map[string]any); ok {
-			if pageType, exists := newTabStartPageMap["PageType"]; exists {
-				if pageTypeStr, ok := pageType.(string); ok {
-					c.NewTabStartPageType = types.StringValue(pageTypeStr)
-				}
-			}
-			if homepageURL, exists := newTabStartPageMap["HomepageURL"]; exists {
-				if homepageURLStr, ok := homepageURL.(string); ok {
-					c.NewTabStartPageHomepageURL = types.StringValue(homepageURLStr)
-				}
-			}
-			if extensionID, exists := newTabStartPageMap["ExtensionIdentifier"]; exists {
-				if extensionIDStr, ok := extensionID.(string); ok {
-					c.NewTabStartPageExtensionID = types.StringValue(extensionIDStr)
-				}
-			}
+		if ntsp.ExtensionIdentifier != nil {
+			c.NewTabStartPageExtensionID = types.StringValue(*ntsp.ExtensionIdentifier)
 		}
 	}
 
 	return nil
 }
 
-// ToClientComponent converts the typed component to the format expected by the Blueprint API client
-func (c *SafariSettingsComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the typed component to the format expected by the Blueprint API client.
+func (c *SafariSettingsComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }

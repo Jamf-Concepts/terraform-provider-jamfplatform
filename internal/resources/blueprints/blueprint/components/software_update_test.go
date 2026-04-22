@@ -25,9 +25,13 @@ func TestSoftwareUpdate_ToRawConfiguration_Automatic_Latest(t *testing.T) {
 		DetailsURLValue:     types.StringValue("https://example.com/update"),
 	}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	if config["enforcementType"] != "AUTOMATIC" {
@@ -39,7 +43,7 @@ func TestSoftwareUpdate_ToRawConfiguration_Automatic_Latest(t *testing.T) {
 	if config["deploymentTime"] != "14:30" {
 		t.Errorf("expected deploymentTime '14:30', got %v", config["deploymentTime"])
 	}
-	if config["enforceAfterDays"] != int64(7) {
+	if config["enforceAfterDays"] != float64(7) {
 		t.Errorf("expected enforceAfterDays 7, got %v", config["enforceAfterDays"])
 	}
 
@@ -62,9 +66,13 @@ func TestSoftwareUpdate_ToRawConfiguration_Automatic_Semantic(t *testing.T) {
 		IgnoreMajorVersions: types.BoolValue(true),
 	}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	if config["enforcementType"] != "AUTOMATIC" {
@@ -85,7 +93,7 @@ func TestSoftwareUpdate_ToRawConfiguration_Automatic_Semantic(t *testing.T) {
 	if minor["deploymentTime"] != "09:00" {
 		t.Errorf("expected minor deploymentTime '09:00', got %v", minor["deploymentTime"])
 	}
-	if minor["enforceAfterDays"] != int64(14) {
+	if minor["enforceAfterDays"] != float64(14) {
 		t.Errorf("expected minor enforceAfterDays 14, got %v", minor["enforceAfterDays"])
 	}
 
@@ -100,9 +108,13 @@ func TestSoftwareUpdate_ToRawConfiguration_Manual(t *testing.T) {
 		TargetLocalDateTime: types.StringValue("2026-03-01T10:00:00"),
 	}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	if config["enforcementType"] != "MANUAL" {
@@ -117,7 +129,7 @@ func TestSoftwareUpdate_ToRawConfiguration_Manual(t *testing.T) {
 }
 
 func TestSoftwareUpdate_FromRawConfiguration_Automatic_Latest(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"enforcementType":  "AUTOMATIC",
 		"strategy":         "LATEST",
 		"deploymentTime":   "14:30",
@@ -127,6 +139,7 @@ func TestSoftwareUpdate_FromRawConfiguration_Automatic_Latest(t *testing.T) {
 			"Included": true,
 		},
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &SoftwareUpdateComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -151,7 +164,7 @@ func TestSoftwareUpdate_FromRawConfiguration_Automatic_Latest(t *testing.T) {
 }
 
 func TestSoftwareUpdate_FromRawConfiguration_Automatic_Semantic(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"enforcementType": "AUTOMATIC",
 		"strategy":        "SEMANTIC",
 		"rules": map[string]any{
@@ -161,6 +174,7 @@ func TestSoftwareUpdate_FromRawConfiguration_Automatic_Semantic(t *testing.T) {
 			},
 		},
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &SoftwareUpdateComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -179,11 +193,12 @@ func TestSoftwareUpdate_FromRawConfiguration_Automatic_Semantic(t *testing.T) {
 }
 
 func TestSoftwareUpdate_FromRawConfiguration_Manual(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"enforcementType":     "MANUAL",
 		"targetOSVersion":     "15.2.1",
 		"targetLocalDateTime": "2026-03-01T10:00:00",
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &SoftwareUpdateComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -203,7 +218,7 @@ func TestSoftwareUpdate_FromRawConfiguration_Manual(t *testing.T) {
 
 func TestSoftwareUpdate_FromRawConfiguration_Empty(t *testing.T) {
 	c := &SoftwareUpdateComponent{}
-	if err := c.FromRawConfiguration(map[string]any{}); err != nil {
+	if err := c.FromRawConfiguration(json.RawMessage("{}")); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -220,22 +235,13 @@ func TestSoftwareUpdate_Roundtrip_Automatic(t *testing.T) {
 		DetailsURLValue:     types.StringValue("https://test.com"),
 	}
 
-	config, err := original.ToRawConfiguration()
+	rawCfg, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &SoftwareUpdateComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(rawCfg); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 
@@ -262,22 +268,13 @@ func TestSoftwareUpdate_Roundtrip_Manual(t *testing.T) {
 		TargetLocalDateTime: types.StringValue("2026-06-15T08:00:00"),
 	}
 
-	config, err := original.ToRawConfiguration()
+	rawCfg, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &SoftwareUpdateComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(rawCfg); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 

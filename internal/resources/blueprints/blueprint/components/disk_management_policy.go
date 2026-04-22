@@ -6,24 +6,27 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// DiskManagementPolicyComponent represents a strongly-typed disk management policy component
+// DiskManagementPolicyComponent represents a strongly-typed disk management policy component.
 type DiskManagementPolicyComponent struct {
 	ExternalStorage types.String `tfsdk:"external_storage"`
 	NetworkStorage  types.String `tfsdk:"network_storage"`
 }
 
-// GetIdentifier returns the component identifier for disk management policy
+// GetIdentifier returns the component identifier for disk management policy.
 func (c *DiskManagementPolicyComponent) GetIdentifier() string {
 	return "com.jamf.ddm.disk-management"
 }
 
-// DiskManagementPolicyComponentSchema returns the Terraform schema for disk management policy component
+// DiskManagementPolicyComponentSchema returns the Terraform schema for disk management policy component.
 func DiskManagementPolicyComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"external_storage": schema.StringAttribute{
@@ -39,79 +42,63 @@ func DiskManagementPolicyComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the typed component to raw configuration matching OpenAPI DiskManagementPolicyConfiguration schema
-func (c *DiskManagementPolicyComponent) ToRawConfiguration() (map[string]any, error) {
-	config := make(map[string]any)
+// ToRawConfiguration converts the typed component to raw JSON configuration.
+func (c *DiskManagementPolicyComponent) ToRawConfiguration() (json.RawMessage, error) {
+	trueVal := true
+	falseVal := false
+	cfg := declarations.DiskManagementSettingsConfigurationV2{Version: 2}
+	restrictions := &declarations.RestrictionsV2{}
 
-	config["version"] = int32(2)
-
-	restrictions := map[string]any{
-		"ExternalStorage": setStringField(c.ExternalStorage, "Allowed"),
-		"NetworkStorage":  setStringField(c.NetworkStorage, "Allowed"),
+	if helpers.IsConfiguredValue(c.ExternalStorage) {
+		restrictions.ExternalStorage = &declarations.StorageModeV2{Included: &trueVal, Value: c.ExternalStorage.ValueString()}
+	} else {
+		restrictions.ExternalStorage = &declarations.StorageModeV2{Included: &falseVal, Value: "Allowed"}
 	}
-	config["Restrictions"] = restrictions
 
-	return config, nil
+	if helpers.IsConfiguredValue(c.NetworkStorage) {
+		restrictions.NetworkStorage = &declarations.StorageModeV2{Included: &trueVal, Value: c.NetworkStorage.ValueString()}
+	} else {
+		restrictions.NetworkStorage = &declarations.StorageModeV2{Included: &falseVal, Value: "Allowed"}
+	}
+
+	cfg.Restrictions = restrictions
+	return json.Marshal(cfg)
 }
 
-// FromRawConfiguration populates the typed component from raw configuration data
-func (c *DiskManagementPolicyComponent) FromRawConfiguration(raw map[string]any) error {
-	extractValue := func(path ...string) any {
-		current := raw
-		for _, key := range path[:len(path)-1] {
-			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]any); ok {
-					current = nextMap
-				} else {
-					return nil
-				}
-			} else {
-				return nil
-			}
-		}
-
-		finalKey := path[len(path)-1]
-		if obj, exists := current[finalKey]; exists {
-			if objMap, ok := obj.(map[string]any); ok {
-				if value, hasValue := objMap["Value"]; hasValue {
-					if included, hasIncluded := objMap["Included"]; hasIncluded && included.(bool) {
-						return value
-					}
-				}
-			}
-		}
-		return nil
+// FromRawConfiguration populates the typed component from raw JSON configuration.
+func (c *DiskManagementPolicyComponent) FromRawConfiguration(raw json.RawMessage) error {
+	var cfg declarations.DiskManagementSettingsConfigurationV2
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
 	}
 
-	if val := extractValue("Restrictions", "ExternalStorage"); val != nil {
-		c.ExternalStorage = types.StringValue(val.(string))
+	if cfg.Restrictions != nil {
+		if ext := cfg.Restrictions.ExternalStorage; ext != nil && ext.Included != nil && *ext.Included {
+			c.ExternalStorage = types.StringValue(ext.Value)
+		} else {
+			c.ExternalStorage = types.StringNull()
+		}
+		if net := cfg.Restrictions.NetworkStorage; net != nil && net.Included != nil && *net.Included {
+			c.NetworkStorage = types.StringValue(net.Value)
+		} else {
+			c.NetworkStorage = types.StringNull()
+		}
 	} else {
 		c.ExternalStorage = types.StringNull()
-	}
-
-	if val := extractValue("Restrictions", "NetworkStorage"); val != nil {
-		c.NetworkStorage = types.StringValue(val.(string))
-	} else {
 		c.NetworkStorage = types.StringNull()
 	}
 
 	return nil
 }
 
-// ToClientComponent converts the typed component to the format expected by the Blueprint API client
-func (c *DiskManagementPolicyComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the typed component to the format expected by the Blueprint API client.
+func (c *DiskManagementPolicyComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }

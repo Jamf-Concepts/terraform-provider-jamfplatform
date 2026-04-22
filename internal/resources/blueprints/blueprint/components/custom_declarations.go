@@ -6,6 +6,7 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -13,12 +14,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// CustomDeclarationsComponent represents a strongly-typed custom DDM declarations component
+
+// CustomDeclarationsComponent represents a strongly-typed custom DDM declarations component.
 type CustomDeclarationsComponent struct {
 	Declarations []CustomDeclarationModel `tfsdk:"declaration"`
 }
 
-// CustomDeclarationModel represents a single custom DDM declaration
+// CustomDeclarationModel represents a single custom DDM declaration.
 type CustomDeclarationModel struct {
 	ChannelType types.String `tfsdk:"channel"`
 	Kind        types.String `tfsdk:"kind"`
@@ -26,7 +28,7 @@ type CustomDeclarationModel struct {
 	Type        types.String `tfsdk:"type"`
 }
 
-// CustomDeclarationsComponentSchema returns the Terraform schema for custom declarations component
+// CustomDeclarationsComponentSchema returns the Terraform schema for custom declarations component.
 func CustomDeclarationsComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"declaration": schema.SetNestedAttribute{
@@ -58,8 +60,8 @@ func CustomDeclarationsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the typed component to raw configuration matching OpenAPI CustomDeclarationsConfiguration schema
-func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]any, error) {
+// ToRawConfiguration converts the typed component to raw JSON configuration.
+func (c *CustomDeclarationsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	config := make(map[string]any)
 
 	if len(c.Declarations) > 0 {
@@ -71,11 +73,9 @@ func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]any, erro
 			if helpers.IsConfiguredValue(declaration.ChannelType) {
 				declarationMap["channelType"] = declaration.ChannelType.ValueString()
 			}
-
 			if helpers.IsConfiguredValue(declaration.Kind) {
 				declarationMap["kind"] = declaration.Kind.ValueString()
 			}
-
 			if helpers.IsConfiguredValue(declaration.Payload) {
 				var payloadObj any
 				if err := json.Unmarshal([]byte(declaration.Payload.ValueString()), &payloadObj); err != nil {
@@ -83,12 +83,10 @@ func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]any, erro
 				}
 				declarationMap["payload"] = payloadObj
 			}
-
+			declarationMap["payloadKey"] = idx + 1
 			if helpers.IsConfiguredValue(declaration.Type) {
 				declarationMap["type"] = declaration.Type.ValueString()
 			}
-
-			declarationMap["payloadKey"] = idx + 1
 
 			declarations = append(declarations, declarationMap)
 		}
@@ -96,12 +94,17 @@ func (c *CustomDeclarationsComponent) ToRawConfiguration() (map[string]any, erro
 		config["declarations"] = declarations
 	}
 
-	return config, nil
+	return json.Marshal(config)
 }
 
-// FromRawConfiguration populates the typed component from raw configuration data
-func (c *CustomDeclarationsComponent) FromRawConfiguration(raw map[string]any) error {
-	if declarationsRaw, exists := raw["declarations"]; exists {
+// FromRawConfiguration populates the typed component from raw JSON configuration.
+func (c *CustomDeclarationsComponent) FromRawConfiguration(raw json.RawMessage) error {
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		return err
+	}
+
+	if declarationsRaw, exists := config["declarations"]; exists {
 		if declarationsSlice, ok := declarationsRaw.([]any); ok {
 			declarations := make([]CustomDeclarationModel, 0, len(declarationsSlice))
 
@@ -110,17 +113,15 @@ func (c *CustomDeclarationsComponent) FromRawConfiguration(raw map[string]any) e
 					declaration := CustomDeclarationModel{}
 
 					if channelType, exists := declarationMap["channelType"]; exists {
-						if channelTypeStr, ok := channelType.(string); ok {
-							declaration.ChannelType = types.StringValue(channelTypeStr)
+						if channelStr, ok := channelType.(string); ok {
+							declaration.ChannelType = types.StringValue(channelStr)
 						}
 					}
-
 					if kind, exists := declarationMap["kind"]; exists {
 						if kindStr, ok := kind.(string); ok {
 							declaration.Kind = types.StringValue(kindStr)
 						}
 					}
-
 					if payload, exists := declarationMap["payload"]; exists {
 						payloadJSON, err := json.Marshal(payload)
 						if err != nil {
@@ -128,7 +129,6 @@ func (c *CustomDeclarationsComponent) FromRawConfiguration(raw map[string]any) e
 						}
 						declaration.Payload = types.StringValue(string(payloadJSON))
 					}
-
 					if declType, exists := declarationMap["type"]; exists {
 						if typeStr, ok := declType.(string); ok {
 							declaration.Type = types.StringValue(typeStr)
@@ -146,25 +146,19 @@ func (c *CustomDeclarationsComponent) FromRawConfiguration(raw map[string]any) e
 	return nil
 }
 
-// GetIdentifier returns the component identifier for custom declarations
+// GetIdentifier returns the component identifier for custom declarations.
 func (c *CustomDeclarationsComponent) GetIdentifier() string {
 	return "com.jamf.ddm.custom-declarations"
 }
 
-// ToClientComponent converts the typed component to the format expected by the Blueprint API client
-func (c *CustomDeclarationsComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the typed component to the format expected by the Blueprint API client.
+func (c *CustomDeclarationsComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }
