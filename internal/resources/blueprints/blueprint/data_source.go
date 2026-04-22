@@ -149,7 +149,10 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 	if helpers.IsConfiguredValue(data.ID) && data.ID.ValueString() != "" {
 		bp, err = d.client.GetBlueprint(readCtx, data.ID.ValueString())
 	} else if helpers.IsConfiguredValue(data.Name) && data.Name.ValueString() != "" {
-		bp, err = getBlueprintByName(readCtx, d.client, data.Name.ValueString())
+		var id string
+		if id, err = d.client.ResolveBlueprintIDByName(readCtx, data.Name.ValueString()); err == nil {
+			bp, err = d.client.GetBlueprint(readCtx, id)
+		}
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
