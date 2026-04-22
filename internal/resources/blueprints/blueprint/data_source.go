@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -15,12 +16,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
 type BlueprintDataSource struct {
-	client *jamfplatform.Client
+	client *blueprints.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -102,7 +104,7 @@ func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -112,7 +114,7 @@ func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	d.client = client
+	d.client = blueprints.New(rootClient)
 }
 
 // Read fetches a blueprint by ID or title and populates the Terraform state.
@@ -142,7 +144,7 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bp *jamfplatform.BlueprintDetail
+	var bp *blueprints.BlueprintDetail
 	var err error
 	if helpers.IsConfiguredValue(data.ID) && data.ID.ValueString() != "" {
 		bp, err = d.client.GetBlueprint(readCtx, data.ID.ValueString())
@@ -197,8 +199,8 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		Name:            types.StringValue(bp.Name),
 		BlueprintID:     types.StringValue(bp.ID),
 		Description:     types.StringValue(helpers.DerefString(bp.Description)),
-		Created:         types.StringValue(bp.Created),
-		Updated:         types.StringValue(bp.Updated),
+		Created:         types.StringValue(bp.Created.Format(time.RFC3339)),
+		Updated:         types.StringValue(bp.Updated.Format(time.RFC3339)),
 		DeploymentState: types.StringValue(deployState),
 		DeviceGroups:    deviceGroupsList,
 		Components:      components,

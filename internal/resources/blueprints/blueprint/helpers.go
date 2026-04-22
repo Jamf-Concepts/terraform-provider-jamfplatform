@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -101,7 +101,7 @@ func desiredDeployedValue(v types.Bool) bool {
 }
 
 // reconcileBlueprintDeployment ensures the blueprint's deployment state matches the desired state.
-func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, blueprintID string, desiredDeployed bool) (*jamfplatform.BlueprintDetail, error) {
+func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, blueprintID string, desiredDeployed bool) (*blueprints.BlueprintDetail, error) {
 	blueprint, err := r.client.GetBlueprint(ctx, blueprintID)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (r *BlueprintResource) reconcileBlueprintDeployment(ctx context.Context, bl
 }
 
 // scopeDeviceGroups safely extracts device group IDs from an optional blueprint scope.
-func scopeDeviceGroups(scope *jamfplatform.BlueprintScope) []string {
+func scopeDeviceGroups(scope *blueprints.BlueprintScope) []string {
 	if scope == nil {
 		return []string{}
 	}
@@ -142,7 +142,7 @@ func scopeDeviceGroups(scope *jamfplatform.BlueprintScope) []string {
 }
 
 // getBlueprintByName looks up a blueprint by name using the list API.
-func getBlueprintByName(ctx context.Context, c *jamfplatform.Client, name string) (*jamfplatform.BlueprintDetail, error) {
+func getBlueprintByName(ctx context.Context, c *blueprints.Client, name string) (*blueprints.BlueprintDetail, error) {
 	blueprints, err := c.ListBlueprints(ctx, nil, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list blueprints: %w", err)

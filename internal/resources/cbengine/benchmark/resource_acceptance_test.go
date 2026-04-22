@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	cbSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
+	dgSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -23,6 +25,8 @@ import (
 func testAccCheckBenchmarkResourcesDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		c := testhelpers.NewAcceptanceClient(t)
+		cbClient := cbSDK.New(c)
+		dgClient := dgSDK.New(c)
 		ctx := context.Background()
 
 		for _, rs := range s.RootModule().Resources {
@@ -30,7 +34,7 @@ func testAccCheckBenchmarkResourcesDestroy(t *testing.T) resource.TestCheckFunc 
 			case "jamfplatform_cbengine_benchmark":
 				deadline := time.Now().Add(30 * time.Second)
 				for time.Now().Before(deadline) {
-					_, err := c.GetBenchmark(ctx, rs.Primary.ID)
+					_, err := cbClient.GetBenchmark(ctx, rs.Primary.ID)
 					if err != nil {
 						if helpers.IsNotFoundError(err) {
 							break
@@ -42,7 +46,7 @@ func testAccCheckBenchmarkResourcesDestroy(t *testing.T) resource.TestCheckFunc 
 			case "jamfplatform_device_group":
 				deadline := time.Now().Add(60 * time.Second)
 				for time.Now().Before(deadline) {
-					_, err := c.GetDeviceGroup(ctx, rs.Primary.ID)
+					_, err := dgClient.GetDeviceGroup(ctx, rs.Primary.ID)
 					if err != nil {
 						if helpers.IsNotFoundError(err) {
 							break
@@ -71,7 +75,8 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 
 	ctx := context.Background()
 	c := testhelpers.NewAcceptanceClient(t)
-	baselines, err := c.ListBaselines(ctx)
+	cbClient := cbSDK.New(c)
+	baselines, err := cbClient.ListBaselines(ctx)
 	if err != nil {
 		t.Fatalf("Failed to check baselines: %v", err)
 	}
@@ -80,7 +85,7 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 	}
 
 	baselineID := baselines.Baselines[0].BaselineID
-	rules, err := c.GetBaselineRules(ctx, baselineID)
+	rules, err := cbClient.GetBaselineRules(ctx, baselineID)
 	if err != nil {
 		t.Fatalf("Failed to get rules: %v", err)
 	}
@@ -155,7 +160,8 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 
 	ctx := context.Background()
 	c := testhelpers.NewAcceptanceClient(t)
-	baselines, err := c.ListBaselines(ctx)
+	cbClient := cbSDK.New(c)
+	baselines, err := cbClient.ListBaselines(ctx)
 	if err != nil {
 		t.Fatalf("Failed to check baselines: %v", err)
 	}
@@ -164,7 +170,7 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 	}
 
 	baselineID := baselines.Baselines[0].BaselineID
-	rules, err := c.GetBaselineRules(ctx, baselineID)
+	rules, err := cbClient.GetBaselineRules(ctx, baselineID)
 	if err != nil {
 		t.Fatalf("Failed to get rules: %v", err)
 	}
@@ -277,7 +283,8 @@ func TestAccDataSource_Rules(t *testing.T) {
 
 	ctx := context.Background()
 	c := testhelpers.NewAcceptanceClient(t)
-	baselines, err := c.ListBaselines(ctx)
+	cbClient := cbSDK.New(c)
+	baselines, err := cbClient.ListBaselines(ctx)
 	if err != nil {
 		t.Fatalf("Failed to check baselines: %v", err)
 	}

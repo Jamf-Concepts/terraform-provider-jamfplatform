@@ -7,11 +7,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 )
 
 // GetBenchmarkByTitle retrieves a benchmark by title by listing all benchmarks and filtering by title.
-func GetBenchmarkByTitle(ctx context.Context, client *jamfplatform.Client, title string) (*jamfplatform.BenchmarkResponseV2, error) {
+func GetBenchmarkByTitle(ctx context.Context, client *compliancebenchmarks.Client, title string) (*compliancebenchmarks.BenchmarkResponseV2, error) {
 	resp, err := client.ListBenchmarks(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list benchmarks: %w", err)

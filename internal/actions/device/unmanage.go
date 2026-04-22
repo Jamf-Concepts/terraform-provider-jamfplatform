@@ -81,7 +81,7 @@ func (a *UnmanageAction) Invoke(ctx context.Context, req action.InvokeRequest, r
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting unmanage for device %s", deviceID)})
 
-	if _, err := a.client.UnmanageDevice(ctx, deviceID); err != nil {
+	if _, err := a.actions.UnmanageDevice(ctx, deviceID); err != nil {
 		resp.Diagnostics.AddError(
 			"Unmanage Device Failed",
 			fmt.Sprintf("Unable to unmanage device %s: %s", deviceID, err),

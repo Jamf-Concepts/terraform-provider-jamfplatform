@@ -11,12 +11,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	daSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
+	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // deviceAction shares Configure logic across device action implementations.
 type deviceAction struct {
-	client *jamfplatform.Client
+	devices *devSDK.Client
+	actions *daSDK.Client
 }
 
 // configure binds the provider-supplied client to the action.
@@ -25,7 +28,7 @@ func (a *deviceAction) configure(_ context.Context, req action.ConfigureRequest,
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Provider Data Type",
@@ -34,12 +37,13 @@ func (a *deviceAction) configure(_ context.Context, req action.ConfigureRequest,
 		return
 	}
 
-	a.client = apiClient
+	a.devices = devSDK.New(rootClient)
+	a.actions = daSDK.New(rootClient)
 }
 
 // ensureClient guarantees Configure completed successfully before Invoke.
 func (a *deviceAction) ensureClient(resp *action.InvokeResponse) bool {
-	if a.client != nil {
+	if a.actions != nil {
 		return true
 	}
 
@@ -68,7 +72,7 @@ func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action
 		serial := serialNumberAttr.ValueString()
 		resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Resolving serial number %s", serial)})
 
-		deviceID, err := a.lookupDeviceIDBySerial(ctx, serial)
+		deviceID, err := a.devices.ResolveDeviceIDBySerialNumber(ctx, serial)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Device Lookup Failed",
@@ -85,17 +89,4 @@ func (a *deviceAction) resolveDeviceIdentifier(ctx context.Context, resp *action
 		)
 		return "", false
 	}
-}
-
-func (a *deviceAction) lookupDeviceIDBySerial(ctx context.Context, serial string) (string, error) {
-	devices, err := a.client.ListDevices(ctx, nil, fmt.Sprintf("serialNumber==%q", serial))
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve serial number %s: %w", serial, err)
-	}
-	for _, d := range devices {
-		if d.SerialNumber == serial {
-			return d.ID, nil
-		}
-	}
-	return "", fmt.Errorf("device with serial number %s not found", serial)
 }

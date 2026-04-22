@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -52,7 +52,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	reqBody := &jamfplatform.DeviceGroupCreateRepresentationV1{
+	reqBody := &devicegroups.DeviceGroupCreateRepresentationV1{
 		Name:        plan.Name.ValueString(),
 		Description: plan.Description.ValueStringPointer(),
 		DeviceType:  strings.ToUpper(plan.DeviceType.ValueString()),
@@ -221,7 +221,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	manageMembers := helpers.IsConfiguredValue(plan.Members)
 	manageDescription := helpers.IsConfiguredValue(plan.Description)
 
-	updateReq := &jamfplatform.DeviceGroupUpdateRepresentationV1{
+	updateReq := &devicegroups.DeviceGroupUpdateRepresentationV1{
 		Name:        plan.Name.ValueStringPointer(),
 		Description: plan.Description.ValueStringPointer(),
 	}
@@ -254,7 +254,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 
 		added, removed := diffStringSlices(current, desired)
 		if len(added) > 0 || len(removed) > 0 {
-			patch := &jamfplatform.DeviceGroupMemberPatchRepresentationV1{}
+			patch := &devicegroups.DeviceGroupMemberPatchRepresentationV1{}
 			if len(added) > 0 {
 				patch.Added = &added
 			}
