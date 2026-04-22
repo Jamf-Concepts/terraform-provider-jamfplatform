@@ -4,13 +4,13 @@
 package blueprints
 
 import (
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	bp "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // BlueprintsDataSource implements the Terraform data source for listing blueprints.
 type BlueprintsDataSource struct {
-	client *jamfplatform.Client
+	client *bp.Client
 }
 
 // BlueprintsDataSourceModel defines the state for the blueprints listing data source.

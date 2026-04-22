@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -176,7 +177,7 @@ func (d *DeviceDataSource) Configure(ctx context.Context, req datasource.Configu
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -185,7 +186,7 @@ func (d *DeviceDataSource) Configure(ctx context.Context, req datasource.Configu
 		return
 	}
 
-	d.client = client
+	d.client = devices.New(rootClient)
 }
 
 // Read fetches a device by ID and populates the Terraform state.
@@ -257,8 +258,16 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	data.Name = helpers.StringValueOrNull(deviceDetail.Name)
 	data.Model = helpers.StringValueOrNull(modelValue)
 	data.ModelIdentifier = helpers.StringValueOrNull(modelIdentifierValue)
-	data.LastInventoryUpdate = helpers.StringValueOrNull(deviceDetail.LastInventoryUpdateTime)
-	data.LastCheckIn = helpers.StringPointerValueOrNull(deviceDetail.LastCheckInTime)
+	if deviceDetail.LastInventoryUpdateTime != nil {
+		data.LastInventoryUpdate = types.StringValue(deviceDetail.LastInventoryUpdateTime.Format(time.RFC3339))
+	} else {
+		data.LastInventoryUpdate = types.StringNull()
+	}
+	if deviceDetail.LastCheckInTime != nil {
+		data.LastCheckIn = types.StringValue(deviceDetail.LastCheckInTime.Format(time.RFC3339))
+	} else {
+		data.LastCheckIn = types.StringNull()
+	}
 	data.OperatingSystemVersion = helpers.StringValueOrNull(operatingSystemVersion)
 	if deviceDetail.OperatingSystem != nil {
 		data.OperatingSystemName = helpers.StringValueOrNull(deviceDetail.OperatingSystem.Name)
@@ -273,7 +282,11 @@ func (d *DeviceDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	}
 	data.UserID = helpers.StringPointerValueOrNull(deviceDetail.UserID)
 	data.EnrollmentType = helpers.StringValueOrNull(deviceDetail.EnrollmentType)
-	data.LastEnrollmentTime = helpers.StringValueOrNull(deviceDetail.LastEnrollmentTime)
+	if deviceDetail.LastEnrollmentTime != nil {
+		data.LastEnrollmentTime = types.StringValue(deviceDetail.LastEnrollmentTime.Format(time.RFC3339))
+	} else {
+		data.LastEnrollmentTime = types.StringNull()
+	}
 	data.Managed = types.BoolValue(deviceDetail.Managed)
 	data.MDMCapable = types.BoolValue(deviceDetail.MDMCapable)
 	data.Supervised = types.BoolValue(deviceDetail.Supervised)

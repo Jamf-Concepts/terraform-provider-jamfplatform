@@ -4,7 +4,7 @@
 package device_groups
 
 import (
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -12,7 +12,7 @@ import (
 
 // DeviceGroupsDataSource implements the Terraform data source for Jamf device groups.
 type DeviceGroupsDataSource struct {
-	client *jamfplatform.Client
+	client *devicegroups.Client
 }
 
 // DeviceGroupsDataSourceModel represents the Terraform data source model for Jamf device groups.

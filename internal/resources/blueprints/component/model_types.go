@@ -4,13 +4,13 @@
 package component
 
 import (
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // ComponentDataSource defines the data source implementation.
 type ComponentDataSource struct {
-	client *jamfplatform.Client
+	client *blueprints.Client
 }
 
 // ComponentDataSourceModel defines the data source data model.

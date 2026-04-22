@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -17,7 +18,7 @@ import (
 
 // refreshDeviceGroupState retrieves the device group from the API and updates the Terraform state.
 func (r *DeviceGroupResource) refreshDeviceGroupState(ctx context.Context, id string, model *DeviceGroupResourceModel, manageMembers bool, manageDescription bool, diags *diag.Diagnostics) bool {
-	var grp *jamfplatform.DeviceGroupReadRepresentationV1
+	var grp *devicegroups.DeviceGroupReadRepresentationV1
 	err := jamfplatform.PollUntil(ctx, deviceGroupCreateRetryDelay, func(pollCtx context.Context) (bool, error) {
 		var err error
 		grp, err = r.client.GetDeviceGroup(pollCtx, id)

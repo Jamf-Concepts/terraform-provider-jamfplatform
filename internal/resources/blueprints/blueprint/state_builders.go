@@ -7,8 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -16,7 +17,7 @@ import (
 )
 
 // updateModelFromAPIResponse updates the Terraform model with data from the API response.
-func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceModel, blueprint *jamfplatform.BlueprintDetail) {
+func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceModel, blueprint *blueprints.BlueprintDetail) {
 	stateRawIdentifiers := make(map[string]struct{}, len(model.Components))
 	for _, comp := range model.Components {
 		identifier := comp.Identifier.ValueString()
@@ -30,8 +31,8 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 
 	model.Description = helpers.ReconcileOptionalStringPointer(blueprint.Description, model.Description)
 
-	model.Created = types.StringValue(blueprint.Created)
-	model.Updated = types.StringValue(blueprint.Updated)
+	model.Created = types.StringValue(blueprint.Created.Format(time.RFC3339))
+	model.Updated = types.StringValue(blueprint.Updated.Format(time.RFC3339))
 	if blueprint.DeploymentState != nil {
 		model.DeploymentState = types.StringValue(blueprint.DeploymentState.State)
 		model.Deployed = types.BoolValue(strings.EqualFold(blueprint.DeploymentState.State, "DEPLOYED"))
@@ -43,7 +44,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, scopeDeviceGroups(blueprint.Scope))
 	model.DeviceGroups = deviceGroupsSet
 
-	apiComponentsByID := make(map[string]jamfplatform.Component)
+	apiComponentsByID := make(map[string]blueprints.Component)
 	var rawComponents []ComponentModel
 
 	if len(blueprint.Steps) > 0 {
@@ -84,7 +85,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 }
 
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components from API response.
-func updateStronglyTypedComponentsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]jamfplatform.Component, rawIdentifiers map[string]struct{}) {
+func updateStronglyTypedComponentsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
 	model.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(cfg map[string]any, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(cfg)
 	})
@@ -137,7 +138,7 @@ func updateStronglyTypedComponentsFromAPI(ctx context.Context, model *BlueprintR
 }
 
 // buildTypedComponent is a generic helper to build a strongly-typed singleton component pointer.
-func buildTypedComponent[T any](apiComponentsByID map[string]jamfplatform.Component, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]any, *T) error) *T {
+func buildTypedComponent[T any](apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}, identifier string, populate func(map[string]any, *T) error) *T {
 	if _, handledAsRaw := rawIdentifiers[identifier]; handledAsRaw {
 		return nil
 	}
@@ -156,7 +157,7 @@ func buildTypedComponent[T any](apiComponentsByID map[string]jamfplatform.Compon
 }
 
 // parseComponentConfiguration extracts and parses the configuration of a component by its identifier.
-func parseComponentConfiguration(apiComponentsByID map[string]jamfplatform.Component, identifier string) (map[string]any, bool) {
+func parseComponentConfiguration(apiComponentsByID map[string]blueprints.Component, identifier string) (map[string]any, bool) {
 	apiComp, exists := apiComponentsByID[identifier]
 	if !exists || apiComp.Configuration == nil {
 		return nil, false
@@ -171,7 +172,7 @@ func parseComponentConfiguration(apiComponentsByID map[string]jamfplatform.Compo
 }
 
 // updateLegacyPayloadsFromAPI handles the special case of legacy payloads component.
-func updateLegacyPayloadsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]jamfplatform.Component, rawIdentifiers map[string]struct{}) {
+func updateLegacyPayloadsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
 	if _, handledAsRaw := rawIdentifiers["com.jamf.ddm-configuration-profile"]; handledAsRaw {
 		return
 	}

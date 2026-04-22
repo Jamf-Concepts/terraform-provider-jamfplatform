@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -25,7 +26,7 @@ import (
 
 // BenchmarkResource implements the Terraform resource for Jamf Compliance Benchmark.
 type BenchmarkResource struct {
-	client *jamfplatform.Client
+	client *compliancebenchmarks.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -300,7 +301,7 @@ func (r *BenchmarkResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -311,7 +312,7 @@ func (r *BenchmarkResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 
-	r.client = client
+	r.client = compliancebenchmarks.New(rootClient)
 }
 
 // ImportState handles the import of existing Benchmark resources.
