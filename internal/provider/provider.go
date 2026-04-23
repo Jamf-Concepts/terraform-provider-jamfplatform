@@ -149,6 +149,7 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	opts := []jamfplatform.Option{
 		jamfplatform.WithUserAgent("terraform-provider-jamfplatform/" + p.version),
 		jamfplatform.WithTenantID(tenantID),
+		jamfplatform.WithRetryOn4xx(true),
 	}
 	if shouldEnableHTTPLogging() {
 		opts = append(opts, jamfplatform.WithLogger(NewTerraformLogger()))
