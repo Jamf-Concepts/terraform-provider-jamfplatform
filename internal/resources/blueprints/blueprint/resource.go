@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
@@ -26,7 +27,7 @@ import (
 
 // BlueprintResource implements the Terraform resource for Jamf Blueprint.
 type BlueprintResource struct {
-	client *jamfplatform.Client
+	client *blueprints.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -212,7 +213,7 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -223,7 +224,7 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 
-	r.client = client
+	r.client = blueprints.New(rootClient)
 }
 
 // ImportState handles the import of existing Blueprint resources.

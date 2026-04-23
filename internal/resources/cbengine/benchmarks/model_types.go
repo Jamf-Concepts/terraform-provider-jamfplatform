@@ -4,14 +4,14 @@
 package benchmarks
 
 import (
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // BenchmarksDataSource implements the Terraform data source for listing CBEngine benchmarks.
 type BenchmarksDataSource struct {
-	client *jamfplatform.Client
+	client *compliancebenchmarks.Client
 }
 
 // BenchmarksDataSourceModel represents the state for the benchmarks listing data source.

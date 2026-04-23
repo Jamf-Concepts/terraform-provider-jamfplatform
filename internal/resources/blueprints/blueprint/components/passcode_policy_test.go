@@ -36,13 +36,18 @@ func TestPasscodePolicy_ToRawConfiguration_AllFields(t *testing.T) {
 		CustomRegexDescription:       types.MapNull(types.StringType),
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if config["version"] != "2" {
-		t.Errorf("expected version '2', got %v", config["version"])
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+
+	if config["version"] != float64(2) {
+		t.Errorf("expected version 2, got %v", config["version"])
 	}
 
 	changeAtNextAuth := config["ChangeAtNextAuth"].(map[string]any)
@@ -54,7 +59,7 @@ func TestPasscodePolicy_ToRawConfiguration_AllFields(t *testing.T) {
 	}
 
 	failedAttempts := config["FailedAttemptsResetInMinutes"].(map[string]any)
-	if failedAttempts["Value"] != 15 {
+	if failedAttempts["Value"] != float64(15) {
 		t.Errorf("expected FailedAttemptsResetInMinutes Value 15, got %v", failedAttempts["Value"])
 	}
 	if failedAttempts["Included"] != true {
@@ -62,12 +67,12 @@ func TestPasscodePolicy_ToRawConfiguration_AllFields(t *testing.T) {
 	}
 
 	maxFailed := config["MaximumFailedAttempts"].(map[string]any)
-	if maxFailed["Value"] != 10 {
+	if maxFailed["Value"] != float64(10) {
 		t.Errorf("expected MaximumFailedAttempts Value 10, got %v", maxFailed["Value"])
 	}
 
 	minLength := config["MinimumLength"].(map[string]any)
-	if minLength["Value"] != 8 {
+	if minLength["Value"] != float64(8) {
 		t.Errorf("expected MinimumLength Value 8, got %v", minLength["Value"])
 	}
 
@@ -99,9 +104,14 @@ func TestPasscodePolicy_ToRawConfiguration_NullFieldsOmitted(t *testing.T) {
 		CustomRegexDescription: types.MapNull(types.StringType),
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
 	}
 
 	requirePasscode := config["RequirePasscode"].(map[string]any)
@@ -138,9 +148,14 @@ func TestPasscodePolicy_ToRawConfiguration_CustomRegex(t *testing.T) {
 		CustomRegexDescription: descMap,
 	}
 
-	config, err := c.ToRawConfiguration()
+	raw, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var config map[string]any
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
 	}
 
 	customRegex, ok := config["CustomRegex"].(map[string]any)
@@ -153,9 +168,9 @@ func TestPasscodePolicy_ToRawConfiguration_CustomRegex(t *testing.T) {
 	if customRegex["Regex"] != "[0-9]{16}" {
 		t.Errorf("expected Regex '[0-9]{16}', got %v", customRegex["Regex"])
 	}
-	desc, ok := customRegex["Description"].(map[string]string)
+	desc, ok := customRegex["Description"].(map[string]any)
 	if !ok {
-		t.Fatal("expected Description to be a map[string]string")
+		t.Fatal("expected Description to be a map")
 	}
 	if desc["default"] != "Must be 16 digits" {
 		t.Errorf("expected default description, got %q", desc["default"])
@@ -163,7 +178,7 @@ func TestPasscodePolicy_ToRawConfiguration_CustomRegex(t *testing.T) {
 }
 
 func TestPasscodePolicy_FromRawConfiguration_V2Format(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"version": float64(2),
 		"ChangeAtNextAuth": map[string]any{
 			"Value":    true,
@@ -221,6 +236,7 @@ func TestPasscodePolicy_FromRawConfiguration_V2Format(t *testing.T) {
 			"Included": true,
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &PasscodePolicyComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -251,13 +267,14 @@ func TestPasscodePolicy_FromRawConfiguration_V2Format(t *testing.T) {
 }
 
 func TestPasscodePolicy_FromRawConfiguration_V1FlatFormat(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"ChangeAtNextAuth":             true,
 		"FailedAttemptsResetInMinutes": float64(15),
 		"MaximumFailedAttempts":        float64(10),
 		"MinimumLength":                float64(8),
 		"RequirePasscode":              true,
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &PasscodePolicyComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -276,7 +293,7 @@ func TestPasscodePolicy_FromRawConfiguration_V1FlatFormat(t *testing.T) {
 }
 
 func TestPasscodePolicy_FromRawConfiguration_V2NotIncluded(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"version": float64(2),
 		"ChangeAtNextAuth": map[string]any{
 			"Value":    false,
@@ -291,6 +308,7 @@ func TestPasscodePolicy_FromRawConfiguration_V2NotIncluded(t *testing.T) {
 			"Included": false,
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &PasscodePolicyComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -309,12 +327,13 @@ func TestPasscodePolicy_FromRawConfiguration_V2NotIncluded(t *testing.T) {
 }
 
 func TestPasscodePolicy_FromRawConfiguration_MissingFields(t *testing.T) {
-	raw := map[string]any{
+	inputMap := map[string]any{
 		"RequirePasscode": map[string]any{
 			"Value":    true,
 			"Included": true,
 		},
 	}
+	raw, _ := json.Marshal(inputMap)
 
 	c := &PasscodePolicyComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -353,22 +372,13 @@ func TestPasscodePolicy_Roundtrip(t *testing.T) {
 		CustomRegexDescription:       types.MapNull(types.StringType),
 	}
 
-	config, err := original.ToRawConfiguration()
+	raw, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &PasscodePolicyComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(raw); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 
@@ -416,7 +426,7 @@ func TestPasscodePolicy_ToClientComponent(t *testing.T) {
 	if err := json.Unmarshal(comp.Configuration, &config); err != nil {
 		t.Fatalf("failed to parse configuration JSON: %v", err)
 	}
-	if config["version"] != "2" {
-		t.Errorf("expected version '2' in JSON, got %v", config["version"])
+	if config["version"] != float64(2) {
+		t.Errorf("expected version 2 in JSON, got %v", config["version"])
 	}
 }

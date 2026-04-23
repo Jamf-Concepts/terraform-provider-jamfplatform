@@ -6,7 +6,7 @@ package blueprint
 import (
 	"context"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -43,17 +43,17 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	stepName := "Declaration group"
-	steps := []jamfplatform.BlueprintStep{
+	steps := []blueprints.BlueprintStep{
 		{
 			Name:       &stepName,
 			Components: allComponents,
 		},
 	}
 
-	reqBody := &jamfplatform.CreateBlueprintRequest{
+	reqBody := &blueprints.CreateBlueprintRequest{
 		Name:        data.Name.ValueString(),
 		Description: data.Description.ValueStringPointer(),
-		Scope: jamfplatform.CreateScope{
+		Scope: blueprints.CreateScope{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: steps,
@@ -205,17 +205,17 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	stepName := "Declaration group"
-	steps := []jamfplatform.BlueprintStep{
+	steps := []blueprints.BlueprintStep{
 		{
 			Name:       &stepName,
 			Components: allComponents,
 		},
 	}
 
-	updateReq := &jamfplatform.UpdateBlueprintRequest{
+	updateReq := &blueprints.UpdateBlueprintRequest{
 		Name:        data.Name.ValueStringPointer(),
 		Description: data.Description.ValueStringPointer(),
-		Scope: &jamfplatform.BlueprintScope{
+		Scope: &blueprints.BlueprintScope{
 			DeviceGroups: deviceGroups,
 		},
 		Steps: &steps,

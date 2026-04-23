@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -193,7 +194,7 @@ func (d *RulesDataSource) Configure(ctx context.Context, req datasource.Configur
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -203,7 +204,7 @@ func (d *RulesDataSource) Configure(ctx context.Context, req datasource.Configur
 		return
 	}
 
-	d.client = client
+	d.client = compliancebenchmarks.New(rootClient)
 }
 
 // Read implements datasource.DataSource for RulesDataSource. It fetches the list of rules from the API and sets the state.

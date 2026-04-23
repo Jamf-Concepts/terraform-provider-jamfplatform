@@ -5,31 +5,26 @@ package components
 
 import (
 	"encoding/json"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 )
 
-// BlueprintComponentData represents the generic structure for any blueprint component
-// that will be sent to the API
-type BlueprintComponentData struct {
-	Identifier    string          `json:"identifier"`
-	Configuration json.RawMessage `json:"configuration,omitempty"`
-}
-
 // ComponentConverter interface defines methods that typed components should implement
-// to convert between the user-friendly typed format and the raw API format
+// to convert between the user-friendly typed format and the raw API format.
 type ComponentConverter interface {
 	GetIdentifier() string
-	ToRawConfiguration() (map[string]any, error)
-	FromRawConfiguration(rawConfig map[string]any) error
-	ToClientComponent() (*BlueprintComponentData, error)
+	ToRawConfiguration() (json.RawMessage, error)
+	FromRawConfiguration(raw json.RawMessage) error
+	ToClientComponent() (*blueprints.Component, error)
 }
 
-// ComponentRegistry maps component identifiers to their human-readable names for easier management
+// ComponentRegistry maps component identifiers to their human-readable names for easier management.
 type ComponentRegistry struct {
 	identifier string
 	name       string
 }
 
-// CommonComponentRegistries defines all supported strongly-typed components
+// CommonComponentRegistries defines all supported strongly-typed components.
 var CommonComponentRegistries = []ComponentRegistry{
 	{"com.jamf.ddm.audio-accessory-settings", "Audio Accessory Settings"},
 	{"com.jamf.ddm.disk-management", "Disk Management Settings"},

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -90,7 +91,7 @@ func (d *BenchmarksDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -99,7 +100,7 @@ func (d *BenchmarksDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	d.client = client
+	d.client = compliancebenchmarks.New(rootClient)
 }
 
 // Read invokes ListBenchmarks and maps the response into Terraform state.

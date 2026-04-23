@@ -15,7 +15,8 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 )
 
 // runSuffix computes a unique suffix (epoch timestamp) once for the entire test run.
@@ -93,11 +94,12 @@ func RequireSmartGroupFixture(t *testing.T) string {
 	t.Helper()
 
 	c := NewAcceptanceClient(t)
+	dgClient := devicegroups.New(c)
 
 	smartGroupFixtureOnce.Do(func() {
 		ctx := context.Background()
 
-		groups, err := c.ListDeviceGroups(ctx, nil, fmt.Sprintf("name==%q", smartGroupFixtureName()))
+		groups, err := dgClient.ListDeviceGroups(ctx, nil, fmt.Sprintf("name==%q", smartGroupFixtureName()))
 		if err != nil {
 			smartGroupErr = fmt.Errorf("failed to look up fixture smart group: %w", err)
 			return
@@ -110,12 +112,12 @@ func RequireSmartGroupFixture(t *testing.T) string {
 			}
 		}
 
-		req := &jamfplatform.DeviceGroupCreateRepresentationV1{
+		req := &devicegroups.DeviceGroupCreateRepresentationV1{
 			Name:        smartGroupFixtureName(),
 			Description: strPtr("Terraform provider acceptance test fixture — safe to delete"),
 			DeviceType:  "COMPUTER",
 			GroupType:   "SMART",
-			Criteria: &[]jamfplatform.DeviceGroupCriteriaRepresentationV1{
+			Criteria: &[]devicegroups.DeviceGroupCriteriaRepresentationV1{
 				{
 					Order:          0,
 					AttributeName:  "Serial Number",
@@ -126,7 +128,7 @@ func RequireSmartGroupFixture(t *testing.T) string {
 			},
 		}
 
-		resp, err := c.CreateDeviceGroup(ctx, req)
+		resp, err := dgClient.CreateDeviceGroup(ctx, req)
 		if err != nil {
 			smartGroupErr = fmt.Errorf("failed to create fixture smart group: %w", err)
 			return
@@ -149,15 +151,21 @@ func RequireSmartGroupFixture(t *testing.T) string {
 // re-issuing the delete every 20 seconds to unstick it if needed.
 func EnsureBenchmarkDeleted(t *testing.T, c *jamfplatform.Client, ctx context.Context, title string) {
 	t.Helper()
-	existing, err := helpers.GetBenchmarkByTitle(ctx, c, title)
+	cbClient := compliancebenchmarks.New(c)
+
+	id, err := cbClient.ResolveBenchmarkIDByName(ctx, title)
+	if err != nil {
+		return
+	}
+	existing, err := cbClient.GetBenchmark(ctx, id)
 	if err != nil {
 		return
 	}
 	t.Logf("Cleaning up existing benchmark %q (ID: %s)", title, existing.BenchmarkID)
 
-	waitForBenchmarkSyncState(t, c, ctx, existing.BenchmarkID)
+	waitForBenchmarkSyncState(t, cbClient, ctx, existing.BenchmarkID)
 
-	if err := c.DeleteBenchmark(ctx, existing.BenchmarkID); err != nil {
+	if err := cbClient.DeleteBenchmark(ctx, existing.BenchmarkID); err != nil {
 		t.Logf("Warning: failed to delete benchmark %q: %v", title, err)
 		return
 	}
@@ -166,15 +174,15 @@ func EnsureBenchmarkDeleted(t *testing.T, c *jamfplatform.Client, ctx context.Co
 	deadline := time.Now().Add(2 * time.Minute)
 	for time.Now().Before(deadline) {
 		time.Sleep(2 * time.Second)
-		_, err := helpers.GetBenchmarkByTitle(ctx, c, title)
-		if err != nil {
+		_, lookupErr := cbClient.ResolveBenchmarkIDByName(ctx, title)
+		if lookupErr != nil {
 			t.Logf("Benchmark %q fully deleted", title)
 			return
 		}
 		if time.Since(lastDelete) > 20*time.Second {
 			lastDelete = time.Now()
 			t.Logf("Retrying delete for stuck benchmark %q", title)
-			_ = c.DeleteBenchmark(ctx, existing.BenchmarkID)
+			_ = cbClient.DeleteBenchmark(ctx, existing.BenchmarkID)
 		}
 	}
 	t.Logf("Warning: benchmark %q still exists after 2m — proceeding anyway", title)
@@ -185,10 +193,11 @@ func EnsureBenchmarkDeleted(t *testing.T, c *jamfplatform.Client, ctx context.Co
 // benchmark is fully removed. Re-issues the delete every 20 seconds to unstick it.
 func EnsureBenchmarkDeletedByID(t *testing.T, c *jamfplatform.Client, ctx context.Context, benchmarkID string) {
 	t.Helper()
+	cbClient := compliancebenchmarks.New(c)
 
-	waitForBenchmarkSyncState(t, c, ctx, benchmarkID)
+	waitForBenchmarkSyncState(t, cbClient, ctx, benchmarkID)
 
-	if err := c.DeleteBenchmark(ctx, benchmarkID); err != nil {
+	if err := cbClient.DeleteBenchmark(ctx, benchmarkID); err != nil {
 		t.Logf("Warning: failed to delete benchmark %s: %v", benchmarkID, err)
 		return
 	}
@@ -198,14 +207,14 @@ func EnsureBenchmarkDeletedByID(t *testing.T, c *jamfplatform.Client, ctx contex
 	deadline := time.Now().Add(2 * time.Minute)
 	for time.Now().Before(deadline) {
 		time.Sleep(2 * time.Second)
-		if _, found := benchmarkSyncState(c, ctx, benchmarkID); !found {
+		if _, found := benchmarkSyncState(cbClient, ctx, benchmarkID); !found {
 			t.Logf("Benchmark %s fully deleted", benchmarkID)
 			return
 		}
 		if time.Since(lastDelete) > 20*time.Second {
 			lastDelete = time.Now()
 			t.Logf("Retrying delete for stuck benchmark %s", benchmarkID)
-			_ = c.DeleteBenchmark(ctx, benchmarkID)
+			_ = cbClient.DeleteBenchmark(ctx, benchmarkID)
 		}
 	}
 	t.Logf("Warning: benchmark %s still present after 2m", benchmarkID)
@@ -213,11 +222,11 @@ func EnsureBenchmarkDeletedByID(t *testing.T, c *jamfplatform.Client, ctx contex
 
 // waitForBenchmarkSyncState polls until the benchmark reaches SYNCED or FAILED,
 // or until a 2-minute timeout expires.
-func waitForBenchmarkSyncState(t *testing.T, c *jamfplatform.Client, ctx context.Context, benchmarkID string) {
+func waitForBenchmarkSyncState(t *testing.T, cbClient *compliancebenchmarks.Client, ctx context.Context, benchmarkID string) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Minute)
 	for time.Now().Before(deadline) {
-		state, found := benchmarkSyncState(c, ctx, benchmarkID)
+		state, found := benchmarkSyncState(cbClient, ctx, benchmarkID)
 		if !found {
 			t.Logf("Benchmark %s not found in list, may already be deleted", benchmarkID)
 			return
@@ -233,8 +242,8 @@ func waitForBenchmarkSyncState(t *testing.T, c *jamfplatform.Client, ctx context
 }
 
 // benchmarkSyncState returns the sync state of a benchmark by ID from the list endpoint.
-func benchmarkSyncState(c *jamfplatform.Client, ctx context.Context, benchmarkID string) (string, bool) {
-	benchmarks, err := c.ListBenchmarks(ctx)
+func benchmarkSyncState(cbClient *compliancebenchmarks.Client, ctx context.Context, benchmarkID string) (string, bool) {
+	benchmarks, err := cbClient.ListBenchmarks(ctx)
 	if err != nil {
 		return "", false
 	}
@@ -253,6 +262,7 @@ func CleanupSmartGroupFixture() {
 		return
 	}
 	if c, err := initAcceptanceClient(); err == nil {
-		_ = c.DeleteDeviceGroup(context.Background(), smartGroupID)
+		dgClient := devicegroups.New(c)
+		_ = dgClient.DeleteDeviceGroup(context.Background(), smartGroupID)
 	}
 }

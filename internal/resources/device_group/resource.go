@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -25,7 +26,7 @@ import (
 
 // DeviceGroupResource implements the Terraform resource for Jamf device groups.
 type DeviceGroupResource struct {
-	client *jamfplatform.Client
+	client *devicegroups.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -178,7 +179,7 @@ func (r *DeviceGroupResource) Configure(ctx context.Context, req resource.Config
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
@@ -189,7 +190,7 @@ func (r *DeviceGroupResource) Configure(ctx context.Context, req resource.Config
 		return
 	}
 
-	r.client = client
+	r.client = devicegroups.New(rootClient)
 }
 
 // ImportState handles the import of existing Device Group resources.

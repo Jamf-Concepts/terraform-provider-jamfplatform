@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"maps"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -16,12 +16,12 @@ import (
 )
 
 // collectAllComponents gathers components from both raw and strongly-typed sources.
-func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *BlueprintResourceModel) ([]jamfplatform.Component, diag.Diagnostics) {
-	var allComponents []jamfplatform.Component
+func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *BlueprintResourceModel) ([]blueprints.Component, diag.Diagnostics) {
+	var allComponents []blueprints.Component
 	var diags diag.Diagnostics
 
 	for _, comp := range data.Components {
-		component := jamfplatform.Component{
+		component := blueprints.Component{
 			Identifier: comp.Identifier.ValueString(),
 		}
 
@@ -58,7 +58,7 @@ func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *Blue
 }
 
 // collectStronglyTypedComponents processes all strongly-typed components using a scalable approach.
-func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]jamfplatform.Component, diags *diag.Diagnostics, data *BlueprintResourceModel) {
+func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blueprints.Component, diags *diag.Diagnostics, data *BlueprintResourceModel) {
 	if data.AudioAccessorySettings != nil {
 		r.collectSingleComponent(allComponents, diags, data.AudioAccessorySettings, "audio accessory settings")
 	}
@@ -113,23 +113,17 @@ func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]jamf
 }
 
 // collectSingleComponent is a helper function that can collect any type of strongly-typed component.
-func (r *BlueprintResource) collectSingleComponent(allComponents *[]jamfplatform.Component, diags *diag.Diagnostics, comp components.ComponentConverter, componentName string) {
+func (r *BlueprintResource) collectSingleComponent(allComponents *[]blueprints.Component, diags *diag.Diagnostics, comp components.ComponentConverter, componentName string) {
 	clientComp, err := comp.ToClientComponent()
 	if err != nil {
-		diags.AddError(
-			"Error converting "+componentName+" component",
-			"Could not convert "+componentName+" to client format: "+err.Error(),
-		)
+		diags.AddError("Failed to build "+componentName+" component", err.Error())
 		return
 	}
-	*allComponents = append(*allComponents, jamfplatform.Component{
-		Identifier:    clientComp.Identifier,
-		Configuration: clientComp.Configuration,
-	})
+	*allComponents = append(*allComponents, *clientComp)
 }
 
 // collectLegacyPayloads builds the API component from a dynamic legacy payloads value.
-func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]jamfplatform.Component, diags *diag.Diagnostics, legacyPayloads types.Dynamic, blueprintName string) {
+func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]blueprints.Component, diags *diag.Diagnostics, legacyPayloads types.Dynamic, blueprintName string) {
 	raw, err := helpers.TerraformDynamicToJSON(legacyPayloads)
 	if err != nil {
 		diags.AddError("Error reading legacy payloads", "Could not convert legacy payloads to JSON: "+err.Error())
@@ -191,7 +185,7 @@ func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]jamfplatform.
 		return
 	}
 
-	*allComponents = append(*allComponents, jamfplatform.Component{
+	*allComponents = append(*allComponents, blueprints.Component{
 		Identifier:    "com.jamf.ddm-configuration-profile",
 		Configuration: json.RawMessage(configJSON),
 	})

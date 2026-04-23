@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"regexp"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -26,7 +27,7 @@ var (
 	dateTimeRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`)
 )
 
-// SoftwareUpdateComponent represents a strongly-typed software update enforcement component
+// SoftwareUpdateComponent represents a strongly-typed software update enforcement component.
 type SoftwareUpdateComponent struct {
 	EnforcementType     types.String `tfsdk:"enforcement_type"`
 	DeploymentTime      types.String `tfsdk:"deployment_time"`
@@ -37,7 +38,7 @@ type SoftwareUpdateComponent struct {
 	DetailsURLValue     types.String `tfsdk:"details_url_value"`
 }
 
-// SoftwareUpdateComponentSchema returns the Terraform schema for software update component
+// SoftwareUpdateComponentSchema returns the Terraform schema for software update component.
 func SoftwareUpdateComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"enforcement_type": schema.StringAttribute{
@@ -134,8 +135,8 @@ func SoftwareUpdateComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the strongly-typed component to raw key-value configuration
-func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]any, error) {
+// ToRawConfiguration converts the strongly-typed component to raw JSON configuration.
+func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) {
 	config := make(map[string]any)
 
 	isAutomatic := helpers.IsConfiguredValue(c.DeploymentTime) || helpers.IsConfiguredValue(c.EnforceAfterDays)
@@ -167,7 +168,6 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]any, error) {
 			if helpers.IsConfiguredValue(c.DeploymentTime) {
 				config["deploymentTime"] = c.DeploymentTime.ValueString()
 			}
-
 			if helpers.IsConfiguredValue(c.EnforceAfterDays) {
 				config["enforceAfterDays"] = c.EnforceAfterDays.ValueInt64()
 			}
@@ -179,7 +179,6 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]any, error) {
 	if helpers.IsConfiguredValue(c.TargetOSVersion) {
 		config["targetOSVersion"] = c.TargetOSVersion.ValueString()
 	}
-
 	if helpers.IsConfiguredValue(c.TargetLocalDateTime) {
 		config["targetLocalDateTime"] = c.TargetLocalDateTime.ValueString()
 	}
@@ -188,14 +187,18 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (map[string]any, error) {
 	if helpers.IsConfiguredValue(c.DetailsURLValue) && c.DetailsURLValue.ValueString() == "" {
 		detailsURL["Included"] = false
 	}
-
 	config["detailsURL"] = detailsURL
 
-	return config, nil
+	return json.Marshal(config)
 }
 
-// FromRawConfiguration populates the strongly-typed component from raw configuration
-func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]any) error {
+// FromRawConfiguration populates the strongly-typed component from raw JSON configuration.
+func (c *SoftwareUpdateComponent) FromRawConfiguration(raw json.RawMessage) error {
+	var rawConfig map[string]any
+	if err := json.Unmarshal(raw, &rawConfig); err != nil {
+		return err
+	}
+
 	c.IgnoreMajorVersions = types.BoolNull()
 
 	if enforcementType, exists := rawConfig["enforcementType"]; exists {
@@ -231,7 +234,6 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]any)
 								automaticFieldsDetected = true
 							}
 						}
-
 						if enforceAfterDays, exists := minorMap["enforceAfterDays"]; exists {
 							if enforceAfterDaysFloat, ok := enforceAfterDays.(float64); ok {
 								c.EnforceAfterDays = types.Int64Value(int64(enforceAfterDaysFloat))
@@ -249,7 +251,6 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]any)
 				automaticFieldsDetected = true
 			}
 		}
-
 		if enforceAfterDays, exists := rawConfig["enforceAfterDays"]; exists {
 			if enforceAfterDaysFloat, ok := enforceAfterDays.(float64); ok {
 				c.EnforceAfterDays = types.Int64Value(int64(enforceAfterDaysFloat))
@@ -263,7 +264,6 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]any)
 			c.TargetOSVersion = types.StringValue(targetOSVersionStr)
 		}
 	}
-
 	if targetLocalDateTime, exists := rawConfig["targetLocalDateTime"]; exists {
 		if targetLocalDateTimeStr, ok := targetLocalDateTime.(string); ok {
 			c.TargetLocalDateTime = types.StringValue(targetLocalDateTimeStr)
@@ -295,25 +295,19 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(rawConfig map[string]any)
 	return nil
 }
 
-// GetIdentifier returns the component identifier for software update
+// GetIdentifier returns the component identifier for software update.
 func (c *SoftwareUpdateComponent) GetIdentifier() string {
 	return "com.jamf.ddm.sw-updates"
 }
 
-// ToClientComponent converts the strongly-typed component to a client.BlueprintComponent
-func (c *SoftwareUpdateComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the strongly-typed component to a blueprints.Component.
+func (c *SoftwareUpdateComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }

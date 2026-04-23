@@ -8,16 +8,16 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // expandDeviceGroupCriteria converts Terraform models into API representations.
-func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []jamfplatform.DeviceGroupCriteriaRepresentationV1 {
+func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []devicegroups.DeviceGroupCriteriaRepresentationV1 {
 	if len(criteria) == 0 {
 		return nil
 	}
-	result := make([]jamfplatform.DeviceGroupCriteriaRepresentationV1, 0, len(criteria))
+	result := make([]devicegroups.DeviceGroupCriteriaRepresentationV1, 0, len(criteria))
 	for idx, c := range criteria {
 		if !helpers.IsConfiguredValue(c.AttributeName) {
 			continue
@@ -38,7 +38,7 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []jamfplatfo
 			joinType = strings.ToUpper(c.JoinType.ValueString())
 		}
 
-		crit := jamfplatform.DeviceGroupCriteriaRepresentationV1{
+		crit := devicegroups.DeviceGroupCriteriaRepresentationV1{
 			AttributeName:         c.AttributeName.ValueString(),
 			Operator:              operator,
 			AttributeValue:        attributeValue,
@@ -53,7 +53,7 @@ func expandDeviceGroupCriteria(criteria []DeviceGroupCriteriaModel) []jamfplatfo
 		}
 		result = append(result, crit)
 	}
-	slices.SortStableFunc(result, func(a, b jamfplatform.DeviceGroupCriteriaRepresentationV1) int {
+	slices.SortStableFunc(result, func(a, b devicegroups.DeviceGroupCriteriaRepresentationV1) int {
 		return cmp.Compare(a.Order, b.Order)
 	})
 	return result

@@ -13,12 +13,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 )
 
 // BenchmarkDataSource implements the Terraform data source for Jamf Compliance Benchmarks.
 type BenchmarkDataSource struct {
-	client *jamfplatform.Client
+	client *compliancebenchmarks.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -232,7 +232,7 @@ func (d *BenchmarkDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -242,7 +242,7 @@ func (d *BenchmarkDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	d.client = client
+	d.client = compliancebenchmarks.New(rootClient)
 }
 
 // Read fetches a benchmark by ID or title and populates the Terraform state.
@@ -263,12 +263,17 @@ func (d *BenchmarkDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	var bench *jamfplatform.BenchmarkResponseV2
+	var bench *compliancebenchmarks.BenchmarkResponseV2
 	var err error
 	if !data.ID.IsNull() && data.ID.ValueString() != "" {
 		bench, err = d.client.GetBenchmark(ctx, data.ID.ValueString())
 	} else if !data.Title.IsNull() && data.Title.ValueString() != "" {
-		bench, err = helpers.GetBenchmarkByTitle(ctx, d.client, data.Title.ValueString())
+		id, idErr := d.client.ResolveBenchmarkIDByName(ctx, data.Title.ValueString())
+		if idErr != nil {
+			resp.Diagnostics.AddError("Unable to find benchmark", idErr.Error())
+			return
+		}
+		bench, err = d.client.GetBenchmark(ctx, id)
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Required Attribute",
