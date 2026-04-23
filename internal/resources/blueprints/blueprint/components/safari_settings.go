@@ -82,15 +82,6 @@ func SafariSettingsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// buildOptBoolField builds a *bool value from a configured types.Bool with Included envelope.
-func buildOptBoolField(field types.Bool) *bool {
-	if !helpers.IsConfiguredValue(field) {
-		return nil
-	}
-	v := field.ValueBool()
-	return &v
-}
-
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *SafariSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	cfg := declarations.SafariSettingsConfiguration{}

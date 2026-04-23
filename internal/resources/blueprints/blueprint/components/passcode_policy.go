@@ -110,15 +110,6 @@ func PasscodePolicyComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// intPtrFromInt64 converts a configured types.Int64 field to a *int pointer.
-func intPtrFromInt64(field types.Int64) *int {
-	if !helpers.IsConfiguredValue(field) {
-		return nil
-	}
-	v := int(field.ValueInt64())
-	return &v
-}
-
 // boolPtrFromBool converts a configured types.Bool field to a *bool pointer with Included envelope.
 func buildChangeAtNextAuth(field types.Bool) *declarations.ChangeAtNextAuth {
 	if !helpers.IsConfiguredValue(field) {
@@ -157,14 +148,6 @@ func buildRequirePasscode(field types.Bool) *declarations.RequirePasscode {
 	v := field.ValueBool()
 	t := true
 	return &declarations.RequirePasscode{Included: &t, Value: &v}
-}
-
-// buildIntWrapper builds an int wrapper with Included envelope.
-func buildIntWrapper(field types.Int64) *struct {
-	Included *bool `json:"Included,omitempty"`
-	Value    *int  `json:"Value,omitempty"`
-} {
-	return nil
 }
 
 // buildFailedAttemptsReset builds a FailedAttemptsResetInMinutes wrapper.
