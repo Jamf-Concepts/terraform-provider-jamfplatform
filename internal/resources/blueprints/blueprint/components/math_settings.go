@@ -83,11 +83,6 @@ func MathSettingsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// boolPtr returns a pointer to a bool value.
-//
-//go:fix inline
-func boolPtr(b bool) *bool { return new(b) }
-
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	cfg := declarations.MathSettingsConfiguration{}
