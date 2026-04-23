@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-
 // CustomDeclarationsComponent represents a strongly-typed custom DDM declarations component.
 type CustomDeclarationsComponent struct {
 	Declarations []CustomDeclarationModel `tfsdk:"declaration"`

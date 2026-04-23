@@ -140,4 +140,3 @@ func scopeDeviceGroups(scope *blueprints.BlueprintScope) []string {
 	}
 	return scope.DeviceGroups
 }
-
