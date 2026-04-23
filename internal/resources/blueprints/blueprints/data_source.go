@@ -6,6 +6,7 @@ package blueprints
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	bp "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -92,7 +94,7 @@ func (d *BlueprintsDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -101,7 +103,7 @@ func (d *BlueprintsDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	d.client = client
+	d.client = bp.New(rootClient)
 }
 
 // Read fetches all blueprints (optionally filtered) and populates the Terraform state.
@@ -134,34 +136,34 @@ func (d *BlueprintsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	}
 
 	entries := make([]BlueprintListItem, 0, len(blueprints))
-	for _, bp := range blueprints {
+	for _, entry := range blueprints {
 		if searchLower != "" {
-			nameMatch := strings.Contains(strings.ToLower(bp.Name), searchLower)
-			descMatch := strings.Contains(strings.ToLower(helpers.DerefString(bp.Description)), searchLower)
+			nameMatch := strings.Contains(strings.ToLower(entry.Name), searchLower)
+			descMatch := strings.Contains(strings.ToLower(helpers.DerefString(entry.Description)), searchLower)
 			if !nameMatch && !descMatch {
 				continue
 			}
 		}
 
 		deployState := ""
-		if bp.DeploymentState != nil {
-			deployState = bp.DeploymentState.State
+		if entry.DeploymentState != nil {
+			deployState = entry.DeploymentState.State
 		}
 
 		item := BlueprintListItem{
-			ID:                    types.StringValue(bp.ID),
-			Name:                  helpers.StringValueOrNull(bp.Name),
-			Description:           helpers.StringPointerValueOrNull(bp.Description),
-			Created:               helpers.StringValueOrNull(bp.Created),
-			Updated:               helpers.StringValueOrNull(bp.Updated),
+			ID:                    types.StringValue(entry.ID),
+			Name:                  helpers.StringValueOrNull(entry.Name),
+			Description:           helpers.StringPointerValueOrNull(entry.Description),
+			Created:               types.StringValue(entry.Created.Format(time.RFC3339)),
+			Updated:               types.StringValue(entry.Updated.Format(time.RFC3339)),
 			DeploymentState:       helpers.StringValueOrNull(deployState),
 			LastDeploymentState:   types.StringNull(),
 			LastDeploymentStarted: types.StringNull(),
 		}
 
-		if bp.DeploymentState != nil && bp.DeploymentState.LastDeployment != nil {
-			item.LastDeploymentState = helpers.StringValueOrNull(bp.DeploymentState.LastDeployment.State)
-			item.LastDeploymentStarted = helpers.StringValueOrNull(bp.DeploymentState.LastDeployment.Started)
+		if entry.DeploymentState != nil && entry.DeploymentState.LastDeployment != nil {
+			item.LastDeploymentState = helpers.StringValueOrNull(entry.DeploymentState.LastDeployment.State)
+			item.LastDeploymentStarted = types.StringValue(entry.DeploymentState.LastDeployment.Started.Format(time.RFC3339))
 		}
 
 		entries = append(entries, item)

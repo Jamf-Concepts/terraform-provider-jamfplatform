@@ -6,6 +6,8 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -13,12 +15,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// SafariExtensionsComponent represents a strongly-typed Safari extensions component
+// SafariExtensionsComponent represents a strongly-typed Safari extensions component.
 type SafariExtensionsComponent struct {
 	ManagedExtensions []ManagedExtensionModel `tfsdk:"managed_extensions"`
 }
 
-// ManagedExtensionModel represents a managed Safari extension configuration
+// ManagedExtensionModel represents a managed Safari extension configuration.
 type ManagedExtensionModel struct {
 	ExtensionID     types.String                  `tfsdk:"extension_id"`
 	State           types.String                  `tfsdk:"state"`
@@ -27,17 +29,17 @@ type ManagedExtensionModel struct {
 	DeniedDomains   []ManagedExtensionDomainModel `tfsdk:"denied_domains"`
 }
 
-// ManagedExtensionDomainModel represents a domain configuration for managed extensions
+// ManagedExtensionDomainModel represents a domain configuration for managed extensions.
 type ManagedExtensionDomainModel struct {
 	Domain types.String `tfsdk:"domain"`
 }
 
-// GetIdentifier returns the component identifier for Safari extensions
+// GetIdentifier returns the component identifier for Safari extensions.
 func (c *SafariExtensionsComponent) GetIdentifier() string {
 	return "com.jamf.ddm.safari-extensions"
 }
 
-// SafariExtensionsComponentSchema returns the Terraform schema for Safari extensions component
+// SafariExtensionsComponentSchema returns the Terraform schema for Safari extensions component.
 func SafariExtensionsComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"managed_extensions": schema.SetNestedAttribute{
@@ -89,150 +91,108 @@ func SafariExtensionsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the typed component to raw configuration matching OpenAPI SafariExtensionsConfiguration schema
-func (c *SafariExtensionsComponent) ToRawConfiguration() (map[string]any, error) {
-	config := make(map[string]any)
+// ToRawConfiguration converts the typed component to raw JSON configuration.
+func (c *SafariExtensionsComponent) ToRawConfiguration() (json.RawMessage, error) {
+	managedExtensions := make(map[string]declarations.ManagedExtension)
 
-	if len(c.ManagedExtensions) > 0 {
-		managedExtensions := make(map[string]any)
-
-		for _, ext := range c.ManagedExtensions {
-			if !helpers.IsConfiguredValue(ext.ExtensionID) {
-				continue
-			}
-
-			extConfig := make(map[string]any)
-
-			if helpers.IsConfiguredValue(ext.State) {
-				extConfig["State"] = ext.State.ValueString()
-			}
-
-			if helpers.IsConfiguredValue(ext.PrivateBrowsing) {
-				extConfig["PrivateBrowsing"] = ext.PrivateBrowsing.ValueString()
-			}
-
-			if len(ext.AllowedDomains) > 0 {
-				allowedDomains := make([]any, 0, len(ext.AllowedDomains))
-				for _, domain := range ext.AllowedDomains {
-					if helpers.IsConfiguredValue(domain.Domain) {
-						allowedDomains = append(allowedDomains, map[string]any{
-							"Domain": domain.Domain.ValueString(),
-						})
-					}
-				}
-				if len(allowedDomains) > 0 {
-					extConfig["AllowedDomains"] = allowedDomains
-				}
-			}
-
-			if len(ext.DeniedDomains) > 0 {
-				deniedDomains := make([]any, 0, len(ext.DeniedDomains))
-				for _, domain := range ext.DeniedDomains {
-					if helpers.IsConfiguredValue(domain.Domain) {
-						deniedDomains = append(deniedDomains, map[string]any{
-							"Domain": domain.Domain.ValueString(),
-						})
-					}
-				}
-				if len(deniedDomains) > 0 {
-					extConfig["DeniedDomains"] = deniedDomains
-				}
-			}
-
-			managedExtensions[ext.ExtensionID.ValueString()] = extConfig
+	for _, ext := range c.ManagedExtensions {
+		if !helpers.IsConfiguredValue(ext.ExtensionID) {
+			continue
 		}
 
-		config["ManagedExtensions"] = managedExtensions
+		extConfig := declarations.ManagedExtension{}
+
+		if helpers.IsConfiguredValue(ext.State) {
+			s := ext.State.ValueString()
+			extConfig.State = &s
+		}
+		if helpers.IsConfiguredValue(ext.PrivateBrowsing) {
+			pb := ext.PrivateBrowsing.ValueString()
+			extConfig.PrivateBrowsing = &pb
+		}
+
+		if len(ext.AllowedDomains) > 0 {
+			allowed := make([]declarations.ManagedExtensionDomain, 0, len(ext.AllowedDomains))
+			for _, d := range ext.AllowedDomains {
+				if helpers.IsConfiguredValue(d.Domain) {
+					allowed = append(allowed, declarations.ManagedExtensionDomain{Domain: d.Domain.ValueString()})
+				}
+			}
+			if len(allowed) > 0 {
+				extConfig.AllowedDomains = &allowed
+			}
+		}
+
+		if len(ext.DeniedDomains) > 0 {
+			denied := make([]declarations.ManagedExtensionDomain, 0, len(ext.DeniedDomains))
+			for _, d := range ext.DeniedDomains {
+				if helpers.IsConfiguredValue(d.Domain) {
+					denied = append(denied, declarations.ManagedExtensionDomain{Domain: d.Domain.ValueString()})
+				}
+			}
+			if len(denied) > 0 {
+				extConfig.DeniedDomains = &denied
+			}
+		}
+
+		managedExtensions[ext.ExtensionID.ValueString()] = extConfig
 	}
 
-	return config, nil
+	cfg := declarations.SafariExtensionsConfiguration{ManagedExtensions: managedExtensions}
+	return json.Marshal(cfg)
 }
 
-// FromRawConfiguration populates the typed component from raw configuration data
-func (c *SafariExtensionsComponent) FromRawConfiguration(raw map[string]any) error {
-	if managedExtensionsRaw, exists := raw["ManagedExtensions"]; exists {
-		if managedExtensionsMap, ok := managedExtensionsRaw.(map[string]any); ok {
-			extensions := make([]ManagedExtensionModel, 0, len(managedExtensionsMap))
-
-			for extensionID, extConfigRaw := range managedExtensionsMap {
-				ext := ManagedExtensionModel{
-					ExtensionID: types.StringValue(extensionID),
-				}
-
-				if extConfigMap, ok := extConfigRaw.(map[string]any); ok {
-					if state, exists := extConfigMap["State"]; exists {
-						if stateStr, ok := state.(string); ok {
-							ext.State = types.StringValue(stateStr)
-						}
-					}
-
-					if privateBrowsing, exists := extConfigMap["PrivateBrowsing"]; exists {
-						if privateBrowsingStr, ok := privateBrowsing.(string); ok {
-							ext.PrivateBrowsing = types.StringValue(privateBrowsingStr)
-						}
-					}
-
-					if allowedDomainsRaw, exists := extConfigMap["AllowedDomains"]; exists {
-						if allowedDomainsSlice, ok := allowedDomainsRaw.([]any); ok {
-							allowedDomains := make([]ManagedExtensionDomainModel, 0, len(allowedDomainsSlice))
-							for _, domainRaw := range allowedDomainsSlice {
-								if domainMap, ok := domainRaw.(map[string]any); ok {
-									if domain, exists := domainMap["Domain"]; exists {
-										if domainStr, ok := domain.(string); ok {
-											allowedDomains = append(allowedDomains, ManagedExtensionDomainModel{
-												Domain: types.StringValue(domainStr),
-											})
-										}
-									}
-								}
-							}
-							ext.AllowedDomains = allowedDomains
-						}
-					}
-
-					if deniedDomainsRaw, exists := extConfigMap["DeniedDomains"]; exists {
-						if deniedDomainsSlice, ok := deniedDomainsRaw.([]any); ok {
-							deniedDomains := make([]ManagedExtensionDomainModel, 0, len(deniedDomainsSlice))
-							for _, domainRaw := range deniedDomainsSlice {
-								if domainMap, ok := domainRaw.(map[string]any); ok {
-									if domain, exists := domainMap["Domain"]; exists {
-										if domainStr, ok := domain.(string); ok {
-											deniedDomains = append(deniedDomains, ManagedExtensionDomainModel{
-												Domain: types.StringValue(domainStr),
-											})
-										}
-									}
-								}
-							}
-							ext.DeniedDomains = deniedDomains
-						}
-					}
-				}
-
-				extensions = append(extensions, ext)
-			}
-
-			c.ManagedExtensions = extensions
-		}
+// FromRawConfiguration populates the typed component from raw JSON configuration.
+func (c *SafariExtensionsComponent) FromRawConfiguration(raw json.RawMessage) error {
+	var cfg declarations.SafariExtensionsConfiguration
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
 	}
 
+	extensions := make([]ManagedExtensionModel, 0, len(cfg.ManagedExtensions))
+	for extensionID, extConfig := range cfg.ManagedExtensions {
+		ext := ManagedExtensionModel{
+			ExtensionID: types.StringValue(extensionID),
+		}
+
+		if extConfig.State != nil {
+			ext.State = types.StringValue(*extConfig.State)
+		}
+		if extConfig.PrivateBrowsing != nil {
+			ext.PrivateBrowsing = types.StringValue(*extConfig.PrivateBrowsing)
+		}
+
+		if extConfig.AllowedDomains != nil {
+			allowed := make([]ManagedExtensionDomainModel, 0, len(*extConfig.AllowedDomains))
+			for _, d := range *extConfig.AllowedDomains {
+				allowed = append(allowed, ManagedExtensionDomainModel{Domain: types.StringValue(d.Domain)})
+			}
+			ext.AllowedDomains = allowed
+		}
+
+		if extConfig.DeniedDomains != nil {
+			denied := make([]ManagedExtensionDomainModel, 0, len(*extConfig.DeniedDomains))
+			for _, d := range *extConfig.DeniedDomains {
+				denied = append(denied, ManagedExtensionDomainModel{Domain: types.StringValue(d.Domain)})
+			}
+			ext.DeniedDomains = denied
+		}
+
+		extensions = append(extensions, ext)
+	}
+
+	c.ManagedExtensions = extensions
 	return nil
 }
 
-// ToClientComponent converts the typed component to the format expected by the Blueprint API client
-func (c *SafariExtensionsComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the typed component to the format expected by the Blueprint API client.
+func (c *SafariExtensionsComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }

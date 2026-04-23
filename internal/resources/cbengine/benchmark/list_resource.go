@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -28,7 +29,7 @@ func NewBenchmarkListResource() list.ListResource {
 
 // BenchmarkListResource implements Terraform list support for compliance benchmarks.
 type BenchmarkListResource struct {
-	client *jamfplatform.Client
+	client *compliancebenchmarks.Client
 }
 
 // Metadata configures the resource type name for Terraform.
@@ -42,7 +43,7 @@ func (r *BenchmarkListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
@@ -51,7 +52,7 @@ func (r *BenchmarkListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	r.client = client
+	r.client = compliancebenchmarks.New(rootClient)
 }
 
 // ListResourceConfigSchema declares the supported filter attributes.

@@ -81,7 +81,7 @@ func (a *ShutdownAction) Invoke(ctx context.Context, req action.InvokeRequest, r
 
 	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting shutdown for device %s", deviceID)})
 
-	if _, err := a.client.ShutdownDevice(ctx, deviceID); err != nil {
+	if _, err := a.actions.ShutdownDevice(ctx, deviceID); err != nil {
 		resp.Diagnostics.AddError(
 			"Shutdown Device Failed",
 			fmt.Sprintf("Unable to shut down device %s: %s", deviceID, err),

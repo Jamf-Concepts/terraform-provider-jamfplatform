@@ -4,14 +4,14 @@
 package baselines
 
 import (
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // BaselinesDataSource implements the Terraform data source for mSCP baselines.
 type BaselinesDataSource struct {
-	client *jamfplatform.Client
+	client *compliancebenchmarks.Client
 }
 
 // BaselinesDataSourceModel represents the Terraform data source model for mSCP baselines.

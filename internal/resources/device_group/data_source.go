@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -19,7 +20,7 @@ import (
 
 // DeviceGroupDataSource implements the Terraform data source for Jamf device groups.
 type DeviceGroupDataSource struct {
-	client *jamfplatform.Client
+	client *devicegroups.Client
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -116,7 +117,7 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -126,7 +127,7 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 		return
 	}
 
-	d.client = client
+	d.client = devicegroups.New(rootClient)
 }
 
 // Read fetches a device group by ID and populates the Terraform state.
@@ -186,7 +187,7 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 	deviceType := helpers.StringValueOrNull(strings.ToLower(grp.DeviceType))
 	groupType := helpers.StringValueOrNull(strings.ToLower(grp.GroupType))
 
-	var grpCriteria []jamfplatform.DeviceGroupCriteriaRepresentationV1
+	var grpCriteria []devicegroups.DeviceGroupCriteriaRepresentationV1
 	if grp.Criteria != nil {
 		grpCriteria = *grp.Criteria
 	}

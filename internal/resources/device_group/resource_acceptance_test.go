@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -23,6 +24,7 @@ import (
 func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		c := testhelpers.NewAcceptanceClient(t)
+		dgClient := devicegroups.New(c)
 		ctx := context.Background()
 
 		for _, rs := range s.RootModule().Resources {
@@ -31,7 +33,7 @@ func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
 			}
 			deadline := time.Now().Add(60 * time.Second)
 			for time.Now().Before(deadline) {
-				_, err := c.GetDeviceGroup(ctx, rs.Primary.ID)
+				_, err := dgClient.GetDeviceGroup(ctx, rs.Primary.ID)
 				if err != nil {
 					if helpers.IsNotFoundError(err) {
 						break

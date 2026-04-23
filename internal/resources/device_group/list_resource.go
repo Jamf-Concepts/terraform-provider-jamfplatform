@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
@@ -29,7 +30,7 @@ func NewDeviceGroupListResource() list.ListResource {
 
 // DeviceGroupListResource implements Terraform query list support for device groups.
 type DeviceGroupListResource struct {
-	client *jamfplatform.Client
+	client *devicegroups.Client
 }
 
 // Metadata sets the list resource type name.
@@ -43,7 +44,7 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
@@ -52,7 +53,7 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 		return
 	}
 
-	r.client = client
+	r.client = devicegroups.New(rootClient)
 }
 
 // ListResourceConfigSchema describes the supported list filters.

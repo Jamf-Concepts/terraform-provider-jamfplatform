@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
@@ -123,7 +124,7 @@ func (d *DevicesDataSource) Configure(ctx context.Context, req datasource.Config
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -132,7 +133,7 @@ func (d *DevicesDataSource) Configure(ctx context.Context, req datasource.Config
 		return
 	}
 
-	d.client = client
+	d.client = devSDK.New(rootClient)
 }
 
 // Read fetches devices (optionally filtered) and populates the Terraform state.
@@ -175,18 +176,35 @@ func (d *DevicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	results := make([]DevicesListEntry, 0, len(devices))
 	for _, device := range devices {
+		var lastInventoryUpdate, lastCheckIn, lastEnrollmentTime types.String
+		if device.LastInventoryUpdateTime != nil {
+			lastInventoryUpdate = types.StringValue(device.LastInventoryUpdateTime.Format(time.RFC3339))
+		} else {
+			lastInventoryUpdate = types.StringNull()
+		}
+		if device.LastCheckInTime != nil {
+			lastCheckIn = types.StringValue(device.LastCheckInTime.Format(time.RFC3339))
+		} else {
+			lastCheckIn = types.StringNull()
+		}
+		if device.LastEnrollmentTime != nil {
+			lastEnrollmentTime = types.StringValue(device.LastEnrollmentTime.Format(time.RFC3339))
+		} else {
+			lastEnrollmentTime = types.StringNull()
+		}
+
 		results = append(results, DevicesListEntry{
 			ID:                     types.StringValue(device.ID),
 			SerialNumber:           helpers.StringValueOrNull(device.SerialNumber),
 			Name:                   helpers.StringValueOrNull(device.Name),
 			Model:                  helpers.StringValueOrNull(device.Model),
 			ModelIdentifier:        helpers.StringValueOrNull(device.ModelIdentifier),
-			LastInventoryUpdate:    helpers.StringValueOrNull(device.LastInventoryUpdateTime),
-			LastCheckIn:            helpers.StringPointerValueOrNull(device.LastCheckInTime),
+			LastInventoryUpdate:    lastInventoryUpdate,
+			LastCheckIn:            lastCheckIn,
 			OperatingSystemVersion: helpers.StringValueOrNull(device.OperatingSystemVersion),
 			UserID:                 helpers.StringPointerValueOrNull(device.UserID),
 			EnrollmentType:         helpers.StringValueOrNull(device.EnrollmentType),
-			LastEnrollmentTime:     helpers.StringValueOrNull(device.LastEnrollmentTime),
+			LastEnrollmentTime:     lastEnrollmentTime,
 		})
 	}
 

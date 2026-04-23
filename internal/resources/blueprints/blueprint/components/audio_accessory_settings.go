@@ -6,6 +6,8 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -16,19 +18,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// AudioAccessorySettingsComponent represents a strongly-typed audio accessory settings component
+// AudioAccessorySettingsComponent represents a strongly-typed audio accessory settings component.
 type AudioAccessorySettingsComponent struct {
 	TemporaryPairingDisabled types.Bool   `tfsdk:"temporary_pairing_disabled"`
 	UnpairingTimePolicy      types.String `tfsdk:"unpairing_time_policy"`
 	UnpairingTimeHour        types.Int64  `tfsdk:"unpairing_time_hour"`
 }
 
-// GetIdentifier returns the component identifier for audio accessory settings
+// GetIdentifier returns the component identifier for audio accessory settings.
 func (c *AudioAccessorySettingsComponent) GetIdentifier() string {
 	return "com.jamf.ddm.audio-accessory-settings"
 }
 
-// AudioAccessorySettingsComponentSchema returns the Terraform schema for audio accessory settings component
+// AudioAccessorySettingsComponentSchema returns the Terraform schema for audio accessory settings component.
 func AudioAccessorySettingsComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"temporary_pairing_disabled": schema.BoolAttribute{
@@ -56,117 +58,94 @@ func AudioAccessorySettingsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the typed component to raw configuration matching the actual API format
-func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (map[string]any, error) {
-	config := make(map[string]any)
+// ToRawConfiguration converts the typed component to raw JSON configuration.
+func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
+	cfg := declarations.AudioAccessorySettingsConfiguration{}
 
 	hasTemporaryPairing := helpers.IsConfiguredValue(c.TemporaryPairingDisabled) ||
 		helpers.IsConfiguredValue(c.UnpairingTimePolicy) ||
 		helpers.IsConfiguredValue(c.UnpairingTimeHour)
 
 	if hasTemporaryPairing {
-		temporaryPairing := make(map[string]any)
-		temporaryPairing["Included"] = true
+		trueVal := true
+		tp := &declarations.TemporaryPairing{
+			Included: &trueVal,
+		}
 
 		if helpers.IsConfiguredValue(c.TemporaryPairingDisabled) {
-			temporaryPairing["Disabled"] = c.TemporaryPairingDisabled.ValueBool()
+			disabled := c.TemporaryPairingDisabled.ValueBool()
+			tp.Disabled = &disabled
 		}
 
 		hasUnpairingSettings := helpers.IsConfiguredValue(c.UnpairingTimePolicy) ||
 			helpers.IsConfiguredValue(c.UnpairingTimeHour)
 
 		if hasUnpairingSettings {
-			configuration := make(map[string]any)
-			unpairingTime := make(map[string]any)
+			unpairingTime := declarations.UnpairingTime{}
 
 			if helpers.IsConfiguredValue(c.UnpairingTimePolicy) {
-				unpairingTime["Policy"] = c.UnpairingTimePolicy.ValueString()
+				unpairingTime.Policy = c.UnpairingTimePolicy.ValueString()
 			}
 
 			if helpers.IsConfiguredValue(c.UnpairingTimeHour) {
-				unpairingTime["Hour"] = int(c.UnpairingTimeHour.ValueInt64())
+				hour := int(c.UnpairingTimeHour.ValueInt64())
+				unpairingTime.Hour = &hour
 			}
 
-			configuration["UnpairingTime"] = unpairingTime
-			temporaryPairing["Configuration"] = configuration
+			tp.Configuration = &declarations.Configuration{
+				UnpairingTime: unpairingTime,
+			}
 		}
 
-		config["TemporaryPairing"] = temporaryPairing
+		cfg.TemporaryPairing = tp
 	}
 
-	return config, nil
+	return json.Marshal(cfg)
 }
 
-// FromRawConfiguration populates the typed component from raw configuration data
-func (c *AudioAccessorySettingsComponent) FromRawConfiguration(raw map[string]any) error {
+// FromRawConfiguration populates the typed component from raw JSON configuration.
+func (c *AudioAccessorySettingsComponent) FromRawConfiguration(raw json.RawMessage) error {
 	c.TemporaryPairingDisabled = types.BoolNull()
 	c.UnpairingTimePolicy = types.StringNull()
 	c.UnpairingTimeHour = types.Int64Null()
 
-	if temporaryPairingRaw, exists := raw["TemporaryPairing"]; exists {
-		if temporaryPairing, ok := temporaryPairingRaw.(map[string]any); ok {
-			if included, hasIncluded := temporaryPairing["Included"]; hasIncluded && included.(bool) {
+	var cfg declarations.AudioAccessorySettingsConfiguration
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
+	}
 
-				if disabled, exists := temporaryPairing["Disabled"]; exists {
-					switch v := disabled.(type) {
-					case bool:
-						c.TemporaryPairingDisabled = types.BoolValue(v)
-					case string:
-						switch v {
-						case "true":
-							c.TemporaryPairingDisabled = types.BoolValue(true)
-						case "false":
-							c.TemporaryPairingDisabled = types.BoolValue(false)
-						}
-					}
-				}
+	if cfg.TemporaryPairing == nil {
+		return nil
+	}
 
-				if configRaw, exists := temporaryPairing["Configuration"]; exists {
-					if config, ok := configRaw.(map[string]any); ok {
-						if unpairingTimeRaw, exists := config["UnpairingTime"]; exists {
-							if unpairingTime, ok := unpairingTimeRaw.(map[string]any); ok {
+	tp := cfg.TemporaryPairing
+	if tp.Included == nil || !*tp.Included {
+		return nil
+	}
 
-								if policy, exists := unpairingTime["Policy"]; exists {
-									if policyStr, ok := policy.(string); ok {
-										c.UnpairingTimePolicy = types.StringValue(policyStr)
-									}
-								}
+	if tp.Disabled != nil {
+		c.TemporaryPairingDisabled = types.BoolValue(*tp.Disabled)
+	}
 
-								if hour, exists := unpairingTime["Hour"]; exists {
-									switch v := hour.(type) {
-									case int:
-										c.UnpairingTimeHour = types.Int64Value(int64(v))
-									case int64:
-										c.UnpairingTimeHour = types.Int64Value(v)
-									case float64:
-										c.UnpairingTimeHour = types.Int64Value(int64(v))
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+	if tp.Configuration != nil {
+		ut := tp.Configuration.UnpairingTime
+		c.UnpairingTimePolicy = types.StringValue(ut.Policy)
+		if ut.Hour != nil {
+			c.UnpairingTimeHour = types.Int64Value(int64(*ut.Hour))
 		}
 	}
 
 	return nil
 }
 
-// ToClientComponent converts the typed component to the format expected by the Blueprint API client
-func (c *AudioAccessorySettingsComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the typed component to the format expected by the Blueprint API client.
+func (c *AudioAccessorySettingsComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }

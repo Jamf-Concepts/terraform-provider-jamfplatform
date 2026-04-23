@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
@@ -28,7 +29,7 @@ func NewBlueprintListResource() list.ListResource {
 
 // BlueprintListResource implements terraform query list support for blueprints.
 type BlueprintListResource struct {
-	client *jamfplatform.Client
+	client *blueprints.Client
 }
 
 // Metadata sets the list resource type name.
@@ -42,7 +43,7 @@ func (r *BlueprintListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	client, ok := req.ProviderData.(*jamfplatform.Client)
+	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
@@ -51,7 +52,7 @@ func (r *BlueprintListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	r.client = client
+	r.client = blueprints.New(rootClient)
 }
 
 // ListResourceConfigSchema describes the supported list filters.

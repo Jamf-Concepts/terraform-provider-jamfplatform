@@ -6,6 +6,8 @@ package components
 import (
 	"encoding/json"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -14,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// MathSettingsComponent represents a strongly-typed math settings component
+// MathSettingsComponent represents a strongly-typed math settings component.
 type MathSettingsComponent struct {
 	CalculatorBasicModeAddSquareRoot   types.Bool `tfsdk:"calculator_basic_mode_add_square_root"`
 	CalculatorScientificModeEnabled    types.Bool `tfsdk:"calculator_scientific_mode_enabled"`
@@ -26,12 +28,12 @@ type MathSettingsComponent struct {
 	SystemBehaviorMathNotes            types.Bool `tfsdk:"system_behavior_math_notes"`
 }
 
-// GetIdentifier returns the component identifier for math settings
+// GetIdentifier returns the component identifier for math settings.
 func (c *MathSettingsComponent) GetIdentifier() string {
 	return "com.jamf.ddm.math-settings"
 }
 
-// MathSettingsComponentSchema returns the Terraform schema for math settings component
+// MathSettingsComponentSchema returns the Terraform schema for math settings component.
 func MathSettingsComponentSchema() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
 		"calculator_basic_mode_add_square_root": schema.BoolAttribute{
@@ -81,150 +83,134 @@ func MathSettingsComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// ToRawConfiguration converts the typed component to raw configuration matching OpenAPI MathSettingsConfiguration schema
-func (c *MathSettingsComponent) ToRawConfiguration() (map[string]any, error) {
-	config := make(map[string]any)
+// ToRawConfiguration converts the typed component to raw JSON configuration.
+func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
+	cfg := declarations.MathSettingsConfiguration{}
 
-	calculator := map[string]any{
-		"BasicMode":      setBoolFieldWithKey(c.CalculatorBasicModeAddSquareRoot, "AddSquareRoot", true),
-		"ScientificMode": setBoolField(c.CalculatorScientificModeEnabled, true),
-		"ProgrammerMode": setBoolField(c.CalculatorProgrammerModeEnabled, true),
-		"MathNotesMode":  setBoolField(c.CalculatorMathNotesModeEnabled, true),
+	calc := &declarations.Calculator{}
+
+	calc.BasicMode = &declarations.BasicMode{
+		Included:      new(helpers.IsConfiguredValue(c.CalculatorBasicModeAddSquareRoot)),
+		AddSquareRoot: c.CalculatorBasicModeAddSquareRoot.ValueBool(),
+	}
+	if !helpers.IsConfiguredValue(c.CalculatorBasicModeAddSquareRoot) {
+		calc.BasicMode.AddSquareRoot = true
+	}
+
+	calc.ScientificMode = &declarations.ScientificMode{
+		Included: new(helpers.IsConfiguredValue(c.CalculatorScientificModeEnabled)),
+		Enabled:  c.CalculatorScientificModeEnabled.ValueBool(),
+	}
+	if !helpers.IsConfiguredValue(c.CalculatorScientificModeEnabled) {
+		calc.ScientificMode.Enabled = true
+	}
+
+	calc.ProgrammerMode = &declarations.ProgrammerMode{
+		Included: new(helpers.IsConfiguredValue(c.CalculatorProgrammerModeEnabled)),
+		Enabled:  c.CalculatorProgrammerModeEnabled.ValueBool(),
+	}
+	if !helpers.IsConfiguredValue(c.CalculatorProgrammerModeEnabled) {
+		calc.ProgrammerMode.Enabled = true
+	}
+
+	calc.MathNotesMode = &declarations.MathNotesMode{
+		Included: new(helpers.IsConfiguredValue(c.CalculatorMathNotesModeEnabled)),
+		Enabled:  c.CalculatorMathNotesModeEnabled.ValueBool(),
+	}
+	if !helpers.IsConfiguredValue(c.CalculatorMathNotesModeEnabled) {
+		calc.MathNotesMode.Enabled = true
 	}
 
 	hasInputModes := helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) ||
 		helpers.IsConfiguredValue(c.CalculatorInputModesRPN)
 
-	inputModes := make(map[string]any)
-	if hasInputModes {
-		inputModes["Included"] = true
-		if helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) {
-			inputModes["UnitConversion"] = c.CalculatorInputModesUnitConversion.ValueBool()
-		} else {
-			inputModes["UnitConversion"] = true
-		}
-		if helpers.IsConfiguredValue(c.CalculatorInputModesRPN) {
-			inputModes["RPN"] = c.CalculatorInputModesRPN.ValueBool()
-		} else {
-			inputModes["RPN"] = true
-		}
-	} else {
-		inputModes["Included"] = false
-		inputModes["UnitConversion"] = true
-		inputModes["RPN"] = true
+	unitConversion := true
+	rpn := true
+	if helpers.IsConfiguredValue(c.CalculatorInputModesUnitConversion) {
+		unitConversion = c.CalculatorInputModesUnitConversion.ValueBool()
 	}
-	calculator["InputModes"] = inputModes
+	if helpers.IsConfiguredValue(c.CalculatorInputModesRPN) {
+		rpn = c.CalculatorInputModesRPN.ValueBool()
+	}
+	calc.InputModes = &declarations.InputModes{
+		Included:       new(hasInputModes),
+		UnitConversion: unitConversion,
+		RPN:            rpn,
+	}
 
-	config["Calculator"] = calculator
+	cfg.Calculator = calc
 
 	hasSystemBehavior := helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) ||
 		helpers.IsConfiguredValue(c.SystemBehaviorMathNotes)
 
-	systemBehavior := make(map[string]any)
-	if hasSystemBehavior {
-		systemBehavior["Included"] = true
-		if helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) {
-			systemBehavior["KeyboardSuggestions"] = c.SystemBehaviorKeyboardSuggestions.ValueBool()
-		} else {
-			systemBehavior["KeyboardSuggestions"] = true
-		}
-		if helpers.IsConfiguredValue(c.SystemBehaviorMathNotes) {
-			systemBehavior["MathNotes"] = c.SystemBehaviorMathNotes.ValueBool()
-		} else {
-			systemBehavior["MathNotes"] = true
-		}
-	} else {
-		systemBehavior["Included"] = false
-		systemBehavior["KeyboardSuggestions"] = true
-		systemBehavior["MathNotes"] = true
+	keyboardSuggestions := true
+	mathNotes := true
+	if helpers.IsConfiguredValue(c.SystemBehaviorKeyboardSuggestions) {
+		keyboardSuggestions = c.SystemBehaviorKeyboardSuggestions.ValueBool()
 	}
-	config["SystemBehavior"] = systemBehavior
+	if helpers.IsConfiguredValue(c.SystemBehaviorMathNotes) {
+		mathNotes = c.SystemBehaviorMathNotes.ValueBool()
+	}
+	cfg.SystemBehavior = &declarations.SystemBehavior{
+		Included:            new(hasSystemBehavior),
+		KeyboardSuggestions: keyboardSuggestions,
+		MathNotes:           mathNotes,
+	}
 
-	return config, nil
+	return json.Marshal(cfg)
 }
 
-// FromRawConfiguration populates the typed component from raw configuration data
-func (c *MathSettingsComponent) FromRawConfiguration(raw map[string]any) error {
-	extractBool := func(path ...string) types.Bool {
-		current := raw
-		for i, key := range path {
-			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]any); ok {
-					if i == len(path)-1 {
-						if included, hasIncluded := nextMap["Included"]; hasIncluded && included.(bool) {
-							for _, valueKey := range []string{"Enabled", "AddSquareRoot"} {
-								if value, hasValue := nextMap[valueKey]; hasValue {
-									if boolVal, ok := value.(bool); ok {
-										return types.BoolValue(boolVal)
-									}
-								}
-							}
-						}
-						return types.BoolNull()
-					}
-					current = nextMap
-				} else {
-					return types.BoolNull()
-				}
-			} else {
-				return types.BoolNull()
-			}
-		}
-		return types.BoolNull()
+// FromRawConfiguration populates the typed component from raw JSON configuration.
+func (c *MathSettingsComponent) FromRawConfiguration(raw json.RawMessage) error {
+	var cfg declarations.MathSettingsConfiguration
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return err
 	}
 
-	extractGroupBool := func(groupPath []string, fieldKey string) types.Bool {
-		current := raw
-		for _, key := range groupPath {
-			if next, exists := current[key]; exists {
-				if nextMap, ok := next.(map[string]any); ok {
-					current = nextMap
-				} else {
-					return types.BoolNull()
-				}
-			} else {
-				return types.BoolNull()
-			}
-		}
+	c.CalculatorBasicModeAddSquareRoot = types.BoolNull()
+	c.CalculatorScientificModeEnabled = types.BoolNull()
+	c.CalculatorProgrammerModeEnabled = types.BoolNull()
+	c.CalculatorMathNotesModeEnabled = types.BoolNull()
+	c.CalculatorInputModesUnitConversion = types.BoolNull()
+	c.CalculatorInputModesRPN = types.BoolNull()
+	c.SystemBehaviorKeyboardSuggestions = types.BoolNull()
+	c.SystemBehaviorMathNotes = types.BoolNull()
 
-		if included, hasIncluded := current["Included"]; hasIncluded && included.(bool) {
-			if value, hasValue := current[fieldKey]; hasValue {
-				if boolVal, ok := value.(bool); ok {
-					return types.BoolValue(boolVal)
-				}
-			}
+	if calc := cfg.Calculator; calc != nil {
+		if bm := calc.BasicMode; bm != nil && bm.Included != nil && *bm.Included {
+			c.CalculatorBasicModeAddSquareRoot = types.BoolValue(bm.AddSquareRoot)
 		}
-		return types.BoolNull()
+		if sm := calc.ScientificMode; sm != nil && sm.Included != nil && *sm.Included {
+			c.CalculatorScientificModeEnabled = types.BoolValue(sm.Enabled)
+		}
+		if pm := calc.ProgrammerMode; pm != nil && pm.Included != nil && *pm.Included {
+			c.CalculatorProgrammerModeEnabled = types.BoolValue(pm.Enabled)
+		}
+		if mm := calc.MathNotesMode; mm != nil && mm.Included != nil && *mm.Included {
+			c.CalculatorMathNotesModeEnabled = types.BoolValue(mm.Enabled)
+		}
+		if im := calc.InputModes; im != nil && im.Included != nil && *im.Included {
+			c.CalculatorInputModesUnitConversion = types.BoolValue(im.UnitConversion)
+			c.CalculatorInputModesRPN = types.BoolValue(im.RPN)
+		}
 	}
 
-	c.CalculatorBasicModeAddSquareRoot = extractBool("Calculator", "BasicMode")
-	c.CalculatorScientificModeEnabled = extractBool("Calculator", "ScientificMode")
-	c.CalculatorProgrammerModeEnabled = extractBool("Calculator", "ProgrammerMode")
-	c.CalculatorMathNotesModeEnabled = extractBool("Calculator", "MathNotesMode")
-
-	c.CalculatorInputModesUnitConversion = extractGroupBool([]string{"Calculator", "InputModes"}, "UnitConversion")
-	c.CalculatorInputModesRPN = extractGroupBool([]string{"Calculator", "InputModes"}, "RPN")
-
-	c.SystemBehaviorKeyboardSuggestions = extractGroupBool([]string{"SystemBehavior"}, "KeyboardSuggestions")
-	c.SystemBehaviorMathNotes = extractGroupBool([]string{"SystemBehavior"}, "MathNotes")
+	if sb := cfg.SystemBehavior; sb != nil && sb.Included != nil && *sb.Included {
+		c.SystemBehaviorKeyboardSuggestions = types.BoolValue(sb.KeyboardSuggestions)
+		c.SystemBehaviorMathNotes = types.BoolValue(sb.MathNotes)
+	}
 
 	return nil
 }
 
-// ToClientComponent converts the typed component to the format expected by the Blueprint API client
-func (c *MathSettingsComponent) ToClientComponent() (*BlueprintComponentData, error) {
-	config, err := c.ToRawConfiguration()
+// ToClientComponent converts the typed component to the format expected by the Blueprint API client.
+func (c *MathSettingsComponent) ToClientComponent() (*blueprints.Component, error) {
+	cfg, err := c.ToRawConfiguration()
 	if err != nil {
 		return nil, err
 	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlueprintComponentData{
+	return &blueprints.Component{
 		Identifier:    c.GetIdentifier(),
-		Configuration: json.RawMessage(configJSON),
+		Configuration: cfg,
 	}, nil
 }

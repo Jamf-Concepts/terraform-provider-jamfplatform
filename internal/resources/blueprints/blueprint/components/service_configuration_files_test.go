@@ -30,9 +30,13 @@ func TestServiceConfigurationFiles_ToRawConfiguration_Full(t *testing.T) {
 		},
 	}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
 	}
 
 	files, ok := config["serviceConfigFiles"].([]any)
@@ -64,18 +68,23 @@ func TestServiceConfigurationFiles_ToRawConfiguration_Full(t *testing.T) {
 func TestServiceConfigurationFiles_ToRawConfiguration_Empty(t *testing.T) {
 	c := &ServiceConfigurationFilesComponent{}
 
-	config, err := c.ToRawConfiguration()
+	rawCfg, err := c.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	var config map[string]any
+	if err := json.Unmarshal(rawCfg, &config); err != nil {
+		t.Fatalf("failed to unmarshal config: %v", err)
+	}
 
-	if _, exists := config["serviceConfigFiles"]; exists {
-		t.Error("expected no serviceConfigFiles key for empty component")
+	files, ok := config["serviceConfigFiles"].([]any)
+	if !ok || len(files) != 0 {
+		t.Error("expected empty serviceConfigFiles slice for empty component")
 	}
 }
 
 func TestServiceConfigurationFiles_FromRawConfiguration(t *testing.T) {
-	raw := map[string]any{
+	rawMap := map[string]any{
 		"serviceConfigFiles": []any{
 			map[string]any{
 				"ServiceType": "com.apple.httpd",
@@ -89,6 +98,7 @@ func TestServiceConfigurationFiles_FromRawConfiguration(t *testing.T) {
 			},
 		},
 	}
+	raw, _ := json.Marshal(rawMap)
 
 	c := &ServiceConfigurationFilesComponent{}
 	if err := c.FromRawConfiguration(raw); err != nil {
@@ -119,7 +129,7 @@ func TestServiceConfigurationFiles_FromRawConfiguration(t *testing.T) {
 
 func TestServiceConfigurationFiles_FromRawConfiguration_Empty(t *testing.T) {
 	c := &ServiceConfigurationFilesComponent{}
-	if err := c.FromRawConfiguration(map[string]any{}); err != nil {
+	if err := c.FromRawConfiguration(json.RawMessage("{}")); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -141,22 +151,13 @@ func TestServiceConfigurationFiles_Roundtrip(t *testing.T) {
 		},
 	}
 
-	config, err := original.ToRawConfiguration()
+	rawCfg, err := original.ToRawConfiguration()
 	if err != nil {
 		t.Fatalf("ToRawConfiguration error: %v", err)
 	}
 
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		t.Fatalf("json.Marshal error: %v", err)
-	}
-	var parsed map[string]any
-	if err := json.Unmarshal(jsonBytes, &parsed); err != nil {
-		t.Fatalf("json.Unmarshal error: %v", err)
-	}
-
 	restored := &ServiceConfigurationFilesComponent{}
-	if err := restored.FromRawConfiguration(parsed); err != nil {
+	if err := restored.FromRawConfiguration(rawCfg); err != nil {
 		t.Fatalf("FromRawConfiguration error: %v", err)
 	}
 
