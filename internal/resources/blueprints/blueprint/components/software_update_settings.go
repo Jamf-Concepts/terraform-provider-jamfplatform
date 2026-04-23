@@ -141,7 +141,7 @@ func buildOptionallyEnabled(field types.Bool, defaultValue bool) *declarations.O
 	}
 	return &declarations.OptionallyEnabled{
 		Enabled:  enabled,
-		Included: boolPtr(helpers.IsConfiguredValue(field)),
+		Included: new(helpers.IsConfiguredValue(field)),
 	}
 }
 
@@ -152,7 +152,7 @@ func buildAutomaticAction(field types.String, defaultValue string) *declarations
 		value = field.ValueString()
 	}
 	return &declarations.AutomaticAction{
-		Included: boolPtr(helpers.IsConfiguredValue(field)),
+		Included: new(helpers.IsConfiguredValue(field)),
 		Value:    value,
 	}
 }
@@ -161,10 +161,10 @@ func buildAutomaticAction(field types.String, defaultValue string) *declarations
 func buildOptionalPeriodInDays(field types.Int64) *declarations.OptionalPeriodInDays {
 	if !helpers.IsConfiguredValue(field) {
 		v := 0
-		return &declarations.OptionalPeriodInDays{Included: boolPtr(false), Value: &v}
+		return &declarations.OptionalPeriodInDays{Included: new(false), Value: &v}
 	}
 	v := int(field.ValueInt64())
-	return &declarations.OptionalPeriodInDays{Included: boolPtr(true), Value: &v}
+	return &declarations.OptionalPeriodInDays{Included: new(true), Value: &v}
 }
 
 // ToRawConfiguration converts the strongly-typed component to the OpenAPI nested format.
@@ -231,7 +231,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage,
 		cadenceValue = c.RecommendedCadence.ValueString()
 	}
 	cfg.RecommendedCadence = &declarations.RecommendedCadence{
-		Included: boolPtr(helpers.IsConfiguredValue(c.RecommendedCadence)),
+		Included: new(helpers.IsConfiguredValue(c.RecommendedCadence)),
 		Value:    cadenceValue,
 	}
 

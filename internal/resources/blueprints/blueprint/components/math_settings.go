@@ -84,7 +84,9 @@ func MathSettingsComponentSchema() map[string]schema.Attribute {
 }
 
 // boolPtr returns a pointer to a bool value.
-func boolPtr(b bool) *bool { return &b }
+//
+//go:fix inline
+func boolPtr(b bool) *bool { return new(b) }
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
@@ -93,7 +95,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	calc := &declarations.Calculator{}
 
 	calc.BasicMode = &declarations.BasicMode{
-		Included:      boolPtr(helpers.IsConfiguredValue(c.CalculatorBasicModeAddSquareRoot)),
+		Included:      new(helpers.IsConfiguredValue(c.CalculatorBasicModeAddSquareRoot)),
 		AddSquareRoot: c.CalculatorBasicModeAddSquareRoot.ValueBool(),
 	}
 	if !helpers.IsConfiguredValue(c.CalculatorBasicModeAddSquareRoot) {
@@ -101,7 +103,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	}
 
 	calc.ScientificMode = &declarations.ScientificMode{
-		Included: boolPtr(helpers.IsConfiguredValue(c.CalculatorScientificModeEnabled)),
+		Included: new(helpers.IsConfiguredValue(c.CalculatorScientificModeEnabled)),
 		Enabled:  c.CalculatorScientificModeEnabled.ValueBool(),
 	}
 	if !helpers.IsConfiguredValue(c.CalculatorScientificModeEnabled) {
@@ -109,7 +111,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	}
 
 	calc.ProgrammerMode = &declarations.ProgrammerMode{
-		Included: boolPtr(helpers.IsConfiguredValue(c.CalculatorProgrammerModeEnabled)),
+		Included: new(helpers.IsConfiguredValue(c.CalculatorProgrammerModeEnabled)),
 		Enabled:  c.CalculatorProgrammerModeEnabled.ValueBool(),
 	}
 	if !helpers.IsConfiguredValue(c.CalculatorProgrammerModeEnabled) {
@@ -117,7 +119,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	}
 
 	calc.MathNotesMode = &declarations.MathNotesMode{
-		Included: boolPtr(helpers.IsConfiguredValue(c.CalculatorMathNotesModeEnabled)),
+		Included: new(helpers.IsConfiguredValue(c.CalculatorMathNotesModeEnabled)),
 		Enabled:  c.CalculatorMathNotesModeEnabled.ValueBool(),
 	}
 	if !helpers.IsConfiguredValue(c.CalculatorMathNotesModeEnabled) {
@@ -136,7 +138,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 		rpn = c.CalculatorInputModesRPN.ValueBool()
 	}
 	calc.InputModes = &declarations.InputModes{
-		Included:       boolPtr(hasInputModes),
+		Included:       new(hasInputModes),
 		UnitConversion: unitConversion,
 		RPN:            rpn,
 	}
@@ -155,7 +157,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 		mathNotes = c.SystemBehaviorMathNotes.ValueBool()
 	}
 	cfg.SystemBehavior = &declarations.SystemBehavior{
-		Included:            boolPtr(hasSystemBehavior),
+		Included:            new(hasSystemBehavior),
 		KeyboardSuggestions: keyboardSuggestions,
 		MathNotes:           mathNotes,
 	}
