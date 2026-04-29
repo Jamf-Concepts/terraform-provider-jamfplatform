@@ -1,7 +1,7 @@
 list "jamfplatform_cbengine_benchmark" "cis_benchmarks" {
-    provider = jamfplatform
+  provider = jamfplatform
 
-    config {
-        search = "CIS"
-    }
+  config {
+    search = "CIS"
+  }
 }

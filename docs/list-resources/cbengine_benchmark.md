@@ -14,11 +14,11 @@ Searches for Jamf Compliance Benchmarks with an optional case-insensitive substr
 
 ```terraform
 list "jamfplatform_cbengine_benchmark" "cis_benchmarks" {
-    provider = jamfplatform
+  provider = jamfplatform
 
-    config {
-        search = "CIS"
-    }
+  config {
+    search = "CIS"
+  }
 }
 ```
 
