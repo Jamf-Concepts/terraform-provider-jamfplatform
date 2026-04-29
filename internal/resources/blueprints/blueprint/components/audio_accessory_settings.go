@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -60,7 +59,7 @@ func AudioAccessorySettingsComponentSchema() map[string]schema.Attribute {
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
-	cfg := declarations.AudioAccessorySettingsConfiguration{}
+	cfg := blueprints.AudioAccessorySettingsConfiguration{}
 
 	hasTemporaryPairing := helpers.IsConfiguredValue(c.TemporaryPairingDisabled) ||
 		helpers.IsConfiguredValue(c.UnpairingTimePolicy) ||
@@ -68,7 +67,7 @@ func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (json.RawMessage,
 
 	if hasTemporaryPairing {
 		trueVal := true
-		tp := &declarations.TemporaryPairing{
+		tp := &blueprints.TemporaryPairing{
 			Included: &trueVal,
 		}
 
@@ -81,7 +80,7 @@ func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (json.RawMessage,
 			helpers.IsConfiguredValue(c.UnpairingTimeHour)
 
 		if hasUnpairingSettings {
-			unpairingTime := declarations.UnpairingTime{}
+			unpairingTime := blueprints.UnpairingTime{}
 
 			if helpers.IsConfiguredValue(c.UnpairingTimePolicy) {
 				unpairingTime.Policy = c.UnpairingTimePolicy.ValueString()
@@ -92,7 +91,7 @@ func (c *AudioAccessorySettingsComponent) ToRawConfiguration() (json.RawMessage,
 				unpairingTime.Hour = &hour
 			}
 
-			tp.Configuration = &declarations.Configuration{
+			tp.Configuration = &blueprints.TemporaryPairingConfig{
 				UnpairingTime: unpairingTime,
 			}
 		}
@@ -109,7 +108,7 @@ func (c *AudioAccessorySettingsComponent) FromRawConfiguration(raw json.RawMessa
 	c.UnpairingTimePolicy = types.StringNull()
 	c.UnpairingTimeHour = types.Int64Null()
 
-	var cfg declarations.AudioAccessorySettingsConfiguration
+	var cfg blueprints.AudioAccessorySettingsConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}

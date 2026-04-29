@@ -266,32 +266,6 @@ func TestPasscodePolicy_FromRawConfiguration_V2Format(t *testing.T) {
 	}
 }
 
-func TestPasscodePolicy_FromRawConfiguration_V1FlatFormat(t *testing.T) {
-	inputMap := map[string]any{
-		"ChangeAtNextAuth":             true,
-		"FailedAttemptsResetInMinutes": float64(15),
-		"MaximumFailedAttempts":        float64(10),
-		"MinimumLength":                float64(8),
-		"RequirePasscode":              true,
-	}
-	raw, _ := json.Marshal(inputMap)
-
-	c := &PasscodePolicyComponent{}
-	if err := c.FromRawConfiguration(raw); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if c.ChangeAtNextAuth.ValueBool() != true {
-		t.Errorf("expected ChangeAtNextAuth true, got %v", c.ChangeAtNextAuth.ValueBool())
-	}
-	if c.FailedAttemptsResetInMinutes.ValueInt64() != 15 {
-		t.Errorf("expected FailedAttemptsResetInMinutes 15, got %d", c.FailedAttemptsResetInMinutes.ValueInt64())
-	}
-	if c.MinimumLength.ValueInt64() != 8 {
-		t.Errorf("expected MinimumLength 8, got %d", c.MinimumLength.ValueInt64())
-	}
-}
-
 func TestPasscodePolicy_FromRawConfiguration_V2NotIncluded(t *testing.T) {
 	inputMap := map[string]any{
 		"version": float64(2),

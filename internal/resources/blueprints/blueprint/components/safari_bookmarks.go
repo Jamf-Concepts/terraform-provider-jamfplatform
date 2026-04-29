@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -108,12 +107,12 @@ func SafariBookmarksComponentSchema() map[string]schema.Attribute {
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *SafariBookmarksComponent) ToRawConfiguration() (json.RawMessage, error) {
 	if len(c.ManagedBookmarks) == 0 {
-		return json.Marshal(declarations.SafariBookmarksConfiguration{ManagedBookmarks: []declarations.BookmarkGroup{}})
+		return json.Marshal(blueprints.SafariBookmarksConfiguration{ManagedBookmarks: []blueprints.BookmarkGroup{}})
 	}
 
-	groups := make([]declarations.BookmarkGroup, 0, len(c.ManagedBookmarks))
+	groups := make([]blueprints.BookmarkGroup, 0, len(c.ManagedBookmarks))
 	for _, group := range c.ManagedBookmarks {
-		g := declarations.BookmarkGroup{}
+		g := blueprints.BookmarkGroup{}
 
 		if helpers.IsConfiguredValue(group.GroupIdentifier) {
 			g.GroupIdentifier = group.GroupIdentifier.ValueString()
@@ -122,54 +121,45 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (json.RawMessage, error)
 			g.Title = group.Title.ValueString()
 		}
 
-		bookmarks := make([]any, 0, len(group.Bookmarks))
+		bookmarks := make([]blueprints.BookmarkItem, 0, len(group.Bookmarks))
 		for _, bookmark := range group.Bookmarks {
-			bm := make(map[string]any)
-
-			if helpers.IsConfiguredValue(bookmark.Type) {
-				typeValue := bookmark.Type.ValueString()
-				switch typeValue {
-				case "bookmark", "url":
-					bm["Type"] = "BOOKMARK"
-				case "folder":
-					bm["Type"] = "FOLDER"
-				default:
-					bm["Type"] = typeValue
+			typeValue := bookmark.Type.ValueString()
+			switch typeValue {
+			case "bookmark", "url", "":
+				item := blueprints.URLBookmarkItem{
+					Type:  "BOOKMARK",
+					Title: bookmark.Title.ValueString(),
+					URL:   bookmark.URL.ValueString(),
 				}
-			}
-			if helpers.IsConfiguredValue(bookmark.Title) {
-				bm["Title"] = bookmark.Title.ValueString()
-			}
-			if helpers.IsConfiguredValue(bookmark.URL) {
-				bm["URL"] = bookmark.URL.ValueString()
-			}
-			if len(bookmark.Folder) > 0 {
-				folder := make([]any, 0, len(bookmark.Folder))
-				for _, urlBookmark := range bookmark.Folder {
-					ub := map[string]any{"Type": "BOOKMARK"}
-					if helpers.IsConfiguredValue(urlBookmark.Title) {
-						ub["Title"] = urlBookmark.Title.ValueString()
-					}
-					if helpers.IsConfiguredValue(urlBookmark.URL) {
-						ub["URL"] = urlBookmark.URL.ValueString()
-					}
-					folder = append(folder, ub)
+				bookmarks = append(bookmarks, blueprints.BookmarkItem{Type: "BOOKMARK", BOOKMARK: &item})
+			case "folder":
+				folder := make([]blueprints.URLBookmarkItem, 0, len(bookmark.Folder))
+				for _, ub := range bookmark.Folder {
+					folder = append(folder, blueprints.URLBookmarkItem{
+						Type:  "BOOKMARK",
+						Title: ub.Title.ValueString(),
+						URL:   ub.URL.ValueString(),
+					})
 				}
-				bm["Folder"] = folder
+				item := blueprints.FolderBookmarkItem{
+					Type:   "FOLDER",
+					Title:  bookmark.Title.ValueString(),
+					Folder: &folder,
+				}
+				bookmarks = append(bookmarks, blueprints.BookmarkItem{Type: "FOLDER", FOLDER: &item})
 			}
-			bookmarks = append(bookmarks, bm)
 		}
 		g.Bookmarks = bookmarks
 		groups = append(groups, g)
 	}
 
-	cfg := declarations.SafariBookmarksConfiguration{ManagedBookmarks: groups}
+	cfg := blueprints.SafariBookmarksConfiguration{ManagedBookmarks: groups}
 	return json.Marshal(cfg)
 }
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
 func (c *SafariBookmarksComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var cfg declarations.SafariBookmarksConfiguration
+	var cfg blueprints.SafariBookmarksConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}
@@ -184,39 +174,30 @@ func (c *SafariBookmarksComponent) FromRawConfiguration(raw json.RawMessage) err
 		bookmarks := make([]BookmarkModel, 0, len(g.Bookmarks))
 		for _, bRaw := range g.Bookmarks {
 			bm := BookmarkModel{}
-			if bmMap, ok := bRaw.(map[string]any); ok {
-				if t, ok := bmMap["Type"].(string); ok {
-					switch t {
-					case "BOOKMARK":
-						bm.Type = types.StringValue("bookmark")
-					case "FOLDER":
-						bm.Type = types.StringValue("folder")
-					default:
-						bm.Type = types.StringValue(t)
-					}
+			switch bRaw.Type {
+			case "BOOKMARK":
+				bm.Type = types.StringValue("bookmark")
+				if bRaw.BOOKMARK != nil {
+					bm.Title = types.StringValue(bRaw.BOOKMARK.Title)
+					bm.URL = types.StringValue(bRaw.BOOKMARK.URL)
 				}
-				if title, ok := bmMap["Title"].(string); ok {
-					bm.Title = types.StringValue(title)
-				}
-				if url, ok := bmMap["URL"].(string); ok {
-					bm.URL = types.StringValue(url)
-				}
-				if folderRaw, ok := bmMap["Folder"].([]any); ok {
-					folder := make([]UrlBookmarkModel, 0, len(folderRaw))
-					for _, ubRaw := range folderRaw {
-						if ubMap, ok := ubRaw.(map[string]any); ok {
-							ub := UrlBookmarkModel{}
-							if title, ok := ubMap["Title"].(string); ok {
-								ub.Title = types.StringValue(title)
-							}
-							if url, ok := ubMap["URL"].(string); ok {
-								ub.URL = types.StringValue(url)
-							}
-							folder = append(folder, ub)
+			case "FOLDER":
+				bm.Type = types.StringValue("folder")
+				if bRaw.FOLDER != nil {
+					bm.Title = types.StringValue(bRaw.FOLDER.Title)
+					if bRaw.FOLDER.Folder != nil {
+						folder := make([]UrlBookmarkModel, 0, len(*bRaw.FOLDER.Folder))
+						for _, ub := range *bRaw.FOLDER.Folder {
+							folder = append(folder, UrlBookmarkModel{
+								Title: types.StringValue(ub.Title),
+								URL:   types.StringValue(ub.URL),
+							})
 						}
+						bm.Folder = folder
 					}
-					bm.Folder = folder
 				}
+			default:
+				bm.Type = types.StringValue(bRaw.Type)
 			}
 			bookmarks = append(bookmarks, bm)
 		}
