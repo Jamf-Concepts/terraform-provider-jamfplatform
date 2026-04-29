@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -85,11 +84,11 @@ func MathSettingsComponentSchema() map[string]schema.Attribute {
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
-	cfg := declarations.MathSettingsConfiguration{}
+	cfg := blueprints.MathSettingsConfiguration{}
 
-	calc := &declarations.Calculator{}
+	calc := &blueprints.Calculator{}
 
-	calc.BasicMode = &declarations.BasicMode{
+	calc.BasicMode = &blueprints.BasicMode{
 		Included:      new(helpers.IsConfiguredValue(c.CalculatorBasicModeAddSquareRoot)),
 		AddSquareRoot: c.CalculatorBasicModeAddSquareRoot.ValueBool(),
 	}
@@ -97,7 +96,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 		calc.BasicMode.AddSquareRoot = true
 	}
 
-	calc.ScientificMode = &declarations.ScientificMode{
+	calc.ScientificMode = &blueprints.ScientificMode{
 		Included: new(helpers.IsConfiguredValue(c.CalculatorScientificModeEnabled)),
 		Enabled:  c.CalculatorScientificModeEnabled.ValueBool(),
 	}
@@ -105,7 +104,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 		calc.ScientificMode.Enabled = true
 	}
 
-	calc.ProgrammerMode = &declarations.ProgrammerMode{
+	calc.ProgrammerMode = &blueprints.ProgrammerMode{
 		Included: new(helpers.IsConfiguredValue(c.CalculatorProgrammerModeEnabled)),
 		Enabled:  c.CalculatorProgrammerModeEnabled.ValueBool(),
 	}
@@ -113,7 +112,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 		calc.ProgrammerMode.Enabled = true
 	}
 
-	calc.MathNotesMode = &declarations.MathNotesMode{
+	calc.MathNotesMode = &blueprints.MathNotesMode{
 		Included: new(helpers.IsConfiguredValue(c.CalculatorMathNotesModeEnabled)),
 		Enabled:  c.CalculatorMathNotesModeEnabled.ValueBool(),
 	}
@@ -132,7 +131,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	if helpers.IsConfiguredValue(c.CalculatorInputModesRPN) {
 		rpn = c.CalculatorInputModesRPN.ValueBool()
 	}
-	calc.InputModes = &declarations.InputModes{
+	calc.InputModes = &blueprints.InputModes{
 		Included:       new(hasInputModes),
 		UnitConversion: unitConversion,
 		RPN:            rpn,
@@ -151,7 +150,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 	if helpers.IsConfiguredValue(c.SystemBehaviorMathNotes) {
 		mathNotes = c.SystemBehaviorMathNotes.ValueBool()
 	}
-	cfg.SystemBehavior = &declarations.SystemBehavior{
+	cfg.SystemBehavior = &blueprints.SystemBehavior{
 		Included:            new(hasSystemBehavior),
 		KeyboardSuggestions: keyboardSuggestions,
 		MathNotes:           mathNotes,
@@ -162,7 +161,7 @@ func (c *MathSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
 func (c *MathSettingsComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var cfg declarations.MathSettingsConfiguration
+	var cfg blueprints.MathSettingsConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}

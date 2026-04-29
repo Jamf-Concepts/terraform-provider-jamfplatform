@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -46,19 +45,19 @@ func DiskManagementPolicyComponentSchema() map[string]schema.Attribute {
 func (c *DiskManagementPolicyComponent) ToRawConfiguration() (json.RawMessage, error) {
 	trueVal := true
 	falseVal := false
-	cfg := declarations.DiskManagementSettingsConfigurationV2{Version: 2}
-	restrictions := &declarations.RestrictionsV2{}
+	cfg := blueprints.DiskManagementSettingsConfiguration{Version: 2}
+	restrictions := &blueprints.Restrictions{}
 
 	if helpers.IsConfiguredValue(c.ExternalStorage) {
-		restrictions.ExternalStorage = &declarations.StorageModeV2{Included: &trueVal, Value: c.ExternalStorage.ValueString()}
+		restrictions.ExternalStorage = &blueprints.StorageMode{Included: &trueVal, Value: c.ExternalStorage.ValueString()}
 	} else {
-		restrictions.ExternalStorage = &declarations.StorageModeV2{Included: &falseVal, Value: "Allowed"}
+		restrictions.ExternalStorage = &blueprints.StorageMode{Included: &falseVal, Value: "Allowed"}
 	}
 
 	if helpers.IsConfiguredValue(c.NetworkStorage) {
-		restrictions.NetworkStorage = &declarations.StorageModeV2{Included: &trueVal, Value: c.NetworkStorage.ValueString()}
+		restrictions.NetworkStorage = &blueprints.StorageMode{Included: &trueVal, Value: c.NetworkStorage.ValueString()}
 	} else {
-		restrictions.NetworkStorage = &declarations.StorageModeV2{Included: &falseVal, Value: "Allowed"}
+		restrictions.NetworkStorage = &blueprints.StorageMode{Included: &falseVal, Value: "Allowed"}
 	}
 
 	cfg.Restrictions = restrictions
@@ -67,7 +66,7 @@ func (c *DiskManagementPolicyComponent) ToRawConfiguration() (json.RawMessage, e
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
 func (c *DiskManagementPolicyComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var cfg declarations.DiskManagementSettingsConfigurationV2
+	var cfg blueprints.DiskManagementSettingsConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}
