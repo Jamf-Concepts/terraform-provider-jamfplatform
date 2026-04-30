@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -84,48 +83,48 @@ func SafariSettingsComponentSchema() map[string]schema.Attribute {
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *SafariSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
-	cfg := declarations.SafariSettingsConfiguration{}
+	cfg := blueprints.SafariSettingsConfiguration{}
 
 	if helpers.IsConfiguredValue(c.AcceptCookies) {
 		v := c.AcceptCookies.ValueString()
 		t := true
-		cfg.AcceptCookies = &declarations.AcceptCookies{Included: &t, Value: &v}
+		cfg.AcceptCookies = &blueprints.AcceptCookies{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowDisablingFraudWarning) {
 		v := c.AllowDisablingFraudWarning.ValueBool()
 		t := true
-		cfg.AllowDisablingFraudWarning = &declarations.AllowDisablingFraudWarning{Included: &t, Value: &v}
+		cfg.AllowDisablingFraudWarning = &blueprints.AllowDisablingFraudWarning{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowHistoryClearing) {
 		v := c.AllowHistoryClearing.ValueBool()
 		t := true
-		cfg.AllowHistoryClearing = &declarations.AllowHistoryClearing{Included: &t, Value: &v}
+		cfg.AllowHistoryClearing = &blueprints.AllowHistoryClearing{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowJavaScript) {
 		v := c.AllowJavaScript.ValueBool()
 		t := true
-		cfg.AllowJavaScript = &declarations.AllowJavaScript{Included: &t, Value: &v}
+		cfg.AllowJavaScript = &blueprints.AllowJavaScript{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowPrivateBrowsing) {
 		v := c.AllowPrivateBrowsing.ValueBool()
 		t := true
-		cfg.AllowPrivateBrowsing = &declarations.AllowPrivateBrowsing{Included: &t, Value: &v}
+		cfg.AllowPrivateBrowsing = &blueprints.AllowPrivateBrowsing{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowPopups) {
 		v := c.AllowPopups.ValueBool()
 		t := true
-		cfg.AllowPopups = &declarations.AllowPopups{Included: &t, Value: &v}
+		cfg.AllowPopups = &blueprints.AllowPopups{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.AllowSummary) {
 		v := c.AllowSummary.ValueBool()
 		t := true
-		cfg.AllowSummary = &declarations.AllowSummary{Included: &t, Value: &v}
+		cfg.AllowSummary = &blueprints.AllowSummary{Included: &t, Value: &v}
 	}
 
 	if helpers.IsConfiguredValue(c.NewTabStartPageType) ||
@@ -133,11 +132,11 @@ func (c *SafariSettingsComponent) ToRawConfiguration() (json.RawMessage, error) 
 		helpers.IsConfiguredValue(c.NewTabStartPageExtensionID) {
 
 		trueVal := true
-		ntsp := &declarations.NewTabStartPage{
+		ntsp := &blueprints.NewTabStartPage{
 			Included: &trueVal,
 		}
 		if helpers.IsConfiguredValue(c.NewTabStartPageType) {
-			ntsp.PageType = c.NewTabStartPageType.ValueString()
+			ntsp.PageType = c.NewTabStartPageType.ValueStringPointer()
 		}
 		if helpers.IsConfiguredValue(c.NewTabStartPageHomepageURL) {
 			u := c.NewTabStartPageHomepageURL.ValueString()
@@ -155,7 +154,7 @@ func (c *SafariSettingsComponent) ToRawConfiguration() (json.RawMessage, error) 
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
 func (c *SafariSettingsComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var cfg declarations.SafariSettingsConfiguration
+	var cfg blueprints.SafariSettingsConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}
@@ -194,7 +193,7 @@ func (c *SafariSettingsComponent) FromRawConfiguration(raw json.RawMessage) erro
 	}
 
 	if ntsp := cfg.NewTabStartPage; ntsp != nil {
-		c.NewTabStartPageType = types.StringValue(ntsp.PageType)
+		c.NewTabStartPageType = types.StringPointerValue(ntsp.PageType)
 		if ntsp.HomepageURL != nil {
 			c.NewTabStartPageHomepageURL = types.StringValue(*ntsp.HomepageURL)
 		}

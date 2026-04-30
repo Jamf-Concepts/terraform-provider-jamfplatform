@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -67,68 +66,71 @@ func ServiceConfigurationFilesComponentSchema() map[string]schema.Attribute {
 	}
 }
 
-// buildServiceConfigDataAssetRef converts a ServiceConfigDataAssetRefModel to a declarations.DataAssetReference.
-func buildServiceConfigDataAssetRef(ref *ServiceConfigDataAssetRefModel) declarations.DataAssetReference {
-	ct := "application/zip"
-	r := declarations.AssetDataReference{
-		DataURL:     ref.DataURL.ValueString(),
-		ContentType: &ct,
+// buildServiceConfigDataAssetRef converts a ServiceConfigDataAssetRefModel to a map for API serialization.
+func buildServiceConfigDataAssetRef(ref *ServiceConfigDataAssetRefModel) map[string]any {
+	inner := map[string]any{
+		"DataURL":     ref.DataURL.ValueString(),
+		"ContentType": "application/zip",
 	}
 	if helpers.IsConfiguredValue(ref.HashSHA256) {
-		h := ref.HashSHA256.ValueString()
-		r.HashSHA256 = &h
+		inner["Hash-SHA-256"] = ref.HashSHA256.ValueString()
 	}
-	return declarations.DataAssetReference{Reference: r}
+	return map[string]any{"Reference": inner}
 }
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *ServiceConfigurationFilesComponent) ToRawConfiguration() (json.RawMessage, error) {
-	files := make([]declarations.ServiceConfigurationFilesConfiguration, 0, len(c.ServiceConfigFiles))
+	files := make([]map[string]any, 0, len(c.ServiceConfigFiles))
 
 	for _, cf := range c.ServiceConfigFiles {
-		f := declarations.ServiceConfigurationFilesConfiguration{}
-
-		if helpers.IsConfiguredValue(cf.ServiceType) {
-			f.ServiceType = cf.ServiceType.ValueString()
+		f := map[string]any{
+			"ServiceType": cf.ServiceType.ValueString(),
 		}
 		if cf.DataAssetReference != nil {
-			f.DataAssetReference = buildServiceConfigDataAssetRef(cf.DataAssetReference)
+			f["DataAssetReference"] = buildServiceConfigDataAssetRef(cf.DataAssetReference)
 		}
-
 		files = append(files, f)
 	}
 
-	cfg := declarations.ServicesConfigurationFilesConfiguration{ServiceConfigFiles: files}
-	return json.Marshal(cfg)
+	return json.Marshal(map[string]any{"serviceConfigFiles": files})
 }
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
 func (c *ServiceConfigurationFilesComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var cfg declarations.ServicesConfigurationFilesConfiguration
+	var cfg map[string]any
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}
 
-	files := make([]ServiceConfigFileModel, 0, len(cfg.ServiceConfigFiles))
-	for _, f := range cfg.ServiceConfigFiles {
-		cf := ServiceConfigFileModel{
-			ServiceType: types.StringValue(f.ServiceType),
+	filesRaw, _ := cfg["serviceConfigFiles"].([]any)
+	files := make([]ServiceConfigFileModel, 0, len(filesRaw))
+	for _, fRaw := range filesRaw {
+		fMap, ok := fRaw.(map[string]any)
+		if !ok {
+			continue
 		}
-
-		ref := f.DataAssetReference
-		dataRef := &ServiceConfigDataAssetRefModel{
-			DataURL: types.StringValue(ref.Reference.DataURL),
+		cf := ServiceConfigFileModel{}
+		if v, ok := fMap["ServiceType"].(string); ok {
+			cf.ServiceType = types.StringValue(v)
 		}
-		if ref.Reference.HashSHA256 != nil {
-			dataRef.HashSHA256 = types.StringValue(*ref.Reference.HashSHA256)
+		if refMap, ok := fMap["DataAssetReference"].(map[string]any); ok {
+			innerMap, ok := refMap["Reference"].(map[string]any)
+			if ok {
+				dataRef := &ServiceConfigDataAssetRefModel{}
+				if v, ok := innerMap["DataURL"].(string); ok {
+					dataRef.DataURL = types.StringValue(v)
+				}
+				if v, ok := innerMap["Hash-SHA-256"].(string); ok {
+					dataRef.HashSHA256 = types.StringValue(v)
+				}
+				ct := "application/zip"
+				if v, ok := innerMap["ContentType"].(string); ok {
+					ct = v
+				}
+				dataRef.ContentType = types.StringValue(ct)
+				cf.DataAssetReference = dataRef
+			}
 		}
-		if ref.Reference.ContentType != nil {
-			dataRef.ContentType = types.StringValue(*ref.Reference.ContentType)
-		} else {
-			dataRef.ContentType = types.StringValue("application/zip")
-		}
-		cf.DataAssetReference = dataRef
-
 		files = append(files, cf)
 	}
 
