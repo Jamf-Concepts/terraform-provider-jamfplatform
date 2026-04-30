@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -134,46 +133,45 @@ func SoftwareUpdateSettingsComponentSchema() map[string]schema.Attribute {
 }
 
 // buildOptionallyEnabled builds an OptionallyEnabled wrapper for a bool field.
-func buildOptionallyEnabled(field types.Bool, defaultValue bool) *declarations.OptionallyEnabled {
+func buildOptionallyEnabled(field types.Bool, defaultValue bool) *blueprints.OptionallyEnabled {
 	enabled := defaultValue
 	if helpers.IsConfiguredValue(field) {
 		enabled = field.ValueBool()
 	}
-	return &declarations.OptionallyEnabled{
+	return &blueprints.OptionallyEnabled{
 		Enabled:  enabled,
 		Included: new(helpers.IsConfiguredValue(field)),
 	}
 }
 
 // buildAutomaticAction builds an AutomaticAction wrapper for a string field.
-func buildAutomaticAction(field types.String, defaultValue string) *declarations.AutomaticAction {
+func buildAutomaticAction(field types.String, defaultValue string) *blueprints.AutomaticAction {
 	value := defaultValue
 	if helpers.IsConfiguredValue(field) {
 		value = field.ValueString()
 	}
-	return &declarations.AutomaticAction{
+	return &blueprints.AutomaticAction{
 		Included: new(helpers.IsConfiguredValue(field)),
 		Value:    value,
 	}
 }
 
 // buildOptionalPeriodInDays builds an OptionalPeriodInDays wrapper for an int64 field.
-func buildOptionalPeriodInDays(field types.Int64) *declarations.OptionalPeriodInDays {
+func buildOptionalPeriodInDays(field types.Int64) *blueprints.OptionalPeriodInDays {
 	if !helpers.IsConfiguredValue(field) {
-		v := 0
-		return &declarations.OptionalPeriodInDays{Included: new(false), Value: &v}
+		return &blueprints.OptionalPeriodInDays{Included: new(false)}
 	}
 	v := int(field.ValueInt64())
-	return &declarations.OptionalPeriodInDays{Included: new(true), Value: &v}
+	return &blueprints.OptionalPeriodInDays{Included: new(true), Value: &v}
 }
 
 // ToRawConfiguration converts the strongly-typed component to the OpenAPI nested format.
 func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage, error) {
-	cfg := declarations.SoftwareUpdateSettingsConfiguration{}
+	cfg := blueprints.SoftwareUpdateSettingsConfiguration{}
 
 	cfg.AllowStandardUserOSUpdates = buildOptionallyEnabled(c.AllowStandardUserOSUpdates, false)
 
-	cfg.AutomaticActions = &declarations.AutomaticActions{
+	cfg.AutomaticActions = &blueprints.AutomaticActions{
 		Download:              buildAutomaticAction(c.AutomaticDownload, "Allowed"),
 		InstallOSUpdates:      buildAutomaticAction(c.AutomaticInstallOSUpdates, "Allowed"),
 		InstallSecurityUpdate: buildAutomaticAction(c.AutomaticInstallSecurityUpdate, "Allowed"),
@@ -185,34 +183,34 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage,
 
 	if hasBetaSettings {
 		trueVal := true
-		betaValue := &declarations.BetaSettings{}
+		betaValue := &blueprints.BetaSettings{}
 
 		if helpers.IsConfiguredValue(c.BetaProgramEnrollment) {
 			betaValue.ProgramEnrollment = c.BetaProgramEnrollment.ValueString()
 		}
 
 		if len(c.BetaOfferPrograms) > 0 {
-			offerPrograms := make([]declarations.BetaProgram, len(c.BetaOfferPrograms))
+			offerPrograms := make([]blueprints.BetaProgram, len(c.BetaOfferPrograms))
 			for i, p := range c.BetaOfferPrograms {
-				offerPrograms[i] = declarations.BetaProgram{
-					Token:       p.Token.ValueString(),
-					Description: p.Description.ValueString(),
+				offerPrograms[i] = blueprints.BetaProgram{
+					Token:       p.Token.ValueStringPointer(),
+					Description: p.Description.ValueStringPointer(),
 				}
 			}
 			betaValue.OfferPrograms = &offerPrograms
 		}
 
 		if helpers.IsConfiguredValue(c.BetaRequireProgramToken) && helpers.IsConfiguredValue(c.BetaRequireProgramDescription) {
-			betaValue.RequireProgram = &declarations.BetaProgram{
-				Token:       c.BetaRequireProgramToken.ValueString(),
-				Description: c.BetaRequireProgramDescription.ValueString(),
+			betaValue.RequireProgram = &blueprints.BetaProgram{
+				Token:       c.BetaRequireProgramToken.ValueStringPointer(),
+				Description: c.BetaRequireProgramDescription.ValueStringPointer(),
 			}
 		}
 
-		cfg.Beta = &declarations.Beta{Included: &trueVal, Value: betaValue}
+		cfg.Beta = &blueprints.Beta{Included: &trueVal, Value: betaValue}
 	}
 
-	cfg.Deferrals = &declarations.Deferrals{
+	cfg.Deferrals = &blueprints.Deferrals{
 		CombinedPeriodInDays: buildOptionalPeriodInDays(c.DeferralCombinedPeriod),
 		MajorPeriodInDays:    buildOptionalPeriodInDays(c.DeferralMajorPeriod),
 		MinorPeriodInDays:    buildOptionalPeriodInDays(c.DeferralMinorPeriod),
@@ -221,7 +219,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage,
 
 	cfg.Notifications = buildOptionallyEnabled(c.NotificationsEnabled, false)
 
-	cfg.RapidSecurityResponse = &declarations.RapidSecurityResponse{
+	cfg.RapidSecurityResponse = &blueprints.RapidSecurityResponse{
 		Enable:         buildOptionallyEnabled(c.RapidSecurityResponseEnabled, false),
 		EnableRollback: buildOptionallyEnabled(c.RapidSecurityResponseRollbackEnabled, false),
 	}
@@ -230,7 +228,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage,
 	if helpers.IsConfiguredValue(c.RecommendedCadence) {
 		cadenceValue = c.RecommendedCadence.ValueString()
 	}
-	cfg.RecommendedCadence = &declarations.RecommendedCadence{
+	cfg.RecommendedCadence = &blueprints.RecommendedCadence{
 		Included: new(helpers.IsConfiguredValue(c.RecommendedCadence)),
 		Value:    cadenceValue,
 	}
@@ -240,7 +238,7 @@ func (c *SoftwareUpdateSettingsComponent) ToRawConfiguration() (json.RawMessage,
 
 // FromRawConfiguration populates the strongly-typed component from OpenAPI nested configuration.
 func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var cfg declarations.SoftwareUpdateSettingsConfiguration
+	var cfg blueprints.SoftwareUpdateSettingsConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}
@@ -287,15 +285,15 @@ func (c *SoftwareUpdateSettingsComponent) FromRawConfiguration(raw json.RawMessa
 			programs := make([]BetaProgramModel, len(*bv.OfferPrograms))
 			for i, p := range *bv.OfferPrograms {
 				programs[i] = BetaProgramModel{
-					Token:       types.StringValue(p.Token),
-					Description: types.StringValue(p.Description),
+					Token:       types.StringPointerValue(p.Token),
+					Description: types.StringPointerValue(p.Description),
 				}
 			}
 			c.BetaOfferPrograms = programs
 		}
 		if bv.RequireProgram != nil {
-			c.BetaRequireProgramToken = types.StringValue(bv.RequireProgram.Token)
-			c.BetaRequireProgramDescription = types.StringValue(bv.RequireProgram.Description)
+			c.BetaRequireProgramToken = types.StringPointerValue(bv.RequireProgram.Token)
+			c.BetaRequireProgramDescription = types.StringPointerValue(bv.RequireProgram.Description)
 		}
 	}
 

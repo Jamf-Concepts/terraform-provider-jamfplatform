@@ -14,11 +14,11 @@ Searches for Jamf Blueprints with an optional case-insensitive substring filter.
 
 ```terraform
 list "jamfplatform_blueprints_blueprint" "software_update" {
-    provider = jamfplatform
+  provider = jamfplatform
 
-    config {
-        search = "software update"
-    }
+  config {
+    search = "software update"
+  }
 }
 ```
 

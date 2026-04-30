@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -93,14 +92,14 @@ func SafariExtensionsComponentSchema() map[string]schema.Attribute {
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *SafariExtensionsComponent) ToRawConfiguration() (json.RawMessage, error) {
-	managedExtensions := make(map[string]declarations.ManagedExtension)
+	managedExtensions := make(map[string]blueprints.ManagedExtension)
 
 	for _, ext := range c.ManagedExtensions {
 		if !helpers.IsConfiguredValue(ext.ExtensionID) {
 			continue
 		}
 
-		extConfig := declarations.ManagedExtension{}
+		extConfig := blueprints.ManagedExtension{}
 
 		if helpers.IsConfiguredValue(ext.State) {
 			s := ext.State.ValueString()
@@ -112,10 +111,10 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (json.RawMessage, error
 		}
 
 		if len(ext.AllowedDomains) > 0 {
-			allowed := make([]declarations.ManagedExtensionDomain, 0, len(ext.AllowedDomains))
+			allowed := make([]blueprints.ManagedExtensionDomain, 0, len(ext.AllowedDomains))
 			for _, d := range ext.AllowedDomains {
 				if helpers.IsConfiguredValue(d.Domain) {
-					allowed = append(allowed, declarations.ManagedExtensionDomain{Domain: d.Domain.ValueString()})
+					allowed = append(allowed, blueprints.ManagedExtensionDomain{Domain: d.Domain.ValueString()})
 				}
 			}
 			if len(allowed) > 0 {
@@ -124,10 +123,10 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (json.RawMessage, error
 		}
 
 		if len(ext.DeniedDomains) > 0 {
-			denied := make([]declarations.ManagedExtensionDomain, 0, len(ext.DeniedDomains))
+			denied := make([]blueprints.ManagedExtensionDomain, 0, len(ext.DeniedDomains))
 			for _, d := range ext.DeniedDomains {
 				if helpers.IsConfiguredValue(d.Domain) {
-					denied = append(denied, declarations.ManagedExtensionDomain{Domain: d.Domain.ValueString()})
+					denied = append(denied, blueprints.ManagedExtensionDomain{Domain: d.Domain.ValueString()})
 				}
 			}
 			if len(denied) > 0 {
@@ -138,13 +137,13 @@ func (c *SafariExtensionsComponent) ToRawConfiguration() (json.RawMessage, error
 		managedExtensions[ext.ExtensionID.ValueString()] = extConfig
 	}
 
-	cfg := declarations.SafariExtensionsConfiguration{ManagedExtensions: managedExtensions}
+	cfg := blueprints.SafariExtensionsConfiguration{ManagedExtensions: managedExtensions}
 	return json.Marshal(cfg)
 }
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
 func (c *SafariExtensionsComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var cfg declarations.SafariExtensionsConfiguration
+	var cfg blueprints.SafariExtensionsConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return err
 	}

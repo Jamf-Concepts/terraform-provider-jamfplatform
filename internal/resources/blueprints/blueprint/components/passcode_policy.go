@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/bpcomponents/declarations"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -111,128 +110,128 @@ func PasscodePolicyComponentSchema() map[string]schema.Attribute {
 }
 
 // boolPtrFromBool converts a configured types.Bool field to a *bool pointer with Included envelope.
-func buildChangeAtNextAuth(field types.Bool) *declarations.ChangeAtNextAuth {
+func buildChangeAtNextAuth(field types.Bool) *blueprints.ChangeAtNextAuth {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := field.ValueBool()
 	t := true
-	return &declarations.ChangeAtNextAuth{Included: &t, Value: &v}
+	return &blueprints.ChangeAtNextAuth{Included: &t, Value: &v}
 }
 
 // buildRequireBool builds a bool wrapper struct with Included envelope.
-func buildRequireAlphanumeric(field types.Bool) *declarations.RequireAlphanumericPasscode {
+func buildRequireAlphanumeric(field types.Bool) *blueprints.RequireAlphanumericPasscode {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := field.ValueBool()
 	t := true
-	return &declarations.RequireAlphanumericPasscode{Included: &t, Value: &v}
+	return &blueprints.RequireAlphanumericPasscode{Included: &t, Value: &v}
 }
 
 // buildRequireComplex builds a require complex passcode wrapper with Included envelope.
-func buildRequireComplex(field types.Bool) *declarations.RequireComplexPasscode {
+func buildRequireComplex(field types.Bool) *blueprints.RequireComplexPasscode {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := field.ValueBool()
 	t := true
-	return &declarations.RequireComplexPasscode{Included: &t, Value: &v}
+	return &blueprints.RequireComplexPasscode{Included: &t, Value: &v}
 }
 
 // buildRequirePasscode builds a require passcode wrapper with Included envelope.
-func buildRequirePasscode(field types.Bool) *declarations.RequirePasscode {
+func buildRequirePasscode(field types.Bool) *blueprints.RequirePasscode {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := field.ValueBool()
 	t := true
-	return &declarations.RequirePasscode{Included: &t, Value: &v}
+	return &blueprints.RequirePasscode{Included: &t, Value: &v}
 }
 
 // buildFailedAttemptsReset builds a FailedAttemptsResetInMinutes wrapper.
-func buildFailedAttemptsReset(field types.Int64) *declarations.FailedAttemptsResetInMinutes {
+func buildFailedAttemptsReset(field types.Int64) *blueprints.FailedAttemptsResetInMinutes {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.FailedAttemptsResetInMinutes{Included: &t, Value: &v}
+	return &blueprints.FailedAttemptsResetInMinutes{Included: &t, Value: &v}
 }
 
 // buildMaximumFailedAttempts builds a MaximumFailedAttempts wrapper.
-func buildMaximumFailedAttempts(field types.Int64) *declarations.MaximumFailedAttempts {
+func buildMaximumFailedAttempts(field types.Int64) *blueprints.MaximumFailedAttempts {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.MaximumFailedAttempts{Included: &t, Value: &v}
+	return &blueprints.MaximumFailedAttempts{Included: &t, Value: &v}
 }
 
 // buildMaximumGracePeriod builds a MaximumGracePeriodInMinutes wrapper.
-func buildMaximumGracePeriod(field types.Int64) *declarations.MaximumGracePeriodInMinutes {
+func buildMaximumGracePeriod(field types.Int64) *blueprints.MaximumGracePeriodInMinutes {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.MaximumGracePeriodInMinutes{Included: &t, Value: &v}
+	return &blueprints.MaximumGracePeriodInMinutes{Included: &t, Value: &v}
 }
 
 // buildMaximumInactivity builds a MaximumInactivityInMinutes wrapper.
-func buildMaximumInactivity(field types.Int64) *declarations.MaximumInactivityInMinutes {
+func buildMaximumInactivity(field types.Int64) *blueprints.MaximumInactivityInMinutes {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.MaximumInactivityInMinutes{Included: &t, Value: &v}
+	return &blueprints.MaximumInactivityInMinutes{Included: &t, Value: &v}
 }
 
 // buildMaximumPasscodeAge builds a MaximumPasscodeAgeInDays wrapper.
-func buildMaximumPasscodeAge(field types.Int64) *declarations.MaximumPasscodeAgeInDays {
+func buildMaximumPasscodeAge(field types.Int64) *blueprints.MaximumPasscodeAgeInDays {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.MaximumPasscodeAgeInDays{Included: &t, Value: &v}
+	return &blueprints.MaximumPasscodeAgeInDays{Included: &t, Value: &v}
 }
 
 // buildMinimumComplexChars builds a MinimumComplexCharacters wrapper.
-func buildMinimumComplexChars(field types.Int64) *declarations.MinimumComplexCharacters {
+func buildMinimumComplexChars(field types.Int64) *blueprints.MinimumComplexCharacters {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.MinimumComplexCharacters{Included: &t, Value: &v}
+	return &blueprints.MinimumComplexCharacters{Included: &t, Value: &v}
 }
 
 // buildMinimumLength builds a MinimumLength wrapper.
-func buildMinimumLength(field types.Int64) *declarations.MinimumLength {
+func buildMinimumLength(field types.Int64) *blueprints.MinimumLength {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.MinimumLength{Included: &t, Value: &v}
+	return &blueprints.MinimumLength{Included: &t, Value: &v}
 }
 
 // buildPasscodeReuseLimit builds a PasscodeReuseLimit wrapper.
-func buildPasscodeReuseLimit(field types.Int64) *declarations.PasscodeReuseLimit {
+func buildPasscodeReuseLimit(field types.Int64) *blueprints.PasscodeReuseLimit {
 	if !helpers.IsConfiguredValue(field) {
 		return nil
 	}
 	v := int(field.ValueInt64())
 	t := true
-	return &declarations.PasscodeReuseLimit{Included: &t, Value: &v}
+	return &blueprints.PasscodeReuseLimit{Included: &t, Value: &v}
 }
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
 func (c *PasscodePolicyComponent) ToRawConfiguration() (json.RawMessage, error) {
-	cfg := declarations.PasscodeSettingsConfigurationV2{Version: 2}
+	cfg := blueprints.PasscodeSettingsConfiguration{Version: 2}
 
 	cfg.ChangeAtNextAuth = buildChangeAtNextAuth(c.ChangeAtNextAuth)
 	cfg.FailedAttemptsResetInMinutes = buildFailedAttemptsReset(c.FailedAttemptsResetInMinutes)
@@ -252,7 +251,7 @@ func (c *PasscodePolicyComponent) ToRawConfiguration() (json.RawMessage, error) 
 
 	if hasCustomRegex {
 		trueVal := true
-		customRegex := &declarations.CustomRegex{
+		customRegex := &blueprints.CustomRegex{
 			Included: &trueVal,
 		}
 		if helpers.IsConfiguredValue(c.CustomRegexPattern) {
@@ -275,7 +274,6 @@ func (c *PasscodePolicyComponent) ToRawConfiguration() (json.RawMessage, error) 
 }
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
-// Handles both V2 envelope format ({Value, Included}) and V1 flat format for backwards compatibility.
 func (c *PasscodePolicyComponent) FromRawConfiguration(raw json.RawMessage) error {
 	c.ChangeAtNextAuth = types.BoolNull()
 	c.FailedAttemptsResetInMinutes = types.Int64Null()
@@ -292,20 +290,9 @@ func (c *PasscodePolicyComponent) FromRawConfiguration(raw json.RawMessage) erro
 	c.CustomRegexPattern = types.StringNull()
 	c.CustomRegexDescription = types.MapNull(types.StringType)
 
-	var cfg declarations.PasscodeSettingsConfigurationV2
+	var cfg blueprints.PasscodeSettingsConfiguration
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		var v1 declarations.PasscodeSettingsConfigurationV1
-		if err2 := json.Unmarshal(raw, &v1); err2 != nil {
-			return err
-		}
-		return c.fromV1Config(v1)
-	}
-
-	if cfg.Version == 0 {
-		var v1 declarations.PasscodeSettingsConfigurationV1
-		if err := json.Unmarshal(raw, &v1); err == nil && v1.RequirePasscode != nil {
-			return c.fromV1Config(v1)
-		}
+		return err
 	}
 
 	if f := cfg.ChangeAtNextAuth; f != nil && f.Included != nil && *f.Included && f.Value != nil {
@@ -365,66 +352,6 @@ func (c *PasscodePolicyComponent) FromRawConfiguration(raw json.RawMessage) erro
 		}
 	}
 
-	return nil
-}
-
-// fromV1Config populates the component from a V1 flat passcode configuration.
-func (c *PasscodePolicyComponent) fromV1Config(v1 declarations.PasscodeSettingsConfigurationV1) error {
-	if v1.ChangeAtNextAuth != nil {
-		c.ChangeAtNextAuth = types.BoolValue(*v1.ChangeAtNextAuth)
-	}
-	if v1.FailedAttemptsResetInMinutes != nil {
-		c.FailedAttemptsResetInMinutes = types.Int64Value(int64(*v1.FailedAttemptsResetInMinutes))
-	}
-	if v1.MaximumFailedAttempts != nil {
-		c.MaximumFailedAttempts = types.Int64Value(int64(*v1.MaximumFailedAttempts))
-	}
-	if v1.MaximumGracePeriodInMinutes != nil {
-		c.MaximumGracePeriodInMinutes = types.Int64Value(int64(*v1.MaximumGracePeriodInMinutes))
-	}
-	if v1.MaximumInactivityInMinutes != nil {
-		c.MaximumInactivityInMinutes = types.Int64Value(int64(*v1.MaximumInactivityInMinutes))
-	}
-	if v1.MaximumPasscodeAgeInDays != nil {
-		c.MaximumPasscodeAgeInDays = types.Int64Value(int64(*v1.MaximumPasscodeAgeInDays))
-	}
-	if v1.MinimumComplexCharacters != nil {
-		c.MinimumComplexCharacters = types.Int64Value(int64(*v1.MinimumComplexCharacters))
-	}
-	if v1.MinimumLength != nil {
-		c.MinimumLength = types.Int64Value(int64(*v1.MinimumLength))
-	}
-	if v1.PasscodeReuseLimit != nil {
-		c.PasscodeReuseLimit = types.Int64Value(int64(*v1.PasscodeReuseLimit))
-	}
-	if v1.RequireAlphanumericPasscode != nil {
-		c.RequireAlphanumericPasscode = types.BoolValue(*v1.RequireAlphanumericPasscode)
-	}
-	if v1.RequireComplexPasscode != nil {
-		c.RequireComplexPasscode = types.BoolValue(*v1.RequireComplexPasscode)
-	}
-	if v1.RequirePasscode != nil {
-		c.RequirePasscode = types.BoolValue(*v1.RequirePasscode)
-	}
-	if cr := v1.CustomRegex; cr != nil {
-		if cr.Included == nil || *cr.Included {
-			if cr.Regex != nil {
-				c.CustomRegexPattern = types.StringValue(*cr.Regex)
-			}
-			if cr.Description != nil {
-				elems := make(map[string]types.String, len(*cr.Description))
-				for k, v := range *cr.Description {
-					elems[k] = types.StringValue(v)
-				}
-				if len(elems) > 0 {
-					tfMap, diags := types.MapValueFrom(context.Background(), types.StringType, elems)
-					if !diags.HasError() {
-						c.CustomRegexDescription = tfMap
-					}
-				}
-			}
-		}
-	}
 	return nil
 }
 
