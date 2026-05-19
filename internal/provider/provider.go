@@ -19,6 +19,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/component"
@@ -31,6 +32,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
 )
 
 // Constants for environment variable names.
@@ -66,7 +69,16 @@ func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.Metada
 
 func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provider for Jamf Platform API Services. https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Configure base_url and service-specific credentials. Values can be set via provider block, environment variables, or Terraform variables.",
+		MarkdownDescription: fmt.Sprintf(
+			"Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). "+
+				"Configure `base_url` and credentials via the provider block, environment variables, or Terraform variables.\n\n"+
+				"**Supported Jamf products and tenant version targets**\n\n"+
+				"| Product | Resource namespace | Built against API as of |\n"+
+				"|---------|--------------------|--------------------------|\n"+
+				"| Jamf Pro | `jamfplatform_pro_*` | %s |\n\n"+
+				"Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.",
+			providerdata.ProviderMinJamfProVersion,
+		),
 		Attributes: map[string]schema.Attribute{
 			"base_url": schema.StringAttribute{
 				Optional:    true,
@@ -164,16 +176,18 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	resp.DataSourceData = apiClient
-	resp.ResourceData = apiClient
-	resp.ListResourceData = apiClient
-	resp.ActionData = apiClient
+	pd := providerdata.New(apiClient)
+	resp.DataSourceData = pd
+	resp.ResourceData = pd
+	resp.ListResourceData = pd
+	resp.ActionData = pd
 }
 
 func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
+		category.NewCategoryResource,
 		device_group.NewDeviceGroupResource,
 	}
 }
@@ -188,6 +202,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		rules.NewRulesDataSource,
 		benchmark.NewBenchmarkDataSource,
 		benchmarks.NewBenchmarksDataSource,
+		categories.NewCategoriesDataSource,
+		category.NewCategoryDataSource,
 		device_group.NewDeviceGroupDataSource,
 		device_groups.NewDeviceGroupsDataSource,
 		device.NewDeviceDataSource,
@@ -199,6 +215,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 	return []func() list.ListResource{
 		benchmark.NewBenchmarkListResource,
 		blueprint.NewBlueprintListResource,
+		category.NewCategoryListResource,
 		device_group.NewDeviceGroupListResource,
 	}
 }
