@@ -4,10 +4,10 @@ This document covers the testing strategy and instructions for the Terraform Pro
 
 ## Test Categories
 
-| Category | Count | Build Tag | Requires API | Command |
-|----------|-------|-----------|--------------|---------|
-| Unit | 369 | (none) | No | `go test ./...` |
-| Acceptance | 66 | `acceptance` | Yes | `go test -tags=acceptance -p=1 ./...` |
+| Category   | Build Tag    | Requires API | Command                                      |
+|------------|--------------|--------------|----------------------------------------------|
+| Unit       | (none)       | No           | `make test`                                  |
+| Acceptance | `acceptance` | Yes          | `make testacc`                               |
 
 ### Unit Tests
 
@@ -37,33 +37,40 @@ go test -v -cover -count=1 -tags=acceptance -p=1 ./...
 
 ## Test File Layout
 
-Test files live alongside the code they test, following Go convention:
+Test files live alongside the code they test, following Go convention. The Jamf Platform API client lives in the external SDK `jamfplatform-go-sdk` and its tests live in that repo — they are not part of this provider's test suite.
 
 ```
 internal/
-├── client/
-│   ├── client_test.go                    # Unit: mock HTTP tests
-│   ├── blueprints_acceptance_test.go     # Acceptance: real API
-│   ├── cbengine_acceptance_test.go
-│   ├── device_groups_acceptance_test.go
-│   ├── datasources_acceptance_test.go
-│   └── main_acceptance_test.go           # TestMain for fixture cleanup
 ├── common/
-│   ├── helpers/helpers_test.go
+│   ├── helpers/
+│   │   ├── helpers_test.go
+│   │   └── dynamic_json_test.go
 │   └── filters/filters_test.go
+├── testhelpers/                          # Acceptance fixtures (mock server, real-client builder, smart group fixture)
+├── actions/device/schema_test.go
 ├── resources/
 │   ├── blueprints/blueprint/
 │   │   ├── schema_test.go                # Unit: schema validation
-│   │   ├── helpers_test.go               # Unit: component helpers
+│   │   ├── helpers_test.go               # Unit: helpers
+│   │   ├── input_builders_test.go        # Unit: API input builders
+│   │   ├── state_builders_test.go        # Unit: API → state mapping
+│   │   ├── state_upgrader_test.go        # Unit: schema migrations
 │   │   └── resource_acceptance_test.go   # Acceptance: full CRUD
 │   ├── cbengine/benchmark/
 │   │   ├── schema_test.go
+│   │   ├── input_builders_test.go
+│   │   ├── state_builders_test.go
 │   │   └── resource_acceptance_test.go
-│   └── device_group/
+│   ├── device_group/
+│   │   ├── schema_test.go
+│   │   ├── helpers_test.go
+│   │   ├── input_builders_test.go
+│   │   ├── state_builders_test.go
+│   │   ├── state_upgrader_test.go
+│   │   └── resource_acceptance_test.go
+│   └── devices/
 │       ├── schema_test.go
-│       ├── helpers_test.go
-│       └── resource_acceptance_test.go
-└── ...
+│       └── datasource_acceptance_test.go # Acceptance: data-source-only package
 ```
 
 ### Naming conventions
@@ -148,40 +155,49 @@ func TestAcceptance_MyResource_Create(t *testing.T) {
 
 The `testhelpers.RequireSmartGroupFixture(t)` function provides a shared smart group for tests that need a device group target. The fixture is created once per test binary and cleaned up via `TestMain`.
 
+### Jamf Pro fixtures (forthcoming)
+
+When the first Jamf Pro resource lands (`internal/resources/pro/...`), `internal/testhelpers` will gain Pro-specific fixtures. The acceptance client itself is unchanged — Pro resources use the same `*jamfplatform.Client` built from the same `JAMFPLATFORM_*` credentials as Platform Services resources.
+
+**Tenant data isolation conventions for Pro acceptance tests:**
+
+- Use the existing `tf-acc-` prefix on every resource created (matches STYLE_GUIDE convention).
+- Pro resources have richer dependency graphs (a policy needs a category, smart group, script, package). Use `t.Cleanup` for dependency-ordered teardown — register cleanups in reverse-creation order so dependencies are torn down before their dependents.
+- Shared fixtures that span multiple test files (e.g., a long-lived test category, a known smart group) live in `internal/testhelpers` and are cleaned up via `TestMain` — same pattern as `RequireSmartGroupFixture`. Add new `Require*Fixture` helpers as needed.
+- Tests must be independent — never assume another test has run first.
+
+**CI scaling plan** (deferred until Pro suite exists):
+
+The current acceptance job in `.github/workflows/integration-tests.yml` has a 30-minute timeout and runs Platform Services tests serially (`-p=1`). As the Pro suite grows, plan is to **split acceptance into a dedicated workflow** (`acceptance-tests.yml`) — a single serial job (no matrix; parallel acceptance against the same tenant causes naming/ID collisions). The split also lets us tune the Pro job's timeout independently and run it on a different cadence (e.g., manual-only or post-merge) if needed.
+
 ### Benchmark-specific considerations
 
 CBEngine benchmarks deploy asynchronously. The benchmark must reach `SYNCED` state before it can be safely deleted — deleting while in `PENDING` state causes the benchmark to get stuck in `DELETING`. Use `testhelpers.EnsureBenchmarkDeletedByID` or `testhelpers.EnsureBenchmarkDeleted` for cleanup, which handle sync-waiting automatically.
 
 ## CI/CD
 
-### Integration Tests (automated)
+All CI lives in **`.github/workflows/integration-tests.yml`**, triggered on PRs to `main` and via `workflow_dispatch`.
 
-Runs on every PR to `main` and every push to `main`. Covers build, lint, and unit tests.
+| Job          | What it does                                            | Gating                                  | Timeout |
+|--------------|---------------------------------------------------------|-----------------------------------------|---------|
+| `build`      | `go build` + `golangci-lint run`                        | —                                       | 5 min   |
+| `generate`   | Runs `make generate`, fails if `git diff` is non-empty  | —                                       | default |
+| `unit`       | `go test -v -cover -count=1 ./...`                      | Needs `build`                           | 10 min  |
+| `acceptance` | `go test -v -cover -count=1 -tags=acceptance -p=1 ./...` | Needs `unit`; gated by `acceptance` env | 30 min  |
 
-Workflow: `.github/workflows/integration-test.yml`
-
-| Job | What it does | Timeout |
-|-----|--------------|---------|
-| `build` | `go build` + `golangci-lint run` | 5 min |
-| `generate` | Validates generated docs are up to date | 5 min |
-| `unit` | `go test -v -cover -count=1 ./...` | 10 min |
-
-### Acceptance Tests (manual, approval-gated)
-
-Triggered manually via `workflow_dispatch`. Requires approval through the GitHub `acceptance` environment.
-
-Workflow: `.github/workflows/acceptance-tests.yml`
-
-Runs against a matrix of Terraform versions (1.13.x, 1.14.x) with credentials from repository secrets.
+The `acceptance` job requires manual approval through the GitHub `acceptance` environment before it runs. It executes against Terraform `1.14.*`.
 
 ### Required GitHub Secrets
 
-| Secret | Description |
-|--------|-------------|
-| `JAMFPLATFORM_BASE_URL` | Jamf Platform tenant URL |
-| `JAMFPLATFORM_CLIENT_ID` | OAuth client ID |
-| `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret |
+Bound to the `acceptance` environment:
 
-## Terraform-Native Tests (Legacy)
+| Secret                       | Description                                                   |
+|------------------------------|---------------------------------------------------------------|
+| `JAMFPLATFORM_BASE_URL`      | Jamf Platform tenant URL                                      |
+| `JAMFPLATFORM_CLIENT_ID`     | OAuth client ID                                               |
+| `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret                                           |
+| `JAMFPLATFORM_TENANT_ID`     | Tenant ID (consumed by acceptance fixtures where applicable)  |
 
-The `testing/` directory contains Terraform-native integration tests (`.tftest.hcl`, `.tfquery.hcl`) that use `terraform test` and `terraform query`. See [testing/README.md](testing/README.md) for details. These are supplementary to the Go acceptance tests and are not part of the CI pipeline.
+## Terraform-Native Tests (Legacy / Supplementary)
+
+The `testing/` directory contains Terraform-native integration tests (`.tftest.hcl`, `.tfquery.hcl`) that use `terraform test` and `terraform query`. These have been superseded by the Go acceptance suite (now the gating CI suite) and are kept as a supplementary check only. They are **not** part of the CI pipeline. See [testing/README.md](testing/README.md) for usage.
