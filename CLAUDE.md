@@ -82,6 +82,7 @@ Resources grouped by API domain. Within a domain, primary resource package (e.g.
 | `build`    | Build the provider                                         |
 | `install`  | Build and install the provider locally                     |
 | `fmt`      | Format Go source files (`gofmt -s -w -e .`)                |
+| `fix`      | Run `go fix ./...` — rewrites deprecated API usages         |
 | `lint`     | Run `golangci-lint`                                        |
 | `generate` | Copyright headers + `terraform fmt examples/` + docs       |
 | `test`     | Run unit tests (excludes `acceptance` build tag)           |
@@ -99,7 +100,7 @@ Resources grouped by API domain. Within a domain, primary resource package (e.g.
 - SDK import: `github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform`. Bump `go.mod` to pick up new endpoints.
 - Shared utilities: `internal/common/helpers` (type conversions, polling, timeout, state reconciliation, error detection, dynamic JSON) and `internal/common/filters` (RSQL filter blocks + expression builder).
 - Acceptance test fixtures (provider factories, real-client builder, mock HTTP server) live in `internal/testhelpers`.
-- Before committing: `make fmt lint test`. Regenerate docs: `make generate`.
+- Before committing: `make fix fmt lint test`. Regenerate docs: `make generate`.
 - Every Go file carries `// Copyright Jamf Software LLC <year>` + `// SPDX-License-Identifier: MPL-2.0` headers (managed by `copywrite` via `make generate`). 2026
 
 ## Style, Conventions, Schema
@@ -134,8 +135,8 @@ Every acceptance test file **must** declare `//go:build acceptance` on line 1 or
 5. Add unit tests in the same package: `schema_test.go`, `input_builders_test.go`, `state_builders_test.go`, plus any helpers/upgrader tests.
 6. Add `resource_acceptance_test.go` with `//go:build acceptance` and use factories from `internal/testhelpers`.
 7. Add example `.tf` files under the matching `examples/` subdirectory: `examples/resources/<name>/`, `examples/data-sources/<name>/`, `examples/list-resources/<name>/`, or `examples/actions/<name>/`.
-8. Run `make fmt lint test`.
-9. Run `make generate` to regenerate copyright headers, format examples, and rebuild `docs/`.
+8. Run `make fix fmt lint test` and confirm clean (zero lint issues, all unit tests pass). Run `fix` first — it rewrites deprecated API usages so `fmt` and `lint` operate on the migrated source.
+9. Run `make generate` to regenerate copyright headers, format examples, and rebuild `docs/`. **Mandatory** for every new resource, data source, list resource, or action — `docs/<construct-type>/<name>.md` must land in the same PR.
 
 ## Documentation & Examples
 

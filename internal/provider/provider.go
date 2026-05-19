@@ -34,6 +34,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 )
 
 // Constants for environment variable names.
@@ -189,6 +190,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		blueprint.NewBlueprintResource,
 		category.NewCategoryResource,
 		device_group.NewDeviceGroupResource,
+		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 	}
 }
 
@@ -208,6 +210,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		device_groups.NewDeviceGroupsDataSource,
 		device.NewDeviceDataSource,
 		devices.NewDevicesDataSource,
+		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
 	}
 }
 

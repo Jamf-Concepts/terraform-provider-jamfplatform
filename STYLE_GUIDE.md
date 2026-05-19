@@ -162,7 +162,7 @@ Resources backed by the `pro/` or `proclassic/` packages of `jamfplatform-go-sdk
    - Data source: singular for ID/name lookup (`pro_script`), plural for filtered/list lookups (`pro_scripts`).
    - List resource: plural (`pro_scripts`).
    - Action: singular verb suffix (`pro_computer_erase`).
-4. **Go package path**: `internal/resources/pro/<domain>/<resource>/` (two-tier). Domain groups related resources (e.g. `computers/`, `mobile_devices/`, `users/`, `policies/`, `configuration_profiles/`, `enrollment/`, `sso/`, `patch/`, `vpp/`, `settings/`, `inventory/`). Pick the closest fit; introduce a new domain folder if none applies.
+4. **Go package path**: `internal/resources/pro/<domain>/<resource>/` (two-tier). Domain groups related resources (e.g. `computers/`, `mobile_devices/`, `users/`, `policies/`, `configuration_profiles/`, `enrollment/`, `sso/`, `patch/`, `vpp/`, `settings/`, `inventory/`). Pick the closest fit; introduce a new domain folder if none applies. The leaf `<resource>` folder name is the **Terraform slug minus the `jamfplatform_pro_` prefix**, snake_case. Examples: `jamfplatform_pro_category` → `inventory/category/`; `jamfplatform_pro_self_service_plus_settings` → `settings/self_service_plus_settings/`; `jamfplatform_pro_smart_computer_group` → `computers/smart_computer_group/`. Do not drop descriptive suffixes (keep `_settings`, `_group`, etc.) — the folder name must match the Terraform slug exactly so future maintainers can grep one to find the other. The Go package declaration matches the folder name verbatim.
 5. **Pro vs ProClassic preference**: default to `pro/`. Use `proclassic/` only when:
    - `pro/` has no equivalent endpoint, OR
    - `pro/` is materially less feature-complete (e.g. read-only when classic offers CRUD, missing required fields).
@@ -367,10 +367,42 @@ During the SDK-comparison gate ([CONTRIBUTING.md §Adding a Jamf Pro Resource](C
 |----------------------|----------------|-------|
 | Create + Read + Update + Delete | `resource` (+ usually a singular `data source` and a plural `list resource`) | Standard CRUD |
 | Read only (single + list, or list only) | `data source` (+ plural `data source` or `list resource`) | No state-managed object |
-| Update only (no Create/Delete) | `resource` flagged as **singleton** — one record per tenant | E.g., `activation_code`, `client_check_in`, `jamf_pro_server_url`. Schema uses `RequiresReplace: false` plan modifiers and treats `Create` as `Update` |
+| Update only (no Create/Delete) | `resource` flagged as **singleton** — one record per tenant | See [Singleton resources](#singleton-resources) below for the full convention (fixed ID, Create→Update, no-op Delete, import format). E.g., `activation_code`, `client_check_in`, `jamf_pro_server_url`, `self_service_plus_settings`. |
 | Fire-and-forget command (Create returns command ID, no Read/Update/Delete) | `action` | E.g., `pro_computer_erase`, `pro_computer_restart` |
 
 Record the classification in `JAMF_PRO_INVENTORY.md` Notes column during the in-design phase.
+
+### Singleton resources
+
+Jamf Pro objects that exist one-per-tenant and are exposed as Update-only on the API are modeled as **singleton** resources. The whole convention below is the load-bearing definition — any new singleton must follow it.
+
+**Domain folder**: `internal/resources/pro/settings/<resource>/`. The `settings/` domain is the canonical home for Pro singletons (`activation_code`, `client_check_in`, `self_service_plus_settings`, `jamf_pro_*`). Reference template: `internal/resources/pro/settings/self_service_plus_settings/`.
+
+**Leaf folder name**: matches the Terraform slug exactly (rule #4 above), e.g. `self_service_plus_settings/` for `jamfplatform_pro_self_service_plus_settings`.
+
+**Fixed ID**: every singleton stores `helpers.SingletonID` (`"singleton"`, defined in `internal/common/helpers/singleton.go`) as its Terraform state ID. Set it in Create, Read, and Update via `state.ID = types.StringValue(helpers.SingletonID)`. Do not import any other identifier.
+
+**Identity schema**: declare a single `id` string attribute with `RequiredForImport: true` — same shape as CRUD resources, just always populated with `helpers.SingletonID`.
+
+**Schema `id` attribute**: `Computed: true` with `stringplanmodifier.UseStateForUnknown()`. Never `Required` (users cannot pick the ID — it is always `"singleton"`).
+
+**Create**: the Jamf Pro API has no Create endpoint for singletons (the record already exists). Funnel `Create` into the same `Update<X>V1` SDK call used by `Update`, then `Get<X>V1` to capture authoritative state, set `state.ID = types.StringValue(helpers.SingletonID)`. The post-write `Get` is mandatory — it picks up any server-side transformations, computed defaults, or future field additions without requiring code changes.
+
+**Delete**: no-op on the remote — the record cannot be deleted. The handler signature uses `_` markers on the unused `req` / `resp` parameters to signal the omission is intentional, and emits a single `tflog.Trace` line. No state mutation; Terraform removes the resource from state on its own after the handler returns. Document this in the handler doc-comment so reviewers understand the omitted SDK call is deliberate.
+
+**Defensive nil-client guard**: every CRUD handler (`Create`, `Read`, `Update`) opens with `if r.client == nil { resp.Diagnostics.AddError(providerNotConfiguredError()) ; return }` before reading plan/state. Defense-in-depth against framework lifecycle edge cases or misconfigured provider blocks routing to CRUD with an unconfigured client. Centralize the message in a package-local helper so the wording stays uniform across the three handlers. The `Delete` no-op does not need the guard — it makes no SDK call.
+
+**Import**: `terraform import <type>.<name> singleton`. `ImportState` **must** validate `req.ID == helpers.SingletonID` and reject any other identifier with a clear error diagnostic — silent normalization on the next Read masks the mis-import and confuses users. Pass the validated ID through to `resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)`. The example `import.sh` under `examples/resources/<type>/import.sh` must contain this exact command.
+
+**No list resource, no plural data source**: singletons have nothing to list. Provide the singular data source only when reading the current settings without managing them is useful.
+
+**State builders — nil-fallback semantics**: SDK structs for singleton fields commonly use pointer types (`*bool`, `*string`) with `json:",omitempty"`. When the API response is nil for a **Required** schema attribute, fall back to the field's zero value with an explicit doc-comment explaining why (Required attributes cannot be null in committed state). When the field is **Optional**, prefer `helpers.ReconcileOptionalBoolPointer` / `ReconcileOptionalStringPointer` so user-set nulls are preserved rather than collapsed. The assigner **must not** write `state.ID` — the CRUD handler is responsible for stamping `helpers.SingletonID` after the assign call, and a test should pin that the assigner leaves any pre-existing ID untouched.
+
+**Acceptance test**: `CheckDestroy` is wired but inverted — it asserts the record **still exists** on the tenant after Terraform destroys the resource from state (the singleton-specific shape of the standard CheckDestroy contract). Test the two Update paths (e.g. toggle a bool true→false), import with `ImportStateId: "singleton"`, and a dedicated step asserting `ImportStateId: "not-the-singleton"` is rejected with `ExpectError` matching the ImportState error summary.
+
+**Unit tests**: a `state_builders_test.go` is mandatory — it pins (a) nil and non-nil round-trip for every assigner, (b) that the assigner does not clobber `state.ID`, and (c) that `helpers.SingletonID` is `"singleton"` (catches accidental drift in the constant).
+
+**Before opening the PR**: run `make fix fmt lint test` (must be clean) then `make generate` to rebuild `docs/resources/pro_<name>.md` and `docs/data-sources/pro_<name>.md`. Commit the generated docs with the source.
 
 ### Pro error/retry helpers (planned extension)
 

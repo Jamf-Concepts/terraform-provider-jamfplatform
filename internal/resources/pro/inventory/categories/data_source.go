@@ -22,7 +22,10 @@ import (
 
 const defaultReadTimeout = 90 * time.Second
 
-// minJamfProVersion mirrors the singular category's gate (empty = no gate).
+// minJamfProVersion is the minimum Jamf Pro tenant version required by this data
+// source. Empty: no per-resource floor; the categories endpoint has been stable since
+// well before the provider's overall floor (11.0.0). Provider-level advisory warning
+// still applies via providerdata.ConfigurePro.
 const minJamfProVersion = ""
 
 // CategoryFilterSelectors enumerates the RSQL selectors accepted by the categories endpoint.
