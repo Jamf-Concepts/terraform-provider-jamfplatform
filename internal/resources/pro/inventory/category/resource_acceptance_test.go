@@ -12,7 +12,12 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck"
+	"github.com/hashicorp/terraform-plugin-testing/querycheck/queryfilter"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
+	"github.com/hashicorp/terraform-plugin-testing/tfversion"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
@@ -112,6 +117,72 @@ func TestAccDataSource_ProCategory_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_category.lookup", "name", "jamfplatform_pro_category.src", "name"),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_category.lookup", "priority", "jamfplatform_pro_category.src", "priority"),
 				),
+			},
+		},
+	})
+}
+
+// TestAccListResource_ProCategory_Basic exercises the jamfplatform_pro_category list
+// resource via the `terraform query` workflow. Step 1 provisions a uniquely-named
+// category so the list query has something to find. Step 2 runs in Query mode and
+// asserts the list resource returns exactly that category with matching identity and
+// surfaced resource attributes.
+//
+// Requires Terraform 1.14+ (list resources). The Configure flow is identical to the
+// resource and singular data source — provider must be configured with valid creds.
+func TestAccListResource_ProCategory_Basic(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-category-list-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
+			tfversion.SkipBelow(tfversion.Version1_14_0),
+		},
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckCategoryDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_category" "src" {
+						name     = %q
+						priority = 5
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_pro_category.src", "id"),
+				),
+			},
+			{
+				Query: true,
+				Config: fmt.Sprintf(`
+					provider "jamfplatform" {}
+
+					list "jamfplatform_pro_category" "test" {
+						provider         = jamfplatform
+						include_resource = true
+
+						config {
+							filter = [
+								{
+									selector = "name"
+									argument = %q
+								}
+							]
+						}
+					}
+				`, name),
+				QueryResultChecks: []querycheck.QueryResultCheck{
+					querycheck.ExpectLength("jamfplatform_pro_category.test", 1),
+					querycheck.ExpectResourceKnownValues(
+						"jamfplatform_pro_category.test",
+						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
+						[]querycheck.KnownValueCheck{
+							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
+							{Path: tfjsonpath.New("priority"), KnownValue: knownvalue.Int64Exact(5)},
+						},
+					),
+				},
 			},
 		},
 	})
