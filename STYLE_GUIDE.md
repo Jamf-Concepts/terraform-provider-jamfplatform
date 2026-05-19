@@ -95,6 +95,7 @@ type CBEngineBenchmarkResponseV2 struct { ... }
 
 - Keep schemas inline and as flat as possible.
 - Favor nested attributes (`SingleNestedAttribute`, `SetNestedAttribute`, `ListNestedAttribute`) over blocks.
+- **Terraform attribute names are always snake_case**, irrespective of how the upstream API formats the underlying JSON field. Translate at the boundary in input/state builders. Examples: API `categoryId` → TF `category_id`, API `osRequirements` → TF `os_requirements`, API `parameter4` → TF `parameter_4`. The only namespace exempt from this rule is **RSQL filter selectors** (`filters.FilterModel.Selector`), which pass through to the API verbatim and therefore retain their API-native spelling.
 
 ### Sets vs Lists
 
@@ -102,6 +103,60 @@ type CBEngineBenchmarkResponseV2 struct { ... }
 - **Lists** for computed API results that are read-only. Sets require element hashing which adds overhead with no benefit when the user doesn't control the values.
 
 Data source attributes returning API data should always use lists.
+
+### Server-derived computed fields & `Optional+Computed` attributes
+
+Pro endpoints commonly return **server-derived** values for fields the user did not set — a "no category" sentinel like `categoryId="-1"` / `categoryName="NONE"`, a default `priority="AFTER"`, etc. These show up in three places, each with its own pitfall, and all three must line up or Terraform errors with `Provider produced inconsistent result after apply`.
+
+**1. Schema shape.** Any optional attribute the server fills in when omitted must be `Optional+Computed` so the framework knows the value can come from the server.
+
+```go
+"category_id": schema.StringAttribute{
+    Optional: true,
+    Computed: true,
+    PlanModifiers: []planmodifier.String{
+        stringplanmodifier.UseStateForUnknown(),
+    },
+},
+```
+
+A purely **read-only** server-derived field (e.g. `category_name`, derived from `category_id`) is `Computed`-only with the same `UseStateForUnknown` modifier — the user cannot set it, but its value carries across plans rather than going Unknown every refresh.
+
+**2. Input builder must treat Unknown as nil.** When the user omits an Optional+Computed attribute, the plan value is **Unknown**, not Null. `types.String.ValueStringPointer()` returns a pointer to `""` for Unknown — Jamf Pro often rejects `categoryId: ""` with HTTP 500. Use the shared helper that nils both Null *and* Unknown:
+
+```go
+input := &pro.Script{
+    Name:       plan.Name.ValueString(),
+    CategoryID: helpers.OptionalStringPointer(plan.CategoryID),
+    Priority:   helpers.OptionalStringPointer(plan.Priority),
+    // ...
+}
+```
+
+Available variants: `helpers.OptionalStringPointer`, `helpers.OptionalBoolPointer`, `helpers.OptionalInt64Pointer`. Apply uniformly to every Optional and Optional+Computed payload field. Do **not** call `types.String.ValueStringPointer()` directly on Optional+Computed attributes.
+
+**3. Always refresh state via GET after Create AND Update.** Pro PUT responses are routinely **lossy** — `UpdateScriptV1` returns a `Script` without `categoryName` even though `GetScriptV1` does. If state is populated straight from the PUT response, server-derived fields go null while `UseStateForUnknown` carried the prior value into the plan — instant inconsistency error on Step 2 of any acceptance test that updates the resource.
+
+```go
+if _, err := r.client.UpdateScriptV1(updateCtx, plan.ID.ValueString(), buildScriptInput(plan)); err != nil {
+    resp.Diagnostics.AddError("Error updating Jamf Pro script", err.Error())
+    return
+}
+
+// PUT responses on Pro endpoints are lossy for server-derived fields
+// (`categoryName` is omitted from PUT but present on GET). Refresh via GET
+// so state is sourced from the canonical representation.
+got, err := r.client.GetScriptV1(updateCtx, plan.ID.ValueString())
+if err != nil {
+    resp.Diagnostics.AddError("Error reading updated Jamf Pro script", err.Error())
+    return
+}
+assignScriptResourceModel(&plan, got)
+```
+
+Create already follows this pattern (POST → HrefResponse → GET); Update must mirror it. Discard the PUT response's body — keep only the error.
+
+**Reference implementation**: `internal/resources/pro/policies/script/` (resource, crud, input_builders, state_builders).
 
 ## Error Handling
 
