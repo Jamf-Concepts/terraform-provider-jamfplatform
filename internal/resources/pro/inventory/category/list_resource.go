@@ -5,7 +5,6 @@ package category
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -39,42 +38,15 @@ func (r *CategoryListResource) Metadata(ctx context.Context, req resource.Metada
 	resp.TypeName = req.ProviderTypeName + "_pro_category"
 }
 
-// Configure wires the Jamf Pro client into the list resource. Same shape as the resource
-// and singular data source Configure: always fetch, swallow fetch errors only when the
-// per-resource gate is empty, surface the floor warning when applicable.
+// Configure wires the Jamf Pro client into the list resource via the shared
+// providerdata.ConfigurePro helper.
 func (r *CategoryListResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
+	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_category")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	pd, ok := req.ProviderData.(*providerdata.Data)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected List Configure Type",
-			"Expected *providerdata.Data. Please report this issue to the provider developers.",
-		)
-		return
-	}
-	r.client = pro.New(pd.Client)
-
-	version, err := pd.GetJamfProVersion(ctx)
-	if err != nil {
-		if minJamfProVersion == "" {
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Failed to read Jamf Pro tenant version",
-			fmt.Sprintf("jamfplatform_pro_category list requires Jamf Pro; could not read version: %s", err),
-		)
-		return
-	}
-	if minJamfProVersion != "" {
-		resp.Diagnostics.Append(
-			helpers.RequireMinJamfProVersion(version, minJamfProVersion, "jamfplatform_pro_category")...,
-		)
-	}
-	if warn := pd.MaybeProviderFloorWarning(); warn != nil {
-		resp.Diagnostics.Append(warn)
-	}
+	r.client = client
 }
 
 // ListResourceConfigSchema describes the supported list filters.
@@ -125,11 +97,10 @@ func (r *CategoryListResource) List(ctx context.Context, req list.ListRequest, s
 		maxResults = int64(len(cats))
 	}
 
-	results := make([]list.ListResult, 0, int(maxResults))
-	var emitted int64
+	results := make([]list.ListResult, 0, maxResults)
 
 	for _, c := range cats {
-		if maxResults > 0 && emitted >= maxResults {
+		if int64(len(results)) >= maxResults {
 			break
 		}
 
@@ -158,7 +129,6 @@ func (r *CategoryListResource) List(ctx context.Context, req list.ListRequest, s
 		}
 
 		results = append(results, result)
-		emitted++
 	}
 
 	tflog.Debug(ctx, "Listed Jamf Pro categories", map[string]any{

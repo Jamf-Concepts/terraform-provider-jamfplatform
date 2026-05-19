@@ -5,7 +5,6 @@ package category
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
@@ -56,57 +55,30 @@ func (d *CategoryDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 	}
 }
 
-// Configure wires the Jamf Pro client into the data source. Mirrors the resource Configure
-// shape: always fetches the tenant Jamf Pro version (cached), runs the per-resource gate
-// when set, and surfaces the provider-floor advisory warning when applicable.
+// Configure wires the Jamf Pro client into the data source via the shared
+// providerdata.ConfigurePro helper.
 func (d *CategoryDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
+	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_category")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	pd, ok := req.ProviderData.(*providerdata.Data)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *providerdata.Data, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-	d.client = pro.New(pd.Client)
-
-	version, err := pd.GetJamfProVersion(ctx)
-	if err != nil {
-		if minJamfProVersion == "" {
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Failed to read Jamf Pro tenant version",
-			fmt.Sprintf("jamfplatform_pro_category requires Jamf Pro; could not read version: %s", err),
-		)
-		return
-	}
-	if minJamfProVersion != "" {
-		resp.Diagnostics.Append(
-			helpers.RequireMinJamfProVersion(version, minJamfProVersion, "jamfplatform_pro_category")...,
-		)
-	}
-	if warn := pd.MaybeProviderFloorWarning(); warn != nil {
-		resp.Diagnostics.Append(warn)
-	}
+	d.client = client
 }
 
 // Read fetches a category by ID and populates Terraform state.
 func (d *CategoryDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data CategoryDataSourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Provider not configured",
 			"The provider client was not configured. Please ensure the provider block is set up correctly.",
 		)
+		return
+	}
+
+	var data CategoryDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 

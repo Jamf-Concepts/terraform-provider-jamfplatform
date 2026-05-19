@@ -9,6 +9,7 @@ package providerdata
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
@@ -33,9 +34,6 @@ type Data struct {
 	proVersionOnce sync.Once
 	proVersion     string
 	proVersionErr  error
-
-	warnOnce             sync.Once
-	providerFloorWarning diag.Diagnostic
 }
 
 // New wraps a configured SDK client in a Data value.
@@ -62,16 +60,62 @@ func (d *Data) GetJamfProVersion(ctx context.Context) (string, error) {
 	return d.proVersion, d.proVersionErr
 }
 
-// MaybeProviderFloorWarning returns a warning diagnostic if the cached tenant version is
-// below ProviderMinJamfProVersion. Computed exactly once per Data lifetime; subsequent
-// calls return the same diagnostic. Returns nil when at/above floor or when no Pro
-// version has been fetched yet.
-func (d *Data) MaybeProviderFloorWarning() diag.Diagnostic {
-	d.warnOnce.Do(func() {
-		if d.proVersion == "" {
-			return
+// providerFloorWarning returns a warning diagnostic if d.proVersion is below
+// ProviderMinJamfProVersion. The caller must have invoked GetJamfProVersion before
+// calling this — that establishes the happens-before relationship needed to read
+// d.proVersion without a race. Returns nil when at/above floor or when proVersion
+// has not been populated.
+func (d *Data) providerFloorWarning() diag.Diagnostic {
+	if d.proVersion == "" {
+		return nil
+	}
+	return helpers.WarnIfBelowProviderFloor(d.proVersion, ProviderMinJamfProVersion)
+}
+
+// ConfigurePro is the shared Configure boilerplate for every Pro resource, data source,
+// list resource, and action. It type-asserts providerData into *Data, fetches the Jamf
+// Pro tenant version (lazily, cached on the Data value), runs the per-resource minimum
+// version gate when minVer is non-empty, and surfaces the provider-floor advisory
+// warning when the tenant is below the provider build target.
+//
+// resourceType is the fully-qualified Terraform type name used in diagnostic messages
+// (e.g. "jamfplatform_pro_category"). Returns a *pro.Client ready for use; callers
+// should check resp.Diagnostics.HasError() before using it.
+//
+// Returns (nil, nil) when providerData is nil (the framework calls Configure with a
+// nil ProviderData during early lifecycle — that is not an error, the resource simply
+// remains unconfigured until a later Configure call provides the data).
+func ConfigurePro(ctx context.Context, providerData any, minVer, resourceType string) (*pro.Client, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if providerData == nil {
+		return nil, diags
+	}
+	pd, ok := providerData.(*Data)
+	if !ok {
+		diags.AddError(
+			"Unexpected Configure Type",
+			fmt.Sprintf("Expected *providerdata.Data, got: %T. Please report this issue to the provider developers.", providerData),
+		)
+		return nil, diags
+	}
+	client := pro.New(pd.Client)
+
+	version, err := pd.GetJamfProVersion(ctx)
+	if err != nil {
+		if minVer == "" {
+			return client, diags
 		}
-		d.providerFloorWarning = helpers.WarnIfBelowProviderFloor(d.proVersion, ProviderMinJamfProVersion)
-	})
-	return d.providerFloorWarning
+		diags.AddError(
+			"Failed to read Jamf Pro tenant version",
+			fmt.Sprintf("%s requires Jamf Pro; could not read version: %s", resourceType, err),
+		)
+		return nil, diags
+	}
+	if minVer != "" {
+		diags.Append(helpers.RequireMinJamfProVersion(version, minVer, resourceType)...)
+	}
+	if warn := pd.providerFloorWarning(); warn != nil {
+		diags.Append(warn)
+	}
+	return client, diags
 }
