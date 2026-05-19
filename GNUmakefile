@@ -13,7 +13,7 @@ generate:
 	cd tools; go generate ./...
 
 fmt:
-	gofmt -s -w -e .
+	gofmt -s -w -e main.go internal/ tools/
 
 test:
 	go test -v -cover -count=1 -timeout=120s -p=10 ./...

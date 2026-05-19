@@ -143,3 +143,14 @@ dist/
 /.scannerwork
 tflint-report.json
 tfsec-report.json
+
+# -----------------------------------------------------------------------------
+# Claude Code local state (worktrees, agent runs, settings overrides)
+# -----------------------------------------------------------------------------
+.claude/
+
+# -----------------------------------------------------------------------------
+# Local planning artifacts (not committed)
+# -----------------------------------------------------------------------------
+JAMF_PRO_INVENTORY.md
+PRO_ROLLOUT_PLAN.md

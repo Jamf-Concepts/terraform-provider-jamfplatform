@@ -12,7 +12,14 @@ Code style conventions for the Terraform Provider for Jamf Platform.
 
 ## Dependencies
 
-Only use native Go, `golang.org/x` packages, and Terraform Plugin Framework packages. Do not introduce third-party dependencies.
+Allowed:
+
+- Go standard library.
+- `golang.org/x` packages.
+- HashiCorp Terraform Plugin packages: `terraform-plugin-framework`, `terraform-plugin-framework-timeouts`, `terraform-plugin-framework-validators`, `terraform-plugin-go`, `terraform-plugin-log`, `terraform-plugin-testing`.
+- `github.com/Jamf-Concepts/jamfplatform-go-sdk` — required for all Jamf Platform API access (auth, HTTP transport, request/response types).
+
+Do not introduce other third-party dependencies without prior discussion.
 
 ## Resource Package File Conventions
 
@@ -28,6 +35,7 @@ Resource packages live under `internal/resources/<domain>/<resource>/` and use r
 | `input_builders.go` | Build API request payloads from Terraform model data |
 | `state_builders.go` | Map API responses to Terraform state |
 | `helpers.go` | Resource-specific helper functions |
+| `state_upgrader.go` | Schema version upgraders (when bumping schema version) |
 | `plan_modifiers.go` | Schema plan modifiers (if needed) |
 | `validators.go` | Schema validators (if needed) |
 | `list_resource.go` | List resource implementation |
@@ -50,10 +58,15 @@ Packages that only contain a data source use `model_types.go` for their model st
 | `helpers_test.go` | Helper function tests |
 | `input_builders_test.go` | Input builder tests |
 | `state_builders_test.go` | State builder tests |
-| `resource_acceptance_test.go` | Acceptance tests (`//go:build acceptance`) |
-| `datasource_acceptance_test.go` | Data source acceptance tests |
+| `state_upgrader_test.go` | State upgrader tests (where present) |
+| `resource_acceptance_test.go` | Resource acceptance tests (`//go:build acceptance`) |
+| `datasource_acceptance_test.go` | Data-source-only package acceptance tests (`//go:build acceptance`) |
 
 ## Client Conventions
+
+The Jamf Platform API client lives in the external SDK `github.com/Jamf-Concepts/jamfplatform-go-sdk` (package `jamfplatform`). This repository imports it; it is not vendored. To consume new endpoints, bump the SDK dep in `go.mod` (or coordinate changes upstream first).
+
+The SDK follows the conventions below — match them when contributing upstream.
 
 ### Versioned naming
 
@@ -92,19 +105,24 @@ Data source attributes returning API data should always use lists.
 
 ## Error Handling
 
-- Use `helpers.IsNotFoundError(err)` for 404 detection in Read/Delete operations.
-- Use `helpers.PollUntil(ctx, interval, checker)` for async operations that need polling.
+Use the shared helpers from `internal/common/helpers` rather than rolling your own:
+
+- `helpers.IsNotFoundError(err)` — 404 detection in `Read`/`Delete` operations.
+- `helpers.IsServerError(err)` — 5xx detection for retry decisions.
+- `helpers.ResolveTimeout(ctx, value, defaultDuration)` — resolve `framework-timeouts` values to a concrete deadline.
+- `helpers.ReconcileOptionalBool` / `ReconcileOptionalInt` / `ReconcileOptionalString` / `Reconcile*Pointer` — preserve Terraform null/optional semantics when the API returns zero values.
 - Wrap errors with `fmt.Errorf("context: %w", err)` to preserve the error chain.
 
 ## Naming Patterns
 
 ### Resources
 
-Terraform resource type names follow `jamfplatform_<domain>_<entity>`:
+Terraform construct names follow `jamfplatform_<domain>_<entity>` (or `jamfplatform_<domain>_<entity>_<verb>` for actions):
 
-- `jamfplatform_device_group`
-- `jamfplatform_blueprints_blueprint`
-- `jamfplatform_cbengine_benchmark`
+- `jamfplatform_device_group` (resource, data source, list resource)
+- `jamfplatform_blueprints_blueprint` (resource, data source, list resource)
+- `jamfplatform_cbengine_benchmark` (resource, data source, list resource)
+- `jamfplatform_device_erase` / `_restart` / `_shutdown` / `_unmanage` (actions)
 
 ### Test names
 
@@ -125,3 +143,295 @@ tf-acc-static-computer
 tf-acc-benchmark-all-rules
 tf-acc-bp-scope-passcode
 ```
+
+## Jamf Pro Resource Naming
+
+Resources backed by the `pro/` or `proclassic/` packages of `jamfplatform-go-sdk` use a dedicated naming scheme that hides the API-layer split from users. Both layers expose Jamf Pro functionality; end users should not care which one is wired up.
+
+### Rules
+
+1. **Terraform construct name**: `jamfplatform_pro_<resource>` for every Jamf Pro resource, data source, list resource, or action — regardless of whether it is sourced from `pro/` or `proclassic/`.
+2. **Slug source**: derive `<resource>` from the SDK filename, normalized to snake_case and singularized. Examples:
+   - `pro/scripts.go` → `jamfplatform_pro_script`
+   - `pro/categories.go` → `jamfplatform_pro_category`
+   - `pro/smart_computer_groups.go` → `jamfplatform_pro_smart_computer_group`
+   - `proclassic/networksegments.go` → `jamfplatform_pro_network_segment`
+   - `proclassic/osxconfigurationprofiles.go` → `jamfplatform_pro_macos_configuration_profile` (override; modern terminology)
+3. **Singular vs plural**:
+   - Resource: singular (`pro_script`).
+   - Data source: singular for ID/name lookup (`pro_script`), plural for filtered/list lookups (`pro_scripts`).
+   - List resource: plural (`pro_scripts`).
+   - Action: singular verb suffix (`pro_computer_erase`).
+4. **Go package path**: `internal/resources/pro/<domain>/<resource>/` (two-tier). Domain groups related resources (e.g. `computers/`, `mobile_devices/`, `users/`, `policies/`, `configuration_profiles/`, `enrollment/`, `sso/`, `patch/`, `vpp/`, `settings/`, `inventory/`). Pick the closest fit; introduce a new domain folder if none applies.
+5. **Pro vs ProClassic preference**: default to `pro/`. Use `proclassic/` only when:
+   - `pro/` has no equivalent endpoint, OR
+   - `pro/` is materially less feature-complete (e.g. read-only when classic offers CRUD, missing required fields).
+   - When both are wired across multiple resources, document the rationale in the resource's package-level comment.
+6. **Overrides**: where the SDK filename is awkward, outdated, or ambiguous, override the Terraform slug. Record the override in `JAMF_PRO_INVENTORY.md` (gitignored planning file) at the time the batch is approved. There is no upfront override table — decisions happen per batch.
+7. **Inventory tracking**: every Jamf Pro construct (planned, in-design, in-progress, shipped, skipped) is tracked in `JAMF_PRO_INVENTORY.md`. Not committed.
+
+### Minimum Jamf Pro version check
+
+The provider uses **one** `jamfplatform.Client` built from the standard `JAMFPLATFORM_*` credentials — there is no separate "Pro credentials" set. The same client serves Platform Services resources (`blueprints/*`, `cbengine/*`, `device_group`, etc.) and Jamf Pro resources (`pro/*`).
+
+Pro resources gate themselves on a minimum Jamf Pro tenant version. Platform Services resources do not — they remain usable against tenants that don't have Jamf Pro provisioned.
+
+Every Pro resource declares its minimum Jamf Pro version as an unexported `const` in `resource.go`:
+
+```go
+const minJamfProVersion = "11.5.0"  // empty string = no version check
+```
+
+- **Co-locate** with the resource. Do not centralize.
+- **Empty string** (`""`) skips the check — use only when the resource genuinely works on the provider's declared minimum Pro version with no endpoint-specific floor.
+- **Source the value** during the SDK-comparison phase of the resource-addition workflow ([CONTRIBUTING.md §Adding a Jamf Pro Resource](CONTRIBUTING.md#adding-a-jamf-pro-resource)). Record in `JAMF_PRO_INVENTORY.md`.
+
+The tenant version is fetched **lazily**: the first Pro resource Configure with a non-empty const calls `pd.GetJamfProVersion(ctx)`, which uses `sync.Once` to fetch via `GetJamfProVersionV1` exactly once and caches on `ProviderData`. Subsequent Pro resource Configures read the cache. Configurations that use only Platform Services resources, or only Pro resources with empty constants, never trigger the fetch.
+
+#### `providerdata.Data` lives in its own package
+
+The value Terraform passes to every Configure call (`req.ProviderData`) is `*providerdata.Data` — defined in `internal/providerdata/providerdata.go`, **not** `internal/provider/`. It carries the SDK client plus `sync.Once`-guarded fields for the lazy Pro version fetch and the once-per-invocation provider-floor warning.
+
+- **Why a separate package**: `internal/provider/` already imports every resource package in order to register them. If resource packages also imported `internal/provider` to name the `Data` type, Go would reject the cycle. `internal/providerdata/` is a leaf package — resources import it, provider imports it, no loop.
+- **Why a wrapper at all**: Platform Services resources only ever needed the raw `*jamfplatform.Client`, so the provider used to pass it directly as `ResourceData`. Pro resources require two pieces of state that the raw client can't hold — (a) lazily-fetched, cached tenant Jamf Pro version (so dozens of Pro resources in one config don't each re-call `GetJamfProVersionV1`) and (b) a one-shot provider-floor warning (so the user sees it once, not per-resource). `sync.Once` fields on a shared struct are the natural shape, hence the wrapper.
+
+All Configure functions — Pro and Platform Services alike — type-assert `req.ProviderData.(*providerdata.Data)` and read `.Client` for the SDK handle.
+
+Resource Configure shape:
+
+```go
+const minJamfProVersion = "11.5.0"
+
+func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+    if req.ProviderData == nil {
+        return
+    }
+    pd := req.ProviderData.(*providerdata.Data)
+    r.client = pd.Client
+
+    if minJamfProVersion == "" {
+        return
+    }
+    version, err := pd.GetJamfProVersion(ctx)
+    if err != nil {
+        resp.Diagnostics.AddError(
+            "Failed to read Jamf Pro tenant version",
+            fmt.Sprintf("jamfplatform_pro_<name> requires Jamf Pro; could not read version: %s", err),
+        )
+        return
+    }
+    resp.Diagnostics.Append(
+        helpers.RequireMinJamfProVersion(version, minJamfProVersion, "jamfplatform_pro_<name>")...,
+    )
+}
+```
+
+Use the shared helper for comparison:
+
+```go
+import "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+
+resp.Diagnostics.Append(
+    helpers.RequireMinJamfProVersion(actual, minJamfProVersion, "jamfplatform_pro_<name>")...,
+)
+```
+
+`RequireMinJamfProVersion` lives in `internal/common/helpers/version.go` and:
+
+- Tolerates Jamf's build-suffix format (`11.5.0-t1700000000` → parses as `11.5.0`).
+- Parses `MAJOR.MINOR.PATCH`. Unparseable input → error diagnostic with the raw string.
+- Empty `required` → no-op (returns nil diagnostics).
+- `actual < required` → error diagnostic naming both versions and the resource type. **Error, not warning** — version-gated resources should not silently proceed against unsupported tenants.
+
+#### Failure modes
+
+| Condition | Outcome |
+|-----------|---------|
+| Tenant does not have Jamf Pro provisioned, Pro resource with non-empty `minJamfProVersion` used | `GetJamfProVersionV1` errors → propagated by `GetJamfProVersion` → resource Configure surfaces as "Failed to read Jamf Pro tenant version" |
+| Tenant does not have Jamf Pro provisioned, Pro resource with empty `minJamfProVersion` used | Configure passes; first CRUD call surfaces the underlying Jamf API error |
+| `GetJamfProVersionV1` returns a transient network/auth error | Same path as above; cached on `ProviderData` until next `terraform` invocation |
+| Tenant version parses, `< required` | `RequireMinJamfProVersion` error |
+| Tenant version unparseable | `RequireMinJamfProVersion` error with raw string |
+| `minJamfProVersion = ""` | Version check skipped; no fetch triggered by this resource |
+
+### Endpoint adoption & migration policy
+
+**Scope: Jamf Pro resources only** (those backed by `jamfplatform-go-sdk/jamfplatform/pro/` or `proclassic/`). Pro APIs versionize endpoints (V1 / V2 / V3 / ...), can be deprecated by Jamf, and run on customer-provisioned Jamf Pro tenants with their own version drift. This policy governs when Pro resources move between endpoint versions. **All version transitions follow the same rules** — V1→V2, V2→V3, V3→V4, and so on. References to "V1" and "V2" below are generic placeholders for "current version N" and "new version N+1".
+
+**Out of scope: Platform Services SDK packages** — `blueprints/`, `compliancebenchmarks/`, `devicegroups/`, `devices/`, `deviceactions/`, `ddmreport/`. These are continuously-deployed Jamf Platform microservices, not customer-versioned Jamf Pro endpoints. Always track the latest stable function in the SDK; no deprecation buffer, no quarterly audit, no annotation block required. When a Platform Services SDK function is updated (e.g., a new V2 added), migrate the corresponding resource opportunistically — typically as part of the SDK dependency bump that introduces it.
+
+**ProClassic is unversioned**: `jamfplatform/proclassic/` functions do not carry V1/V2 suffixes. Migration timing (below) does not apply to ProClassic-backed resources. Annotation block is still recommended for documenting which SDK function is in use, but `Status:` simply tracks "current" against the SDK release in use.
+
+#### SDK side-by-side dependency
+
+The buffered migration timeline below assumes the SDK exposes both the deprecated version (N) and the new version (N+1) simultaneously during the deprecation window. **This applies to every version transition** — V1→V2, V2→V3, V3→V4, etc. — not just V1→V2.
+
+As of writing, the SDK rarely keeps multiple versions: of ~565 versioned Pro endpoint bases, only 2 have side-by-side versions exposed. Generator change requested upstream — see [jamfplatform-go-sdk#19](https://github.com/Jamf-Concepts/jamfplatform-go-sdk/issues/19). Until that lands:
+
+- When the SDK exposes both versions of an endpoint: follow the buffer policy below.
+- When the SDK only exposes the new version on regeneration: migration is **SDK-bump-driven** — migrate at the SDK bump or pin the SDK to the prior release (only as a temporary workaround). Document the constraint in the resource's annotation block.
+- When a Jamf deprecation is announced for an endpoint we use (at any version pair), file an issue against `jamfplatform-go-sdk` requesting retention of the deprecated version through our migration window.
+
+#### Adoption (new endpoints)
+
+| Scenario | Action |
+|----------|--------|
+| Building a brand-new resource, SDK exposes V1 only | Use V1. |
+| Building a brand-new resource, SDK exposes V2 (V1 still current) | **Use V2.** Default to latest stable on new resources — no migration cost. |
+| Building a brand-new resource, SDK exposes V2 marked beta/EAP | Use V1. V2 only if V1 is unworkable; document the choice in the resource. |
+| Existing **shipped** resource on V1, new V2 lands (V1 not deprecated) | **Do not migrate.** Wait for deprecation, fast-track trigger, or material feature gap. |
+| Existing shipped resource on V1, V2 only adds optional new fields | Migrate opportunistically, e.g., when next touching the resource. Not urgent. |
+| Existing shipped resource on V1, V2 fixes an issue meeting fast-track criteria | **Fast-track migrate** — see below. |
+
+Rationale: migrating shipped resources costs schema/state-upgrader churn. Don't pay it without reason. New resources have no migration cost.
+
+#### Deprecation migration timeline
+
+Jamf's typical window: ~12 months from deprecation announcement to removal.
+
+| Trigger | Action |
+|---------|--------|
+| Jamf marks V1 deprecated | Open a migration tracking issue within **30 days**. Schedule the work. |
+| **6 months** after deprecation announcement (soft default) | Migration **should be merged**. Soft target. |
+| **3 months before announced removal date** (hard floor) | Migration **must be merged**. Hard floor — no shipped resource may sit on a deprecated endpoint inside this window. If migration is not yet shipped, it becomes top priority and bumps the buildout roadmap. |
+| Removal date | All migrations must already be shipped. Anything not migrated is a regression. |
+
+The 6-month soft default and 3-month hard floor work as a pair: 6-month catches the common case, 3-month catches edge cases (Jamf shortens the window, a migration slips, a deprecation announcement was missed).
+
+#### Fast-track exception
+
+Skip the 6-month buffer and migrate as soon as feasible when V2 includes one of:
+
+- **Security fix** (auth, scope, data exposure).
+- **Data integrity** issue (V1 returns wrong values, silent truncation, race conditions).
+- **Breaking bug** affecting a documented common use case where no workaround exists.
+- **Critical feature** required by a user-reported issue with no viable workaround.
+
+Maintainer call, documented in the migration PR description.
+
+#### Slow-track exception
+
+When migration would require a **breaking Terraform schema change**, defer to the next provider major version. Document explicitly in the resource's `crud.go` annotation (see below) and in the major-version release planning.
+
+#### Tracking — in-code annotation (Pro resources only)
+
+Every Jamf Pro resource's `crud.go` carries an annotation block at the top of the file listing the SDK endpoints in use, their status, and the last maintainer review date. Platform Services resources do **not** carry this annotation.
+
+```go
+// SDK endpoints used:
+//   pro.CreateScriptV2 (introduced Jamf Pro 11.8)
+//   pro.ReadScriptV2   (introduced Jamf Pro 11.8)
+//   pro.UpdateScriptV2 (introduced Jamf Pro 11.8)
+//   pro.DeleteScriptV2 (introduced Jamf Pro 11.8)
+//
+// Status: current. Last reviewed 2026-05-18.
+```
+
+When V1 becomes deprecated, change the line:
+
+```go
+// Status: deprecated by Jamf YYYY-MM-DD; migrate by YYYY-MM-DD (6mo soft / 3mo hard floor). Last reviewed YYYY-MM-DD.
+```
+
+When the migration is in flight:
+
+```go
+// Status: migration in progress on V3 in PR #NNN. Last reviewed YYYY-MM-DD.
+```
+
+This annotation is the single source of truth. No separate `ENDPOINT_VERSIONS.md` to keep in sync.
+
+#### Quarterly audit cadence (Pro resources only)
+
+Once per quarter, a maintainer:
+
+1. Scans Jamf Pro release notes and the `jamfplatform-go-sdk` changelog for new Pro endpoint versions and deprecations (Pro / ProClassic only — Platform Services microservices are out of scope).
+2. Greps the repo for endpoint annotations: `grep -rA5 "SDK endpoints used:" internal/resources/pro/`.
+3. Reconciles each annotation against current Jamf + SDK state.
+4. Updates `Last reviewed YYYY-MM-DD` on every annotation that's still current.
+5. Opens migration tracking issues for any newly-deprecated Pro endpoints.
+6. Flags any annotation whose `Last reviewed` date is older than 120 days (means a prior audit was skipped).
+
+The `Last reviewed` date is the drift detector — any annotation more than a quarter stale signals the audit hasn't happened.
+
+### ID type handling
+
+Jamf endpoints expose mixed ID shapes: `pro/` uses integer IDs for many resources and UUIDs for newer ones; `proclassic/` is almost exclusively integer IDs. Terraform's `ID` attribute is always `types.String`.
+
+**Convention**: always stringify integer IDs in Terraform state. Convert back to `int` / `int64` when calling the SDK.
+
+Helpers (to be added under `internal/common/helpers/ids.go` when the first Pro resource lands):
+
+- `IntIDToString(id int64) types.String`
+- `StringToIntID(s types.String) (int64, error)`
+- UUIDs pass through unchanged as `types.String`.
+
+`ImportState` parses the imported string per the rules below before populating state.
+
+### Import format
+
+Default convention for `ImportState`:
+
+- **Single ID**: `terraform import jamfplatform_pro_<name>.foo <id>` — where `<id>` is the resource's primary key (integer or UUID as Jamf exposes it). Standard `resource.ImportStatePassthroughID` usage in most cases.
+- **Composite / parent-scoped** (rare): `terraform import jamfplatform_pro_<name>.foo <parent_id>:<id>` — colon-separated. Parse with `strings.SplitN(req.ID, ":", 2)`. Validate both segments before setting state. Document the expected format in the resource's `MarkdownDescription` and in `examples/resources/<name>/import.sh`.
+
+Avoid name-based imports; use IDs only.
+
+### Endpoint shape classification
+
+During the SDK-comparison gate ([CONTRIBUTING.md §Adding a Jamf Pro Resource](CONTRIBUTING.md#adding-a-jamf-pro-resource) step 3), classify the endpoint based on which operations the SDK exposes:
+
+| Operations available | Construct type | Notes |
+|----------------------|----------------|-------|
+| Create + Read + Update + Delete | `resource` (+ usually a singular `data source` and a plural `list resource`) | Standard CRUD |
+| Read only (single + list, or list only) | `data source` (+ plural `data source` or `list resource`) | No state-managed object |
+| Update only (no Create/Delete) | `resource` flagged as **singleton** — one record per tenant | E.g., `activation_code`, `client_check_in`, `jamf_pro_server_url`. Schema uses `RequiresReplace: false` plan modifiers and treats `Create` as `Update` |
+| Fire-and-forget command (Create returns command ID, no Read/Update/Delete) | `action` | E.g., `pro_computer_erase`, `pro_computer_restart` |
+
+Record the classification in `JAMF_PRO_INVENTORY.md` Notes column during the in-design phase.
+
+### Pro error/retry helpers (planned extension)
+
+Existing `internal/common/helpers/helpers.go` provides `IsNotFoundError` and `IsServerError`. Pro APIs add cases the existing helpers don't cover:
+
+- **429 Too Many Requests** — Pro endpoints rate-limit aggressively under load.
+- **423 Locked** — Pro async operations (deploy, sync, redeploy) return `423` while another operation is in flight.
+- **409 Conflict** — Pro PATCH/PUT on stale state.
+
+When **3 or more** Pro resources need retry handling for these cases, extract into `internal/common/helpers`:
+
+- `IsRateLimitError(err error) bool` — 429
+- `IsLockedError(err error) bool` — 423
+- `IsConflictError(err error) bool` — 409
+- `RetryWithBackoff(ctx, op, isRetriable, maxAttempts) error` — generic retry helper that respects context deadlines.
+
+Until the trigger fires, retry logic lives in-resource. Same deferred-abstraction discipline as shared schemas.
+
+### Provider overall minimum Jamf Pro version (advisory warning)
+
+Independent of per-resource `minJamfProVersion` constants (which are hard errors), the provider declares an **overall recommended minimum Jamf Pro version**: the highest version any shipped Pro resource requires. Surfaces as a **warning, not an error**, when the tenant version is below this floor:
+
+```go
+// internal/providerdata/providerdata.go
+const ProviderMinJamfProVersion = "11.27.0"  // bump at release time
+```
+
+Every Pro resource Configure calls `pd.GetJamfProVersion(ctx)` unconditionally — regardless of whether the resource declares a per-resource `minJamfProVersion` const. The call is cached via `sync.Once` on `providerdata.Data`, so it fires at most once per `terraform` invocation. After the version is cached, ProviderData stages the floor warning once via a second `sync.Once`, and each Pro resource Configure appends the staged warning to its response.
+
+When the fetch errors (e.g. 403 on a non-Jamf-Pro tenant): resources with empty `minJamfProVersion` swallow the error silently and let downstream CRUD calls surface the real failure; resources with a non-empty `minJamfProVersion` surface the fetch error as a Configure-time hard error ("Failed to read Jamf Pro tenant version …"). Always-fetch + selective-swallow is the shape — don't write Configure to skip the fetch when the const is empty, because that would also defeat the floor warning.
+
+The warning text:
+
+> Jamf Pro tenant older than provider build target
+>
+> This provider release was built against the Jamf Pro API as of version `A.B.C`. The tenant reports `X.Y.Z`. Some Pro resources may rely on endpoints or fields that did not exist in the tenant's version and could fail at apply time. Upgrade Jamf Pro or pin an older provider release.
+
+Rationale: per-resource `const minJamfProVersion` covers hard correctness for individual resources that need newer endpoints. The provider-level floor catches the broader case where the user's tenant lags the API spec the provider was generated from — many Pro resources may quietly rely on fields or endpoints that only exist in newer Jamf Pro versions without each declaring a per-resource gate. Warning is enough — the per-resource error remains the safety net for resources that have one.
+
+**Release-time process**: before tagging a release, grep all `minJamfProVersion` constants under `internal/resources/pro/`, take the max, update `ProviderMinJamfProVersion` in `internal/providerdata/providerdata.go` if it has moved. The provider Schema description interpolates the const so `docs/index.md` updates automatically after `make generate`. The hard-coded version string in `README.md` (under "Supported Jamf products and tenant version targets") must be bumped by hand. When additional Jamf products are added in the future, each gets its own `Provider<Product>MinVersion` constant + row in the provider Schema table + row in the README table; the release-time process expands accordingly.
+
+### Shared schemas (deferred abstraction)
+
+Many Jamf Pro resources expose similar shapes (scope, site, category, criteria, self-service payload). **Do not extract these into shared schemas upfront** — superficially similar Jamf APIs often differ in field names, ID types (int vs UUID string), and null semantics. Premature abstraction here produces helpers with per-resource branching that is harder to read than the original duplication.
+
+**Refactor trigger**: when 3 or more shipped resources have a verified-identical shape (same fields, same types, same null semantics — checked against the SDK structs, not eyeballed), extract a helper under `internal/common/schemas/`. Not before.
