@@ -33,6 +33,21 @@ func StringPointerValueOrNull(value *string) types.String {
 	return types.StringValue(*value)
 }
 
+// OptionalStringPointer converts a Terraform string into a *string for API payloads.
+// Returns nil for both Null and Unknown values — the Null/Unknown distinction matters
+// for Optional+Computed attributes, where the framework reports Unknown until the
+// server-derived value is known. types.String.ValueStringPointer returns a pointer to
+// "" for Unknown, which Jamf Pro endpoints often reject with HTTP 500. Prefer this
+// helper for every optional payload field; see STYLE_GUIDE.md §Server-derived
+// computed fields & Optional+Computed attributes for the broader pattern.
+func OptionalStringPointer(value types.String) *string {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	s := value.ValueString()
+	return &s
+}
+
 // BoolPointerValueOrNull safely unwraps a *bool and converts it to a Terraform bool.
 func BoolPointerValueOrNull(value *bool) types.Bool {
 	if value == nil {

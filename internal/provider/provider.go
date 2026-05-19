@@ -34,6 +34,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 )
 
@@ -190,6 +192,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		blueprint.NewBlueprintResource,
 		category.NewCategoryResource,
 		device_group.NewDeviceGroupResource,
+		script.NewScriptResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 	}
 }
@@ -210,6 +213,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		device_groups.NewDeviceGroupsDataSource,
 		device.NewDeviceDataSource,
 		devices.NewDevicesDataSource,
+		script.NewScriptDataSource,
+		scripts.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
 	}
 }
@@ -220,6 +225,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		blueprint.NewBlueprintListResource,
 		category.NewCategoryListResource,
 		device_group.NewDeviceGroupListResource,
+		script.NewScriptListResource,
 	}
 }
 

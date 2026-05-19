@@ -50,6 +50,21 @@ func TestStringPointerValueOrNull(t *testing.T) {
 	}
 }
 
+func TestOptionalStringPointer(t *testing.T) {
+	if got := OptionalStringPointer(types.StringNull()); got != nil {
+		t.Errorf("null should yield nil pointer, got %v", got)
+	}
+	if got := OptionalStringPointer(types.StringUnknown()); got != nil {
+		t.Errorf("unknown should yield nil pointer (not pointer to empty string), got %v", got)
+	}
+	if got := OptionalStringPointer(types.StringValue("hello")); got == nil || *got != "hello" {
+		t.Errorf("expected pointer to 'hello', got %v", got)
+	}
+	if got := OptionalStringPointer(types.StringValue("")); got == nil || *got != "" {
+		t.Errorf("explicit empty string must be forwarded, got %v", got)
+	}
+}
+
 func TestBoolPointerValueOrNull(t *testing.T) {
 	b := true
 	f := false
