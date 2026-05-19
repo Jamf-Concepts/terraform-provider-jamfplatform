@@ -28,13 +28,16 @@ make test
 
 1. Create a feature branch from `main`.
 2. Make your changes following the [style guide](STYLE_GUIDE.md).
-3. Run formatting, linting, and tests before committing:
+3. Run go-fix, formatting, linting, and tests before committing:
 
    ```bash
+   make fix
    make fmt
    make lint
    make test
    ```
+
+   Run `make fix` first — it rewrites deprecated Go API usages, so `fmt` and `lint` then operate on the migrated source.
 
 4. Open a pull request against `main`. CI runs build, lint, docs-generation check, and unit tests automatically.
 5. CI also runs the Go acceptance test suite against a real tenant via the GitHub `acceptance` environment after a reviewer approves the run. See [TESTING.md](TESTING.md) for details.
@@ -47,8 +50,9 @@ make test
 4. Register the resource in `internal/provider/provider.go` (`Resources()`, `DataSources()`, `ListResources()`, or `Actions()` as applicable).
 5. Add unit tests in the same package: `schema_test.go`, `input_builders_test.go`, `state_builders_test.go`, plus helpers/upgrader tests where relevant.
 6. Add `resource_acceptance_test.go` (or `datasource_acceptance_test.go` for data-source-only packages) with `//go:build acceptance` on line 1. Use factories from `internal/testhelpers` (`AccPreCheck`, `AccTestProtoV6ProviderFactories`, `NewAcceptanceClient`, `RequireSmartGroupFixture`).
-7. Add example `.tf` files under the matching `examples/` subdirectory (`examples/resources/<name>/`, `examples/data-sources/<name>/`, `examples/list-resources/<name>/`, `examples/actions/<name>/`).
-8. Run `make generate` to regenerate copyright headers, format examples, and rebuild `docs/`.
+7. Add example `.tf` files under the matching `examples/` subdirectory (`examples/resources/<name>/`, `examples/data-sources/<name>/`, `examples/list-resources/<name>/`, `examples/actions/<name>/`). For resources, include an `import.sh` showing the exact `terraform import` command.
+8. Run `make fix fmt lint test` and confirm clean (zero lint issues, all unit tests pass). `fix` rewrites deprecated API usages; run it before `fmt`/`lint`.
+9. Run `make generate` to regenerate copyright headers, format examples, and rebuild `docs/`. **Mandatory** for every new resource, data source, list resource, or action — `docs/` must reflect the new construct before the PR opens. Commit the generated docs alongside the source.
 
 See [TESTING.md](TESTING.md) for full testing guidance.
 
@@ -62,7 +66,7 @@ Jamf Pro resources (sourced from the `pro/` or `proclassic/` packages of `jamfpl
 4. **Maintainer approval** locks in: SDK function set, Terraform construct name (and any override), target domain folder under `internal/resources/pro/<domain>/`, and the **minimum Jamf Pro version** (`minJamfProVersion` const — see [STYLE_GUIDE.md §Minimum Jamf Pro version check](STYLE_GUIDE.md#minimum-jamf-pro-version-check)). Source the version from Jamf release notes, the SDK function's `// Available since` comment, or hand-research; record it in `JAMF_PRO_INVENTORY.md`. Mark the row `in-progress`.
 5. **Build the package** at `internal/resources/pro/<domain>/<resource>/` per the [file conventions](STYLE_GUIDE.md#resource-package-file-conventions). Mirror `internal/resources/pro/inventory/category/` for the Pro construct template (or `internal/resources/blueprints/blueprint/` for complex Platform Services shapes). Resource / data source / list resource / action Configure **must** funnel through `providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_<name>")` — do not hand-roll the type-assertion / version-fetch / version-gate / floor-warning boilerplate (see [STYLE_GUIDE.md §Pro Configure](STYLE_GUIDE.md#pro-configure-use-the-providerdataconfigurepro-helper)). Credentials are the same `JAMFPLATFORM_*` set used by Platform Services resources — there is no separate Pro credentials gate. **`crud.go` must carry the SDK-endpoints annotation block** at the top of the file with `Status: current. Last reviewed YYYY-MM-DD.` See [STYLE_GUIDE.md §Endpoint adoption & migration policy](STYLE_GUIDE.md#endpoint-adoption--migration-policy).
 6. **Reuse shared schemas only when they exist**. Do **not** extract shared schemas (scope, site, category, criteria) preemptively — the trigger is 3 verified-identical SDK shapes across shipped resources. See [STYLE_GUIDE.md §Shared schemas (deferred abstraction)](STYLE_GUIDE.md#shared-schemas-deferred-abstraction). When the trigger fires, extract into `internal/common/schemas/` in a dedicated refactor PR.
-7. **Tests + examples + docs**: same as a Platform Services resource — schema/input/state/upgrader unit tests, `resource_acceptance_test.go` with `//go:build acceptance` and `internal/testhelpers` factories, examples under `examples/resources/<name>/` (or the matching subdirectory), then `make generate`.
+7. **Tests + examples + docs**: same as a Platform Services resource — schema/input/state/upgrader unit tests, `resource_acceptance_test.go` with `//go:build acceptance` and `internal/testhelpers` factories, examples under `examples/resources/<name>/` (or the matching `data-sources/`, `list-resources/`, `actions/` subdirectory). Then run `make fix fmt lint test` (must be clean) followed by `make generate` (mandatory — rebuilds `docs/` for the new construct). Commit the generated `docs/` files alongside the source.
 8. **Update inventory** to `shipped` after merge.
 
 ## Adding a New Data Source
