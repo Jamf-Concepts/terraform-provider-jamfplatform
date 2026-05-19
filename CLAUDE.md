@@ -134,8 +134,8 @@ Every acceptance test file **must** declare `//go:build acceptance` on line 1 or
 5. Add unit tests in the same package: `schema_test.go`, `input_builders_test.go`, `state_builders_test.go`, plus any helpers/upgrader tests.
 6. Add `resource_acceptance_test.go` with `//go:build acceptance` and use factories from `internal/testhelpers`.
 7. Add example `.tf` files under the matching `examples/` subdirectory: `examples/resources/<name>/`, `examples/data-sources/<name>/`, `examples/list-resources/<name>/`, or `examples/actions/<name>/`.
-8. Run `make fmt lint test`.
-9. Run `make generate` to regenerate copyright headers, format examples, and rebuild `docs/`.
+8. Run `make fmt lint test` and confirm clean (zero lint issues, all unit tests pass).
+9. Run `make generate` to regenerate copyright headers, format examples, and rebuild `docs/`. **Mandatory** for every new resource, data source, list resource, or action — `docs/<construct-type>/<name>.md` must land in the same PR.
 
 ## Documentation & Examples
 

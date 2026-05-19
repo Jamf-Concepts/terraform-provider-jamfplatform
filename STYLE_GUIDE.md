@@ -162,7 +162,7 @@ Resources backed by the `pro/` or `proclassic/` packages of `jamfplatform-go-sdk
    - Data source: singular for ID/name lookup (`pro_script`), plural for filtered/list lookups (`pro_scripts`).
    - List resource: plural (`pro_scripts`).
    - Action: singular verb suffix (`pro_computer_erase`).
-4. **Go package path**: `internal/resources/pro/<domain>/<resource>/` (two-tier). Domain groups related resources (e.g. `computers/`, `mobile_devices/`, `users/`, `policies/`, `configuration_profiles/`, `enrollment/`, `sso/`, `patch/`, `vpp/`, `settings/`, `inventory/`). Pick the closest fit; introduce a new domain folder if none applies.
+4. **Go package path**: `internal/resources/pro/<domain>/<resource>/` (two-tier). Domain groups related resources (e.g. `computers/`, `mobile_devices/`, `users/`, `policies/`, `configuration_profiles/`, `enrollment/`, `sso/`, `patch/`, `vpp/`, `settings/`, `inventory/`). Pick the closest fit; introduce a new domain folder if none applies. The leaf `<resource>` folder name is the **Terraform slug minus the `jamfplatform_pro_` prefix**, snake_case. Examples: `jamfplatform_pro_category` → `inventory/category/`; `jamfplatform_pro_self_service_plus_settings` → `settings/self_service_plus_settings/`; `jamfplatform_pro_smart_computer_group` → `computers/smart_computer_group/`. Do not drop descriptive suffixes (keep `_settings`, `_group`, etc.) — the folder name must match the Terraform slug exactly so future maintainers can grep one to find the other. The Go package declaration matches the folder name verbatim.
 5. **Pro vs ProClassic preference**: default to `pro/`. Use `proclassic/` only when:
    - `pro/` has no equivalent endpoint, OR
    - `pro/` is materially less feature-complete (e.g. read-only when classic offers CRUD, missing required fields).
@@ -367,10 +367,36 @@ During the SDK-comparison gate ([CONTRIBUTING.md §Adding a Jamf Pro Resource](C
 |----------------------|----------------|-------|
 | Create + Read + Update + Delete | `resource` (+ usually a singular `data source` and a plural `list resource`) | Standard CRUD |
 | Read only (single + list, or list only) | `data source` (+ plural `data source` or `list resource`) | No state-managed object |
-| Update only (no Create/Delete) | `resource` flagged as **singleton** — one record per tenant | E.g., `activation_code`, `client_check_in`, `jamf_pro_server_url`. Schema uses `RequiresReplace: false` plan modifiers and treats `Create` as `Update` |
+| Update only (no Create/Delete) | `resource` flagged as **singleton** — one record per tenant | See [Singleton resources](#singleton-resources) below for the full convention (fixed ID, Create→Update, no-op Delete, import format). E.g., `activation_code`, `client_check_in`, `jamf_pro_server_url`, `self_service_plus_settings`. |
 | Fire-and-forget command (Create returns command ID, no Read/Update/Delete) | `action` | E.g., `pro_computer_erase`, `pro_computer_restart` |
 
 Record the classification in `JAMF_PRO_INVENTORY.md` Notes column during the in-design phase.
+
+### Singleton resources
+
+Jamf Pro objects that exist one-per-tenant and are exposed as Update-only on the API are modeled as **singleton** resources. The whole convention below is the load-bearing definition — any new singleton must follow it.
+
+**Domain folder**: `internal/resources/pro/settings/<resource>/`. The `settings/` domain is the canonical home for Pro singletons (`activation_code`, `client_check_in`, `self_service_plus_settings`, `jamf_pro_*`). Reference template: `internal/resources/pro/settings/self_service_plus_settings/`.
+
+**Leaf folder name**: matches the Terraform slug exactly (rule #4 above), e.g. `self_service_plus_settings/` for `jamfplatform_pro_self_service_plus_settings`.
+
+**Fixed ID**: every singleton stores `helpers.SingletonID` (`"singleton"`, defined in `internal/common/helpers/singleton.go`) as its Terraform state ID. Set it in Create, Read, and Update via `state.ID = types.StringValue(helpers.SingletonID)`. Do not import any other identifier.
+
+**Identity schema**: declare a single `id` string attribute with `RequiredForImport: true` — same shape as CRUD resources, just always populated with `helpers.SingletonID`.
+
+**Schema `id` attribute**: `Computed: true` with `stringplanmodifier.UseStateForUnknown()`. Never `Required` (users cannot pick the ID — it is always `"singleton"`).
+
+**Create**: the Jamf Pro API has no Create endpoint for singletons (the record already exists). Funnel `Create` into the same `Update<X>V1` SDK call used by `Update`, then `Get<X>V1` to capture authoritative state, set `state.ID = types.StringValue(helpers.SingletonID)`.
+
+**Delete**: no-op on the remote — the record cannot be deleted. The `Delete` handler simply emits a `tflog.Trace` and returns; Terraform removes the resource from state on its own. Document this in the handler doc-comment so reviewers understand the omitted SDK call is intentional.
+
+**Import**: `terraform import <type>.<name> singleton`. Use `resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)` in `ImportState`. The example `import.sh` under `examples/resources/<type>/import.sh` must contain this exact command.
+
+**No list resource, no plural data source**: singletons have nothing to list. Provide the singular data source only when reading the current settings without managing them is useful.
+
+**Acceptance test**: no `CheckDestroy` — the record persists on the tenant after Terraform stops managing it. Test the two Update paths (e.g. toggle a bool true→false) plus import with `ImportStateId: "singleton"`.
+
+**Before opening the PR**: run `make fmt lint test` (must be clean) then `make generate` to rebuild `docs/resources/pro_<name>.md` and `docs/data-sources/pro_<name>.md`. Commit the generated docs with the source.
 
 ### Pro error/retry helpers (planned extension)
 
