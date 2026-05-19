@@ -7,6 +7,7 @@ package self_service_plus_settings
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -106,9 +108,22 @@ func (r *SelfServicePlusSettingsResource) Configure(ctx context.Context, req res
 	r.client = client
 }
 
-// ImportState handles import by passing through the fixed singleton ID. Users run:
+// ImportState handles import for the singleton. Only the fixed helpers.SingletonID
+// value is accepted; any other identifier is rejected with a clear error so users do
+// not accidentally end up with mis-keyed state that the resource silently normalizes
+// on the next Read.
 //
 //	terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton
 func (r *SelfServicePlusSettingsResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	if req.ID != helpers.SingletonID {
+		resp.Diagnostics.AddError(
+			"Invalid singleton import identifier",
+			fmt.Sprintf(
+				"jamfplatform_pro_self_service_plus_settings is a singleton resource and must be imported with id %q. Got %q.",
+				helpers.SingletonID, req.ID,
+			),
+		)
+		return
+	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

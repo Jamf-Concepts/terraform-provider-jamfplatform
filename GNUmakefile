@@ -12,6 +12,9 @@ lint:
 generate:
 	cd tools; go generate ./...
 
+# fmt scopes gofmt to the Go source trees that ship with the provider so that
+# generated fixtures, examples, and local-testing scratch dirs are left alone.
+# Add new top-level Go packages here if any are introduced.
 fmt:
 	gofmt -s -w -e main.go internal/ tools/
 
