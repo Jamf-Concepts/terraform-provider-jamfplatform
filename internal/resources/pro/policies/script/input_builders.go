@@ -14,6 +14,12 @@ import (
 // explicit empty string on `categoryId` and a wired-in `categoryId: ""` on an
 // Optional+Computed attribute would surface as HTTP 500. helpers.OptionalStringPointer
 // nils both Null *and* Unknown; see STYLE_GUIDE.md §Server-derived computed fields.
+//
+// Pro PUT semantics: a field omitted from the request body is treated as a clear
+// (not "preserve"). When a user removes a previously-set Optional value from
+// config, plan becomes Null, this builder sends nil, and the server clears the
+// field. TestAccResource_ProScript_Basic Step 2 exercises this by dropping
+// `info`, `notes`, `os_requirements`, and `parameter_4` between steps.
 func buildScriptInput(plan ScriptResourceModel) *pro.Script {
 	return &pro.Script{
 		Name:           plan.Name.ValueString(),

@@ -52,7 +52,10 @@ type ScriptsDataSource struct {
 	client *pro.Client
 }
 
-var _ datasource.DataSource = &ScriptsDataSource{}
+var (
+	_ datasource.DataSource              = &ScriptsDataSource{}
+	_ datasource.DataSourceWithConfigure = &ScriptsDataSource{}
+)
 
 // NewScriptsDataSource returns a new instance of ScriptsDataSource.
 func NewScriptsDataSource() datasource.DataSource {

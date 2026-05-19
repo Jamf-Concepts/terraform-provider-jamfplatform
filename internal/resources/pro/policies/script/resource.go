@@ -73,7 +73,7 @@ func (r *ScriptResource) IdentitySchema(ctx context.Context, req resource.Identi
 // Schema returns the Terraform schema for the script resource.
 func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows.",
+		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows. Parameter slots 1–3 are reserved by Jamf; user-managed labels are exposed via `parameter_4` through `parameter_11`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Script ID assigned by Jamf Pro.",
@@ -150,19 +150,13 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 }
 
 // optionalParameterAttribute returns the schema for a single script parameter slot.
-// Jamf Pro reserves parameters 1–3, so user-managed slots run 4–11.
+// Jamf Pro reserves parameters 1–3 (called out on the resource description), so
+// user-managed slots run 4–11.
 func optionalParameterAttribute(slot int) schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: parameterDescription(slot),
+		MarkdownDescription: fmt.Sprintf("Label for script parameter slot %d.", slot),
 		Optional:            true,
 	}
-}
-
-func parameterDescription(slot int) string {
-	if slot == 4 {
-		return "Label for script parameter slot 4. Parameters 1–3 are reserved by Jamf."
-	}
-	return fmt.Sprintf("Label for script parameter slot %d.", slot)
 }
 
 // Configure wires the Jamf Pro client into the resource via the shared

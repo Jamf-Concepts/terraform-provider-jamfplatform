@@ -48,25 +48,6 @@ func OptionalStringPointer(value types.String) *string {
 	return &s
 }
 
-// OptionalBoolPointer mirrors OptionalStringPointer for boolean payload fields.
-func OptionalBoolPointer(value types.Bool) *bool {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	b := value.ValueBool()
-	return &b
-}
-
-// OptionalInt64Pointer mirrors OptionalStringPointer for int64 payload fields.
-// Note: Jamf SDK structs commonly use plain `int`; cast the result at the call site.
-func OptionalInt64Pointer(value types.Int64) *int64 {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	i := value.ValueInt64()
-	return &i
-}
-
 // BoolPointerValueOrNull safely unwraps a *bool and converts it to a Terraform bool.
 func BoolPointerValueOrNull(value *bool) types.Bool {
 	if value == nil {

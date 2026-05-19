@@ -23,7 +23,7 @@ func assignScriptResourceModel(state *ScriptResourceModel, s *pro.Script) {
 	state.Info = helpers.ReconcileOptionalStringPointer(s.Info, state.Info)
 	state.Notes = helpers.ReconcileOptionalStringPointer(s.Notes, state.Notes)
 	state.OsRequirements = helpers.ReconcileOptionalStringPointer(s.OsRequirements, state.OsRequirements)
-	state.Priority = helpers.StringPointerValueOrNull(s.Priority)
+	state.Priority = helpers.ReconcileOptionalStringPointer(s.Priority, state.Priority)
 	state.Parameter4 = helpers.ReconcileOptionalStringPointer(s.Parameter4, state.Parameter4)
 	state.Parameter5 = helpers.ReconcileOptionalStringPointer(s.Parameter5, state.Parameter5)
 	state.Parameter6 = helpers.ReconcileOptionalStringPointer(s.Parameter6, state.Parameter6)

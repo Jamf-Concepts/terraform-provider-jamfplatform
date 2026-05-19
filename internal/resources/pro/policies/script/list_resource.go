@@ -5,6 +5,7 @@ package script
 
 import (
 	"context"
+	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -19,6 +20,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 )
+
+// defaultListTimeout caps how long the list operation will wait on the Jamf Pro
+// scripts endpoint. The list resource schema does not expose a user-overridable
+// timeout, so this is a fixed safety bound — large tenants returning many scripts
+// should still complete well inside this window.
+const defaultListTimeout = 90 * time.Second
 
 var _ list.ListResource = &ScriptListResource{}
 var _ list.ListResourceWithConfigure = &ScriptListResource{}
@@ -84,7 +91,10 @@ func (r *ScriptListResource) List(ctx context.Context, req list.ListRequest, str
 	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(scripts.ScriptFilterSelectors))
 	tflog.Debug(ctx, "script list filters", map[string]any{"filter": filterExpression})
 
-	items, err := r.client.ListScriptsV1(ctx, nil, filterExpression)
+	listCtx, cancel := context.WithTimeout(ctx, defaultListTimeout)
+	defer cancel()
+
+	items, err := r.client.ListScriptsV1(listCtx, nil, filterExpression)
 	if err != nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
 			diag.NewErrorDiagnostic("Unable to list Jamf Pro scripts", err.Error()),
