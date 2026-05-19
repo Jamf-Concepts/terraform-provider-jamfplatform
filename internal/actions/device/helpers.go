@@ -10,10 +10,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	daSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
 	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // deviceAction shares Configure logic across device action implementations.
@@ -28,17 +28,17 @@ func (a *deviceAction) configure(_ context.Context, req action.ConfigureRequest,
 		return
 	}
 
-	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
+	pd, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Provider Data Type",
-			fmt.Sprintf("Expected *jamfplatform.Client, got %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *providerdata.Data, got %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
 
-	a.devices = devSDK.New(rootClient)
-	a.actions = daSDK.New(rootClient)
+	a.devices = devSDK.New(pd.Client)
+	a.actions = daSDK.New(pd.Client)
 }
 
 // ensureClient guarantees Configure completed successfully before Invoke.

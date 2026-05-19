@@ -7,10 +7,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
@@ -44,16 +44,16 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 		return
 	}
 
-	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
+	pd, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
-			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
+			"Expected *providerdata.Data. Please report this issue to the provider developers.",
 		)
 		return
 	}
 
-	r.client = devicegroups.New(rootClient)
+	r.client = devicegroups.New(pd.Client)
 }
 
 // ListResourceConfigSchema describes the supported list filters.

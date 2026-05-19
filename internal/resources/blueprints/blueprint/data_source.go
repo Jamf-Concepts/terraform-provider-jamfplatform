@@ -15,9 +15,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 // BlueprintDataSource implements the Terraform data source for Jamf Blueprint.
@@ -104,17 +104,17 @@ func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
-	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
+	pd, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *providerdata.Data, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	d.client = blueprints.New(rootClient)
+	d.client = blueprints.New(pd.Client)
 }
 
 // Read fetches a blueprint by ID or title and populates the Terraform state.
