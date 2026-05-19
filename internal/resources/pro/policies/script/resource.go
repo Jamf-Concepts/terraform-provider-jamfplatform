@@ -1,0 +1,182 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+// Package script implements the jamfplatform_pro_script resource, data source, and
+// list resource backed by the Jamf Pro scripts API.
+package script
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+)
+
+// minJamfProVersion is the minimum Jamf Pro tenant version required by this resource.
+// Empty string skips the per-resource version check — the scripts endpoint has been
+// stable since well before the provider's overall floor (11.0.0).
+const minJamfProVersion = ""
+
+// ScriptResource implements the Terraform resource for Jamf Pro scripts.
+type ScriptResource struct {
+	client *pro.Client
+}
+
+var _ resource.Resource = &ScriptResource{}
+var _ resource.ResourceWithImportState = &ScriptResource{}
+var _ resource.ResourceWithIdentity = &ScriptResource{}
+
+const (
+	defaultCreateTimeout = 60 * time.Second
+	defaultReadTimeout   = 60 * time.Second
+	defaultUpdateTimeout = 60 * time.Second
+	defaultDeleteTimeout = 60 * time.Second
+)
+
+// priorityValues enumerates the accepted Jamf Pro script priority values.
+var priorityValues = []string{"BEFORE", "AFTER", "AT_REBOOT"}
+
+// NewScriptResource returns a new instance of ScriptResource.
+func NewScriptResource() resource.Resource {
+	return &ScriptResource{}
+}
+
+// Metadata sets the resource type name for the Terraform provider.
+func (r *ScriptResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_pro_script"
+}
+
+// IdentitySchema defines the identifier used for import and list results.
+func (r *ScriptResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{
+				Description:       "Jamf Pro script ID used to uniquely reference the script.",
+				RequiredForImport: true,
+			},
+		},
+	}
+}
+
+// Schema returns the Terraform schema for the script resource.
+func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "Script ID assigned by Jamf Pro.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Script display name. Must not be empty.",
+				Required:            true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
+			},
+			"category_id": schema.StringAttribute{
+				MarkdownDescription: "ID of the Jamf Pro category this script belongs to. Lookup via the `jamfplatform_pro_category` data source. When omitted, the server reports `-1` (no category).",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"category_name": schema.StringAttribute{
+				MarkdownDescription: "Display name of the category referenced by `category_id`. Server-derived.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"info": schema.StringAttribute{
+				MarkdownDescription: "Informational text shown to end users (e.g., in Self Service) describing the script.",
+				Optional:            true,
+			},
+			"notes": schema.StringAttribute{
+				MarkdownDescription: "Administrator-only notes about the script.",
+				Optional:            true,
+			},
+			"os_requirements": schema.StringAttribute{
+				MarkdownDescription: "Comma-separated macOS versions the script supports (e.g., `13.0.x,14.0.x`). Empty allows all.",
+				Optional:            true,
+			},
+			"priority": schema.StringAttribute{
+				MarkdownDescription: "Execution order relative to other policy actions. One of `BEFORE`, `AFTER`, `AT_REBOOT`. Server defaults to `AFTER`.",
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(priorityValues...),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"parameter_4":  optionalParameterAttribute(4),
+			"parameter_5":  optionalParameterAttribute(5),
+			"parameter_6":  optionalParameterAttribute(6),
+			"parameter_7":  optionalParameterAttribute(7),
+			"parameter_8":  optionalParameterAttribute(8),
+			"parameter_9":  optionalParameterAttribute(9),
+			"parameter_10": optionalParameterAttribute(10),
+			"parameter_11": optionalParameterAttribute(11),
+			"script_contents": schema.StringAttribute{
+				MarkdownDescription: "Raw script contents. Plain text (shell, Python, etc.).",
+				Optional:            true,
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Read:   true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+// optionalParameterAttribute returns the schema for a single script parameter slot.
+// Jamf Pro reserves parameters 1–3, so user-managed slots run 4–11.
+func optionalParameterAttribute(slot int) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: parameterDescription(slot),
+		Optional:            true,
+	}
+}
+
+func parameterDescription(slot int) string {
+	if slot == 4 {
+		return "Label for script parameter slot 4. Parameters 1–3 are reserved by Jamf."
+	}
+	return fmt.Sprintf("Label for script parameter slot %d.", slot)
+}
+
+// Configure wires the Jamf Pro client into the resource via the shared
+// providerdata.ConfigurePro helper.
+func (r *ScriptResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_script")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.client = client
+}
+
+// ImportState handles import by the Jamf Pro script ID.
+func (r *ScriptResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}

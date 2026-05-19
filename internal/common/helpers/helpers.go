@@ -33,6 +33,40 @@ func StringPointerValueOrNull(value *string) types.String {
 	return types.StringValue(*value)
 }
 
+// OptionalStringPointer converts a Terraform string into a *string for API payloads.
+// Returns nil for both Null and Unknown values — the Null/Unknown distinction matters
+// for Optional+Computed attributes, where the framework reports Unknown until the
+// server-derived value is known. types.String.ValueStringPointer returns a pointer to
+// "" for Unknown, which Jamf Pro endpoints often reject with HTTP 500. Prefer this
+// helper for every optional payload field; see STYLE_GUIDE.md §Server-derived
+// computed fields & Optional+Computed attributes for the broader pattern.
+func OptionalStringPointer(value types.String) *string {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	s := value.ValueString()
+	return &s
+}
+
+// OptionalBoolPointer mirrors OptionalStringPointer for boolean payload fields.
+func OptionalBoolPointer(value types.Bool) *bool {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	b := value.ValueBool()
+	return &b
+}
+
+// OptionalInt64Pointer mirrors OptionalStringPointer for int64 payload fields.
+// Note: Jamf SDK structs commonly use plain `int`; cast the result at the call site.
+func OptionalInt64Pointer(value types.Int64) *int64 {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	i := value.ValueInt64()
+	return &i
+}
+
 // BoolPointerValueOrNull safely unwraps a *bool and converts it to a Terraform bool.
 func BoolPointerValueOrNull(value *bool) types.Bool {
 	if value == nil {
