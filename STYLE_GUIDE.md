@@ -133,7 +133,7 @@ input := &pro.Script{
 }
 ```
 
-Available variants: `helpers.OptionalStringPointer`, `helpers.OptionalBoolPointer`, `helpers.OptionalInt64Pointer`. Apply uniformly to every Optional and Optional+Computed payload field. Do **not** call `types.String.ValueStringPointer()` directly on Optional+Computed attributes.
+Apply `helpers.OptionalStringPointer` uniformly to every Optional and Optional+Computed string payload field. Do **not** call `types.String.ValueStringPointer()` directly on Optional+Computed attributes. Add bool/int variants only when a resource actually needs them — match the SDK pointer type at the helper signature so call sites don't need casts.
 
 **3. Always refresh state via GET after Create AND Update.** Pro PUT responses are routinely **lossy** — `UpdateScriptV1` returns a `Script` without `categoryName` even though `GetScriptV1` does. If state is populated straight from the PUT response, server-derived fields go null while `UseStateForUnknown` carried the prior value into the plan — instant inconsistency error on Step 2 of any acceptance test that updates the resource.
 
@@ -155,6 +155,8 @@ assignScriptResourceModel(&plan, got)
 ```
 
 Create already follows this pattern (POST → HrefResponse → GET); Update must mirror it. Discard the PUT response's body — keep only the error.
+
+**4. State builders must use `Reconcile*Pointer` for every Optional and Optional+Computed string field.** A bare `helpers.StringPointerValueOrNull(s.X)` overwrites Terraform's null/empty distinction every refresh; `helpers.ReconcileOptionalStringPointer(s.X, state.X)` preserves the user's prior value (including an explicit empty string) when the API returns nothing. Apply uniformly — do not mix `StringPointerValueOrNull` and `ReconcileOptionalStringPointer` across the same model. Only fully `Computed`-only fields (no `Optional`) should use `StringPointerValueOrNull` because there is no user value to reconcile.
 
 **Reference implementation**: `internal/resources/pro/policies/script/` (resource, crud, input_builders, state_builders).
 

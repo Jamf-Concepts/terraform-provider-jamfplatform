@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_script Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows.
+  Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows. Parameter slots 1–3 are reserved by Jamf; user-managed labels are exposed via parameter_4 through parameter_11.
 ---
 
 # jamfplatform_pro_script (Resource)
 
-Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows.
+Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows. Parameter slots 1–3 are reserved by Jamf; user-managed labels are exposed via `parameter_4` through `parameter_11`.
 
 ## Example Usage
 
@@ -59,7 +59,7 @@ resource "jamfplatform_pro_script" "cleanup_temp" {
 - `os_requirements` (String) Comma-separated macOS versions the script supports (e.g., `13.0.x,14.0.x`). Empty allows all.
 - `parameter_10` (String) Label for script parameter slot 10.
 - `parameter_11` (String) Label for script parameter slot 11.
-- `parameter_4` (String) Label for script parameter slot 4. Parameters 1–3 are reserved by Jamf.
+- `parameter_4` (String) Label for script parameter slot 4.
 - `parameter_5` (String) Label for script parameter slot 5.
 - `parameter_6` (String) Label for script parameter slot 6.
 - `parameter_7` (String) Label for script parameter slot 7.

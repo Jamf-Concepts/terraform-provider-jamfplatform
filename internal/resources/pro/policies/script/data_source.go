@@ -21,7 +21,10 @@ type ScriptDataSource struct {
 	client *pro.Client
 }
 
-var _ datasource.DataSource = &ScriptDataSource{}
+var (
+	_ datasource.DataSource              = &ScriptDataSource{}
+	_ datasource.DataSourceWithConfigure = &ScriptDataSource{}
+)
 
 // NewScriptDataSource returns a new instance of ScriptDataSource.
 func NewScriptDataSource() datasource.DataSource {

@@ -65,30 +65,6 @@ func TestOptionalStringPointer(t *testing.T) {
 	}
 }
 
-func TestOptionalBoolPointer(t *testing.T) {
-	if got := OptionalBoolPointer(types.BoolNull()); got != nil {
-		t.Errorf("null should yield nil pointer, got %v", got)
-	}
-	if got := OptionalBoolPointer(types.BoolUnknown()); got != nil {
-		t.Errorf("unknown should yield nil pointer, got %v", got)
-	}
-	if got := OptionalBoolPointer(types.BoolValue(true)); got == nil || *got != true {
-		t.Errorf("expected pointer to true, got %v", got)
-	}
-}
-
-func TestOptionalInt64Pointer(t *testing.T) {
-	if got := OptionalInt64Pointer(types.Int64Null()); got != nil {
-		t.Errorf("null should yield nil pointer, got %v", got)
-	}
-	if got := OptionalInt64Pointer(types.Int64Unknown()); got != nil {
-		t.Errorf("unknown should yield nil pointer, got %v", got)
-	}
-	if got := OptionalInt64Pointer(types.Int64Value(42)); got == nil || *got != 42 {
-		t.Errorf("expected pointer to 42, got %v", got)
-	}
-}
-
 func TestBoolPointerValueOrNull(t *testing.T) {
 	b := true
 	f := false
