@@ -7,7 +7,6 @@ package category
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -22,7 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -105,43 +103,15 @@ func (r *CategoryResource) Schema(ctx context.Context, req resource.SchemaReques
 	}
 }
 
-// Configure wires the Jamf Pro client into the resource, fetches the tenant Jamf Pro version
-// (cached via sync.Once on providerdata.Data so it fires at most once per terraform invocation),
-// runs the per-resource version gate when minJamfProVersion is set, and surfaces the
-// provider-floor advisory warning when applicable.
+// Configure wires the Jamf Pro client into the resource via the shared
+// providerdata.ConfigurePro helper.
 func (r *CategoryResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
+	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_category")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	pd, ok := req.ProviderData.(*providerdata.Data)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *providerdata.Data, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-	r.client = pro.New(pd.Client)
-
-	version, err := pd.GetJamfProVersion(ctx)
-	if err != nil {
-		if minJamfProVersion == "" {
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Failed to read Jamf Pro tenant version",
-			fmt.Sprintf("jamfplatform_pro_category requires Jamf Pro; could not read version: %s", err),
-		)
-		return
-	}
-	if minJamfProVersion != "" {
-		resp.Diagnostics.Append(
-			helpers.RequireMinJamfProVersion(version, minJamfProVersion, "jamfplatform_pro_category")...,
-		)
-	}
-	if warn := pd.MaybeProviderFloorWarning(); warn != nil {
-		resp.Diagnostics.Append(warn)
-	}
+	r.client = client
 }
 
 // ImportState handles import by the Jamf Pro category ID.

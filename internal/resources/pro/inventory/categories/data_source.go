@@ -6,7 +6,6 @@ package categories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -87,55 +86,30 @@ func (d *CategoriesDataSource) Schema(ctx context.Context, req datasource.Schema
 	}
 }
 
-// Configure wires the Jamf Pro client into the data source.
+// Configure wires the Jamf Pro client into the data source via the shared
+// providerdata.ConfigurePro helper.
 func (d *CategoriesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	if req.ProviderData == nil {
+	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_categories")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
-	pd, ok := req.ProviderData.(*providerdata.Data)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *providerdata.Data, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-		return
-	}
-	d.client = pro.New(pd.Client)
-
-	version, err := pd.GetJamfProVersion(ctx)
-	if err != nil {
-		if minJamfProVersion == "" {
-			return
-		}
-		resp.Diagnostics.AddError(
-			"Failed to read Jamf Pro tenant version",
-			fmt.Sprintf("jamfplatform_pro_categories requires Jamf Pro; could not read version: %s", err),
-		)
-		return
-	}
-	if minJamfProVersion != "" {
-		resp.Diagnostics.Append(
-			helpers.RequireMinJamfProVersion(version, minJamfProVersion, "jamfplatform_pro_categories")...,
-		)
-	}
-	if warn := pd.MaybeProviderFloorWarning(); warn != nil {
-		resp.Diagnostics.Append(warn)
-	}
+	d.client = client
 }
 
 // Read fetches categories matching the supplied filters and populates state.
 func (d *CategoriesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data CategoriesDataSourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Provider not configured",
 			"The provider client was not configured. Please ensure the provider block is set up correctly.",
 		)
+		return
+	}
+
+	var data CategoriesDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
