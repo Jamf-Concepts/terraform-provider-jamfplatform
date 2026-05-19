@@ -19,11 +19,27 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
+// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
+// before Configure has populated r.client. Defense-in-depth: in normal operation the
+// framework gates CRUD on a successful Configure, but a misconfigured provider block
+// or a future framework change could route to CRUD with a nil client and panic the
+// SDK call site. Centralizing the message keeps the canonical singleton template
+// consistent across handlers.
+func providerNotConfiguredError() (string, string) {
+	return "Provider not configured",
+		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
+}
+
 // Create handles initial provisioning of the Self Service Plus settings singleton.
 // The Jamf Pro API has no Create endpoint for this object — one record per tenant
 // already exists — so this funnels into Update against the plan, then reads back
 // to capture authoritative state.
 func (r *SelfServicePlusSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	if r.client == nil {
+		resp.Diagnostics.AddError(providerNotConfiguredError())
+		return
+	}
+
 	var plan SelfServicePlusSettingsResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -62,6 +78,11 @@ func (r *SelfServicePlusSettingsResource) Create(ctx context.Context, req resour
 
 // Read refreshes Terraform state with the latest settings from the Jamf Pro API.
 func (r *SelfServicePlusSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	if r.client == nil {
+		resp.Diagnostics.AddError(providerNotConfiguredError())
+		return
+	}
+
 	var state SelfServicePlusSettingsResourceModel
 	isImport := req.State.Raw.IsNull()
 
@@ -101,6 +122,11 @@ func (r *SelfServicePlusSettingsResource) Read(ctx context.Context, req resource
 
 // Update writes the new settings to the Jamf Pro API. Same SDK call as Create.
 func (r *SelfServicePlusSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	if r.client == nil {
+		resp.Diagnostics.AddError(providerNotConfiguredError())
+		return
+	}
+
 	var plan SelfServicePlusSettingsResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -135,11 +161,13 @@ func (r *SelfServicePlusSettingsResource) Update(ctx context.Context, req resour
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// Delete is a no-op on the Jamf Pro API. Singleton objects cannot be deleted —
-// the record persists on the tenant. Removing the resource from Terraform state
-// simply stops Terraform managing the record; its existing values remain on the
-// tenant. The default Update timeout is consulted only for symmetry with the
-// other CRUD methods; no remote call is made.
-func (r *SelfServicePlusSettingsResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+// Delete is a no-op on the Jamf Pro API. Singleton objects cannot be deleted — the
+// record persists on the tenant. Terraform removes the resource from state on its
+// own after this handler returns. No SDK call is made and no diagnostics are emitted.
+//
+// Canonical singleton template: every singleton Delete should look exactly like this
+// — a single tflog.Trace explaining the no-op, with `_` markers on the unused
+// request/response so future maintainers immediately see the omission is intentional.
+func (r *SelfServicePlusSettingsResource) Delete(ctx context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	tflog.Trace(ctx, "removing Jamf Pro Self Service Plus settings from Terraform state (singleton — no remote delete)")
 }
