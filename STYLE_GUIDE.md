@@ -186,57 +186,39 @@ const minJamfProVersion = "11.5.0"  // empty string = no version check
 - **Empty string** (`""`) skips the check — use only when the resource genuinely works on the provider's declared minimum Pro version with no endpoint-specific floor.
 - **Source the value** during the SDK-comparison phase of the resource-addition workflow ([CONTRIBUTING.md §Adding a Jamf Pro Resource](CONTRIBUTING.md#adding-a-jamf-pro-resource)). Record in `JAMF_PRO_INVENTORY.md`.
 
-The tenant version is fetched **lazily**: the first Pro resource Configure with a non-empty const calls `pd.GetJamfProVersion(ctx)`, which uses `sync.Once` to fetch via `GetJamfProVersionV1` exactly once and caches on `ProviderData`. Subsequent Pro resource Configures read the cache. Configurations that use only Platform Services resources, or only Pro resources with empty constants, never trigger the fetch.
+The tenant version is fetched **lazily** inside `providerdata.ConfigurePro` via `pd.GetJamfProVersion(ctx)`, which uses `sync.Once` to fetch via `GetJamfProVersionV1` exactly once per Data value and caches the result. Subsequent Pro Configure calls reuse the cached value.
 
 #### `providerdata.Data` lives in its own package
 
-The value Terraform passes to every Configure call (`req.ProviderData`) is `*providerdata.Data` — defined in `internal/providerdata/providerdata.go`, **not** `internal/provider/`. It carries the SDK client plus `sync.Once`-guarded fields for the lazy Pro version fetch and the once-per-invocation provider-floor warning.
+The value Terraform passes to every Configure call (`req.ProviderData`) is `*providerdata.Data` — defined in `internal/providerdata/providerdata.go`, **not** `internal/provider/`. It carries the SDK client plus the `sync.Once`-cached lazy Pro version fetch.
 
 - **Why a separate package**: `internal/provider/` already imports every resource package in order to register them. If resource packages also imported `internal/provider` to name the `Data` type, Go would reject the cycle. `internal/providerdata/` is a leaf package — resources import it, provider imports it, no loop.
-- **Why a wrapper at all**: Platform Services resources only ever needed the raw `*jamfplatform.Client`, so the provider used to pass it directly as `ResourceData`. Pro resources require two pieces of state that the raw client can't hold — (a) lazily-fetched, cached tenant Jamf Pro version (so dozens of Pro resources in one config don't each re-call `GetJamfProVersionV1`) and (b) a one-shot provider-floor warning (so the user sees it once, not per-resource). `sync.Once` fields on a shared struct are the natural shape, hence the wrapper.
+- **Why a wrapper at all**: Platform Services resources only ever needed the raw `*jamfplatform.Client`, so the provider used to pass it directly as `ResourceData`. Pro resources require lazily-fetched, cached tenant Jamf Pro version state (so dozens of Pro resources in one config don't each re-call `GetJamfProVersionV1`). A `sync.Once` field on a shared struct is the natural shape, hence the wrapper.
 
-All Configure functions — Pro and Platform Services alike — type-assert `req.ProviderData.(*providerdata.Data)` and read `.Client` for the SDK handle.
+#### Pro Configure: use the `providerdata.ConfigurePro` helper
 
-Resource Configure shape:
+Every Jamf Pro resource, data source, list resource and action funnels its Configure through `providerdata.ConfigurePro` — a single helper that performs the type assertion, fetches the cached tenant version, runs the per-resource version gate when set, and appends the provider-floor advisory warning when applicable. Do not hand-roll the boilerplate.
 
 ```go
-const minJamfProVersion = "11.5.0"
+const minJamfProVersion = "11.5.0"  // empty string = no version check
 
 func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-    if req.ProviderData == nil {
+    client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_<name>")
+    resp.Diagnostics.Append(diags...)
+    if resp.Diagnostics.HasError() {
         return
     }
-    pd := req.ProviderData.(*providerdata.Data)
-    r.client = pd.Client
-
-    if minJamfProVersion == "" {
-        return
-    }
-    version, err := pd.GetJamfProVersion(ctx)
-    if err != nil {
-        resp.Diagnostics.AddError(
-            "Failed to read Jamf Pro tenant version",
-            fmt.Sprintf("jamfplatform_pro_<name> requires Jamf Pro; could not read version: %s", err),
-        )
-        return
-    }
-    resp.Diagnostics.Append(
-        helpers.RequireMinJamfProVersion(version, minJamfProVersion, "jamfplatform_pro_<name>")...,
-    )
+    r.client = client
 }
 ```
 
-Use the shared helper for comparison:
+The helper returns `(*pro.Client, diag.Diagnostics)`. When `req.ProviderData` is nil (early framework lifecycle) it returns `(nil, nil)` — leave `r.client` unset and let the next Configure call populate it. Data sources and list resources use the same one-liner shape; only the request/response types differ.
 
-```go
-import "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+Platform Services resources do not use `ConfigurePro` — they only need the raw client. They type-assert `req.ProviderData.(*providerdata.Data)` and read `.Client` directly.
 
-resp.Diagnostics.Append(
-    helpers.RequireMinJamfProVersion(actual, minJamfProVersion, "jamfplatform_pro_<name>")...,
-)
-```
+The tenant version is fetched **only when** a Pro construct with non-empty `minJamfProVersion` is in the config (or when the floor warning needs to run, which happens inside `ConfigurePro` after a `GetJamfProVersion` call). Configurations that use only Platform Services resources never trigger the fetch.
 
-`RequireMinJamfProVersion` lives in `internal/common/helpers/version.go` and:
+`RequireMinJamfProVersion` lives in `internal/common/helpers/pro_version.go` and:
 
 - Tolerates Jamf's build-suffix format (`11.5.0-t1700000000` → parses as `11.5.0`).
 - Parses `MAJOR.MINOR.PATCH`. Unparseable input → error diagnostic with the raw string.
@@ -416,9 +398,9 @@ Independent of per-resource `minJamfProVersion` constants (which are hard errors
 const ProviderMinJamfProVersion = "11.27.0"  // bump at release time
 ```
 
-Every Pro resource Configure calls `pd.GetJamfProVersion(ctx)` unconditionally — regardless of whether the resource declares a per-resource `minJamfProVersion` const. The call is cached via `sync.Once` on `providerdata.Data`, so it fires at most once per `terraform` invocation. After the version is cached, ProviderData stages the floor warning once via a second `sync.Once`, and each Pro resource Configure appends the staged warning to its response.
+Every Pro resource funnels its Configure through `providerdata.ConfigurePro`, which calls `pd.GetJamfProVersion(ctx)` unconditionally — regardless of whether the resource declares a per-resource `minJamfProVersion` const. The call is cached via `sync.Once` on `providerdata.Data`, so it fires at most once per `terraform` invocation. After the version is cached, the helper computes the floor warning and appends it to the Configure response.
 
-When the fetch errors (e.g. 403 on a non-Jamf-Pro tenant): resources with empty `minJamfProVersion` swallow the error silently and let downstream CRUD calls surface the real failure; resources with a non-empty `minJamfProVersion` surface the fetch error as a Configure-time hard error ("Failed to read Jamf Pro tenant version …"). Always-fetch + selective-swallow is the shape — don't write Configure to skip the fetch when the const is empty, because that would also defeat the floor warning.
+When the fetch errors (e.g. 403 on a non-Jamf-Pro tenant): the helper swallows the error silently for resources with empty `minJamfProVersion` (the SDK CRUD call will surface the real failure later); for resources with a non-empty `minJamfProVersion` the helper surfaces the fetch error as a Configure-time hard error ("Failed to read Jamf Pro tenant version …"). Always-fetch + selective-swallow is the shape — that is exactly what `ConfigurePro` does, so callers do not need to think about it.
 
 The warning text:
 
