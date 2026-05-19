@@ -396,7 +396,7 @@ Jamf Pro objects that exist one-per-tenant and are exposed as Update-only on the
 
 **Acceptance test**: no `CheckDestroy` — the record persists on the tenant after Terraform stops managing it. Test the two Update paths (e.g. toggle a bool true→false) plus import with `ImportStateId: "singleton"`.
 
-**Before opening the PR**: run `make fmt lint test` (must be clean) then `make generate` to rebuild `docs/resources/pro_<name>.md` and `docs/data-sources/pro_<name>.md`. Commit the generated docs with the source.
+**Before opening the PR**: run `make fix fmt lint test` (must be clean) then `make generate` to rebuild `docs/resources/pro_<name>.md` and `docs/data-sources/pro_<name>.md`. Commit the generated docs with the source.
 
 ### Pro error/retry helpers (planned extension)
 
