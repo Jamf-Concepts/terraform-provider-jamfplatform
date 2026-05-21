@@ -8,15 +8,19 @@ package testhelpers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	"errors"
+
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // runSuffix computes a unique suffix (epoch timestamp) once for the entire test run.
@@ -253,6 +257,57 @@ func benchmarkSyncState(cbClient *compliancebenchmarks.Client, ctx context.Conte
 		}
 	}
 	return "", false
+}
+
+// proGroupsReadableOnce caches the result of the privilege probe so we hit the
+// Pro /v2/groups endpoint at most once per test run.
+var proGroupsReadableOnce sync.Once
+
+// proGroupsReadable holds the cached probe result.
+var proGroupsReadable bool
+
+// ProbeProGroupsReadable returns true if the acceptance API client can read from
+// the Pro /v2/groups endpoint (i.e. has the "Read Groups" privilege wired up on
+// the integration tenant). On 403 it returns false; on any other error
+// (including network failure or the Pro endpoint not existing on the tenant)
+// it also returns false — the probe is intentionally conservative so missing
+// state never causes a downstream test to fail spuriously. The probe runs once
+// per test run.
+//
+// Acceptance tests that assert jamf_pro_id is non-null on the device_group
+// resource or data source should branch on this probe via SkipUnlessProGroupsReadable.
+func ProbeProGroupsReadable(t *testing.T) bool {
+	t.Helper()
+	proGroupsReadableOnce.Do(func() {
+		c, err := initAcceptanceClient()
+		if err != nil {
+			return
+		}
+		proClient := pro.New(c)
+		_, err = proClient.ListGroupsV2(context.Background(), nil, "")
+		if err == nil {
+			proGroupsReadable = true
+			return
+		}
+		var apiErr *jamfplatform.APIResponseError
+		if errors.As(err, &apiErr) && apiErr.HasStatus(http.StatusForbidden) {
+			t.Logf("Pro Read Groups privilege probe: 403 forbidden — jamf_pro_id assertions will be skipped")
+			return
+		}
+		t.Logf("Pro Read Groups privilege probe: error (%v) — treating as not-readable; jamf_pro_id assertions will be skipped", err)
+	})
+	return proGroupsReadable
+}
+
+// SkipUnlessProGroupsReadable skips the calling test if the integration tenant's
+// API client lacks the Pro "Read Groups" privilege (or the Pro endpoint is
+// otherwise unreachable). Call this immediately after AccPreCheck in tests that
+// hard-assert jamf_pro_id is set on device_group resources.
+func SkipUnlessProGroupsReadable(t *testing.T) {
+	t.Helper()
+	if !ProbeProGroupsReadable(t) {
+		t.Skip("Skipping: acceptance client lacks Pro 'Read Groups' privilege (or Pro endpoint unreachable); jamf_pro_id cannot be asserted")
+	}
 }
 
 // CleanupSmartGroupFixture deletes the shared smart group fixture if it was created.

@@ -171,10 +171,6 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 
 			jamfProID, jamfProDiags := resolveJamfProID(ctx, r.proClient, r.pd, detail.ID)
 			result.Diagnostics.Append(jamfProDiags...)
-			if result.Diagnostics.HasError() {
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
-			}
 			state.JamfProID = jamfProID
 
 			state.Timeouts = helpers.EnsureResourceTimeouts(state.Timeouts, deviceGroupTimeoutAttributeTypes)

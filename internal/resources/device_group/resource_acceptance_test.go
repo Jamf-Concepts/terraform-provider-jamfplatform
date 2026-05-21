@@ -49,6 +49,7 @@ func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
 
 func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.SkipUnlessProGroupsReadable(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-static-computer-" + suffix
 	nameUpdated := "tf-acc-static-computer-updated-" + suffix
@@ -194,6 +195,7 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 
 func TestAccDataSource_DeviceGroup(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.SkipUnlessProGroupsReadable(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ds-device-group-" + suffix
 

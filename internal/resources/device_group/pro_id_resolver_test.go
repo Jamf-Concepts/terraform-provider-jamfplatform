@@ -102,15 +102,62 @@ func TestResolveJamfProID_NotFound_NullsSilently(t *testing.T) {
 	}
 }
 
-func TestResolveJamfProID_OtherError_ReturnsError(t *testing.T) {
+func TestResolveJamfProID_OtherError_NullsAndWarnsOnce(t *testing.T) {
 	client := testhelpers.NewMockClient(t, proIDResolverHandler(t, http.StatusBadGateway, `{"errors":[{"code":"BadGateway"}]}`))
 	pd := providerdata.New(client)
+
 	id, diags := resolveJamfProID(context.Background(), pro.New(client), pd, "plat-uuid")
-	if !diags.HasError() {
-		t.Fatal("502 must produce an error diagnostic")
+	if diags.HasError() {
+		t.Fatalf("502 must not produce an error diagnostic — it should degrade to warning to avoid orphaning a successful Platform Create; got %v", diags)
 	}
 	if !id.IsNull() {
-		t.Error("error path should still null the attribute")
+		t.Error("502 must null the jamf_pro_id attribute")
+	}
+	if countSeverity(diags, diag.SeverityWarning) != 1 {
+		t.Fatalf("expected exactly 1 warning on first transient failure, got %d (%v)", countSeverity(diags, diag.SeverityWarning), diags)
+	}
+	if !strings.Contains(diags[0].Summary(), "Failed to resolve") {
+		t.Errorf("warning summary should mention failure to resolve, got %q", diags[0].Summary())
+	}
+
+	_, diags2 := resolveJamfProID(context.Background(), pro.New(client), pd, "plat-uuid-2")
+	if countSeverity(diags2, diag.SeverityWarning) != 0 {
+		t.Errorf("repeat transient failure on the same Data should suppress the warning, got %d (%v)", countSeverity(diags2, diag.SeverityWarning), diags2)
+	}
+}
+
+// TestResolveJamfProID_ForbiddenWarning_LatchesAcrossSimulatedLifecycle
+// confirms that when a single provider invocation hits Create, then Read, then
+// Update, then a data-source Read against the same 403-returning Pro endpoint,
+// the missing-privilege warning is emitted exactly once — and never as an
+// error. This is the end-to-end safety net for the Create-state-leak class of
+// bug: if any future change makes the resolver return an error diagnostic on a
+// non-success status, this test fails before the Platform Create result can be
+// silently discarded by the framework.
+func TestResolveJamfProID_ForbiddenWarning_LatchesAcrossSimulatedLifecycle(t *testing.T) {
+	client := testhelpers.NewMockClient(t, proIDResolverHandler(t, http.StatusForbidden, `{"errors":[{"code":"Forbidden"}]}`))
+	pd := providerdata.New(client)
+	proClient := pro.New(client)
+
+	totalWarnings := 0
+	totalErrors := 0
+	for _, label := range []string{"create", "read", "update", "datasource_read"} {
+		id, diags := resolveJamfProID(context.Background(), proClient, pd, "plat-uuid-"+label)
+		if diags.HasError() {
+			t.Fatalf("%s call must never return an error diagnostic (would orphan state on Create); got %v", label, diags)
+		}
+		if !id.IsNull() {
+			t.Errorf("%s call must null jamf_pro_id on 403; got %q", label, id.ValueString())
+		}
+		totalWarnings += countSeverity(diags, diag.SeverityWarning)
+		totalErrors += countSeverity(diags, diag.SeverityError)
+	}
+
+	if totalErrors != 0 {
+		t.Fatalf("expected 0 error diagnostics across the simulated lifecycle, got %d", totalErrors)
+	}
+	if totalWarnings != 1 {
+		t.Errorf("expected exactly 1 missing-privilege warning across the entire lifecycle (latched via FiredOnce), got %d", totalWarnings)
 	}
 }
 
