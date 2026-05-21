@@ -89,6 +89,13 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	jamfProID, jamfProDiags := resolveJamfProID(createCtx, r.proClient, r.pd, plan.ID.ValueString())
+	resp.Diagnostics.Append(jamfProDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.JamfProID = jamfProID
+
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -187,6 +194,13 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	jamfProID, jamfProDiags := resolveJamfProID(readCtx, r.proClient, r.pd, state.ID.ValueString())
+	resp.Diagnostics.Append(jamfProDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.JamfProID = jamfProID
+
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -271,6 +285,13 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	if !r.refreshDeviceGroupState(updateCtx, plan.ID.ValueString(), &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
+
+	jamfProID, jamfProDiags := resolveJamfProID(updateCtx, r.proClient, r.pd, plan.ID.ValueString())
+	resp.Diagnostics.Append(jamfProDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.JamfProID = jamfProID
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

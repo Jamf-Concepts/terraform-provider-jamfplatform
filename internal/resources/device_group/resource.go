@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -25,8 +26,18 @@ import (
 )
 
 // DeviceGroupResource implements the Terraform resource for Jamf device groups.
+//
+// Although this resource targets the Platform Services Device Group Inventory
+// API, it also issues a single Pro `/v2/groups/{id}` call after every successful
+// Get/Create/Update so the computed `jamf_pro_id` attribute can be populated.
+// That bridges Platform UUIDs to the numeric Jamf Pro classic ID required by
+// classic-API scope blocks (policies, configuration profiles, restricted
+// software). The Pro lookup is best-effort: 403 nulls the attribute and emits a
+// one-shot warning; 404/Pro-less tenants null the attribute silently.
 type DeviceGroupResource struct {
-	client *devicegroups.Client
+	client    *devicegroups.Client
+	proClient *pro.Client
+	pd        *providerdata.Data
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -71,6 +82,13 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Unique identifier assigned by the API.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"jamf_pro_id": schema.StringAttribute{
+				MarkdownDescription: "Numeric Jamf Pro classic ID for the group, resolved from the Pro `/v2/groups` endpoint. Used to reference the group from classic-API scope blocks (policies, configuration profiles, restricted software). Null when the Platform API client lacks the `Read Groups` privilege — see the deprecation warning that surfaces in that case.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -191,6 +209,8 @@ func (r *DeviceGroupResource) Configure(ctx context.Context, req resource.Config
 	}
 
 	r.client = devicegroups.New(pd.Client)
+	r.proClient = pro.New(pd.Client)
+	r.pd = pd
 }
 
 // ImportState handles the import of existing Device Group resources.
