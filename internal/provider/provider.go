@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
@@ -178,6 +179,12 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		)
 		return
 	}
+
+	tflog.Info(ctx, "Jamf Platform provider configured", map[string]any{
+		"provider_version":     p.version,
+		"jamf_pro_api_version": jamfplatform.JamfProAPIVersion,
+		"provider_pro_floor":   providerdata.ProviderMinJamfProVersion,
+	})
 
 	pd := providerdata.New(apiClient)
 	resp.DataSourceData = pd
