@@ -40,7 +40,7 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 		t.Errorf("expected schema version 0, got %d", s.Version)
 	}
 
-	requiredAttrs := []string{"title", "sources", "rules", "target_device_group", "enforcement_mode"}
+	requiredAttrs := []string{"title", "sources", "rules", "enforcement_mode"}
 	for _, name := range requiredAttrs {
 		attr, ok := s.Attributes[name]
 		if !ok {
@@ -64,7 +64,7 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 		}
 	}
 
-	optionalAttrs := []string{"description", "source_baseline_id", "timeouts"}
+	optionalAttrs := []string{"description", "source_baseline_id", "timeouts", "target_device_group", "target_device_groups"}
 	for _, name := range optionalAttrs {
 		attr, ok := s.Attributes[name]
 		if !ok {
@@ -74,6 +74,19 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 		if !attr.IsOptional() {
 			t.Errorf("attribute %q should be optional", name)
 		}
+	}
+
+	singular, _ := s.Attributes["target_device_group"].(resourceschema.StringAttribute)
+	if singular.DeprecationMessage == "" {
+		t.Errorf("target_device_group should carry a DeprecationMessage")
+	}
+}
+
+func TestBenchmarkResource_ConfigValidators(t *testing.T) {
+	r := NewBenchmarkResource().(*BenchmarkResource)
+	got := r.ConfigValidators(context.Background())
+	if len(got) != 1 {
+		t.Fatalf("expected 1 resource-level config validator, got %d", len(got))
 	}
 }
 
