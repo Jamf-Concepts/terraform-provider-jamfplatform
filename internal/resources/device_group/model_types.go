@@ -13,6 +13,7 @@ import (
 // DeviceGroupResourceModel represents the Terraform resource model for a Jamf device group.
 type DeviceGroupResourceModel struct {
 	ID          types.String               `tfsdk:"id"`
+	JamfProID   types.String               `tfsdk:"jamf_pro_id"`
 	Name        types.String               `tfsdk:"name"`
 	Description types.String               `tfsdk:"description"`
 	DeviceType  types.String               `tfsdk:"device_type"`
@@ -37,6 +38,7 @@ type DeviceGroupCriteriaModel struct {
 // DeviceGroupDataSourceModel represents the Terraform data source model for a Jamf device group.
 type DeviceGroupDataSourceModel struct {
 	ID          types.String               `tfsdk:"id"`
+	JamfProID   types.String               `tfsdk:"jamf_pro_id"`
 	Name        types.String               `tfsdk:"name"`
 	Description types.String               `tfsdk:"description"`
 	DeviceType  types.String               `tfsdk:"device_type"`

@@ -287,6 +287,28 @@ func TestConfigureProClassic_SharesFloorStateWithPro(t *testing.T) {
 	}
 }
 
+// TestFiredOnce_NamespacedLatches verifies that distinct keys each fire exactly
+// once and that repeat keys are suppressed thereafter. Used by cross-API bridging
+// paths to avoid duplicate warnings per provider invocation.
+func TestFiredOnce_NamespacedLatches(t *testing.T) {
+	pd := &Data{}
+	if !pd.FiredOnce("foo") {
+		t.Error("first call for key 'foo' should return true")
+	}
+	if pd.FiredOnce("foo") {
+		t.Error("second call for key 'foo' should return false")
+	}
+	if !pd.FiredOnce("bar") {
+		t.Error("first call for distinct key 'bar' should return true")
+	}
+	if pd.FiredOnce("bar") {
+		t.Error("second call for key 'bar' should return false")
+	}
+	if pd.FiredOnce("foo") {
+		t.Error("third call for key 'foo' should still return false")
+	}
+}
+
 // TestGetJamfProVersion_CachesSuccess verifies successful fetches are not re-issued.
 func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 	calls := 0

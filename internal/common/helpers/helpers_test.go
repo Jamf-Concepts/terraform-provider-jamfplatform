@@ -167,6 +167,28 @@ func TestIsServerError(t *testing.T) {
 	}
 }
 
+func TestIsForbiddenError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"nil", nil, false},
+		{"plain error", errors.New("some error"), false},
+		{"403 response", &jamfplatform.APIResponseError{StatusCode: 403}, true},
+		{"401 response", &jamfplatform.APIResponseError{StatusCode: 401}, false},
+		{"404 response", &jamfplatform.APIResponseError{StatusCode: 404}, false},
+		{"500 response", &jamfplatform.APIResponseError{StatusCode: 500}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if result := IsForbiddenError(tc.err); result != tc.expected {
+				t.Errorf("IsForbiddenError(%v) = %v, want %v", tc.err, result, tc.expected)
+			}
+		})
+	}
+}
+
 func TestNormalizedFilterString(t *testing.T) {
 	tests := []struct {
 		input    types.String

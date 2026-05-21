@@ -40,3 +40,11 @@ resource "jamfplatform_device_group" "example_smart_computer_group" {
     },
   ]
 }
+
+# The Computed `jamf_pro_id` attribute exposes the numeric Jamf Pro classic ID
+# for the group. Reference it from classic-API scope blocks (policies,
+# configuration profiles, restricted software). The value is null when the
+# Platform API client lacks the `Read Groups` privilege.
+output "smart_computer_group_jamf_pro_id" {
+  value = jamfplatform_device_group.example_smart_computer_group.jamf_pro_id
+}

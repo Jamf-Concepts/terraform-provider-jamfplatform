@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -30,7 +31,9 @@ func NewDeviceGroupListResource() list.ListResource {
 
 // DeviceGroupListResource implements Terraform query list support for device groups.
 type DeviceGroupListResource struct {
-	client *devicegroups.Client
+	client    *devicegroups.Client
+	proClient *pro.Client
+	pd        *providerdata.Data
 }
 
 // Metadata sets the list resource type name.
@@ -54,6 +57,8 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 	}
 
 	r.client = devicegroups.New(pd.Client)
+	r.proClient = pro.New(pd.Client)
+	r.pd = pd
 }
 
 // ListResourceConfigSchema describes the supported list filters.
@@ -163,6 +168,10 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 				return
 			}
+
+			jamfProID, jamfProDiags := resolveJamfProID(ctx, r.proClient, r.pd, detail.ID)
+			result.Diagnostics.Append(jamfProDiags...)
+			state.JamfProID = jamfProID
 
 			state.Timeouts = helpers.EnsureResourceTimeouts(state.Timeouts, deviceGroupTimeoutAttributeTypes)
 
