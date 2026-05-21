@@ -49,6 +49,7 @@ func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
 
 func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.SkipUnlessProGroupsReadable(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-static-computer-" + suffix
 	nameUpdated := "tf-acc-static-computer-updated-" + suffix
@@ -71,6 +72,12 @@ func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "name", name),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "group_type", "static"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "device_type", "computer"),
+					// jamf_pro_id is resolved via Pro /v2/groups and depends on the test
+					// tenant having the "Read Groups" privilege wired up on the API
+					// client. If this assertion fails on a tenant that lacks Jamf Pro
+					// entirely or lacks the privilege, see the Pro forbidden warning
+					// surfaced during the plan output.
+					resource.TestCheckResourceAttrSet("jamfplatform_device_group.test_static", "jamf_pro_id"),
 				),
 			},
 			{
@@ -188,6 +195,7 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 
 func TestAccDataSource_DeviceGroup(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.SkipUnlessProGroupsReadable(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ds-device-group-" + suffix
 
@@ -211,6 +219,7 @@ func TestAccDataSource_DeviceGroup(t *testing.T) {
 					resource.TestCheckResourceAttr("data.jamfplatform_device_group.test", "name", name),
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "group_type"),
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "device_type"),
+					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "jamf_pro_id"),
 				),
 			},
 		},

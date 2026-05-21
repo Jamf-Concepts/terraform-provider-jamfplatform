@@ -49,6 +49,9 @@ type Data struct {
 	floorMu      sync.Mutex
 	floorHandled bool
 
+	onceMu    sync.Mutex
+	onceFired map[string]struct{}
+
 	// versionFetcher is the function used to retrieve the tenant Jamf Pro version.
 	// Tests override this to avoid real HTTP calls. Nil means use the default SDK path.
 	versionFetcher func(ctx context.Context) (string, error)
@@ -119,6 +122,28 @@ func (d *Data) floorAlreadyHandled() bool {
 	d.floorMu.Lock()
 	defer d.floorMu.Unlock()
 	return d.floorHandled
+}
+
+// FiredOnce records and reports whether an event keyed by name has already been
+// handled for this Data value. Returns true the first time it is called for a
+// given key (meaning: "caller should fire"); returns false on every subsequent
+// call. Used by cross-API bridging paths (e.g. the device_group jamf_pro_id
+// lookup) to emit a single warning per provider invocation even when the same
+// failure is encountered across many resource Read/Create/Update calls.
+//
+// Keys are namespaced by callers — use a stable, descriptive identifier such as
+// "device_group.jamf_pro_id.forbidden" so distinct latches do not collide.
+func (d *Data) FiredOnce(key string) bool {
+	d.onceMu.Lock()
+	defer d.onceMu.Unlock()
+	if d.onceFired == nil {
+		d.onceFired = make(map[string]struct{})
+	}
+	if _, seen := d.onceFired[key]; seen {
+		return false
+	}
+	d.onceFired[key] = struct{}{}
+	return true
 }
 
 // configureSub is the shared core for every SDK sub-client Configure helper. It
