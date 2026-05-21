@@ -4,10 +4,11 @@ This document covers the testing strategy and instructions for the Terraform Pro
 
 ## Test Categories
 
-| Category   | Build Tag    | Requires API | Command                                      |
-|------------|--------------|--------------|----------------------------------------------|
-| Unit       | (none)       | No           | `make test`                                  |
-| Acceptance | `acceptance` | Yes          | `make testacc`                               |
+| Category               | Build Tag    | Requires API | Command                                                                                       |
+|------------------------|--------------|--------------|-----------------------------------------------------------------------------------------------|
+| Unit                   | (none)       | No           | `make test`                                                                                   |
+| Acceptance (all)       | `acceptance` | Yes          | `make testacc`                                                                                |
+| Acceptance (targeted)  | `acceptance` | Yes          | `make testacc-run RUN=<regex> PKG=<package>` (e.g. `RUN=TestAccResource_ProSite_Basic PKG=./internal/resources/pro/inventory/site/...`) |
 
 ### Unit Tests
 
@@ -34,6 +35,14 @@ go test -v -cover -count=1 -tags=acceptance -p=1 ./...
 - `-tags=acceptance` includes files with the `//go:build acceptance` tag.
 - `-p=1` runs packages sequentially to avoid resource naming conflicts.
 - `-count=1` bypasses the Go test cache (useful for re-runs).
+
+**Targeted re-runs:** `make testacc-run` accepts `RUN=<Go -run regex>` and `PKG=<package path>` overrides; extra flags can be appended via `TESTARGS`. Example:
+
+```bash
+make testacc-run \
+  RUN=TestAccResource_ProNetworkSegment_Basic \
+  PKG=./internal/resources/pro/inventory/network_segment/...
+```
 
 ## Test File Layout
 
