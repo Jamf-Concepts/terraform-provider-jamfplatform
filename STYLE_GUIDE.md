@@ -160,6 +160,23 @@ Create already follows this pattern (POST → HrefResponse → GET); Update must
 
 **Reference implementation**: `internal/resources/pro/policies/script/` (resource, crud, input_builders, state_builders).
 
+### Cross-field validation
+
+Prefer **attribute-level validators** (`Validators: []validator.Bool{...}` on the schema attribute itself) over `resource.ResourceWithConfigValidators` for cross-field requirements. Errors attach to the offending attribute, the rule is co-located with the schema, and the convention matches existing usage across the provider.
+
+**Default to off-the-shelf pairings from `hashicorp/terraform-plugin-framework-validators`:**
+
+- `boolvalidator.AlsoRequires(path)` / `stringvalidator.AlsoRequires(path)` / `int64validator.AlsoRequires(path)` — when this attribute is set (non-null, non-unknown), the listed companion must also be set.
+- `boolvalidator.ConflictsWith(path)` / `stringvalidator.ConflictsWith(path)` / `int64validator.ConflictsWith(path)` — when this attribute is set, the listed companion must be unset.
+
+Use `path.MatchRoot("other_attr")` for a root-level sibling and `path.MatchRelative().AtParent().AtName("other_attr")` for a sibling under the same nested object. References: `internal/resources/blueprints/blueprint/components/math_settings.go`, `software_update.go`, `internal/actions/device/erase.go`, `internal/resources/pro/inventory/network_segment/resource.go` (`override_buildings` / `override_departments` → `AlsoRequires` on the companion string).
+
+The "any value triggers the rule" semantics of `AlsoRequires` work for paired toggles like `override_buildings` / `building`: the server only honours the toggle when the companion is set, so requiring it on any user-supplied value (true or false) is fine and avoids bespoke logic.
+
+**Value-specific requirements** (e.g. "required only when this bool is `true`", "required only when this string equals `"static"`") are not expressible via `AlsoRequires`. Reach for a custom `validator.Bool` / `validator.String` in the package's `validators.go` **only when the off-the-shelf helper's "any value" semantics would be wrong** — not as a default. When you do write one, read the companion via `req.Config.GetAttribute(ctx, path, &target)`, skip when `target.IsUnknown()` so apply-time references do not false-positive, and emit `resp.Diagnostics.AddAttributeError(req.Path, …)`.
+
+Avoid `resource.ResourceWithConfigValidators` unless a check truly spans many attributes (e.g. "exactly one of X, Y, Z must be set"); the framework's resourcevalidator package (`AtLeastOneOf`, `ExactlyOneOf`, `Conflicting`) covers the standard cases. Bespoke whole-config validators are a last resort.
+
 ## Error Handling
 
 Use the shared helpers from `internal/common/helpers` rather than rolling your own:
