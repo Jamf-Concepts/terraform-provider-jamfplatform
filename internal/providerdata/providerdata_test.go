@@ -210,6 +210,83 @@ func TestConfigurePro_ShortCircuit_EmptyMinVerAfterFloorHandled(t *testing.T) {
 	}
 }
 
+// ProClassic Configure tests are intentionally narrower than the Pro suite:
+// ConfigureProClassic and ConfigurePro share the configureSub core, so the
+// version-cache, fetch-retry, fast-path-short-circuit, and gate-satisfied paths
+// are already exercised through the Pro tests above. The tests below cover the
+// proclassic-specific wiring (factory choice, returned type) and the
+// cross-client invariants we need to keep (shared one-shot floor warning).
+
+func TestConfigureProClassic_NilProviderData(t *testing.T) {
+	client, diags := ConfigureProClassic(context.Background(), nil, "", "jamfplatform_pro_test")
+	if client != nil {
+		t.Errorf("expected nil client for nil providerData, got %v", client)
+	}
+	if diags.HasError() {
+		t.Errorf("expected no diagnostics for nil providerData, got %v", diags)
+	}
+}
+
+func TestConfigureProClassic_WrongType(t *testing.T) {
+	client, diags := ConfigureProClassic(context.Background(), "not a Data value", "", "jamfplatform_pro_test")
+	if client != nil {
+		t.Errorf("expected nil client for wrong providerData type, got %v", client)
+	}
+	if !diags.HasError() {
+		t.Fatalf("expected error diagnostic for wrong providerData type, got %v", diags)
+	}
+	if !strings.Contains(diags[0].Summary(), "Unexpected Configure Type") {
+		t.Errorf("expected 'Unexpected Configure Type' summary, got %q", diags[0].Summary())
+	}
+}
+
+func TestConfigureProClassic_HappyPath_NoMinVer(t *testing.T) {
+	pd := &Data{Client: newFakeClient(),
+		versionFetcher: func(_ context.Context) (string, error) {
+			return "11.27.0", nil
+		},
+	}
+	client, diags := ConfigureProClassic(context.Background(), pd, "", "jamfplatform_pro_test")
+	if client == nil {
+		t.Fatal("expected non-nil proclassic client on happy path")
+	}
+	if diags.HasError() {
+		t.Errorf("expected no errors, got %v", diags)
+	}
+}
+
+func TestConfigureProClassic_MinVerGate_Failed(t *testing.T) {
+	pd := &Data{Client: newFakeClient(),
+		versionFetcher: func(_ context.Context) (string, error) {
+			return "10.0.0", nil
+		},
+	}
+	_, diags := ConfigureProClassic(context.Background(), pd, "11.5.0", "jamfplatform_pro_test")
+	if !diags.HasError() {
+		t.Fatalf("expected error when tenant < minVer, got %v", diags)
+	}
+}
+
+// TestConfigureProClassic_SharesFloorStateWithPro verifies that ConfigurePro and
+// ConfigureProClassic share the one-shot floor-warning machinery on the same
+// Data value. A config that mixes both kinds of resources must only see one
+// warning regardless of order.
+func TestConfigureProClassic_SharesFloorStateWithPro(t *testing.T) {
+	pd := &Data{Client: newFakeClient(),
+		versionFetcher: func(_ context.Context) (string, error) {
+			return "10.0.0", nil
+		},
+	}
+	_, diags1 := ConfigurePro(context.Background(), pd, "", "jamfplatform_pro_a")
+	if got := countSeverity(diags1, diag.SeverityWarning); got != 1 {
+		t.Fatalf("first (Pro) Configure: expected 1 warning, got %d (%v)", got, diags1)
+	}
+	_, diags2 := ConfigureProClassic(context.Background(), pd, "", "jamfplatform_pro_b")
+	if got := countSeverity(diags2, diag.SeverityWarning); got != 0 {
+		t.Errorf("subsequent (ProClassic) Configure: expected 0 warnings, got %d (%v)", got, diags2)
+	}
+}
+
 // TestGetJamfProVersion_CachesSuccess verifies successful fetches are not re-issued.
 func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 	calls := 0

@@ -14,6 +14,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -120,24 +121,27 @@ func (d *Data) floorAlreadyHandled() bool {
 	return d.floorHandled
 }
 
-// ConfigurePro is the shared Configure boilerplate for every Pro resource, data source,
-// list resource, and action. It type-asserts providerData into *Data, fetches the Jamf
-// Pro tenant version (lazily, cached on the Data value), runs the per-resource minimum
-// version gate when minVer is non-empty, and surfaces the provider-floor advisory
-// warning when the tenant is below the provider build target.
+// configureSub is the shared core for every SDK sub-client Configure helper. It
+// type-asserts providerData into *Data, fetches the Jamf Pro tenant version
+// (lazily, cached on the Data value), runs the per-resource minimum version gate
+// when minVer is non-empty, surfaces the provider-floor advisory warning when
+// the tenant is below the provider build target, and constructs the sub-client
+// via the supplied factory.
 //
-// Once the floor warning has been considered for the Data value, subsequent Configure
-// calls with empty minVer skip the version fetch entirely — there is nothing left to
-// evaluate on those code paths, so the network round-trip is avoided.
+// Once the floor warning has been considered for the Data value, subsequent
+// Configure calls with empty minVer skip the version fetch entirely — there is
+// nothing left to evaluate on those code paths, so the network round-trip is
+// avoided.
 //
-// resourceType is the fully-qualified Terraform type name used in diagnostic messages
-// (e.g. "jamfplatform_pro_category"). Returns a *pro.Client ready for use; callers
-// should check resp.Diagnostics.HasError() before using it.
-//
-// Returns (nil, nil) when providerData is nil (the framework calls Configure with a
-// nil ProviderData during early lifecycle — that is not an error, the resource simply
-// remains unconfigured until a later Configure call provides the data).
-func ConfigurePro(ctx context.Context, providerData any, minVer, resourceType string) (*pro.Client, diag.Diagnostics) {
+// Returns (nil, nil) when providerData is nil (the framework calls Configure with
+// a nil ProviderData during early lifecycle — that is not an error, the resource
+// simply remains unconfigured until a later Configure call provides the data).
+func configureSub[T any](
+	ctx context.Context,
+	providerData any,
+	minVer, resourceType string,
+	factory func(*jamfplatform.Client) *T,
+) (*T, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if providerData == nil {
 		return nil, diags
@@ -150,7 +154,7 @@ func ConfigurePro(ctx context.Context, providerData any, minVer, resourceType st
 		)
 		return nil, diags
 	}
-	client := pro.New(pd.Client)
+	client := factory(pd.Client)
 
 	// Fast path: empty per-resource minVer and the provider-floor advisory has already
 	// been considered for this Data value → nothing left to fetch.
@@ -176,4 +180,35 @@ func ConfigurePro(ctx context.Context, providerData any, minVer, resourceType st
 		diags.Append(warn)
 	}
 	return client, diags
+}
+
+// ConfigurePro is the shared Configure boilerplate for every Pro resource, data
+// source, list resource, and action. It type-asserts providerData into *Data,
+// fetches the Jamf Pro tenant version (lazily, cached on the Data value), runs
+// the per-resource minimum version gate when minVer is non-empty, and surfaces
+// the provider-floor advisory warning when the tenant is below the provider
+// build target.
+//
+// resourceType is the fully-qualified Terraform type name used in diagnostic
+// messages (e.g. "jamfplatform_pro_category"). Returns a *pro.Client ready for
+// use; callers should check resp.Diagnostics.HasError() before using it.
+//
+// Returns (nil, nil) when providerData is nil — the framework calls Configure
+// with a nil ProviderData during early lifecycle and that is not an error; the
+// resource simply remains unconfigured until a later Configure call provides
+// the data.
+//
+// Once the floor warning has been considered for a Data value, subsequent
+// Configure calls with empty minVer skip the version fetch entirely.
+func ConfigurePro(ctx context.Context, providerData any, minVer, resourceType string) (*pro.Client, diag.Diagnostics) {
+	return configureSub(ctx, providerData, minVer, resourceType, pro.New)
+}
+
+// ConfigureProClassic is the shared Configure boilerplate for every ProClassic
+// resource, data source, list resource, and action. Semantics are identical to
+// ConfigurePro — same Data value, same version cache, same one-shot floor
+// warning, same nil-providerData and minVer contracts — but the returned client
+// speaks XML against the classic API surface.
+func ConfigureProClassic(ctx context.Context, providerData any, minVer, resourceType string) (*proclassic.Client, diag.Diagnostics) {
+	return configureSub(ctx, providerData, minVer, resourceType, proclassic.New)
 }
