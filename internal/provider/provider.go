@@ -33,6 +33,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
@@ -197,6 +199,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 	return []func() resource.Resource{
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
+		building.NewBuildingResource,
 		category.NewCategoryResource,
 		device_group.NewDeviceGroupResource,
 		script.NewScriptResource,
@@ -214,6 +217,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		rules.NewRulesDataSource,
 		benchmark.NewBenchmarkDataSource,
 		benchmarks.NewBenchmarksDataSource,
+		building.NewBuildingDataSource,
+		buildings.NewBuildingsDataSource,
 		categories.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
 		device_group.NewDeviceGroupDataSource,
@@ -230,6 +235,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 	return []func() list.ListResource{
 		benchmark.NewBenchmarkListResource,
 		blueprint.NewBlueprintListResource,
+		building.NewBuildingListResource,
 		category.NewCategoryListResource,
 		device_group.NewDeviceGroupListResource,
 		script.NewScriptListResource,
