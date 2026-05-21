@@ -39,6 +39,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/department"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/departments"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
@@ -207,6 +209,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		device_group.NewDeviceGroupResource,
 		script.NewScriptResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
+		site.NewSiteResource,
 	}
 }
 
@@ -233,6 +236,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		script.NewScriptDataSource,
 		scripts.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
+		site.NewSiteDataSource,
+		sites.NewSitesDataSource,
 	}
 }
 
@@ -245,6 +250,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
 		script.NewScriptListResource,
+		site.NewSiteListResource,
 	}
 }
 
