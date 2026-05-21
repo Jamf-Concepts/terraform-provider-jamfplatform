@@ -37,6 +37,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/department"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/departments"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
@@ -201,6 +203,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		blueprint.NewBlueprintResource,
 		building.NewBuildingResource,
 		category.NewCategoryResource,
+		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
 		script.NewScriptResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
@@ -221,6 +224,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		buildings.NewBuildingsDataSource,
 		categories.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		department.NewDepartmentDataSource,
+		departments.NewDepartmentsDataSource,
 		device_group.NewDeviceGroupDataSource,
 		device_groups.NewDeviceGroupsDataSource,
 		device.NewDeviceDataSource,
@@ -237,6 +242,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		blueprint.NewBlueprintListResource,
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
+		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
 		script.NewScriptListResource,
 	}
