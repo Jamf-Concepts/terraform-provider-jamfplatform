@@ -167,6 +167,16 @@ func IsServerError(err error) bool {
 	return false
 }
 
+// IsForbiddenError reports whether an error represents a 403/forbidden response from the Jamf API.
+// Used to detect missing privileges on cross-API bridging calls (e.g. resolving the Jamf Pro
+// classic ID for a Platform Services device group when the client lacks "Read Groups").
+func IsForbiddenError(err error) bool {
+	if apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err); ok {
+		return apiErr.HasStatus(http.StatusForbidden)
+	}
+	return false
+}
+
 // EnsureResourceTimeouts guarantees the timeout object has the expected shape for resource timeouts.
 func EnsureResourceTimeouts(value resourcetimeouts.Value, attrTypes map[string]attr.Type) resourcetimeouts.Value {
 	if value.IsNull() && !value.IsUnknown() {

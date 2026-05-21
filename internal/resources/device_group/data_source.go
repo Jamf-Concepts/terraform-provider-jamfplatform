@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
@@ -20,7 +21,9 @@ import (
 
 // DeviceGroupDataSource implements the Terraform data source for Jamf device groups.
 type DeviceGroupDataSource struct {
-	client *devicegroups.Client
+	client    *devicegroups.Client
+	proClient *pro.Client
+	pd        *providerdata.Data
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -44,6 +47,10 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Device group Platform ID to query.",
 				Required:            true,
+			},
+			"jamf_pro_id": schema.StringAttribute{
+				MarkdownDescription: "Numeric Jamf Pro classic ID for the group, resolved from the Pro `/v2/groups` endpoint. Used to reference the group from classic-API scope blocks (policies, configuration profiles, restricted software). Null when the Platform API client lacks the `Read Groups` privilege.",
+				Computed:            true,
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Device group name.",
@@ -128,6 +135,8 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 	}
 
 	d.client = devicegroups.New(pd.Client)
+	d.proClient = pro.New(pd.Client)
+	d.pd = pd
 }
 
 // Read fetches a device group by ID and populates the Terraform state.
@@ -194,8 +203,15 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	timeoutsConfig := data.Timeouts
 
+	jamfProID, jamfProDiags := resolveJamfProID(readCtx, d.proClient, d.pd, grp.ID)
+	resp.Diagnostics.Append(jamfProDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	data = DeviceGroupDataSourceModel{
 		ID:          types.StringValue(grp.ID),
+		JamfProID:   jamfProID,
 		Name:        types.StringValue(grp.Name),
 		Description: description,
 		DeviceType:  deviceType,
