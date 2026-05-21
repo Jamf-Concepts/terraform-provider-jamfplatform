@@ -89,11 +89,12 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// resolveJamfProID degrades all Pro bridging failures to warnings so the
+	// Platform Create result is never discarded. Append diagnostics without a
+	// HasError gate — orphaning a successfully-created group would force a
+	// manual `terraform import` to recover.
 	jamfProID, jamfProDiags := resolveJamfProID(createCtx, r.proClient, r.pd, plan.ID.ValueString())
 	resp.Diagnostics.Append(jamfProDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	plan.JamfProID = jamfProID
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
@@ -196,9 +197,6 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 
 	jamfProID, jamfProDiags := resolveJamfProID(readCtx, r.proClient, r.pd, state.ID.ValueString())
 	resp.Diagnostics.Append(jamfProDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	state.JamfProID = jamfProID
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: state.ID})...)
@@ -288,9 +286,6 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 
 	jamfProID, jamfProDiags := resolveJamfProID(updateCtx, r.proClient, r.pd, plan.ID.ValueString())
 	resp.Diagnostics.Append(jamfProDiags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 	plan.JamfProID = jamfProID
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
