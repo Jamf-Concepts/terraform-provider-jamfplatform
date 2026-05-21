@@ -26,3 +26,14 @@ func StringToIntID(s types.String) (int64, error) {
 	}
 	return v, nil
 }
+
+// StringValueFromIntPtr converts a nil-safe *int (the shape returned by every
+// Jamf classic XML SDK type) into a Terraform string attribute. A nil pointer
+// becomes a null string so callers can detect a missing server-side ID rather
+// than silently substituting an empty value.
+func StringValueFromIntPtr(p *int) types.String {
+	if p == nil {
+		return types.StringNull()
+	}
+	return types.StringValue(strconv.Itoa(*p))
+}

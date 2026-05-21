@@ -27,6 +27,41 @@ func TestIntIDToString(t *testing.T) {
 	}
 }
 
+func TestStringValueFromIntPtr(t *testing.T) {
+	zero := 0
+	pos := 12345
+	neg := -1
+
+	tests := []struct {
+		name     string
+		in       *int
+		wantNull bool
+		want     string
+	}{
+		{"nil", nil, true, ""},
+		{"zero", &zero, false, "0"},
+		{"positive", &pos, false, "12345"},
+		{"negative", &neg, false, "-1"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := StringValueFromIntPtr(tc.in)
+			if tc.wantNull {
+				if !got.IsNull() {
+					t.Fatalf("expected null types.String, got %#v", got)
+				}
+				return
+			}
+			if got.IsNull() {
+				t.Fatalf("expected non-null types.String for %v, got null", tc.in)
+			}
+			if got.ValueString() != tc.want {
+				t.Errorf("got %q, want %q", got.ValueString(), tc.want)
+			}
+		})
+	}
+}
+
 func TestStringToIntID(t *testing.T) {
 	tests := []struct {
 		name    string
