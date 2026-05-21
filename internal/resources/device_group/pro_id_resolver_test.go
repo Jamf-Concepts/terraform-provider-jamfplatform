@@ -5,15 +5,42 @@ package device_group
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
+
+// newProIDMockClient spins up a local HTTPS server that auto-serves OAuth tokens
+// at /auth/token and forwards everything else to the supplied handler. Returned
+// jamfplatform.Client is bound to the server URL. Inlined here rather than reused
+// from testhelpers because the testhelpers package compiles acceptance-tagged
+// files that import internal/provider, which transitively imports this package
+// and creates an import cycle under `go test -tags=acceptance`.
+func newProIDMockClient(t *testing.T, handler http.Handler) *jamfplatform.Client {
+	t.Helper()
+	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/auth/token" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "test-token",
+				"token_type":   "Bearer",
+				"expires_in":   3600,
+			})
+			return
+		}
+		handler.ServeHTTP(w, r)
+	})
+	server := httptest.NewServer(wrapped)
+	t.Cleanup(server.Close)
+	return jamfplatform.NewClient(server.URL, "test-id", "test-secret")
+}
 
 // proIDResolverHandler returns an http.Handler that serves the Pro
 // /v2/groups/{id} endpoint with the supplied status code and JSON body.
@@ -44,7 +71,7 @@ func countSeverity(d diag.Diagnostics, sev diag.Severity) int {
 }
 
 func TestResolveJamfProID_Success(t *testing.T) {
-	client := testhelpers.NewMockClient(t, proIDResolverHandler(t, http.StatusOK,
+	client := newProIDMockClient(t, proIDResolverHandler(t, http.StatusOK,
 		`{"groupJamfProId":"42","groupPlatformId":"plat-uuid","groupName":"All Macs","groupType":"COMPUTER","smart":true,"membershipCount":3}`,
 	))
 	pd := providerdata.New(client)
@@ -64,7 +91,7 @@ func TestResolveJamfProID_Success(t *testing.T) {
 }
 
 func TestResolveJamfProID_Forbidden_NullsAndWarnsOnce(t *testing.T) {
-	client := testhelpers.NewMockClient(t, proIDResolverHandler(t, http.StatusForbidden, `{"errors":[{"code":"Forbidden"}]}`))
+	client := newProIDMockClient(t, proIDResolverHandler(t, http.StatusForbidden, `{"errors":[{"code":"Forbidden"}]}`))
 	pd := providerdata.New(client)
 
 	id, diags := resolveJamfProID(context.Background(), pro.New(client), pd, "plat-uuid")
@@ -88,7 +115,7 @@ func TestResolveJamfProID_Forbidden_NullsAndWarnsOnce(t *testing.T) {
 }
 
 func TestResolveJamfProID_NotFound_NullsSilently(t *testing.T) {
-	client := testhelpers.NewMockClient(t, proIDResolverHandler(t, http.StatusNotFound, `{"errors":[{"code":"NotFound"}]}`))
+	client := newProIDMockClient(t, proIDResolverHandler(t, http.StatusNotFound, `{"errors":[{"code":"NotFound"}]}`))
 	pd := providerdata.New(client)
 	id, diags := resolveJamfProID(context.Background(), pro.New(client), pd, "missing-uuid")
 	if diags.HasError() {
@@ -103,7 +130,7 @@ func TestResolveJamfProID_NotFound_NullsSilently(t *testing.T) {
 }
 
 func TestResolveJamfProID_OtherError_NullsAndWarnsOnce(t *testing.T) {
-	client := testhelpers.NewMockClient(t, proIDResolverHandler(t, http.StatusBadGateway, `{"errors":[{"code":"BadGateway"}]}`))
+	client := newProIDMockClient(t, proIDResolverHandler(t, http.StatusBadGateway, `{"errors":[{"code":"BadGateway"}]}`))
 	pd := providerdata.New(client)
 
 	id, diags := resolveJamfProID(context.Background(), pro.New(client), pd, "plat-uuid")
@@ -135,7 +162,7 @@ func TestResolveJamfProID_OtherError_NullsAndWarnsOnce(t *testing.T) {
 // non-success status, this test fails before the Platform Create result can be
 // silently discarded by the framework.
 func TestResolveJamfProID_ForbiddenWarning_LatchesAcrossSimulatedLifecycle(t *testing.T) {
-	client := testhelpers.NewMockClient(t, proIDResolverHandler(t, http.StatusForbidden, `{"errors":[{"code":"Forbidden"}]}`))
+	client := newProIDMockClient(t, proIDResolverHandler(t, http.StatusForbidden, `{"errors":[{"code":"Forbidden"}]}`))
 	pd := providerdata.New(client)
 	proClient := pro.New(client)
 
