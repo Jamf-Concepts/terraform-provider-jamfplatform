@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -60,88 +59,54 @@ func CustomDeclarationsComponentSchema() map[string]schema.Attribute {
 }
 
 // ToRawConfiguration converts the typed component to raw JSON configuration.
+// Empty Declarations marshals to `{}` to preserve the canonical no-op shape;
+// otherwise builds blueprints.CustomDeclarationsConfiguration so the on-wire
+// payload is driven by the SDK schema rather than ad-hoc maps.
 func (c *CustomDeclarationsComponent) ToRawConfiguration() (json.RawMessage, error) {
-	config := make(map[string]any)
-
-	if len(c.Declarations) > 0 {
-		declarations := make([]any, 0, len(c.Declarations))
-
-		for idx, declaration := range c.Declarations {
-			declarationMap := make(map[string]any)
-
-			if helpers.IsConfiguredValue(declaration.ChannelType) {
-				declarationMap["channelType"] = declaration.ChannelType.ValueString()
-			}
-			if helpers.IsConfiguredValue(declaration.Kind) {
-				declarationMap["kind"] = declaration.Kind.ValueString()
-			}
-			if helpers.IsConfiguredValue(declaration.Payload) {
-				var payloadObj any
-				if err := json.Unmarshal([]byte(declaration.Payload.ValueString()), &payloadObj); err != nil {
-					return nil, err
-				}
-				declarationMap["payload"] = payloadObj
-			}
-			declarationMap["payloadKey"] = idx + 1
-			if helpers.IsConfiguredValue(declaration.Type) {
-				declarationMap["type"] = declaration.Type.ValueString()
-			}
-
-			declarations = append(declarations, declarationMap)
-		}
-
-		config["declarations"] = declarations
+	if len(c.Declarations) == 0 {
+		return json.RawMessage(`{}`), nil
 	}
 
-	return json.Marshal(config)
+	declarations := make([]blueprints.CustomDeclaration, 0, len(c.Declarations))
+	for idx, declaration := range c.Declarations {
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(declaration.Payload.ValueString()), &payload); err != nil {
+			return nil, err
+		}
+		declarations = append(declarations, blueprints.CustomDeclaration{
+			ChannelType: declaration.ChannelType.ValueString(),
+			Kind:        declaration.Kind.ValueString(),
+			Payload:     payload,
+			PayloadKey:  idx + 1,
+			Type:        declaration.Type.ValueString(),
+		})
+	}
+
+	return json.Marshal(blueprints.CustomDeclarationsConfiguration{Declarations: declarations})
 }
 
 // FromRawConfiguration populates the typed component from raw JSON configuration.
 func (c *CustomDeclarationsComponent) FromRawConfiguration(raw json.RawMessage) error {
-	var config map[string]any
+	var config blueprints.CustomDeclarationsConfiguration
 	if err := json.Unmarshal(raw, &config); err != nil {
 		return err
 	}
 
-	if declarationsRaw, exists := config["declarations"]; exists {
-		if declarationsSlice, ok := declarationsRaw.([]any); ok {
-			declarations := make([]CustomDeclarationModel, 0, len(declarationsSlice))
-
-			for _, declarationRaw := range declarationsSlice {
-				if declarationMap, ok := declarationRaw.(map[string]any); ok {
-					declaration := CustomDeclarationModel{}
-
-					if channelType, exists := declarationMap["channelType"]; exists {
-						if channelStr, ok := channelType.(string); ok {
-							declaration.ChannelType = types.StringValue(channelStr)
-						}
-					}
-					if kind, exists := declarationMap["kind"]; exists {
-						if kindStr, ok := kind.(string); ok {
-							declaration.Kind = types.StringValue(kindStr)
-						}
-					}
-					if payload, exists := declarationMap["payload"]; exists {
-						payloadJSON, err := json.Marshal(payload)
-						if err != nil {
-							return err
-						}
-						declaration.Payload = types.StringValue(string(payloadJSON))
-					}
-					if declType, exists := declarationMap["type"]; exists {
-						if typeStr, ok := declType.(string); ok {
-							declaration.Type = types.StringValue(typeStr)
-						}
-					}
-
-					declarations = append(declarations, declaration)
-				}
-			}
-
-			c.Declarations = declarations
+	declarations := make([]CustomDeclarationModel, 0, len(config.Declarations))
+	for _, declaration := range config.Declarations {
+		payloadJSON, err := json.Marshal(declaration.Payload)
+		if err != nil {
+			return err
 		}
+		declarations = append(declarations, CustomDeclarationModel{
+			ChannelType: types.StringValue(declaration.ChannelType),
+			Kind:        types.StringValue(declaration.Kind),
+			Payload:     types.StringValue(string(payloadJSON)),
+			Type:        types.StringValue(declaration.Type),
+		})
 	}
 
+	c.Declarations = declarations
 	return nil
 }
 
