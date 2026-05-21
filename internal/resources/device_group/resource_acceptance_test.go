@@ -19,6 +19,29 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
+// logAttrValue returns a TestCheckFunc that logs the value of a state attribute.
+// Use to emit resolved server-derived values (e.g. jamf_pro_id) into the test
+// output for cross-checking against Jamf Pro UI / API.
+func logAttrValue(t *testing.T, resourceName, attribute string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("%s not found in state", resourceName)
+		}
+		v, ok := rs.Primary.Attributes[attribute]
+		if !ok {
+			t.Logf("%s.%s: <absent>", resourceName, attribute)
+			return nil
+		}
+		if v == "" {
+			t.Logf("%s.%s: <null>", resourceName, attribute)
+			return nil
+		}
+		t.Logf("%s.%s = %q", resourceName, attribute, v)
+		return nil
+	}
+}
+
 // testAccCheckDeviceGroupDestroy verifies that device groups created during the test
 // have been destroyed.
 func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
@@ -78,6 +101,8 @@ func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 					// entirely or lacks the privilege, see the Pro forbidden warning
 					// surfaced during the plan output.
 					resource.TestCheckResourceAttrSet("jamfplatform_device_group.test_static", "jamf_pro_id"),
+					logAttrValue(t, "jamfplatform_device_group.test_static", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_static", "jamf_pro_id"),
 				),
 			},
 			{
@@ -127,6 +152,8 @@ func TestAccResource_DeviceGroup_SmartComputer(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_smart", "group_type", "smart"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_smart", "device_type", "computer"),
 					resource.TestCheckResourceAttrSet("jamfplatform_device_group.test_smart", "member_count"),
+					logAttrValue(t, "jamfplatform_device_group.test_smart", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_smart", "jamf_pro_id"),
 				),
 			},
 		},
@@ -160,6 +187,8 @@ func TestAccResource_DeviceGroup_SmartMobile(t *testing.T) {
 					resource.TestCheckResourceAttrSet("jamfplatform_device_group.test_mobile", "id"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_mobile", "name", name),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_mobile", "device_type", "mobile"),
+					logAttrValue(t, "jamfplatform_device_group.test_mobile", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_mobile", "jamf_pro_id"),
 				),
 			},
 		},
@@ -183,6 +212,10 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 						device_type = "computer"
 					}
 				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					logAttrValue(t, "jamfplatform_device_group.test_import", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_import", "jamf_pro_id"),
+				),
 			},
 			{
 				ResourceName:      "jamfplatform_device_group.test_import",
@@ -220,6 +253,9 @@ func TestAccDataSource_DeviceGroup(t *testing.T) {
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "group_type"),
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "device_type"),
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "jamf_pro_id"),
+					logAttrValue(t, "jamfplatform_device_group.source", "id"),
+					logAttrValue(t, "jamfplatform_device_group.source", "jamf_pro_id"),
+					logAttrValue(t, "data.jamfplatform_device_group.test", "jamf_pro_id"),
 				),
 			},
 		},
@@ -268,6 +304,8 @@ func TestAccResource_DeviceGroup_DescriptionNullVsEmpty(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(rn, "id"),
 					resource.TestCheckResourceAttr(rn, "description", "initial value"),
+					logAttrValue(t, rn, "id"),
+					logAttrValue(t, rn, "jamf_pro_id"),
 				),
 			},
 			// Step 2: set description to explicit empty string — must be preserved as ""
