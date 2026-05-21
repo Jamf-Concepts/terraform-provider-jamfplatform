@@ -39,6 +39,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/department"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/departments"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
@@ -207,6 +209,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		category.NewCategoryResource,
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
+		network_segment.NewNetworkSegmentResource,
 		script.NewScriptResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		site.NewSiteResource,
@@ -233,6 +236,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		device_groups.NewDeviceGroupsDataSource,
 		device.NewDeviceDataSource,
 		devices.NewDevicesDataSource,
+		network_segment.NewNetworkSegmentDataSource,
+		network_segments.NewNetworkSegmentsDataSource,
 		script.NewScriptDataSource,
 		scripts.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
@@ -249,6 +254,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		category.NewCategoryListResource,
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
+		network_segment.NewNetworkSegmentListResource,
 		script.NewScriptListResource,
 		site.NewSiteListResource,
 	}
