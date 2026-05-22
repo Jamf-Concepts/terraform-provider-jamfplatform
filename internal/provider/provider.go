@@ -39,6 +39,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/department"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/departments"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/dock_item"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/ibeacon"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
@@ -213,6 +214,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		category.NewCategoryResource,
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
+		dock_item.NewDockItemResource,
 		ibeacon.NewIbeaconResource,
 		network_segment.NewNetworkSegmentResource,
 		policy.NewPolicyResource,
@@ -243,6 +245,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		device_groups.NewDeviceGroupsDataSource,
 		device.NewDeviceDataSource,
 		devices.NewDevicesDataSource,
+		dock_item.NewDockItemDataSource,
 		ibeacon.NewIbeaconDataSource,
 		network_segment.NewNetworkSegmentDataSource,
 		network_segments.NewNetworkSegmentsDataSource,
@@ -265,6 +268,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		category.NewCategoryListResource,
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
+		dock_item.NewDockItemListResource,
 		ibeacon.NewIbeaconListResource,
 		network_segment.NewNetworkSegmentListResource,
 		policy.NewPolicyListResource,
