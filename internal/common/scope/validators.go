@@ -58,7 +58,14 @@ func (v allFlagConflictsWithValidator) ValidateBool(ctx context.Context, req val
 		return
 	}
 	for _, expr := range v.conflicts {
-		matches, diags := req.Config.PathMatches(ctx, expr)
+		// Relative path expressions (path.MatchRelative()) are anchored to the
+		// attribute under validation. PathMatches requires an absolute path
+		// expression — merge against req.PathExpression to resolve.
+		absolute := req.PathExpression.MergeExpressions(expr)
+		if len(absolute) == 0 {
+			continue
+		}
+		matches, diags := req.Config.PathMatches(ctx, absolute[0])
 		resp.Diagnostics.Append(diags...)
 		if diags.HasError() {
 			continue
