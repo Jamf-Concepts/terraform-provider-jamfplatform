@@ -46,6 +46,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_group"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_groups"
 )
 
 // Constants for environment variable names.
@@ -213,6 +215,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		script.NewScriptResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		site.NewSiteResource,
+		user_group.NewUserGroupResource,
 	}
 }
 
@@ -243,6 +246,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
 		site.NewSiteDataSource,
 		sites.NewSitesDataSource,
+		user_group.NewUserGroupDataSource,
+		user_groups.NewUserGroupsDataSource,
 	}
 }
 
@@ -257,6 +262,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		network_segment.NewNetworkSegmentListResource,
 		script.NewScriptListResource,
 		site.NewSiteListResource,
+		user_group.NewUserGroupListResource,
 	}
 }
 
