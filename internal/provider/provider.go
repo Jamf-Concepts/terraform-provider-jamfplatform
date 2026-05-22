@@ -43,6 +43,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/policy"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
@@ -212,6 +213,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
 		network_segment.NewNetworkSegmentResource,
+		policy.NewPolicyResource,
 		script.NewScriptResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		site.NewSiteResource,
@@ -241,6 +243,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		devices.NewDevicesDataSource,
 		network_segment.NewNetworkSegmentDataSource,
 		network_segments.NewNetworkSegmentsDataSource,
+		policy.NewPolicyDataSource,
 		script.NewScriptDataSource,
 		scripts.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
@@ -260,6 +263,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
 		network_segment.NewNetworkSegmentListResource,
+		policy.NewPolicyListResource,
 		script.NewScriptListResource,
 		site.NewSiteListResource,
 		user_group.NewUserGroupListResource,
