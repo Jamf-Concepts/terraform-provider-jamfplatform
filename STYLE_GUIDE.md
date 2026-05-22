@@ -523,3 +523,24 @@ Rationale: per-resource `const minJamfProVersion` covers hard correctness for in
 Many Jamf Pro resources expose similar shapes (scope, site, category, criteria, self-service payload). **Do not extract these into shared schemas upfront** — superficially similar Jamf APIs often differ in field names, ID types (int vs UUID string), and null semantics. Premature abstraction here produces helpers with per-resource branching that is harder to read than the original duplication.
 
 **Refactor trigger**: when 3 or more shipped resources have a verified-identical shape (same fields, same types, same null semantics — checked against the SDK structs, not eyeballed), extract a helper under `internal/common/schemas/`. Not before.
+
+### Scope helper
+
+The `<scope>` block of every Jamf Classic-API resource (policies, ebooks, mac applications, mobile device applications, OS X configuration profiles, mobile device configuration profiles, patch policies, restricted software) shares its sub-block target categories — buildings, departments, computers, computer_groups, mobile_devices, mobile_device_groups, network_segments, jss_users, jss_user_groups, ibeacons, and the directory-service name-only siblings. The 3-consumer rule fires at **sub-block granularity**, not at the top-level scope shape (which diverges across the eight scope-bearing resources). Shared helpers live under `internal/common/scope/`.
+
+**Item shape — IDs-only `Set<String>`.** Sub-blocks collapse to a flat `schema.SetAttribute{ElementType: types.StringType, Optional: true}` carrying only the numeric Jamf Pro classic ID (or name string, for the directory-service categories). Server-augmented `<name>` and `<udid>` wire fields are discarded on read; only IDs round-trip through Terraform state. Rationale and prior-art comparison in [SCOPE_SPIKE.md §5.2](SCOPE_SPIKE.md) (Option B). Authoring uses interpolation: `computer_ids = [for c in data.jamfplatform_pro_computers.example: c.id]`.
+
+**Naming convention.**
+
+| Sub-block kind | Suffix | Examples |
+|---|---|---|
+| ID-bearing | `_ids` | `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`, `jss_user_ids`, `jss_user_group_ids`, `network_segment_ids`, `ibeacon_ids`, `class_ids` |
+| Directory-service name-only | `_names` | `directory_service_or_local_user_names`, `directory_service_user_group_names`, `limit_to_user_group_names` |
+
+Limitations and exclusions share the same attribute names — the wire-shape divergence (limitations user is name-only on wire; exclusions user is id+name on wire) is collapsed at the TF layer because both sides write `<user><name>…</name></user>` and discarding the response-side `<id>` is consistent with Option B.
+
+**Composition pattern.** Per-resource glue assembles the resource's `scope` schema by composing `scope.IDSetAttribute` / `scope.NameSetAttribute` calls. There is **no** top-level `ScopeAttribute()` mega-factory: the eight scope-bearing classic resources expose materially different top-level field sets (see SCOPE_SPIKE §4), so a unified factory would either leak unsupported fields or devolve into per-resource branching. The 3-consumer rule fires at sub-block granularity only.
+
+**Cross-field validator — `scope.AllFlagConflictsWith`.** A value-discriminated `validator.Bool` for `all_computers` / `all_mobile_devices` / `all_jss_users` semantics: fires only when the bool is true, attaches one attribute error per populated conflicting Set. Off-the-shelf `boolvalidator.ConflictsWith` triggers on any value and cannot express the "only when true" rule. Resource-specific constraints (e.g. `RestrictedSoftware` rejects `limitations` entirely) stay in the resource package — they are not shared scope logic.
+
+**Omission semantics.** Null/unknown/empty TF Sets must collapse all the way to a `nil` SDK parent pointer so the wire body omits the parent XML element entirely. `BuildIDSlice` / `BuildNameSlice` return `(nil, nil)` for null, unknown, and empty input — thread that nil up; if every child collection is nil, skip the parent assignment. See [SCOPE_SPIKE.md §6.5](SCOPE_SPIKE.md) for the full rule set and the `all_*` bool / `helpers.OptionalBoolPointer` interaction.
