@@ -1,0 +1,284 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+// Package directory_binding implements the jamfplatform_pro_directory_binding
+// resource, data source, and list resource backed by the Jamf ProClassic
+// /directorybindings API.
+package directory_binding
+
+import (
+	"context"
+	"time"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+)
+
+// minJamfProVersion is the minimum Jamf Pro tenant version required by this
+// resource. Empty: classic /directorybindings predates the provider's overall
+// floor. The provider-level advisory still fires through
+// providerdata.ConfigureProClassic when the tenant is below
+// ProviderMinJamfProVersion.
+const minJamfProVersion = ""
+
+// DirectoryBindingResource implements the Terraform resource for Jamf Pro
+// directory bindings.
+type DirectoryBindingResource struct {
+	client *proclassic.Client
+}
+
+var (
+	_ resource.Resource                     = &DirectoryBindingResource{}
+	_ resource.ResourceWithImportState      = &DirectoryBindingResource{}
+	_ resource.ResourceWithIdentity         = &DirectoryBindingResource{}
+	_ resource.ResourceWithConfigValidators = &DirectoryBindingResource{}
+)
+
+const (
+	defaultCreateTimeout = 60 * time.Second
+	defaultReadTimeout   = 60 * time.Second
+	defaultUpdateTimeout = 60 * time.Second
+	defaultDeleteTimeout = 60 * time.Second
+)
+
+// NewDirectoryBindingResource returns a new instance of
+// DirectoryBindingResource.
+func NewDirectoryBindingResource() resource.Resource {
+	return &DirectoryBindingResource{}
+}
+
+// Metadata sets the resource type name for the Terraform provider.
+func (r *DirectoryBindingResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_pro_directory_binding"
+}
+
+// IdentitySchema defines the identifier used for import and list results.
+func (r *DirectoryBindingResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{
+				Description:       "Jamf Pro directory binding ID used to uniquely reference the binding.",
+				RequiredForImport: true,
+			},
+		},
+	}
+}
+
+// Schema returns the Terraform schema for the directory binding resource.
+func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is write-only — only the server-computed `password_sha256` is returned on reads.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "Directory binding ID assigned by Jamf Pro.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "Directory binding display name. Must not be empty.",
+				Required:            true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
+			},
+			"priority": schema.Int64Attribute{
+				MarkdownDescription: "Binding priority — accepted range is 1–10. Lower numbers run earlier when Jamf evaluates multiple bindings. Optional+Computed: omit to let the server assign the default.",
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.Int64{
+					int64validator.Between(1, 10),
+				},
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+			},
+			"type": schema.StringAttribute{
+				MarkdownDescription: "Directory service type. Selects which nested block is permitted. Wire-canonical values (note that the admin UI labels the Open Directory option \"Apple Open Directory\" but the wire value is `\"Open Directory\"`): `\"Active Directory\"`, `\"Open Directory\"`, `\"PowerBroker Identity Services\"`, `\"ADmitMac\"`, `\"Centrify\"`.",
+				Required:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(allDirectoryBindingTypes...),
+				},
+			},
+			"domain": schema.StringAttribute{
+				MarkdownDescription: "**\"Domain Server\"** in the Jamf Pro admin UI. The interpretation depends on `type` — DNS domain for Active Directory; LDAP host for Open Directory; bind domain for PowerBroker / ADmitMac / Centrify.",
+				Optional:            true,
+			},
+			"username": schema.StringAttribute{
+				MarkdownDescription: "**\"Username\"** in the Jamf Pro admin UI. The directory account used to perform the bind. May be a domain account name, an LDAP DN, or another type-specific identifier.",
+				Optional:            true,
+			},
+			"password": schema.StringAttribute{
+				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. **Write-only** — the Jamf Pro server never echoes the plaintext on reads; only `password_sha256` is returned. The provider deliberately does not overwrite this attribute from API responses, so the user-supplied value remains in state until the user changes it. Wrap in `sensitive(...)` to keep it out of Terraform output.",
+				Optional:            true,
+				Sensitive:           true,
+			},
+			"password_sha256": schema.StringAttribute{
+				MarkdownDescription: "Server-computed SHA-256 hash of the stored bind password. Read-only — surfacing it lets out-of-band password changes show up as drift on `password_sha256` even though the plaintext is not recoverable.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"computer_ou": schema.StringAttribute{
+				MarkdownDescription: "Computer object's organisational unit (OU) within the directory. Free text. The format is type-specific (e.g. an LDAP-style `OU=...` path for Active Directory).",
+				Optional:            true,
+			},
+
+			"active_directory": schema.SingleNestedAttribute{
+				MarkdownDescription: "Active Directory–specific configuration. May only be set when `type = \"Active Directory\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"forest":                     optString("Active Directory forest. Free text; an empty value round-trips as an empty `<forest/>` element."),
+					"create_mobile_account":      optBool("**\"Create Mobile Account\"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login. Wire element: `cache_last_user`."),
+					"require_confirmation":       optBool("**\"Require confirmation before creating a mobile account\"** in the Jamf Pro admin UI."),
+					"force_local_home_directory": optBool("**\"Force local home directory on startup disk\"** in the Jamf Pro admin UI. Wire element: `local_home`."),
+					"use_unc_path":               optBool("**\"Use UNC path from Active Directory to derive network home location\"** in the Jamf Pro admin UI."),
+					"network_protocol":           optString("**\"Network Protocol\"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Wire element: `mount_style`."),
+					"default_shell":              optString("**\"Default User Shell\"** in the Jamf Pro admin UI. Login shell assigned to bound directory users (e.g. `/bin/bash`)."),
+					"uid_attribute_mapping":      optString("**\"Map UID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the POSIX UID. Wire element: `uid`."),
+					"user_gid_attribute_mapping": optString("**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the per-user primary group GID. Wire element: `user_gid`."),
+					"gid_attribute_mapping":      optString("**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the group GID. Wire element: `gid`."),
+					"multiple_domains":           optBool("**\"Allow authentication from any domain in the forest\"** in the Jamf Pro admin UI."),
+					"preferred_domain":           optString("**\"Preferred Domain Server\"** in the Jamf Pro admin UI. Preferred AD domain controller hostname."),
+					"admin_groups":               optString("**\"Allow administration by\"** in the Jamf Pro admin UI. Comma-separated list of AD groups whose members are granted local admin rights on bound Macs."),
+				},
+			},
+
+			"open_directory": schema.SingleNestedAttribute{
+				MarkdownDescription: "Open Directory–specific configuration. May only be set when `type = \"Open Directory\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"encrypt_using_ssl":      optBool("**\"Encrypt using SSL\"** in the Jamf Pro admin UI. Encrypt the LDAP connection to the directory."),
+					"perform_secure_bind":    optBool("**\"Perform secure bind\"** in the Jamf Pro admin UI. Use a secure (authenticated) bind operation."),
+					"use_for_authentication": optBool("**\"Use for Authentication\"** in the Jamf Pro admin UI."),
+					"use_for_contacts":       optBool("**\"Use for Contacts\"** in the Jamf Pro admin UI."),
+				},
+			},
+
+			"admitmac": schema.SingleNestedAttribute{
+				MarkdownDescription: "ADmitMac–specific configuration. May only be set when `type = \"ADmitMac\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"require_confirmation":       optBool("**\"Require confirmation\"** in the Jamf Pro admin UI. Require admin confirmation when binding new computers to the directory."),
+					"home_location":              optString("**\"Home Location\"** in the Jamf Pro admin UI. Where to create the user's home folder (e.g. `\"Local\"`). Free text. Wire element: `local_home`. (The AD type's wire `local_home` is a bool; ADmitMac's is a string — the renames disambiguate.)"),
+					"network_protocol":           optString("**\"Network Protocol\"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Wire element: `mount_style`."),
+					"default_shell":              optString("**\"Default User Shell\"** in the Jamf Pro admin UI."),
+					"mount_network_home":         optBool("**\"Mount network home as sharepoint\"** in the Jamf Pro admin UI."),
+					"place_home_folders":         optString("**\"Place home folders in\"** in the Jamf Pro admin UI. Filesystem path under which local home folders are placed."),
+					"uid_attribute_mapping":      optString("**\"Map UID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the POSIX UID. Wire element: `uid`."),
+					"user_gid_attribute_mapping": optString("**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the per-user primary group GID. Wire element: `user_gid`."),
+					"gid_attribute_mapping":      optString("**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID. Wire element: `gid`."),
+					"admin_group":                optString("**\"Allow administration by\"** in the Jamf Pro admin UI. Directory group whose members are granted local admin rights on bound Macs."),
+					"cached_credentials": schema.Int64Attribute{
+						MarkdownDescription: "**\"Cached credentials\"** in the Jamf Pro admin UI. Number of users whose credentials are cached for offline login.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.UseStateForUnknown(),
+						},
+					},
+					"add_user_to_local":          optBool("**\"Add user to local administrators group\"** in the Jamf Pro admin UI."),
+					"users_ou":                   optString("**\"Users OU\"** in the Jamf Pro admin UI."),
+					"groups_ou":                  optString("**\"Groups OU\"** in the Jamf Pro admin UI."),
+					"printers_ou":                optString("**\"Printers OU\"** in the Jamf Pro admin UI."),
+					"shared_folders_ou":          optString("**\"Shared Folders OU\"** in the Jamf Pro admin UI."),
+				},
+			},
+
+			"centrify": schema.SingleNestedAttribute{
+				MarkdownDescription: "Centrify–specific configuration. May only be set when `type = \"Centrify\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"workstation_mode":        optBool("Bind in Workstation mode (versus joined mode)."),
+					"overwrite_existing":      optBool("Overwrite an existing Centrify configuration on the target Mac."),
+					"update_pam":              optBool("Update PAM configuration to integrate Centrify authentication. Wire element is `update_PAM` (uppercase preserved on the wire); the TF schema uses snake_case."),
+					"zone":                    optString("Centrify zone name."),
+					"preferred_domain_server": optString("Preferred Centrify domain server hostname."),
+				},
+			},
+
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Read:   true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+// ConfigValidators returns the cross-field validators evaluated against the
+// user's config at plan time.
+func (r *DirectoryBindingResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		typeBlockConfigValidator{},
+	}
+}
+
+// Configure wires the Jamf ProClassic client into the resource via the
+// shared providerdata.ConfigureProClassic helper.
+func (r *DirectoryBindingResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_directory_binding")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.client = client
+}
+
+// ImportState handles import by the Jamf Pro directory binding ID.
+func (r *DirectoryBindingResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// optString is a tiny shorthand for an Optional+Computed schema.StringAttribute
+// with the canonical UseStateForUnknown plan modifier and a
+// MarkdownDescription. The nested per-type blocks have many fields and
+// repeating the full struct literal made the schema unreadable.
+//
+// Why Optional+Computed: the Jamf Pro server populates every per-type
+// nested field with a default when the user omits it (e.g. a Centrify
+// binding created with only `zone` set comes back with
+// `workstation_mode=false`, `update_pam=true`, etc.). Per STYLE_GUIDE
+// §Server-derived computed fields, attributes the server can fill in
+// when omitted must be Optional+Computed. UseStateForUnknown keeps the
+// prior state value across plans so the framework does not surface
+// every refresh as a transient diff. Used only inside this file.
+func optString(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers: []planmodifier.String{
+			stringplanmodifier.UseStateForUnknown(),
+		},
+	}
+}
+
+// optBool is the bool counterpart of optString — same Optional+Computed
+// + UseStateForUnknown rationale, same scope.
+func optBool(desc string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers: []planmodifier.Bool{
+			boolplanmodifier.UseStateForUnknown(),
+		},
+	}
+}

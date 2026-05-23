@@ -56,6 +56,34 @@ func BoolPointerValueOrNull(value *bool) types.Bool {
 	return types.BoolValue(*value)
 }
 
+// OptionalBoolPointer converts a Terraform Bool into a *bool for API payloads.
+// Mirrors OptionalStringPointer's contract for booleans: returns nil for both
+// Null and Unknown values so the SDK's omitempty tag drops the field from the
+// wire. Use this instead of types.Bool.ValueBoolPointer for Optional and
+// Optional+Computed bool attributes — the latter returns a pointer to false
+// for Unknown values, which Jamf Pro endpoints commonly treat as an explicit
+// "set this to false" instead of "leave unchanged."
+func OptionalBoolPointer(value types.Bool) *bool {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	b := value.ValueBool()
+	return &b
+}
+
+// OptionalInt64Pointer converts a Terraform Int64 into a *int for API payloads.
+// Returns nil for both Null and Unknown values so the SDK's omitempty tag
+// drops the field from the wire. The Jamf ProClassic SDK uses *int for
+// integer wire fields (e.g. Priority, CachedCredentials); Terraform exposes
+// Int64 so the narrowing happens here at the boundary.
+func OptionalInt64Pointer(value types.Int64) *int {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	i := int(value.ValueInt64())
+	return &i
+}
+
 // IdentitySetter matches the identity setter interface exposed by Terraform resources and list results.
 type IdentitySetter interface {
 	Set(context.Context, any) diag.Diagnostics
