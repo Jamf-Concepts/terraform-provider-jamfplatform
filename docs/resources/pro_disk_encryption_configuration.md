@@ -4,7 +4,7 @@ page_title: "jamfplatform_pro_disk_encryption_configuration Resource - terraform
 subcategory: ""
 description: |-
   Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The flat envelope (name, key_type, file_vault_enabled_users) is paired with an optional institutional_recovery_key block carrying the recovery certificate when key_type selects Institutional or Individual and Institutional.
-  Wire quirks (audit reference: local-testing/diskencryption/AUDIT_FINDINGS.md):
+  Wire quirks worth knowing:
   The server returns key_type = "Individual and Institutional" (lowercase and) regardless of input casing. Users must supply the wire-canonical spelling — case-folding via a plan modifier would violate the Terraform framework's plan==config invariant on a Required attribute, so the schema validator rejects any other casing at plan time.The classic POST/PUT endpoints reject an institutional_recovery_key block without certificate_type (Certificate type is required if a recovery key is specified). The schema marks certificate_type Required inside the IRK block so any plan that supplies the block also supplies the format declarator.institutional_recovery_key.password_sha256 is not a real SHA-256 hash — the server returns the literal ******************** (20 asterisks) whenever a password is set, empty otherwise. Useful only as an "is-set" hint; drift detection against the user-supplied plaintext is impossible.institutional_recovery_key.password is write-only. The Jamf Pro server never echoes the plaintext on reads, so the provider deliberately does not overwrite this attribute from API responses.The Classic /diskencryptionconfigurations PUT endpoint cannot clear the institutional_recovery_key block once set — an empty <institutional_recovery_key/> on PUT is treated as a no-op. Transitioning key_type from Institutional/Individual and Institutional back to Individual does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
 ---
 
@@ -12,7 +12,7 @@ description: |-
 
 Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The flat envelope (`name`, `key_type`, `file_vault_enabled_users`) is paired with an optional `institutional_recovery_key` block carrying the recovery certificate when `key_type` selects `Institutional` or `Individual and Institutional`.
 
-**Wire quirks (audit reference: `local-testing/diskencryption/AUDIT_FINDINGS.md`):**
+**Wire quirks worth knowing:**
 
 - The server returns `key_type = "Individual and Institutional"` (lowercase `and`) regardless of input casing. Users must supply the wire-canonical spelling — case-folding via a plan modifier would violate the Terraform framework's plan==config invariant on a Required attribute, so the schema validator rejects any other casing at plan time.
 - The classic POST/PUT endpoints reject an `institutional_recovery_key` block without `certificate_type` (`Certificate type is required if a recovery key is specified`). The schema marks `certificate_type` Required inside the IRK block so any plan that supplies the block also supplies the format declarator.
