@@ -12,15 +12,19 @@ import (
 
 // keyTypeToWire returns the wire `key_type` value to send on Create /
 // Update. The schema validator (stringvalidator.OneOf) enforces the
-// wire-canonical spelling at plan time, so no normalisation is needed
-// here. Null / unknown stays nil so the SDK omits the field —
-// preserving the server's stored value under Classic's partial-merge
-// semantics.
+// read-canonical spellings at plan time, but the classic POST/PUT
+// endpoint asymmetrically demands the Title-Case
+// "Individual And Institutional" form for the combined type — sending
+// the lowercase read-form returns HTTP 409 "Problem with key type".
+// keyTypeWriteAlias translates one-way at the input boundary so users
+// only see the read-canonical lowercase form. Null / unknown stays
+// nil so the SDK omits the field — preserving the server's stored
+// value under Classic's partial-merge semantics.
 func keyTypeToWire(v types.String) *string {
 	if v.IsNull() || v.IsUnknown() {
 		return nil
 	}
-	out := v.ValueString()
+	out := keyTypeWriteAlias(v.ValueString())
 	return &out
 }
 

@@ -238,7 +238,7 @@ func TestAccResource_ProDiskEncryptionConfiguration_InstitutionalRequiresData(t 
 						}
 					}
 				`, name),
-				ExpectError: regexp.MustCompile(`(?s)(Missing required argument|attribute "data" is required|attribute "certificate_type" is required)`),
+				ExpectError: regexp.MustCompile(`(?s)attributes "certificate_type" and "data" are required`),
 			},
 		},
 	})
