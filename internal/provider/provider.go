@@ -45,6 +45,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/ibeacon"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
+	pkg "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/package"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/printer"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
@@ -222,6 +223,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		dock_item.NewDockItemResource,
 		ibeacon.NewIbeaconResource,
 		network_segment.NewNetworkSegmentResource,
+		pkg.NewPackageResource,
 		policy.NewPolicyResource,
 		printer.NewPrinterResource,
 		script.NewScriptResource,
@@ -257,6 +259,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		ibeacon.NewIbeaconDataSource,
 		network_segment.NewNetworkSegmentDataSource,
 		network_segments.NewNetworkSegmentsDataSource,
+		pkg.NewPackageDataSource,
 		policy.NewPolicyDataSource,
 		printer.NewPrinterDataSource,
 		script.NewScriptDataSource,
@@ -282,6 +285,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		dock_item.NewDockItemListResource,
 		ibeacon.NewIbeaconListResource,
 		network_segment.NewNetworkSegmentListResource,
+		pkg.NewPackageListResource,
 		policy.NewPolicyListResource,
 		printer.NewPrinterListResource,
 		script.NewScriptListResource,
