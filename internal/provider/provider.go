@@ -40,6 +40,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/department"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/departments"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/directory_binding"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/disk_encryption_configuration"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/dock_item"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/ibeacon"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
@@ -217,6 +218,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
 		directory_binding.NewDirectoryBindingResource,
+		disk_encryption_configuration.NewDiskEncryptionConfigurationResource,
 		dock_item.NewDockItemResource,
 		ibeacon.NewIbeaconResource,
 		network_segment.NewNetworkSegmentResource,
@@ -250,6 +252,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		device.NewDeviceDataSource,
 		devices.NewDevicesDataSource,
 		directory_binding.NewDirectoryBindingDataSource,
+		disk_encryption_configuration.NewDiskEncryptionConfigurationDataSource,
 		dock_item.NewDockItemDataSource,
 		ibeacon.NewIbeaconDataSource,
 		network_segment.NewNetworkSegmentDataSource,
@@ -275,6 +278,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
 		directory_binding.NewDirectoryBindingListResource,
+		disk_encryption_configuration.NewDiskEncryptionConfigurationListResource,
 		dock_item.NewDockItemListResource,
 		ibeacon.NewIbeaconListResource,
 		network_segment.NewNetworkSegmentListResource,
