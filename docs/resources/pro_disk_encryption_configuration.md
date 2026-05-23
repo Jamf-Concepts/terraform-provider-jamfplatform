@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The flat envelope (name, key_type, file_vault_enabled_users) is paired with an optional institutional_recovery_key block carrying the recovery certificate when key_type selects Institutional or Individual and Institutional.
   Wire quirks (audit reference: local-testing/diskencryption/AUDIT_FINDINGS.md):
-  The server returns key_type = "Individual and Institutional" (lowercase and) regardless of input casing. The provider canonicalises Individual And Institutional (Title Case) to the wire form on input via a plan modifier so TF state stays stable.institutional_recovery_key.password_sha256 is not a real SHA-256 hash — the server returns the literal ******************** (20 asterisks) whenever a password is set, empty otherwise. Useful only as an "is-set" hint; drift detection against the user-supplied plaintext is impossible.institutional_recovery_key.password is write-only. The Jamf Pro server never echoes the plaintext on reads, so the provider deliberately does not overwrite this attribute from API responses.The Classic /diskencryptionconfigurations PUT endpoint cannot clear the institutional_recovery_key block once set — an empty <institutional_recovery_key/> on PUT is treated as a no-op. Transitioning key_type from Institutional/Individual and Institutional back to Individual does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
+  The server returns key_type = "Individual and Institutional" (lowercase and) regardless of input casing. Users must supply the wire-canonical spelling — case-folding via a plan modifier would violate the Terraform framework's plan==config invariant on a Required attribute, so the schema validator rejects any other casing at plan time.institutional_recovery_key.password_sha256 is not a real SHA-256 hash — the server returns the literal ******************** (20 asterisks) whenever a password is set, empty otherwise. Useful only as an "is-set" hint; drift detection against the user-supplied plaintext is impossible.institutional_recovery_key.password is write-only. The Jamf Pro server never echoes the plaintext on reads, so the provider deliberately does not overwrite this attribute from API responses.The Classic /diskencryptionconfigurations PUT endpoint cannot clear the institutional_recovery_key block once set — an empty <institutional_recovery_key/> on PUT is treated as a no-op. Transitioning key_type from Institutional/Individual and Institutional back to Individual does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Resource)
@@ -14,7 +14,7 @@ Manages a Jamf Pro disk encryption configuration. Disk encryption configurations
 
 **Wire quirks (audit reference: `local-testing/diskencryption/AUDIT_FINDINGS.md`):**
 
-- The server returns `key_type = "Individual and Institutional"` (lowercase `and`) regardless of input casing. The provider canonicalises `Individual And Institutional` (Title Case) to the wire form on input via a plan modifier so TF state stays stable.
+- The server returns `key_type = "Individual and Institutional"` (lowercase `and`) regardless of input casing. Users must supply the wire-canonical spelling — case-folding via a plan modifier would violate the Terraform framework's plan==config invariant on a Required attribute, so the schema validator rejects any other casing at plan time.
 - `institutional_recovery_key.password_sha256` is **not** a real SHA-256 hash — the server returns the literal `********************` (20 asterisks) whenever a password is set, empty otherwise. Useful only as an "is-set" hint; drift detection against the user-supplied plaintext is impossible.
 - `institutional_recovery_key.password` is **write-only**. The Jamf Pro server never echoes the plaintext on reads, so the provider deliberately does not overwrite this attribute from API responses.
 - The Classic `/diskencryptionconfigurations` PUT endpoint **cannot clear** the `institutional_recovery_key` block once set — an empty `<institutional_recovery_key/>` on PUT is treated as a no-op. Transitioning `key_type` from `Institutional`/`Individual and Institutional` back to `Individual` does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
@@ -51,13 +51,14 @@ resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
 
 # Individual + Institutional: a per-Mac personal key AND a recovery key
 # derived from the uploaded cert. Same upload shape as the Institutional
-# example. Note that the user types `Individual And Institutional`
-# (Title Case) — the provider canonicalises it to the wire form
-# `Individual and Institutional` (lowercase `and`) so plan output
-# matches what the Jamf Pro server returns on read.
+# example. Note that `key_type` must use the wire-canonical spelling
+# (`Individual and Institutional`, lowercase `and`) — the server
+# normalises any case variant on read, and Terraform rejects plan-modifier
+# rewrites on a Required attribute, so case-folding is intentionally not
+# offered.
 resource "jamfplatform_pro_disk_encryption_configuration" "both" {
   name                     = "Individual and Institutional"
-  key_type                 = "Individual And Institutional"
+  key_type                 = "Individual and Institutional"
   file_vault_enabled_users = "Management Account"
 
   institutional_recovery_key = {
@@ -73,7 +74,7 @@ resource "jamfplatform_pro_disk_encryption_configuration" "both" {
 ### Required
 
 - `file_vault_enabled_users` (String) **"Enabled FileVault 2 User"** in the Jamf Pro admin UI. Account allowed to unlock FileVault. Accepted values: `"Current or Next User"`, `"Management Account"`.
-- `key_type` (String) **"Recovery Key Type"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Wire-canonical values: `"Individual"`, `"Institutional"`, `"Individual and Institutional"` (note the lowercase `and` — the server normalises any case variant to this exact spelling on read). Input is accepted case-insensitively; the provider rewrites the planned value to the wire form so state stays stable.
+- `key_type` (String) **"Recovery Key Type"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Wire-canonical values (must be supplied verbatim — the server normalises any case variant on read so writing the wire form keeps state stable): `"Individual"`, `"Institutional"`, `"Individual and Institutional"` (note the lowercase `and`).
 - `name` (String) **"Display Name"** in the Jamf Pro admin UI. Disk encryption configuration name. Must not be empty.
 
 ### Optional

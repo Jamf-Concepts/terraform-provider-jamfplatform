@@ -218,6 +218,28 @@ Inside `input_builders.go`, route the `type` field through the mapper before emi
 
 Reference: `internal/resources/pro/inventory/directory_binding/helpers.go` (`mapType` + `typePowerBrokerCreateAlias`).
 
+#### Plan-modifier rewrites are NOT a valid option for `Required` attributes
+
+The "translate at the input boundary" pattern above only works because the user-facing TF value and the wire value are **identical** in directory_binding — the alias is swapped inside the input builder, not in the schema. If you instead try to canonicalise via a `planmodifier.String` that rewrites `req.ConfigValue` (e.g. lowercasing `Individual And Institutional` → `Individual and Institutional` at plan time), Terraform's plugin framework rejects the apply with:
+
+```
+Error: Provider produced invalid plan
+
+Provider planned an invalid value for <attribute>:
+planned value cty.StringVal("…") does not match config value cty.StringVal("…").
+
+This is a bug in the provider, which should be reported in the provider's own issue tracker.
+```
+
+The framework enforces `plan == config` for any attribute that is **not** `Computed`. Required attributes can't be rewritten by plan modifiers. The two valid options are:
+
+1. **Strict wire-form acceptance** — schema validator (`stringvalidator.OneOf`) accepts only the canonical wire spellings; user must supply them verbatim. Drift surfaces at plan time as a validator error, not at apply time as a framework violation. **Prefer this** for simple discriminator fields.
+2. **Optional + Computed with plan-modifier rewrite** — works mechanically, but turns the attribute into a "computed override" and complicates required-input semantics (the user can omit it). Only worth it when the canonicalisation is more than a case-fold (e.g. an alias swap that genuinely round-trips).
+
+The mistake to avoid: pairing `Required: true` with `OneOfCaseInsensitive` + a canonicalising plan modifier. The validator passes, but the framework will reject the plan at apply time. Caught during `disk_encryption_configuration` build, 2026-05-23.
+
+References: `internal/resources/pro/inventory/directory_binding/resource.go` (Required + OneOf, no plan modifier — preferred pattern); `internal/resources/pro/inventory/disk_encryption_configuration/resource.go` (`key_type` accepts only `Individual and Institutional` with lowercase `and`).
+
 ### Working around server-broken classic endpoints
 
 Some Jamf Pro classic endpoints are genuinely broken — the `/directorybindings/name/{name}` endpoint returns HTTP 500 for every name lookup as of 2026-05-23, even when the binding exists and is reachable by ID. List + ID paths work; only name lookup is dead.

@@ -29,18 +29,22 @@ func TestBuildInput_Individual_NoIRK(t *testing.T) {
 	}
 }
 
-// TestBuildInput_KeyTypeCanonicalisation verifies the input builder
-// rewrites Title-Case `Individual And Institutional` (uppercase `And`) to
-// the wire-canonical `Individual and Institutional` (lowercase `and`).
-func TestBuildInput_KeyTypeCanonicalisation(t *testing.T) {
+// TestBuildInput_KeyTypePassthrough verifies the input builder forwards
+// the wire-canonical `key_type` value verbatim. The schema validator
+// (stringvalidator.OneOf) ensures only canonical spellings reach the
+// builder; case folding is intentionally not offered (a plan-modifier
+// rewrite on a Required attribute violates the framework's plan==config
+// invariant, see STYLE_GUIDE §Plan-modifier rewrites on Required
+// attributes).
+func TestBuildInput_KeyTypePassthrough(t *testing.T) {
 	plan := DiskEncryptionConfigurationResourceModel{
 		Name:                  types.StringValue("test"),
-		KeyType:               types.StringValue("Individual And Institutional"),
+		KeyType:               types.StringValue(keyTypeIndividualInstitutional),
 		FileVaultEnabledUsers: types.StringValue(fileVaultEnabledUsersCurrentOrNext),
 	}
 	got := buildDiskEncryptionConfigurationInput(plan)
 	if got.KeyType == nil || *got.KeyType != keyTypeIndividualInstitutional {
-		t.Errorf("KeyType must canonicalise to wire form %q, got %v", keyTypeIndividualInstitutional, got.KeyType)
+		t.Errorf("KeyType must pass through to wire form %q, got %v", keyTypeIndividualInstitutional, got.KeyType)
 	}
 }
 
@@ -99,32 +103,5 @@ func TestBuildInput_PasswordOmittedWhenNull(t *testing.T) {
 	got := buildDiskEncryptionConfigurationInput(plan)
 	if got.InstitutionalRecoveryKey.Password != nil {
 		t.Errorf("null Password must serialise to nil, got %v", *got.InstitutionalRecoveryKey.Password)
-	}
-}
-
-// TestCanonicalKeyType_CaseInsensitive pins the case-mapping table used
-// by both the plan modifier and the input builder.
-func TestCanonicalKeyType_CaseInsensitive(t *testing.T) {
-	cases := map[string]string{
-		"Individual":                   keyTypeIndividual,
-		"INDIVIDUAL":                   keyTypeIndividual,
-		"individual":                   keyTypeIndividual,
-		"Institutional":                keyTypeInstitutional,
-		"institutional":                keyTypeInstitutional,
-		"Individual and Institutional": keyTypeIndividualInstitutional,
-		"Individual And Institutional": keyTypeIndividualInstitutional,
-		"INDIVIDUAL AND INSTITUTIONAL": keyTypeIndividualInstitutional,
-		"individual and institutional": keyTypeIndividualInstitutional,
-	}
-	for in, want := range cases {
-		if got := canonicalKeyType(in); got != want {
-			t.Errorf("canonicalKeyType(%q) = %q, want %q", in, got, want)
-		}
-	}
-
-	// Unknown input passes through unchanged — schema validator handles
-	// the rejection.
-	if got := canonicalKeyType("Bogus"); got != "Bogus" {
-		t.Errorf("canonicalKeyType passes unknown values through, got %q", got)
 	}
 }
