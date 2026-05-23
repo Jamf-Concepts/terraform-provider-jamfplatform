@@ -141,8 +141,11 @@ func TestAccResource_ProDiskEncryptionConfiguration_Institutional_DER(t *testing
 					resource.TestCheckResourceAttrSet("jamfplatform_pro_disk_encryption_configuration.test", "institutional_recovery_key.key"),
 					// DER public-cert upload — server tags it as DER.
 					resource.TestCheckResourceAttr("jamfplatform_pro_disk_encryption_configuration.test", "institutional_recovery_key.certificate_type", "DER"),
-					// No password set — sentinel is empty.
-					resource.TestCheckResourceAttr("jamfplatform_pro_disk_encryption_configuration.test", "institutional_recovery_key.password_sha256", ""),
+					// password_sha256: no password set on a DER cert → server
+					// emits <password_sha256/> which round-trips as a Null TF
+					// attribute (NOT empty string). Masked-sentinel behaviour
+					// for PKCS12 is pinned by state_builders_test.go.
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_disk_encryption_configuration.test", "institutional_recovery_key.password_sha256"),
 				),
 			},
 			{
@@ -238,7 +241,7 @@ func TestAccResource_ProDiskEncryptionConfiguration_InstitutionalRequiresData(t 
 						}
 					}
 				`, name),
-				ExpectError: regexp.MustCompile(`(?s)attributes "certificate_type" and "data" are required`),
+				ExpectError: regexp.MustCompile(`(?s)attributes\s+"certificate_type"\s+and\s+"data"\s+are\s+required`),
 			},
 		},
 	})
