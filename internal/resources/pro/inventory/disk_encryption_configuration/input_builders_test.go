@@ -48,18 +48,18 @@ func TestBuildInput_KeyTypePassthrough(t *testing.T) {
 	}
 }
 
-// TestBuildInput_IRKBlock_PKCS12 covers the PKCS12 path. Both `data` and
-// `password` must reach the wire. `key`, `certificate_type`,
-// `password_sha256` must NOT — they are server-side and writing them
-// back would confuse the server.
+// TestBuildInput_IRKBlock_PKCS12 covers the PKCS12 path. `certificate_type`,
+// `data`, and `password` must reach the wire. `key` and `password_sha256`
+// must NOT — they are server-side and writing them back would confuse
+// the server.
 func TestBuildInput_IRKBlock_PKCS12(t *testing.T) {
 	plan := DiskEncryptionConfigurationResourceModel{
 		Name:                  types.StringValue("test-pkcs12"),
 		KeyType:               types.StringValue(keyTypeInstitutional),
 		FileVaultEnabledUsers: types.StringValue(fileVaultEnabledUsersCurrentOrNext),
 		InstitutionalRecoveryKey: &diskEncryptionConfigurationIRKModel{
-			Key:             types.StringValue("CN=server-derived"),    // should not reach wire
-			CertificateType: types.StringValue("PKCS12"),               // should not reach wire
+			Key:             types.StringValue("CN=server-derived"), // should not reach wire
+			CertificateType: types.StringValue("PKCS12"),
 			PasswordSha256:  types.StringValue("********************"), // should not reach wire
 			Password:        types.StringValue("hunter2"),
 			Data:            types.StringValue("base64-cert-bytes"),
@@ -69,6 +69,9 @@ func TestBuildInput_IRKBlock_PKCS12(t *testing.T) {
 	if got.InstitutionalRecoveryKey == nil {
 		t.Fatalf("IRK must be non-nil")
 	}
+	if got.InstitutionalRecoveryKey.CertificateType == nil || *got.InstitutionalRecoveryKey.CertificateType != "PKCS12" {
+		t.Errorf("CertificateType must reach wire (server requires it on POST), got %v", got.InstitutionalRecoveryKey.CertificateType)
+	}
 	if got.InstitutionalRecoveryKey.Password == nil || *got.InstitutionalRecoveryKey.Password != "hunter2" {
 		t.Errorf("Password did not round-trip, got %v", got.InstitutionalRecoveryKey.Password)
 	}
@@ -77,9 +80,6 @@ func TestBuildInput_IRKBlock_PKCS12(t *testing.T) {
 	}
 	if got.InstitutionalRecoveryKey.Key != nil {
 		t.Errorf("Key (server-derived) must NOT appear on wire, got %v", got.InstitutionalRecoveryKey.Key)
-	}
-	if got.InstitutionalRecoveryKey.CertificateType != nil {
-		t.Errorf("CertificateType (server-determined) must NOT appear on wire, got %v", got.InstitutionalRecoveryKey.CertificateType)
 	}
 	if got.InstitutionalRecoveryKey.PasswordSha256 != nil {
 		t.Errorf("PasswordSha256 (server sentinel) must NOT appear on wire, got %v", got.InstitutionalRecoveryKey.PasswordSha256)

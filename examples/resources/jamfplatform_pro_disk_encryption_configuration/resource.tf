@@ -18,6 +18,10 @@ resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
   file_vault_enabled_users = "Current or Next User"
 
   institutional_recovery_key = {
+    # `certificate_type` is required by the classic POST endpoint
+    # whenever an IRK block is supplied. Use "PKCS12" for .p12 uploads,
+    # "DER" for .cer binary, or "PEM" for .pem text.
+    certificate_type = "PKCS12"
     # Base64 of your `.p12` file. Replace with `filebase64("./irk.p12")`
     # or the contents of a Vault-backed secret.
     data     = "BASE64_OF_YOUR_PKCS12_FILE_GOES_HERE=="
@@ -38,7 +42,8 @@ resource "jamfplatform_pro_disk_encryption_configuration" "both" {
   file_vault_enabled_users = "Management Account"
 
   institutional_recovery_key = {
-    data     = "BASE64_OF_YOUR_PKCS12_FILE_GOES_HERE=="
-    password = sensitive("change-me")
+    certificate_type = "PKCS12"
+    data             = "BASE64_OF_YOUR_PKCS12_FILE_GOES_HERE=="
+    password         = sensitive("change-me")
   }
 }

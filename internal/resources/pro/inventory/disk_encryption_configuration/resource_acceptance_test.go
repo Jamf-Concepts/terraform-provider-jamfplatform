@@ -128,7 +128,8 @@ func TestAccResource_ProDiskEncryptionConfiguration_Institutional_DER(t *testing
 						file_vault_enabled_users = "Current or Next User"
 
 						institutional_recovery_key = {
-							data = %q
+							certificate_type = "DER"
+							data             = %q
 						}
 					}
 				`, name, derB64),
@@ -159,7 +160,8 @@ func TestAccResource_ProDiskEncryptionConfiguration_Institutional_DER(t *testing
 						file_vault_enabled_users = "Management Account"
 
 						institutional_recovery_key = {
-							data = %q
+							certificate_type = "DER"
+							data             = %q
 						}
 					}
 				`, name, derB64),
@@ -213,8 +215,9 @@ func TestAccResource_ProDiskEncryptionConfiguration_InstitutionalRequiresIRK(t *
 }
 
 // TestAccResource_ProDiskEncryptionConfiguration_InstitutionalRequiresData
-// exercises the variant where the block is supplied but `data` is
-// missing.
+// exercises the variant where the IRK block is supplied but `data` is
+// missing. `data` is marked Required at the schema layer, so the
+// framework rejects the plan before the resource's ValidateConfig runs.
 func TestAccResource_ProDiskEncryptionConfiguration_InstitutionalRequiresData(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -231,11 +234,11 @@ func TestAccResource_ProDiskEncryptionConfiguration_InstitutionalRequiresData(t 
 						file_vault_enabled_users = "Current or Next User"
 
 						institutional_recovery_key = {
-							# data deliberately missing
+							# data and certificate_type deliberately missing
 						}
 					}
 				`, name),
-				ExpectError: regexp.MustCompile(`institutional_recovery_key\.data required when key_type`),
+				ExpectError: regexp.MustCompile(`(?s)(Missing required argument|attribute "data" is required|attribute "certificate_type" is required)`),
 			},
 		},
 	})

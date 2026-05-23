@@ -6,7 +6,6 @@ package disk_encryption_configuration
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -56,32 +55,15 @@ func (institutionalKeyTypeRequiresIRKConfigValidator) ValidateResource(ctx conte
 		return
 	}
 
-	// IRK block absent: error.
+	// IRK block absent: error. `data` and `certificate_type` are marked
+	// Required at the schema layer so we don't double-check them here —
+	// the framework rejects a partially-populated block at plan time.
 	if data.InstitutionalRecoveryKey == nil {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("institutional_recovery_key"),
 			fmt.Sprintf("institutional_recovery_key required when key_type = %q", kt),
 			fmt.Sprintf(
-				"`key_type = %q` derives FileVault recovery keys from a stored institutional certificate, but no `institutional_recovery_key` block was supplied. Add the block with a base64-encoded `data` payload (and `password` for `.p12` uploads) to apply.",
-				kt,
-			),
-		)
-		return
-	}
-
-	// IRK block present but missing `data`: error. We tolerate Unknown
-	// (treated as "user might be passing a computed value") and only fail
-	// when the user provided an explicit null or empty string.
-	d := data.InstitutionalRecoveryKey.Data
-	if d.IsUnknown() {
-		return
-	}
-	if d.IsNull() || strings.TrimSpace(d.ValueString()) == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("institutional_recovery_key").AtName("data"),
-			fmt.Sprintf("institutional_recovery_key.data required when key_type = %q", kt),
-			fmt.Sprintf(
-				"`key_type = %q` requires a recovery certificate. Provide the base64-encoded cert via `institutional_recovery_key.data` (and `password` for PKCS12 uploads).",
+				"`key_type = %q` derives FileVault recovery keys from a stored institutional certificate, but no `institutional_recovery_key` block was supplied. Add the block with `data`, `certificate_type`, and `password` (for `.p12` uploads) to apply.",
 				kt,
 			),
 		)
