@@ -97,6 +97,30 @@ type CBEngineBenchmarkResponseV2 struct { ... }
 - Favor nested attributes (`SingleNestedAttribute`, `SetNestedAttribute`, `ListNestedAttribute`) over blocks.
 - **Terraform attribute names are always snake_case**, irrespective of how the upstream API formats the underlying JSON field. Translate at the boundary in input/state builders. Examples: API `categoryId` → TF `category_id`, API `osRequirements` → TF `os_requirements`, API `parameter4` → TF `parameter_4`. The only namespace exempt from this rule is **RSQL filter selectors** (`filters.FilterModel.Selector`), which pass through to the API verbatim and therefore retain their API-native spelling.
 
+### Attribute names mirror the Jamf Pro admin UI when the wire name is cryptic
+
+Jamf Pro's wire payloads frequently use short, internal names that do not match what administrators see in the admin UI — `cache_last_user` is labelled "Create Mobile Account" in the AD binding screen; `mount_style` is labelled "Network Protocol"; `uid` is labelled "Map UID to attribute"; and so on. A TF user reading the provider docs should not have to translate from the wire spelling back to the UI label they know.
+
+**Rule**: when the wire name is cryptic or differs materially from the admin-UI label, **rename the Terraform attribute to mirror the UI label** (snake_case, of course). Translate at the boundary in input/state builders — the wire name stays inside the SDK call. Examples from `jamfplatform_pro_directory_binding`:
+
+| UI label | TF attribute | Wire element |
+|----------|--------------|--------------|
+| Create Mobile Account | `create_mobile_account` | `cache_last_user` |
+| Network Protocol | `network_protocol` | `mount_style` |
+| Map UID to attribute | `uid_attribute_mapping` | `uid` |
+| Force local home directory on startup disk | `force_local_home_directory` | `local_home` (bool, AD type) |
+| Home Location | `home_location` | `local_home` (string, ADmitMac type) |
+| Allow administration by | `admin_group` / `admin_groups` | `admin_group` / `admin_groups` |
+
+When the wire name is already a reasonable match for the UI label (e.g. `encrypt_using_ssl`, `use_unc_path`, `workstation_mode`), leave it alone — gratuitous renames produce churn without payoff.
+
+**Every renamed attribute's `MarkdownDescription`** must:
+
+1. Lead with the exact UI label in bold quoted form (e.g. `**"Create Mobile Account"** in the Jamf Pro admin UI.`) so a `terraform plan` reviewer can match against the admin screen.
+2. Name the wire element when it differs (e.g. `Wire element: \`cache_last_user\`.`) so future maintainers searching for the wire name find the TF attribute that owns it.
+
+The rename rule applies to all current and future Jamf Pro resources. Where an existing shipped resource has cryptic wire-name attributes, do not retrofit in a feature PR — schedule a dedicated rename PR (the change is breaking for users).
+
 ### Sets vs Lists
 
 - **Sets** for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `criteria`, `raw_component`).
@@ -159,6 +183,52 @@ Create already follows this pattern (POST → HrefResponse → GET); Update must
 **4. State builders must use `Reconcile*Pointer` for every Optional and Optional+Computed string field.** A bare `helpers.StringPointerValueOrNull(s.X)` overwrites Terraform's null/empty distinction every refresh; `helpers.ReconcileOptionalStringPointer(s.X, state.X)` preserves the user's prior value (including an explicit empty string) when the API returns nothing. Apply uniformly — do not mix `StringPointerValueOrNull` and `ReconcileOptionalStringPointer` across the same model. Only fully `Computed`-only fields (no `Optional`) should use `StringPointerValueOrNull` because there is no user value to reconcile.
 
 **Reference implementation**: `internal/resources/pro/policies/script/` (resource, crud, input_builders, state_builders).
+
+### `SingleNestedAttribute` blocks: Optional-only when the model uses typed-pointer
+
+Nested blocks modelled as `*StructModel` (typed pointer to a struct with `tfsdk:` tags on every field) cannot be `Optional+Computed`. The Plugin Framework decodes an absent-but-Computed block as **Unknown**, and `*StructModel` has no representation for Unknown — apply fails with:
+
+> `Received unknown value, however the target type cannot handle unknown values. Use the corresponding `types` package type or a custom type that handles unknown values.`
+
+Two ways out:
+
+1. **Keep the block `Optional`-only.** Inner fields can still be `Optional+Computed` so the server may populate defaults the user omitted. This is the right default — typed-pointer models are easier to read and write than `types.Object`-shaped ones. Document for users: supply the block (even empty: `<type>_block = {}`) to take management of the per-type configuration. Omitting the block entirely for a record whose server-side representation includes a populated block will produce drift on the next refresh.
+2. **Switch the model field to `types.Object`** with an `attrTypes` map. Only worth it when the resource genuinely needs the framework to represent the block as Unknown — most don't.
+
+Reference: `internal/resources/pro/inventory/directory_binding/` — five per-type nested blocks, all Optional-only, inner fields Optional+Computed.
+
+### Asymmetric server normalisation on `type`-style discriminator fields
+
+Some classic endpoints accept a **legacy product name** on write but normalise to the **modern product name** on read. Example: PowerBroker directory bindings — the `/directorybindings` create path rejects `type="PowerBroker Identity Services"` with HTTP 409 "Problem with directory binding type" and only accepts `type="Likewise"` (the pre-acquisition name); the read path always returns `type="PowerBroker Identity Services"`. Pass the alias through to TF state and users get gratuitous drift; pass the modern name through to the server and Create silently fails.
+
+Pattern: translate one-way at the input boundary so the wire-canonical name is what users see in state, and the legacy alias is an implementation detail. Centralise the mapping in `helpers.go`:
+
+```go
+const typePowerBrokerCreateAlias = "Likewise"
+
+func mapType(tfType string) string {
+    if tfType == typePowerBroker {
+        return typePowerBrokerCreateAlias
+    }
+    return tfType
+}
+```
+
+Inside `input_builders.go`, route the `type` field through the mapper before emitting the SDK payload. Cover the mapping with a unit test (input X → wire Y) so future maintainers don't quietly delete it.
+
+Reference: `internal/resources/pro/inventory/directory_binding/helpers.go` (`mapType` + `typePowerBrokerCreateAlias`).
+
+### Working around server-broken classic endpoints
+
+Some Jamf Pro classic endpoints are genuinely broken — the `/directorybindings/name/{name}` endpoint returns HTTP 500 for every name lookup as of 2026-05-23, even when the binding exists and is reachable by ID. List + ID paths work; only name lookup is dead.
+
+When the SDK call backed by a broken endpoint is on a non-critical path (data source name resolver, optional fallback), route around it inside the resource package rather than waiting on the upstream fix:
+
+- Implement a private helper in the resource package (e.g. `lookupByName` in `data_source.go`) that does **List + client-side name match + GetByID**.
+- Doc-comment the helper with the bug summary, the date observed, and the upstream fix that would let the helper be deleted.
+- Open an SDK issue so every consumer benefits once the SDK adopts the fallback (or once the server is fixed).
+
+Reference: `internal/resources/pro/inventory/directory_binding/data_source.go` (`lookupByName`).
 
 ### Cross-field validation
 
