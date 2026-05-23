@@ -89,18 +89,24 @@ func TestDiskEncryptionConfigurationResource_Schema(t *testing.T) {
 		t.Errorf("password_sha256 must be Computed-only (it is the server's redaction sentinel, not a real hash)")
 	}
 
-	// `key` and `certificate_type` are server-derived — Computed-only.
-	for _, c := range []string{"key", "certificate_type"} {
-		a := irk.Attributes[c]
-		if a.IsRequired() || a.IsOptional() || !a.IsComputed() {
-			t.Errorf("%q must be Computed-only (server-derived)", c)
-		}
+	// `key` is server-derived — Computed-only.
+	key := irk.Attributes["key"]
+	if key.IsRequired() || key.IsOptional() || !key.IsComputed() {
+		t.Errorf("\"key\" must be Computed-only (server-derived Subject DN)")
 	}
 
-	// `data` is Optional + Sensitive (PKCS12 carries the private key).
+	// `certificate_type` must be Required — classic POST endpoint rejects
+	// an IRK block without it (server: "Certificate type is required if
+	// a recovery key is specified").
+	ct := irk.Attributes["certificate_type"]
+	if !ct.IsRequired() {
+		t.Errorf("\"certificate_type\" must be Required — server rejects POST/PUT without it")
+	}
+
+	// `data` is Required + Sensitive (PKCS12 carries the private key).
 	d := irk.Attributes["data"]
-	if !d.IsOptional() {
-		t.Errorf("institutional_recovery_key.data must be Optional")
+	if !d.IsRequired() {
+		t.Errorf("institutional_recovery_key.data must be Required — the IRK block is meaningless without a cert payload")
 	}
 	if !d.IsSensitive() {
 		t.Errorf("institutional_recovery_key.data must be Sensitive — PKCS12 payloads contain the wrapped private key")

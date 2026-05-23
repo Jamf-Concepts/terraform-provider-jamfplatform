@@ -57,16 +57,22 @@ func buildDiskEncryptionConfigurationInput(plan DiskEncryptionConfigurationResou
 // server preserves stored values under Classic's partial-merge semantics
 // (audit §2.6, §2.7).
 //
-// `Key` and `CertificateType` are never emitted on writes — both are
-// server-derived. `PasswordSha256` is never emitted (the server's read
-// value is a redaction sentinel, not a real hash; echoing it back would
-// just confuse the server).
+// `Key` is never emitted on writes — it is server-derived from the
+// uploaded `Data` (cert Subject DN). `PasswordSha256` is never emitted
+// (the server's read value is a redaction sentinel, not a real hash;
+// echoing it back would just confuse the server).
+//
+// `CertificateType` IS emitted on writes — the classic POST endpoint
+// rejects an IRK block without it: `Certificate type is required if a
+// recovery key is specified`. The schema marks it Required so the value
+// is always present when the IRK block is supplied.
 func buildIRKInput(m *diskEncryptionConfigurationIRKModel) *proclassic.DiskEncryptionConfigurationInstitutionalRecoveryKey {
 	if m == nil {
 		return nil
 	}
 	return &proclassic.DiskEncryptionConfigurationInstitutionalRecoveryKey{
-		Password: helpers.OptionalStringPointer(m.Password),
-		Data:     helpers.OptionalStringPointer(m.Data),
+		CertificateType: helpers.OptionalStringPointer(m.CertificateType),
+		Password:        helpers.OptionalStringPointer(m.Password),
+		Data:            helpers.OptionalStringPointer(m.Data),
 	}
 }
