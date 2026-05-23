@@ -29,22 +29,41 @@ func TestBuildInput_Individual_NoIRK(t *testing.T) {
 	}
 }
 
-// TestBuildInput_KeyTypePassthrough verifies the input builder forwards
-// the wire-canonical `key_type` value verbatim. The schema validator
-// (stringvalidator.OneOf) ensures only canonical spellings reach the
-// builder; case folding is intentionally not offered (a plan-modifier
-// rewrite on a Required attribute violates the framework's plan==config
-// invariant, see STYLE_GUIDE §Plan-modifier rewrites on Required
-// attributes).
-func TestBuildInput_KeyTypePassthrough(t *testing.T) {
+// TestBuildInput_KeyTypeWriteAlias verifies the asymmetric write alias:
+// the TF state stores `Individual and Institutional` (lowercase `and`,
+// matching the server's GET response), but the input builder must emit
+// `Individual And Institutional` (Title Case) on POST/PUT because the
+// classic write endpoint rejects the lowercase form with HTTP 409
+// "Problem with key type". Mirrors directory_binding's `Likewise`
+// PowerBroker alias precedent.
+func TestBuildInput_KeyTypeWriteAlias(t *testing.T) {
 	plan := DiskEncryptionConfigurationResourceModel{
 		Name:                  types.StringValue("test"),
 		KeyType:               types.StringValue(keyTypeIndividualInstitutional),
 		FileVaultEnabledUsers: types.StringValue(fileVaultEnabledUsersCurrentOrNext),
 	}
 	got := buildDiskEncryptionConfigurationInput(plan)
-	if got.KeyType == nil || *got.KeyType != keyTypeIndividualInstitutional {
-		t.Errorf("KeyType must pass through to wire form %q, got %v", keyTypeIndividualInstitutional, got.KeyType)
+	if got.KeyType == nil || *got.KeyType != keyTypeIndividualInstitutionalWriteAlias {
+		t.Errorf("KeyType must be rewritten to write alias %q, got %v", keyTypeIndividualInstitutionalWriteAlias, got.KeyType)
+	}
+}
+
+// TestBuildInput_KeyTypePassthrough_OtherValues verifies the
+// non-combined key types pass through unchanged — only the combined
+// form has the asymmetric write alias.
+func TestBuildInput_KeyTypePassthrough_OtherValues(t *testing.T) {
+	for _, in := range []string{keyTypeIndividual, keyTypeInstitutional} {
+		t.Run(in, func(t *testing.T) {
+			plan := DiskEncryptionConfigurationResourceModel{
+				Name:                  types.StringValue("test"),
+				KeyType:               types.StringValue(in),
+				FileVaultEnabledUsers: types.StringValue(fileVaultEnabledUsersCurrentOrNext),
+			}
+			got := buildDiskEncryptionConfigurationInput(plan)
+			if got.KeyType == nil || *got.KeyType != in {
+				t.Errorf("KeyType %q must pass through unchanged, got %v", in, got.KeyType)
+			}
+		})
 	}
 }
 
