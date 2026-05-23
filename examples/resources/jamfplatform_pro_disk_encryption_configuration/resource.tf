@@ -27,13 +27,14 @@ resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
 
 # Individual + Institutional: a per-Mac personal key AND a recovery key
 # derived from the uploaded cert. Same upload shape as the Institutional
-# example. Note that the user types `Individual And Institutional`
-# (Title Case) — the provider canonicalises it to the wire form
-# `Individual and Institutional` (lowercase `and`) so plan output
-# matches what the Jamf Pro server returns on read.
+# example. Note that `key_type` must use the wire-canonical spelling
+# (`Individual and Institutional`, lowercase `and`) — the server
+# normalises any case variant on read, and Terraform rejects plan-modifier
+# rewrites on a Required attribute, so case-folding is intentionally not
+# offered.
 resource "jamfplatform_pro_disk_encryption_configuration" "both" {
   name                     = "Individual and Institutional"
-  key_type                 = "Individual And Institutional"
+  key_type                 = "Individual and Institutional"
   file_vault_enabled_users = "Management Account"
 
   institutional_recovery_key = {

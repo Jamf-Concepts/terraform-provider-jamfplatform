@@ -11,15 +11,16 @@ import (
 )
 
 // keyTypeToWire returns the wire `key_type` value to send on Create /
-// Update, canonicalised to the wire form the server uses on read
-// (lowercase `and` in `Individual and Institutional`). Null / unknown
-// stays nil so the SDK omits the field — preserving the server's
-// stored value under Classic's partial-merge semantics.
+// Update. The schema validator (stringvalidator.OneOf) enforces the
+// wire-canonical spelling at plan time, so no normalisation is needed
+// here. Null / unknown stays nil so the SDK omits the field —
+// preserving the server's stored value under Classic's partial-merge
+// semantics.
 func keyTypeToWire(v types.String) *string {
 	if v.IsNull() || v.IsUnknown() {
 		return nil
 	}
-	out := canonicalKeyType(v.ValueString())
+	out := v.ValueString()
 	return &out
 }
 

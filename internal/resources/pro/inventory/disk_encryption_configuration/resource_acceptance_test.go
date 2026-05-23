@@ -124,7 +124,7 @@ func TestAccResource_ProDiskEncryptionConfiguration_Institutional_DER(t *testing
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_disk_encryption_configuration" "test" {
 						name                     = %q
-						key_type                 = "Individual And Institutional"
+						key_type                 = "Individual and Institutional"
 						file_vault_enabled_users = "Current or Next User"
 
 						institutional_recovery_key = {
@@ -155,7 +155,7 @@ func TestAccResource_ProDiskEncryptionConfiguration_Institutional_DER(t *testing
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_disk_encryption_configuration" "test" {
 						name                     = %q
-						key_type                 = "Individual And Institutional"
+						key_type                 = "Individual and Institutional"
 						file_vault_enabled_users = "Management Account"
 
 						institutional_recovery_key = {
@@ -181,42 +181,6 @@ func TestAccResource_ProDiskEncryptionConfiguration_Institutional_DER(t *testing
 					// import — no plaintext on the wire.
 					"institutional_recovery_key.password",
 				},
-			},
-		},
-	})
-}
-
-// TestAccResource_ProDiskEncryptionConfiguration_KeyTypeCaseInsensitive
-// exercises the asymmetric-normalisation plan modifier. The user types
-// `Individual And Institutional` (Title Case); state must hold the
-// wire-canonical `Individual and Institutional` (lowercase `and`).
-func TestAccResource_ProDiskEncryptionConfiguration_KeyTypeCaseInsensitive(t *testing.T) {
-	testhelpers.AccPreCheck(t)
-	suffix := testhelpers.RunSuffix()
-	name := "tf-acc-disk-encryption-case-" + suffix
-	derB64 := loadDERFixture(t)
-
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckDiskEncryptionConfigurationDestroy(t),
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(`
-					resource "jamfplatform_pro_disk_encryption_configuration" "test" {
-						name                     = %q
-						# Note Title-Case "And" — the provider must
-						# rewrite to wire-canonical lowercase "and".
-						key_type                 = "Individual And Institutional"
-						file_vault_enabled_users = "Current or Next User"
-
-						institutional_recovery_key = {
-							data = %q
-						}
-					}
-				`, name, derB64),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("jamfplatform_pro_disk_encryption_configuration.test", "key_type", "Individual and Institutional"),
-				),
 			},
 		},
 	})

@@ -50,8 +50,8 @@ func (institutionalKeyTypeRequiresIRKConfigValidator) ValidateResource(ctx conte
 		return
 	}
 
-	canon := canonicalKeyType(data.KeyType.ValueString())
-	needsIRK := canon == keyTypeInstitutional || canon == keyTypeIndividualInstitutional
+	kt := data.KeyType.ValueString()
+	needsIRK := kt == keyTypeInstitutional || kt == keyTypeIndividualInstitutional
 	if !needsIRK {
 		return
 	}
@@ -60,10 +60,10 @@ func (institutionalKeyTypeRequiresIRKConfigValidator) ValidateResource(ctx conte
 	if data.InstitutionalRecoveryKey == nil {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("institutional_recovery_key"),
-			fmt.Sprintf("institutional_recovery_key required when key_type = %q", canon),
+			fmt.Sprintf("institutional_recovery_key required when key_type = %q", kt),
 			fmt.Sprintf(
 				"`key_type = %q` derives FileVault recovery keys from a stored institutional certificate, but no `institutional_recovery_key` block was supplied. Add the block with a base64-encoded `data` payload (and `password` for `.p12` uploads) to apply.",
-				canon,
+				kt,
 			),
 		)
 		return
@@ -79,10 +79,10 @@ func (institutionalKeyTypeRequiresIRKConfigValidator) ValidateResource(ctx conte
 	if d.IsNull() || strings.TrimSpace(d.ValueString()) == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("institutional_recovery_key").AtName("data"),
-			fmt.Sprintf("institutional_recovery_key.data required when key_type = %q", canon),
+			fmt.Sprintf("institutional_recovery_key.data required when key_type = %q", kt),
 			fmt.Sprintf(
 				"`key_type = %q` requires a recovery certificate. Provide the base64-encoded cert via `institutional_recovery_key.data` (and `password` for PKCS12 uploads).",
-				canon,
+				kt,
 			),
 		)
 	}
