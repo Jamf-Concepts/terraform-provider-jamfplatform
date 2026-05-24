@@ -80,7 +80,7 @@ func (r *DirectoryBindingResource) IdentitySchema(ctx context.Context, req resou
 // Schema returns the Terraform schema for the directory binding resource.
 func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is write-only — only the server-computed `password_sha256` is returned on reads.",
+		MarkdownDescription: "Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new PUT carrying the current `password` value.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Directory binding ID assigned by Jamf Pro.",
@@ -123,16 +123,14 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				Optional:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. **Write-only** — the Jamf Pro server never echoes the plaintext on reads; only `password_sha256` is returned. The provider deliberately does not overwrite this attribute from API responses, so the user-supplied value remains in state until the user changes it. Wrap in `sensitive(...)` to keep it out of Terraform output.",
+				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. The Jamf Pro server also never echoes the plaintext on reads, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger a new PUT carrying the current `password`).",
 				Optional:            true,
 				Sensitive:           true,
+				WriteOnly:           true,
 			},
-			"password_sha256": schema.StringAttribute{
-				MarkdownDescription: "Server-computed SHA-256 hash of the stored bind password. Read-only — surfacing it lets out-of-band password changes show up as drift on `password_sha256` even though the plaintext is not recoverable.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+			"password_wo_version": schema.Int64Attribute{
+				MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro. Initial Create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals \"leave the stored password alone\" — the provider omits the `<password/>` element on the next PUT so Jamf retains the existing value.",
+				Optional:            true,
 			},
 			"computer_ou": schema.StringAttribute{
 				MarkdownDescription: "Computer object's organisational unit (OU) within the directory. Free text. The format is type-specific (e.g. an LDAP-style `OU=...` path for Active Directory).",

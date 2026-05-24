@@ -16,13 +16,12 @@ import (
 // non-nil so a transient GET that drops the ID does not clobber the value
 // persisted from Create.
 //
-// state.Password is deliberately NOT touched. The classic GET response never
-// echoes the plaintext password — only `password_sha256`. Overwriting
-// state.Password from the response would null it on every refresh, surfacing
-// as drift on the next plan and asking the user to re-supply the password.
-// The user's plaintext stays in state from the last apply; the server hash
-// surfaces separately as state.PasswordSha256 (Computed) so out-of-band
-// hash changes are still observable.
+// state.Password is `WriteOnly` — the framework excludes it from state
+// regardless of what we write, so we do not need to touch it. The Jamf Pro
+// classic GET response never echoes the plaintext anyway, only the redacted
+// `password_sha256` sentinel which carries no drift-detection signal and is
+// no longer surfaced. state.PasswordWoVersion is preserved verbatim by
+// the framework (regular Optional Int64, not WriteOnly).
 //
 // The empty `<powerbroker_identity_services/>` wire element does not surface
 // in state — the schema exposes no nested block for PowerBroker since it
@@ -40,7 +39,6 @@ func assignDirectoryBindingResourceModel(state *DirectoryBindingResourceModel, b
 	state.Type = helpers.StringPointerValueOrNull(b.Type)
 	state.Domain = helpers.StringPointerValueOrNull(b.Domain)
 	state.Username = helpers.StringPointerValueOrNull(b.Username)
-	state.PasswordSha256 = helpers.StringPointerValueOrNull(b.PasswordSha256)
 	state.ComputerOU = helpers.StringPointerValueOrNull(b.ComputerOu)
 	state.Priority = int64ValueFromPtr(b.Priority)
 
@@ -54,8 +52,8 @@ func assignDirectoryBindingResourceModel(state *DirectoryBindingResourceModel, b
 
 // assignDirectoryBindingDataSourceModel populates a data source model from a
 // DirectoryBinding response. Symmetric with the resource builder, minus the
-// `password` field (data source is read-only — no user-supplied plaintext to
-// preserve).
+// `password` field — data source is read-only and the classic GET never
+// echoes the plaintext anyway.
 func assignDirectoryBindingDataSourceModel(state *DirectoryBindingDataSourceModel, b *proclassic.DirectoryBinding) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if b == nil {
@@ -68,7 +66,6 @@ func assignDirectoryBindingDataSourceModel(state *DirectoryBindingDataSourceMode
 	state.Type = helpers.StringPointerValueOrNull(b.Type)
 	state.Domain = helpers.StringPointerValueOrNull(b.Domain)
 	state.Username = helpers.StringPointerValueOrNull(b.Username)
-	state.PasswordSha256 = helpers.StringPointerValueOrNull(b.PasswordSha256)
 	state.ComputerOU = helpers.StringPointerValueOrNull(b.ComputerOu)
 	state.Priority = int64ValueFromPtr(b.Priority)
 

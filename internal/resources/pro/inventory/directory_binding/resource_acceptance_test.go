@@ -71,6 +71,7 @@ func TestAccResource_ProDirectoryBinding_ActiveDirectory(t *testing.T) {
 						domain      = "corp.example.com"
 						username    = "joiner-svc"
 						password    = "change-me"
+						password_wo_version = 1
 						computer_ou = "OU=Macs,DC=corp,DC=example,DC=com"
 
 						active_directory = {
@@ -99,7 +100,6 @@ func TestAccResource_ProDirectoryBinding_ActiveDirectory(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "active_directory.uid_attribute_mapping", "uidNumber"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "active_directory.admin_groups", "Mac Admins,Domain Admins"),
 					// Server hashes the supplied password and returns the hash on read.
-					resource.TestCheckResourceAttrSet("jamfplatform_pro_directory_binding.test", "password_sha256"),
 				),
 			},
 			{
@@ -110,7 +110,8 @@ func TestAccResource_ProDirectoryBinding_ActiveDirectory(t *testing.T) {
 						type        = "Active Directory"
 						domain      = "corp.example.com"
 						username    = "joiner-svc"
-						password    = "change-me"
+						password    = "rotated-pw"
+						password_wo_version = 2
 						computer_ou = "OU=Macs,DC=corp,DC=example,DC=com"
 
 						active_directory = {
@@ -144,10 +145,8 @@ func TestAccResource_ProDirectoryBinding_ActiveDirectory(t *testing.T) {
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{
 					"timeouts",
-					// `password` is write-only — the server never echoes it on
-					// reads, so an imported resource cannot reconstruct the
-					// plaintext. `password_sha256` carries the canonical
-					// server-side value across imports.
+					// `password` is WriteOnly — never persisted in state, never
+					// imported. `password_wo_version` is import-stable.
 					"password",
 				},
 			},
@@ -191,7 +190,6 @@ func TestAccResource_ProDirectoryBinding_OpenDirectory(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "open_directory.perform_secure_bind", "true"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "open_directory.use_for_authentication", "true"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "open_directory.use_for_contacts", "false"),
-					resource.TestCheckResourceAttrSet("jamfplatform_pro_directory_binding.test", "password_sha256"),
 				),
 			},
 			{
@@ -227,6 +225,7 @@ func TestAccResource_ProDirectoryBinding_PowerBroker(t *testing.T) {
 						domain      = "lab.example.com"
 						username    = "joiner@lab.example.com"
 						password    = "change-me"
+						password_wo_version = 1
 						computer_ou = "OU=Macs,DC=lab,DC=example,DC=com"
 					}
 				`, name),
@@ -238,7 +237,6 @@ func TestAccResource_ProDirectoryBinding_PowerBroker(t *testing.T) {
 					resource.TestCheckNoResourceAttr("jamfplatform_pro_directory_binding.test", "open_directory"),
 					resource.TestCheckNoResourceAttr("jamfplatform_pro_directory_binding.test", "admitmac"),
 					resource.TestCheckNoResourceAttr("jamfplatform_pro_directory_binding.test", "centrify"),
-					resource.TestCheckResourceAttrSet("jamfplatform_pro_directory_binding.test", "password_sha256"),
 				),
 			},
 			{
@@ -274,6 +272,7 @@ func TestAccResource_ProDirectoryBinding_ADmitMac(t *testing.T) {
 						domain      = "corp.example.com"
 						username    = "joiner-svc"
 						password    = "change-me"
+						password_wo_version = 1
 						computer_ou = "OU=Macs,DC=corp,DC=example,DC=com"
 
 						admitmac = {
@@ -303,7 +302,6 @@ func TestAccResource_ProDirectoryBinding_ADmitMac(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "admitmac.network_protocol", "smb"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "admitmac.add_user_to_local", "true"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "admitmac.shared_folders_ou", "OU=Shares,DC=corp,DC=example,DC=com"),
-					resource.TestCheckResourceAttrSet("jamfplatform_pro_directory_binding.test", "password_sha256"),
 				),
 			},
 			{
@@ -353,7 +351,6 @@ func TestAccResource_ProDirectoryBinding_Centrify(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "centrify.update_pam", "true"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "centrify.workstation_mode", "false"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_directory_binding.test", "centrify.overwrite_existing", "true"),
-					resource.TestCheckResourceAttrSet("jamfplatform_pro_directory_binding.test", "password_sha256"),
 				),
 			},
 			{

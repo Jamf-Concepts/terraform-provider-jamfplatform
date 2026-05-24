@@ -26,12 +26,15 @@ func mapTypeToWire(v types.String) *string {
 //
 // Two non-default behaviours, both confirmed by the §13.2 audit:
 //
-//   - `PasswordSha256` is never emitted on writes. The Jamf Pro server
-//     silently drops the field on PUT/POST (see the SDK commit message for
-//     013c987 and the audit notes). We send only the plaintext `Password`
-//     when the user supplied one; null `Password` omits the field, which
-//     preserves the server's stored value under Classic's partial-merge
-//     semantics.
+//   - Plaintext `Password` is sourced from req.Config (it's a WriteOnly
+//     attribute, so req.Plan exposes it as null). The caller of this builder
+//     decides whether to thread a non-nil plaintext through based on the
+//     `password_wo_version` rotation trigger — when the trigger is unchanged
+//     the caller passes nil so this builder omits `<password/>` on the wire
+//     and Classic's partial-merge semantics retain the server's stored
+//     value. The server-side `password_sha256` sentinel is no longer surfaced
+//     in state (the field returns the literal 20-asterisk redaction string,
+//     not a real hash, so it carries no drift-detection signal).
 //
 //   - The empty `<powerbroker_identity_services/>` element is emitted by
 //     attaching a non-nil empty struct whenever `type =
@@ -41,13 +44,13 @@ func mapTypeToWire(v types.String) *string {
 //
 // `ID` is omitted on write — Create uses path id="0" and Update derives ID
 // from state.
-func buildDirectoryBindingInput(plan DirectoryBindingResourceModel) *proclassic.DirectoryBinding {
+func buildDirectoryBindingInput(plan DirectoryBindingResourceModel, password *string) *proclassic.DirectoryBinding {
 	in := &proclassic.DirectoryBinding{
 		Name:       helpers.OptionalStringPointer(plan.Name),
 		Type:       mapTypeToWire(plan.Type),
 		Domain:     helpers.OptionalStringPointer(plan.Domain),
 		Username:   helpers.OptionalStringPointer(plan.Username),
-		Password:   helpers.OptionalStringPointer(plan.Password),
+		Password:   password,
 		ComputerOu: helpers.OptionalStringPointer(plan.ComputerOU),
 		Priority:   helpers.OptionalInt64Pointer(plan.Priority),
 	}

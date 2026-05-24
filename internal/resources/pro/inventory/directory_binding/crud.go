@@ -26,10 +26,15 @@ import (
 // Create creates a new Jamf Pro directory binding. Classic POSTs to id="0";
 // the server allocates the real integer ID and returns it in the response
 // body. We then GET to capture server-populated fields (priority default,
-// password_sha256, etc.).
+// etc.).
 func (r *DirectoryBindingResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan DirectoryBindingResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var cfg DirectoryBindingResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -42,7 +47,7 @@ func (r *DirectoryBindingResource) Create(ctx context.Context, req resource.Crea
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	created, err := r.client.CreateDirectoryBindingByID(createCtx, "0", buildDirectoryBindingInput(plan))
+	created, err := r.client.CreateDirectoryBindingByID(createCtx, "0", buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(cfg.Password)))
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro directory binding", err.Error())
 		return
@@ -157,10 +162,20 @@ func (r *DirectoryBindingResource) Read(ctx context.Context, req resource.ReadRe
 // set tags overwrite. The input builder emits unset nested blocks as nil
 // pointers (omitted on the wire) so the server preserves stored values for
 // untouched type-specific fields. After the write we GET to refresh
-// server-computed fields such as password_sha256.
+// server-computed fields such as the server-allocated priority.
 func (r *DirectoryBindingResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan DirectoryBindingResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var state DirectoryBindingResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var cfg DirectoryBindingResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -173,7 +188,15 @@ func (r *DirectoryBindingResource) Update(ctx context.Context, req resource.Upda
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	if err := r.client.UpdateDirectoryBindingByID(updateCtx, plan.ID.ValueString(), buildDirectoryBindingInput(plan)); err != nil {
+	// Only include the plaintext `<password>` element on the wire when the
+	// user bumped `password_wo_version`. Otherwise omit so the server retains
+	// the existing stored value under Classic's partial-merge semantics.
+	var password *string
+	if !plan.PasswordWoVersion.Equal(state.PasswordWoVersion) {
+		password = helpers.OptionalStringPointer(cfg.Password)
+	}
+
+	if err := r.client.UpdateDirectoryBindingByID(updateCtx, plan.ID.ValueString(), buildDirectoryBindingInput(plan, password)); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro directory binding", err.Error())
 		return
 	}
