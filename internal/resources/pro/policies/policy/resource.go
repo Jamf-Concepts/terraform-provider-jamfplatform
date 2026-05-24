@@ -268,6 +268,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				MarkdownDescription: "Packages to install / cache / remove.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
+					"distribution_point": schema.StringAttribute{
+						MarkdownDescription: "Name of the file share distribution point to use for the policy. Wire field `<package_configuration><distribution_point>`. Server echoes the configured DP name (e.g. `Dummy DP`); omit to inherit the tenant default.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
 					"packages": schema.SetNestedAttribute{
 						MarkdownDescription: "Set of package assignments. Each item identifies the package by classic ID; `name` is server-derived. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`.",
 						Optional:            true,

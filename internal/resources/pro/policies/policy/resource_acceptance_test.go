@@ -12,6 +12,9 @@ package policy_test
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -24,6 +27,27 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
+
+// packageFixturePath resolves the shared jamf-cli .pkg fixture committed under
+// internal/resources/pro/inventory/package/test_fixtures/. The path is computed
+// relative to this test file so the result is invariant to the working
+// directory `go test` was invoked from.
+func packageFixturePath(t *testing.T, name string) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatalf("could not resolve caller path for fixture lookup")
+	}
+	dir := filepath.Dir(file)
+	abs, err := filepath.Abs(filepath.Join(dir, "..", "..", "inventory", "package", "test_fixtures", name))
+	if err != nil {
+		t.Fatalf("resolving fixture path %q: %v", name, err)
+	}
+	if _, err := os.Stat(abs); err != nil {
+		t.Fatalf("fixture %q not present at %q: %v", name, abs, err)
+	}
+	return abs
+}
 
 // testAccCheckPolicyDestroy verifies policies created during the test were
 // destroyed.
@@ -422,6 +446,133 @@ resource "jamfplatform_pro_policy" "test" {
 // state_builders.assignPolicyResourceModel) the reboot section is only
 // populated on Read when the caller already manages it, so a freshly-imported
 // state will not contain the reboot block.
+func policyConfigPackageConfigurationDistributionPoint(name, dp string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  package_configuration = {
+    distribution_point = %q
+  }
+}
+`, name, dp)
+}
+
+// TestAccPolicyResource_PackageConfigurationDistributionPoint exercises the
+// top-level `<package_configuration><distribution_point>` wire field added in
+// SDK 0.8.1-…46aec40edb28. The wire returns this value as a peer of <packages>
+// (see PHASE_2_6_SPIKE.md §4 + Appendix). Test omits the `packages` set
+// entirely — there is no clean "NONE" value for packages[].id, so per-package
+// coverage is deferred to PR #5 with a real `jamfplatform_pro_package` fixture.
+// Import-state round-trip is not asserted (per
+// state_builders.assignPolicyResourceModel, optional sub-blocks are only
+// populated on Read when already managed by the caller).
+func TestAccPolicyResource_PackageConfigurationDistributionPoint(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-pkgcfg-dp-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigPackageConfigurationDistributionPoint(name, "Dummy DP"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("package_configuration").AtMapKey("distribution_point"),
+						knownvalue.StringExact("Dummy DP"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigPackageConfigurationPackages(name, pkgName, pkgFileName, pkgSrc, action string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_package" "fixture" {
+  display_name        = %q
+  file_name           = %q
+  package_file_source = %q
+  info                = "tf-acc package fixture for jamfplatform_pro_policy package_configuration coverage"
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  package_configuration = {
+    distribution_point = "Dummy DP"
+    packages = [
+      {
+        id     = jamfplatform_pro_package.fixture.id
+        action = %q
+      },
+    ]
+  }
+}
+`, pkgName, pkgFileName, pkgSrc, name, action)
+}
+
+// TestAccPolicyResource_PackageConfigurationPackages exercises the
+// `package_configuration.packages` set together with the top-level
+// distribution_point. A jamfplatform_pro_package resource uploads the
+// committed jamf-cli .pkg fixture (shared with the inventory/package acc
+// suite) so the policy can reference a real package ID. Step 2 swaps the
+// per-package action Install → Cache to exercise the Update path on the
+// policy's packages set without re-uploading the package.
+// Import-state round-trip is not asserted (per
+// state_builders.assignPolicyResourceModel, optional sub-blocks are only
+// populated on Read when already managed by the caller).
+func TestAccPolicyResource_PackageConfigurationPackages(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-pkgcfg-pkgs-" + suffix
+	pkgDisplay := "tf-acc-pkg-fixture-" + suffix
+	pkgFileName := "tf-acc-pkg-fixture-" + suffix + ".pkg"
+	pkgSrc := packageFixturePath(t, "jamf-cli-1.15.0.pkg")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigPackageConfigurationPackages(policyName, pkgDisplay, pkgFileName, pkgSrc, "Install"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("package_configuration").AtMapKey("distribution_point"),
+						knownvalue.StringExact("Dummy DP"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("package_configuration").AtMapKey("packages"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("package_configuration").AtMapKey("packages").AtSliceIndex(0).AtMapKey("action"),
+						knownvalue.StringExact("Install"),
+					),
+				},
+			},
+			{
+				Config: policyConfigPackageConfigurationPackages(policyName, pkgDisplay, pkgFileName, pkgSrc, "Cache"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("package_configuration").AtMapKey("packages").AtSliceIndex(0).AtMapKey("action"),
+						knownvalue.StringExact("Cache"),
+					),
+				},
+			},
+		},
+	})
+}
+
 func TestAccPolicyResource_RebootFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()

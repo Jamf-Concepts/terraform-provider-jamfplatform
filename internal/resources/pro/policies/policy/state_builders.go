@@ -392,6 +392,8 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 }
 
 func flattenPolicyPackageConfiguration(pc *proclassic.PolicyPackageConfiguration, state *PolicyPackageConfigurationModel) {
+	state.DistributionPoint = preferCurrentStringPointer(pc.DistributionPoint, state.DistributionPoint)
+
 	if pc.Packages == nil || pc.Packages.Package == nil {
 		state.Packages = nil
 		return

@@ -155,6 +155,7 @@ func TestBuildPolicyInput_PackagesAndScripts(t *testing.T) {
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-pkg")},
 		PackageConfiguration: &PolicyPackageConfigurationModel{
+			DistributionPoint: types.StringValue("Dummy DP"),
 			Packages: []PolicyPackageItemModel{
 				{ID: types.StringValue("100"), Action: types.StringValue("Install")},
 			},
@@ -172,7 +173,35 @@ func TestBuildPolicyInput_PackagesAndScripts(t *testing.T) {
 	if got.PackageConfiguration == nil || got.PackageConfiguration.Packages == nil {
 		t.Fatalf("expected packages populated")
 	}
+	if got.PackageConfiguration.DistributionPoint == nil || *got.PackageConfiguration.DistributionPoint != "Dummy DP" {
+		t.Fatalf("expected distribution_point=Dummy DP, got %v", got.PackageConfiguration.DistributionPoint)
+	}
 	if got.Scripts == nil || got.Scripts.Script == nil {
 		t.Fatalf("expected scripts populated")
+	}
+}
+
+func TestBuildPolicyPackageConfiguration_DistributionPointOnly(t *testing.T) {
+	t.Parallel()
+	m := &PolicyPackageConfigurationModel{
+		DistributionPoint: types.StringValue("Dummy DP"),
+	}
+	got := buildPolicyPackageConfiguration(m)
+	if got == nil {
+		t.Fatalf("expected non-nil package_configuration when distribution_point is set")
+	}
+	if got.Packages != nil {
+		t.Fatalf("expected packages nil when no package items provided, got %+v", got.Packages)
+	}
+	if got.DistributionPoint == nil || *got.DistributionPoint != "Dummy DP" {
+		t.Fatalf("expected distribution_point=Dummy DP, got %v", got.DistributionPoint)
+	}
+}
+
+func TestBuildPolicyPackageConfiguration_EmptyReturnsNil(t *testing.T) {
+	t.Parallel()
+	m := &PolicyPackageConfigurationModel{}
+	if got := buildPolicyPackageConfiguration(m); got != nil {
+		t.Fatalf("expected nil for empty package_configuration, got %+v", got)
 	}
 }
