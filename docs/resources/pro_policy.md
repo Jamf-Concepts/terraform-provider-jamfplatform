@@ -372,7 +372,7 @@ Optional:
 - `message` (String) Reboot prompt message.
 - `minutes_until_reboot` (Number) Minutes to wait before forcing reboot.
 - `no_user_logged_in` (String) Action when no user is logged in.
-- `specify_startup` (String) Specified startup volume.
+- `specify_startup` (String) Reboot-method discriminator. Empty string is the default (standard reboot, no explicit method). `Standard Restart` matches the Jamf Pro UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The wire round-trips this field unchanged; the Jamf UI surfaces a single "KEXT PATH" text input alongside the radio but the value does not appear in the policy XML response.
 - `start_reboot_timer_immediately` (Boolean) Start the reboot countdown immediately.
 - `startup_disk` (String) Startup disk label.
 - `user_logged_in` (String) Action when a user is logged in.
