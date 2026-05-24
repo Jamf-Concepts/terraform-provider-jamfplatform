@@ -92,7 +92,7 @@ resource "jamfplatform_pro_policy" "universal" {
 - `package_configuration` (Attributes) Packages to install / cache / remove. (see [below for nested schema](#nestedatt--package_configuration))
 - `printers` (Attributes) Printers to install or remove. The classic API returns a `size` field — Computed. (see [below for nested schema](#nestedatt--printers))
 - `reboot` (Attributes) Reboot configuration after the policy completes. (see [below for nested schema](#nestedatt--reboot))
-- `scope` (Attributes) Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. An equivalent `all_jss_users` attribute is intentionally omitted in v1 — the underlying SDK does not expose the field, so a no-op would silently scope to zero users. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `jss_user_ids` and `jss_user_group_ids`. (see [below for nested schema](#nestedatt--scope))
 - `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
 - `self_service` (Attributes) Self Service integration. The classic wire carries the notification bool as `<notification>` and the delivery method as the sibling `<notification_type>` element — the provider models them as `notification_enabled` (bool) and `notification_type` (string). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -381,6 +381,7 @@ Optional:
 Optional:
 
 - `all_computers` (Boolean) Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
+- `all_jss_users` (Boolean) Scope the policy to every JSS user in the tenant. Forbids per-user / per-user-group targets when true.
 - `building_ids` (Set of String) Set of Jamf Pro classic building IDs.
 - `computer_group_ids` (Set of String) Set of Jamf Pro classic computer group IDs.
 - `computer_ids` (Set of String) Set of Jamf Pro classic computer IDs.

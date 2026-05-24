@@ -180,6 +180,7 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 	var diags diag.Diagnostics
 	s := &proclassic.PolicyPostScope{
 		AllComputers: optionalBoolPointer(m.AllComputers),
+		AllJssUsers:  optionalBoolPointer(m.AllJssUsers),
 	}
 
 	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.PolicyScopeComputersComputerItem {
@@ -245,9 +246,10 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 	// Omission semantics (SCOPE_SPIKE §6.5): collapse to nil when every child
 	// pointer is nil so the wire payload omits <scope> entirely rather than
 	// emitting an empty <scope></scope> element.
-	if s.AllComputers == nil && s.Computers == nil && s.ComputerGroups == nil &&
-		s.Buildings == nil && s.Departments == nil && s.JssUsers == nil &&
-		s.JssUserGroups == nil && s.Limitations == nil && s.Exclusions == nil {
+	if s.AllComputers == nil && s.AllJssUsers == nil && s.Computers == nil &&
+		s.ComputerGroups == nil && s.Buildings == nil && s.Departments == nil &&
+		s.JssUsers == nil && s.JssUserGroups == nil && s.Limitations == nil &&
+		s.Exclusions == nil {
 		return nil, diags
 	}
 	return s, diags

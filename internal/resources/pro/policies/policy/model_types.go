@@ -102,6 +102,7 @@ type PolicyGeneralOverrideDefaultsModel struct {
 // internal/common/scope helper. See SCOPE_SPIKE.md §5 for the canonical rules.
 type PolicyScopeModel struct {
 	AllComputers     types.Bool                   `tfsdk:"all_computers"`
+	AllJssUsers      types.Bool                   `tfsdk:"all_jss_users"`
 	ComputerIDs      types.Set                    `tfsdk:"computer_ids"`
 	ComputerGroupIDs types.Set                    `tfsdk:"computer_group_ids"`
 	BuildingIDs      types.Set                    `tfsdk:"building_ids"`
