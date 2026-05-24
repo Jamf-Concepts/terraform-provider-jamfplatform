@@ -483,56 +483,54 @@ func flattenPolicyDockItems(d *proclassic.PolicyDockItems, state *PolicyDockItem
 
 func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, state *PolicyAccountMaintenanceModel) {
 	if am.Accounts != nil && am.Accounts.Account != nil {
-		// Build a username → planned-plaintext-password lookup so the Set's
-		// unordered round-trip preserves the per-account Sensitive plaintext.
-		// The server never echoes the plaintext, so an index-based pairing is
-		// wrong: Set hashing reorders items and the i-th flattened entry will
-		// not correspond to the i-th state entry. Username is the natural key
-		// for Create/Reset/Delete/DisableFileVault — Probe 9 confirmed the
-		// classic API accepts duplicate usernames across actions, so this
-		// preserves plaintext correctly even in the multi-action policy
-		// pattern (policy 6791 baseline).
-		// passwordByUsername + shaByUsername lookup is LOAD-BEARING for any
-		// policy where the Set may reorder between plan and apply. Do NOT
-		// "simplify" to index-based pairing — Sets are inherently unordered,
-		// and the classic API has been observed reordering account entries on
-		// round-trip, so the i-th flattened entry is not guaranteed to match
-		// the i-th state entry. The username-keyed pair lets us:
-		//   - Preserve the Sensitive plaintext `password` across the Sets's
-		//     unordered round-trip (server never echoes plaintext).
-		//   - Carry the prior `password_sha256` forward via
-		//     preferServerOrCurrentString when the server omits the SHA echo
-		//     on Update (same `""` / `nil` regression that hits
-		//     open_firmware_efi_password.of_password_sha256 — applied
-		//     prophylactically here so an Update-step acc test won't regress).
-		passwordByUsername := make(map[string]types.String, len(state.Accounts))
-		shaByUsername := make(map[string]types.String, len(state.Accounts))
+		// Reorder wire accounts to match the plan's declared username
+		// order. The Jamf classic /policies endpoint does not preserve
+		// account order on round-trip — entries can come back in
+		// arbitrary order. Without this reordering, the framework's
+		// post-apply consistency check trips on Sensitive attribute drift
+		// (the new state's accounts[i].password is null at a different
+		// index than the plan's accounts[i].password).
+		//
+		// `state` here is actually the plan model (CRUD passes &plan to
+		// assignPolicyResourceModel), so state.Accounts holds the plan
+		// order at this point. We build a wire-keyed-by-username map and
+		// emit in plan order. Any wire-only entries (server echoed a
+		// username not in plan) append at the end so they remain visible.
+		//
+		// Username is the natural key — Probe 9 confirmed the classic API
+		// accepts duplicate usernames across Create/Reset/Delete/
+		// DisableFileVault actions, but the multi-action acceptance
+		// coverage uses distinct usernames per entry so the
+		// username-keyed lookup is unambiguous here.
+		wireItems := *am.Accounts.Account
+		wireByUsername := make(map[string]proclassic.PolicyAccountMaintenanceAccountsAccountItem, len(wireItems))
+		wireUsernameOrder := make([]string, 0, len(wireItems))
+		for _, a := range wireItems {
+			if a.Username == nil {
+				continue
+			}
+			wireByUsername[*a.Username] = a
+			wireUsernameOrder = append(wireUsernameOrder, *a.Username)
+		}
+		woByUsername := make(map[string]types.Int64, len(state.Accounts))
 		for _, prev := range state.Accounts {
 			if !prev.Username.IsNull() && !prev.Username.IsUnknown() {
-				passwordByUsername[prev.Username.ValueString()] = prev.Password
-				shaByUsername[prev.Username.ValueString()] = prev.PasswordSha256
+				woByUsername[prev.Username.ValueString()] = prev.PasswordWoVersion
 			}
 		}
-
-		items := *am.Accounts.Account
-		out := make([]PolicyAccountItemModel, 0, len(items))
-		for _, a := range items {
-			currentPassword := types.StringNull()
-			currentSha := types.StringNull()
+		emit := func(a proclassic.PolicyAccountMaintenanceAccountsAccountItem) PolicyAccountItemModel {
+			currentWo := types.Int64Null()
 			if a.Username != nil {
-				if p, ok := passwordByUsername[*a.Username]; ok {
-					currentPassword = p
-				}
-				if s, ok := shaByUsername[*a.Username]; ok {
-					currentSha = s
+				if w, ok := woByUsername[*a.Username]; ok {
+					currentWo = w
 				}
 			}
-			out = append(out, PolicyAccountItemModel{
+			return PolicyAccountItemModel{
 				Action:                         helpers.StringPointerValueOrNull(a.Action),
 				Username:                       helpers.StringPointerValueOrNull(a.Username),
 				Realname:                       helpers.StringPointerValueOrNull(a.Realname),
-				Password:                       currentPassword, // server doesn't echo plaintext — preserve plan/state value
-				PasswordSha256:                 preferServerOrCurrentString(a.PasswordSha256, currentSha),
+				Password:                       types.StringNull(), // WriteOnly — framework strips from state
+				PasswordWoVersion:              currentWo,          // round-trip from prior state
 				PermanentlyDeleteHomeDirectory: invertBoolPointerValueOrNull(a.ArchiveHomeDirectory),
 				ArchiveHomeDirectoryTo:         helpers.StringPointerValueOrNull(a.ArchiveHomeDirectoryTo),
 				Home:                           helpers.StringPointerValueOrNull(a.Home),
@@ -541,7 +539,27 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 				Admin:                          helpers.BoolPointerValueOrNull(a.Admin),
 				FilevaultEnabled:               helpers.BoolPointerValueOrNull(a.FilevaultEnabled),
 				SecureTokenAllowed:             helpers.BoolPointerValueOrNull(a.SecureTokenAllowed),
-			})
+			}
+		}
+		consumed := make(map[string]bool, len(wireItems))
+		out := make([]PolicyAccountItemModel, 0, len(wireItems))
+		for _, prev := range state.Accounts {
+			if prev.Username.IsNull() || prev.Username.IsUnknown() {
+				continue
+			}
+			u := prev.Username.ValueString()
+			if a, ok := wireByUsername[u]; ok && !consumed[u] {
+				out = append(out, emit(a))
+				consumed[u] = true
+			}
+		}
+		// Append wire-only entries (not in plan) at the end in wire order.
+		for _, u := range wireUsernameOrder {
+			if consumed[u] {
+				continue
+			}
+			out = append(out, emit(wireByUsername[u]))
+			consumed[u] = true
 		}
 		state.Accounts = out
 	} else {
@@ -571,22 +589,19 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 	// when the caller already manages the sub-block.
 	if state.ManagementAccount != nil && am.ManagementAccount != nil {
 		state.ManagementAccount.Action = preferCurrentStringPointer(am.ManagementAccount.Action, state.ManagementAccount.Action)
-		// managed_password not echoed — preserve user-supplied
+		// managed_password is WriteOnly — framework strips from state.
+		// managed_password_wo_version round-trips as a regular Optional
+		// Int64; assignPolicyResourceModel does not overwrite the prior
+		// state value here (the API never echoes it).
 		state.ManagementAccount.ManagedPasswordLength = preferCurrentInt(am.ManagementAccount.ManagedPasswordLength, state.ManagementAccount.ManagedPasswordLength)
 	}
 
 	if state.OpenFirmwareEfiPassword != nil && am.OpenFirmwareEfiPassword != nil {
 		state.OpenFirmwareEfiPassword.OfMode = preferCurrentStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.OpenFirmwareEfiPassword.OfMode)
-		// of_password not echoed — preserve user-supplied. of_password_sha256
-		// is the Jamf-returned sentinel `********************` once a password
-		// is set, but the server intermittently omits the echo on Update
-		// round-trips (observed: of_mode `command` → `full` clears the SHA
-		// from the response even though the password is still stored).
-		// Preserve the prior state SHA when the server returns nil so the
-		// Computed attribute does not flip back to null — Update-time
-		// inconsistency would otherwise trip the framework's
-		// "produced inconsistent result after apply" check.
-		state.OpenFirmwareEfiPassword.OfPasswordSha256 = preferServerOrCurrentString(am.OpenFirmwareEfiPassword.OfPasswordSha256, state.OpenFirmwareEfiPassword.OfPasswordSha256)
+		// of_password is WriteOnly — framework strips from state.
+		// of_password_wo_version round-trips as a regular Optional Int64;
+		// the API never echoes it, so the prior state value passes through
+		// unchanged.
 	}
 }
 

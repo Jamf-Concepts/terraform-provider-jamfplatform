@@ -44,9 +44,9 @@ var _ resource.ResourceWithIdentity = &PolicyResource{}
 var _ resource.ResourceWithConfigValidators = &PolicyResource{}
 
 const (
-	defaultCreateTimeout = 120 * time.Second
+	defaultCreateTimeout = 60 * time.Second
 	defaultReadTimeout   = 90 * time.Second
-	defaultUpdateTimeout = 120 * time.Second
+	defaultUpdateTimeout = 60 * time.Second
 	defaultDeleteTimeout = 60 * time.Second
 )
 
@@ -370,11 +370,11 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"account_maintenance": schema.SingleNestedAttribute{
-				MarkdownDescription: "Account maintenance actions. Account secrets surface as `Optional+Sensitive` plaintext; the server returns SHA-256 hashes which the provider exposes as separate Computed attributes. WriteOnly adoption is tracked as a follow-up.",
+				MarkdownDescription: "Account maintenance actions. Account secrets (`accounts[].password`, `management_account.managed_password`, `open_firmware_efi_password.of_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro on writes but never persisted in Terraform state. Each carries a `*_wo_version` Int64 companion: bump the integer to force a re-PUT of the current plaintext on the next apply.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"accounts": schema.SetNestedAttribute{
-						MarkdownDescription: "Set of local account operations.",
+					"accounts": schema.ListNestedAttribute{
+						MarkdownDescription: "Ordered list of local account operations. Switched from a Set to a List in the WriteOnly migration: the Plugin Framework forbids WriteOnly child attributes inside a SetNestedAttribute, and `password` here is WriteOnly. Order is preserved in state and on the wire; the classic API accepts accounts in any order.",
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
@@ -390,14 +390,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 								"username": optComputedString("Account username."),
 								"realname": optComputedString("Account real (full) name."),
 								"password": schema.StringAttribute{
-									MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. Sensitive — plaintext surfaces in state because the Jamf classic API does not echo it back; the provider preserves the user-supplied value to satisfy the framework's plan/state consistency check. The companion `password_sha256` attribute carries the server's sentinel hash.",
+									MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. Note: `accounts` is a Set so bumping `password_wo_version` on an entry surfaces in `terraform plan` as a Set-element replacement (Jamf matches accounts by `username` server-side, so the wire effect is an in-place update).",
 									Optional:            true,
 									Sensitive:           true,
+									WriteOnly:           true,
 								},
-								"password_sha256": schema.StringAttribute{
-									MarkdownDescription: "SHA-256 hash of the password reported by Jamf Pro.",
-									Computed:            true,
-									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+								"password_wo_version": schema.Int64Attribute{
+									MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the `<password>` element for this account on the next PUT so Jamf retains the existing value.",
+									Optional:            true,
 								},
 								"permanently_delete_home_directory": optComputedBool("Permanently delete the home directory when `action = \"Delete\"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. The classic wire field is the inverse boolean `<archive_home_directory>` — the provider translates at the input/output boundary so the Terraform-facing semantic mirrors the Jamf Pro UI checkbox label \"Permanently delete home directory\"."),
 								"archive_home_directory_to":         optComputedString("Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`."),
@@ -426,9 +426,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Attributes: map[string]schema.Attribute{
 							"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`)."),
 							"managed_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext managed password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.",
+								MarkdownDescription: "Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.",
 								Optional:            true,
 								Sensitive:           true,
+								WriteOnly:           true,
+							},
+							"managed_password_wo_version": schema.Int64Attribute{
+								MarkdownDescription: "Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new Update that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the `<managed_password>` element on the next PUT so Jamf retains the existing value.",
+								Optional:            true,
 							},
 							"managed_password_length": optComputedInt("Length used when randomly generating the managed password."),
 						},
@@ -439,14 +444,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Attributes: map[string]schema.Attribute{
 							"of_mode": optComputedString("Open Firmware mode (`command` or `full`)."),
 							"of_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext Open Firmware / EFI password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.",
+								MarkdownDescription: "Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.",
 								Optional:            true,
 								Sensitive:           true,
+								WriteOnly:           true,
 							},
-							"of_password_sha256": schema.StringAttribute{
-								MarkdownDescription: "SHA-256 hash of the OF/EFI password reported by Jamf Pro.",
-								Computed:            true,
-								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+							"of_password_wo_version": schema.Int64Attribute{
+								MarkdownDescription: "Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new Update that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the `<of_password>` element on the next PUT so Jamf retains the existing value.",
+								Optional:            true,
 							},
 						},
 					},

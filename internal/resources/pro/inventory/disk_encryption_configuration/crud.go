@@ -251,7 +251,6 @@ func (r *DiskEncryptionConfigurationResource) Delete(ctx context.Context, req re
 	}
 }
 
-
 // irkPasswordFromConfig returns the user-supplied IRK plaintext password
 // from the resource's WriteOnly config, or nil if the user did not provide
 // one (either the whole IRK block is absent or `password` is null).
@@ -270,12 +269,9 @@ func irkPasswordRotated(plan, state *DiskEncryptionConfigurationResourceModel) b
 		return false
 	}
 	planWo := plan.InstitutionalRecoveryKey.PasswordWoVersion
-	var stateWo = planWo // default to no diff
-	if state != nil && state.InstitutionalRecoveryKey != nil {
-		stateWo = state.InstitutionalRecoveryKey.PasswordWoVersion
-	} else {
+	if state == nil || state.InstitutionalRecoveryKey == nil {
 		// No prior IRK block in state — treat any planned wo_version as rotation.
 		return !planWo.IsNull()
 	}
-	return !planWo.Equal(stateWo)
+	return !planWo.Equal(state.InstitutionalRecoveryKey.PasswordWoVersion)
 }
