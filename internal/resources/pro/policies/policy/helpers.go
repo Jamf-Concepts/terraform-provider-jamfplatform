@@ -29,13 +29,13 @@ func extractPolicyID(p *proclassic.Policy) string {
 	return ""
 }
 
-// buildNotificationEnabled projects the schema's notification_enabled bool
+// buildNotificationEnabled projects the schema's display_notifications bool
 // into proclassic.NotificationValue carrying only the bool leg. The classic
 // wire uses a single <notification>true|false</notification> element for the
 // boolean; the method string travels as a sibling <notification_type>
-// element on the same parent (PolicySelfService.NotificationType), not as
-// a second <notification> tag. Returns nil when the attribute is
-// null/unknown.
+// element on the same parent (PolicySelfService.NotificationType), modelled
+// by the provider as notification_location — not as a second <notification>
+// tag. Returns nil when the attribute is null/unknown.
 func buildNotificationEnabled(enabled types.Bool) *proclassic.NotificationValue {
 	if !helpers.IsConfiguredValue(enabled) {
 		return nil
@@ -60,7 +60,7 @@ func flattenNotificationEnabled(n *proclassic.NotificationValue, current types.B
 // are absent). Designed for Optional+Computed scalar attrs nested inside
 // managed sections: protects against Jamf classic API quirks where the
 // server may echo a different value than what the caller wrote (e.g.
-// self_service.notification_enabled), at the cost of not detecting
+// self_service.display_notifications), at the cost of not detecting
 // server-side drift. The canary accepts the tradeoff.
 func preferCurrentStringPointer(api *string, current types.String) types.String {
 	if helpers.IsConfiguredValue(current) {

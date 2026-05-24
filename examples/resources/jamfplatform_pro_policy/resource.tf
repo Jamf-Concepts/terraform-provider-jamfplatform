@@ -41,8 +41,8 @@ resource "jamfplatform_pro_policy" "scoped" {
   self_service = {
     use_for_self_service      = true
     self_service_display_name = "tf-acc Demo"
-    notification_enabled      = true
-    notification_type         = "Self Service"
+    display_notifications     = true
+    notification_location     = "Self Service"
     notification_subject      = "tf-acc"
     notification_message      = "Demo policy now available."
   }

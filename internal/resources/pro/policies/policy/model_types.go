@@ -14,7 +14,7 @@ import (
 //
 //   - Scope target sub-blocks are flattened Set<String> of numeric IDs via the
 //     internal/common/scope helper (see SCOPE_SPIKE.md §5).
-//   - self_service.notification_enabled / notification_type are two TF
+//   - self_service.display_notifications / notification_location are two TF
 //     attributes that round-trip through a single proclassic.NotificationValue
 //     (the wire emits two <notification> elements per policy).
 //   - Plaintext secrets (accounts[].password, management_account.managed_password,
@@ -24,9 +24,14 @@ import (
 //     SHA-256 response twins (password_sha256, of_password_sha256) are no
 //     longer surfaced — the classic API returns a literal 20-asterisk
 //     redaction string that carries no drift-detection signal.
-//   - limit_to_users is intentionally omitted — SDK shape would emit a
-//     repeating <user_groups> wrapper instead of a single wrapper around
-//     repeated <user_group> children. Surfaced to maintainer for SDK fix.
+//   - scope.limit_to_users is intentionally NOT modelled. Probe 2026-05-24
+//     confirmed the Jamf Pro server denormalises
+//     `<limitations><user_groups>` into `<limit_to_users><user_groups>` on
+//     every write (and vice versa on every read), so the two wire paths
+//     carry identical values. deploymenttheory/terraform-provider-jamfpro
+//     omits it for the same reason. SDK commit 748aa25 still fixed the
+//     underlying wrapper-shape defect on the SDK type for any future
+//     non-policy consumer.
 type PolicyResourceModel struct {
 	ID                   types.String                     `tfsdk:"id"`
 	General              *PolicyGeneralModel              `tfsdk:"general"`
@@ -54,7 +59,6 @@ type PolicyGeneralModel struct {
 	TriggerCheckin             types.Bool                             `tfsdk:"trigger_checkin"`
 	TriggerEnrollmentComplete  types.Bool                             `tfsdk:"trigger_enrollment_complete"`
 	TriggerLogin               types.Bool                             `tfsdk:"trigger_login"`
-	TriggerLogout              types.Bool                             `tfsdk:"trigger_logout"`
 	TriggerNetworkStateChanged types.Bool                             `tfsdk:"trigger_network_state_changed"`
 	TriggerStartup             types.Bool                             `tfsdk:"trigger_startup"`
 	TriggerOther               types.String                           `tfsdk:"trigger_other"`
@@ -62,7 +66,7 @@ type PolicyGeneralModel struct {
 	RetryEvent                 types.String                           `tfsdk:"retry_event"`
 	RetryAttempts              types.Int64                            `tfsdk:"retry_attempts"`
 	NotifyOnEachFailedRetry    types.Bool                             `tfsdk:"notify_on_each_failed_retry"`
-	LocationUserOnly           types.Bool                             `tfsdk:"location_user_only"`
+	LimitToJamfProAssignedUser types.Bool                             `tfsdk:"limit_to_jamf_pro_assigned_user"`
 	TargetDrive                types.String                           `tfsdk:"target_drive"`
 	Offline                    types.Bool                             `tfsdk:"offline"`
 	NetworkRequirements        types.String                           `tfsdk:"network_requirements"`
@@ -103,6 +107,8 @@ type PolicyGeneralOverrideDefaultsModel struct {
 // Set<String> of numeric Jamf Pro classic IDs (or names for the
 // directory-service / limit-to flavours), composed via the
 // internal/common/scope helper. See SCOPE_SPIKE.md §5 for the canonical rules.
+// User-side IDs use the UI-canonical names `user_ids` / `user_group_ids`; the
+// wire elements are `<jss_users>` and `<jss_user_groups>`.
 type PolicyScopeModel struct {
 	AllComputers     types.Bool                   `tfsdk:"all_computers"`
 	AllJssUsers      types.Bool                   `tfsdk:"all_jss_users"`
@@ -110,8 +116,8 @@ type PolicyScopeModel struct {
 	ComputerGroupIDs types.Set                    `tfsdk:"computer_group_ids"`
 	BuildingIDs      types.Set                    `tfsdk:"building_ids"`
 	DepartmentIDs    types.Set                    `tfsdk:"department_ids"`
-	JssUserIDs       types.Set                    `tfsdk:"jss_user_ids"`
-	JssUserGroupIDs  types.Set                    `tfsdk:"jss_user_group_ids"`
+	UserIDs          types.Set                    `tfsdk:"user_ids"`
+	UserGroupIDs     types.Set                    `tfsdk:"user_group_ids"`
 	Limitations      *PolicyScopeLimitationsModel `tfsdk:"limitations"`
 	Exclusions       *PolicyScopeExclusionsModel  `tfsdk:"exclusions"`
 }
@@ -130,31 +136,31 @@ type PolicyScopeExclusionsModel struct {
 	ComputerGroupIDs                 types.Set `tfsdk:"computer_group_ids"`
 	BuildingIDs                      types.Set `tfsdk:"building_ids"`
 	DepartmentIDs                    types.Set `tfsdk:"department_ids"`
-	JssUserIDs                       types.Set `tfsdk:"jss_user_ids"`
-	JssUserGroupIDs                  types.Set `tfsdk:"jss_user_group_ids"`
+	UserIDs                          types.Set `tfsdk:"user_ids"`
+	UserGroupIDs                     types.Set `tfsdk:"user_group_ids"`
 	NetworkSegmentIDs                types.Set `tfsdk:"network_segment_ids"`
 	IbeaconIDs                       types.Set `tfsdk:"ibeacon_ids"`
 	DirectoryServiceOrLocalUserNames types.Set `tfsdk:"directory_service_or_local_user_names"`
 	DirectoryServiceUserGroupNames   types.Set `tfsdk:"directory_service_user_group_names"`
 }
 
-// PolicySelfServiceModel models <policy><self_service>. NotificationEnabled
-// and NotificationType project into a single proclassic.NotificationValue
+// PolicySelfServiceModel models <policy><self_service>. DisplayNotifications
+// and NotificationLocation project into a single proclassic.NotificationValue
 // — see helpers.go for the split/join logic.
 type PolicySelfServiceModel struct {
-	UseForSelfService           types.Bool                      `tfsdk:"use_for_self_service"`
-	SelfServiceDisplayName      types.String                    `tfsdk:"self_service_display_name"`
-	InstallButtonText           types.String                    `tfsdk:"install_button_text"`
-	ReinstallButtonText         types.String                    `tfsdk:"reinstall_button_text"`
-	SelfServiceDescription      types.String                    `tfsdk:"self_service_description"`
-	ForceUsersToViewDescription types.Bool                      `tfsdk:"force_users_to_view_description"`
-	FeatureOnMainPage           types.Bool                      `tfsdk:"feature_on_main_page"`
-	NotificationEnabled         types.Bool                      `tfsdk:"notification_enabled"`
-	NotificationType            types.String                    `tfsdk:"notification_type"`
-	NotificationSubject         types.String                    `tfsdk:"notification_subject"`
-	NotificationMessage         types.String                    `tfsdk:"notification_message"`
-	SelfServiceIcon             *PolicySelfServiceIconModel     `tfsdk:"self_service_icon"`
-	Category                    *PolicySelfServiceCategoryModel `tfsdk:"category"`
+	UseForSelfService          types.Bool                      `tfsdk:"use_for_self_service"`
+	SelfServiceDisplayName     types.String                    `tfsdk:"self_service_display_name"`
+	InstallButtonText          types.String                    `tfsdk:"install_button_text"`
+	ReinstallButtonText        types.String                    `tfsdk:"reinstall_button_text"`
+	SelfServiceDescription     types.String                    `tfsdk:"self_service_description"`
+	EnsureUsersViewDescription types.Bool                      `tfsdk:"ensure_users_view_description"`
+	IncludeInFeaturedCategory  types.Bool                      `tfsdk:"include_in_featured_category"`
+	DisplayNotifications       types.Bool                      `tfsdk:"display_notifications"`
+	NotificationLocation       types.String                    `tfsdk:"notification_location"`
+	NotificationSubject        types.String                    `tfsdk:"notification_subject"`
+	NotificationMessage        types.String                    `tfsdk:"notification_message"`
+	SelfServiceIcon            *PolicySelfServiceIconModel     `tfsdk:"self_service_icon"`
+	Category                   *PolicySelfServiceCategoryModel `tfsdk:"category"`
 }
 
 // PolicySelfServiceIconModel models <self_service><self_service_icon>.
@@ -211,12 +217,13 @@ type PolicyScriptItemModel struct {
 
 // PolicyPrintersModel models <policy><printers>.
 type PolicyPrintersModel struct {
-	Size                 types.Int64              `tfsdk:"size"`
 	LeaveExistingDefault types.Bool               `tfsdk:"leave_existing_default"`
 	Printers             []PolicyPrinterItemModel `tfsdk:"printers"`
 }
 
-// PolicyPrinterItemModel models a single <printer>.
+// PolicyPrinterItemModel models a single <printer>. The Action field carries
+// the UI-canonical value (`Map` / `Unmap`); the input/output builders
+// translate to the wire `install` / `uninstall` form.
 type PolicyPrinterItemModel struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
@@ -293,44 +300,44 @@ type PolicyRebootModel struct {
 	SpecifyStartup              types.String `tfsdk:"specify_startup"`
 	NoUserLoggedIn              types.String `tfsdk:"no_user_logged_in"`
 	UserLoggedIn                types.String `tfsdk:"user_logged_in"`
-	MinutesUntilReboot          types.Int64  `tfsdk:"minutes_until_reboot"`
+	DelayMinutes                types.Int64  `tfsdk:"delay_minutes"`
 	StartRebootTimerImmediately types.Bool   `tfsdk:"start_reboot_timer_immediately"`
 	FileVault2Reboot            types.Bool   `tfsdk:"file_vault_2_reboot"`
 }
 
-// PolicyMaintenanceModel models <policy><maintenance>.
+// PolicyMaintenanceModel models <policy><maintenance>. Attribute names mirror
+// the Jamf Pro admin UI checkbox labels; wire element names are noted below.
 type PolicyMaintenanceModel struct {
-	Recon                    types.Bool `tfsdk:"recon"`
-	ResetName                types.Bool `tfsdk:"reset_name"`
-	InstallAllCachedPackages types.Bool `tfsdk:"install_all_cached_packages"`
-	Heal                     types.Bool `tfsdk:"heal"`
-	Prebindings              types.Bool `tfsdk:"prebindings"`
-	Permissions              types.Bool `tfsdk:"permissions"`
-	Byhost                   types.Bool `tfsdk:"byhost"`
-	SystemCache              types.Bool `tfsdk:"system_cache"`
-	UserCache                types.Bool `tfsdk:"user_cache"`
-	Verify                   types.Bool `tfsdk:"verify"`
+	UpdateInventory       types.Bool `tfsdk:"update_inventory"`        // wire: <recon>
+	ResetComputerNames    types.Bool `tfsdk:"reset_computer_names"`    // wire: <reset_name>
+	InstallCachedPackages types.Bool `tfsdk:"install_cached_packages"` // wire: <install_all_cached_packages>
+	FixDiskPermissions    types.Bool `tfsdk:"fix_disk_permissions"`    // wire: <permissions>
+	FixByhostFiles        types.Bool `tfsdk:"fix_byhost_files"`        // wire: <byhost>
+	FlushSystemCaches     types.Bool `tfsdk:"flush_system_caches"`     // wire: <system_cache>
+	FlushUserCaches       types.Bool `tfsdk:"flush_user_caches"`       // wire: <user_cache>
+	VerifyStartupDisk     types.Bool `tfsdk:"verify_startup_disk"`     // wire: <verify>
 }
 
-// PolicyFilesProcessesModel models <policy><files_processes>.
+// PolicyFilesProcessesModel models <policy><files_processes>. Attribute names
+// mirror the Jamf Pro admin UI labels; wire element names are noted below.
 type PolicyFilesProcessesModel struct {
 	SearchByPath         types.String `tfsdk:"search_by_path"`
-	DeleteFile           types.Bool   `tfsdk:"delete_file"`
-	LocateFile           types.String `tfsdk:"locate_file"`
+	DeleteFileIfFound    types.Bool   `tfsdk:"delete_file_if_found"` // wire: <delete_file>
+	SearchByFilename     types.String `tfsdk:"search_by_filename"`   // wire: <locate_file>
 	UpdateLocateDatabase types.Bool   `tfsdk:"update_locate_database"`
-	SpotlightSearch      types.String `tfsdk:"spotlight_search"`
+	SearchBySpotlight    types.String `tfsdk:"search_by_spotlight"` // wire: <spotlight_search>
 	SearchForProcess     types.String `tfsdk:"search_for_process"`
-	KillProcess          types.Bool   `tfsdk:"kill_process"`
-	RunCommand           types.String `tfsdk:"run_command"`
+	KillProcessIfFound   types.Bool   `tfsdk:"kill_process_if_found"` // wire: <kill_process>
+	ExecuteCommand       types.String `tfsdk:"execute_command"`       // wire: <run_command>
 }
 
 // PolicyUserInteractionModel models <policy><user_interaction>.
 type PolicyUserInteractionModel struct {
-	MessageStart          types.String `tfsdk:"message_start"`
+	StartMessage          types.String `tfsdk:"start_message"` // wire: <message_start>
 	AllowUsersToDefer     types.Bool   `tfsdk:"allow_users_to_defer"`
 	AllowDeferralUntilUtc types.String `tfsdk:"allow_deferral_until_utc"`
 	AllowDeferralMinutes  types.Int64  `tfsdk:"allow_deferral_minutes"`
-	MessageFinish         types.String `tfsdk:"message_finish"`
+	CompleteMessage       types.String `tfsdk:"complete_message"` // wire: <message_finish>
 }
 
 // PolicyDiskEncryptionModel models <policy><disk_encryption>.
