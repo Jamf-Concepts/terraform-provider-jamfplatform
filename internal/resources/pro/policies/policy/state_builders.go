@@ -142,19 +142,7 @@ func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, stat
 
 func flattenPolicyDateTimeLimitations(ctx context.Context, dtl *proclassic.PolicyGeneralDateTimeLimitations, state *PolicyGeneralDateTimeLimitationsModel) {
 	state.ActivationDate = preferCurrentStringPointer(dtl.ActivationDate, state.ActivationDate)
-	if dtl.ActivationDateEpoch != nil {
-		state.ActivationDateEpoch = preferCurrentInt(dtl.ActivationDateEpoch, state.ActivationDateEpoch)
-	} else {
-		state.ActivationDateEpoch = types.Int64Null()
-	}
-	state.ActivationDateUtc = preferCurrentStringPointer(dtl.ActivationDateUtc, state.ActivationDateUtc)
 	state.ExpirationDate = preferCurrentStringPointer(dtl.ExpirationDate, state.ExpirationDate)
-	if dtl.ExpirationDateEpoch != nil {
-		state.ExpirationDateEpoch = preferCurrentStringPointer(new(dtl.ExpirationDateEpoch.String()), state.ExpirationDateEpoch)
-	} else {
-		state.ExpirationDateEpoch = preferCurrentStringPointer(nil, state.ExpirationDateEpoch)
-	}
-	state.ExpirationDateUtc = preferCurrentStringPointer(dtl.ExpirationDateUtc, state.ExpirationDateUtc)
 	state.NoExecuteStart = preferCurrentStringPointer(dtl.NoExecuteStart, state.NoExecuteStart)
 	state.NoExecuteEnd = preferCurrentStringPointer(dtl.NoExecuteEnd, state.NoExecuteEnd)
 

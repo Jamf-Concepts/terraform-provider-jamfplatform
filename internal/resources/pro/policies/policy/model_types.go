@@ -74,15 +74,11 @@ type PolicyGeneralModel struct {
 
 // PolicyGeneralDateTimeLimitationsModel models <general><date_time_limitations>.
 type PolicyGeneralDateTimeLimitationsModel struct {
-	ActivationDate      types.String `tfsdk:"activation_date"`
-	ActivationDateEpoch types.Int64  `tfsdk:"activation_date_epoch"`
-	ActivationDateUtc   types.String `tfsdk:"activation_date_utc"`
-	ExpirationDate      types.String `tfsdk:"expiration_date"`
-	ExpirationDateEpoch types.String `tfsdk:"expiration_date_epoch"`
-	ExpirationDateUtc   types.String `tfsdk:"expiration_date_utc"`
-	NoExecuteOn         types.Set    `tfsdk:"no_execute_on"`
-	NoExecuteStart      types.String `tfsdk:"no_execute_start"`
-	NoExecuteEnd        types.String `tfsdk:"no_execute_end"`
+	ActivationDate types.String `tfsdk:"activation_date"`
+	ExpirationDate types.String `tfsdk:"expiration_date"`
+	NoExecuteOn    types.Set    `tfsdk:"no_execute_on"`
+	NoExecuteStart types.String `tfsdk:"no_execute_start"`
+	NoExecuteEnd   types.String `tfsdk:"no_execute_end"`
 }
 
 // PolicyGeneralNetworkLimitationsModel models <general><network_limitations>.
