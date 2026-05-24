@@ -33,6 +33,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/macos_configuration_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
@@ -224,6 +225,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		dock_item.NewDockItemResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
+		macos_configuration_profile.NewResource,
 		network_segment.NewNetworkSegmentResource,
 		pkg.NewPackageResource,
 		policy.NewPolicyResource,
@@ -259,6 +261,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		disk_encryption_configuration.NewDiskEncryptionConfigurationDataSource,
 		dock_item.NewDockItemDataSource,
 		ibeacon.NewIbeaconDataSource,
+		macos_configuration_profile.NewDataSource,
 		network_segment.NewNetworkSegmentDataSource,
 		network_segments.NewNetworkSegmentsDataSource,
 		pkg.NewPackageDataSource,
@@ -286,6 +289,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		disk_encryption_configuration.NewDiskEncryptionConfigurationListResource,
 		dock_item.NewDockItemListResource,
 		ibeacon.NewIbeaconListResource,
+		macos_configuration_profile.NewListResource,
 		network_segment.NewNetworkSegmentListResource,
 		pkg.NewPackageListResource,
 		policy.NewPolicyListResource,

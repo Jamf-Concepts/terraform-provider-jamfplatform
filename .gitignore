@@ -161,3 +161,11 @@ PHASE_2_5_SPIKE.md
 PACKAGE_SPIKE.md
 PHASE_2_6_SPIKE.md
 spike/
+
+# macOS configuration profile roundtrip working dir (gitignored)
+testing/profile_roundtrip/
+PROFILE_ROUNDTRIP_REPORT.md
+SDK_OSX_PROFILE_SELF_SERVICE_FIX_PROMPT.md
+testing/ssprobes/
+SDK_OSX_PROFILE_SCOPE_FIX_PROMPT.md
+SDK_NOTIFICATIONVALUE_MARSHAL_ORDER_FIX_PROMPT.md

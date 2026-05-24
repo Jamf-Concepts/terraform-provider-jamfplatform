@@ -18,6 +18,7 @@ Allowed:
 - `golang.org/x` packages.
 - HashiCorp Terraform Plugin packages: `terraform-plugin-framework`, `terraform-plugin-framework-timeouts`, `terraform-plugin-framework-validators`, `terraform-plugin-go`, `terraform-plugin-log`, `terraform-plugin-testing`.
 - `github.com/Jamf-Concepts/jamfplatform-go-sdk` — required for all Jamf Platform API access (auth, HTTP transport, request/response types).
+- `howett.net/plist` (BSD-2-Clause) — Apple plist parser/serialiser. Required by `internal/resources/pro/configuration_profiles/macos_configuration_profile/` to compare user-supplied `.mobileconfig` payloads against the server-canonical form for diff suppression. Use is contained to the configuration-profile resource family; no other code path should import it.
 
 Do not introduce other third-party dependencies without prior discussion.
 
