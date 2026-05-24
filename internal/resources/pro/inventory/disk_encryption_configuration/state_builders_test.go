@@ -82,7 +82,7 @@ func TestAssign_Institutional_PopulatedIRKSurfaces(t *testing.T) {
 // TestAssign_PKCS12_PasswordSha256IsMaskedSentinel pins the masked-
 // sentinel quirk (audit §2.9): server returns 20 asterisks when a
 // password is set, not a real hash.
-func TestAssign_PKCS12_PasswordSha256IsMaskedSentinel(t *testing.T) {
+func TestAssign_PKCS12_PopulatesIRKBlock(t *testing.T) {
 	state := DiskEncryptionConfigurationResourceModel{}
 	in := &proclassic.DiskEncryptionConfiguration{
 		ID:                    new(61),
@@ -103,20 +103,23 @@ func TestAssign_PKCS12_PasswordSha256IsMaskedSentinel(t *testing.T) {
 	if state.InstitutionalRecoveryKey == nil {
 		t.Fatalf("populated IRK must surface")
 	}
-	if state.InstitutionalRecoveryKey.PasswordSha256.ValueString() != "********************" {
-		t.Errorf("password_sha256 must surface the masked sentinel verbatim; got %q", state.InstitutionalRecoveryKey.PasswordSha256.ValueString())
+	if state.InstitutionalRecoveryKey.Key.ValueString() != "CN=probe" {
+		t.Errorf("server-derived Key must surface; got %q", state.InstitutionalRecoveryKey.Key.ValueString())
+	}
+	if state.InstitutionalRecoveryKey.CertificateType.ValueString() != "PKCS12" {
+		t.Errorf("CertificateType must surface; got %q", state.InstitutionalRecoveryKey.CertificateType.ValueString())
 	}
 }
 
-// TestAssign_PasswordPreserved verifies that state.IRK.Password is NOT
-// touched by the state builder. The classic GET never echoes the
-// plaintext — only the masked sentinel. If the state builder overwrote
-// state.Password from the response, every refresh would null the user's
-// plaintext and surface as drift.
-func TestAssign_PasswordPreserved(t *testing.T) {
+// TestAssign_WoVersionPreserved verifies that the rotation companion
+// `password_wo_version` round-trips: the prior state value survives the
+// state-builder pass (the framework persists it normally — it is a regular
+// Optional Int64, not WriteOnly). The WriteOnly `Password` itself is
+// stripped by the framework regardless of what the state builder writes.
+func TestAssign_WoVersionPreserved(t *testing.T) {
 	state := DiskEncryptionConfigurationResourceModel{
 		InstitutionalRecoveryKey: &diskEncryptionConfigurationIRKModel{
-			Password: types.StringValue("hunter2"),
+			PasswordWoVersion: types.Int64Value(3),
 		},
 	}
 	in := &proclassic.DiskEncryptionConfiguration{
@@ -127,7 +130,6 @@ func TestAssign_PasswordPreserved(t *testing.T) {
 		InstitutionalRecoveryKey: &proclassic.DiskEncryptionConfigurationInstitutionalRecoveryKey{
 			Key:             new("CN=probe"),
 			CertificateType: new("PKCS12"),
-			PasswordSha256:  new("********************"),
 			Data:            new("base64-p12"),
 		},
 	}
@@ -138,8 +140,8 @@ func TestAssign_PasswordPreserved(t *testing.T) {
 	if state.InstitutionalRecoveryKey == nil {
 		t.Fatalf("populated IRK must surface")
 	}
-	if state.InstitutionalRecoveryKey.Password.ValueString() != "hunter2" {
-		t.Errorf("state.IRK.Password must be preserved across reads; got %q (state builder must never touch it)", state.InstitutionalRecoveryKey.Password.ValueString())
+	if state.InstitutionalRecoveryKey.PasswordWoVersion.ValueInt64() != 3 {
+		t.Errorf("PasswordWoVersion must round-trip from prior state; got %d", state.InstitutionalRecoveryKey.PasswordWoVersion.ValueInt64())
 	}
 }
 

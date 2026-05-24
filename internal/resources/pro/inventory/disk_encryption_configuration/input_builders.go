@@ -33,25 +33,25 @@ func keyTypeToWire(v types.String) *string {
 //
 // Wire-quirk handling (audit reference §2.5–§2.10):
 //
-//   - `PasswordSha256` is never emitted on writes. The server returns a
-//     redaction sentinel (`********************`) when a password is set,
-//     not a real hash — sending it back would only confuse the server.
 //   - `Key` is never emitted on writes. The server derives Subject DN from
 //     the uploaded `Data`; the schema marks `key` Computed-only.
-//   - `Password` is sent only when the user supplied a plaintext. A null
-//     `password` keeps the field nil so the SDK omits it; under Classic's
-//     partial-merge semantics the omitted field preserves the server's
-//     stored value (audit §2.10 confirms password is independently
-//     writable).
+//   - `Password` is `WriteOnly`; the caller (Create/Update handler) passes
+//     in the cfg-sourced plaintext only when the user bumped
+//     `password_wo_version`. Otherwise the caller passes nil so this
+//     builder omits the field; under Classic's partial-merge semantics
+//     the omitted field preserves the server's stored value (audit §2.10
+//     confirms password is independently writable). The server-side
+//     `password_sha256` redaction sentinel is no longer surfaced (it
+//     returns the literal 20-asterisk string, not a real hash).
 //
 // `ID` is omitted on write — Create uses path id="0" and Update derives ID
 // from state.
-func buildDiskEncryptionConfigurationInput(plan DiskEncryptionConfigurationResourceModel) *proclassic.DiskEncryptionConfiguration {
+func buildDiskEncryptionConfigurationInput(plan DiskEncryptionConfigurationResourceModel, password *string) *proclassic.DiskEncryptionConfiguration {
 	return &proclassic.DiskEncryptionConfiguration{
 		Name:                     helpers.OptionalStringPointer(plan.Name),
 		KeyType:                  keyTypeToWire(plan.KeyType),
 		FileVaultEnabledUsers:    helpers.OptionalStringPointer(plan.FileVaultEnabledUsers),
-		InstitutionalRecoveryKey: buildIRKInput(plan.InstitutionalRecoveryKey),
+		InstitutionalRecoveryKey: buildIRKInput(plan.InstitutionalRecoveryKey, password),
 	}
 }
 
@@ -70,13 +70,13 @@ func buildDiskEncryptionConfigurationInput(plan DiskEncryptionConfigurationResou
 // rejects an IRK block without it: `Certificate type is required if a
 // recovery key is specified`. The schema marks it Required so the value
 // is always present when the IRK block is supplied.
-func buildIRKInput(m *diskEncryptionConfigurationIRKModel) *proclassic.DiskEncryptionConfigurationInstitutionalRecoveryKey {
+func buildIRKInput(m *diskEncryptionConfigurationIRKModel, password *string) *proclassic.DiskEncryptionConfigurationInstitutionalRecoveryKey {
 	if m == nil {
 		return nil
 	}
 	return &proclassic.DiskEncryptionConfigurationInstitutionalRecoveryKey{
 		CertificateType: helpers.OptionalStringPointer(m.CertificateType),
-		Password:        helpers.OptionalStringPointer(m.Password),
+		Password:        password,
 		Data:            helpers.OptionalStringPointer(m.Data),
 	}
 }

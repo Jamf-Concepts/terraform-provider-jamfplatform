@@ -13,31 +13,30 @@ import (
 
 // DirectoryBindingResourceModel is the Terraform resource model for a Jamf
 // Pro directory binding. The Classic /directorybindings endpoint returns a
-// flat envelope (id, name, priority, type, domain, username, password_sha256,
+// flat envelope (id, name, priority, type, domain, username, password,
 // computer_ou) plus exactly one of five per-type nested blocks selected by
 // `type`. The wire encoding is described in
 // `local-testing/directorybindings/AUDIT_FINDINGS.md`.
 //
-// `Password` is the user-supplied plaintext. The wire never returns the
-// plaintext on GET — only `password_sha256` — so the state builder never
-// overwrites `Password` from a response (assignDirectoryBindingResourceModel
-// preserves whatever the plan/state already holds). `PasswordSha256` is
-// Computed: it tracks the server's hashed echo and is read-only.
+// `Password` is `WriteOnly`: the user-supplied plaintext is sent on writes
+// but never persisted in Terraform state. `PasswordWoVersion` is the
+// rotation trigger — bumping it forces the next Update to re-send the
+// current `Password` value to Jamf Pro.
 type DirectoryBindingResourceModel struct {
-	ID              types.String                          `tfsdk:"id"`
-	Name            types.String                          `tfsdk:"name"`
-	Priority        types.Int64                           `tfsdk:"priority"`
-	Type            types.String                          `tfsdk:"type"`
-	Domain          types.String                          `tfsdk:"domain"`
-	Username        types.String                          `tfsdk:"username"`
-	Password        types.String                          `tfsdk:"password"`
-	PasswordSha256  types.String                          `tfsdk:"password_sha256"`
-	ComputerOU      types.String                          `tfsdk:"computer_ou"`
-	ActiveDirectory *directoryBindingActiveDirectoryModel `tfsdk:"active_directory"`
-	OpenDirectory   *directoryBindingOpenDirectoryModel   `tfsdk:"open_directory"`
-	Admitmac        *directoryBindingAdmitmacModel        `tfsdk:"admitmac"`
-	Centrify        *directoryBindingCentrifyModel        `tfsdk:"centrify"`
-	Timeouts        resourceTimeouts.Value                `tfsdk:"timeouts"`
+	ID                types.String                          `tfsdk:"id"`
+	Name              types.String                          `tfsdk:"name"`
+	Priority          types.Int64                           `tfsdk:"priority"`
+	Type              types.String                          `tfsdk:"type"`
+	Domain            types.String                          `tfsdk:"domain"`
+	Username          types.String                          `tfsdk:"username"`
+	Password          types.String                          `tfsdk:"password"`
+	PasswordWoVersion types.Int64                           `tfsdk:"password_wo_version"`
+	ComputerOU        types.String                          `tfsdk:"computer_ou"`
+	ActiveDirectory   *directoryBindingActiveDirectoryModel `tfsdk:"active_directory"`
+	OpenDirectory     *directoryBindingOpenDirectoryModel   `tfsdk:"open_directory"`
+	Admitmac          *directoryBindingAdmitmacModel        `tfsdk:"admitmac"`
+	Centrify          *directoryBindingCentrifyModel        `tfsdk:"centrify"`
+	Timeouts          resourceTimeouts.Value                `tfsdk:"timeouts"`
 }
 
 // DirectoryBindingDataSourceModel is the Terraform data source model. Mirrors
@@ -50,7 +49,6 @@ type DirectoryBindingDataSourceModel struct {
 	Type            types.String                          `tfsdk:"type"`
 	Domain          types.String                          `tfsdk:"domain"`
 	Username        types.String                          `tfsdk:"username"`
-	PasswordSha256  types.String                          `tfsdk:"password_sha256"`
 	ComputerOU      types.String                          `tfsdk:"computer_ou"`
 	ActiveDirectory *directoryBindingActiveDirectoryModel `tfsdk:"active_directory"`
 	OpenDirectory   *directoryBindingOpenDirectoryModel   `tfsdk:"open_directory"`

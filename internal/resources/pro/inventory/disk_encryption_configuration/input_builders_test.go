@@ -17,7 +17,7 @@ func TestBuildInput_Individual_NoIRK(t *testing.T) {
 		KeyType:               types.StringValue(keyTypeIndividual),
 		FileVaultEnabledUsers: types.StringValue(fileVaultEnabledUsersCurrentOrNext),
 	}
-	got := buildDiskEncryptionConfigurationInput(plan)
+	got := buildDiskEncryptionConfigurationInput(plan, irkPasswordFromConfig(&plan))
 	if got.Name == nil || *got.Name != "test-individual" {
 		t.Errorf("Name did not round-trip, got %v", got.Name)
 	}
@@ -42,7 +42,7 @@ func TestBuildInput_KeyTypeWriteAlias(t *testing.T) {
 		KeyType:               types.StringValue(keyTypeIndividualInstitutional),
 		FileVaultEnabledUsers: types.StringValue(fileVaultEnabledUsersCurrentOrNext),
 	}
-	got := buildDiskEncryptionConfigurationInput(plan)
+	got := buildDiskEncryptionConfigurationInput(plan, irkPasswordFromConfig(&plan))
 	if got.KeyType == nil || *got.KeyType != keyTypeIndividualInstitutionalWriteAlias {
 		t.Errorf("KeyType must be rewritten to write alias %q, got %v", keyTypeIndividualInstitutionalWriteAlias, got.KeyType)
 	}
@@ -59,7 +59,7 @@ func TestBuildInput_KeyTypePassthrough_OtherValues(t *testing.T) {
 				KeyType:               types.StringValue(in),
 				FileVaultEnabledUsers: types.StringValue(fileVaultEnabledUsersCurrentOrNext),
 			}
-			got := buildDiskEncryptionConfigurationInput(plan)
+			got := buildDiskEncryptionConfigurationInput(plan, irkPasswordFromConfig(&plan))
 			if got.KeyType == nil || *got.KeyType != in {
 				t.Errorf("KeyType %q must pass through unchanged, got %v", in, got.KeyType)
 			}
@@ -79,12 +79,11 @@ func TestBuildInput_IRKBlock_PKCS12(t *testing.T) {
 		InstitutionalRecoveryKey: &diskEncryptionConfigurationIRKModel{
 			Key:             types.StringValue("CN=server-derived"), // should not reach wire
 			CertificateType: types.StringValue("PKCS12"),
-			PasswordSha256:  types.StringValue("********************"), // should not reach wire
 			Password:        types.StringValue("hunter2"),
 			Data:            types.StringValue("base64-cert-bytes"),
 		},
 	}
-	got := buildDiskEncryptionConfigurationInput(plan)
+	got := buildDiskEncryptionConfigurationInput(plan, irkPasswordFromConfig(&plan))
 	if got.InstitutionalRecoveryKey == nil {
 		t.Fatalf("IRK must be non-nil")
 	}
@@ -119,7 +118,7 @@ func TestBuildInput_PasswordOmittedWhenNull(t *testing.T) {
 			Password: types.StringNull(),
 		},
 	}
-	got := buildDiskEncryptionConfigurationInput(plan)
+	got := buildDiskEncryptionConfigurationInput(plan, irkPasswordFromConfig(&plan))
 	if got.InstitutionalRecoveryKey.Password != nil {
 		t.Errorf("null Password must serialise to nil, got %v", *got.InstitutionalRecoveryKey.Password)
 	}

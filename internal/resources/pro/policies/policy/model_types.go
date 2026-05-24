@@ -17,10 +17,13 @@ import (
 //   - self_service.notification_enabled / notification_type are two TF
 //     attributes that round-trip through a single proclassic.NotificationValue
 //     (the wire emits two <notification> elements per policy).
-//   - WriteOnly secrets are exposed as plain Optional+Sensitive attributes for
-//     v1 — the wire still accepts them. The SHA-256 response twins
-//     (password_sha256, managed_password_sha256, of_password_sha256) surface
-//     as Computed-only strings. WriteOnly adoption is tracked as a follow-up.
+//   - Plaintext secrets (accounts[].password, management_account.managed_password,
+//     open_firmware_efi_password.of_password) are `WriteOnly` attributes: sent
+//     on writes from req.Config, never persisted in state. Each carries a
+//     `*_wo_version` Int64 Optional companion as rotation trigger. The
+//     SHA-256 response twins (password_sha256, of_password_sha256) are no
+//     longer surfaced — the classic API returns a literal 20-asterisk
+//     redaction string that carries no drift-detection signal.
 //   - limit_to_users is intentionally omitted — SDK shape would emit a
 //     repeating <user_groups> wrapper instead of a single wrapper around
 //     repeated <user_group> children. Surfaced to maintainer for SDK fix.
@@ -241,15 +244,15 @@ type PolicyAccountMaintenanceModel struct {
 	OpenFirmwareEfiPassword *PolicyOpenFirmwareEfiPasswordModel `tfsdk:"open_firmware_efi_password"`
 }
 
-// PolicyAccountItemModel models a single <account>. password is Optional+
-// Sensitive (no WriteOnly in v1; tracked as follow-up); password_sha256 is
-// Computed-only.
+// PolicyAccountItemModel models a single <account>. `Password` is
+// `WriteOnly` (never persisted in state); `PasswordWoVersion` is the
+// rotation trigger companion.
 type PolicyAccountItemModel struct {
 	Action                         types.String `tfsdk:"action"`
 	Username                       types.String `tfsdk:"username"`
 	Realname                       types.String `tfsdk:"realname"`
 	Password                       types.String `tfsdk:"password"`
-	PasswordSha256                 types.String `tfsdk:"password_sha256"`
+	PasswordWoVersion              types.Int64  `tfsdk:"password_wo_version"`
 	PermanentlyDeleteHomeDirectory types.Bool   `tfsdk:"permanently_delete_home_directory"`
 	ArchiveHomeDirectoryTo         types.String `tfsdk:"archive_home_directory_to"`
 	Home                           types.String `tfsdk:"home"`
@@ -266,18 +269,21 @@ type PolicyDirectoryBindingItemModel struct {
 	Name types.String `tfsdk:"name"`
 }
 
-// PolicyManagementAccountModel models <management_account>.
+// PolicyManagementAccountModel models <management_account>. `ManagedPassword`
+// is `WriteOnly`; `ManagedPasswordWoVersion` is the rotation trigger.
 type PolicyManagementAccountModel struct {
-	Action                types.String `tfsdk:"action"`
-	ManagedPassword       types.String `tfsdk:"managed_password"`
-	ManagedPasswordLength types.Int64  `tfsdk:"managed_password_length"`
+	Action                   types.String `tfsdk:"action"`
+	ManagedPassword          types.String `tfsdk:"managed_password"`
+	ManagedPasswordWoVersion types.Int64  `tfsdk:"managed_password_wo_version"`
+	ManagedPasswordLength    types.Int64  `tfsdk:"managed_password_length"`
 }
 
 // PolicyOpenFirmwareEfiPasswordModel models <open_firmware_efi_password>.
+// `OfPassword` is `WriteOnly`; `OfPasswordWoVersion` is the rotation trigger.
 type PolicyOpenFirmwareEfiPasswordModel struct {
-	OfMode           types.String `tfsdk:"of_mode"`
-	OfPassword       types.String `tfsdk:"of_password"`
-	OfPasswordSha256 types.String `tfsdk:"of_password_sha256"`
+	OfMode              types.String `tfsdk:"of_mode"`
+	OfPassword          types.String `tfsdk:"of_password"`
+	OfPasswordWoVersion types.Int64  `tfsdk:"of_password_wo_version"`
 }
 
 // PolicyRebootModel models <policy><reboot>.

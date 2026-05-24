@@ -67,26 +67,29 @@ func TestDiskEncryptionConfigurationResource_Schema(t *testing.T) {
 	}
 
 	// Inner-field shape.
-	innerNames := []string{"key", "certificate_type", "password", "password_sha256", "data"}
+	innerNames := []string{"key", "certificate_type", "password", "password_wo_version", "data"}
 	for _, name := range innerNames {
 		if _, ok := irk.Attributes[name]; !ok {
 			t.Errorf("institutional_recovery_key missing attribute %q", name)
 		}
 	}
 
-	// `password` must be Optional + Sensitive.
-	pw := irk.Attributes["password"]
+	// `password` must be Optional + Sensitive + WriteOnly.
+	pw := irk.Attributes["password"].(rschema.StringAttribute)
 	if !pw.IsOptional() {
 		t.Errorf("institutional_recovery_key.password must be Optional")
 	}
 	if !pw.IsSensitive() {
 		t.Errorf("institutional_recovery_key.password must be Sensitive — it is a write-only credential")
 	}
+	if !pw.IsWriteOnly() {
+		t.Errorf("institutional_recovery_key.password must be WriteOnly — plaintext must never persist in state")
+	}
 
-	// `password_sha256` is the masked sentinel — Computed-only.
-	ph := irk.Attributes["password_sha256"]
-	if ph.IsRequired() || ph.IsOptional() || !ph.IsComputed() {
-		t.Errorf("password_sha256 must be Computed-only (it is the server's redaction sentinel, not a real hash)")
+	// `password_wo_version` is the rotation trigger companion — Optional Int64.
+	wo := irk.Attributes["password_wo_version"]
+	if wo.IsRequired() || !wo.IsOptional() || wo.IsComputed() {
+		t.Errorf("password_wo_version must be Optional-only, got required=%v optional=%v computed=%v", wo.IsRequired(), wo.IsOptional(), wo.IsComputed())
 	}
 
 	// `key` is server-derived — Computed-only.
@@ -160,10 +163,10 @@ func TestDiskEncryptionConfigurationDataSource_Schema(t *testing.T) {
 	if !irk.IsComputed() {
 		t.Errorf("data source institutional_recovery_key must be Computed-only")
 	}
-	// password_sha256 surfaces on the data source so callers can detect
-	// "is a password set" out of band.
-	if _, ok := irk.Attributes["password_sha256"]; !ok {
-		t.Errorf("data source institutional_recovery_key.password_sha256 must surface")
+	// password_sha256 was dropped — it was a useless server redaction
+	// sentinel (always `********************` regardless of password content).
+	if _, ok := irk.Attributes["password_sha256"]; ok {
+		t.Errorf("data source institutional_recovery_key must not expose `password_sha256` — the sentinel carries no drift signal")
 	}
 }
 

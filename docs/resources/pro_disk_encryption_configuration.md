@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The flat envelope (name, key_type, file_vault_enabled_users) is paired with an optional institutional_recovery_key block carrying the recovery certificate when key_type selects Institutional or Individual and Institutional.
   Wire quirks worth knowing:
-  key_type uses the read-canonical spellings (lowercase and in Individual and Institutional) in Terraform state. The classic write endpoint asymmetrically demands Title-Case Individual And Institutional and rejects the lowercase form with HTTP 409; the provider translates one-way at the input boundary so users only ever see the lowercase wire form.The classic POST/PUT endpoints reject an institutional_recovery_key block without certificate_type (Certificate type is required if a recovery key is specified). The schema marks certificate_type Required inside the IRK block so any plan that supplies the block also supplies the format declarator.institutional_recovery_key.password_sha256 is not a real SHA-256 hash — the server returns the literal ******************** (20 asterisks) whenever a password is set, empty otherwise. Useful only as an "is-set" hint; drift detection against the user-supplied plaintext is impossible.institutional_recovery_key.password is write-only. The Jamf Pro server never echoes the plaintext on reads, so the provider deliberately does not overwrite this attribute from API responses.The Classic /diskencryptionconfigurations PUT endpoint cannot clear the institutional_recovery_key block once set — an empty <institutional_recovery_key/> on PUT is treated as a no-op. Transitioning key_type from Institutional/Individual and Institutional back to Individual does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
+  key_type uses the read-canonical spellings (lowercase and in Individual and Institutional) in Terraform state. The classic write endpoint asymmetrically demands Title-Case Individual And Institutional and rejects the lowercase form with HTTP 409; the provider translates one-way at the input boundary so users only ever see the lowercase wire form.The classic POST/PUT endpoints reject an institutional_recovery_key block without certificate_type (Certificate type is required if a recovery key is specified). The schema marks certificate_type Required inside the IRK block so any plan that supplies the block also supplies the format declarator.institutional_recovery_key.password is a Terraform WriteOnly attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with institutional_recovery_key.password_wo_version to trigger rotation: bump the integer to force a new PUT carrying the current password value. The Jamf Pro server never echoes the plaintext on reads.The Classic /diskencryptionconfigurations PUT endpoint cannot clear the institutional_recovery_key block once set — an empty <institutional_recovery_key/> on PUT is treated as a no-op. Transitioning key_type from Institutional/Individual and Institutional back to Individual does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Resource)
@@ -16,8 +16,7 @@ Manages a Jamf Pro disk encryption configuration. Disk encryption configurations
 
 - `key_type` uses the **read-canonical** spellings (lowercase `and` in `Individual and Institutional`) in Terraform state. The classic write endpoint asymmetrically demands Title-Case `Individual And Institutional` and rejects the lowercase form with HTTP 409; the provider translates one-way at the input boundary so users only ever see the lowercase wire form.
 - The classic POST/PUT endpoints reject an `institutional_recovery_key` block without `certificate_type` (`Certificate type is required if a recovery key is specified`). The schema marks `certificate_type` Required inside the IRK block so any plan that supplies the block also supplies the format declarator.
-- `institutional_recovery_key.password_sha256` is **not** a real SHA-256 hash — the server returns the literal `********************` (20 asterisks) whenever a password is set, empty otherwise. Useful only as an "is-set" hint; drift detection against the user-supplied plaintext is impossible.
-- `institutional_recovery_key.password` is **write-only**. The Jamf Pro server never echoes the plaintext on reads, so the provider deliberately does not overwrite this attribute from API responses.
+- `institutional_recovery_key.password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with `institutional_recovery_key.password_wo_version` to trigger rotation: bump the integer to force a new PUT carrying the current `password` value. The Jamf Pro server never echoes the plaintext on reads.
 - The Classic `/diskencryptionconfigurations` PUT endpoint **cannot clear** the `institutional_recovery_key` block once set — an empty `<institutional_recovery_key/>` on PUT is treated as a no-op. Transitioning `key_type` from `Institutional`/`Individual and Institutional` back to `Individual` does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
 
 ## Example Usage
@@ -34,8 +33,9 @@ resource "jamfplatform_pro_disk_encryption_configuration" "individual" {
 # Institutional key_type: Jamf issues recovery keys derived from the
 # uploaded PKCS12 certificate. The `data` payload is the base64 of the
 # `.p12` file contents; `password` is the import password. The plaintext
-# password is write-only — only the server-side redaction sentinel
-# (literal `********************`) is returned on reads. The
+# `password` is a Terraform `WriteOnly` attribute — sent on writes but
+# never persisted in state. Pair with `password_wo_version` to rotate
+# the stored password (bump the integer to force a re-PUT). The
 # `certificate_type` and `key` (Subject DN) are server-derived.
 resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
   name                     = "Institutional recovery key"
@@ -104,14 +104,12 @@ Required:
 
 Optional:
 
-- `password` (String, Sensitive) PKCS12 import password. **Write-only** — the Jamf Pro server never echoes the plaintext on reads; only the masked `password_sha256` sentinel is returned (see below). The provider deliberately does not overwrite this attribute from API responses, so the user-supplied value remains in state until the user changes it. Wrap in `sensitive(...)` to keep it out of Terraform output.
-
-Required when uploading a `.p12` certificate (the `data` payload contains the private key wrapped by this password). Omit for `.cer` / `.pem` uploads.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PKCS12 import password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. Required when uploading a `.p12` certificate (the `data` payload contains the private key wrapped by this password). Omit for `.cer` / `.pem` uploads. Pair with `password_wo_version` to rotate the stored password.
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro. Initial Create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals "leave the stored password alone" — the provider omits the `<password/>` element on the next PUT so Jamf retains the existing value.
 
 Read-Only:
 
 - `key` (String) Server-derived Subject DN extracted from the uploaded certificate (`data`). Read-only — the user's input is ignored and overwritten by the server on every read. Sample: `C=US, O=jamf-tf-provider, CN=tf-audit-probe`.
-- `password_sha256` (String) Server-side **redaction sentinel** — **NOT a real hash**. The Jamf Pro server returns the literal `********************` (20 asterisks) whenever a password is set on the stored IRK, and an empty string otherwise. This value is useful only as an "is-set" hint; it cannot be compared against any hash of the user-supplied `password`, so drift detection against rotated passwords is impossible. The provider surfaces it verbatim so out-of-band password clearing (sentinel transitions to empty) is observable.
 
 
 <a id="nestedatt--timeouts"></a>

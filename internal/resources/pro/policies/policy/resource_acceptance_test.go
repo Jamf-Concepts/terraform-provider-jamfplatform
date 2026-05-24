@@ -1620,7 +1620,11 @@ func TestAccPolicyResource_ScopeExclusionsFixtureCoverage(t *testing.T) {
 	})
 }
 
-func policyConfigAccountMaintenanceAccounts(name string) string {
+// policyConfigAccountMaintenanceAccounts_initial is the Step 1 fixture
+// for TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage. Three
+// accounts in order Create → Reset → Delete; password_wo_version = 1 on
+// both password-bearing entries.
+func policyConfigAccountMaintenanceAccounts_initial(name string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
@@ -1633,6 +1637,7 @@ resource "jamfplatform_pro_policy" "test" {
         username             = "tf-acc-create"
         realname             = "tf-acc create"
         password             = "Sup3rS3cret!"
+        password_wo_version  = 1
         home                 = "/Users/tf-acc-create"
         hint                 = "tf-acc hint"
         admin                = true
@@ -1640,9 +1645,98 @@ resource "jamfplatform_pro_policy" "test" {
         secure_token_allowed = true
       },
       {
-        action   = "Reset"
-        username = "tf-acc-reset"
-        password = "Resetting123!"
+        action              = "Reset"
+        username            = "tf-acc-reset"
+        password            = "Resetting123!"
+        password_wo_version = 1
+      },
+      {
+        action                            = "Delete"
+        username                          = "tf-acc-delete"
+        permanently_delete_home_directory = true
+      },
+    ]
+  }
+}
+`, name)
+}
+
+// policyConfigAccountMaintenanceAccounts_appendFourth is the Step 3
+// fixture: identical to Step 2 with a fourth Delete account appended
+// at the end of the list. Exercises List growth (List length 3 → 4)
+// and verifies the existing three indices are not perturbed.
+func policyConfigAccountMaintenanceAccounts_appendFourth(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  account_maintenance = {
+    accounts = [
+      {
+        action               = "Create"
+        username             = "tf-acc-create"
+        realname             = "tf-acc create"
+        password             = "Rotated-pw-1!"
+        password_wo_version  = 2
+        home                 = "/Users/tf-acc-create"
+        hint                 = "tf-acc hint"
+        admin                = true
+        filevault_enabled    = false
+        secure_token_allowed = true
+      },
+      {
+        action              = "Reset"
+        username            = "tf-acc-reset"
+        password            = "Resetting123!"
+        password_wo_version = 1
+      },
+      {
+        action                            = "Delete"
+        username                          = "tf-acc-delete"
+        permanently_delete_home_directory = true
+      },
+      {
+        action                            = "Delete"
+        username                          = "tf-acc-fourth-delete"
+        permanently_delete_home_directory = true
+      },
+    ]
+  }
+}
+`, name)
+}
+
+// policyConfigAccountMaintenanceAccounts_rotateFirst is the Step 2
+// fixture: identical to Step 1 except the first account's
+// password_wo_version is bumped 1 → 2 and its password is changed.
+// Exercises the per-element rotation gate. Order is preserved (List
+// positional identity must round-trip).
+func policyConfigAccountMaintenanceAccounts_rotateFirst(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  account_maintenance = {
+    accounts = [
+      {
+        action               = "Create"
+        username             = "tf-acc-create"
+        realname             = "tf-acc create"
+        password             = "Rotated-pw-1!"
+        password_wo_version  = 2
+        home                 = "/Users/tf-acc-create"
+        hint                 = "tf-acc hint"
+        admin                = true
+        filevault_enabled    = false
+        secure_token_allowed = true
+      },
+      {
+        action              = "Reset"
+        username            = "tf-acc-reset"
+        password            = "Resetting123!"
+        password_wo_version = 1
       },
       {
         action                            = "Delete"
@@ -1656,7 +1750,8 @@ resource "jamfplatform_pro_policy" "test" {
 }
 
 // TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage exercises
-// three of the four classic account-maintenance actions in a single policy:
+// three of the four classic account-maintenance actions in a single policy
+// and validates List positional identity across rotation and growth:
 //
 //   - Create: full account-provisioning attribute set (username, realname,
 //     password, home, hint, admin, filevault_enabled, secure_token_allowed).
@@ -1666,6 +1761,11 @@ resource "jamfplatform_pro_policy" "test" {
 //     `<archive_home_directory>` (Probe #8 in PHASE_2_6_SPIKE.md). Server
 //     receives the inverse on the wire; state stores the UI-canonical
 //     semantic.
+//
+// Step layout: Step 1 creates three accounts. Step 2 rotates the first
+// account's `password_wo_version` to prove per-element rotation gating.
+// Step 3 appends a fourth Delete account to prove List growth preserves
+// positional identity for indices 0–2.
 //
 // `DisableFileVault` is wired into the schema validator
 // (`stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault")`)
@@ -1689,12 +1789,104 @@ func TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage(t *testing.T) 
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigAccountMaintenanceAccounts(name),
+				Config: policyConfigAccountMaintenanceAccounts_initial(name),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("account_maintenance").AtMapKey("accounts"),
-						knownvalue.SetSizeExact(3),
+						knownvalue.ListSizeExact(3),
+					),
+					// Positional identity: List indices map to the HCL order.
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-create"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-reset"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(2).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-delete"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
+						knownvalue.Int64Exact(1),
+					),
+				},
+			},
+			{
+				// Step 2: per-element rotation. Bump first account's
+				// password_wo_version 1 → 2 and change its password.
+				// Order must hold; the other two accounts are untouched.
+				Config: policyConfigAccountMaintenanceAccounts_rotateFirst(name),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts"),
+						knownvalue.ListSizeExact(3),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
+						knownvalue.Int64Exact(2),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("password_wo_version"),
+						knownvalue.Int64Exact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-create"),
+					),
+				},
+			},
+			{
+				// Step 3: list growth. Append a fourth Delete account; the
+				// existing three indices must retain their positional
+				// identity and wo_version values.
+				Config: policyConfigAccountMaintenanceAccounts_appendFourth(name),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts"),
+						knownvalue.ListSizeExact(4),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-create"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-reset"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(2).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-delete"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(3).AtMapKey("username"),
+						knownvalue.StringExact("tf-acc-fourth-delete"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
+						knownvalue.Int64Exact(2),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("password_wo_version"),
+						knownvalue.Int64Exact(1),
 					),
 				},
 			},
@@ -1764,7 +1956,7 @@ func TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage(t *te
 	})
 }
 
-func policyConfigAccountMaintenanceManagementAccount(name, action, managedPassword string, length int64) string {
+func policyConfigAccountMaintenanceManagementAccount(name, action, managedPassword string, woVersion, length int64) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
@@ -1772,13 +1964,14 @@ resource "jamfplatform_pro_policy" "test" {
   }
   account_maintenance = {
     management_account = {
-      action                  = %q
-      managed_password        = %q
-      managed_password_length = %d
+      action                      = %q
+      managed_password            = %q
+      managed_password_wo_version = %d
+      managed_password_length     = %d
     }
   }
 }
-`, name, action, managedPassword, length)
+`, name, action, managedPassword, woVersion, length)
 }
 
 // TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage
@@ -1796,7 +1989,7 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "Sup3rS3cret!", 0),
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "Sup3rS3cret!", 1, 0),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1806,7 +1999,7 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 				},
 			},
 			{
-				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "", 16),
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "", 1, 16),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1819,7 +2012,7 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 	})
 }
 
-func policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, ofMode, ofPassword string) string {
+func policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, ofMode, ofPassword string, woVersion int64) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
@@ -1827,20 +2020,21 @@ resource "jamfplatform_pro_policy" "test" {
   }
   account_maintenance = {
     open_firmware_efi_password = {
-      of_mode     = %q
-      of_password = %q
+      of_mode                = %q
+      of_password            = %q
+      of_password_wo_version = %d
     }
   }
 }
-`, name, ofMode, ofPassword)
+`, name, ofMode, ofPassword, woVersion)
 }
 
 // TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 // exercises the open_firmware_efi_password block. The plaintext of_password
-// is Sensitive and never echoed by the server; the SHA-256 sentinel
-// (literal `********************`) lands in `of_password_sha256` once a
-// password is set. Step 2 switches of_mode `command` → `full` to exercise
-// the Update path.
+// is `WriteOnly` (sent on writes, never persisted in state); rotation is
+// triggered via `of_password_wo_version`. Step 2 switches of_mode
+// `command` → `full` AND bumps `of_password_wo_version` 1 → 2 to exercise
+// both the Update path and the WriteOnly rotation gate.
 func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -1851,7 +2045,7 @@ func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "command", "OF-tf-acc-1!"),
+				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "command", "OF-tf-acc-1!", 1),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1861,7 +2055,7 @@ func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 				},
 			},
 			{
-				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "full", "OF-tf-acc-2!"),
+				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "full", "OF-tf-acc-2!", 2),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",

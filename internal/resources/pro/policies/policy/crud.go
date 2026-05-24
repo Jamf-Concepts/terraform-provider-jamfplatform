@@ -32,6 +32,11 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	var cfg PolicyResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	createTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, plan.Timeouts.IsNull(), plan.Timeouts.IsUnknown(), defaultCreateTimeout, plan.Timeouts.Create)
 	resp.Diagnostics.Append(timeoutDiags...)
@@ -41,7 +46,9 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	input, inputDiags := buildPolicyInput(createCtx, plan)
+	// Create has no prior state — every WriteOnly secret in cfg is fresh
+	// and must reach the wire.
+	input, inputDiags := buildPolicyInput(createCtx, plan, accountMaintenanceSecretsForCreate(&cfg))
 	resp.Diagnostics.Append(inputDiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -163,6 +170,16 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	var state PolicyResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var cfg PolicyResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	updateTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, plan.Timeouts.IsNull(), plan.Timeouts.IsUnknown(), defaultUpdateTimeout, plan.Timeouts.Update)
 	resp.Diagnostics.Append(timeoutDiags...)
@@ -172,7 +189,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	input, inputDiags := buildPolicyInput(updateCtx, plan)
+	input, inputDiags := buildPolicyInput(updateCtx, plan, accountMaintenanceSecretsForUpdate(&plan, &state, &cfg))
 	resp.Diagnostics.Append(inputDiags...)
 	if resp.Diagnostics.HasError() {
 		return

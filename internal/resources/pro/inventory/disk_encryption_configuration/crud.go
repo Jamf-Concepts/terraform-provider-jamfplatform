@@ -25,10 +25,15 @@ import (
 // Create creates a new Jamf Pro disk encryption configuration. Classic
 // POSTs to id="0"; the server allocates the real integer ID and returns it
 // in the response body. We then GET to capture server-populated fields
-// (`key`, `certificate_type`, `password_sha256`).
+// (`key`, `certificate_type`).
 func (r *DiskEncryptionConfigurationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan DiskEncryptionConfigurationResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var cfg DiskEncryptionConfigurationResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -41,7 +46,7 @@ func (r *DiskEncryptionConfigurationResource) Create(ctx context.Context, req re
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	created, err := r.client.CreateDiskEncryptionConfigurationByID(createCtx, "0", buildDiskEncryptionConfigurationInput(plan))
+	created, err := r.client.CreateDiskEncryptionConfigurationByID(createCtx, "0", buildDiskEncryptionConfigurationInput(plan, irkPasswordFromConfig(&cfg)))
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro disk encryption configuration", err.Error())
 		return
@@ -159,10 +164,20 @@ func (r *DiskEncryptionConfigurationResource) Read(ctx context.Context, req reso
 // around this; document the limitation in the schema description.
 //
 // After the PUT we GET to refresh server-computed fields such as
-// `key` and `password_sha256`.
+// `key`.
 func (r *DiskEncryptionConfigurationResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan DiskEncryptionConfigurationResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var state DiskEncryptionConfigurationResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var cfg DiskEncryptionConfigurationResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -175,7 +190,16 @@ func (r *DiskEncryptionConfigurationResource) Update(ctx context.Context, req re
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	if err := r.client.UpdateDiskEncryptionConfigurationByID(updateCtx, plan.ID.ValueString(), buildDiskEncryptionConfigurationInput(plan)); err != nil {
+	// Only include the plaintext `<password>` element on the wire when the
+	// user bumped `institutional_recovery_key.password_wo_version`. Otherwise
+	// omit so the server retains the existing stored value under Classic's
+	// partial-merge semantics.
+	var password *string
+	if irkPasswordRotated(&plan, &state) {
+		password = irkPasswordFromConfig(&cfg)
+	}
+
+	if err := r.client.UpdateDiskEncryptionConfigurationByID(updateCtx, plan.ID.ValueString(), buildDiskEncryptionConfigurationInput(plan, password)); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro disk encryption configuration", err.Error())
 		return
 	}
@@ -225,4 +249,29 @@ func (r *DiskEncryptionConfigurationResource) Delete(ctx context.Context, req re
 		}
 		resp.Diagnostics.AddError("Error deleting Jamf Pro disk encryption configuration", fmt.Sprintf("API error: %v", err))
 	}
+}
+
+// irkPasswordFromConfig returns the user-supplied IRK plaintext password
+// from the resource's WriteOnly config, or nil if the user did not provide
+// one (either the whole IRK block is absent or `password` is null).
+func irkPasswordFromConfig(cfg *DiskEncryptionConfigurationResourceModel) *string {
+	if cfg == nil || cfg.InstitutionalRecoveryKey == nil {
+		return nil
+	}
+	return helpers.OptionalStringPointer(cfg.InstitutionalRecoveryKey.Password)
+}
+
+// irkPasswordRotated reports whether the user bumped the IRK
+// `password_wo_version` rotation trigger between state and plan. Treats
+// both nil and unequal values as rotation events.
+func irkPasswordRotated(plan, state *DiskEncryptionConfigurationResourceModel) bool {
+	if plan == nil || plan.InstitutionalRecoveryKey == nil {
+		return false
+	}
+	planWo := plan.InstitutionalRecoveryKey.PasswordWoVersion
+	if state == nil || state.InstitutionalRecoveryKey == nil {
+		// No prior IRK block in state — treat any planned wo_version as rotation.
+		return !planWo.IsNull()
+	}
+	return !planWo.Equal(state.InstitutionalRecoveryKey.PasswordWoVersion)
 }
