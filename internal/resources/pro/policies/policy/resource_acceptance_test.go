@@ -635,3 +635,561 @@ func TestAccPolicyResource_RebootFullCoverage(t *testing.T) {
 		},
 	})
 }
+
+func policyConfigScripts(policyName, scriptName, priority, scriptPolicyPriority, p4 string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_script" "fixture" {
+  name            = %q
+  priority        = %q
+  info            = "tf-acc script fixture for jamfplatform_pro_policy scripts coverage"
+  script_contents = <<-EOT
+    #!/bin/sh
+    echo "tf-acc-script"
+  EOT
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scripts = {
+    scripts = [
+      {
+        id         = jamfplatform_pro_script.fixture.id
+        priority   = %q
+        parameter4 = %q
+      },
+    ]
+  }
+}
+`, scriptName, priority, policyName, scriptPolicyPriority, p4)
+}
+
+// TestAccPolicyResource_ScriptsFullCoverage creates a jamfplatform_pro_script
+// fixture (the standalone script resource uses BEFORE/AFTER/AT_REBOOT) and
+// references its ID from policy.scripts.scripts. The policy's wire form for
+// `priority` is `Before`/`After`/`At Reboot` (per PHASE_2_6_SPIKE.md §5
+// + Appendix), distinct from the fixture's enum. Step 2 swaps priority and
+// parameter4 to exercise the Update path on the scripts set without
+// recreating the fixture.
+func TestAccPolicyResource_ScriptsFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-scripts-" + suffix
+	scriptName := "tf-acc-script-fixture-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigScripts(policyName, scriptName, "AFTER", "Before", "tf-acc-p4-initial"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scripts").AtMapKey("scripts"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("priority"),
+						knownvalue.StringExact("Before"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("parameter4"),
+						knownvalue.StringExact("tf-acc-p4-initial"),
+					),
+				},
+			},
+			{
+				Config: policyConfigScripts(policyName, scriptName, "AFTER", "After", "tf-acc-p4-updated"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("priority"),
+						knownvalue.StringExact("After"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("parameter4"),
+						knownvalue.StringExact("tf-acc-p4-updated"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigPrinters(policyName, printerName, action string, makeDefault, leaveExistingDefault bool) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_printer" "fixture" {
+  name = %q
+  uri  = "ipp://10.1.20.120/"
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  printers = {
+    leave_existing_default = %t
+    printers = [
+      {
+        id           = jamfplatform_pro_printer.fixture.id
+        action       = %q
+        make_default = %t
+      },
+    ]
+  }
+}
+`, printerName, policyName, leaveExistingDefault, action, makeDefault)
+}
+
+// TestAccPolicyResource_PrintersFullCoverage creates a jamfplatform_pro_printer
+// fixture and references it from policy.printers.printers. Step 2 swaps action
+// `install` → `uninstall` and toggles make_default + leave_existing_default to
+// exercise the Update path. The classic API also returns a `size` field which
+// the schema exposes as Computed; not asserted explicitly because the framework
+// validates Computed values are non-Unknown after apply.
+func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-printers-" + suffix
+	printerName := "tf-acc-printer-fixture-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigPrinters(policyName, printerName, "install", true, false),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("printers").AtMapKey("printers"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("action"),
+						knownvalue.StringExact("install"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("make_default"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("printers").AtMapKey("leave_existing_default"),
+						knownvalue.Bool(false),
+					),
+				},
+			},
+			{
+				Config: policyConfigPrinters(policyName, printerName, "uninstall", false, true),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("action"),
+						knownvalue.StringExact("uninstall"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("make_default"),
+						knownvalue.Bool(false),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("printers").AtMapKey("leave_existing_default"),
+						knownvalue.Bool(true),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigDockItems(policyName, dockItemName, action string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_dock_item" "fixture" {
+  name = %q
+  type = "App"
+  path = "/Applications/Calculator.app"
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  dock_items = {
+    dock_items = [
+      {
+        id     = jamfplatform_pro_dock_item.fixture.id
+        action = %q
+      },
+    ]
+  }
+}
+`, dockItemName, policyName, action)
+}
+
+// TestAccPolicyResource_DockItemsFullCoverage creates a jamfplatform_pro_dock_item
+// fixture and references it from policy.dock_items.dock_items. Step 2 swaps action
+// `Add To End` → `Add To Beginning` to exercise the Update path.
+func TestAccPolicyResource_DockItemsFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-dockitems-" + suffix
+	dockItemName := "tf-acc-dock-item-fixture-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigDockItems(policyName, dockItemName, "Add To End"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("dock_items").AtMapKey("dock_items"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("dock_items").AtMapKey("dock_items").AtSliceIndex(0).AtMapKey("action"),
+						knownvalue.StringExact("Add To End"),
+					),
+				},
+			},
+			{
+				Config: policyConfigDockItems(policyName, dockItemName, "Add To Beginning"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("dock_items").AtMapKey("dock_items").AtSliceIndex(0).AtMapKey("action"),
+						knownvalue.StringExact("Add To Beginning"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigMaintenance(name string, recon bool) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  maintenance = {
+    recon                       = %t
+    reset_name                  = true
+    install_all_cached_packages = true
+    heal                        = false
+    prebindings                 = false
+    permissions                 = true
+    byhost                      = true
+    system_cache                = true
+    user_cache                  = true
+    verify                      = true
+  }
+}
+`, name, recon)
+}
+
+// TestAccPolicyResource_MaintenanceFullCoverage exercises every maintenance
+// attribute. Per Probe #10 in PHASE_2_6_SPIKE.md, the wire silently rejects
+// heal=true (echo always returns false) so this test sets heal=false to match
+// what the server will return; the schema still surfaces the attribute for
+// users who want to declare the inert wire field. Step 2 toggles recon to
+// exercise the Update path.
+func TestAccPolicyResource_MaintenanceFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-maint-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigMaintenance(name, true),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("maintenance").AtMapKey("recon"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("maintenance").AtMapKey("heal"),
+						knownvalue.Bool(false),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("maintenance").AtMapKey("verify"),
+						knownvalue.Bool(true),
+					),
+				},
+			},
+			{
+				Config: policyConfigMaintenance(name, false),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("maintenance").AtMapKey("recon"),
+						knownvalue.Bool(false),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigFilesProcesses(name, searchByPath, runCommand string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  files_processes = {
+    search_by_path         = %q
+    delete_file            = true
+    locate_file            = "tf-acc-locate-file"
+    update_locate_database = true
+    spotlight_search       = "tf-acc-spotlight"
+    search_for_process     = "tf-acc-process"
+    kill_process           = true
+    run_command            = %q
+  }
+}
+`, name, searchByPath, runCommand)
+}
+
+// TestAccPolicyResource_FilesProcessesFullCoverage exercises every
+// files_processes attribute. Step 2 perturbs two scalar string fields to
+// exercise the Update path.
+func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-filesproc-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigFilesProcesses(name, "/tmp/tf-acc-search", "echo tf-acc-initial"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("files_processes").AtMapKey("search_by_path"),
+						knownvalue.StringExact("/tmp/tf-acc-search"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("files_processes").AtMapKey("delete_file"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("files_processes").AtMapKey("locate_file"),
+						knownvalue.StringExact("tf-acc-locate-file"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("files_processes").AtMapKey("kill_process"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("files_processes").AtMapKey("run_command"),
+						knownvalue.StringExact("echo tf-acc-initial"),
+					),
+				},
+			},
+			{
+				Config: policyConfigFilesProcesses(name, "/tmp/tf-acc-search-updated", "echo tf-acc-updated"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("files_processes").AtMapKey("search_by_path"),
+						knownvalue.StringExact("/tmp/tf-acc-search-updated"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("files_processes").AtMapKey("run_command"),
+						knownvalue.StringExact("echo tf-acc-updated"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigUserInteractionUntilUTC(name, messageStart, untilUTC string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  user_interaction = {
+    message_start            = %q
+    allow_users_to_defer     = true
+    allow_deferral_until_utc = %q
+    message_finish           = "tf-acc message_finish"
+  }
+}
+`, name, messageStart, untilUTC)
+}
+
+// TestAccPolicyResource_UserInteractionFullCoverage exercises every
+// user_interaction attribute. Both steps use the cut-off form
+// (allow_deferral_until_utc); step 2 perturbs message_start and the cut-off
+// date to exercise the Update path. The duration form
+// (allow_deferral_minutes) is documented but not toggled in the same test
+// because the classic API cannot transition between the two forms without an
+// intermediate clear (see constraint notes below) and step coverage of the
+// minutes form belongs in a separate, dedicated test.
+//
+// Three server-side cross-field constraints surfaced during this test and
+// are noted here for follow-up plan-time validators:
+//   - allow_deferral_minutes must be a multiple of 1440 (one day): the server
+//     returns 409 with `Error: allow_deferral_minutes must be a multiple of
+//     1440 (minutes in day), currently the UI displays only number of days`.
+//   - When allow_users_to_defer=false, allow_deferral_until_utc and
+//     allow_deferral_minutes cannot be configured: the server returns 409
+//     with `Error: When 'allow_users_to_defer' is false,
+//     'allow_deferral_until_utc' and 'allow_deferral_minutes' cannot be
+//     configured`.
+//   - allow_deferral_until_utc and allow_deferral_minutes are mutually
+//     exclusive: the server returns 409 with `Error: You cannot use both
+//     'allow_deferral_until_utc' and 'allow_deferral_minutes'`. Omitting one
+//     field on an Update does not clear it (Optional+Computed semantics keep
+//     prior state); transitioning between forms requires destroy+recreate.
+func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-userint-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc message_start initial", "2030-01-01T01:00:00.000+0000"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("message_start"),
+						knownvalue.StringExact("tf-acc message_start initial"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("allow_users_to_defer"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("allow_deferral_until_utc"),
+						knownvalue.StringExact("2030-01-01T01:00:00.000+0000"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("message_finish"),
+						knownvalue.StringExact("tf-acc message_finish"),
+					),
+				},
+			},
+			{
+				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc message_start updated", "2031-06-15T12:00:00.000+0000"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("message_start"),
+						knownvalue.StringExact("tf-acc message_start updated"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("allow_users_to_defer"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("allow_deferral_until_utc"),
+						knownvalue.StringExact("2031-06-15T12:00:00.000+0000"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigDiskEncryption(policyName, decName, action string, authRestart bool) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_disk_encryption_configuration" "fixture" {
+  name                     = %q
+  key_type                 = "Individual"
+  file_vault_enabled_users = "Current or Next User"
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  disk_encryption = {
+    action                           = %q
+    disk_encryption_configuration_id = tonumber(jamfplatform_pro_disk_encryption_configuration.fixture.id)
+    auth_restart                     = %t
+  }
+}
+`, decName, policyName, action, authRestart)
+}
+
+// TestAccPolicyResource_DiskEncryptionFullCoverage creates a
+// jamfplatform_pro_disk_encryption_configuration fixture (key_type=Individual
+// is the minimal config — no IRK certificate required) and references its ID
+// from policy.disk_encryption. Step 2 toggles auth_restart to exercise the
+// Update path. Probe #12 in PHASE_2_6_SPIKE.md found that action=remediate
+// silently reverts to apply on the server, so this test sticks with
+// action=apply throughout.
+func TestAccPolicyResource_DiskEncryptionFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-de-" + suffix
+	decName := "tf-acc-dec-fixture-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigDiskEncryption(policyName, decName, "apply", false),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("disk_encryption").AtMapKey("action"),
+						knownvalue.StringExact("apply"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("disk_encryption").AtMapKey("auth_restart"),
+						knownvalue.Bool(false),
+					),
+				},
+			},
+			{
+				Config: policyConfigDiskEncryption(policyName, decName, "apply", true),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("disk_encryption").AtMapKey("auth_restart"),
+						knownvalue.Bool(true),
+					),
+				},
+			},
+		},
+	})
+}

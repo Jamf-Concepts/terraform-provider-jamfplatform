@@ -96,7 +96,7 @@ resource "jamfplatform_pro_policy" "universal" {
 - `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
 - `self_service` (Attributes) Self Service integration. The classic wire carries the notification bool as `<notification>` and the delivery method as the sibling `<notification_type>` element — the provider models them as `notification_enabled` (bool) and `notification_type` (string). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `user_interaction` (Attributes) User interaction prompts shown around policy execution. (see [below for nested schema](#nestedatt--user_interaction))
+- `user_interaction` (Attributes) User interaction prompts shown around policy execution. Cross-field rules: `allow_users_to_defer = false` forbids both deferral fields; `allow_deferral_until_utc` and `allow_deferral_minutes` are mutually exclusive (transitioning between forms requires destroy+recreate). (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
@@ -505,8 +505,8 @@ Optional:
 
 Optional:
 
-- `allow_deferral_minutes` (Number) Maximum deferral duration in minutes.
-- `allow_deferral_until_utc` (String) Maximum deferral cut-off in UTC ISO-8601.
+- `allow_deferral_minutes` (Number) Maximum deferral duration in minutes. Must be a positive multiple of 1440 (one day) — the classic API rejects any other value with HTTP 409. Mutually exclusive with `allow_deferral_until_utc`.
+- `allow_deferral_until_utc` (String) Maximum deferral cut-off in UTC ISO-8601. Mutually exclusive with `allow_deferral_minutes`.
 - `allow_users_to_defer` (Boolean) Allow the user to defer the policy.
 - `message_finish` (String) Message displayed after the policy completes.
 - `message_start` (String) Message displayed before the policy runs.
