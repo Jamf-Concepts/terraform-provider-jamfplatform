@@ -1,1 +1,2 @@
 *.pkg binary
+internal/resources/pro/inventory/icon/test_fixtures/* binary
