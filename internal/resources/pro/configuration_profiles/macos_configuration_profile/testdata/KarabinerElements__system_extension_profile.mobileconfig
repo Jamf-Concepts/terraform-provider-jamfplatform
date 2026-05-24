@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>AllowedTeamIdentifiers</key>
+			<array>
+				<string>G43BCU2T37</string>
+			</array>
+			<key>PayloadDisplayName</key>
+			<string>System Extension Policy</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.system-extension-policy.14B4D089-82BB-49B8-87EF-239324B477A6</string>
+			<key>PayloadType</key>
+			<string>com.apple.system-extension-policy</string>
+			<key>PayloadUUID</key>
+			<string>14B4D089-82BB-49B8-87EF-239324B477A6</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>System Extension - Allow Karabiner-Elements</string>
+	<key>PayloadIdentifier</key>
+	<string>com.jamf.EBF28BA5-23A3-43E4-A84E-74B8002ACF07</string>
+	<key>PayloadOrganization</key>
+	<string>Jamf Software, LLC</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>EBF28BA5-23A3-43E4-A84E-74B8002ACF07</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+	<key>TargetDeviceType</key>
+	<integer>5</integer>
+</dict>
+</plist>
