@@ -9,8 +9,9 @@ resource "jamfplatform_pro_disk_encryption_configuration" "individual" {
 # Institutional key_type: Jamf issues recovery keys derived from the
 # uploaded PKCS12 certificate. The `data` payload is the base64 of the
 # `.p12` file contents; `password` is the import password. The plaintext
-# password is write-only — only the server-side redaction sentinel
-# (literal `********************`) is returned on reads. The
+# `password` is a Terraform `WriteOnly` attribute — sent on writes but
+# never persisted in state. Pair with `password_wo_version` to rotate
+# the stored password (bump the integer to force a re-PUT). The
 # `certificate_type` and `key` (Subject DN) are server-derived.
 resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
   name                     = "Institutional recovery key"

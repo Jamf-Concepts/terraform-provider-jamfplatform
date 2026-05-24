@@ -6,6 +6,7 @@ package disk_encryption_configuration
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -15,12 +16,12 @@ import (
 // overwritten when the API ID is non-nil so a transient GET that drops
 // the ID does not clobber the value persisted from Create.
 //
-// `state.InstitutionalRecoveryKey.Password` is deliberately NOT touched.
-// The classic GET response never echoes the plaintext password — only
-// the `password_sha256` redaction sentinel. Overwriting state.Password
-// from the response would null it on every refresh, surfacing as drift
-// on the next plan and asking the user to re-supply the password.
-// Mirror of directory_binding's pattern (see audit §2.10).
+// `state.InstitutionalRecoveryKey.Password` is `WriteOnly` — the framework
+// excludes it from state regardless of what we assign, so we do not need
+// to touch or preserve it. The Jamf Pro classic GET response never
+// echoes the plaintext anyway, only the redacted `password_sha256`
+// sentinel which carries no drift-detection signal and is no longer
+// surfaced.
 func assignDiskEncryptionConfigurationResourceModel(state *DiskEncryptionConfigurationResourceModel, c *proclassic.DiskEncryptionConfiguration) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if c == nil {
@@ -33,19 +34,19 @@ func assignDiskEncryptionConfigurationResourceModel(state *DiskEncryptionConfigu
 	state.KeyType = helpers.StringPointerValueOrNull(c.KeyType)
 	state.FileVaultEnabledUsers = helpers.StringPointerValueOrNull(c.FileVaultEnabledUsers)
 
-	// Preserve any user-supplied plaintext password across reads — the
-	// wire never returns it. Capture before assignIRKResourceModel rebuilds
-	// the block so the value is not lost when assignIRKResourceModel
-	// allocates a fresh nested struct.
-	var preservedPassword *string
-	if state.InstitutionalRecoveryKey != nil && !state.InstitutionalRecoveryKey.Password.IsNull() && !state.InstitutionalRecoveryKey.Password.IsUnknown() {
-		v := state.InstitutionalRecoveryKey.Password.ValueString()
-		preservedPassword = &v
+	// Capture the WriteOnly `password_wo_version` from prior state so the
+	// rebuilt nested model still carries it. (The framework strips
+	// state.InstitutionalRecoveryKey.Password regardless — it's WriteOnly —
+	// but the wo_version companion is a regular Optional Int64 that we
+	// must round-trip.)
+	var preservedWoVersion types.Int64
+	if state.InstitutionalRecoveryKey != nil {
+		preservedWoVersion = state.InstitutionalRecoveryKey.PasswordWoVersion
 	}
 
 	state.InstitutionalRecoveryKey = assignIRKResourceModel(c.InstitutionalRecoveryKey)
-	if state.InstitutionalRecoveryKey != nil && preservedPassword != nil {
-		state.InstitutionalRecoveryKey.Password = helpers.StringPointerValueOrNull(preservedPassword)
+	if state.InstitutionalRecoveryKey != nil {
+		state.InstitutionalRecoveryKey.PasswordWoVersion = preservedWoVersion
 	}
 
 	return diags
@@ -102,11 +103,11 @@ func assignIRKResourceModel(k *proclassic.DiskEncryptionConfigurationInstitution
 	return &diskEncryptionConfigurationIRKModel{
 		Key:             helpers.StringPointerValueOrNull(k.Key),
 		CertificateType: helpers.StringPointerValueOrNull(k.CertificateType),
-		PasswordSha256:  helpers.StringPointerValueOrNull(k.PasswordSha256),
 		Data:            helpers.StringPointerValueOrNull(k.Data),
-		// Password stays whatever the caller set on the state model;
-		// the caller (assignDiskEncryptionConfigurationResourceModel)
-		// preserves it across reads.
+		// Password is WriteOnly — framework strips it from state; the
+		// builder leaves it zero. PasswordWoVersion is restored by the
+		// caller (assignDiskEncryptionConfigurationResourceModel) from
+		// the prior state.
 	}
 }
 
@@ -123,7 +124,6 @@ func assignIRKDataSourceModel(k *proclassic.DiskEncryptionConfigurationInstituti
 	return &diskEncryptionConfigurationIRKDataSourceModel{
 		Key:             helpers.StringPointerValueOrNull(k.Key),
 		CertificateType: helpers.StringPointerValueOrNull(k.CertificateType),
-		PasswordSha256:  helpers.StringPointerValueOrNull(k.PasswordSha256),
 		Data:            helpers.StringPointerValueOrNull(k.Data),
 	}
 }

@@ -52,18 +52,17 @@ type DiskEncryptionConfigurationDataSourceModel struct {
 //
 //   - `Key` is server-derived from the cert Subject DN — Computed.
 //   - `CertificateType` is server-determined (PKCS12 / DER / PEM) — Computed.
-//   - `Password` is write-only plaintext — never echoed on read.
-//   - `PasswordSha256` is the server's redaction sentinel — when a password
-//     is set the server returns the literal `********************` (20
-//     asterisks). NOT a real SHA-256 hash. Surfaced as Computed so users
-//     can see "a password is set" without ever recovering the plaintext.
+//   - `Password` is `WriteOnly` plaintext — sent on writes, never persisted
+//     in state, never echoed on read.
+//   - `PasswordWoVersion` is the rotation trigger companion — bumping the
+//     integer forces the next Update to re-send `Password` to Jamf Pro.
 //   - `Data` is base64 of the recovery cert (PKCS12, DER, or PEM).
 type diskEncryptionConfigurationIRKModel struct {
-	Key             types.String `tfsdk:"key"`
-	CertificateType types.String `tfsdk:"certificate_type"`
-	Password        types.String `tfsdk:"password"`
-	PasswordSha256  types.String `tfsdk:"password_sha256"`
-	Data            types.String `tfsdk:"data"`
+	Key               types.String `tfsdk:"key"`
+	CertificateType   types.String `tfsdk:"certificate_type"`
+	Password          types.String `tfsdk:"password"`
+	PasswordWoVersion types.Int64  `tfsdk:"password_wo_version"`
+	Data              types.String `tfsdk:"data"`
 }
 
 // diskEncryptionConfigurationIRKDataSourceModel is the nested model for the
@@ -72,7 +71,6 @@ type diskEncryptionConfigurationIRKModel struct {
 type diskEncryptionConfigurationIRKDataSourceModel struct {
 	Key             types.String `tfsdk:"key"`
 	CertificateType types.String `tfsdk:"certificate_type"`
-	PasswordSha256  types.String `tfsdk:"password_sha256"`
 	Data            types.String `tfsdk:"data"`
 }
 
