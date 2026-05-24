@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // TestBuildDirectoryBindingInput_ActiveDirectory covers the AD path: the
@@ -39,7 +41,7 @@ func TestBuildDirectoryBindingInput_ActiveDirectory(t *testing.T) {
 		},
 	}
 
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.Name == nil || *got.Name != "ad-prod" {
 		t.Errorf("expected Name=ad-prod, got %v", got.Name)
@@ -78,7 +80,7 @@ func TestBuildDirectoryBindingInput_OpenDirectory(t *testing.T) {
 			UseForContacts:       types.BoolValue(false),
 		},
 	}
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.Type == nil || *got.Type != "Open Directory" {
 		t.Errorf("expected Type wire value 'Open Directory', got %v", got.Type)
@@ -106,7 +108,7 @@ func TestBuildDirectoryBindingInput_PowerBroker(t *testing.T) {
 		Name: types.StringValue("pb"),
 		Type: types.StringValue(typePowerBroker),
 	}
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.PowerbrokerIdentityServices == nil {
 		t.Fatalf("PowerBroker type must synthesise an empty PowerbrokerIdentityServices struct so the empty wire element round-trips")
@@ -143,7 +145,7 @@ func TestBuildDirectoryBindingInput_ADmitMac(t *testing.T) {
 			SharedFoldersOU:         types.StringValue("OU=Shares,DC=corp,DC=example,DC=com"),
 		},
 	}
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.Admitmac == nil {
 		t.Fatalf("expected Admitmac nested struct, got nil")
@@ -173,7 +175,7 @@ func TestBuildDirectoryBindingInput_Centrify(t *testing.T) {
 			PreferredDomainServer: types.StringValue("dc01.corp.example.com"),
 		},
 	}
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.Centrify == nil {
 		t.Fatalf("expected Centrify nested struct, got nil")
@@ -196,7 +198,7 @@ func TestBuildDirectoryBindingInput_PasswordOmittedWhenNull(t *testing.T) {
 		Type:     types.StringValue(typeActiveDirectory),
 		Password: types.StringNull(),
 	}
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.Password != nil {
 		t.Errorf("null Password must serialise to nil, got %v", *got.Password)
@@ -213,7 +215,7 @@ func TestBuildDirectoryBindingInput_IDNotEmittedOnWrite(t *testing.T) {
 		Name: types.StringValue("ad"),
 		Type: types.StringValue(typeActiveDirectory),
 	}
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.ID != nil {
 		t.Errorf("ID must not appear on write payload (Create uses path id=\"0\"; Update derives from state)")
@@ -234,7 +236,7 @@ func TestBuildDirectoryBindingInput_TypeMismatchedBlockOmitsBlock(t *testing.T) 
 			Zone: types.StringValue("macs"),
 		},
 	}
-	got := buildDirectoryBindingInput(plan)
+	got := buildDirectoryBindingInput(plan, helpers.OptionalStringPointer(plan.Password))
 
 	if got.Centrify != nil {
 		t.Errorf("input builder must key off Type, not user-supplied blocks; Centrify block must not reach the wire when Type=Active Directory")

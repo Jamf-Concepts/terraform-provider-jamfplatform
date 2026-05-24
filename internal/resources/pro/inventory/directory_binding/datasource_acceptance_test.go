@@ -46,7 +46,6 @@ func TestAccDataSource_ProDirectoryBinding_ByID(t *testing.T) {
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_directory_binding.lookup", "name", "jamfplatform_pro_directory_binding.src", "name"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_directory_binding.lookup", "type", "Open Directory"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_directory_binding.lookup", "open_directory.encrypt_using_ssl", "true"),
-					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_directory_binding.lookup", "password_sha256"),
 				),
 			},
 		},

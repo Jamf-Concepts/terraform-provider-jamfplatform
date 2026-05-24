@@ -29,7 +29,6 @@ func TestAssignDirectoryBindingResourceModel_ActiveDirectory(t *testing.T) {
 		Priority:       new(1),
 		Domain:         new("test.com"),
 		Username:       new("test"),
-		PasswordSha256: new("********************"),
 		ComputerOu:     new("test"),
 		Type:           new("Active Directory"),
 		ActiveDirectory: &proclassic.DirectoryBindingActiveDirectory{
@@ -58,9 +57,6 @@ func TestAssignDirectoryBindingResourceModel_ActiveDirectory(t *testing.T) {
 	}
 	if state.Type.ValueString() != "Active Directory" {
 		t.Errorf("expected Type=Active Directory, got %s", state.Type.ValueString())
-	}
-	if state.PasswordSha256.IsNull() {
-		t.Errorf("PasswordSha256 must surface in state to enable out-of-band drift detection")
 	}
 	if state.ActiveDirectory == nil {
 		t.Fatalf("expected ActiveDirectory nested model, got nil")
@@ -94,21 +90,20 @@ func TestAssignDirectoryBindingResourceModel_PowerBroker_NoBlockSurfaced(t *test
 	}
 }
 
-// TestAssignDirectoryBindingResourceModel_PasswordPreserved verifies the
-// load-bearing rule that state.Password is NOT touched by the state
-// builder. The classic GET never echoes the plaintext — only
-// `password_sha256` is returned. If the state builder overwrote
-// state.Password from the response, every refresh would null the user's
-// plaintext and surface as drift.
-func TestAssignDirectoryBindingResourceModel_PasswordPreserved(t *testing.T) {
+// TestAssignDirectoryBindingResourceModel_PasswordNotTouched verifies the
+// state builder does not write state.Password. Password is a `WriteOnly`
+// attribute — the framework excludes it from state regardless of what we
+// assign — so this test pins the no-op contract: passing a state with a
+// pre-populated Password (e.g. from an in-memory plan model) survives the
+// builder unchanged.
+func TestAssignDirectoryBindingResourceModel_PasswordNotTouched(t *testing.T) {
 	state := DirectoryBindingResourceModel{
 		Password: types.StringValue("hunter2"),
 	}
 	in := &proclassic.DirectoryBinding{
-		ID:             new(1),
-		Name:           new("ad"),
-		Type:           new("Active Directory"),
-		PasswordSha256: new("abc123"),
+		ID:   new(1),
+		Name: new("ad"),
+		Type: new("Active Directory"),
 	}
 	diags := assignDirectoryBindingResourceModel(&state, in)
 	if diags.HasError() {
@@ -116,9 +111,6 @@ func TestAssignDirectoryBindingResourceModel_PasswordPreserved(t *testing.T) {
 	}
 	if state.Password.ValueString() != "hunter2" {
 		t.Errorf("state.Password must be preserved across reads; got %q (state builder must never touch it)", state.Password.ValueString())
-	}
-	if state.PasswordSha256.ValueString() != "abc123" {
-		t.Errorf("state.PasswordSha256 must update from the API response; got %q", state.PasswordSha256.ValueString())
 	}
 }
 
@@ -185,22 +177,23 @@ func TestAssignDirectoryBindingResourceModel_ADmitMac_LocalHomeString(t *testing
 	}
 }
 
-// TestAssignDirectoryBindingDataSourceModel_NoPasswordField confirms the
-// data source model does not carry the write-only Password attribute (data
-// sources are read-only — there is no user-supplied plaintext to preserve).
-func TestAssignDirectoryBindingDataSourceModel_NoPasswordField(t *testing.T) {
+// TestAssignDirectoryBindingDataSourceModel_BasicRoundTrip confirms the
+// data source model populates from a GET response. The data source omits the
+// WriteOnly `password` attribute (read-only context) and no longer surfaces
+// the `password_sha256` sentinel (the wire value is a literal
+// 20-asterisk redaction string with no drift-detection signal).
+func TestAssignDirectoryBindingDataSourceModel_BasicRoundTrip(t *testing.T) {
 	state := DirectoryBindingDataSourceModel{}
 	in := &proclassic.DirectoryBinding{
-		ID:             new(1),
-		Name:           new("ad"),
-		Type:           new("Active Directory"),
-		PasswordSha256: new("abc"),
+		ID:   new(1),
+		Name: new("ad"),
+		Type: new("Active Directory"),
 	}
 	diags := assignDirectoryBindingDataSourceModel(&state, in)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	if state.PasswordSha256.ValueString() != "abc" {
-		t.Errorf("data source must surface password_sha256")
+	if state.Name.ValueString() != "ad" {
+		t.Errorf("data source Name must round-trip; got %q", state.Name.ValueString())
 	}
 }
