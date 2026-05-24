@@ -394,8 +394,8 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 		state.SelfServiceIcon.Filename = preferCurrentStringPointer(ss.SelfServiceIcon.Filename, state.SelfServiceIcon.Filename)
 	}
 
-	if state.Category != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
-		c := ss.SelfServiceCategories.Category
+	if state.Category != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil && len(*ss.SelfServiceCategories.Category) > 0 {
+		c := (*ss.SelfServiceCategories.Category)[0]
 		state.Category.ID = preferCurrentStringPointer(stringFromIntPtr(c.ID), state.Category.ID)
 		state.Category.Name = preferCurrentStringPointer(c.Name, state.Category.Name)
 		state.Category.DisplayIn = preferCurrentBoolPointer(c.DisplayIn, state.Category.DisplayIn)
