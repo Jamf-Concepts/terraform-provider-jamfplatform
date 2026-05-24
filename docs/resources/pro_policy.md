@@ -84,7 +84,7 @@ resource "jamfplatform_pro_policy" "universal" {
 
 ### Optional
 
-- `account_maintenance` (Attributes) Account maintenance actions. Account secrets surface as `Optional+Sensitive` plaintext; the server returns SHA-256 hashes which the provider exposes as separate Computed attributes. WriteOnly adoption is tracked as a follow-up. (see [below for nested schema](#nestedatt--account_maintenance))
+- `account_maintenance` (Attributes) Account maintenance actions. Account secrets (`accounts[].password`, `management_account.managed_password`, `open_firmware_efi_password.of_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro on writes but never persisted in Terraform state. Each carries a `*_wo_version` Int64 companion: bump the integer to force a re-PUT of the current plaintext on the next apply. (see [below for nested schema](#nestedatt--account_maintenance))
 - `disk_encryption` (Attributes) Disk encryption configuration to apply. (see [below for nested schema](#nestedatt--disk_encryption))
 - `dock_items` (Attributes) Dock items to add or remove. (see [below for nested schema](#nestedatt--dock_items))
 - `files_processes` (Attributes) File and process operations. (see [below for nested schema](#nestedatt--files_processes))
@@ -179,7 +179,7 @@ Optional:
 
 Optional:
 
-- `accounts` (Attributes Set) Set of local account operations. (see [below for nested schema](#nestedatt--account_maintenance--accounts))
+- `accounts` (Attributes List) Ordered list of local account operations. Switched from a Set to a List in the WriteOnly migration: the Plugin Framework forbids WriteOnly child attributes inside a SetNestedAttribute, and `password` here is WriteOnly. Order is preserved in state and on the wire; the classic API accepts accounts in any order. (see [below for nested schema](#nestedatt--account_maintenance--accounts))
 - `directory_bindings` (Attributes Set) Set of directory binding assignments. (see [below for nested schema](#nestedatt--account_maintenance--directory_bindings))
 - `management_account` (Attributes) Management account configuration. (see [below for nested schema](#nestedatt--account_maintenance--management_account))
 - `open_firmware_efi_password` (Attributes) Open Firmware / EFI password configuration. (see [below for nested schema](#nestedatt--account_maintenance--open_firmware_efi_password))
@@ -195,16 +195,13 @@ Optional:
 - `filevault_enabled` (Boolean) Whether FileVault 2 is enabled for the account.
 - `hint` (String) Password hint.
 - `home` (String) Home directory path.
-- `password` (String, Sensitive) Plaintext password used by `Create` and `Reset` actions. Sensitive — plaintext surfaces in state because the Jamf classic API does not echo it back; the provider preserves the user-supplied value to satisfy the framework's plan/state consistency check. The companion `password_sha256` attribute carries the server's sentinel hash.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. Note: `accounts` is a Set so bumping `password_wo_version` on an entry surfaces in `terraform plan` as a Set-element replacement (Jamf matches accounts by `username` server-side, so the wire effect is an in-place update).
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the `<password>` element for this account on the next PUT so Jamf retains the existing value.
 - `permanently_delete_home_directory` (Boolean) Permanently delete the home directory when `action = "Delete"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. The classic wire field is the inverse boolean `<archive_home_directory>` — the provider translates at the input/output boundary so the Terraform-facing semantic mirrors the Jamf Pro UI checkbox label "Permanently delete home directory".
 - `picture` (String) Account picture path.
 - `realname` (String) Account real (full) name.
 - `secure_token_allowed` (Boolean) Whether the account is allowed to hold a Secure Token.
 - `username` (String) Account username.
-
-Read-Only:
-
-- `password_sha256` (String) SHA-256 hash of the password reported by Jamf Pro.
 
 
 <a id="nestedatt--account_maintenance--directory_bindings"></a>
@@ -225,8 +222,9 @@ Optional:
 Optional:
 
 - `action` (String) Management account action (e.g. `doNotChange`, `rotate`).
-- `managed_password` (String, Sensitive) Plaintext managed password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.
+- `managed_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.
 - `managed_password_length` (Number) Length used when randomly generating the managed password.
+- `managed_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new Update that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the `<managed_password>` element on the next PUT so Jamf retains the existing value.
 
 
 <a id="nestedatt--account_maintenance--open_firmware_efi_password"></a>
@@ -235,11 +233,8 @@ Optional:
 Optional:
 
 - `of_mode` (String) Open Firmware mode (`command` or `full`).
-- `of_password` (String, Sensitive) Plaintext Open Firmware / EFI password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.
-
-Read-Only:
-
-- `of_password_sha256` (String) SHA-256 hash of the OF/EFI password reported by Jamf Pro.
+- `of_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.
+- `of_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new Update that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the `<of_password>` element on the next PUT so Jamf retains the existing value.
 
 
 
