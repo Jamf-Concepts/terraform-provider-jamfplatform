@@ -41,6 +41,7 @@ type PolicyResource struct {
 var _ resource.Resource = &PolicyResource{}
 var _ resource.ResourceWithImportState = &PolicyResource{}
 var _ resource.ResourceWithIdentity = &PolicyResource{}
+var _ resource.ResourceWithConfigValidators = &PolicyResource{}
 
 const (
 	defaultCreateTimeout = 120 * time.Second
@@ -482,14 +483,22 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"user_interaction": schema.SingleNestedAttribute{
-				MarkdownDescription: "User interaction prompts shown around policy execution.",
+				MarkdownDescription: "User interaction prompts shown around policy execution. Cross-field rules: `allow_users_to_defer = false` forbids both deferral fields; `allow_deferral_until_utc` and `allow_deferral_minutes` are mutually exclusive (transitioning between forms requires destroy+recreate).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"message_start":            optComputedString("Message displayed before the policy runs."),
 					"allow_users_to_defer":     optComputedBool("Allow the user to defer the policy."),
-					"allow_deferral_until_utc": optComputedString("Maximum deferral cut-off in UTC ISO-8601."),
-					"allow_deferral_minutes":   optComputedInt("Maximum deferral duration in minutes."),
-					"message_finish":           optComputedString("Message displayed after the policy completes."),
+					"allow_deferral_until_utc": optComputedString("Maximum deferral cut-off in UTC ISO-8601. Mutually exclusive with `allow_deferral_minutes`."),
+					"allow_deferral_minutes": schema.Int64Attribute{
+						MarkdownDescription: "Maximum deferral duration in minutes. Must be a positive multiple of 1440 (one day) — the classic API rejects any other value with HTTP 409. Mutually exclusive with `allow_deferral_until_utc`.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+						Validators: []validator.Int64{
+							MultipleOfInt64(minutesPerDay),
+						},
+					},
+					"message_finish": optComputedString("Message displayed after the policy completes."),
 				},
 			},
 			"disk_encryption": schema.SingleNestedAttribute{
@@ -510,6 +519,16 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Delete: true,
 			}),
 		},
+	}
+}
+
+// ConfigValidators registers plan-time cross-field validators that mirror the
+// Jamf Pro classic /policies endpoint's server-side checks. Catching the
+// constraints at plan time gives users a clear error before apply rather than
+// the bare HTTP 409 the server surfaces.
+func (r *PolicyResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		UserInteractionConfigValidator(),
 	}
 }
 
