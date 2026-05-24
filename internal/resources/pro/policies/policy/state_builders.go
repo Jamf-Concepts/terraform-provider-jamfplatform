@@ -483,27 +483,64 @@ func flattenPolicyDockItems(d *proclassic.PolicyDockItems, state *PolicyDockItem
 
 func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, state *PolicyAccountMaintenanceModel) {
 	if am.Accounts != nil && am.Accounts.Account != nil {
+		// Build a username → planned-plaintext-password lookup so the Set's
+		// unordered round-trip preserves the per-account Sensitive plaintext.
+		// The server never echoes the plaintext, so an index-based pairing is
+		// wrong: Set hashing reorders items and the i-th flattened entry will
+		// not correspond to the i-th state entry. Username is the natural key
+		// for Create/Reset/Delete/DisableFileVault — Probe 9 confirmed the
+		// classic API accepts duplicate usernames across actions, so this
+		// preserves plaintext correctly even in the multi-action policy
+		// pattern (policy 6791 baseline).
+		// passwordByUsername + shaByUsername lookup is LOAD-BEARING for any
+		// policy where the Set may reorder between plan and apply. Do NOT
+		// "simplify" to index-based pairing — Sets are inherently unordered,
+		// and the classic API has been observed reordering account entries on
+		// round-trip, so the i-th flattened entry is not guaranteed to match
+		// the i-th state entry. The username-keyed pair lets us:
+		//   - Preserve the Sensitive plaintext `password` across the Sets's
+		//     unordered round-trip (server never echoes plaintext).
+		//   - Carry the prior `password_sha256` forward via
+		//     preferServerOrCurrentString when the server omits the SHA echo
+		//     on Update (same `""` / `nil` regression that hits
+		//     open_firmware_efi_password.of_password_sha256 — applied
+		//     prophylactically here so an Update-step acc test won't regress).
+		passwordByUsername := make(map[string]types.String, len(state.Accounts))
+		shaByUsername := make(map[string]types.String, len(state.Accounts))
+		for _, prev := range state.Accounts {
+			if !prev.Username.IsNull() && !prev.Username.IsUnknown() {
+				passwordByUsername[prev.Username.ValueString()] = prev.Password
+				shaByUsername[prev.Username.ValueString()] = prev.PasswordSha256
+			}
+		}
+
 		items := *am.Accounts.Account
 		out := make([]PolicyAccountItemModel, 0, len(items))
-		for i, a := range items {
-			var currentPassword types.String
-			if i < len(state.Accounts) {
-				currentPassword = state.Accounts[i].Password
+		for _, a := range items {
+			currentPassword := types.StringNull()
+			currentSha := types.StringNull()
+			if a.Username != nil {
+				if p, ok := passwordByUsername[*a.Username]; ok {
+					currentPassword = p
+				}
+				if s, ok := shaByUsername[*a.Username]; ok {
+					currentSha = s
+				}
 			}
 			out = append(out, PolicyAccountItemModel{
-				Action:                 helpers.StringPointerValueOrNull(a.Action),
-				Username:               helpers.StringPointerValueOrNull(a.Username),
-				Realname:               helpers.StringPointerValueOrNull(a.Realname),
-				Password:               currentPassword, // server doesn't echo plaintext — preserve plan/state value
-				PasswordSha256:         helpers.StringPointerValueOrNull(a.PasswordSha256),
-				ArchiveHomeDirectory:   helpers.BoolPointerValueOrNull(a.ArchiveHomeDirectory),
-				ArchiveHomeDirectoryTo: helpers.StringPointerValueOrNull(a.ArchiveHomeDirectoryTo),
-				Home:                   helpers.StringPointerValueOrNull(a.Home),
-				Hint:                   helpers.StringPointerValueOrNull(a.Hint),
-				Picture:                helpers.StringPointerValueOrNull(a.Picture),
-				Admin:                  helpers.BoolPointerValueOrNull(a.Admin),
-				FilevaultEnabled:       helpers.BoolPointerValueOrNull(a.FilevaultEnabled),
-				SecureTokenAllowed:     helpers.BoolPointerValueOrNull(a.SecureTokenAllowed),
+				Action:                         helpers.StringPointerValueOrNull(a.Action),
+				Username:                       helpers.StringPointerValueOrNull(a.Username),
+				Realname:                       helpers.StringPointerValueOrNull(a.Realname),
+				Password:                       currentPassword, // server doesn't echo plaintext — preserve plan/state value
+				PasswordSha256:                 preferServerOrCurrentString(a.PasswordSha256, currentSha),
+				PermanentlyDeleteHomeDirectory: invertBoolPointerValueOrNull(a.ArchiveHomeDirectory),
+				ArchiveHomeDirectoryTo:         helpers.StringPointerValueOrNull(a.ArchiveHomeDirectoryTo),
+				Home:                           helpers.StringPointerValueOrNull(a.Home),
+				Hint:                           helpers.StringPointerValueOrNull(a.Hint),
+				Picture:                        helpers.StringPointerValueOrNull(a.Picture),
+				Admin:                          helpers.BoolPointerValueOrNull(a.Admin),
+				FilevaultEnabled:               helpers.BoolPointerValueOrNull(a.FilevaultEnabled),
+				SecureTokenAllowed:             helpers.BoolPointerValueOrNull(a.SecureTokenAllowed),
 			})
 		}
 		state.Accounts = out
@@ -525,22 +562,31 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 		state.DirectoryBindings = nil
 	}
 
-	if am.ManagementAccount != nil {
-		if state.ManagementAccount == nil {
-			state.ManagementAccount = &PolicyManagementAccountModel{}
-		}
+	// management_account + open_firmware_efi_password are Optional sibling
+	// blocks. The classic API returns default-shaped objects for both even
+	// when the caller did not set them, so unconditionally populating state
+	// would violate the framework's "produced inconsistent result after
+	// apply" check: plan said null, we would return a populated object.
+	// Mirror the assignPolicyResourceModel section-level gate — only refresh
+	// when the caller already manages the sub-block.
+	if state.ManagementAccount != nil && am.ManagementAccount != nil {
 		state.ManagementAccount.Action = preferCurrentStringPointer(am.ManagementAccount.Action, state.ManagementAccount.Action)
 		// managed_password not echoed — preserve user-supplied
 		state.ManagementAccount.ManagedPasswordLength = preferCurrentInt(am.ManagementAccount.ManagedPasswordLength, state.ManagementAccount.ManagedPasswordLength)
 	}
 
-	if am.OpenFirmwareEfiPassword != nil {
-		if state.OpenFirmwareEfiPassword == nil {
-			state.OpenFirmwareEfiPassword = &PolicyOpenFirmwareEfiPasswordModel{}
-		}
+	if state.OpenFirmwareEfiPassword != nil && am.OpenFirmwareEfiPassword != nil {
 		state.OpenFirmwareEfiPassword.OfMode = preferCurrentStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.OpenFirmwareEfiPassword.OfMode)
-		// of_password not echoed — preserve user-supplied
-		state.OpenFirmwareEfiPassword.OfPasswordSha256 = helpers.StringPointerValueOrNull(am.OpenFirmwareEfiPassword.OfPasswordSha256)
+		// of_password not echoed — preserve user-supplied. of_password_sha256
+		// is the Jamf-returned sentinel `********************` once a password
+		// is set, but the server intermittently omits the echo on Update
+		// round-trips (observed: of_mode `command` → `full` clears the SHA
+		// from the response even though the password is still stored).
+		// Preserve the prior state SHA when the server returns nil so the
+		// Computed attribute does not flip back to null — Update-time
+		// inconsistency would otherwise trip the framework's
+		// "produced inconsistent result after apply" check.
+		state.OpenFirmwareEfiPassword.OfPasswordSha256 = preferServerOrCurrentString(am.OpenFirmwareEfiPassword.OfPasswordSha256, state.OpenFirmwareEfiPassword.OfPasswordSha256)
 	}
 }
 

@@ -1619,3 +1619,257 @@ func TestAccPolicyResource_ScopeExclusionsFixtureCoverage(t *testing.T) {
 		},
 	})
 }
+
+func policyConfigAccountMaintenanceAccounts(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  account_maintenance = {
+    accounts = [
+      {
+        action               = "Create"
+        username             = "tf-acc-create"
+        realname             = "tf-acc create"
+        password             = "Sup3rS3cret!"
+        home                 = "/Users/tf-acc-create"
+        hint                 = "tf-acc hint"
+        admin                = true
+        filevault_enabled    = false
+        secure_token_allowed = true
+      },
+      {
+        action   = "Reset"
+        username = "tf-acc-reset"
+        password = "Resetting123!"
+      },
+      {
+        action                            = "Delete"
+        username                          = "tf-acc-delete"
+        permanently_delete_home_directory = true
+      },
+    ]
+  }
+}
+`, name)
+}
+
+// TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage exercises
+// three of the four classic account-maintenance actions in a single policy:
+//
+//   - Create: full account-provisioning attribute set (username, realname,
+//     password, home, hint, admin, filevault_enabled, secure_token_allowed).
+//   - Reset:  password reset by username.
+//   - Delete: removal with `permanently_delete_home_directory = true`. This
+//     is the inverted-and-renamed form of the wire field
+//     `<archive_home_directory>` (Probe #8 in PHASE_2_6_SPIKE.md). Server
+//     receives the inverse on the wire; state stores the UI-canonical
+//     semantic.
+//
+// `DisableFileVault` is wired into the schema validator
+// (`stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault")`)
+// per Probe #9 — the wire string is `DisableFileVault` without a trailing
+// `2` despite older documentation. The action is NOT exercised in this
+// acceptance test because the classic /policies endpoint silently strips
+// `<account><action>DisableFileVault</action></account>` entries from new
+// policies (round-trip returns no account, framework then reports
+// "produced inconsistent result after apply"). The wire baseline in
+// PHASE_2_6_SPIKE.md §Appendix shows the action surviving on policy 6791,
+// which was created via the Jamf Pro UI — the rejection appears to be
+// API-only. Manually-probe the precise wire shape needed before adding
+// acceptance coverage.
+func TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-am-accounts-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigAccountMaintenanceAccounts(name),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("accounts"),
+						knownvalue.SetSizeExact(3),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigAccountMaintenanceDirectoryBindings(policyName, dbName, dbUsername, dbPassword string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_directory_binding" "fixture" {
+  name     = %q
+  priority = 1
+  type     = "Open Directory"
+  domain   = "ldap.tf-acc.example.com"
+  username = %q
+  password = %q
+
+  open_directory = {
+    encrypt_using_ssl     = false
+    perform_secure_bind   = false
+    use_for_authentication = true
+    use_for_contacts       = false
+  }
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  account_maintenance = {
+    directory_bindings = [
+      {
+        id = jamfplatform_pro_directory_binding.fixture.id
+      },
+    ]
+  }
+}
+`, dbName, dbUsername, dbPassword, policyName)
+}
+
+// TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage
+// creates a jamfplatform_pro_directory_binding fixture and references it
+// from policy.account_maintenance.directory_bindings, asserting the set
+// round-trips through the policy resource. The fixture uses the Open
+// Directory binding type which has the minimal required-field footprint.
+func TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-am-db-" + suffix
+	dbName := "tf-acc-db-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigAccountMaintenanceDirectoryBindings(policyName, dbName, "cn=joiner,dc=tf-acc,dc=example,dc=com", "Sup3rS3cret!"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("directory_bindings"),
+						knownvalue.SetSizeExact(1),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigAccountMaintenanceManagementAccount(name, action, managedPassword string, length int64) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  account_maintenance = {
+    management_account = {
+      action                  = %q
+      managed_password        = %q
+      managed_password_length = %d
+    }
+  }
+}
+`, name, action, managedPassword, length)
+}
+
+// TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage
+// exercises the management_account block. Step 1 rotates the management
+// account using a literal managed_password; step 2 switches to the
+// rotate-with-length variant (no plaintext) to confirm the
+// managed_password_length attribute round-trips.
+func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-am-ma-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "Sup3rS3cret!", 0),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("management_account").AtMapKey("action"),
+						knownvalue.StringExact("rotate"),
+					),
+				},
+			},
+			{
+				Config: policyConfigAccountMaintenanceManagementAccount(name, "rotate", "", 16),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("management_account").AtMapKey("managed_password_length"),
+						knownvalue.Int64Exact(16),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, ofMode, ofPassword string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  account_maintenance = {
+    open_firmware_efi_password = {
+      of_mode     = %q
+      of_password = %q
+    }
+  }
+}
+`, name, ofMode, ofPassword)
+}
+
+// TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
+// exercises the open_firmware_efi_password block. The plaintext of_password
+// is Sensitive and never echoed by the server; the SHA-256 sentinel
+// (literal `********************`) lands in `of_password_sha256` once a
+// password is set. Step 2 switches of_mode `command` → `full` to exercise
+// the Update path.
+func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-am-efi-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "command", "OF-tf-acc-1!"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("open_firmware_efi_password").AtMapKey("of_mode"),
+						knownvalue.StringExact("command"),
+					),
+				},
+			},
+			{
+				Config: policyConfigAccountMaintenanceOpenFirmwareEfiPassword(name, "full", "OF-tf-acc-2!"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("account_maintenance").AtMapKey("open_firmware_efi_password").AtMapKey("of_mode"),
+						knownvalue.StringExact("full"),
+					),
+				},
+			},
+		},
+	})
+}

@@ -245,19 +245,19 @@ type PolicyAccountMaintenanceModel struct {
 // Sensitive (no WriteOnly in v1; tracked as follow-up); password_sha256 is
 // Computed-only.
 type PolicyAccountItemModel struct {
-	Action                 types.String `tfsdk:"action"`
-	Username               types.String `tfsdk:"username"`
-	Realname               types.String `tfsdk:"realname"`
-	Password               types.String `tfsdk:"password"`
-	PasswordSha256         types.String `tfsdk:"password_sha256"`
-	ArchiveHomeDirectory   types.Bool   `tfsdk:"archive_home_directory"`
-	ArchiveHomeDirectoryTo types.String `tfsdk:"archive_home_directory_to"`
-	Home                   types.String `tfsdk:"home"`
-	Hint                   types.String `tfsdk:"hint"`
-	Picture                types.String `tfsdk:"picture"`
-	Admin                  types.Bool   `tfsdk:"admin"`
-	FilevaultEnabled       types.Bool   `tfsdk:"filevault_enabled"`
-	SecureTokenAllowed     types.Bool   `tfsdk:"secure_token_allowed"`
+	Action                         types.String `tfsdk:"action"`
+	Username                       types.String `tfsdk:"username"`
+	Realname                       types.String `tfsdk:"realname"`
+	Password                       types.String `tfsdk:"password"`
+	PasswordSha256                 types.String `tfsdk:"password_sha256"`
+	PermanentlyDeleteHomeDirectory types.Bool   `tfsdk:"permanently_delete_home_directory"`
+	ArchiveHomeDirectoryTo         types.String `tfsdk:"archive_home_directory_to"`
+	Home                           types.String `tfsdk:"home"`
+	Hint                           types.String `tfsdk:"hint"`
+	Picture                        types.String `tfsdk:"picture"`
+	Admin                          types.Bool   `tfsdk:"admin"`
+	FilevaultEnabled               types.Bool   `tfsdk:"filevault_enabled"`
+	SecureTokenAllowed             types.Bool   `tfsdk:"secure_token_allowed"`
 }
 
 // PolicyDirectoryBindingItemModel models a single <binding>.
