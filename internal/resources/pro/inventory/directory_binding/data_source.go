@@ -93,11 +93,11 @@ func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.
 				Optional:            true,
 				Computed:            true,
 			},
-			"priority":        schema.Int64Attribute{MarkdownDescription: "Binding priority.", Computed: true},
-			"type":            schema.StringAttribute{MarkdownDescription: "Directory service type (`Active Directory`, `Open Directory`, `PowerBroker Identity Services`, `ADmitMac`, `Centrify`).", Computed: true},
-			"domain":          schema.StringAttribute{MarkdownDescription: "Directory domain.", Computed: true},
-			"username":        schema.StringAttribute{MarkdownDescription: "Bind username.", Computed: true},
-			"computer_ou":     schema.StringAttribute{MarkdownDescription: "Computer object's organisational unit.", Computed: true},
+			"priority":    schema.Int64Attribute{MarkdownDescription: "Binding priority.", Computed: true},
+			"type":        schema.StringAttribute{MarkdownDescription: "Directory service type (`Active Directory`, `Open Directory`, `PowerBroker Identity Services`, `ADmitMac`, `Centrify`).", Computed: true},
+			"domain":      schema.StringAttribute{MarkdownDescription: "Directory domain.", Computed: true},
+			"username":    schema.StringAttribute{MarkdownDescription: "Bind username.", Computed: true},
+			"computer_ou": schema.StringAttribute{MarkdownDescription: "Computer object's organisational unit.", Computed: true},
 
 			"active_directory": schema.SingleNestedAttribute{
 				MarkdownDescription: "Active Directory–specific configuration. Populated only when `type = \"Active Directory\"`.",

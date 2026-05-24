@@ -72,25 +72,6 @@ func preferCurrentStringPointer(api *string, current types.String) types.String 
 	return types.StringValue(*api)
 }
 
-// preferServerOrCurrentString returns the server value when present and
-// non-empty, otherwise the prior state value. Used for Computed string
-// attributes the server intermittently fails to echo on Update —
-// substituting the prior known state value avoids a Known → null (or
-// Known → "") transition that would otherwise trip the framework's
-// "produced inconsistent result after apply" check when the Computed
-// attribute is part of plan. The classic /policies endpoint has been
-// observed returning both `nil` and `""` for the same SHA field on
-// successive Update round-trips, so both cases collapse to "use prior".
-func preferServerOrCurrentString(api *string, current types.String) types.String {
-	if api != nil && *api != "" {
-		return types.StringValue(*api)
-	}
-	if !current.IsNull() && !current.IsUnknown() {
-		return current
-	}
-	return types.StringNull()
-}
-
 // preferCurrentBoolPointer is the bool sibling of preferCurrentStringPointer.
 func preferCurrentBoolPointer(api *bool, current types.Bool) types.Bool {
 	if helpers.IsConfiguredValue(current) {
@@ -170,4 +151,55 @@ func stringIDPtr(value types.String) *int {
 		return nil
 	}
 	return &v
+}
+
+// accountMaintenanceSecretsForCreate builds the WriteOnly password carrier
+// for Create. There is no prior state, so every plaintext sourced from cfg
+// is treated as fresh and threaded to the wire. Accounts are keyed by
+// username (the wire identity used by Jamf to match Create/Reset/Delete
+// actions). Null cfg values produce nil emit-pointers so the SDK omits
+// the corresponding XML element.
+func accountMaintenanceSecretsForCreate(cfg *PolicyResourceModel) *policyAccountMaintenanceSecrets {
+	out := &policyAccountMaintenanceSecrets{accountPasswords: map[string]*string{}}
+	if cfg == nil || cfg.AccountMaintenance == nil {
+		return out
+	}
+	for _, a := range cfg.AccountMaintenance.Accounts {
+		if a.Username.IsNull() || a.Username.IsUnknown() {
+			continue
+		}
+		out.accountPasswords[a.Username.ValueString()] = helpers.OptionalStringPointer(a.Password)
+	}
+	if cfg.AccountMaintenance.ManagementAccount != nil {
+		out.managedPassword = helpers.OptionalStringPointer(cfg.AccountMaintenance.ManagementAccount.ManagedPassword)
+	}
+	if cfg.AccountMaintenance.OpenFirmwareEfiPassword != nil {
+		out.ofPassword = helpers.OptionalStringPointer(cfg.AccountMaintenance.OpenFirmwareEfiPassword.OfPassword)
+	}
+	return out
+}
+
+// accountMaintenanceSecretsForUpdate builds the WriteOnly password carrier
+// for Update. Unlike directory_binding / disk_encryption (where the
+// password is a one-shot bind credential and Jamf retains its stored
+// value when the wire field is omitted), Jamf classic policy actions
+// embed the password in the stored policy and clients re-execute the
+// action on every policy run. Omitting `<password>` on Update would
+// erase the stored value and break the next Create/Reset run — the
+// server enforces this and returns HTTP 409 "Problem with reset
+// account fields" when a Reset entry lacks a password.
+//
+// Consequence: Update must always include the cfg-sourced plaintext on
+// the wire (when the user has one in their config). The `*_wo_version`
+// companion still exists as the rotation trigger — WriteOnly attribute
+// changes alone are invisible to Terraform's plan diff, so the user must
+// bump wo_version (or change another non-WriteOnly attribute) to make
+// Update fire at all. But the wire payload itself does not gate on
+// wo_version — that gate would break the policy at the next client run.
+//
+// Accounts are matched by username (the wire identity used by Jamf for
+// Create/Reset/Delete/DisableFileVault).
+func accountMaintenanceSecretsForUpdate(plan, state, cfg *PolicyResourceModel) *policyAccountMaintenanceSecrets {
+	_ = state // intentionally unused; see doc comment for the reasoning.
+	return accountMaintenanceSecretsForCreate(cfg)
 }

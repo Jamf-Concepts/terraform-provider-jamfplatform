@@ -23,20 +23,20 @@ import (
 // rotation trigger — bumping it forces the next Update to re-send the
 // current `Password` value to Jamf Pro.
 type DirectoryBindingResourceModel struct {
-	ID              types.String                          `tfsdk:"id"`
-	Name            types.String                          `tfsdk:"name"`
-	Priority        types.Int64                           `tfsdk:"priority"`
-	Type            types.String                          `tfsdk:"type"`
-	Domain          types.String                          `tfsdk:"domain"`
-	Username        types.String                          `tfsdk:"username"`
+	ID                types.String                          `tfsdk:"id"`
+	Name              types.String                          `tfsdk:"name"`
+	Priority          types.Int64                           `tfsdk:"priority"`
+	Type              types.String                          `tfsdk:"type"`
+	Domain            types.String                          `tfsdk:"domain"`
+	Username          types.String                          `tfsdk:"username"`
 	Password          types.String                          `tfsdk:"password"`
 	PasswordWoVersion types.Int64                           `tfsdk:"password_wo_version"`
-	ComputerOU      types.String                          `tfsdk:"computer_ou"`
-	ActiveDirectory *directoryBindingActiveDirectoryModel `tfsdk:"active_directory"`
-	OpenDirectory   *directoryBindingOpenDirectoryModel   `tfsdk:"open_directory"`
-	Admitmac        *directoryBindingAdmitmacModel        `tfsdk:"admitmac"`
-	Centrify        *directoryBindingCentrifyModel        `tfsdk:"centrify"`
-	Timeouts        resourceTimeouts.Value                `tfsdk:"timeouts"`
+	ComputerOU        types.String                          `tfsdk:"computer_ou"`
+	ActiveDirectory   *directoryBindingActiveDirectoryModel `tfsdk:"active_directory"`
+	OpenDirectory     *directoryBindingOpenDirectoryModel   `tfsdk:"open_directory"`
+	Admitmac          *directoryBindingAdmitmacModel        `tfsdk:"admitmac"`
+	Centrify          *directoryBindingCentrifyModel        `tfsdk:"centrify"`
+	Timeouts          resourceTimeouts.Value                `tfsdk:"timeouts"`
 }
 
 // DirectoryBindingDataSourceModel is the Terraform data source model. Mirrors

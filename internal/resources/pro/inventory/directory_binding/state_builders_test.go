@@ -24,13 +24,13 @@ import (
 func TestAssignDirectoryBindingResourceModel_ActiveDirectory(t *testing.T) {
 	state := DirectoryBindingResourceModel{}
 	in := &proclassic.DirectoryBinding{
-		ID:             new(1),
-		Name:           new("Active Directory"),
-		Priority:       new(1),
-		Domain:         new("test.com"),
-		Username:       new("test"),
-		ComputerOu:     new("test"),
-		Type:           new("Active Directory"),
+		ID:         new(1),
+		Name:       new("Active Directory"),
+		Priority:   new(1),
+		Domain:     new("test.com"),
+		Username:   new("test"),
+		ComputerOu: new("test"),
+		Type:       new("Active Directory"),
 		ActiveDirectory: &proclassic.DirectoryBindingActiveDirectory{
 			Forest:              new(""),
 			CacheLastUser:       new(true),

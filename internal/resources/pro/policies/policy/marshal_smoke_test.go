@@ -37,7 +37,7 @@ func TestMarshal_RepresentativePolicy(t *testing.T) {
 			NotificationType:    types.StringValue("Self Service"),
 		},
 	}
-	post, diags := buildPolicyInput(context.Background(), plan)
+	post, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("buildPolicyInput diagnostics: %v", diags)
 	}
@@ -93,7 +93,7 @@ func TestMarshal_EmptyScopeOmitsElement(t *testing.T) {
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-empty-scope")},
 		Scope:   &PolicyScopeModel{},
 	}
-	post, diags := buildPolicyInput(context.Background(), plan)
+	post, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("buildPolicyInput diagnostics: %v", diags)
 	}
