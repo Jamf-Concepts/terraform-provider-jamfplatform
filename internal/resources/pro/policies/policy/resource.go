@@ -77,7 +77,7 @@ func (r *PolicyResource) IdentitySchema(ctx context.Context, req resource.Identi
 // schema is large by necessity — every section mirrors the SDK Policy type.
 func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix.",
+		MarkdownDescription: "Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix. The classic `<software_update>` policy block is **intentionally not modelled**: software update via classic policy is an obsolete delivery path (superseded by MDM `InstallApplication` / `ScheduleOSUpdate` and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Policy ID assigned by Jamf Pro.",
@@ -378,11 +378,19 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								"action":   optComputedString("Account action (`Create`, `Reset`, `Delete`, `DisableFileVault2`)."),
+								"action": schema.StringAttribute{
+									MarkdownDescription: "Account action. Wire-accepted values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the classic UI labels the last action \"Disable FileVault\"; the wire string is `DisableFileVault` without a trailing `2` despite older documentation suggesting otherwise — confirmed against policy 6791 round-trip).",
+									Optional:            true,
+									Computed:            true,
+									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+									Validators: []validator.String{
+										stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault"),
+									},
+								},
 								"username": optComputedString("Account username."),
 								"realname": optComputedString("Account real (full) name."),
 								"password": schema.StringAttribute{
-									MarkdownDescription: "Plaintext password. Sensitive — surfaces in state until WriteOnly support lands.",
+									MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. Sensitive — plaintext surfaces in state because the Jamf classic API does not echo it back; the provider preserves the user-supplied value to satisfy the framework's plan/state consistency check. The companion `password_sha256` attribute carries the server's sentinel hash.",
 									Optional:            true,
 									Sensitive:           true,
 								},
@@ -391,14 +399,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 									Computed:            true,
 									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 								},
-								"archive_home_directory":    optComputedBool("Archive the home directory on deletion."),
-								"archive_home_directory_to": optComputedString("Destination for the archived home directory."),
-								"home":                      optComputedString("Home directory path."),
-								"hint":                      optComputedString("Password hint."),
-								"picture":                   optComputedString("Account picture path."),
-								"admin":                     optComputedBool("Whether the account is an admin."),
-								"filevault_enabled":         optComputedBool("Whether FileVault 2 is enabled for the account."),
-								"secure_token_allowed":      optComputedBool("Whether the account is allowed to hold a Secure Token."),
+								"permanently_delete_home_directory": optComputedBool("Permanently delete the home directory when `action = \"Delete\"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. The classic wire field is the inverse boolean `<archive_home_directory>` — the provider translates at the input/output boundary so the Terraform-facing semantic mirrors the Jamf Pro UI checkbox label \"Permanently delete home directory\"."),
+								"archive_home_directory_to":         optComputedString("Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`."),
+								"home":                              optComputedString("Home directory path."),
+								"hint":                              optComputedString("Password hint."),
+								"picture":                           optComputedString("Account picture path."),
+								"admin":                             optComputedBool("Whether the account is an admin."),
+								"filevault_enabled":                 optComputedBool("Whether FileVault 2 is enabled for the account."),
+								"secure_token_allowed":              optComputedBool("Whether the account is allowed to hold a Secure Token."),
 							},
 						},
 					},
@@ -418,7 +426,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Attributes: map[string]schema.Attribute{
 							"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`)."),
 							"managed_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext managed password (Sensitive).",
+								MarkdownDescription: "Plaintext managed password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.",
 								Optional:            true,
 								Sensitive:           true,
 							},
@@ -431,7 +439,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Attributes: map[string]schema.Attribute{
 							"of_mode": optComputedString("Open Firmware mode (`command` or `full`)."),
 							"of_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext OF/EFI password (Sensitive).",
+								MarkdownDescription: "Plaintext Open Firmware / EFI password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.",
 								Optional:            true,
 								Sensitive:           true,
 							},

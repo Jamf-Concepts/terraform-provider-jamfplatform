@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The scope.limit_to_users block is intentionally omitted in v1 pending an upstream SDK fix.
+  Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The scope.limit_to_users block is intentionally omitted in v1 pending an upstream SDK fix. The classic <software_update> policy block is intentionally not modelled: software update via classic policy is an obsolete delivery path (superseded by MDM InstallApplication / ScheduleOSUpdate and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 ---
 
 # jamfplatform_pro_policy (Resource)
 
-Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix.
+Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix. The classic `<software_update>` policy block is **intentionally not modelled**: software update via classic policy is an obsolete delivery path (superseded by MDM `InstallApplication` / `ScheduleOSUpdate` and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 
 ## Example Usage
 
@@ -189,14 +189,14 @@ Optional:
 
 Optional:
 
-- `action` (String) Account action (`Create`, `Reset`, `Delete`, `DisableFileVault2`).
+- `action` (String) Account action. Wire-accepted values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the classic UI labels the last action "Disable FileVault"; the wire string is `DisableFileVault` without a trailing `2` despite older documentation suggesting otherwise — confirmed against policy 6791 round-trip).
 - `admin` (Boolean) Whether the account is an admin.
-- `archive_home_directory` (Boolean) Archive the home directory on deletion.
-- `archive_home_directory_to` (String) Destination for the archived home directory.
+- `archive_home_directory_to` (String) Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`.
 - `filevault_enabled` (Boolean) Whether FileVault 2 is enabled for the account.
 - `hint` (String) Password hint.
 - `home` (String) Home directory path.
-- `password` (String, Sensitive) Plaintext password. Sensitive — surfaces in state until WriteOnly support lands.
+- `password` (String, Sensitive) Plaintext password used by `Create` and `Reset` actions. Sensitive — plaintext surfaces in state because the Jamf classic API does not echo it back; the provider preserves the user-supplied value to satisfy the framework's plan/state consistency check. The companion `password_sha256` attribute carries the server's sentinel hash.
+- `permanently_delete_home_directory` (Boolean) Permanently delete the home directory when `action = "Delete"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. The classic wire field is the inverse boolean `<archive_home_directory>` — the provider translates at the input/output boundary so the Terraform-facing semantic mirrors the Jamf Pro UI checkbox label "Permanently delete home directory".
 - `picture` (String) Account picture path.
 - `realname` (String) Account real (full) name.
 - `secure_token_allowed` (Boolean) Whether the account is allowed to hold a Secure Token.
@@ -225,7 +225,7 @@ Optional:
 Optional:
 
 - `action` (String) Management account action (e.g. `doNotChange`, `rotate`).
-- `managed_password` (String, Sensitive) Plaintext managed password (Sensitive).
+- `managed_password` (String, Sensitive) Plaintext managed password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.
 - `managed_password_length` (Number) Length used when randomly generating the managed password.
 
 
@@ -235,7 +235,7 @@ Optional:
 Optional:
 
 - `of_mode` (String) Open Firmware mode (`command` or `full`).
-- `of_password` (String, Sensitive) Plaintext OF/EFI password (Sensitive).
+- `of_password` (String, Sensitive) Plaintext Open Firmware / EFI password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.
 
 Read-Only:
 

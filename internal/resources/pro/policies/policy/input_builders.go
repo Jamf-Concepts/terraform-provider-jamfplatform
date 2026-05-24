@@ -532,7 +532,7 @@ func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel) *proclassic
 				Username:               helpers.OptionalStringPointer(a.Username),
 				Realname:               helpers.OptionalStringPointer(a.Realname),
 				Password:               helpers.OptionalStringPointer(a.Password),
-				ArchiveHomeDirectory:   optionalBoolPointer(a.ArchiveHomeDirectory),
+				ArchiveHomeDirectory:   invertOptionalBoolPointer(a.PermanentlyDeleteHomeDirectory),
 				ArchiveHomeDirectoryTo: helpers.OptionalStringPointer(a.ArchiveHomeDirectoryTo),
 				Home:                   helpers.OptionalStringPointer(a.Home),
 				Hint:                   helpers.OptionalStringPointer(a.Hint),
