@@ -112,7 +112,7 @@ Required:
 Optional:
 
 - `category_id` (String) Jamf Pro category ID. Use `-1` to clear.
-- `date_time_limitations` (Attributes) Optional schedule limitations for when the policy may run. (see [below for nested schema](#nestedatt--general--date_time_limitations))
+- `date_time_limitations` (Attributes) Optional schedule limitations for when the policy may run. Only the user-settable inputs are surfaced — Jamf Pro internally also stores `activation_date_epoch`, `activation_date_utc`, `expiration_date_epoch`, and `expiration_date_utc` as deterministic transforms of `activation_date` / `expiration_date`, but those are derivable client-side via Terraform stdlib (`formatdate`, etc.) and are not modeled here. (see [below for nested schema](#nestedatt--general--date_time_limitations))
 - `enabled` (Boolean) Whether the policy is enabled.
 - `frequency` (String) How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`.
 - `location_user_only` (Boolean) Restrict the policy to location-bound users only.
@@ -146,11 +146,7 @@ Read-Only:
 Optional:
 
 - `activation_date` (String) Activation date (`yyyy-mm-dd hh:mm:ss`).
-- `activation_date_epoch` (Number) Activation date as a Unix epoch in milliseconds.
-- `activation_date_utc` (String) Activation date in UTC ISO-8601.
 - `expiration_date` (String) Expiration date (`yyyy-mm-dd hh:mm:ss`).
-- `expiration_date_epoch` (String) Expiration date as a base-10 integer (string-encoded — values may exceed int64).
-- `expiration_date_utc` (String) Expiration date in UTC ISO-8601.
 - `no_execute_end` (String) Daily end of the no-execute window (e.g. `7:00 AM`).
 - `no_execute_on` (Set of String) Day-of-week labels on which the policy must not execute (e.g. `Sun`, `Mon`, …).
 - `no_execute_start` (String) Daily start of the no-execute window (e.g. `5:00 PM`).

@@ -5,7 +5,6 @@ package policy
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -138,25 +137,10 @@ func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic
 func buildPolicyDateTimeLimitations(ctx context.Context, m *PolicyGeneralDateTimeLimitationsModel) (*proclassic.PolicyGeneralDateTimeLimitations, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	dtl := &proclassic.PolicyGeneralDateTimeLimitations{
-		ActivationDate:      helpers.OptionalStringPointer(m.ActivationDate),
-		ActivationDateEpoch: optionalInt64ToInt(m.ActivationDateEpoch),
-		ActivationDateUtc:   helpers.OptionalStringPointer(m.ActivationDateUtc),
-		ExpirationDate:      helpers.OptionalStringPointer(m.ExpirationDate),
-		ExpirationDateUtc:   helpers.OptionalStringPointer(m.ExpirationDateUtc),
-		NoExecuteStart:      helpers.OptionalStringPointer(m.NoExecuteStart),
-		NoExecuteEnd:        helpers.OptionalStringPointer(m.NoExecuteEnd),
-	}
-
-	if helpers.IsConfiguredValue(m.ExpirationDateEpoch) {
-		bi := &proclassic.BigInt{}
-		if ok := bi.SetString(m.ExpirationDateEpoch.ValueString()); ok {
-			dtl.ExpirationDateEpoch = bi
-		} else {
-			diags.AddError(
-				"Invalid expiration_date_epoch",
-				"expiration_date_epoch must be a base-10 integer string; got "+strconv.Quote(m.ExpirationDateEpoch.ValueString()),
-			)
-		}
+		ActivationDate: helpers.OptionalStringPointer(m.ActivationDate),
+		ExpirationDate: helpers.OptionalStringPointer(m.ExpirationDate),
+		NoExecuteStart: helpers.OptionalStringPointer(m.NoExecuteStart),
+		NoExecuteEnd:   helpers.OptionalStringPointer(m.NoExecuteEnd),
 	}
 
 	if helpers.IsConfiguredValue(m.NoExecuteOn) {

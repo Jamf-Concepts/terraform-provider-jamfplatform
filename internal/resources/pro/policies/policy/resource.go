@@ -129,15 +129,11 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"date_time_limitations": schema.SingleNestedAttribute{
-						MarkdownDescription: "Optional schedule limitations for when the policy may run.",
+						MarkdownDescription: "Optional schedule limitations for when the policy may run. Only the user-settable inputs are surfaced — Jamf Pro internally also stores `activation_date_epoch`, `activation_date_utc`, `expiration_date_epoch`, and `expiration_date_utc` as deterministic transforms of `activation_date` / `expiration_date`, but those are derivable client-side via Terraform stdlib (`formatdate`, etc.) and are not modeled here.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
-							"activation_date":       optComputedString("Activation date (`yyyy-mm-dd hh:mm:ss`)."),
-							"activation_date_epoch": optComputedInt("Activation date as a Unix epoch in milliseconds."),
-							"activation_date_utc":   optComputedString("Activation date in UTC ISO-8601."),
-							"expiration_date":       optComputedString("Expiration date (`yyyy-mm-dd hh:mm:ss`)."),
-							"expiration_date_epoch": optComputedString("Expiration date as a base-10 integer (string-encoded — values may exceed int64)."),
-							"expiration_date_utc":   optComputedString("Expiration date in UTC ISO-8601."),
+							"activation_date": optComputedString("Activation date (`yyyy-mm-dd hh:mm:ss`)."),
+							"expiration_date": optComputedString("Expiration date (`yyyy-mm-dd hh:mm:ss`)."),
 							"no_execute_on": schema.SetAttribute{
 								MarkdownDescription: "Day-of-week labels on which the policy must not execute (e.g. `Sun`, `Mon`, …).",
 								ElementType:         types.StringType,
