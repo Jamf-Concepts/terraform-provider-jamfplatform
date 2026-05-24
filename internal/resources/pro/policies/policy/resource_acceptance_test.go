@@ -215,3 +215,271 @@ func TestAccPolicyResource_AllComputers(t *testing.T) {
 		},
 	})
 }
+
+// policyConfigGeneralFull exercises every general top-level attribute the
+// schema exposes (excluding category/site reference IDs, which use -1 to
+// pin "NONE" so the test is independent of tenant inventory).
+func policyConfigGeneralFull(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name                          = %q
+    enabled                       = true
+    trigger                       = "EVENT"
+    trigger_checkin               = true
+    trigger_enrollment_complete   = true
+    trigger_login                 = true
+    trigger_logout                = false
+    trigger_network_state_changed = true
+    trigger_startup               = true
+    trigger_other                 = "tf-acc-event"
+    frequency                     = "Once per computer"
+    retry_event                   = "check-in"
+    retry_attempts                = 3
+    notify_on_each_failed_retry   = true
+    location_user_only            = false
+    target_drive                  = "/"
+    offline                       = false
+    category_id                   = "-1"
+    site_id                       = "-1"
+  }
+}
+`, name)
+}
+
+// policyConfigGeneralWithSubBlocks layers the three nested sub-blocks
+// (date_time_limitations, network_limitations, override_default_settings)
+// on top of the full general block.
+func policyConfigGeneralWithSubBlocks(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name        = %q
+    enabled     = true
+    frequency   = "Ongoing"
+    category_id = "-1"
+    site_id     = "-1"
+
+    date_time_limitations = {
+      activation_date  = "2026-01-01 01:00:00"
+      expiration_date  = "2027-01-01 01:00:00"
+      no_execute_on    = ["Sun", "Sat"]
+      no_execute_start = "1:00 AM"
+      no_execute_end   = "2:00 AM"
+    }
+
+    network_limitations = {
+      minimum_network_connection = "Ethernet"
+      any_ip_address             = true
+    }
+
+    override_default_settings = {
+      target_drive       = "/"
+      distribution_point = "default"
+      force_afp_smb      = false
+      sus                = "default"
+    }
+  }
+}
+`, name)
+}
+
+// TestAccPolicyResource_GeneralFullCoverage exercises every general-section
+// attribute (top-level + each nested sub-block) and confirms the wire echoes
+// match what was sent. Computed fields (id, category_name, site_name,
+// network_requirements, activation_date_epoch/utc, expiration_date_epoch/utc)
+// are exercised by ImportStateVerify in the final step.
+func TestAccPolicyResource_GeneralFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-gen-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigGeneralFull(name),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("trigger_checkin"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("trigger_other"),
+						knownvalue.StringExact("tf-acc-event"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("frequency"),
+						knownvalue.StringExact("Once per computer"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("retry_event"),
+						knownvalue.StringExact("check-in"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("retry_attempts"),
+						knownvalue.Int64Exact(3),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("notify_on_each_failed_retry"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("target_drive"),
+						knownvalue.StringExact("/"),
+					),
+				},
+			},
+			{
+				Config: policyConfigGeneralWithSubBlocks(name),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("date_time_limitations").AtMapKey("activation_date"),
+						knownvalue.StringExact("2026-01-01 01:00:00"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("date_time_limitations").AtMapKey("expiration_date"),
+						knownvalue.StringExact("2027-01-01 01:00:00"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("date_time_limitations").AtMapKey("no_execute_start"),
+						knownvalue.StringExact("1:00 AM"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("network_limitations").AtMapKey("minimum_network_connection"),
+						knownvalue.StringExact("Ethernet"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("network_limitations").AtMapKey("any_ip_address"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("override_default_settings").AtMapKey("distribution_point"),
+						knownvalue.StringExact("default"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("override_default_settings").AtMapKey("sus"),
+						knownvalue.StringExact("default"),
+					),
+				},
+			},
+			{
+				ResourceName:                         "jamfplatform_pro_policy.test",
+				ImportState:                          true,
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "id",
+			},
+		},
+	})
+}
+
+// policyConfigReboot exposes every reboot-section attribute. The
+// specify_startup variant is parameterised so the test can sweep all three
+// validator-accepted values.
+func policyConfigReboot(name, specifyStartup string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  reboot = {
+    message                        = "tf-acc reboot message"
+    startup_disk                   = "Current Startup Disk"
+    specify_startup                = %q
+    no_user_logged_in              = "Restart immediately"
+    user_logged_in                 = "Restart if a package or update requires it"
+    minutes_until_reboot           = 10
+    start_reboot_timer_immediately = true
+    file_vault_2_reboot            = false
+  }
+}
+`, name, specifyStartup)
+}
+
+// TestAccPolicyResource_RebootFullCoverage exercises every reboot attribute
+// and sweeps specify_startup through all three values the validator accepts:
+// the wire-empty default, the standard restart label, and the MDM
+// kernel-cache-rebuild label (per Probe #2 in PHASE_2_6_SPIKE.md).
+func TestAccPolicyResource_RebootFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-reboot-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigReboot(name, ""),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("reboot").AtMapKey("specify_startup"),
+						knownvalue.StringExact(""),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("reboot").AtMapKey("message"),
+						knownvalue.StringExact("tf-acc reboot message"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("reboot").AtMapKey("minutes_until_reboot"),
+						knownvalue.Int64Exact(10),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("reboot").AtMapKey("start_reboot_timer_immediately"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("reboot").AtMapKey("no_user_logged_in"),
+						knownvalue.StringExact("Restart immediately"),
+					),
+				},
+			},
+			{
+				Config: policyConfigReboot(name, "Standard Restart"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("reboot").AtMapKey("specify_startup"),
+						knownvalue.StringExact("Standard Restart"),
+					),
+				},
+			},
+			{
+				Config: policyConfigReboot(name, "MDM Restart with Kernel Cache Rebuild"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("reboot").AtMapKey("specify_startup"),
+						knownvalue.StringExact("MDM Restart with Kernel Cache Rebuild"),
+					),
+				},
+			},
+			{
+				ResourceName:                         "jamfplatform_pro_policy.test",
+				ImportState:                          true,
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "id",
+			},
+		},
+	})
+}
