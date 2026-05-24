@@ -382,7 +382,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 									MarkdownDescription: "Account action. Wire-accepted values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the classic UI labels the last action \"Disable FileVault\"; the wire string is `DisableFileVault` without a trailing `2` despite older documentation suggesting otherwise — confirmed against policy 6791 round-trip).",
 									Optional:            true,
 									Computed:            true,
-									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 									Validators: []validator.String{
 										stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault"),
 									},
@@ -390,7 +390,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 								"username": optComputedString("Account username."),
 								"realname": optComputedString("Account real (full) name."),
 								"password": schema.StringAttribute{
-									MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. Note: `accounts` is a Set so bumping `password_wo_version` on an entry surfaces in `terraform plan` as a Set-element replacement (Jamf matches accounts by `username` server-side, so the wire effect is an in-place update).",
+									MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index (Jamf matches accounts by `username` server-side).",
 									Optional:            true,
 									Sensitive:           true,
 									WriteOnly:           true,
@@ -576,34 +576,52 @@ func (r *PolicyResource) ImportState(ctx context.Context, req resource.ImportSta
 }
 
 // optComputedString returns an Optional+Computed StringAttribute with the
-// standard UseStateForUnknown plan modifier for server-augmented fields.
+// UseNonNullStateForUnknown plan modifier for server-augmented fields.
 // Field-level construction helper, not a schema-section decomposition —
 // STYLE_GUIDE §Schema keeps the section bodies inline.
+//
+// Why UseNonNullStateForUnknown and not UseStateForUnknown: these helpers
+// are used both at top level and inside nested list elements. When a list
+// element is appended (list-length growth), the new index has no prior
+// state at its path — prior StateValue is Null. UseStateForUnknown copies
+// that Null into the plan; if the server returns a real value for the
+// field, the post-apply consistency check trips ("Provider produced
+// inconsistent result after apply"). When a Sensitive sibling lives on
+// the same nested element (e.g. a WriteOnly password), the error path
+// is redacted up to the nearest non-sensitive ancestor, masking the
+// real attribute. UseNonNullStateForUnknown leaves the plan Unknown when
+// prior StateValue is Null, so the framework accepts whatever the
+// server returns. Behavior is identical to UseStateForUnknown for the
+// non-Null prior-state case (singletons, already-set values).
 func optComputedString(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,
 		Optional:            true,
 		Computed:            true,
-		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 	}
 }
 
-// optComputedBool is the bool sibling of optComputedString.
+// optComputedBool is the bool sibling of optComputedString. Uses
+// UseNonNullStateForUnknown for the same nested-list-growth reason —
+// see the optComputedString doc comment.
 func optComputedBool(desc string) schema.BoolAttribute {
 	return schema.BoolAttribute{
 		MarkdownDescription: desc,
 		Optional:            true,
 		Computed:            true,
-		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 	}
 }
 
-// optComputedInt is the int64 sibling of optComputedString.
+// optComputedInt is the int64 sibling of optComputedString. Uses
+// UseNonNullStateForUnknown for the same nested-list-growth reason —
+// see the optComputedString doc comment.
 func optComputedInt(desc string) schema.Int64Attribute {
 	return schema.Int64Attribute{
 		MarkdownDescription: desc,
 		Optional:            true,
 		Computed:            true,
-		PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+		PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseNonNullStateForUnknown()},
 	}
 }
