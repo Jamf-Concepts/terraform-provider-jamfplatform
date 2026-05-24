@@ -81,7 +81,7 @@ func (d *DirectoryBindingDataSource) Metadata(ctx context.Context, req datasourc
 // Schema returns the data source schema.
 func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — only the server-computed `password_sha256` is surfaced.",
+		MarkdownDescription: "Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — the wire never echoes it back. Use the resource (not the data source) to manage the password.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Directory binding ID. Mutually exclusive with `name`.",
@@ -93,12 +93,11 @@ func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.
 				Optional:            true,
 				Computed:            true,
 			},
-			"priority":        schema.Int64Attribute{MarkdownDescription: "Binding priority.", Computed: true},
-			"type":            schema.StringAttribute{MarkdownDescription: "Directory service type (`Active Directory`, `Open Directory`, `PowerBroker Identity Services`, `ADmitMac`, `Centrify`).", Computed: true},
-			"domain":          schema.StringAttribute{MarkdownDescription: "Directory domain.", Computed: true},
-			"username":        schema.StringAttribute{MarkdownDescription: "Bind username.", Computed: true},
-			"password_sha256": schema.StringAttribute{MarkdownDescription: "Server-computed SHA-256 hash of the bind password. The plaintext is never returned.", Computed: true},
-			"computer_ou":     schema.StringAttribute{MarkdownDescription: "Computer object's organisational unit.", Computed: true},
+			"priority":    schema.Int64Attribute{MarkdownDescription: "Binding priority.", Computed: true},
+			"type":        schema.StringAttribute{MarkdownDescription: "Directory service type (`Active Directory`, `Open Directory`, `PowerBroker Identity Services`, `ADmitMac`, `Centrify`).", Computed: true},
+			"domain":      schema.StringAttribute{MarkdownDescription: "Directory domain.", Computed: true},
+			"username":    schema.StringAttribute{MarkdownDescription: "Bind username.", Computed: true},
+			"computer_ou": schema.StringAttribute{MarkdownDescription: "Computer object's organisational unit.", Computed: true},
 
 			"active_directory": schema.SingleNestedAttribute{
 				MarkdownDescription: "Active Directory–specific configuration. Populated only when `type = \"Active Directory\"`.",

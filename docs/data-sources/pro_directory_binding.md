@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_directory_binding Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext bind password — only the server-computed password_sha256 is surfaced.
+  Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext bind password — the wire never echoes it back. Use the resource (not the data source) to manage the password.
 ---
 
 # jamfplatform_pro_directory_binding (Data Source)
 
-Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — only the server-computed `password_sha256` is surfaced.
+Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — the wire never echoes it back. Use the resource (not the data source) to manage the password.
 
 ## Example Usage
 
@@ -47,7 +47,6 @@ output "directory_binding_example_by_name" {
 - `computer_ou` (String) Computer object's organisational unit.
 - `domain` (String) Directory domain.
 - `open_directory` (Attributes) Open Directory–specific configuration. Populated only when `type = "Open Directory"`. (see [below for nested schema](#nestedatt--open_directory))
-- `password_sha256` (String) Server-computed SHA-256 hash of the bind password. The plaintext is never returned.
 - `priority` (Number) Binding priority.
 - `type` (String) Directory service type (`Active Directory`, `Open Directory`, `PowerBroker Identity Services`, `ADmitMac`, `Centrify`).
 - `username` (String) Bind username.

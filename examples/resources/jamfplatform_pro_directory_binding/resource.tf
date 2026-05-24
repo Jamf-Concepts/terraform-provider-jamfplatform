@@ -1,17 +1,18 @@
-# Active Directory binding. `password` is write-only — only the
-# server-computed `password_sha256` is returned on reads, so the plaintext
-# stays in state from the last apply until the user changes it.
+# Active Directory binding. `password` is `WriteOnly` — sent to Jamf Pro
+# on writes but never persisted in Terraform state. Bump `password_wo_version`
+# to rotate the stored password on the next apply.
 #
 # TF attribute names mirror the Jamf Pro admin UI labels; the wire (XML
 # element) names are documented in each attribute's schema description.
 resource "jamfplatform_pro_directory_binding" "ad" {
-  name        = "ad-prod"
-  priority    = 1
-  type        = "Active Directory"
-  domain      = "corp.example.com"
-  username    = "joiner-svc"
-  password    = sensitive("change-me")
-  computer_ou = "OU=Macs,DC=corp,DC=example,DC=com"
+  name                = "ad-prod"
+  priority            = 1
+  type                = "Active Directory"
+  domain              = "corp.example.com"
+  username            = "joiner-svc"
+  password            = sensitive("change-me")
+  password_wo_version = 1
+  computer_ou         = "OU=Macs,DC=corp,DC=example,DC=com"
 
   active_directory = {
     create_mobile_account      = true
@@ -30,12 +31,13 @@ resource "jamfplatform_pro_directory_binding" "ad" {
 # Directory" but the wire `type` value is the bare "Open Directory" —
 # match the wire form.
 resource "jamfplatform_pro_directory_binding" "open_directory" {
-  name     = "od-staging"
-  priority = 2
-  type     = "Open Directory"
-  domain   = "ldap.staging.example.com"
-  username = "cn=joiner,dc=staging,dc=example,dc=com"
-  password = sensitive("change-me")
+  name                = "od-staging"
+  priority            = 2
+  type                = "Open Directory"
+  domain              = "ldap.staging.example.com"
+  username            = "cn=joiner,dc=staging,dc=example,dc=com"
+  password            = sensitive("change-me")
+  password_wo_version = 1
 
   open_directory = {
     encrypt_using_ssl      = true
@@ -50,26 +52,28 @@ resource "jamfplatform_pro_directory_binding" "open_directory" {
 # attribute on its own conveys the PowerBroker identity. The provider
 # emits the empty <powerbroker_identity_services/> element automatically.
 resource "jamfplatform_pro_directory_binding" "powerbroker" {
-  name        = "pb-lab"
-  priority    = 3
-  type        = "PowerBroker Identity Services"
-  domain      = "lab.example.com"
-  username    = "joiner@lab.example.com"
-  password    = sensitive("change-me")
-  computer_ou = "OU=Macs,DC=lab,DC=example,DC=com"
+  name                = "pb-lab"
+  priority            = 3
+  type                = "PowerBroker Identity Services"
+  domain              = "lab.example.com"
+  username            = "joiner@lab.example.com"
+  password            = sensitive("change-me")
+  password_wo_version = 1
+  computer_ou         = "OU=Macs,DC=lab,DC=example,DC=com"
 }
 
 # ADmitMac binding. `home_location` is the ADmitMac UI's "Home Location"
 # field — distinct from the AD type's bool `force_local_home_directory`,
 # even though both round-trip through a wire element named `local_home`.
 resource "jamfplatform_pro_directory_binding" "admitmac" {
-  name        = "admitmac-prod"
-  priority    = 4
-  type        = "ADmitMac"
-  domain      = "corp.example.com"
-  username    = "joiner-svc"
-  password    = sensitive("change-me")
-  computer_ou = "OU=Macs,DC=corp,DC=example,DC=com"
+  name                = "admitmac-prod"
+  priority            = 4
+  type                = "ADmitMac"
+  domain              = "corp.example.com"
+  username            = "joiner-svc"
+  password            = sensitive("change-me")
+  password_wo_version = 1
+  computer_ou         = "OU=Macs,DC=corp,DC=example,DC=com"
 
   admitmac = {
     require_confirmation = false
@@ -92,12 +96,13 @@ resource "jamfplatform_pro_directory_binding" "admitmac" {
 # <update_PAM> (uppercase preserved on the wire); the TF schema uses
 # snake_case.
 resource "jamfplatform_pro_directory_binding" "centrify" {
-  name     = "centrify-prod"
-  priority = 5
-  type     = "Centrify"
-  domain   = "corp.example.com"
-  username = "joiner-svc"
-  password = sensitive("change-me")
+  name                = "centrify-prod"
+  priority            = 5
+  type                = "Centrify"
+  domain              = "corp.example.com"
+  username            = "joiner-svc"
+  password            = sensitive("change-me")
+  password_wo_version = 1
 
   centrify = {
     workstation_mode        = false

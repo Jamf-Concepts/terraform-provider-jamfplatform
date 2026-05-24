@@ -13,11 +13,41 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
+// policyAccountMaintenanceSecrets carries WriteOnly password values
+// sourced from req.Config alongside per-account/per-section "should
+// rotate?" decisions sourced by comparing plan vs state on
+// `password_wo_version` companions. Create uses an all-true carrier
+// (every plaintext is fresh). Update only flags rotated entries; the
+// rest are omitted from the wire so Jamf retains its stored value
+// under Classic's partial-merge semantics.
+type policyAccountMaintenanceSecrets struct {
+	// accountPasswords keyed by username — value is the plaintext to
+	// emit on the wire, or nil to omit the <password/> element for
+	// that account.
+	accountPasswords map[string]*string
+	// managedPassword is the management_account.managed_password
+	// plaintext to emit, or nil to omit.
+	managedPassword *string
+	// ofPassword is the open_firmware_efi_password.of_password
+	// plaintext to emit, or nil to omit.
+	ofPassword *string
+}
+
+// noSecrets returns a carrier that emits no plaintext — every section
+// keeps the existing stored value. Useful as the default for callers
+// that do not touch account_maintenance secrets.
+func noSecrets() *policyAccountMaintenanceSecrets {
+	return &policyAccountMaintenanceSecrets{accountPasswords: map[string]*string{}}
+}
+
 // buildPolicyInput projects a plan PolicyResourceModel into a *proclassic.PolicyPost
 // suitable for Create / Update. Each section follows SCOPE_SPIKE §6.5 omission
 // semantics: nil-pointer sub-blocks suppress wire emission entirely; empty
 // child collections collapse all the way up to a nil parent.
-func buildPolicyInput(ctx context.Context, plan PolicyResourceModel) (*proclassic.PolicyPost, diag.Diagnostics) {
+func buildPolicyInput(ctx context.Context, plan PolicyResourceModel, secrets *policyAccountMaintenanceSecrets) (*proclassic.PolicyPost, diag.Diagnostics) {
+	if secrets == nil {
+		secrets = noSecrets()
+	}
 	var diags diag.Diagnostics
 	out := &proclassic.PolicyPost{}
 
@@ -54,7 +84,7 @@ func buildPolicyInput(ctx context.Context, plan PolicyResourceModel) (*proclassi
 	}
 
 	if plan.AccountMaintenance != nil {
-		out.AccountMaintenance = buildPolicyAccountMaintenance(plan.AccountMaintenance)
+		out.AccountMaintenance = buildPolicyAccountMaintenance(plan.AccountMaintenance, secrets)
 	}
 
 	if plan.Reboot != nil {
@@ -521,17 +551,23 @@ func buildPolicyDockItems(m *PolicyDockItemsModel) *proclassic.PolicyPostDockIte
 	return &proclassic.PolicyPostDockItems{DockItem: &items}
 }
 
-func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel) *proclassic.PolicyPostAccountMaintenance {
+func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel, secrets *policyAccountMaintenanceSecrets) *proclassic.PolicyPostAccountMaintenance {
 	am := &proclassic.PolicyPostAccountMaintenance{}
 
 	if len(m.Accounts) > 0 {
 		items := make([]proclassic.PolicyAccountMaintenanceAccountsAccountItem, 0, len(m.Accounts))
 		for _, a := range m.Accounts {
+			var password *string
+			if !a.Username.IsNull() && !a.Username.IsUnknown() {
+				if p, ok := secrets.accountPasswords[a.Username.ValueString()]; ok {
+					password = p
+				}
+			}
 			items = append(items, proclassic.PolicyAccountMaintenanceAccountsAccountItem{
 				Action:                 helpers.OptionalStringPointer(a.Action),
 				Username:               helpers.OptionalStringPointer(a.Username),
 				Realname:               helpers.OptionalStringPointer(a.Realname),
-				Password:               helpers.OptionalStringPointer(a.Password),
+				Password:               password,
 				ArchiveHomeDirectory:   invertOptionalBoolPointer(a.PermanentlyDeleteHomeDirectory),
 				ArchiveHomeDirectoryTo: helpers.OptionalStringPointer(a.ArchiveHomeDirectoryTo),
 				Home:                   helpers.OptionalStringPointer(a.Home),
@@ -559,7 +595,7 @@ func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel) *proclassic
 	if m.ManagementAccount != nil {
 		am.ManagementAccount = &proclassic.PolicyAccountMaintenanceManagementAccount{
 			Action:                helpers.OptionalStringPointer(m.ManagementAccount.Action),
-			ManagedPassword:       helpers.OptionalStringPointer(m.ManagementAccount.ManagedPassword),
+			ManagedPassword:       secrets.managedPassword,
 			ManagedPasswordLength: optionalInt64ToInt(m.ManagementAccount.ManagedPasswordLength),
 		}
 	}
@@ -567,7 +603,7 @@ func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel) *proclassic
 	if m.OpenFirmwareEfiPassword != nil {
 		am.OpenFirmwareEfiPassword = &proclassic.PolicyAccountMaintenanceOpenFirmwareEfiPassword{
 			OfMode:     helpers.OptionalStringPointer(m.OpenFirmwareEfiPassword.OfMode),
-			OfPassword: helpers.OptionalStringPointer(m.OpenFirmwareEfiPassword.OfPassword),
+			OfPassword: secrets.ofPassword,
 		}
 	}
 

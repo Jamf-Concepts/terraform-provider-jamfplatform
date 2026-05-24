@@ -50,7 +50,7 @@ func (d *DiskEncryptionConfigurationDataSource) Metadata(ctx context.Context, re
 // Schema returns the data source schema.
 func (d *DiskEncryptionConfigurationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext IRK password — only the server-side `password_sha256` redaction sentinel is surfaced (see the resource documentation for caveats).",
+		MarkdownDescription: "Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext IRK password — the wire never echoes it back. Use the resource (not the data source) to manage the password.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Disk encryption configuration ID. Mutually exclusive with `name`.",
@@ -80,10 +80,6 @@ func (d *DiskEncryptionConfigurationDataSource) Schema(ctx context.Context, req 
 					},
 					"certificate_type": schema.StringAttribute{
 						MarkdownDescription: "Certificate format (`PKCS12`, `DER`, `PEM`).",
-						Computed:            true,
-					},
-					"password_sha256": schema.StringAttribute{
-						MarkdownDescription: "Server-side redaction sentinel — `********************` when an IRK password is set, empty otherwise. NOT a real hash.",
 						Computed:            true,
 					},
 					"data": schema.StringAttribute{

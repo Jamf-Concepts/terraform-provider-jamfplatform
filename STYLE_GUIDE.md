@@ -128,6 +128,41 @@ The rename rule applies to all current and future Jamf Pro resources. Where an e
 
 Data source attributes returning API data should always use lists.
 
+### Plaintext secrets — `WriteOnly` with `_wo_version` rotation companion
+
+New Pro resources exposing a user-supplied plaintext secret (passwords, API tokens, shared keys) **MUST** model it as `Optional + Sensitive + WriteOnly`. The plaintext is sent to Jamf on writes but never persisted in Terraform state — the framework strips it. Storing plaintext in state leaks credentials to anyone with state-file read access; "we mark it Sensitive in the schema" is not enough — Sensitive only redacts CLI output, the raw plaintext still lives in the state file.
+
+Every WriteOnly secret **MUST** carry a sibling `<attr>_wo_version` rotation trigger:
+
+```go
+"password": schema.StringAttribute{
+    MarkdownDescription: "...",
+    Optional:            true,
+    Sensitive:           true,
+    WriteOnly:           true,
+},
+"password_wo_version": schema.Int64Attribute{
+    MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump to force a re-PUT.",
+    Optional:            true,
+},
+```
+
+Why: WriteOnly values are excluded from Terraform's drift detection, so the user has no way to force a re-PUT by changing the password value alone — Terraform sees no diff. Bumping the Int64 companion is the only signal the provider has that "the user wants to rotate". Without it, the only way to rotate a stored password is `terraform destroy` + recreate. Pattern matches HashiCorp's documented `_wo_version` convention.
+
+CRUD wiring:
+
+- Create + Update **MUST** call `req.Config.Get(ctx, &cfg)` — the WriteOnly plaintext lives in `cfg`, not `plan` (the framework nullifies WriteOnly attrs in `plan`).
+- Update **MUST** also call `req.State.Get(ctx, &state)` to compare `plan.<attr>_wo_version` against `state.<attr>_wo_version`; include the plaintext on the wire only when they differ (or thread it unconditionally if the resource's server semantics require the field on every write — e.g. `jamfplatform_pro_policy.account_maintenance`, where omitting the password erases it server-side and breaks the next client run).
+- State builders **MUST NOT** preserve the plaintext across reads — the framework strips it from state regardless. The `_wo_version` companion is a regular Optional Int64 and **MUST** round-trip from prior state (the wire never echoes it).
+
+`*_sha256` and similar server-redaction sentinels are **forbidden**:
+
+- The classic API returns the literal string `********************` (20 asterisks) regardless of stored password content — it carries no drift-detection signal.
+- Surfacing it as a Computed sibling encourages users to treat it as a real hash and write false-positive drift assertions.
+- New Pro resources MUST NOT add a `*_sha256` Computed attribute alongside a `WriteOnly` plaintext.
+
+`SetNestedAttribute` cannot contain `WriteOnly` children — the framework refuses to load the schema. If the wire shape carries a Set of nested objects with a plaintext secret (e.g. `account_maintenance.accounts[].password` on the classic policy), the surrounding attribute **MUST** be a `ListNestedAttribute`. Reorder wire entries by a stable natural key (username, name) when flattening so positional identity round-trips through unordered server responses — see `internal/resources/pro/policies/policy/state_builders.go` `flattenPolicyAccountMaintenance` for the reference pattern.
+
 ### Server-derived computed fields & `Optional+Computed` attributes
 
 Pro endpoints commonly return **server-derived** values for fields the user did not set — a "no category" sentinel like `categoryId="-1"` / `categoryName="NONE"`, a default `priority="AFTER"`, etc. These show up in three places, each with its own pitfall, and all three must line up or Terraform errors with `Provider produced inconsistent result after apply`.
@@ -145,6 +180,8 @@ Pro endpoints commonly return **server-derived** values for fields the user did 
 ```
 
 A purely **read-only** server-derived field (e.g. `category_name`, derived from `category_id`) is `Computed`-only with the same `UseStateForUnknown` modifier — the user cannot set it, but its value carries across plans rather than going Unknown every refresh.
+
+**1a. Nested-list elements: use `UseNonNullStateForUnknown`.** `Optional+Computed` scalars inside a `ListNestedAttribute` or `SetNestedAttribute` MUST use `stringplanmodifier.UseNonNullStateForUnknown()` (and bool/int siblings) rather than `UseStateForUnknown`. `UseStateForUnknown` copies the prior `StateValue` into the plan — including `Null` — and for an appended list element the prior state at the new index is `Null`. When the server then returns a value for that field on the new element, the framework consistency check trips with `Provider produced inconsistent result after apply`. If a `Sensitive` sibling (e.g. a `WriteOnly` password) lives on the same nested element, the error path is redacted up to the nearest non-sensitive ancestor, masking the real attribute and producing the misleading `.<parent>: inconsistent values for sensitive attribute`. `UseNonNullStateForUnknown` skips the copy when prior state is `Null`, leaving the plan `Unknown` so any post-apply value is accepted. Behavior is identical for the non-Null case (singletons, already-set values), so prefer this modifier uniformly within nested-collection element schemas. Reference: `internal/resources/pro/policies/policy/resource.go` `optComputedString` / `optComputedBool` / `optComputedInt` helpers.
 
 **2. Input builder must treat Unknown as nil.** When the user omits an Optional+Computed attribute, the plan value is **Unknown**, not Null. `types.String.ValueStringPointer()` returns a pointer to `""` for Unknown — Jamf Pro often rejects `categoryId: ""` with HTTP 500. Use the shared helper that nils both Null *and* Unknown:
 

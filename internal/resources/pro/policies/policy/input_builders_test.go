@@ -32,7 +32,7 @@ func TestBuildPolicyInput_MinimalPolicy(t *testing.T) {
 			Enabled: types.BoolValue(true),
 		},
 	}
-	got, diags := buildPolicyInput(context.Background(), plan)
+	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -59,7 +59,7 @@ func TestBuildPolicyInput_ScopeWithComputerGroupAndBuilding(t *testing.T) {
 			BuildingIDs:      stringSet(t, "7"),
 		},
 	}
-	got, diags := buildPolicyInput(context.Background(), plan)
+	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -89,7 +89,7 @@ func TestBuildPolicyInput_ScopeOmissionSemantics(t *testing.T) {
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-empty-scope")},
 		Scope:   &PolicyScopeModel{},
 	}
-	got, diags := buildPolicyInput(context.Background(), plan)
+	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -106,7 +106,7 @@ func TestBuildPolicyInput_AllComputersFlag(t *testing.T) {
 			AllComputers: types.BoolValue(true),
 		},
 	}
-	got, diags := buildPolicyInput(context.Background(), plan)
+	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -126,7 +126,7 @@ func TestBuildPolicyInput_SelfServiceNotificationSplit(t *testing.T) {
 			NotificationSubject: types.StringValue("hello"),
 		},
 	}
-	got, diags := buildPolicyInput(context.Background(), plan)
+	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -166,7 +166,7 @@ func TestBuildPolicyInput_PackagesAndScripts(t *testing.T) {
 			},
 		},
 	}
-	got, diags := buildPolicyInput(context.Background(), plan)
+	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}

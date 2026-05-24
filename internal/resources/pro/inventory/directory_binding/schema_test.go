@@ -36,7 +36,7 @@ func TestDirectoryBindingResource_Schema(t *testing.T) {
 	s := resp.Schema
 	required := []string{
 		"id", "name", "priority", "type", "domain", "username", "password",
-		"password_sha256", "computer_ou", "active_directory", "open_directory",
+		"password_wo_version", "computer_ou", "active_directory", "open_directory",
 		"admitmac", "centrify", "timeouts",
 	}
 	for _, name := range required {
@@ -80,10 +80,11 @@ func TestDirectoryBindingResource_Schema(t *testing.T) {
 		t.Errorf("password must be Optional")
 	}
 
-	// password_sha256 is the server-computed echo. Computed-only.
-	ph := s.Attributes["password_sha256"]
-	if ph.IsRequired() || ph.IsOptional() || !ph.IsComputed() {
-		t.Errorf("password_sha256 must be Computed-only, got required=%v optional=%v computed=%v", ph.IsRequired(), ph.IsOptional(), ph.IsComputed())
+	// password_wo_version is the rotation trigger companion to the WriteOnly
+	// password attribute. Optional Int64 (not WriteOnly itself).
+	wo := s.Attributes["password_wo_version"]
+	if wo.IsRequired() || !wo.IsOptional() || wo.IsComputed() {
+		t.Errorf("password_wo_version must be Optional-only Int64, got required=%v optional=%v computed=%v", wo.IsRequired(), wo.IsOptional(), wo.IsComputed())
 	}
 
 	// Each nested type block is Optional-only and is a
@@ -198,7 +199,7 @@ func TestDirectoryBindingDataSource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	for _, name := range []string{"id", "name", "type", "password_sha256", "active_directory", "centrify", "timeouts"} {
+	for _, name := range []string{"id", "name", "type", "active_directory", "centrify", "timeouts"} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}
@@ -207,7 +208,7 @@ func TestDirectoryBindingDataSource_Schema(t *testing.T) {
 	// Data source must NOT carry a plaintext `password` attribute — it is
 	// read-only and the wire never returns the plaintext.
 	if _, ok := s.Attributes["password"]; ok {
-		t.Errorf("data source must not expose a `password` attribute — the wire returns only `password_sha256`")
+		t.Errorf("data source must not expose a `password` attribute — the wire never echoes plaintext")
 	}
 
 	for _, sel := range []string{"id", "name"} {
