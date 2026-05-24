@@ -141,10 +141,11 @@ func TestAccResource_ProDiskEncryptionConfiguration_Institutional_DER(t *testing
 					resource.TestCheckResourceAttrSet("jamfplatform_pro_disk_encryption_configuration.test", "institutional_recovery_key.key"),
 					// DER public-cert upload — server tags it as DER.
 					resource.TestCheckResourceAttr("jamfplatform_pro_disk_encryption_configuration.test", "institutional_recovery_key.certificate_type", "DER"),
-					// password_sha256: no password set on a DER cert → server
-					// emits <password_sha256/> which round-trips as a Null TF
-					// attribute (NOT empty string). Masked-sentinel behaviour
-					// for PKCS12 is pinned by state_builders_test.go.
+					// password_sha256 is no longer surfaced by the provider
+					// (the wire value is a literal 20-asterisk redaction
+					// string with no drift-detection signal). Assertion
+					// retained as a regression guard that the attribute
+					// does not return.
 					resource.TestCheckNoResourceAttr("jamfplatform_pro_disk_encryption_configuration.test", "institutional_recovery_key.password_sha256"),
 				),
 			},
