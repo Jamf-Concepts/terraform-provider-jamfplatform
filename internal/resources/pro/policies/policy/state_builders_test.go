@@ -86,8 +86,8 @@ func TestAssignPolicyResourceModel_RoundTripNotification(t *testing.T) {
 	state := &PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
 		SelfService: &PolicySelfServiceModel{
-			NotificationEnabled: types.BoolValue(true),
-			NotificationType:    types.StringValue("Self Service"),
+			DisplayNotifications: types.BoolValue(true),
+			NotificationLocation: types.StringValue("Self Service"),
 		},
 	}
 	src := &proclassic.Policy{
@@ -101,11 +101,11 @@ func TestAssignPolicyResourceModel_RoundTripNotification(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	if !state.SelfService.NotificationEnabled.ValueBool() {
-		t.Fatalf("expected notification_enabled=true")
+	if !state.SelfService.DisplayNotifications.ValueBool() {
+		t.Fatalf("expected display_notifications=true")
 	}
-	if state.SelfService.NotificationType.ValueString() != "Self Service" {
-		t.Fatalf("expected notification_type=Self Service, got %q", state.SelfService.NotificationType.ValueString())
+	if state.SelfService.NotificationLocation.ValueString() != "Self Service" {
+		t.Fatalf("expected notification_location=Self Service, got %q", state.SelfService.NotificationLocation.ValueString())
 	}
 }
 

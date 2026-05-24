@@ -8,6 +8,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
@@ -119,7 +120,6 @@ func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic
 		TriggerCheckin:             optionalBoolPointer(m.TriggerCheckin),
 		TriggerEnrollmentComplete:  optionalBoolPointer(m.TriggerEnrollmentComplete),
 		TriggerLogin:               optionalBoolPointer(m.TriggerLogin),
-		TriggerLogout:              optionalBoolPointer(m.TriggerLogout),
 		TriggerNetworkStateChanged: optionalBoolPointer(m.TriggerNetworkStateChanged),
 		TriggerStartup:             optionalBoolPointer(m.TriggerStartup),
 		TriggerOther:               helpers.OptionalStringPointer(m.TriggerOther),
@@ -127,7 +127,7 @@ func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic
 		RetryEvent:                 helpers.OptionalStringPointer(m.RetryEvent),
 		RetryAttempts:              optionalInt64ToInt(m.RetryAttempts),
 		NotifyOnEachFailedRetry:    optionalBoolPointer(m.NotifyOnEachFailedRetry),
-		LocationUserOnly:           optionalBoolPointer(m.LocationUserOnly),
+		LocationUserOnly:           optionalBoolPointer(m.LimitToJamfProAssignedUser),
 		TargetDrive:                helpers.OptionalStringPointer(m.TargetDrive),
 		Offline:                    optionalBoolPointer(m.Offline),
 		NetworkRequirements:        helpers.OptionalStringPointer(m.NetworkRequirements),
@@ -245,7 +245,7 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 		s.Departments = &proclassic.PolicyScopeDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.JssUserIDs, func(id int) proclassic.IDName {
+	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -253,7 +253,7 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 		s.JssUsers = &proclassic.PolicyScopeJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.JssUserGroupIDs, func(id int) proclassic.IDName {
+	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -278,8 +278,8 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 	// emitting an empty <scope></scope> element.
 	if s.AllComputers == nil && s.AllJssUsers == nil && s.Computers == nil &&
 		s.ComputerGroups == nil && s.Buildings == nil && s.Departments == nil &&
-		s.JssUsers == nil && s.JssUserGroups == nil && s.Limitations == nil &&
-		s.Exclusions == nil {
+		s.JssUsers == nil && s.JssUserGroups == nil &&
+		s.Limitations == nil && s.Exclusions == nil {
 		return nil, diags
 	}
 	return s, diags
@@ -366,7 +366,7 @@ func buildPolicyScopeExclusions(ctx context.Context, m *PolicyScopeExclusionsMod
 		e.Departments = &proclassic.PolicyScopeExclusionsDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.JssUserIDs, func(id int) proclassic.IDName {
+	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -374,7 +374,7 @@ func buildPolicyScopeExclusions(ctx context.Context, m *PolicyScopeExclusionsMod
 		e.JssUsers = &proclassic.PolicyScopeExclusionsJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.JssUserGroupIDs, func(id int) proclassic.IDName {
+	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -431,10 +431,10 @@ func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSel
 		InstallButtonText:           helpers.OptionalStringPointer(m.InstallButtonText),
 		ReinstallButtonText:         helpers.OptionalStringPointer(m.ReinstallButtonText),
 		SelfServiceDescription:      helpers.OptionalStringPointer(m.SelfServiceDescription),
-		ForceUsersToViewDescription: optionalBoolPointer(m.ForceUsersToViewDescription),
-		FeatureOnMainPage:           optionalBoolPointer(m.FeatureOnMainPage),
-		Notification:                buildNotificationEnabled(m.NotificationEnabled),
-		NotificationType:            helpers.OptionalStringPointer(m.NotificationType),
+		ForceUsersToViewDescription: optionalBoolPointer(m.EnsureUsersViewDescription),
+		FeatureOnMainPage:           optionalBoolPointer(m.IncludeInFeaturedCategory),
+		Notification:                buildNotificationEnabled(m.DisplayNotifications),
+		NotificationType:            helpers.OptionalStringPointer(m.NotificationLocation),
 		NotificationSubject:         helpers.OptionalStringPointer(m.NotificationSubject),
 		NotificationMessage:         helpers.OptionalStringPointer(m.NotificationMessage),
 	}
@@ -524,7 +524,7 @@ func buildPolicyPrinters(m *PolicyPrintersModel) *proclassic.PolicyPostPrinters 
 			items = append(items, proclassic.PolicyPrintersPrinterItem{
 				ID:          stringIDPtr(pr.ID),
 				Name:        helpers.OptionalStringPointer(pr.Name),
-				Action:      helpers.OptionalStringPointer(pr.Action),
+				Action:      printerActionToWire(pr.Action),
 				MakeDefault: optionalBoolPointer(pr.MakeDefault),
 			})
 		}
@@ -534,6 +534,30 @@ func buildPolicyPrinters(m *PolicyPrintersModel) *proclassic.PolicyPostPrinters 
 		return nil
 	}
 	return p
+}
+
+// printerActionToWire translates the UI-canonical Terraform attribute value
+// (Map / Unmap) into the classic wire value (install / uninstall). The schema
+// validator restricts user input to Map / Unmap; this function is the
+// outbound half of that translation. Null/unknown values pass through as
+// nil so the wire omits the <action> element.
+func printerActionToWire(action types.String) *string {
+	if !helpers.IsConfiguredValue(action) {
+		return nil
+	}
+	switch action.ValueString() {
+	case "Map":
+		v := "install"
+		return &v
+	case "Unmap":
+		v := "uninstall"
+		return &v
+	default:
+		// Validator should have rejected anything else; fall through to
+		// passthrough so an unexpected value surfaces in the server response.
+		v := action.ValueString()
+		return &v
+	}
 }
 
 func buildPolicyDockItems(m *PolicyDockItemsModel) *proclassic.PolicyPostDockItems {
@@ -620,7 +644,7 @@ func buildPolicyReboot(m *PolicyRebootModel) *proclassic.PolicyPostReboot {
 		SpecifyStartup:              helpers.OptionalStringPointer(m.SpecifyStartup),
 		NoUserLoggedIn:              helpers.OptionalStringPointer(m.NoUserLoggedIn),
 		UserLoggedIn:                helpers.OptionalStringPointer(m.UserLoggedIn),
-		MinutesUntilReboot:          optionalInt64ToInt(m.MinutesUntilReboot),
+		MinutesUntilReboot:          optionalInt64ToInt(m.DelayMinutes),
 		StartRebootTimerImmediately: optionalBoolPointer(m.StartRebootTimerImmediately),
 		FileVault2Reboot:            optionalBoolPointer(m.FileVault2Reboot),
 	}
@@ -628,39 +652,37 @@ func buildPolicyReboot(m *PolicyRebootModel) *proclassic.PolicyPostReboot {
 
 func buildPolicyMaintenance(m *PolicyMaintenanceModel) *proclassic.PolicyPostMaintenance {
 	return &proclassic.PolicyPostMaintenance{
-		Recon:                    optionalBoolPointer(m.Recon),
-		ResetName:                optionalBoolPointer(m.ResetName),
-		InstallAllCachedPackages: optionalBoolPointer(m.InstallAllCachedPackages),
-		Heal:                     optionalBoolPointer(m.Heal),
-		Prebindings:              optionalBoolPointer(m.Prebindings),
-		Permissions:              optionalBoolPointer(m.Permissions),
-		Byhost:                   optionalBoolPointer(m.Byhost),
-		SystemCache:              optionalBoolPointer(m.SystemCache),
-		UserCache:                optionalBoolPointer(m.UserCache),
-		Verify:                   optionalBoolPointer(m.Verify),
+		Recon:                    optionalBoolPointer(m.UpdateInventory),
+		ResetName:                optionalBoolPointer(m.ResetComputerNames),
+		InstallAllCachedPackages: optionalBoolPointer(m.InstallCachedPackages),
+		Permissions:              optionalBoolPointer(m.FixDiskPermissions),
+		Byhost:                   optionalBoolPointer(m.FixByhostFiles),
+		SystemCache:              optionalBoolPointer(m.FlushSystemCaches),
+		UserCache:                optionalBoolPointer(m.FlushUserCaches),
+		Verify:                   optionalBoolPointer(m.VerifyStartupDisk),
 	}
 }
 
 func buildPolicyFilesProcesses(m *PolicyFilesProcessesModel) *proclassic.PolicyPostFilesProcesses {
 	return &proclassic.PolicyPostFilesProcesses{
 		SearchByPath:         helpers.OptionalStringPointer(m.SearchByPath),
-		DeleteFile:           optionalBoolPointer(m.DeleteFile),
-		LocateFile:           helpers.OptionalStringPointer(m.LocateFile),
+		DeleteFile:           optionalBoolPointer(m.DeleteFileIfFound),
+		LocateFile:           helpers.OptionalStringPointer(m.SearchByFilename),
 		UpdateLocateDatabase: optionalBoolPointer(m.UpdateLocateDatabase),
-		SpotlightSearch:      helpers.OptionalStringPointer(m.SpotlightSearch),
+		SpotlightSearch:      helpers.OptionalStringPointer(m.SearchBySpotlight),
 		SearchForProcess:     helpers.OptionalStringPointer(m.SearchForProcess),
-		KillProcess:          optionalBoolPointer(m.KillProcess),
-		RunCommand:           helpers.OptionalStringPointer(m.RunCommand),
+		KillProcess:          optionalBoolPointer(m.KillProcessIfFound),
+		RunCommand:           helpers.OptionalStringPointer(m.ExecuteCommand),
 	}
 }
 
 func buildPolicyUserInteraction(m *PolicyUserInteractionModel) *proclassic.PolicyPostUserInteraction {
 	return &proclassic.PolicyPostUserInteraction{
-		MessageStart:          helpers.OptionalStringPointer(m.MessageStart),
+		MessageStart:          helpers.OptionalStringPointer(m.StartMessage),
 		AllowUsersToDefer:     optionalBoolPointer(m.AllowUsersToDefer),
 		AllowDeferralUntilUtc: helpers.OptionalStringPointer(m.AllowDeferralUntilUtc),
 		AllowDeferralMinutes:  optionalInt64ToInt(m.AllowDeferralMinutes),
-		MessageFinish:         helpers.OptionalStringPointer(m.MessageFinish),
+		MessageFinish:         helpers.OptionalStringPointer(m.CompleteMessage),
 	}
 }
 
