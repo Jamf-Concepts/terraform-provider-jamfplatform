@@ -28,6 +28,65 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
+// newSDKClient returns a real ProClassic SDK client wired to the same
+// acceptance-test credentials the provider factory uses. Used for setup +
+// teardown of fixture records (computer, user) that the project does not yet
+// expose as Terraform resources but the policy resource's scope sub-blocks
+// reference by classic ID.
+func newSDKClient(t *testing.T) *proclassic.Client {
+	t.Helper()
+	return proclassic.New(testhelpers.NewAcceptanceClient(t))
+}
+
+// createDummyComputer creates a minimal classic computer record via the SDK
+// and returns its server-assigned ID as a string. Cleanup runs at test end
+// via t.Cleanup.
+//
+// The classic POST endpoint at /computers/id/0 ignores the supplied id of 0
+// and assigns a fresh ID; the SDK signature returns only error, so we re-read
+// by name to discover the assigned ID.
+func createDummyComputer(t *testing.T, name string) string {
+	t.Helper()
+	c := newSDKClient(t)
+	ctx := context.Background()
+	if err := c.CreateComputerByID(ctx, "0", &proclassic.ComputerPost{
+		General: &proclassic.ComputerPostGeneral{Name: &name},
+	}); err != nil {
+		t.Fatalf("CreateComputerByID(%q): %v", name, err)
+	}
+	got, err := c.GetComputerByName(ctx, name)
+	if err != nil || got == nil || got.General == nil || got.General.ID == nil {
+		t.Fatalf("GetComputerByName(%q) after create: %v", name, err)
+	}
+	id := fmt.Sprintf("%d", *got.General.ID)
+	t.Cleanup(func() {
+		if err := c.DeleteComputerByID(context.Background(), id); err != nil && !helpers.IsNotFoundError(err) {
+			t.Logf("cleanup DeleteComputerByID(%s): %v", id, err)
+		}
+	})
+	return id
+}
+
+// createDummyUser creates a minimal classic user record via the SDK and
+// returns its server-assigned ID as a string. Cleanup runs at test end via
+// t.Cleanup.
+func createDummyUser(t *testing.T, name string) string {
+	t.Helper()
+	c := newSDKClient(t)
+	ctx := context.Background()
+	got, err := c.CreateUserByID(ctx, "0", &proclassic.UserPost{Name: &name})
+	if err != nil || got == nil || got.ID == nil {
+		t.Fatalf("CreateUserByID(%q): %v", name, err)
+	}
+	id := fmt.Sprintf("%d", *got.ID)
+	t.Cleanup(func() {
+		if err := c.DeleteUserByID(context.Background(), id); err != nil && !helpers.IsNotFoundError(err) {
+			t.Logf("cleanup DeleteUserByID(%s): %v", id, err)
+		}
+	})
+	return id
+}
+
 // packageFixturePath resolves the shared jamf-cli .pkg fixture committed under
 // internal/resources/pro/inventory/package/test_fixtures/. The path is computed
 // relative to this test file so the result is invariant to the working
@@ -1187,6 +1246,373 @@ func TestAccPolicyResource_DiskEncryptionFullCoverage(t *testing.T) {
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("disk_encryption").AtMapKey("auth_restart"),
 						knownvalue.Bool(true),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigScopeAllJssUsers(name string, allJssUsers bool) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scope = {
+    all_computers = true
+    all_jss_users = %t
+  }
+}
+`, name, allJssUsers)
+}
+
+// TestAccPolicyResource_ScopeAllJssUsersFullCoverage exercises the
+// scope.all_jss_users Bool attribute newly wired into the schema after SDK
+// commit d7d755d added the proclassic.PolicyScope.AllJssUsers field. Both
+// steps keep all_computers=true so the policy is otherwise valid; step 2
+// flips all_jss_users to exercise the Update path.
+func TestAccPolicyResource_ScopeAllJssUsersFullCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-scope-alljss-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigScopeAllJssUsers(name, true),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("all_jss_users"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("all_computers"),
+						knownvalue.Bool(true),
+					),
+				},
+			},
+			{
+				Config: policyConfigScopeAllJssUsers(name, false),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("all_jss_users"),
+						knownvalue.Bool(false),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigScopeTargetsAllFixtures(policyName, buildingName, departmentName, deviceGroupName, userGroupName string, computerID, userID string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_building" "fixture" {
+  name = %q
+}
+
+resource "jamfplatform_pro_department" "fixture" {
+  name = %q
+}
+
+resource "jamfplatform_device_group" "fixture" {
+  name        = %q
+  description = "tf-acc scope fixture"
+  group_type  = "static"
+  device_type = "computer"
+}
+
+resource "jamfplatform_pro_user_group" "fixture" {
+  name       = %q
+  group_type = "static"
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scope = {
+    computer_ids       = [%q]
+    computer_group_ids = [jamfplatform_device_group.fixture.jamf_pro_id]
+    building_ids       = [jamfplatform_pro_building.fixture.id]
+    department_ids     = [jamfplatform_pro_department.fixture.id]
+    jss_user_ids       = [%q]
+    jss_user_group_ids = [jamfplatform_pro_user_group.fixture.id]
+  }
+}
+`, buildingName, departmentName, deviceGroupName, userGroupName, policyName, computerID, userID)
+}
+
+// TestAccPolicyResource_ScopeTargetsFixtureCoverage exercises every scope
+// target sub-block by creating one fixture per category and asserting the
+// resulting set membership round-trips through the policy resource. Fixtures
+// that have a matching Terraform Pro resource are declared inline in the HCL;
+// fixtures the project does not yet expose as resources (classic computer,
+// classic user) are created out-of-band via direct SDK calls and cleaned up
+// at test end via t.Cleanup.
+//
+// The static computer group is created via the Platform Services
+// jamfplatform_device_group resource and its server-derived `jamf_pro_id`
+// attribute bridges into the classic policy's computer_group_ids set per the
+// resource description.
+func TestAccPolicyResource_ScopeTargetsFixtureCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-scope-targets-" + suffix
+	buildingName := "tf-acc-building-" + suffix
+	departmentName := "tf-acc-department-" + suffix
+	deviceGroupName := "tf-acc-device-group-" + suffix
+	userGroupName := "tf-acc-user-group-" + suffix
+	computerName := "tf-acc-computer-" + suffix
+	userName := "tf-acc-user-" + suffix
+
+	computerID := createDummyComputer(t, computerName)
+	userID := createDummyUser(t, userName)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigScopeTargetsAllFixtures(policyName, buildingName, departmentName, deviceGroupName, userGroupName, computerID, userID),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("computer_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("computer_group_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("building_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("department_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("jss_user_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("jss_user_group_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigScopeLimitations(policyName, networkSegmentName, ibeaconName string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_network_segment" "fixture" {
+  name             = %q
+  starting_address = "10.99.0.0"
+  ending_address   = "10.99.0.255"
+}
+
+resource "jamfplatform_pro_ibeacon" "fixture" {
+  name                    = %q
+  uuid                    = "759b0599-64e0-416a-8d31-d8e93482a4d7"
+  include_any_major_value = true
+  include_any_minor_value = true
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scope = {
+    all_computers = true
+    limitations = {
+      network_segment_ids = [jamfplatform_pro_network_segment.fixture.id]
+      ibeacon_ids         = [jamfplatform_pro_ibeacon.fixture.id]
+    }
+  }
+}
+`, networkSegmentName, ibeaconName, policyName)
+}
+
+// TestAccPolicyResource_ScopeLimitationsFixtureCoverage exercises the
+// fixture-backed `scope.limitations` sub-attributes — network segment IDs and
+// iBeacon IDs. The `directory_service_or_local_user_names` and
+// `directory_service_user_group_names` attributes are NOT exercised here: the
+// classic API rejects names that do not resolve against the tenant's LDAP
+// integration (`Error: Problem matching limitation user group`), so testing
+// them requires fixture LDAP entries the tenant does not generally provide.
+// Their wire round-trip is covered indirectly via the policy 6791 baseline
+// captured in PHASE_2_6_SPIKE.md §Appendix.
+func TestAccPolicyResource_ScopeLimitationsFixtureCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-scope-lim-" + suffix
+	networkSegmentName := "tf-acc-netseg-" + suffix
+	ibeaconName := "tf-acc-ibeacon-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigScopeLimitations(policyName, networkSegmentName, ibeaconName),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("limitations").AtMapKey("network_segment_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("limitations").AtMapKey("ibeacon_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigScopeExclusions(policyName, buildingName, departmentName, deviceGroupName, userGroupName, networkSegmentName, ibeaconName string, computerID, userID string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_building" "fixture" {
+  name = %q
+}
+
+resource "jamfplatform_pro_department" "fixture" {
+  name = %q
+}
+
+resource "jamfplatform_device_group" "fixture" {
+  name        = %q
+  description = "tf-acc scope exclusions fixture"
+  group_type  = "static"
+  device_type = "computer"
+}
+
+resource "jamfplatform_pro_user_group" "fixture" {
+  name       = %q
+  group_type = "static"
+}
+
+resource "jamfplatform_pro_network_segment" "fixture" {
+  name             = %q
+  starting_address = "10.88.0.0"
+  ending_address   = "10.88.0.255"
+}
+
+resource "jamfplatform_pro_ibeacon" "fixture" {
+  name                    = %q
+  uuid                    = "759b0599-64e0-416a-8d31-d8e93482a4d7"
+  include_any_major_value = true
+  include_any_minor_value = true
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scope = {
+    all_computers = true
+    exclusions = {
+      computer_ids                          = [%q]
+      computer_group_ids                    = [jamfplatform_device_group.fixture.jamf_pro_id]
+      building_ids                          = [jamfplatform_pro_building.fixture.id]
+      department_ids                        = [jamfplatform_pro_department.fixture.id]
+      jss_user_ids        = [%q]
+      jss_user_group_ids  = [jamfplatform_pro_user_group.fixture.id]
+      network_segment_ids = [jamfplatform_pro_network_segment.fixture.id]
+      ibeacon_ids         = [jamfplatform_pro_ibeacon.fixture.id]
+    }
+  }
+}
+`, buildingName, departmentName, deviceGroupName, userGroupName, networkSegmentName, ibeaconName, policyName, computerID, userID)
+}
+
+// TestAccPolicyResource_ScopeExclusionsFixtureCoverage mirrors the targets
+// + limitations coverage but routes every fixture ID through
+// scope.exclusions. Verifies that the exclusion-side schema parallels the
+// target schema and that the SDK builders emit the right wire shape under
+// `<scope><exclusions>`. Free-form directory-service name fields are
+// omitted for the same reason as in
+// TestAccPolicyResource_ScopeLimitationsFixtureCoverage: the classic API
+// validates names against the tenant's LDAP integration and rejects names
+// that do not resolve.
+func TestAccPolicyResource_ScopeExclusionsFixtureCoverage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	policyName := "tf-acc-policy-scope-excl-" + suffix
+	buildingName := "tf-acc-building-excl-" + suffix
+	departmentName := "tf-acc-department-excl-" + suffix
+	deviceGroupName := "tf-acc-device-group-excl-" + suffix
+	userGroupName := "tf-acc-user-group-excl-" + suffix
+	networkSegmentName := "tf-acc-netseg-excl-" + suffix
+	ibeaconName := "tf-acc-ibeacon-excl-" + suffix
+	computerName := "tf-acc-computer-excl-" + suffix
+	userName := "tf-acc-user-excl-" + suffix
+
+	computerID := createDummyComputer(t, computerName)
+	userID := createDummyUser(t, userName)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigScopeExclusions(policyName, buildingName, departmentName, deviceGroupName, userGroupName, networkSegmentName, ibeaconName, computerID, userID),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("computer_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("computer_group_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("building_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("department_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("jss_user_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("jss_user_group_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("network_segment_ids"),
+						knownvalue.SetSizeExact(1),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("ibeacon_ids"),
+						knownvalue.SetSizeExact(1),
 					),
 				},
 			},

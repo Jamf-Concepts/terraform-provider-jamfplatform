@@ -170,6 +170,7 @@ func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyG
 func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *PolicyScopeModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	state.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.AllComputers)
+	state.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.AllJssUsers)
 
 	state.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
 	state.ComputerGroupIDs = flattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups))

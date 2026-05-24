@@ -172,18 +172,32 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. An equivalent `all_jss_users` attribute is intentionally omitted in v1 — the underlying SDK does not expose the field, so a no-op would silently scope to zero users.",
+				MarkdownDescription: "Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `jss_user_ids` and `jss_user_group_ids`.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"all_computers": schema.BoolAttribute{
 						MarkdownDescription: "Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
 						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 						Validators: []validator.Bool{
 							scope.AllFlagConflictsWith(
 								path.MatchRelative().AtParent().AtName("computer_ids"),
 								path.MatchRelative().AtParent().AtName("computer_group_ids"),
 								path.MatchRelative().AtParent().AtName("building_ids"),
 								path.MatchRelative().AtParent().AtName("department_ids"),
+							),
+						},
+					},
+					"all_jss_users": schema.BoolAttribute{
+						MarkdownDescription: "Scope the policy to every JSS user in the tenant. Forbids per-user / per-user-group targets when true.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+						Validators: []validator.Bool{
+							scope.AllFlagConflictsWith(
+								path.MatchRelative().AtParent().AtName("jss_user_ids"),
+								path.MatchRelative().AtParent().AtName("jss_user_group_ids"),
 							),
 						},
 					},
