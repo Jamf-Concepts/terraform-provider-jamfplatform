@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>FilterDataProviderBundleIdentifier</key>
+			<string>com.duckduckgo.macos.browser</string>
+			<key>FilterDataProviderDesignatedRequirement</key>
+			<string>anchor apple generic and identifier "com.duckduckgo.macos.browser" and (certificate leaf[field.1.2.840.113635.100.6.1.9] /* exists */ or certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = HKE973VLUW)</string>
+			<key>FilterPackets</key>
+			<false/>
+			<key>FilterSockets</key>
+			<true/>
+			<key>FilterType</key>
+			<string>Plugin</string>
+			<key>PayloadDisplayName</key>
+			<string>Web Content Filter Payload</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.webcontent-filter.04B69259-1CAD-48EA-8AC3-F07C45F933BF</string>
+			<key>PayloadOrganization</key>
+			<string>Jamf Software, LLC</string>
+			<key>PayloadType</key>
+			<string>com.apple.webcontent-filter</string>
+			<key>PayloadUUID</key>
+			<string>04B69259-1CAD-48EA-8AC3-F07C45F933BF</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PluginBundleID</key>
+			<string>com.duckduckgo.macos.browser</string>
+			<key>UserDefinedName</key>
+			<string>DuckDuckGo.app</string>
+			<key>VendorConfig</key>
+			<dict/>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>Content Filter - DuckDuckGo</string>
+	<key>PayloadIdentifier</key>
+	<string>com.jamf.AC6F0F54-26F0-44B3-A57F-831872A5ABC5</string>
+	<key>PayloadOrganization</key>
+	<string>Jamf Software, LLC</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>AC6F0F54-26F0-44B3-A57F-831872A5ABC5</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+	<key>TargetDeviceType</key>
+	<integer>5</integer>
+</dict>
+</plist>
