@@ -435,23 +435,28 @@ func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSel
 }
 
 func buildPolicyPackageConfiguration(m *PolicyPackageConfigurationModel) *proclassic.PolicyPostPackageConfiguration {
-	if len(m.Packages) == 0 {
+	dp := helpers.OptionalStringPointer(m.DistributionPoint)
+	if len(m.Packages) == 0 && dp == nil {
 		return nil
 	}
-	items := make([]proclassic.PolicyPackageConfigurationPackagesPackageItem, 0, len(m.Packages))
-	for _, p := range m.Packages {
-		items = append(items, proclassic.PolicyPackageConfigurationPackagesPackageItem{
-			ID:            stringIDPtr(p.ID),
-			Name:          helpers.OptionalStringPointer(p.Name),
-			Action:        helpers.OptionalStringPointer(p.Action),
-			Fut:           optionalBoolPointer(p.Fut),
-			Feu:           optionalBoolPointer(p.Feu),
-			UpdateAutorun: optionalBoolPointer(p.UpdateAutorun),
-		})
+	out := &proclassic.PolicyPostPackageConfiguration{
+		DistributionPoint: dp,
 	}
-	return &proclassic.PolicyPostPackageConfiguration{
-		Packages: &proclassic.PolicyPackageConfigurationPackages{Package: &items},
+	if len(m.Packages) > 0 {
+		items := make([]proclassic.PolicyPackageConfigurationPackagesPackageItem, 0, len(m.Packages))
+		for _, p := range m.Packages {
+			items = append(items, proclassic.PolicyPackageConfigurationPackagesPackageItem{
+				ID:            stringIDPtr(p.ID),
+				Name:          helpers.OptionalStringPointer(p.Name),
+				Action:        helpers.OptionalStringPointer(p.Action),
+				Fut:           optionalBoolPointer(p.Fut),
+				Feu:           optionalBoolPointer(p.Feu),
+				UpdateAutorun: optionalBoolPointer(p.UpdateAutorun),
+			})
+		}
+		out.Packages = &proclassic.PolicyPackageConfigurationPackages{Package: &items}
 	}
+	return out
 }
 
 func buildPolicyScripts(m *PolicyScriptsModel) *proclassic.PolicyPostScripts {

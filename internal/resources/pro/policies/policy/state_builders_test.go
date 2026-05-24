@@ -108,3 +108,50 @@ func TestAssignPolicyResourceModel_RoundTripNotification(t *testing.T) {
 		t.Fatalf("expected notification_type=Self Service, got %q", state.SelfService.NotificationType.ValueString())
 	}
 }
+
+func TestAssignPolicyResourceModel_PackageConfigurationDistributionPoint(t *testing.T) {
+	t.Parallel()
+	state := &PolicyResourceModel{
+		General:              &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
+		PackageConfiguration: &PolicyPackageConfigurationModel{},
+	}
+	src := &proclassic.Policy{
+		General: &proclassic.PolicyGeneral{Name: new("tf-acc")},
+		PackageConfiguration: &proclassic.PolicyPackageConfiguration{
+			DistributionPoint: new("Dummy DP"),
+		},
+	}
+	diags := assignPolicyResourceModel(context.Background(), state, src)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if state.PackageConfiguration.DistributionPoint.ValueString() != "Dummy DP" {
+		t.Fatalf("expected distribution_point=Dummy DP, got %q", state.PackageConfiguration.DistributionPoint.ValueString())
+	}
+	if state.PackageConfiguration.Packages != nil {
+		t.Fatalf("expected packages nil when server returned none, got %+v", state.PackageConfiguration.Packages)
+	}
+}
+
+func TestAssignPolicyResourceModel_PackageConfigurationConfiguredWins(t *testing.T) {
+	t.Parallel()
+	state := &PolicyResourceModel{
+		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
+		PackageConfiguration: &PolicyPackageConfigurationModel{
+			DistributionPoint: types.StringValue("Configured DP"),
+		},
+	}
+	src := &proclassic.Policy{
+		General: &proclassic.PolicyGeneral{Name: new("tf-acc")},
+		PackageConfiguration: &proclassic.PolicyPackageConfiguration{
+			DistributionPoint: new("Server DP"),
+		},
+	}
+	diags := assignPolicyResourceModel(context.Background(), state, src)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if got := state.PackageConfiguration.DistributionPoint.ValueString(); got != "Configured DP" {
+		t.Fatalf("preferCurrentStringPointer should keep configured value, got %q", got)
+	}
+}

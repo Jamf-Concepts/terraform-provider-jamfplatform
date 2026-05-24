@@ -171,7 +171,8 @@ type PolicySelfServiceCategoryModel struct {
 
 // PolicyPackageConfigurationModel models <policy><package_configuration>.
 type PolicyPackageConfigurationModel struct {
-	Packages []PolicyPackageItemModel `tfsdk:"packages"`
+	DistributionPoint types.String             `tfsdk:"distribution_point"`
+	Packages          []PolicyPackageItemModel `tfsdk:"packages"`
 }
 
 // PolicyPackageItemModel models a single <package>.

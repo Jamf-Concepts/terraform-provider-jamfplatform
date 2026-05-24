@@ -313,6 +313,7 @@ Optional:
 
 Optional:
 
+- `distribution_point` (String) Name of the file share distribution point to use for the policy. Wire field `<package_configuration><distribution_point>`. Server echoes the configured DP name (e.g. `Dummy DP`); omit to inherit the tenant default.
 - `packages` (Attributes Set) Set of package assignments. Each item identifies the package by classic ID; `name` is server-derived. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. (see [below for nested schema](#nestedatt--package_configuration--packages))
 
 <a id="nestedatt--package_configuration--packages"></a>
