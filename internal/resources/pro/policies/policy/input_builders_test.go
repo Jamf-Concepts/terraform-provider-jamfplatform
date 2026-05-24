@@ -120,10 +120,10 @@ func TestBuildPolicyInput_SelfServiceNotificationSplit(t *testing.T) {
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-ss")},
 		SelfService: &PolicySelfServiceModel{
-			UseForSelfService:   types.BoolValue(true),
-			NotificationEnabled: types.BoolValue(true),
-			NotificationType:    types.StringValue("Self Service"),
-			NotificationSubject: types.StringValue("hello"),
+			UseForSelfService:    types.BoolValue(true),
+			DisplayNotifications: types.BoolValue(true),
+			NotificationLocation: types.StringValue("Self Service"),
+			NotificationSubject:  types.StringValue("hello"),
 		},
 	}
 	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
@@ -138,7 +138,8 @@ func TestBuildPolicyInput_SelfServiceNotificationSplit(t *testing.T) {
 	}
 	// Method must NOT travel via NotificationValue.Method (that would emit a
 	// second <notification> element which the server interprets as
-	// overwriting the bool). It travels via the sibling NotificationType field.
+	// overwriting the bool). It travels via the sibling NotificationType
+	// (wire) field, which the provider models as NotificationLocation.
 	if got.SelfService.Notification.Method != nil {
 		t.Fatalf("expected notification.Method=nil; method travels via NotificationType, got %+v", got.SelfService.Notification.Method)
 	}

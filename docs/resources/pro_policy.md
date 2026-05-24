@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The scope.limit_to_users block is intentionally omitted in v1 pending an upstream SDK fix. The classic <software_update> policy block is intentionally not modelled: software update via classic policy is an obsolete delivery path (superseded by MDM InstallApplication / ScheduleOSUpdate and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+  Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels; wire-level element names (where they differ from the UI label, e.g. <recon> for update_inventory) are documented per attribute. The classic <software_update> policy block is intentionally not modelled: software update via classic policy is an obsolete delivery path (superseded by MDM InstallApplication / ScheduleOSUpdate and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 ---
 
 # jamfplatform_pro_policy (Resource)
 
-Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix. The classic `<software_update>` policy block is **intentionally not modelled**: software update via classic policy is an obsolete delivery path (superseded by MDM `InstallApplication` / `ScheduleOSUpdate` and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels; wire-level element names (where they differ from the UI label, e.g. `<recon>` for `update_inventory`) are documented per attribute. The classic `<software_update>` policy block is **intentionally not modelled**: software update via classic policy is an obsolete delivery path (superseded by MDM `InstallApplication` / `ScheduleOSUpdate` and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 
 ## Example Usage
 
@@ -56,8 +56,8 @@ resource "jamfplatform_pro_policy" "scoped" {
   self_service = {
     use_for_self_service      = true
     self_service_display_name = "tf-acc Demo"
-    notification_enabled      = true
-    notification_type         = "Self Service"
+    display_notifications     = true
+    notification_location     = "Self Service"
     notification_subject      = "tf-acc"
     notification_message      = "Demo policy now available."
   }
@@ -87,14 +87,14 @@ resource "jamfplatform_pro_policy" "universal" {
 - `account_maintenance` (Attributes) Account maintenance actions. Account secrets (`accounts[].password`, `management_account.managed_password`, `open_firmware_efi_password.of_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro on writes but never persisted in Terraform state. Each carries a `*_wo_version` Int64 companion: bump the integer to force a re-PUT of the current plaintext on the next apply. (see [below for nested schema](#nestedatt--account_maintenance))
 - `disk_encryption` (Attributes) Disk encryption configuration to apply. (see [below for nested schema](#nestedatt--disk_encryption))
 - `dock_items` (Attributes) Dock items to add or remove. (see [below for nested schema](#nestedatt--dock_items))
-- `files_processes` (Attributes) File and process operations. (see [below for nested schema](#nestedatt--files_processes))
-- `maintenance` (Attributes) Maintenance tasks to run as part of the policy. (see [below for nested schema](#nestedatt--maintenance))
+- `files_processes` (Attributes) File and process operations. Attribute names mirror the Jamf Pro admin UI labels; the underlying wire element names (e.g. `<locate_file>` for `search_by_filename`) are noted per attribute. (see [below for nested schema](#nestedatt--files_processes))
+- `maintenance` (Attributes) Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels; the underlying wire element names (e.g. `<recon>` for `update_inventory`) are noted per attribute. (see [below for nested schema](#nestedatt--maintenance))
 - `package_configuration` (Attributes) Packages to install / cache / remove. (see [below for nested schema](#nestedatt--package_configuration))
-- `printers` (Attributes) Printers to install or remove. The classic API returns a `size` field — Computed. (see [below for nested schema](#nestedatt--printers))
+- `printers` (Attributes) Printers to install or remove. (see [below for nested schema](#nestedatt--printers))
 - `reboot` (Attributes) Reboot configuration after the policy completes. (see [below for nested schema](#nestedatt--reboot))
-- `scope` (Attributes) Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `jss_user_ids` and `jss_user_group_ids`. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. The classic wire elements are `<jss_users>` and `<jss_user_groups>`; the Jamf Pro admin UI labels these tabs simply "Users" and "User Groups", so the provider exposes them as `user_ids` / `user_group_ids`. (see [below for nested schema](#nestedatt--scope))
 - `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
-- `self_service` (Attributes) Self Service integration. The classic wire carries the notification bool as `<notification>` and the delivery method as the sibling `<notification_type>` element — the provider models them as `notification_enabled` (bool) and `notification_type` (string). (see [below for nested schema](#nestedatt--self_service))
+- `self_service` (Attributes) Self Service integration. The classic wire carries the notification bool as `<notification>` and the delivery method as the sibling `<notification_type>` element — the provider models them as `display_notifications` (bool) and `notification_location` (string), mirroring the Jamf Pro admin UI labels. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `user_interaction` (Attributes) User interaction prompts shown around policy execution. Cross-field rules: `allow_users_to_defer = false` forbids both deferral fields; `allow_deferral_until_utc` and `allow_deferral_minutes` are mutually exclusive (transitioning between forms requires destroy+recreate). (see [below for nested schema](#nestedatt--user_interaction))
 
@@ -115,7 +115,7 @@ Optional:
 - `date_time_limitations` (Attributes) Optional schedule limitations for when the policy may run. Only the user-settable inputs are surfaced — Jamf Pro internally also stores `activation_date_epoch`, `activation_date_utc`, `expiration_date_epoch`, and `expiration_date_utc` as deterministic transforms of `activation_date` / `expiration_date`, but those are derivable client-side via Terraform stdlib (`formatdate`, etc.) and are not modeled here. (see [below for nested schema](#nestedatt--general--date_time_limitations))
 - `enabled` (Boolean) Whether the policy is enabled.
 - `frequency` (String) How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`.
-- `location_user_only` (Boolean) Restrict the policy to location-bound users only.
+- `limit_to_jamf_pro_assigned_user` (Boolean) Restrict the policy to the Jamf Pro-assigned user only. UI label "Limit to Jamf Pro-assigned user" (Options → General → Client-Side Limitations); wire field `<location_user_only>`.
 - `network_limitations` (Attributes) Optional network limitations for when the policy may run. The Jamf classic `network_limitations` block uses `network_segments` under `general` independently of `scope.limitations.network_segment_ids` — both can carry network-segment IDs but apply to different policy stages. (see [below for nested schema](#nestedatt--general--network_limitations))
 - `network_requirements` (String) Network requirements label (`Any`, `Network Limitations`, etc.).
 - `notify_on_each_failed_retry` (Boolean) Notify the admin on each failed retry.
@@ -129,7 +129,6 @@ Optional:
 - `trigger_checkin` (Boolean) Fire on managed check-in.
 - `trigger_enrollment_complete` (Boolean) Fire when device enrollment completes.
 - `trigger_login` (Boolean) Fire on user login.
-- `trigger_logout` (Boolean) Fire on user logout.
 - `trigger_network_state_changed` (Boolean) Fire when the device's network state changes.
 - `trigger_other` (String) Custom event name to trigger the policy.
 - `trigger_startup` (Boolean) Fire on device startup.
@@ -276,13 +275,13 @@ Optional:
 
 Optional:
 
-- `delete_file` (Boolean) Delete files matching the search criteria.
-- `kill_process` (Boolean) Kill processes matching the search.
-- `locate_file` (String) File name to locate.
-- `run_command` (String) Command to run.
-- `search_by_path` (String) Path to search by.
+- `delete_file_if_found` (Boolean) Delete files matching the search criteria if found. Wire field `<delete_file>`.
+- `execute_command` (String) Command to execute. UI label "Execute Command"; wire field `<run_command>`.
+- `kill_process_if_found` (Boolean) Kill processes matching the search if found. Wire field `<kill_process>`.
+- `search_by_filename` (String) File name to search for. UI label "Search for File by Filename"; wire field `<locate_file>`.
+- `search_by_path` (String) Path to search for. UI label "Search for File by Path"; wire field `<search_by_path>`.
+- `search_by_spotlight` (String) Spotlight query. UI label "Search for File Using Spotlight"; wire field `<spotlight_search>`.
 - `search_for_process` (String) Process name to search for.
-- `spotlight_search` (String) Spotlight query.
 - `update_locate_database` (Boolean) Update the locate database before searching.
 
 
@@ -291,16 +290,14 @@ Optional:
 
 Optional:
 
-- `byhost` (Boolean) Fix ByHost files.
-- `heal` (Boolean) Heal.
-- `install_all_cached_packages` (Boolean) Install all cached packages.
-- `permissions` (Boolean) Fix permissions.
-- `prebindings` (Boolean) Fix prebindings.
-- `recon` (Boolean) Update inventory.
-- `reset_name` (Boolean) Reset the computer name.
-- `system_cache` (Boolean) Flush system cache.
-- `user_cache` (Boolean) Flush all users' caches.
-- `verify` (Boolean) Verify startup disk.
+- `fix_byhost_files` (Boolean) Fix ByHost files. Wire field `<byhost>`.
+- `fix_disk_permissions` (Boolean) Fix disk permissions. Wire field `<permissions>`.
+- `flush_system_caches` (Boolean) Flush system caches. Wire field `<system_cache>`.
+- `flush_user_caches` (Boolean) Flush user caches. Wire field `<user_cache>`.
+- `install_cached_packages` (Boolean) Install cached packages. Wire field `<install_all_cached_packages>`.
+- `reset_computer_names` (Boolean) Reset computer names. Wire field `<reset_name>`.
+- `update_inventory` (Boolean) Update inventory. Wire field `<recon>`.
+- `verify_startup_disk` (Boolean) Verify startup disk. Wire field `<verify>`.
 
 
 <a id="nestedatt--package_configuration"></a>
@@ -336,10 +333,6 @@ Optional:
 - `leave_existing_default` (Boolean) Leave the device's existing default printer in place.
 - `printers` (Attributes Set) Set of printer assignments. (see [below for nested schema](#nestedatt--printers--printers))
 
-Read-Only:
-
-- `size` (Number) Number of printers reported by Jamf Pro.
-
 <a id="nestedatt--printers--printers"></a>
 ### Nested Schema for `printers.printers`
 
@@ -349,7 +342,7 @@ Required:
 
 Optional:
 
-- `action` (String) Action (`install` or `uninstall`).
+- `action` (String) Action. UI-canonical values: `Map` (install printer) / `Unmap` (uninstall printer). The classic wire equivalents are `install` / `uninstall`; the provider translates Map↔install and Unmap↔uninstall at the input/output boundary so the Terraform-facing values mirror the Jamf Pro admin UI dropdown labels.
 - `make_default` (Boolean) Make this printer the device's default.
 - `name` (String) Printer name (server-derived).
 
@@ -360,9 +353,9 @@ Optional:
 
 Optional:
 
+- `delay_minutes` (Number) Minutes to wait before forcing reboot. UI label "Delay"; wire field `<minutes_until_reboot>`.
 - `file_vault_2_reboot` (Boolean) Trigger a FileVault 2 reboot.
 - `message` (String) Reboot prompt message.
-- `minutes_until_reboot` (Number) Minutes to wait before forcing reboot.
 - `no_user_logged_in` (String) Action when no user is logged in.
 - `specify_startup` (String) Reboot-method discriminator. Empty string is the default (standard reboot, no explicit method). `Standard Restart` matches the Jamf Pro UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The wire round-trips this field unchanged; the Jamf UI surfaces a single "KEXT PATH" text input alongside the radio but the value does not appear in the policy XML response.
 - `start_reboot_timer_immediately` (Boolean) Start the reboot countdown immediately.
@@ -376,15 +369,15 @@ Optional:
 Optional:
 
 - `all_computers` (Boolean) Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
-- `all_jss_users` (Boolean) Scope the policy to every JSS user in the tenant. Forbids per-user / per-user-group targets when true.
+- `all_jss_users` (Boolean) Scope the policy to every Jamf Pro user in the tenant. Forbids per-user / per-user-group targets when true. The wire field name is `all_jss_users`; the UI label is "All Users".
 - `building_ids` (Set of String) Set of Jamf Pro classic building IDs.
 - `computer_group_ids` (Set of String) Set of Jamf Pro classic computer group IDs.
 - `computer_ids` (Set of String) Set of Jamf Pro classic computer IDs.
 - `department_ids` (Set of String) Set of Jamf Pro classic department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `jss_user_group_ids` (Set of String) Set of Jamf Pro classic JSS user group IDs.
-- `jss_user_ids` (Set of String) Set of Jamf Pro classic JSS user IDs.
-- `limitations` (Attributes) Scope limitations narrow the audience after the targets are resolved. (see [below for nested schema](#nestedatt--scope--limitations))
+- `limitations` (Attributes) Scope limitations narrow the audience after the targets are resolved. The wire form `<scope><limit_to_users><user_groups>` is **intentionally not modelled** as a separate attribute: probe 2026-05-24 confirmed the Jamf Pro server denormalises `<limitations><user_groups>` (the directory-service-user-group list) into `<limit_to_users><user_groups>` on every write and reflects changes the other way on every read, so the two wire paths always carry identical values. Exposing `limit_to_users` as a TF attribute would surface drift between two state slots tracking the same concept; the deploymenttheory provider omits it for the same reason. (see [below for nested schema](#nestedatt--scope--limitations))
+- `user_group_ids` (Set of String) Set of Jamf Pro classic user group IDs.
+- `user_ids` (Set of String) Set of Jamf Pro classic user IDs.
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -398,9 +391,9 @@ Optional:
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names.
 - `ibeacon_ids` (Set of String) Set of Jamf Pro classic iBeacon IDs.
-- `jss_user_group_ids` (Set of String) Set of Jamf Pro classic JSS user group IDs.
-- `jss_user_ids` (Set of String) Set of Jamf Pro classic JSS user IDs.
 - `network_segment_ids` (Set of String) Set of Jamf Pro classic network segment IDs.
+- `user_group_ids` (Set of String) Set of Jamf Pro classic user group IDs.
+- `user_ids` (Set of String) Set of Jamf Pro classic user IDs.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -450,14 +443,14 @@ Optional:
 Optional:
 
 - `category` (Attributes) Self Service category. The classic wire form is `<self_service_categories><category>…</category></self_service_categories>`; the SDK models a single category — the provider mirrors that. (see [below for nested schema](#nestedatt--self_service--category))
-- `feature_on_main_page` (Boolean) Feature the policy on the Self Service main page.
-- `force_users_to_view_description` (Boolean) Require users to view the description before installing.
-- `install_button_text` (String) Install-button label.
-- `notification_enabled` (Boolean) Whether Self Service surfaces a notification when the policy becomes available.
+- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the policy becomes available. Wire field `<notification>`.
+- `ensure_users_view_description` (Boolean) Require users to view the description before installing. Wire field `<force_users_to_view_description>`.
+- `include_in_featured_category` (Boolean) Include the policy in the Self Service "Featured" category. Wire field `<feature_on_main_page>`.
+- `install_button_text` (String) Install-button label. Wire field `<install_button_text>`.
+- `notification_location` (String) Notification delivery location. Valid values are `Self Service` and `Self Service and Notification Center`. Wire field `<notification_type>`.
 - `notification_message` (String) Notification body text.
 - `notification_subject` (String) Notification subject line.
-- `notification_type` (String) Notification delivery method. Valid values are `Self Service` and `Self Service and Notification Center`.
-- `reinstall_button_text` (String) Re-install-button label.
+- `reinstall_button_text` (String) Re-install-button label. Wire field `<reinstall_button_text>`.
 - `self_service_description` (String) Self Service description (Markdown supported).
 - `self_service_display_name` (String) Self Service display name (defaults to the policy name).
 - `self_service_icon` (Attributes) Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. The SDK does not currently expose a base64 `data` field — track upstream if required. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
@@ -504,8 +497,8 @@ Optional:
 - `allow_deferral_minutes` (Number) Maximum deferral duration in minutes. Must be a positive multiple of 1440 (one day) — the classic API rejects any other value with HTTP 409. Mutually exclusive with `allow_deferral_until_utc`.
 - `allow_deferral_until_utc` (String) Maximum deferral cut-off in UTC ISO-8601. Mutually exclusive with `allow_deferral_minutes`.
 - `allow_users_to_defer` (Boolean) Allow the user to defer the policy.
-- `message_finish` (String) Message displayed after the policy completes.
-- `message_start` (String) Message displayed before the policy runs.
+- `complete_message` (String) Message displayed after the policy completes. UI label "Complete Message"; wire field `<message_finish>`.
+- `start_message` (String) Message displayed before the policy runs. UI label "Start Message"; wire field `<message_start>`.
 
 ## Import
 

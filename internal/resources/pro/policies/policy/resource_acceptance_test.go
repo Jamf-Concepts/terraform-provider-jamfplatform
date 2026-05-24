@@ -164,8 +164,8 @@ resource "jamfplatform_pro_policy" "test" {
   self_service = {
     use_for_self_service      = true
     self_service_display_name = %q
-    notification_enabled      = true
-    notification_type       = "Self Service"
+    display_notifications      = true
+    notification_location       = "Self Service"
     notification_subject      = "tf-acc"
     notification_message      = "Test policy"
   }
@@ -245,7 +245,7 @@ func TestAccPolicyResource_Minimal(t *testing.T) {
 
 // TestAccPolicyResource_SelfServiceNotificationSplit confirms the two
 // <notification> elements round-trip cleanly through the schema's split
-// notification_enabled + notification_type attributes.
+// display_notifications + notification_location attributes.
 func TestAccPolicyResource_SelfServiceNotificationSplit(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -260,12 +260,12 @@ func TestAccPolicyResource_SelfServiceNotificationSplit(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("self_service").AtMapKey("notification_enabled"),
+						tfjsonpath.New("self_service").AtMapKey("display_notifications"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("self_service").AtMapKey("notification_type"),
+						tfjsonpath.New("self_service").AtMapKey("notification_location"),
 						knownvalue.StringExact("Self Service"),
 					),
 				},
@@ -312,7 +312,6 @@ resource "jamfplatform_pro_policy" "test" {
     trigger_checkin               = true
     trigger_enrollment_complete   = true
     trigger_login                 = true
-    trigger_logout                = false
     trigger_network_state_changed = true
     trigger_startup               = true
     trigger_other                 = "tf-acc-event"
@@ -320,7 +319,7 @@ resource "jamfplatform_pro_policy" "test" {
     retry_event                   = "check-in"
     retry_attempts                = 3
     notify_on_each_failed_retry   = true
-    location_user_only            = false
+    limit_to_jamf_pro_assigned_user            = false
     target_drive                  = "/"
     offline                       = false
     category_id                   = "-1"
@@ -489,7 +488,7 @@ resource "jamfplatform_pro_policy" "test" {
     specify_startup                = %q
     no_user_logged_in              = "Restart immediately"
     user_logged_in                 = "Restart if a package or update requires it"
-    minutes_until_reboot           = 10
+    delay_minutes           = 10
     start_reboot_timer_immediately = true
     file_vault_2_reboot            = false
   }
@@ -656,7 +655,7 @@ func TestAccPolicyResource_RebootFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("minutes_until_reboot"),
+						tfjsonpath.New("reboot").AtMapKey("delay_minutes"),
 						knownvalue.Int64Exact(10),
 					),
 					statecheck.ExpectKnownValue(
@@ -807,10 +806,10 @@ resource "jamfplatform_pro_policy" "test" {
 
 // TestAccPolicyResource_PrintersFullCoverage creates a jamfplatform_pro_printer
 // fixture and references it from policy.printers.printers. Step 2 swaps action
-// `install` → `uninstall` and toggles make_default + leave_existing_default to
-// exercise the Update path. The classic API also returns a `size` field which
-// the schema exposes as Computed; not asserted explicitly because the framework
-// validates Computed values are non-Unknown after apply.
+// `Map` → `Unmap` (the UI-canonical values exposed by the schema; the provider
+// translates to/from the wire `install`/`uninstall` form via printerActionToWire
+// / printerActionFromWire) and toggles make_default + leave_existing_default
+// to exercise the Update path.
 func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -822,7 +821,7 @@ func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigPrinters(policyName, printerName, "install", true, false),
+				Config: policyConfigPrinters(policyName, printerName, "Map", true, false),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -832,7 +831,7 @@ func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("action"),
-						knownvalue.StringExact("install"),
+						knownvalue.StringExact("Map"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -847,12 +846,12 @@ func TestAccPolicyResource_PrintersFullCoverage(t *testing.T) {
 				},
 			},
 			{
-				Config: policyConfigPrinters(policyName, printerName, "uninstall", false, true),
+				Config: policyConfigPrinters(policyName, printerName, "Unmap", false, true),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("printers").AtMapKey("printers").AtSliceIndex(0).AtMapKey("action"),
-						knownvalue.StringExact("uninstall"),
+						knownvalue.StringExact("Unmap"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -936,34 +935,31 @@ func TestAccPolicyResource_DockItemsFullCoverage(t *testing.T) {
 	})
 }
 
-func policyConfigMaintenance(name string, recon bool) string {
+func policyConfigMaintenance(name string, updateInventory bool) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
   maintenance = {
-    recon                       = %t
-    reset_name                  = true
-    install_all_cached_packages = true
-    heal                        = false
-    prebindings                 = false
-    permissions                 = true
-    byhost                      = true
-    system_cache                = true
-    user_cache                  = true
-    verify                      = true
+    update_inventory        = %t
+    reset_computer_names    = true
+    install_cached_packages = true
+    fix_disk_permissions    = true
+    fix_byhost_files        = true
+    flush_system_caches     = true
+    flush_user_caches       = true
+    verify_startup_disk     = true
   }
 }
-`, name, recon)
+`, name, updateInventory)
 }
 
 // TestAccPolicyResource_MaintenanceFullCoverage exercises every maintenance
-// attribute. Per Probe #10 in PHASE_2_6_SPIKE.md, the wire silently rejects
-// heal=true (echo always returns false) so this test sets heal=false to match
-// what the server will return; the schema still surfaces the attribute for
-// users who want to declare the inert wire field. Step 2 toggles recon to
-// exercise the Update path.
+// attribute. Step 2 toggles update_inventory to exercise the Update path.
+// The wire-dead `heal` and `prebindings` fields (Probe #10 in
+// PHASE_2_6_SPIKE.md — wire rejected or echoed empty regardless of the value
+// sent) were dropped from the schema in the same PR as this rename batch.
 func TestAccPolicyResource_MaintenanceFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -978,17 +974,12 @@ func TestAccPolicyResource_MaintenanceFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("maintenance").AtMapKey("recon"),
+						tfjsonpath.New("maintenance").AtMapKey("update_inventory"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("maintenance").AtMapKey("heal"),
-						knownvalue.Bool(false),
-					),
-					statecheck.ExpectKnownValue(
-						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("maintenance").AtMapKey("verify"),
+						tfjsonpath.New("maintenance").AtMapKey("verify_startup_disk"),
 						knownvalue.Bool(true),
 					),
 				},
@@ -998,7 +989,7 @@ func TestAccPolicyResource_MaintenanceFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("maintenance").AtMapKey("recon"),
+						tfjsonpath.New("maintenance").AtMapKey("update_inventory"),
 						knownvalue.Bool(false),
 					),
 				},
@@ -1007,7 +998,7 @@ func TestAccPolicyResource_MaintenanceFullCoverage(t *testing.T) {
 	})
 }
 
-func policyConfigFilesProcesses(name, searchByPath, runCommand string) string {
+func policyConfigFilesProcesses(name, searchByPath, executeCommand string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
@@ -1015,16 +1006,16 @@ resource "jamfplatform_pro_policy" "test" {
   }
   files_processes = {
     search_by_path         = %q
-    delete_file            = true
-    locate_file            = "tf-acc-locate-file"
+    delete_file_if_found   = true
+    search_by_filename     = "tf-acc-search-filename"
     update_locate_database = true
-    spotlight_search       = "tf-acc-spotlight"
+    search_by_spotlight    = "tf-acc-spotlight"
     search_for_process     = "tf-acc-process"
-    kill_process           = true
-    run_command            = %q
+    kill_process_if_found  = true
+    execute_command        = %q
   }
 }
-`, name, searchByPath, runCommand)
+`, name, searchByPath, executeCommand)
 }
 
 // TestAccPolicyResource_FilesProcessesFullCoverage exercises every
@@ -1049,22 +1040,22 @@ func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("delete_file"),
+						tfjsonpath.New("files_processes").AtMapKey("delete_file_if_found"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("locate_file"),
-						knownvalue.StringExact("tf-acc-locate-file"),
+						tfjsonpath.New("files_processes").AtMapKey("search_by_filename"),
+						knownvalue.StringExact("tf-acc-search-filename"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("kill_process"),
+						tfjsonpath.New("files_processes").AtMapKey("kill_process_if_found"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("run_command"),
+						tfjsonpath.New("files_processes").AtMapKey("execute_command"),
 						knownvalue.StringExact("echo tf-acc-initial"),
 					),
 				},
@@ -1079,7 +1070,7 @@ func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("run_command"),
+						tfjsonpath.New("files_processes").AtMapKey("execute_command"),
 						knownvalue.StringExact("echo tf-acc-updated"),
 					),
 				},
@@ -1088,25 +1079,25 @@ func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
 	})
 }
 
-func policyConfigUserInteractionUntilUTC(name, messageStart, untilUTC string) string {
+func policyConfigUserInteractionUntilUTC(name, startMessage, untilUTC string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
   user_interaction = {
-    message_start            = %q
+    start_message            = %q
     allow_users_to_defer     = true
     allow_deferral_until_utc = %q
-    message_finish           = "tf-acc message_finish"
+    complete_message         = "tf-acc complete_message"
   }
 }
-`, name, messageStart, untilUTC)
+`, name, startMessage, untilUTC)
 }
 
 // TestAccPolicyResource_UserInteractionFullCoverage exercises every
 // user_interaction attribute. Both steps use the cut-off form
-// (allow_deferral_until_utc); step 2 perturbs message_start and the cut-off
+// (allow_deferral_until_utc); step 2 perturbs start_message and the cut-off
 // date to exercise the Update path. The duration form
 // (allow_deferral_minutes) is documented but not toggled in the same test
 // because the classic API cannot transition between the two forms without an
@@ -1138,12 +1129,12 @@ func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc message_start initial", "2030-01-01T01:00:00.000+0000"),
+				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc start_message initial", "2030-01-01T01:00:00.000+0000"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("user_interaction").AtMapKey("message_start"),
-						knownvalue.StringExact("tf-acc message_start initial"),
+						tfjsonpath.New("user_interaction").AtMapKey("start_message"),
+						knownvalue.StringExact("tf-acc start_message initial"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1157,18 +1148,18 @@ func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("user_interaction").AtMapKey("message_finish"),
-						knownvalue.StringExact("tf-acc message_finish"),
+						tfjsonpath.New("user_interaction").AtMapKey("complete_message"),
+						knownvalue.StringExact("tf-acc complete_message"),
 					),
 				},
 			},
 			{
-				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc message_start updated", "2031-06-15T12:00:00.000+0000"),
+				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc start_message updated", "2031-06-15T12:00:00.000+0000"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("user_interaction").AtMapKey("message_start"),
-						knownvalue.StringExact("tf-acc message_start updated"),
+						tfjsonpath.New("user_interaction").AtMapKey("start_message"),
+						knownvalue.StringExact("tf-acc start_message updated"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1341,8 +1332,8 @@ resource "jamfplatform_pro_policy" "test" {
     computer_group_ids = [jamfplatform_device_group.fixture.jamf_pro_id]
     building_ids       = [jamfplatform_pro_building.fixture.id]
     department_ids     = [jamfplatform_pro_department.fixture.id]
-    jss_user_ids       = [%q]
-    jss_user_group_ids = [jamfplatform_pro_user_group.fixture.id]
+    user_ids       = [%q]
+    user_group_ids = [jamfplatform_pro_user_group.fixture.id]
   }
 }
 `, buildingName, departmentName, deviceGroupName, userGroupName, policyName, computerID, userID)
@@ -1403,12 +1394,12 @@ func TestAccPolicyResource_ScopeTargetsFixtureCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("jss_user_ids"),
+						tfjsonpath.New("scope").AtMapKey("user_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("jss_user_group_ids"),
+						tfjsonpath.New("scope").AtMapKey("user_group_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 				},
@@ -1532,8 +1523,8 @@ resource "jamfplatform_pro_policy" "test" {
       computer_group_ids                    = [jamfplatform_device_group.fixture.jamf_pro_id]
       building_ids                          = [jamfplatform_pro_building.fixture.id]
       department_ids                        = [jamfplatform_pro_department.fixture.id]
-      jss_user_ids        = [%q]
-      jss_user_group_ids  = [jamfplatform_pro_user_group.fixture.id]
+      user_ids        = [%q]
+      user_group_ids  = [jamfplatform_pro_user_group.fixture.id]
       network_segment_ids = [jamfplatform_pro_network_segment.fixture.id]
       ibeacon_ids         = [jamfplatform_pro_ibeacon.fixture.id]
     }
@@ -1596,12 +1587,12 @@ func TestAccPolicyResource_ScopeExclusionsFixtureCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("jss_user_ids"),
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("user_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("jss_user_group_ids"),
+						tfjsonpath.New("scope").AtMapKey("exclusions").AtMapKey("user_group_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(

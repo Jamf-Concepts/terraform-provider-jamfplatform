@@ -32,9 +32,9 @@ func TestMarshal_RepresentativePolicy(t *testing.T) {
 			BuildingIDs:      stringSet(t, "7"),
 		},
 		SelfService: &PolicySelfServiceModel{
-			UseForSelfService:   types.BoolValue(true),
-			NotificationEnabled: types.BoolValue(true),
-			NotificationType:    types.StringValue("Self Service"),
+			UseForSelfService:    types.BoolValue(true),
+			DisplayNotifications: types.BoolValue(true),
+			NotificationLocation: types.StringValue("Self Service"),
 		},
 	}
 	post, diags := buildPolicyInput(context.Background(), plan, noSecrets())
@@ -71,7 +71,8 @@ func TestMarshal_RepresentativePolicy(t *testing.T) {
 	// Self Service notification: one <notification>bool</notification>
 	// element plus a sibling <notification_type>method</notification_type>
 	// — NOT two <notification> tags. The SDK NotificationValue.Method leg is
-	// deliberately unused; method travels via PolicySelfService.NotificationType.
+	// deliberately unused; method travels via PolicySelfService.NotificationType
+	// (the wire-side sibling that the provider models as NotificationLocation).
 	if c := strings.Count(wire, "<notification>"); c != 1 {
 		t.Fatalf("expected exactly 1 <notification> element, got %d:\n%s", c, wire)
 	}

@@ -44,7 +44,7 @@ func TestPolicyResource_ScopeChildAttributes(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected scope to be SingleNestedAttribute")
 	}
-	for _, child := range []string{"all_computers", "computer_ids", "computer_group_ids", "building_ids", "department_ids", "jss_user_ids", "jss_user_group_ids", "limitations", "exclusions"} {
+	for _, child := range []string{"all_computers", "computer_ids", "computer_group_ids", "building_ids", "department_ids", "user_ids", "user_group_ids", "limitations", "exclusions"} {
 		if _, ok := scopeAttr.Attributes[child]; !ok {
 			t.Fatalf("expected scope.%s", child)
 		}
