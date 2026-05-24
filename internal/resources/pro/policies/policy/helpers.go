@@ -72,6 +72,25 @@ func preferCurrentStringPointer(api *string, current types.String) types.String 
 	return types.StringValue(*api)
 }
 
+// preferServerOrCurrentString returns the server value when present and
+// non-empty, otherwise the prior state value. Used for Computed string
+// attributes the server intermittently fails to echo on Update —
+// substituting the prior known state value avoids a Known → null (or
+// Known → "") transition that would otherwise trip the framework's
+// "produced inconsistent result after apply" check when the Computed
+// attribute is part of plan. The classic /policies endpoint has been
+// observed returning both `nil` and `""` for the same SHA field on
+// successive Update round-trips, so both cases collapse to "use prior".
+func preferServerOrCurrentString(api *string, current types.String) types.String {
+	if api != nil && *api != "" {
+		return types.StringValue(*api)
+	}
+	if !current.IsNull() && !current.IsUnknown() {
+		return current
+	}
+	return types.StringNull()
+}
+
 // preferCurrentBoolPointer is the bool sibling of preferCurrentStringPointer.
 func preferCurrentBoolPointer(api *bool, current types.Bool) types.Bool {
 	if helpers.IsConfiguredValue(current) {
@@ -102,6 +121,28 @@ func optionalBoolPointer(value types.Bool) *bool {
 	}
 	v := value.ValueBool()
 	return &v
+}
+
+// invertOptionalBoolPointer is optionalBoolPointer with the value negated.
+// Used to translate a user-facing boolean attribute into its inverse on the
+// wire (e.g. permanently_delete_home_directory ↔ archive_home_directory).
+// Null/unknown still collapses to nil so the wire emits no element.
+func invertOptionalBoolPointer(value types.Bool) *bool {
+	if value.IsNull() || value.IsUnknown() {
+		return nil
+	}
+	v := !value.ValueBool()
+	return &v
+}
+
+// invertBoolPointerValueOrNull is the state-side inverse of
+// invertOptionalBoolPointer. A nil server pointer becomes null state; a
+// non-nil pointer becomes its negated TF Bool value.
+func invertBoolPointerValueOrNull(b *bool) types.Bool {
+	if b == nil {
+		return types.BoolNull()
+	}
+	return types.BoolValue(!*b)
 }
 
 // optionalInt64ToInt projects a TF Int64 into a *int suitable for SDK

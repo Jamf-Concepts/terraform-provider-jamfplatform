@@ -180,6 +180,7 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 	var diags diag.Diagnostics
 	s := &proclassic.PolicyPostScope{
 		AllComputers: optionalBoolPointer(m.AllComputers),
+		AllJssUsers:  optionalBoolPointer(m.AllJssUsers),
 	}
 
 	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.PolicyScopeComputersComputerItem {
@@ -245,9 +246,10 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 	// Omission semantics (SCOPE_SPIKE §6.5): collapse to nil when every child
 	// pointer is nil so the wire payload omits <scope> entirely rather than
 	// emitting an empty <scope></scope> element.
-	if s.AllComputers == nil && s.Computers == nil && s.ComputerGroups == nil &&
-		s.Buildings == nil && s.Departments == nil && s.JssUsers == nil &&
-		s.JssUserGroups == nil && s.Limitations == nil && s.Exclusions == nil {
+	if s.AllComputers == nil && s.AllJssUsers == nil && s.Computers == nil &&
+		s.ComputerGroups == nil && s.Buildings == nil && s.Departments == nil &&
+		s.JssUsers == nil && s.JssUserGroups == nil && s.Limitations == nil &&
+		s.Exclusions == nil {
 		return nil, diags
 	}
 	return s, diags
@@ -435,23 +437,28 @@ func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSel
 }
 
 func buildPolicyPackageConfiguration(m *PolicyPackageConfigurationModel) *proclassic.PolicyPostPackageConfiguration {
-	if len(m.Packages) == 0 {
+	dp := helpers.OptionalStringPointer(m.DistributionPoint)
+	if len(m.Packages) == 0 && dp == nil {
 		return nil
 	}
-	items := make([]proclassic.PolicyPackageConfigurationPackagesPackageItem, 0, len(m.Packages))
-	for _, p := range m.Packages {
-		items = append(items, proclassic.PolicyPackageConfigurationPackagesPackageItem{
-			ID:            stringIDPtr(p.ID),
-			Name:          helpers.OptionalStringPointer(p.Name),
-			Action:        helpers.OptionalStringPointer(p.Action),
-			Fut:           optionalBoolPointer(p.Fut),
-			Feu:           optionalBoolPointer(p.Feu),
-			UpdateAutorun: optionalBoolPointer(p.UpdateAutorun),
-		})
+	out := &proclassic.PolicyPostPackageConfiguration{
+		DistributionPoint: dp,
 	}
-	return &proclassic.PolicyPostPackageConfiguration{
-		Packages: &proclassic.PolicyPackageConfigurationPackages{Package: &items},
+	if len(m.Packages) > 0 {
+		items := make([]proclassic.PolicyPackageConfigurationPackagesPackageItem, 0, len(m.Packages))
+		for _, p := range m.Packages {
+			items = append(items, proclassic.PolicyPackageConfigurationPackagesPackageItem{
+				ID:            stringIDPtr(p.ID),
+				Name:          helpers.OptionalStringPointer(p.Name),
+				Action:        helpers.OptionalStringPointer(p.Action),
+				Fut:           optionalBoolPointer(p.Fut),
+				Feu:           optionalBoolPointer(p.Feu),
+				UpdateAutorun: optionalBoolPointer(p.UpdateAutorun),
+			})
+		}
+		out.Packages = &proclassic.PolicyPackageConfigurationPackages{Package: &items}
 	}
+	return out
 }
 
 func buildPolicyScripts(m *PolicyScriptsModel) *proclassic.PolicyPostScripts {
@@ -525,7 +532,7 @@ func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel) *proclassic
 				Username:               helpers.OptionalStringPointer(a.Username),
 				Realname:               helpers.OptionalStringPointer(a.Realname),
 				Password:               helpers.OptionalStringPointer(a.Password),
-				ArchiveHomeDirectory:   optionalBoolPointer(a.ArchiveHomeDirectory),
+				ArchiveHomeDirectory:   invertOptionalBoolPointer(a.PermanentlyDeleteHomeDirectory),
 				ArchiveHomeDirectoryTo: helpers.OptionalStringPointer(a.ArchiveHomeDirectoryTo),
 				Home:                   helpers.OptionalStringPointer(a.Home),
 				Hint:                   helpers.OptionalStringPointer(a.Hint),

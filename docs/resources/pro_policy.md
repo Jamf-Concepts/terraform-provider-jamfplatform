@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The scope.limit_to_users block is intentionally omitted in v1 pending an upstream SDK fix.
+  Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The scope.limit_to_users block is intentionally omitted in v1 pending an upstream SDK fix. The classic <software_update> policy block is intentionally not modelled: software update via classic policy is an obsolete delivery path (superseded by MDM InstallApplication / ScheduleOSUpdate and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 ---
 
 # jamfplatform_pro_policy (Resource)
 
-Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix.
+Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix. The classic `<software_update>` policy block is **intentionally not modelled**: software update via classic policy is an obsolete delivery path (superseded by MDM `InstallApplication` / `ScheduleOSUpdate` and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 
 ## Example Usage
 
@@ -92,11 +92,11 @@ resource "jamfplatform_pro_policy" "universal" {
 - `package_configuration` (Attributes) Packages to install / cache / remove. (see [below for nested schema](#nestedatt--package_configuration))
 - `printers` (Attributes) Printers to install or remove. The classic API returns a `size` field — Computed. (see [below for nested schema](#nestedatt--printers))
 - `reboot` (Attributes) Reboot configuration after the policy completes. (see [below for nested schema](#nestedatt--reboot))
-- `scope` (Attributes) Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. An equivalent `all_jss_users` attribute is intentionally omitted in v1 — the underlying SDK does not expose the field, so a no-op would silently scope to zero users. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `jss_user_ids` and `jss_user_group_ids`. (see [below for nested schema](#nestedatt--scope))
 - `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
 - `self_service` (Attributes) Self Service integration. The classic wire carries the notification bool as `<notification>` and the delivery method as the sibling `<notification_type>` element — the provider models them as `notification_enabled` (bool) and `notification_type` (string). (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `user_interaction` (Attributes) User interaction prompts shown around policy execution. (see [below for nested schema](#nestedatt--user_interaction))
+- `user_interaction` (Attributes) User interaction prompts shown around policy execution. Cross-field rules: `allow_users_to_defer = false` forbids both deferral fields; `allow_deferral_until_utc` and `allow_deferral_minutes` are mutually exclusive (transitioning between forms requires destroy+recreate). (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
@@ -189,14 +189,14 @@ Optional:
 
 Optional:
 
-- `action` (String) Account action (`Create`, `Reset`, `Delete`, `DisableFileVault2`).
+- `action` (String) Account action. Wire-accepted values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the classic UI labels the last action "Disable FileVault"; the wire string is `DisableFileVault` without a trailing `2` despite older documentation suggesting otherwise — confirmed against policy 6791 round-trip).
 - `admin` (Boolean) Whether the account is an admin.
-- `archive_home_directory` (Boolean) Archive the home directory on deletion.
-- `archive_home_directory_to` (String) Destination for the archived home directory.
+- `archive_home_directory_to` (String) Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`.
 - `filevault_enabled` (Boolean) Whether FileVault 2 is enabled for the account.
 - `hint` (String) Password hint.
 - `home` (String) Home directory path.
-- `password` (String, Sensitive) Plaintext password. Sensitive — surfaces in state until WriteOnly support lands.
+- `password` (String, Sensitive) Plaintext password used by `Create` and `Reset` actions. Sensitive — plaintext surfaces in state because the Jamf classic API does not echo it back; the provider preserves the user-supplied value to satisfy the framework's plan/state consistency check. The companion `password_sha256` attribute carries the server's sentinel hash.
+- `permanently_delete_home_directory` (Boolean) Permanently delete the home directory when `action = "Delete"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. The classic wire field is the inverse boolean `<archive_home_directory>` — the provider translates at the input/output boundary so the Terraform-facing semantic mirrors the Jamf Pro UI checkbox label "Permanently delete home directory".
 - `picture` (String) Account picture path.
 - `realname` (String) Account real (full) name.
 - `secure_token_allowed` (Boolean) Whether the account is allowed to hold a Secure Token.
@@ -225,7 +225,7 @@ Optional:
 Optional:
 
 - `action` (String) Management account action (e.g. `doNotChange`, `rotate`).
-- `managed_password` (String, Sensitive) Plaintext managed password (Sensitive).
+- `managed_password` (String, Sensitive) Plaintext managed password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.
 - `managed_password_length` (Number) Length used when randomly generating the managed password.
 
 
@@ -235,7 +235,7 @@ Optional:
 Optional:
 
 - `of_mode` (String) Open Firmware mode (`command` or `full`).
-- `of_password` (String, Sensitive) Plaintext OF/EFI password (Sensitive).
+- `of_password` (String, Sensitive) Plaintext Open Firmware / EFI password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.
 
 Read-Only:
 
@@ -313,6 +313,7 @@ Optional:
 
 Optional:
 
+- `distribution_point` (String) Name of the file share distribution point to use for the policy. Wire field `<package_configuration><distribution_point>`. Server echoes the configured DP name (e.g. `Dummy DP`); omit to inherit the tenant default.
 - `packages` (Attributes Set) Set of package assignments. Each item identifies the package by classic ID; `name` is server-derived. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. (see [below for nested schema](#nestedatt--package_configuration--packages))
 
 <a id="nestedatt--package_configuration--packages"></a>
@@ -380,6 +381,7 @@ Optional:
 Optional:
 
 - `all_computers` (Boolean) Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
+- `all_jss_users` (Boolean) Scope the policy to every JSS user in the tenant. Forbids per-user / per-user-group targets when true.
 - `building_ids` (Set of String) Set of Jamf Pro classic building IDs.
 - `computer_group_ids` (Set of String) Set of Jamf Pro classic computer group IDs.
 - `computer_ids` (Set of String) Set of Jamf Pro classic computer IDs.
@@ -504,8 +506,8 @@ Optional:
 
 Optional:
 
-- `allow_deferral_minutes` (Number) Maximum deferral duration in minutes.
-- `allow_deferral_until_utc` (String) Maximum deferral cut-off in UTC ISO-8601.
+- `allow_deferral_minutes` (Number) Maximum deferral duration in minutes. Must be a positive multiple of 1440 (one day) — the classic API rejects any other value with HTTP 409. Mutually exclusive with `allow_deferral_until_utc`.
+- `allow_deferral_until_utc` (String) Maximum deferral cut-off in UTC ISO-8601. Mutually exclusive with `allow_deferral_minutes`.
 - `allow_users_to_defer` (Boolean) Allow the user to defer the policy.
 - `message_finish` (String) Message displayed after the policy completes.
 - `message_start` (String) Message displayed before the policy runs.

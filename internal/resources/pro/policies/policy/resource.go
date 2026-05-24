@@ -41,6 +41,7 @@ type PolicyResource struct {
 var _ resource.Resource = &PolicyResource{}
 var _ resource.ResourceWithImportState = &PolicyResource{}
 var _ resource.ResourceWithIdentity = &PolicyResource{}
+var _ resource.ResourceWithConfigValidators = &PolicyResource{}
 
 const (
 	defaultCreateTimeout = 120 * time.Second
@@ -76,7 +77,7 @@ func (r *PolicyResource) IdentitySchema(ctx context.Context, req resource.Identi
 // schema is large by necessity — every section mirrors the SDK Policy type.
 func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix.",
+		MarkdownDescription: "Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The `scope.limit_to_users` block is intentionally omitted in v1 pending an upstream SDK fix. The classic `<software_update>` policy block is **intentionally not modelled**: software update via classic policy is an obsolete delivery path (superseded by MDM `InstallApplication` / `ScheduleOSUpdate` and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Policy ID assigned by Jamf Pro.",
@@ -171,18 +172,32 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. An equivalent `all_jss_users` attribute is intentionally omitted in v1 — the underlying SDK does not expose the field, so a no-op would silently scope to zero users.",
+				MarkdownDescription: "Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `jss_user_ids` and `jss_user_group_ids`.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"all_computers": schema.BoolAttribute{
 						MarkdownDescription: "Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
 						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 						Validators: []validator.Bool{
 							scope.AllFlagConflictsWith(
 								path.MatchRelative().AtParent().AtName("computer_ids"),
 								path.MatchRelative().AtParent().AtName("computer_group_ids"),
 								path.MatchRelative().AtParent().AtName("building_ids"),
 								path.MatchRelative().AtParent().AtName("department_ids"),
+							),
+						},
+					},
+					"all_jss_users": schema.BoolAttribute{
+						MarkdownDescription: "Scope the policy to every JSS user in the tenant. Forbids per-user / per-user-group targets when true.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+						Validators: []validator.Bool{
+							scope.AllFlagConflictsWith(
+								path.MatchRelative().AtParent().AtName("jss_user_ids"),
+								path.MatchRelative().AtParent().AtName("jss_user_group_ids"),
 							),
 						},
 					},
@@ -268,6 +283,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				MarkdownDescription: "Packages to install / cache / remove.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
+					"distribution_point": schema.StringAttribute{
+						MarkdownDescription: "Name of the file share distribution point to use for the policy. Wire field `<package_configuration><distribution_point>`. Server echoes the configured DP name (e.g. `Dummy DP`); omit to inherit the tenant default.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers: []planmodifier.String{
+							stringplanmodifier.UseStateForUnknown(),
+						},
+					},
 					"packages": schema.SetNestedAttribute{
 						MarkdownDescription: "Set of package assignments. Each item identifies the package by classic ID; `name` is server-derived. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`.",
 						Optional:            true,
@@ -355,11 +378,19 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								"action":   optComputedString("Account action (`Create`, `Reset`, `Delete`, `DisableFileVault2`)."),
+								"action": schema.StringAttribute{
+									MarkdownDescription: "Account action. Wire-accepted values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the classic UI labels the last action \"Disable FileVault\"; the wire string is `DisableFileVault` without a trailing `2` despite older documentation suggesting otherwise — confirmed against policy 6791 round-trip).",
+									Optional:            true,
+									Computed:            true,
+									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+									Validators: []validator.String{
+										stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault"),
+									},
+								},
 								"username": optComputedString("Account username."),
 								"realname": optComputedString("Account real (full) name."),
 								"password": schema.StringAttribute{
-									MarkdownDescription: "Plaintext password. Sensitive — surfaces in state until WriteOnly support lands.",
+									MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. Sensitive — plaintext surfaces in state because the Jamf classic API does not echo it back; the provider preserves the user-supplied value to satisfy the framework's plan/state consistency check. The companion `password_sha256` attribute carries the server's sentinel hash.",
 									Optional:            true,
 									Sensitive:           true,
 								},
@@ -368,14 +399,14 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 									Computed:            true,
 									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 								},
-								"archive_home_directory":    optComputedBool("Archive the home directory on deletion."),
-								"archive_home_directory_to": optComputedString("Destination for the archived home directory."),
-								"home":                      optComputedString("Home directory path."),
-								"hint":                      optComputedString("Password hint."),
-								"picture":                   optComputedString("Account picture path."),
-								"admin":                     optComputedBool("Whether the account is an admin."),
-								"filevault_enabled":         optComputedBool("Whether FileVault 2 is enabled for the account."),
-								"secure_token_allowed":      optComputedBool("Whether the account is allowed to hold a Secure Token."),
+								"permanently_delete_home_directory": optComputedBool("Permanently delete the home directory when `action = \"Delete\"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. The classic wire field is the inverse boolean `<archive_home_directory>` — the provider translates at the input/output boundary so the Terraform-facing semantic mirrors the Jamf Pro UI checkbox label \"Permanently delete home directory\"."),
+								"archive_home_directory_to":         optComputedString("Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`."),
+								"home":                              optComputedString("Home directory path."),
+								"hint":                              optComputedString("Password hint."),
+								"picture":                           optComputedString("Account picture path."),
+								"admin":                             optComputedBool("Whether the account is an admin."),
+								"filevault_enabled":                 optComputedBool("Whether FileVault 2 is enabled for the account."),
+								"secure_token_allowed":              optComputedBool("Whether the account is allowed to hold a Secure Token."),
 							},
 						},
 					},
@@ -395,7 +426,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Attributes: map[string]schema.Attribute{
 							"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`)."),
 							"managed_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext managed password (Sensitive).",
+								MarkdownDescription: "Plaintext managed password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.",
 								Optional:            true,
 								Sensitive:           true,
 							},
@@ -408,7 +439,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Attributes: map[string]schema.Attribute{
 							"of_mode": optComputedString("Open Firmware mode (`command` or `full`)."),
 							"of_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext OF/EFI password (Sensitive).",
+								MarkdownDescription: "Plaintext Open Firmware / EFI password. Sensitive — plaintext surfaces in state because the classic API never echoes it back. Follow-up: migrate to `WriteOnly` once the broader policy resource adopts it.",
 								Optional:            true,
 								Sensitive:           true,
 							},
@@ -474,14 +505,22 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"user_interaction": schema.SingleNestedAttribute{
-				MarkdownDescription: "User interaction prompts shown around policy execution.",
+				MarkdownDescription: "User interaction prompts shown around policy execution. Cross-field rules: `allow_users_to_defer = false` forbids both deferral fields; `allow_deferral_until_utc` and `allow_deferral_minutes` are mutually exclusive (transitioning between forms requires destroy+recreate).",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"message_start":            optComputedString("Message displayed before the policy runs."),
 					"allow_users_to_defer":     optComputedBool("Allow the user to defer the policy."),
-					"allow_deferral_until_utc": optComputedString("Maximum deferral cut-off in UTC ISO-8601."),
-					"allow_deferral_minutes":   optComputedInt("Maximum deferral duration in minutes."),
-					"message_finish":           optComputedString("Message displayed after the policy completes."),
+					"allow_deferral_until_utc": optComputedString("Maximum deferral cut-off in UTC ISO-8601. Mutually exclusive with `allow_deferral_minutes`."),
+					"allow_deferral_minutes": schema.Int64Attribute{
+						MarkdownDescription: "Maximum deferral duration in minutes. Must be a positive multiple of 1440 (one day) — the classic API rejects any other value with HTTP 409. Mutually exclusive with `allow_deferral_until_utc`.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
+						Validators: []validator.Int64{
+							MultipleOfInt64(minutesPerDay),
+						},
+					},
+					"message_finish": optComputedString("Message displayed after the policy completes."),
 				},
 			},
 			"disk_encryption": schema.SingleNestedAttribute{
@@ -502,6 +541,16 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Delete: true,
 			}),
 		},
+	}
+}
+
+// ConfigValidators registers plan-time cross-field validators that mirror the
+// Jamf Pro classic /policies endpoint's server-side checks. Catching the
+// constraints at plan time gives users a clear error before apply rather than
+// the bare HTTP 409 the server surfaces.
+func (r *PolicyResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		UserInteractionConfigValidator(),
 	}
 }
 
