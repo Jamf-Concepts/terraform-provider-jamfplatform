@@ -3,30 +3,31 @@
 page_title: "jamfplatform_pro_directory_binding Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by type. A plan-time cross-field validator enforces that the supplied nested block matches type. The plaintext password is write-only — only the server-computed password_sha256 is returned on reads.
+  Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by type. A plan-time cross-field validator enforces that the supplied nested block matches type. The plaintext password is a Terraform WriteOnly attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with password_wo_version to trigger rotation: bump the integer to force a new PUT carrying the current password value.
 ---
 
 # jamfplatform_pro_directory_binding (Resource)
 
-Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is write-only — only the server-computed `password_sha256` is returned on reads.
+Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new PUT carrying the current `password` value.
 
 ## Example Usage
 
 ```terraform
-# Active Directory binding. `password` is write-only — only the
-# server-computed `password_sha256` is returned on reads, so the plaintext
-# stays in state from the last apply until the user changes it.
+# Active Directory binding. `password` is `WriteOnly` — sent to Jamf Pro
+# on writes but never persisted in Terraform state. Bump `password_wo_version`
+# to rotate the stored password on the next apply.
 #
 # TF attribute names mirror the Jamf Pro admin UI labels; the wire (XML
 # element) names are documented in each attribute's schema description.
 resource "jamfplatform_pro_directory_binding" "ad" {
-  name        = "ad-prod"
-  priority    = 1
-  type        = "Active Directory"
-  domain      = "corp.example.com"
-  username    = "joiner-svc"
-  password    = sensitive("change-me")
-  computer_ou = "OU=Macs,DC=corp,DC=example,DC=com"
+  name                = "ad-prod"
+  priority            = 1
+  type                = "Active Directory"
+  domain              = "corp.example.com"
+  username            = "joiner-svc"
+  password            = sensitive("change-me")
+  password_wo_version = 1
+  computer_ou         = "OU=Macs,DC=corp,DC=example,DC=com"
 
   active_directory = {
     create_mobile_account      = true
@@ -45,12 +46,13 @@ resource "jamfplatform_pro_directory_binding" "ad" {
 # Directory" but the wire `type` value is the bare "Open Directory" —
 # match the wire form.
 resource "jamfplatform_pro_directory_binding" "open_directory" {
-  name     = "od-staging"
-  priority = 2
-  type     = "Open Directory"
-  domain   = "ldap.staging.example.com"
-  username = "cn=joiner,dc=staging,dc=example,dc=com"
-  password = sensitive("change-me")
+  name                = "od-staging"
+  priority            = 2
+  type                = "Open Directory"
+  domain              = "ldap.staging.example.com"
+  username            = "cn=joiner,dc=staging,dc=example,dc=com"
+  password            = sensitive("change-me")
+  password_wo_version = 1
 
   open_directory = {
     encrypt_using_ssl      = true
@@ -65,26 +67,28 @@ resource "jamfplatform_pro_directory_binding" "open_directory" {
 # attribute on its own conveys the PowerBroker identity. The provider
 # emits the empty <powerbroker_identity_services/> element automatically.
 resource "jamfplatform_pro_directory_binding" "powerbroker" {
-  name        = "pb-lab"
-  priority    = 3
-  type        = "PowerBroker Identity Services"
-  domain      = "lab.example.com"
-  username    = "joiner@lab.example.com"
-  password    = sensitive("change-me")
-  computer_ou = "OU=Macs,DC=lab,DC=example,DC=com"
+  name                = "pb-lab"
+  priority            = 3
+  type                = "PowerBroker Identity Services"
+  domain              = "lab.example.com"
+  username            = "joiner@lab.example.com"
+  password            = sensitive("change-me")
+  password_wo_version = 1
+  computer_ou         = "OU=Macs,DC=lab,DC=example,DC=com"
 }
 
 # ADmitMac binding. `home_location` is the ADmitMac UI's "Home Location"
 # field — distinct from the AD type's bool `force_local_home_directory`,
 # even though both round-trip through a wire element named `local_home`.
 resource "jamfplatform_pro_directory_binding" "admitmac" {
-  name        = "admitmac-prod"
-  priority    = 4
-  type        = "ADmitMac"
-  domain      = "corp.example.com"
-  username    = "joiner-svc"
-  password    = sensitive("change-me")
-  computer_ou = "OU=Macs,DC=corp,DC=example,DC=com"
+  name                = "admitmac-prod"
+  priority            = 4
+  type                = "ADmitMac"
+  domain              = "corp.example.com"
+  username            = "joiner-svc"
+  password            = sensitive("change-me")
+  password_wo_version = 1
+  computer_ou         = "OU=Macs,DC=corp,DC=example,DC=com"
 
   admitmac = {
     require_confirmation = false
@@ -107,12 +111,13 @@ resource "jamfplatform_pro_directory_binding" "admitmac" {
 # <update_PAM> (uppercase preserved on the wire); the TF schema uses
 # snake_case.
 resource "jamfplatform_pro_directory_binding" "centrify" {
-  name     = "centrify-prod"
-  priority = 5
-  type     = "Centrify"
-  domain   = "corp.example.com"
-  username = "joiner-svc"
-  password = sensitive("change-me")
+  name                = "centrify-prod"
+  priority            = 5
+  type                = "Centrify"
+  domain              = "corp.example.com"
+  username            = "joiner-svc"
+  password            = sensitive("change-me")
+  password_wo_version = 1
 
   centrify = {
     workstation_mode        = false
@@ -134,13 +139,16 @@ resource "jamfplatform_pro_directory_binding" "centrify" {
 
 ### Optional
 
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
 - `active_directory` (Attributes) Active Directory–specific configuration. May only be set when `type = "Active Directory"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason. (see [below for nested schema](#nestedatt--active_directory))
 - `admitmac` (Attributes) ADmitMac–specific configuration. May only be set when `type = "ADmitMac"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason. (see [below for nested schema](#nestedatt--admitmac))
 - `centrify` (Attributes) Centrify–specific configuration. May only be set when `type = "Centrify"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason. (see [below for nested schema](#nestedatt--centrify))
 - `computer_ou` (String) Computer object's organisational unit (OU) within the directory. Free text. The format is type-specific (e.g. an LDAP-style `OU=...` path for Active Directory).
 - `domain` (String) **"Domain Server"** in the Jamf Pro admin UI. The interpretation depends on `type` — DNS domain for Active Directory; LDAP host for Open Directory; bind domain for PowerBroker / ADmitMac / Centrify.
 - `open_directory` (Attributes) Open Directory–specific configuration. May only be set when `type = "Open Directory"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason. (see [below for nested schema](#nestedatt--open_directory))
-- `password` (String, Sensitive) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. **Write-only** — the Jamf Pro server never echoes the plaintext on reads; only `password_sha256` is returned. The provider deliberately does not overwrite this attribute from API responses, so the user-supplied value remains in state until the user changes it. Wrap in `sensitive(...)` to keep it out of Terraform output.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. The Jamf Pro server also never echoes the plaintext on reads, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger a new PUT carrying the current `password`).
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro. Initial Create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals "leave the stored password alone" — the provider omits the `<password/>` element on the next PUT so Jamf retains the existing value.
 - `priority` (Number) Binding priority — accepted range is 1–10. Lower numbers run earlier when Jamf evaluates multiple bindings. Optional+Computed: omit to let the server assign the default.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `username` (String) **"Username"** in the Jamf Pro admin UI. The directory account used to perform the bind. May be a domain account name, an LDAP DN, or another type-specific identifier.
@@ -148,7 +156,6 @@ resource "jamfplatform_pro_directory_binding" "centrify" {
 ### Read-Only
 
 - `id` (String) Directory binding ID assigned by Jamf Pro.
-- `password_sha256` (String) Server-computed SHA-256 hash of the stored bind password. Read-only — surfacing it lets out-of-band password changes show up as drift on `password_sha256` even though the plaintext is not recoverable.
 
 <a id="nestedatt--active_directory"></a>
 ### Nested Schema for `active_directory`

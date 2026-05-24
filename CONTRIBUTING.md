@@ -125,6 +125,20 @@ Use [conventional commit](https://www.conventionalcommits.org/) style messages:
 - Run `make generate` if schema descriptions changed (to update docs and copyright headers).
 - CI must pass before merge.
 
+## Tracking Work
+
+The provider's planned and in-flight work is tracked across three surfaces. **All three** must be kept in sync — drift between them is the most common source of "what is anyone actually working on?" confusion.
+
+- **GitHub project board** — <https://github.com/orgs/Jamf-Concepts/projects/2/views/1>. Single source of truth for status. Every non-trivial piece of work has a card on the board with one of three statuses: `Todo`, `In Progress`, `Done`. Card move rules:
+  - `Todo` → `In Progress` when you start work and push the feature branch.
+  - `In Progress` → `Done` when the PR is **merged**, not when it opens (so reviewers can find in-flight cards by status).
+  - One card per logical PR. Multi-PR initiatives use sub-issues linked to the parent epic.
+- **Active `*_SPIKE.md` design docs** — gitignored planning artefacts (e.g. `PHASE_2_6_SPIKE.md`, `SCOPE_SPIKE.md`). Track open questions, wire-probe results, and maintainer-decision asks for work that is too large to fit in a single PR description. Update the spike doc as decisions land so the doc reflects the current plan, not the original plan. Cross-link from the relevant board card.
+- **`JAMF_PRO_INVENTORY.md`** — gitignored local inventory of the ~170 ProClassic SDK namespaces and their adoption status. Update the adoption column when a resource ships, and reflect any scope reshaping (e.g. attrs split out of one resource into a follow-up) so the inventory mirrors reality.
+- **Auto-memory** under `~/.claude/projects/.../memory/project_*.md` — Claude Code's per-project memory captures the "why" behind decisions and surfaces it in future sessions. Update an existing `project-*` memory when its status changes; add a new one only when the topic doesn't fit an existing entry. Stale memories are worse than missing memories — see <https://github.com/anthropics/claude-code> docs.
+
+Drift between these surfaces almost always means a card got moved without the spike doc / inventory / memory catching up. If you find a board card in `Done` but the spike doc still says "awaiting maintainer review", the board is right and the doc is stale — fix the doc.
+
 ## Reporting Issues
 
 Open an issue on GitHub with:

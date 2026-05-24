@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_disk_encryption_configuration Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext IRK password — only the server-side password_sha256 redaction sentinel is surfaced (see the resource documentation for caveats).
+  Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext IRK password — the wire never echoes it back. Use the resource (not the data source) to manage the password.
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Data Source)
 
-Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext IRK password — only the server-side `password_sha256` redaction sentinel is surfaced (see the resource documentation for caveats).
+Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext IRK password — the wire never echoes it back. Use the resource (not the data source) to manage the password.
 
 ## Example Usage
 
@@ -61,4 +61,3 @@ Read-Only:
 - `certificate_type` (String) Certificate format (`PKCS12`, `DER`, `PEM`).
 - `data` (String, Sensitive) Base64-encoded recovery certificate payload.
 - `key` (String) Server-derived certificate Subject DN.
-- `password_sha256` (String) Server-side redaction sentinel — `********************` when an IRK password is set, empty otherwise. NOT a real hash.
