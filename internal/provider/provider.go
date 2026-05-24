@@ -43,6 +43,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/disk_encryption_configuration"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/dock_item"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/ibeacon"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/icon"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
 	pkg "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/package"
@@ -222,6 +223,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		disk_encryption_configuration.NewDiskEncryptionConfigurationResource,
 		dock_item.NewDockItemResource,
 		ibeacon.NewIbeaconResource,
+		icon.NewIconResource,
 		network_segment.NewNetworkSegmentResource,
 		pkg.NewPackageResource,
 		policy.NewPolicyResource,

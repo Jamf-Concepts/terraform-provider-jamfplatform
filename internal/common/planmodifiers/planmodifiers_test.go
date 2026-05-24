@@ -1,7 +1,7 @@
 // Copyright Jamf Software LLC 2026
 // SPDX-License-Identifier: MPL-2.0
 
-package pkg
+package planmodifiers
 
 import (
 	"context"
@@ -69,7 +69,7 @@ func TestDecideResetForUnchangedString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, ok := decideResetForUnchangedString(tc.sourceEqual, tc.stateValue)
+			got, ok := DecideResetForUnchangedString(tc.sourceEqual, tc.stateValue)
 			if ok != tc.wantOK {
 				t.Fatalf("ok = %v, want %v", ok, tc.wantOK)
 			}
@@ -83,7 +83,7 @@ func TestDecideResetForUnchangedString(t *testing.T) {
 	}
 }
 
-// testSchema mirrors the minimal shape the resetIfSourceChangedString
+// testSchema mirrors the minimal shape the ResetIfSourceChangedString
 // modifier needs: a watched source attribute + a computed attribute the
 // modifier is applied to.
 func testSchema() schema.Schema {
@@ -209,7 +209,7 @@ func TestResetIfSourceChangedString_PlanModifyString(t *testing.T) {
 			}
 			resp := &planmodifier.StringResponse{PlanValue: tc.planValue}
 
-			resetIfSourceChangedString(path.MatchRoot("src")).PlanModifyString(ctx, req, resp)
+			ResetIfSourceChangedString(path.MatchRoot("src")).PlanModifyString(ctx, req, resp)
 
 			if resp.Diagnostics.HasError() {
 				t.Fatalf("unexpected diagnostics: %v", resp.Diagnostics)
