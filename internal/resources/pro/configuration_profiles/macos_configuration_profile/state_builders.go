@@ -306,8 +306,8 @@ func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state
 	state.SelfServiceDescription = helpers.ReconcileOptionalStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
 	state.EnsureUsersViewDescription = helpers.ReconcileOptionalBoolPointer(ss.ForceUsersToViewDescription, state.EnsureUsersViewDescription)
 	state.FeatureOnMainPage = helpers.ReconcileOptionalBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
-	state.NotificationSubject = helpers.ReconcileOptionalStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.ReconcileOptionalStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationSubject = preserveStringWhenWireEmpty(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = preserveStringWhenWireEmpty(ss.NotificationMessage, state.NotificationMessage)
 
 	if ss.Notification != nil {
 		state.DisplayNotifications = helpers.ReconcileOptionalBoolPointer(ss.Notification.Enabled, state.DisplayNotifications)
@@ -332,6 +332,21 @@ func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state
 		}
 		state.Categories = items
 	}
+}
+
+// preserveStringWhenWireEmpty returns the server value when it's a non-empty
+// string; otherwise keeps whatever was already in state. Used for fields
+// the user fully controls (e.g. Self Service `notification_subject` /
+// `notification_message`) where the Classic API has been observed to
+// occasionally return an empty value for the field after a successful
+// write — `helpers.ReconcileOptionalString` would collapse that to Null
+// and trip the "Provider produced inconsistent result after apply" check
+// when plan held a non-empty user-authored string.
+func preserveStringWhenWireEmpty(wire *string, current types.String) types.String {
+	if wire != nil && *wire != "" {
+		return types.StringValue(*wire)
+	}
+	return current
 }
 
 func idPointerToString(id *int) types.String {
