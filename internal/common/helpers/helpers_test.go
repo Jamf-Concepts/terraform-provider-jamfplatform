@@ -125,6 +125,54 @@ func TestReconcileOptionalString(t *testing.T) {
 	}
 }
 
+func TestPreserveStringWhenWireEmpty(t *testing.T) {
+	cases := []struct {
+		name    string
+		wire    *string
+		current types.String
+		want    types.String
+	}{
+		{
+			name:    "wire empty + configured non-empty current preserves current (the masked-error-path bug class)",
+			wire:    new(""),
+			current: types.StringValue("user-authored"),
+			want:    types.StringValue("user-authored"),
+		},
+		{
+			name:    "wire nil + configured current preserves current",
+			wire:    nil,
+			current: types.StringValue("user-authored"),
+			want:    types.StringValue("user-authored"),
+		},
+		{
+			name:    "wire non-empty replaces current",
+			wire:    new("server-value"),
+			current: types.StringValue("old"),
+			want:    types.StringValue("server-value"),
+		},
+		{
+			name:    "wire nil + null current stays null",
+			wire:    nil,
+			current: types.StringNull(),
+			want:    types.StringNull(),
+		},
+		{
+			name:    "wire empty + null current stays null",
+			wire:    new(""),
+			current: types.StringNull(),
+			want:    types.StringNull(),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := PreserveStringWhenWireEmpty(tc.wire, tc.current)
+			if !got.Equal(tc.want) {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestIsNotFoundError(t *testing.T) {
 	tests := []struct {
 		name     string

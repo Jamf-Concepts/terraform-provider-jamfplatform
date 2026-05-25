@@ -1,7 +1,7 @@
 // Copyright Jamf Software LLC 2026
 // SPDX-License-Identifier: MPL-2.0
 
-package macos_configuration_profile
+package mobile_device_configuration_profile
 
 import (
 	"context"
@@ -17,15 +17,6 @@ import (
 // diffs on the `general.payloads` attribute when the user's plan value is
 // semantically equivalent to the current state value modulo Jamf Pro's
 // well-known server-side normalisations. See helpers.go for the mask logic.
-//
-// When the plan and state payloads are semantically equal, the plan is
-// rewritten to match state so Terraform considers the attribute unchanged.
-// When the plan is genuinely different, the modifier leaves the plan value
-// alone — Terraform will surface the change as drift.
-//
-// The TF_LOG=DEBUG path always prints both the suppression decision and
-// (when suppressing) a coarse byte-length / structural summary so operators
-// debugging unexpected silence can see what the mask is doing.
 func payloadsDiffSuppressor() planmodifier.String {
 	return payloadsDiffSuppressorModifier{}
 }
@@ -41,13 +32,9 @@ func (m payloadsDiffSuppressorModifier) MarkdownDescription(_ context.Context) s
 }
 
 func (m payloadsDiffSuppressorModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	// Skip on Create — no state to compare against. The plan value is the
-	// canonical form for first apply.
 	if req.StateValue.IsNull() {
 		return
 	}
-	// Skip when the user clears the field (Required schema rejects this
-	// anyway, but defend in depth).
 	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
 		return
 	}
