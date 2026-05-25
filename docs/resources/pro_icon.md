@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_icon Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro icon. Icons are uploaded via the /v1/icon endpoint and referenced by ID from Self Service branding configurations.
+  Manages a Jamf Pro icon. Icons are uploaded via the /api/pro/v1/tenant/{tenantId}/icon endpoint and referenced by ID from Self Service branding configurations.
   Source-driven change detection: the provider opens icon_file_source during every plan, computes a SHA-256 of the bytes, and stores it as source_hash. When the hash changes, Terraform replaces the resource (no in-place update — Jamf Pro has no icon update endpoint). When the hash is unchanged the resource is stable.
   Source types:
   Local file: icon_file_source = "./icon.png". Provider reads bytes on every plan. Stable across plans unless file content changes.URL: icon_file_source = "https://cdn.example.com/icon.png". Provider downloads on every plan (~tens of KB). Triggers replacement when the remote content changes — useful for tracking upstream icons (e.g. App Store CDN).Frozen URL behaviour: if you need a URL-sourced icon to NOT track upstream changes, download the icon locally and switch icon_file_source to the local path.
@@ -15,7 +15,7 @@ description: |-
 
 # jamfplatform_pro_icon (Resource)
 
-Manages a Jamf Pro icon. Icons are uploaded via the `/v1/icon` endpoint and referenced by ID from Self Service branding configurations.
+Manages a Jamf Pro icon. Icons are uploaded via the `/api/pro/v1/tenant/{tenantId}/icon` endpoint and referenced by ID from Self Service branding configurations.
 
 **Source-driven change detection**: the provider opens `icon_file_source` during every plan, computes a SHA-256 of the bytes, and stores it as `source_hash`. When the hash changes, Terraform replaces the resource (no in-place update — Jamf Pro has no icon update endpoint). When the hash is unchanged the resource is stable.
 

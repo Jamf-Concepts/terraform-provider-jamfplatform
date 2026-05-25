@@ -84,7 +84,7 @@ output "smart_computer_group_jamf_pro_id" {
 ### Read-Only
 
 - `id` (String) Unique identifier assigned by the API.
-- `jamf_pro_id` (String) Numeric Jamf Pro classic ID for the group, resolved from the Pro `/v2/groups` endpoint. Used to reference the group from classic-API scope blocks (policies, configuration profiles, restricted software). Null when the Platform API client lacks the `Read Groups` privilege (a single missing-privilege warning surfaces during plan), when the group cannot be located in Jamf Pro, or when the bridging call transiently fails.
+- `jamf_pro_id` (String) Numeric Jamf Pro classic ID for the group, resolved from the `/api/pro/v2/tenant/{tenantId}/groups` endpoint. Used to reference the group from classic-API scope blocks (policies, configuration profiles, restricted software). Null when the Platform API client lacks the `Read Groups` privilege (a single missing-privilege warning surfaces during plan), when the group cannot be located in Jamf Pro, or when the bridging call transiently fails.
 - `member_count` (Number) Total members reported by the API.
 
 <a id="nestedatt--criteria"></a>

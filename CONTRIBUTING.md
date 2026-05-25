@@ -58,17 +58,82 @@ See [TESTING.md](TESTING.md) for full testing guidance.
 
 ## Adding a Jamf Pro Resource
 
-Jamf Pro resources (sourced from the `pro/` or `proclassic/` packages of `jamfplatform-go-sdk`) follow the same file conventions as Platform Services resources **plus** a planning gate. Use this workflow for every Jamf Pro construct.
+Jamf Pro resources (sourced from the `pro/` or `proclassic/` packages of `jamfplatform-go-sdk`) follow the same file conventions as Platform Services resources **plus** a planning gate. Use this workflow for every Jamf Pro construct. Step order below is the recommended order — wire evidence drives schema decisions, so collect it before sketching the schema, not after.
 
 1. **Pick the API namespace** from `JAMF_PRO_INVENTORY.md` (gitignored, at repo root). Update its status to `in-design`.
 2. **Audit `pro/` vs `proclassic/`** for the namespace. Default to `pro/`. Switch to `proclassic/` only when `pro/` is missing or materially less feature-complete.
-3. **ProClassic only — SDK payload audit.** If the chosen namespace is `proclassic/`, collect real example XML bodies from the user (`GET` list, `GET` by id for two structurally-different instances, `POST`/`PUT` request and response) and audit the SDK types in `jamfplatform-go-sdk/jamfplatform/proclassic/types.go` against them. Common defect: nested collections typed `*[]any` because the generator could not infer item shape (see `UserGroup.Criteria`, `UserGroup.Users`, `MobileDeviceGroup.Criteria`). Any SDK gap — `*[]any`, missing field, divergent write shape — **must be fixed upstream and a new SDK tag cut before the Terraform resource is built**. Do not work around SDK defects in the provider with custom decoders. See [PROCLASSIC_SPIKE.md §13](PROCLASSIC_SPIKE.md#13-sdk-payload-audit-mandatory-before-every-new-proclassic-resource) for the full audit checklist and reporting format.
-4. **Produce a one-page comparison** in the PR description: SDK package, function set proposed (CRUD + helpers), Terraform construct name (default: derived from SDK filename per [STYLE_GUIDE.md §Jamf Pro Resource Naming](STYLE_GUIDE.md#jamf-pro-resource-naming); override only if needed), **endpoint shape classification** (resource / data source / singleton / action — see [STYLE_GUIDE.md §Endpoint shape classification](STYLE_GUIDE.md#endpoint-shape-classification)), schema sketch, examples of similar shipped resources.
-5. **Maintainer approval** locks in: SDK function set, Terraform construct name (and any override), target domain folder under `internal/resources/pro/<domain>/`, and the **minimum Jamf Pro version** (`minJamfProVersion` const — see [STYLE_GUIDE.md §Minimum Jamf Pro version check](STYLE_GUIDE.md#minimum-jamf-pro-version-check)). Source the version from Jamf release notes, the SDK function's `// Available since` comment, or hand-research; record it in `JAMF_PRO_INVENTORY.md`. Mark the row `in-progress`.
-6. **Build the package** at `internal/resources/pro/<domain>/<resource>/` per the [file conventions](STYLE_GUIDE.md#resource-package-file-conventions). Mirror `internal/resources/pro/inventory/category/` for the Pro construct template (or `internal/resources/blueprints/blueprint/` for complex Platform Services shapes). Resource / data source / list resource / action Configure **must** funnel through `providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_<name>")` — do not hand-roll the type-assertion / version-fetch / version-gate / floor-warning boilerplate (see [STYLE_GUIDE.md §Pro Configure](STYLE_GUIDE.md#pro-configure-use-the-providerdataconfigurepro-helper)). Credentials are the same `JAMFPLATFORM_*` set used by Platform Services resources — there is no separate Pro credentials gate. **`crud.go` must carry the SDK-endpoints annotation block** at the top of the file with `Status: current. Last reviewed YYYY-MM-DD.` See [STYLE_GUIDE.md §Endpoint adoption & migration policy](STYLE_GUIDE.md#endpoint-adoption--migration-policy).
-7. **Reuse shared schemas only when they exist**. Do **not** extract shared schemas (scope, site, category, criteria) preemptively — the trigger is 3 verified-identical SDK shapes across shipped resources. See [STYLE_GUIDE.md §Shared schemas (deferred abstraction)](STYLE_GUIDE.md#shared-schemas-deferred-abstraction). When the trigger fires, extract into `internal/common/schemas/` in a dedicated refactor PR.
-8. **Tests + examples + docs**: same as a Platform Services resource — schema/input/state/upgrader unit tests, `resource_acceptance_test.go` with `//go:build acceptance` and `internal/testhelpers` factories, examples under `examples/resources/<name>/` (or the matching `data-sources/`, `list-resources/`, `actions/` subdirectory). Then run `make fix fmt lint test` (must be clean) followed by `make generate` (mandatory — rebuilds `docs/` for the new construct). Commit the generated `docs/` files alongside the source.
-9. **Update inventory** to `shipped` after merge.
+3. **ProClassic only — SDK payload audit.** If the chosen namespace is `proclassic/`, run the audit in [§ProClassic SDK payload audit](#proclassic-sdk-payload-audit) below before writing any Terraform code. Any SDK gap (`*[]any`, missing field, divergent write shape) **must be fixed upstream and a new SDK tag cut before the Terraform resource is built**. Do not work around SDK defects in the provider with custom decoders.
+4. **UI evidence — collect admin-UI screenshots.** Ask the maintainer to screenshot every relevant admin-UI tab/panel for the resource (Options / Scope / Self Service / User Interaction etc., as applicable). Save under `spike/screenshots/` (gitignored). Two roles for the screenshots:
+   - **Attribute naming** — the Jamf Pro admin UI is canonical for user-facing strings per [STYLE_GUIDE.md §Attribute names mirror the Jamf Pro admin UI](STYLE_GUIDE.md#attribute-names-mirror-the-jamf-pro-admin-ui-when-the-wire-name-is-cryptic). Wire names like `cache_last_user` need renaming to UI labels (`create_mobile_account`) at the schema layer. Without the UI evidence, you'd rename to the wrong thing or skip the rename and ship a cryptic schema.
+   - **Surface coverage** — confirm the schema models every field the UI exposes for the resource. Phase 2.6 used this pass to add full UI parity to `jamfplatform_pro_policy` and drop wire-dead fields (`trigger_logout`, `maintenance.heal`, `maintenance.prebindings`) the UI didn't expose.
+5. **Produce a one-page comparison** in the PR description: SDK package, function set proposed (CRUD + helpers), Terraform construct name (default: derived from SDK filename per [STYLE_GUIDE.md §Jamf Pro Resource Naming](STYLE_GUIDE.md#jamf-pro-resource-naming); override only if needed), **endpoint shape classification** (resource / data source / singleton / action — see [STYLE_GUIDE.md §Endpoint shape classification](STYLE_GUIDE.md#endpoint-shape-classification)), schema sketch driven by the UI evidence, examples of similar shipped resources.
+6. **Maintainer approval** locks in: SDK function set, Terraform construct name (and any override), target domain folder under `internal/resources/pro/<domain>/`, and the **minimum Jamf Pro version** (`minJamfProVersion` const — see [STYLE_GUIDE.md §Minimum Jamf Pro version check](STYLE_GUIDE.md#minimum-jamf-pro-version-check)). Source the version from Jamf release notes, the SDK function's `// Available since` comment, or hand-research; record it in `JAMF_PRO_INVENTORY.md`. Mark the row `in-progress`.
+7. **Build the package** at `internal/resources/pro/<domain>/<resource>/` per the [file conventions](STYLE_GUIDE.md#resource-package-file-conventions). Mirror the closest reference implementation from the table in `CLAUDE.md`. Configure **must** funnel through `providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_<name>")` — do not hand-roll the type-assertion / version-fetch / version-gate / floor-warning boilerplate (see [STYLE_GUIDE.md §Pro Configure](STYLE_GUIDE.md#pro-configure-use-the-providerdataconfigurepro-helper)). Credentials are the same `JAMFPLATFORM_*` set used by Platform Services resources — there is no separate Pro credentials gate. **`crud.go` must carry the SDK-endpoints annotation block** at the top of the file with `Status: current. Last reviewed YYYY-MM-DD.` See [STYLE_GUIDE.md §Endpoint adoption & migration policy](STYLE_GUIDE.md#endpoint-adoption--migration-policy). Endpoint references in MarkdownDescriptions must use the Jamf Platform path convention from [STYLE_GUIDE.md §Endpoint references in user-facing descriptions](STYLE_GUIDE.md#endpoint-references-in-user-facing-descriptions), not legacy `/JSSResource/...` or bare `/api/v1/...` strings.
+8. **Reuse shared abstractions only when they exist**. See [STYLE_GUIDE.md §Shared abstractions](STYLE_GUIDE.md#shared-abstractions--when-to-extract): schemas extract at 3 consumers, code helpers at 2 when the logic is non-trivial. When a trigger fires, extract into `internal/common/<topic>/` in a dedicated refactor PR before the new resource lands.
+9. **Tests + examples + docs**: schema/input/state/upgrader unit tests, `resource_acceptance_test.go` with `//go:build acceptance` and `internal/testhelpers` factories, examples under `examples/resources/<name>/` (or the matching `data-sources/`, `list-resources/`, `actions/` subdirectory). Then run `make fix fmt lint test` (must be clean) followed by `make generate` (mandatory — rebuilds `docs/` for the new construct). Commit the generated `docs/` files alongside the source.
+10. **Quality gate — `advisor()` consult.** Before declaring the PR ready, call the `advisor()` tool. The advisor sees the full diff and is the cheapest second opinion for missed conventions, missing acceptance coverage, MarkdownDescription gaps, or a hidden wire-shape assumption you propagated from the SDK type without verifying. Cheap enough to use every time; expensive to skip on the build that ships the bug.
+11. **Update inventory** to `shipped` after merge. Remove any spike doc the build used — lift every load-bearing finding into STYLE_GUIDE / CONTRIBUTING / the resource's own comments first.
+
+## ProClassic SDK payload audit
+
+The `proclassic` package in `jamfplatform-go-sdk` is generated from a spec that does not always describe nested collections precisely. The generator falls back to `*[]any` when it cannot infer a concrete item shape, and sometimes omits fields entirely. **You cannot trust the SDK type to be a complete and accurate model of the wire payload.** Run this audit before any Terraform code for a new ProClassic resource. Skip for `pro/` (JSON, OpenAPI-generated) and Platform Services.
+
+### What to collect
+
+Save all bodies under `local-testing/<endpoint>/` (gitignored). Sanitise PII and tenant identifiers first.
+
+1. `GET /{endpoint}` list — raw XML.
+2. `GET /{endpoint}/id/{id}` for at least two structurally different instances (e.g. static vs smart group; populated vs empty nested collections).
+3. `GET /{endpoint}/name/{name}` — only if the maintainer believes it diverges from the id path.
+4. `POST /{endpoint}/id/0` request + response — surface write-shape divergence (precedent: `ComputerGroupPost` vs `ComputerGroup`).
+5. `PUT /{endpoint}/id/{id}` request + response — same.
+
+**Preferred collection: `jamf-cli` against a maintainer profile.** `jamf-cli config list` shows available profiles. `jamf-cli pro classic-<resource> --help` lists subcommands (`apply / create / get / list / update / delete`). Use `-o raw` for raw XML and `-vvv` for full HTTP cycle (URL, headers, request body, response body). Ask the maintainer to seed example objects via the Jamf UI first — programmatic creates miss UI-only field initialisation and default-value nuances. After seeded GETs, run behavioural probes on agent-created throwaway objects to surface what type inspection cannot:
+
+| Probe | Why |
+|---|---|
+| `list -o raw -vv` | List-item shape (`[]IDName` vs full object) — drives N+1 vs full-populate in the TF list resource. |
+| `create` with only required fields | Server-populated defaults (`category` sentinels, default booleans, server-derived paths). |
+| `get {id}` after minimal create | Confirms what the server filled in. |
+| `create` with every field populated | Write-shape acceptance + round-trip fidelity. |
+| `update {id}` with a subset of fields | **Partial-merge vs full-replace** PUT semantics — critical for TF state handling. |
+| `update {id}` with an empty `<field/>` | **Clear vs no-op vs server-sentinel** behaviour. |
+| `update {id}` omitting a field entirely | Omitted-tag preservation. |
+| `create` with a bogus referenced name | Whether the server validates references (409) or silently accepts. |
+| `create` toggling a known interacting field (e.g. `use_generic` for printers, `is_smart` for groups) | Server-side overrides of sibling fields — drift pure GETs won't show. |
+| `delete {id} --yes` | Cleanup. `--yes` required under `--no-input`; or set `JAMF_CLI_ARGS='--yes'`. |
+
+Name saved artifacts after the probe that produced them (`get-id-69-minimal.xml`, `put-merge-clear-category.xml`). Delete agent-created throwaway resources before declaring the audit complete; the maintainer-seeded objects stay.
+
+**Fallback: maintainer paste.** If the agent cannot run `jamf-cli`, request the static GET set in one message and flag every behavioural question (PUT merge semantics, sentinel handling, reference validation) as an explicit open question.
+
+### Audit checklist
+
+Open `proclassic/types.go` and walk every field on each type used by the SDK CRUD methods (`Get*ByID`, `Create*`, `Update*`, list response).
+
+| Symptom in SDK | Meaning | Action |
+|---|---|---|
+| `*[]any` on a nested collection | Generator could not infer item shape. | File SDK PR with strongly-typed item struct. Mirror `ComputerGroup` (`*[]ComputerGroupCriteriaItem` + reused `Criterion`). |
+| Field present in payload, absent in struct | SDK gap. | File SDK PR adding the field. |
+| Field present in struct, never in payload | Likely phantom. | Leave it; do **not** expose in TF schema until evidence appears. |
+| Write payload differs from read payload | Spec-level divergence. | File SDK PR adding sibling `*Post` type. Mirror `ComputerGroupPost`. |
+| Polymorphic root element (e.g. `<smart_user_group>` vs `<static_user_group>`) | Handled by `XMLName xml.Name` + `MarshalXML` override. | Confirm the override exists on the root struct. |
+
+### Outcome gate
+
+- **No gaps** → proceed to TF resource build.
+- **Any gap** → file SDK PR first, wait for tag, bump `go.mod`, then build the TF resource. No custom decoders, no ad-hoc `xml.Unmarshal`, no `any`-to-map conversions in the provider — the fix belongs upstream.
+
+Record each audit in the resource's design PR description:
+
+```
+SDK audit — proclassic.UserGroup (types.go:11477)
+  Collected: GET list, GET id (static), GET id (smart), GET name (same as id)
+  Gaps found:
+    - Criteria typed *[]any → needs UserGroupCriteriaItem + reuse Criterion
+    - Users typed *[]any → needs UserGroupUsersItem + UserGroupUsersItemUser
+  SDK PR: jamfplatform-go-sdk#NN, merged 2026-MM-DD, tag v0.X.Y
+```
 
 ## Adding a New Data Source
 
@@ -127,17 +192,20 @@ Use [conventional commit](https://www.conventionalcommits.org/) style messages:
 
 ## Tracking Work
 
-The provider's planned and in-flight work is tracked across three surfaces. **All three** must be kept in sync — drift between them is the most common source of "what is anyone actually working on?" confusion.
+**The GitHub project board is the source of truth for project status.** Local docs hold the detail behind each status.
 
-- **GitHub project board** — <https://github.com/orgs/Jamf-Concepts/projects/2/views/1>. Single source of truth for status. Every non-trivial piece of work has a card on the board with one of three statuses: `Todo`, `In Progress`, `Done`. Card move rules:
+- **GitHub project board** — <https://github.com/orgs/Jamf-Concepts/projects/2/views/1>. Canonical for **status** (`Todo` / `In Progress` / `Done`). Every non-trivial piece of work has a card. Card move rules:
   - `Todo` → `In Progress` when you start work and push the feature branch.
   - `In Progress` → `Done` when the PR is **merged**, not when it opens (so reviewers can find in-flight cards by status).
   - One card per logical PR. Multi-PR initiatives use sub-issues linked to the parent epic.
-- **Active `*_SPIKE.md` design docs** — gitignored planning artefacts (e.g. `PHASE_2_6_SPIKE.md`, `SCOPE_SPIKE.md`). Track open questions, wire-probe results, and maintainer-decision asks for work that is too large to fit in a single PR description. Update the spike doc as decisions land so the doc reflects the current plan, not the original plan. Cross-link from the relevant board card.
-- **`JAMF_PRO_INVENTORY.md`** — gitignored local inventory of the ~170 ProClassic SDK namespaces and their adoption status. Update the adoption column when a resource ships, and reflect any scope reshaping (e.g. attrs split out of one resource into a follow-up) so the inventory mirrors reality.
+- **`PRO_ROLLOUT_PLAN.md`** (gitignored) — north-star plan: phase-level status table, in-flight phase notes, things-still-deferred list, locked-in decisions catalogue. Update the phase status table when a phase opens, closes, or shifts.
+- **`JAMF_PRO_INVENTORY.md`** (gitignored) — per-row SDK namespace adoption status with full per-resource Notes. Update the row + Notes when a resource ships, when scope reshapes (e.g. an attribute splits out into a follow-up), or when an upstream blocker resolves.
+- **Per-build spike docs** (gitignored, transient). When a build is large enough that the design discussion does not fit in a PR description (multi-section resource, schema prune, payload normalisation), draft a `<topic>_SPIKE.md` in the repo root, link it from the board card, and **delete it once the work ships** — every load-bearing finding goes into `STYLE_GUIDE.md` / `CONTRIBUTING.md` so a fresh contributor can build the next resource without reading the spike.
 - **Auto-memory** under `~/.claude/projects/.../memory/project_*.md` — Claude Code's per-project memory captures the "why" behind decisions and surfaces it in future sessions. Update an existing `project-*` memory when its status changes; add a new one only when the topic doesn't fit an existing entry. Stale memories are worse than missing memories — see <https://github.com/anthropics/claude-code> docs.
 
-Drift between these surfaces almost always means a card got moved without the spike doc / inventory / memory catching up. If you find a board card in `Done` but the spike doc still says "awaiting maintainer review", the board is right and the doc is stale — fix the doc.
+**Drift rule.** If a local doc disagrees with the board on **status**, the board is right and the doc is stale — fix the doc. If the board lacks the **detail** (rationale, blocker, dependency, design notes), `PRO_ROLLOUT_PLAN.md` / `JAMF_PRO_INVENTORY.md` / the linked spike doc is canonical for that detail. The board carries cards, not novels; the local docs carry novels, not status.
+
+**Keeping the board current is non-optional.** Every PR description should reference the board card it closes. The card moves before the PR opens (`Todo` → `In Progress`) and after the PR merges (`In Progress` → `Done`); both moves are the responsibility of whoever is doing the work, not the reviewer.
 
 ## Reporting Issues
 

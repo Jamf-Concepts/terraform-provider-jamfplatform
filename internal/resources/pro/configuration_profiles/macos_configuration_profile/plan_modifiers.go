@@ -14,9 +14,7 @@ import (
 // payloadsDiffSuppressor returns a string plan modifier that suppresses
 // diffs on the `general.payloads` attribute when the user's plan value is
 // semantically equivalent to the current state value modulo Jamf Pro's
-// well-known server-side normalisations. See helpers.go for the mask logic
-// and PROFILE_ROUNDTRIP_REPORT.md §3 for the full diff-class catalogue
-// the suppression neutralises.
+// well-known server-side normalisations. See helpers.go for the mask logic.
 //
 // When the plan and state payloads are semantically equal, the plan is
 // rewritten to match state so Terraform considers the attribute unchanged.

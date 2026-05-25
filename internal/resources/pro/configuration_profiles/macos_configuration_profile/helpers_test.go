@@ -11,7 +11,6 @@ import (
 
 // Each fixture is the original Definitions-API mobileconfig sent to the
 // classic API plus the server-canonical response captured via jamf-cli get.
-// See PROFILE_ROUNDTRIP_REPORT.md for the full corpus build process.
 var fixtureCases = []struct {
 	name              string
 	stem              string

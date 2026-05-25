@@ -14,10 +14,10 @@ import (
 
 // TestMarshal_RepresentativePolicy round-trips a representative PolicyPost
 // through encoding/xml and asserts the load-bearing wire invariants
-// SCOPE_SPIKE.md and the SDK round-trip tests enumerate. This protects the
-// canary against future SDK regressions during the Phase 5 fan-out — every
-// new scope-bearing resource that consumes internal/common/scope inherits
-// these invariants and the test guards them in one place.
+// codified in STYLE_GUIDE.md §Scope helper and the SDK round-trip tests.
+// This protects the canary against future SDK regressions during the Phase 5
+// fan-out — every new scope-bearing resource that consumes internal/common/scope
+// inherits these invariants and the test guards them in one place.
 func TestMarshal_RepresentativePolicy(t *testing.T) {
 	t.Parallel()
 	plan := PolicyResourceModel{
@@ -85,9 +85,9 @@ func TestMarshal_RepresentativePolicy(t *testing.T) {
 }
 
 // TestMarshal_EmptyScopeOmitsElement asserts the omission semantics from
-// SCOPE_SPIKE §6.5: an empty TF scope block must collapse to a nil pointer so
-// the wire payload omits <scope> entirely rather than emitting an empty
-// element.
+// STYLE_GUIDE.md §Scope helper: an empty TF scope block must collapse to a
+// nil pointer so the wire payload omits <scope> entirely rather than emitting
+// an empty element.
 func TestMarshal_EmptyScopeOmitsElement(t *testing.T) {
 	t.Parallel()
 	plan := PolicyResourceModel{

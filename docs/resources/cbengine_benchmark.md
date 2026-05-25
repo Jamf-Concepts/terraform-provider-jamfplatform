@@ -78,7 +78,7 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 - `enforcement_mode` (String) Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).
 - `rules` (Attributes List) Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules. (see [below for nested schema](#nestedatt--rules))
 - `sources` (Attributes List) Set of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources. (see [below for nested schema](#nestedatt--sources))
-- `target_device_group` (String) Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).
+- `target_device_group` (String) Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the `/api/device-groups/v1/tenant/{tenantId}/device-groups` Jamf Platform API endpoint (also exposed by the `jamfplatform_device_group` data source / list resource). Required and immutable for this resource (replace on change).
 - `title` (String) Benchmark title (max length 100). Required and replaces the resource when changed.
 
 ### Optional

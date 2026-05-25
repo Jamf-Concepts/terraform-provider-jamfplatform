@@ -122,6 +122,18 @@ When the wire name is already a reasonable match for the UI label (e.g. `encrypt
 
 The rename rule applies to all current and future Jamf Pro resources. Where an existing shipped resource has cryptic wire-name attributes, do not retrofit in a feature PR — schedule a dedicated rename PR (the change is breaking for users).
 
+### Endpoint references in user-facing descriptions
+
+When a schema `Description` / `MarkdownDescription` or `doc.go` cites an underlying API endpoint, use the **Jamf Platform API** path convention — the one the SDK actually constructs and the one users see in HTTP logs. Do **not** use the legacy Jamf Pro paths (`/JSSResource/...`) or bare versioned paths (`/api/v1/...`) — those are wrong for this provider regardless of how familiar they look from Jamf Pro documentation.
+
+| Source | Convention | Example |
+|---|---|---|
+| Pro (`jamfplatform/pro/`) | `/api/pro/v{N}/tenant/{tenantId}/<resource>` | `/api/pro/v1/tenant/{tenantId}/buildings`, `/api/pro/v2/tenant/{tenantId}/groups` |
+| ProClassic (`jamfplatform/proclassic/`) | `/api/proclassic/tenant/{tenantId}/<resource>` | `/api/proclassic/tenant/{tenantId}/osxconfigurationprofiles`, `/api/proclassic/tenant/{tenantId}/networksegments` |
+| Platform Services (`blueprints/`, `devicegroups/`, etc.) | `/api/<namespace>/v{N}/tenant/{tenantId}/<resource>` | `/api/device-groups/v1/tenant/{tenantId}/device-groups`, `/api/blueprints/v1/tenant/{tenantId}/blueprints` |
+
+ProClassic does **not** carry a `v{N}` segment. Pro and Platform Services always do. `{tenantId}` is the literal placeholder — leave it as-is in user-facing text; the SDK substitutes the real tenant ID at request time.
+
 ### Sets vs Lists
 
 - **Sets** for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `criteria`, `raw_component`).
@@ -307,6 +319,30 @@ The "any value triggers the rule" semantics of `AlsoRequires` work for paired to
 
 Avoid `resource.ResourceWithConfigValidators` unless a check truly spans many attributes (e.g. "exactly one of X, Y, Z must be set"); the framework's resourcevalidator package (`AtLeastOneOf`, `ExactlyOneOf`, `Conflicting`) covers the standard cases. Bespoke whole-config validators are a last resort.
 
+### Configuration profile payload diff suppression (mask-and-compare)
+
+Jamf classic configuration-profile endpoints (`osxconfigurationprofiles`, `mobiledeviceconfigurationprofiles`) re-serialise the user-supplied `.mobileconfig` plist server-side: whitespace stripping, version normalisation (`1.0` → `1`), server-stamped defaults, top-level UUID/Identifier rewrites, per-payload display-name defaults keyed on `PayloadType`. Trying to *predict* every mutation produces a brittle map of `PayloadType` → server-default lookups that drifts the moment Jamf changes a default. The provider uses **mask-and-compare** instead.
+
+**Strategy.** The plan modifier parses both sides (user input + server-canonical state) and runs the same `maskServerControlledKeys(p)` function across both before comparing. The mask is symmetric and content-blind — the provider never needs to know that `com.apple.notificationsettings` defaults to `"Notifications Payload"`; both sides drop the key, both sides agree.
+
+Mask drops (or empty-normalises) from **both** sides:
+
+- **Top-level always-clobbered**: `PayloadDisplayName` (set from `general.name`), `PayloadIdentifier`, `PayloadUUID` (Jamf assigns lowercase UUIDs).
+- **Top-level server-added defaults**: `PayloadEnabled`, `PayloadDescription`, `PayloadRemovalDisallowed`.
+- **`PayloadContent[i]` server-augmented**: `PayloadDisplayName`, `PayloadUUID`, `PayloadIdentifier`, `PayloadOrganization`, `PayloadEnabled`, `PayloadDescription`, `AllowUserOverrides`, `VendorConfig`.
+- **String values**: recursive leading/trailing whitespace trim (Jamf strips whitespace inside e.g. `Rules[].Comment`).
+- **Empty-string normalisation**: `""` on either side compares equal to "absent".
+
+If `inp_masked == srv_masked` the modifier suppresses the diff by setting `plan.payloads = state.payloads`. Otherwise the plan keeps the raw user input and Terraform plans the change.
+
+**Trade-off accepted**: if the user authors a meaningful change to one of the masked keys (e.g. a hand-tuned `PayloadOrganization`), the provider will not detect drift — the server overwrites that value on the next write anyway, so a permanent diff would be the alternative. Document this in the `payloads` attribute `MarkdownDescription`.
+
+**Update-path identifier injection.** On Update, the input builder parses `plan.payloads`, overwrites the top-level `PayloadUUID` and `PayloadIdentifier` with the values from `state.payloads`, and reserialises before PUT. Without this step every Update mints fresh UUIDs server-side and devices treat the update as a fresh profile installation ("ghost profile"). Top-level only is sufficient — nested `PayloadContent[i].PayloadUUID` survives PUT cycles without intervention once stored. Same mechanism as jamf-cli `profileconvert.InjectIdentifiers`.
+
+**Asymmetric envelope `<level>` normalisation.** Classic accepts `<level>Computer</level>` on write but echoes `<level>System</level>` on read; `<level>Computer Level</level>` is silently rejected and defaults to `User`. Use the input-boundary translation pattern from §"Asymmetric server normalisation on type-style discriminator fields" — translate user-facing `Computer Level` / `User Level` to wire `Computer` / `User` on write, map wire `System` / `User` back on read.
+
+Reference implementation: `internal/resources/pro/configuration_profiles/macos_configuration_profile/` (`helpers.go` mask logic, `plan_modifiers.go` plan-time integration, `crud.go` Update path injection, `resource.go` MarkdownDescription disclosing the masked key set to users).
+
 ## Error Handling
 
 Use the shared helpers from `internal/common/helpers` rather than rolling your own:
@@ -452,7 +488,7 @@ The tenant version is fetched **only when** a Pro construct with non-empty `minJ
 
 The buffered migration timeline below assumes the SDK exposes both the deprecated version (N) and the new version (N+1) simultaneously during the deprecation window. **This applies to every version transition** — V1→V2, V2→V3, V3→V4, etc. — not just V1→V2.
 
-As of writing, the SDK rarely keeps multiple versions: of ~565 versioned Pro endpoint bases, only 2 have side-by-side versions exposed. Generator change requested upstream — see [jamfplatform-go-sdk#19](https://github.com/Jamf-Concepts/jamfplatform-go-sdk/issues/19). Until that lands:
+The SDK does not currently retain side-by-side versioned functions on regeneration (the upstream generator change requested in [jamfplatform-go-sdk#19](https://github.com/Jamf-Concepts/jamfplatform-go-sdk/issues/19) closed without merging). Practical consequences:
 
 - When the SDK exposes both versions of an endpoint: follow the buffer policy below.
 - When the SDK only exposes the new version on regeneration: migration is **SDK-bump-driven** — migrate at the SDK bump or pin the SDK to the prior release (only as a temporary workaround). Document the constraint in the resource's annotation block.
@@ -546,10 +582,11 @@ Jamf endpoints expose mixed ID shapes: `pro/` uses integer IDs for many resource
 
 **Convention**: always stringify integer IDs in Terraform state. Convert back to `int` / `int64` when calling the SDK.
 
-Helpers (to be added under `internal/common/helpers/ids.go` when the first Pro resource lands):
+Helpers in `internal/common/helpers/ids.go`:
 
 - `IntIDToString(id int64) types.String`
 - `StringToIntID(s types.String) (int64, error)`
+- `StringValueFromIntPtr(*int) types.String` — for ProClassic SDK pointer IDs.
 - UUIDs pass through unchanged as `types.String`.
 
 `ImportState` parses the imported string per the rules below before populating state.
@@ -648,17 +685,29 @@ Rationale: per-resource `const minJamfProVersion` covers hard correctness for in
 
 **Release-time process**: before tagging a release, grep all `minJamfProVersion` constants under `internal/resources/pro/`, take the max, update `ProviderMinJamfProVersion` in `internal/providerdata/providerdata.go` if it has moved. The provider Schema description interpolates the const so `docs/index.md` updates automatically after `make generate`. The hard-coded version string in `README.md` (under "Supported Jamf products and tenant version targets") must be bumped by hand. When additional Jamf products are added in the future, each gets its own `Provider<Product>MinVersion` constant + row in the provider Schema table + row in the README table; the release-time process expands accordingly.
 
-### Shared schemas (deferred abstraction)
+### Shared abstractions — when to extract
 
-Many Jamf Pro resources expose similar shapes (scope, site, category, criteria, self-service payload). **Do not extract these into shared schemas upfront** — superficially similar Jamf APIs often differ in field names, ID types (int vs UUID string), and null semantics. Premature abstraction here produces helpers with per-resource branching that is harder to read than the original duplication.
+Two extraction triggers apply, one for schemas and one for code helpers. They differ because the failure modes differ.
 
-**Refactor trigger**: when 3 or more shipped resources have a verified-identical shape (same fields, same types, same null semantics — checked against the SDK structs, not eyeballed), extract a helper under `internal/common/schemas/`. Not before.
+**Schemas — 3-consumer rule.** Many Jamf Pro resources expose similar shapes (scope, site, category, criteria, self-service payload). **Do not extract these into shared schemas upfront** — superficially similar Jamf APIs often differ in field names, ID types (int vs UUID string), and null semantics. Premature abstraction produces helpers with per-resource branching that is harder to read than the original duplication. Refactor trigger: **3 or more** shipped resources with verified-identical shape (same fields, types, null semantics — checked against the SDK structs, not eyeballed). Extract under `internal/common/schemas/`. Reference precedent: `internal/common/scope/` (scope sub-blocks extracted at sub-block granularity; the top-level scope shape stayed per-resource because it diverged across the eight scope-bearing resources).
+
+**Code helpers — 2-consumer rule when logic is non-trivial.** Parsers, normalisation/diff-suppression functions, identifier injectors, and similar non-trivial code with no per-resource branching extract at the **second** consumer, not the third. Two copies of a 200-LOC plist mask or a `WriteOnly` rotation comparator means two places to chase the next server-side mutation; a duplicated bug now lives twice. The schema 3-consumer rule was written for cases where premature abstraction produces ugly branching — that risk does not apply to code helpers that compose without branching.
+
+Canonical example: when `jamfplatform_pro_mobile_device_configuration_profile` lands, lift the mobileconfig `maskServerControlledKeys` + `InjectIdentifiers` helpers from `internal/resources/pro/configuration_profiles/macos_configuration_profile/helpers.go` into `internal/common/profileconvert/` **before** duplicating them into the mobile package. Don't wait for the third.
+
+Trigger summary:
+
+| Kind | Trigger | Destination |
+|---|---|---|
+| Schema (shape, field set) | 3+ verified-identical SDK shapes | `internal/common/schemas/` (or domain-specific package like `internal/common/scope/`) |
+| Code helper (non-trivial, no per-resource branching) | 2 consumers | `internal/common/<topic>/` |
+| Trivial code helper (1-line wrapper) | Stays in-resource; extract only on demonstrated need | `internal/common/helpers/` |
 
 ### Scope helper
 
 The `<scope>` block of every Jamf Classic-API resource (policies, ebooks, mac applications, mobile device applications, OS X configuration profiles, mobile device configuration profiles, patch policies, restricted software) shares its sub-block target categories — buildings, departments, computers, computer_groups, mobile_devices, mobile_device_groups, network_segments, jss_users, jss_user_groups, ibeacons, and the directory-service name-only siblings. The 3-consumer rule fires at **sub-block granularity**, not at the top-level scope shape (which diverges across the eight scope-bearing resources). Shared helpers live under `internal/common/scope/`.
 
-**Item shape — IDs-only `Set<String>`.** Sub-blocks collapse to a flat `schema.SetAttribute{ElementType: types.StringType, Optional: true}` carrying only the numeric Jamf Pro classic ID (or name string, for the directory-service categories). Server-augmented `<name>` and `<udid>` wire fields are discarded on read; only IDs round-trip through Terraform state. Rationale and prior-art comparison in [SCOPE_SPIKE.md §5.2](SCOPE_SPIKE.md) (Option B). Authoring uses interpolation: `computer_ids = [for c in data.jamfplatform_pro_computers.example: c.id]`.
+**Item shape — IDs-only `Set<String>`.** Sub-blocks collapse to a flat `schema.SetAttribute{ElementType: types.StringType, Optional: true}` carrying only the numeric Jamf Pro classic ID (or name string, for the directory-service categories). Server-augmented `<name>` and `<udid>` wire fields are discarded on read; only IDs round-trip through Terraform state. Authoring uses interpolation: `computer_ids = [for c in data.jamfplatform_pro_computers.example: c.id]`. Rationale: confirmed against `Jamf-Concepts/jamf-cli/internal/scope` and `deploymenttheory/terraform-provider-jamfpro/internal/common/shared_schemas/*_scope.go`. The richer alternative — nested `{ id, name }` objects — replays server-derived names back into TF state and forces drift suppression on every refresh; IDs-only sidesteps it.
 
 **Naming convention.**
 
@@ -669,8 +718,22 @@ The `<scope>` block of every Jamf Classic-API resource (policies, ebooks, mac ap
 
 Limitations and exclusions share the same attribute names — the wire-shape divergence (limitations user is name-only on wire; exclusions user is id+name on wire) is collapsed at the TF layer because both sides write `<user><name>…</name></user>` and discarding the response-side `<id>` is consistent with Option B.
 
-**Composition pattern.** Per-resource glue assembles the resource's `scope` schema by composing `scope.IDSetAttribute` / `scope.NameSetAttribute` calls. There is **no** top-level `ScopeAttribute()` mega-factory: the eight scope-bearing classic resources expose materially different top-level field sets (see SCOPE_SPIKE §4), so a unified factory would either leak unsupported fields or devolve into per-resource branching. The 3-consumer rule fires at sub-block granularity only.
+**Composition pattern.** Per-resource glue assembles the resource's `scope` schema by composing `scope.IDSetAttribute` / `scope.NameSetAttribute` calls. There is **no** top-level `ScopeAttribute()` mega-factory: the eight scope-bearing classic resources (`Policy`, `Ebook`, `MacApplication`, `MobileDeviceApplication`, `OsXConfigurationProfile`, `MobileDeviceConfigurationProfile`, `PatchPolicy`, `RestrictedSoftware`) expose materially different top-level field sets, so a unified factory would either leak unsupported fields or devolve into per-resource branching. The 3-consumer rule fires at sub-block granularity only.
 
 **Cross-field validator — `scope.AllFlagConflictsWith`.** A value-discriminated `validator.Bool` for `all_computers` / `all_mobile_devices` / `all_jss_users` semantics: fires only when the bool is true, attaches one attribute error per populated conflicting Set. Off-the-shelf `boolvalidator.ConflictsWith` triggers on any value and cannot express the "only when true" rule. Resource-specific constraints (e.g. `RestrictedSoftware` rejects `limitations` entirely) stay in the resource package — they are not shared scope logic.
 
-**Omission semantics.** Null/unknown/empty TF Sets must collapse all the way to a `nil` SDK parent pointer so the wire body omits the parent XML element entirely. `BuildIDSlice` / `BuildNameSlice` return `(nil, nil)` for null, unknown, and empty input — thread that nil up; if every child collection is nil, skip the parent assignment. See [SCOPE_SPIKE.md §6.5](SCOPE_SPIKE.md) for the full rule set and the `all_*` bool / `helpers.OptionalBoolPointer` interaction.
+**Omission semantics (load-bearing invariant).** The classic API tolerates absent sections — a `POST` / `PUT` body need not include `<scope>`, `<reboot>`, `<self_service>`, etc. when the caller does not intend to manage them. Go's `encoding/xml` produces this behaviour for free only when the corresponding SDK field is a nil pointer with `,omitempty` on the XML tag. Wire behaviour by builder output:
+
+| Builder assigns | Wire emits |
+|---|---|
+| `PolicyPost.Scope = nil` | no `<scope>` element |
+| `PolicyPost.Scope = &PolicyScope{}` (zero-value) | `<scope></scope>` empty element |
+| `PolicyPost.Scope = &PolicyScope{Buildings: &PolicyScopeBuildings{}}` | `<scope><buildings></buildings></scope>` empty parent — **avoid** |
+| `PolicyPost.Scope = &PolicyScope{Buildings: &PolicyScopeBuildings{Building: &[]IDName{…}}}` | full populated tree |
+
+Provider input-builder rules:
+
+1. **TF block absent (null) → SDK field nil → wire omits the element.** Default case.
+2. **TF block present but empty → leave it nil.** An empty `scope {}` in HCL is semantically "I don't want to manage scope here". `BuildIDSlice` / `BuildNameSlice` return `(nil, nil)` for null, unknown, and empty input.
+3. **Sub-block parent pointer is only assigned when at least one child collection is non-empty.** Never emit `&PolicyScopeBuildings{Building: &[]IDName{}}`. Thread `nil` up; if every child is nil, skip the parent assignment.
+4. **`all_*` booleans are their own block.** `PolicyScope.AllComputers` is `*bool xml:"all_computers,omitempty"`. `false` marshals as `<all_computers>false</all_computers>` — distinct from omission. Use `helpers.OptionalBoolPointer` so attributes the user did not set collapse to nil.

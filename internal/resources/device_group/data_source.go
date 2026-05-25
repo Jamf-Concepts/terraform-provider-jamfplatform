@@ -49,7 +49,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 				Required:            true,
 			},
 			"jamf_pro_id": schema.StringAttribute{
-				MarkdownDescription: "Numeric Jamf Pro classic ID for the group, resolved from the Pro `/v2/groups` endpoint. Used to reference the group from classic-API scope blocks (policies, configuration profiles, restricted software). Null when the Platform API client lacks the `Read Groups` privilege, when the group cannot be located in Jamf Pro, or when the bridging call transiently fails.",
+				MarkdownDescription: "Numeric Jamf Pro classic ID for the group, resolved from the `/api/pro/v2/tenant/{tenantId}/groups` endpoint. Used to reference the group from classic-API scope blocks (policies, configuration profiles, restricted software). Null when the Platform API client lacks the `Read Groups` privilege, when the group cannot be located in Jamf Pro, or when the bridging call transiently fails.",
 				Computed:            true,
 			},
 			"name": schema.StringAttribute{

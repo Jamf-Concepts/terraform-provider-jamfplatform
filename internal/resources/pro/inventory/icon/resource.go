@@ -79,7 +79,7 @@ func (r *IconResource) IdentitySchema(ctx context.Context, req resource.Identity
 // Schema returns the Terraform schema for the icon resource.
 func (r *IconResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: `Manages a Jamf Pro icon. Icons are uploaded via the ` + "`/v1/icon`" + ` endpoint and referenced by ID from Self Service branding configurations.
+		MarkdownDescription: `Manages a Jamf Pro icon. Icons are uploaded via the ` + "`/api/pro/v1/tenant/{tenantId}/icon`" + ` endpoint and referenced by ID from Self Service branding configurations.
 
 **Source-driven change detection**: the provider opens ` + "`icon_file_source`" + ` during every plan, computes a SHA-256 of the bytes, and stores it as ` + "`source_hash`" + `. When the hash changes, Terraform replaces the resource (no in-place update — Jamf Pro has no icon update endpoint). When the hash is unchanged the resource is stable.
 
