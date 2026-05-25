@@ -197,10 +197,36 @@ func PreserveStringWhenWireEmpty(wire *string, current types.String) types.Strin
 	return current
 }
 
-// IsNotFoundError reports whether an error represents a 404/not found response from the Jamf API.
+// IsNotFoundError reports whether an error represents a "resource is gone"
+// response from the Jamf API. Matches HTTP 404 (the conventional shape) AND
+// HTTP 400 with an `INVALID_ID` error detail.
+//
+// Some Pro v1 endpoints — confirmed for `/device-enrollments/{id}` and
+// `/volume-purchasing-locations/{id}` — return `400 Bad Request` with an
+// `errorCode: INVALID_ID` detail (e.g. `Device Enrollment Instance with id
+// 84 does not exist`) when the supplied ID does not exist, instead of the
+// conventional `404 Not Found`. Treating both as "not found" keeps Read
+// drift detection and acceptance-test CheckDestroy verification correct
+// across the whole Pro v1 surface without per-resource overrides.
+//
+// The `Code == "INVALID_ID"` match is narrow enough to exclude legitimate
+// schema-validation 400s (which use codes like `REQUIRED_FIELD`,
+// `INVALID_PATTERN`, etc.) — only the documented "this ID does not exist"
+// response flips to true.
 func IsNotFoundError(err error) bool {
-	if apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err); ok {
-		return apiErr.HasStatus(http.StatusNotFound)
+	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
+	if !ok {
+		return false
+	}
+	if apiErr.HasStatus(http.StatusNotFound) {
+		return true
+	}
+	if apiErr.HasStatus(http.StatusBadRequest) {
+		for _, d := range apiErr.Details() {
+			if d.Code == "INVALID_ID" {
+				return true
+			}
+		}
 	}
 	return false
 }
