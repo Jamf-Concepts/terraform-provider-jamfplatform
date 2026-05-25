@@ -1,7 +1,7 @@
 // Copyright Jamf Software LLC 2026
 // SPDX-License-Identifier: MPL-2.0
 
-package macos_configuration_profile
+package mobile_device_configuration_profile
 
 import (
 	"context"
@@ -16,11 +16,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
-// assignResourceModel populates a ResourceModel from the SDK response.
-// Optional sub-blocks are only refreshed when the caller (plan or prior
-// state) already manages them — otherwise a server-populated block would
-// trip the framework's "produced inconsistent result after apply" check.
-func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassic.OsXConfigurationProfile) diag.Diagnostics {
+func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassic.MobileDeviceConfigurationProfile) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
 		return diags
@@ -46,7 +42,7 @@ func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassi
 	return diags
 }
 
-func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *GeneralModel) {
+func flattenGeneral(g *proclassic.MobileDeviceConfigurationProfileGeneral, state *GeneralModel) {
 	if g == nil {
 		return
 	}
@@ -55,30 +51,20 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 	}
 	state.Name = helpers.ReconcileOptionalStringPointer(g.Name, state.Name)
 	state.Description = helpers.ReconcileOptionalStringPointer(g.Description, state.Description)
-	state.UserRemovable = helpers.ReconcileOptionalBoolPointer(g.UserRemovable, state.UserRemovable)
-	// RedeployOnUpdate: the Classic API always returns "Newly Assigned" on
-	// read regardless of what was sent on Update — the field is effectively
-	// write-only on the wire (the API accepts "All" on PUT but never echoes
-	// it back on GET). Same wire bug deploymenttheory PR #888 addresses.
-	//
-	// Adapted for Optional+Computed: write from wire only when state is
-	// null/unknown (Create with no user input, or import). Otherwise keep
-	// the user-authored value so a subsequent plan after
-	// `redeploy_on_update = "All"` does not snap back to "Newly Assigned"
-	// on every refresh. The Optional+Computed shape requires a known value
-	// after apply, hence the wire fallback when the user omitted the
-	// attribute.
+	// RedeployOnUpdate: the Classic API always returns "Newly Assigned" on read
+	// regardless of what was PUT — write-only on the wire. Preserve the
+	// user-authored value so a plan after `redeploy_on_update = "All"` does
+	// not snap back to "Newly Assigned" on every refresh.
 	if state.RedeployOnUpdate.IsNull() || state.RedeployOnUpdate.IsUnknown() {
 		state.RedeployOnUpdate = helpers.StringPointerValueOrNull(g.RedeployOnUpdate)
 	}
+	if g.RedeployDaysBeforeCertificateExpires != nil {
+		state.RedeployDaysBeforeCertificateExpires = types.Int64Value(int64(*g.RedeployDaysBeforeCertificateExpires))
+	}
 	state.UUID = helpers.StringPointerValueOrNull(g.UUID)
-	// Self-healing payload assignment. The framework requires
-	// plan.Payloads == final state.Payloads for the Required `payloads`
-	// attribute, but the server re-serialises the plist and re-assigns
-	// top-level UUIDs — so the byte-form changes on every write. Keep
-	// the user-authored bytes when the server's canonical form is
-	// semantically equivalent; only overwrite with the server form when
-	// genuine out-of-band drift is detected.
+	// Self-healing payload: keep user-authored bytes when the server's
+	// canonical form is semantically equivalent; only overwrite when genuine
+	// out-of-band drift is detected.
 	if g.Payloads != nil {
 		server := *g.Payloads
 		keep := false
@@ -91,18 +77,15 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 			state.Payloads = types.StringValue(server)
 		}
 	}
-	state.DistributionMethod = helpers.ReconcileOptionalStringPointer(g.DistributionMethod, state.DistributionMethod)
+	// Wire element is <deployment_method>; TF attribute is distribution_method (UI-canonical).
+	state.DistributionMethod = helpers.ReconcileOptionalStringPointer(g.DeploymentMethod, state.DistributionMethod)
 
-	// Level wire-read translation. The wire returns System for Computer Level
-	// and User for User Level — translate back to the UI-canonical strings.
 	if g.Level != nil {
 		state.Level = types.StringValue(levelFromWireRead(*g.Level))
 	} else if !helpers.IsConfiguredValue(state.Level) {
 		state.Level = types.StringNull()
 	}
 
-	// Category — emit the assigned ID; "no category" sentinel "-1" stays
-	// visible so users see Jamf's default rather than null.
 	if g.Category != nil {
 		state.CategoryID = helpers.StringValueFromIntPtr(g.Category.ID)
 		state.CategoryName = helpers.StringPointerValueOrNull(g.Category.Name)
@@ -113,30 +96,30 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 	}
 }
 
-func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScope, state *ScopeModel) diag.Diagnostics {
+func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationProfileScope, state *ScopeModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
 	}
 
-	state.AllComputers = helpers.ReconcileOptionalBoolPointer(s.AllComputers, state.AllComputers)
+	state.AllMobileDevices = helpers.ReconcileOptionalBoolPointer(s.AllMobileDevices, state.AllMobileDevices)
 	state.AllJssUsers = helpers.ReconcileOptionalBoolPointer(s.AllJssUsers, state.AllJssUsers)
 
-	if s.Computers != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.Computers.Computer, func(c proclassic.OsXConfigurationProfileScopeComputersComputerItem) *int {
+	if s.MobileDevices != nil {
+		v, d := scope.FlattenIDSlice(ctx, s.MobileDevices.MobileDevice, func(c proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem) *int {
 			return c.ID
 		})
 		diags.Append(d...)
-		state.ComputerIDs = v
+		state.MobileDeviceIDs = v
 	} else {
-		state.ComputerIDs = types.SetNull(types.StringType)
+		state.MobileDeviceIDs = types.SetNull(types.StringType)
 	}
-	if s.ComputerGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.ComputerGroups.ComputerGroup, func(c proclassic.IDName) *int { return c.ID })
+	if s.MobileDeviceGroups != nil {
+		v, d := scope.FlattenIDSlice(ctx, s.MobileDeviceGroups.MobileDeviceGroup, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
-		state.ComputerGroupIDs = v
+		state.MobileDeviceGroupIDs = v
 	} else {
-		state.ComputerGroupIDs = types.SetNull(types.StringType)
+		state.MobileDeviceGroupIDs = types.SetNull(types.StringType)
 	}
 	if s.Buildings != nil {
 		v, d := scope.FlattenIDSlice(ctx, s.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
@@ -160,7 +143,7 @@ func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScop
 		state.UserIDs = types.SetNull(types.StringType)
 	}
 	if s.JssUserGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.JssUserGroup, func(c proclassic.IDName) *int { return c.ID })
+		v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.UserGroup, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.UserGroupIDs = v
 	} else {
@@ -176,15 +159,13 @@ func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScop
 	return diags
 }
 
-func flattenScopeLimitations(ctx context.Context, l *proclassic.OsXConfigurationProfileScopeLimitations, state *ScopeLimitationsModel) diag.Diagnostics {
+func flattenScopeLimitations(ctx context.Context, l *proclassic.MobileDeviceConfigurationProfileScopeLimitations, state *ScopeLimitationsModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if l == nil {
 		return diags
 	}
 	if l.NetworkSegments != nil {
-		v, d := scope.FlattenIDSlice(ctx, l.NetworkSegments.NetworkSegment, func(c proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem) *int {
-			return c.ID
-		})
+		v, d := scope.FlattenIDSlice(ctx, l.NetworkSegments.NetworkSegment, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.NetworkSegmentIDs = v
 	} else {
@@ -214,26 +195,26 @@ func flattenScopeLimitations(ctx context.Context, l *proclassic.OsXConfiguration
 	return diags
 }
 
-func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationProfileScopeExclusions, state *ScopeExclusionsModel) diag.Diagnostics {
+func flattenScopeExclusions(ctx context.Context, e *proclassic.MobileDeviceConfigurationProfileScopeExclusions, state *ScopeExclusionsModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if e == nil {
 		return diags
 	}
-	if e.Computers != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.Computers.Computer, func(c proclassic.OsXConfigurationProfileScopeExclusionsComputersComputerItem) *int {
+	if e.MobileDevices != nil {
+		v, d := scope.FlattenIDSlice(ctx, e.MobileDevices.MobileDevice, func(c proclassic.MobileDeviceConfigurationProfileScopeExclusionsMobileDevicesMobileDeviceItem) *int {
 			return c.ID
 		})
 		diags.Append(d...)
-		state.ComputerIDs = v
+		state.MobileDeviceIDs = v
 	} else {
-		state.ComputerIDs = types.SetNull(types.StringType)
+		state.MobileDeviceIDs = types.SetNull(types.StringType)
 	}
-	if e.ComputerGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.ComputerGroups.ComputerGroup, func(c proclassic.IDName) *int { return c.ID })
+	if e.MobileDeviceGroups != nil {
+		v, d := scope.FlattenIDSlice(ctx, e.MobileDeviceGroups.MobileDeviceGroup, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
-		state.ComputerGroupIDs = v
+		state.MobileDeviceGroupIDs = v
 	} else {
-		state.ComputerGroupIDs = types.SetNull(types.StringType)
+		state.MobileDeviceGroupIDs = types.SetNull(types.StringType)
 	}
 	if e.Buildings != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
@@ -264,7 +245,7 @@ func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationP
 		state.UserGroupIDs = types.SetNull(types.StringType)
 	}
 	if e.NetworkSegments != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.NetworkSegments.NetworkSegment, func(c proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int {
+		v, d := scope.FlattenIDSlice(ctx, e.NetworkSegments.NetworkSegment, func(c proclassic.MobileDeviceConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int {
 			return c.ID
 		})
 		diags.Append(d...)
@@ -280,7 +261,7 @@ func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationP
 		state.IbeaconIDs = types.SetNull(types.StringType)
 	}
 	if e.Users != nil {
-		v, d := scope.FlattenNameSlice(ctx, e.Users.User, func(c proclassic.OsXConfigurationProfileScopeExclusionsUsersUserItem) *string {
+		v, d := scope.FlattenNameSlice(ctx, e.Users.User, func(c proclassic.MobileDeviceConfigurationProfileScopeExclusionsUsersUserItem) *string {
 			return c.Name
 		})
 		diags.Append(d...)
@@ -298,25 +279,16 @@ func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationP
 	return diags
 }
 
-func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state *SelfServiceModel) {
+func flattenSelfService(ss *proclassic.MobileDeviceConfigurationProfileSelfService, state *SelfServiceModel) {
 	if ss == nil {
 		return
 	}
-	state.SelfServiceDisplayName = helpers.ReconcileOptionalStringPointer(ss.SelfServiceDisplayName, state.SelfServiceDisplayName)
-	state.InstallButtonText = helpers.ReconcileOptionalStringPointer(ss.InstallButtonText, state.InstallButtonText)
-	state.SelfServiceDescription = helpers.ReconcileOptionalStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.EnsureUsersViewDescription = helpers.ReconcileOptionalBoolPointer(ss.ForceUsersToViewDescription, state.EnsureUsersViewDescription)
+	state.SelfServiceDescription = helpers.PreserveStringWhenWireEmpty(ss.SelfServiceDescription, state.SelfServiceDescription)
 	state.FeatureOnMainPage = helpers.ReconcileOptionalBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
-	state.NotificationSubject = helpers.PreserveStringWhenWireEmpty(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = helpers.PreserveStringWhenWireEmpty(ss.NotificationMessage, state.NotificationMessage)
-
-	if ss.Notification != nil {
-		state.DisplayNotifications = helpers.ReconcileOptionalBoolPointer(ss.Notification.Enabled, state.DisplayNotifications)
-		state.NotificationLocation = helpers.ReconcileOptionalStringPointer(ss.Notification.Method, state.NotificationLocation)
-	}
 
 	if ss.Security != nil {
 		state.RemovalDisallowed = helpers.ReconcileOptionalStringPointer(ss.Security.RemovalDisallowed, state.RemovalDisallowed)
+		state.AuthorizationPassword = helpers.PreserveStringWhenWireEmpty(ss.Security.Password, state.AuthorizationPassword)
 	}
 
 	if ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil && len(*ss.SelfServiceCategories.Category) > 0 {
@@ -324,10 +296,8 @@ func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state
 		items := make([]SelfServiceCategoryItem, 0, len(cats))
 		for _, c := range cats {
 			it := SelfServiceCategoryItem{
-				ID:        idPointerToString(c.ID),
-				Name:      helpers.StringPointerValueOrNull(c.Name),
-				DisplayIn: helpers.BoolPointerValueOrNull(c.DisplayIn),
-				FeatureIn: helpers.BoolPointerValueOrNull(c.FeatureIn),
+				ID:   idPointerToString(c.ID),
+				Name: helpers.StringPointerValueOrNull(c.Name),
 			}
 			items = append(items, it)
 		}

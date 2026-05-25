@@ -13,6 +13,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
 // buildInput projects a plan ResourceModel into a *proclassic.OsXConfigurationProfile
@@ -93,7 +94,7 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.OsXConfigur
 	// - On Create, existingUUID is empty; the helper is a no-op.
 	if v := m.Payloads.ValueString(); !m.Payloads.IsNull() && !m.Payloads.IsUnknown() && v != "" {
 		raw := []byte(v)
-		prepared, err := injectTopLevelIdentifierValues(raw, existingUUID, existingUUID)
+		prepared, err := payloadhelpers.InjectTopLevelIdentifierValues(raw, existingUUID, existingUUID)
 		if err != nil {
 			diags.AddError("Failed to inject server-canonical PayloadUUID/PayloadIdentifier into update payload", err.Error())
 			return nil, nil, diags

@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
 func TestMaskPayload_FullCorpus(t *testing.T) {
@@ -55,12 +57,12 @@ func TestMaskPayload_FullCorpus(t *testing.T) {
 			t.Logf("skip %s: no response file", stem)
 			continue
 		}
-		srv, err := extractServerPayloadFromGeneral(resp)
+		srv, err := payloadhelpers.ExtractServerPayloadFromGeneral(resp)
 		if err != nil {
 			t.Logf("skip %s: extract failed: %v", stem, err)
 			continue
 		}
-		ok, err := payloadsSemanticallyEqual(mc, srv)
+		ok, err := payloadhelpers.PayloadsSemanticallyEqual(mc, srv)
 		if err != nil {
 			t.Logf("skip %s: compare error: %v", stem, err)
 			continue

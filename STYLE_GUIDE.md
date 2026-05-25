@@ -234,6 +234,8 @@ Create already follows this pattern (POST → HrefResponse → GET); Update must
 
 **Reference implementation**: `internal/resources/pro/policies/script/` (resource, crud, input_builders, state_builders).
 
+**4a. Use `helpers.PreserveStringWhenWireEmpty` for user-authored strings the Classic API may echo as empty.** Some Jamf Pro Classic endpoints (observed on configuration-profile self-service blocks — `self_service_description`, `notification_subject`, `notification_message`, `authorization_password`) return the field as `<elem></elem>` on read even after a successful write of a non-empty value. `ReconcileOptionalStringPointer` treats an empty echo as "user did not set it" and collapses state to Null. When the plan held a non-empty user-authored string, the Null state then trips Terraform Core's `"Provider produced inconsistent result after apply"` check. **Watch out**: when the affected attribute lives in a block that *also* contains a `Sensitive` sibling, Terraform Core masks the error path to the parent block (e.g. `.self_service: inconsistent values for sensitive attribute` instead of `.self_service.self_service_description: ...`) — the wording falsely implicates the Sensitive attribute and sends debugging in the wrong direction. Default rule: any user-authored string field under a block that carries a Sensitive sibling should use `PreserveStringWhenWireEmpty` rather than `ReconcileOptionalStringPointer`. Sentinel-test for this pattern with a unit test exercising a non-empty configured value plus an empty-string wire echo.
+
 ### `SingleNestedAttribute` blocks: Optional-only when the model uses typed-pointer
 
 Nested blocks modelled as `*StructModel` (typed pointer to a struct with `tfsdk:` tags on every field) cannot be `Optional+Computed`. The Plugin Framework decodes an absent-but-Computed block as **Unknown**, and `*StructModel` has no representation for Unknown — apply fails with:
@@ -351,6 +353,7 @@ Use the shared helpers from `internal/common/helpers` rather than rolling your o
 - `helpers.IsServerError(err)` — 5xx detection for retry decisions.
 - `helpers.ResolveTimeout(ctx, value, defaultDuration)` — resolve `framework-timeouts` values to a concrete deadline.
 - `helpers.ReconcileOptionalBool` / `ReconcileOptionalInt` / `ReconcileOptionalString` / `Reconcile*Pointer` — preserve Terraform null/optional semantics when the API returns zero values.
+- `helpers.PreserveStringWhenWireEmpty(wire, current)` — for user-authored string fields where the Classic API echoes empty strings after successful writes. Defends against the masked-error-path bug when the field is a sibling of a `Sensitive` attribute. See §"State builders" rule 4a.
 - Wrap errors with `fmt.Errorf("context: %w", err)` to preserve the error chain.
 
 ## Naming Patterns
