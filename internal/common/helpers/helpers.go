@@ -179,6 +179,24 @@ func ReconcileOptionalString(apiValue string, current types.String) types.String
 	return types.StringValue(apiValue)
 }
 
+// PreserveStringWhenWireEmpty returns the server value when non-empty; otherwise
+// keeps whatever was already in state. Use for user-controlled string fields
+// where the Jamf Pro Classic API has been observed to echo an empty value after
+// a successful write — `ReconcileOptionalStringPointer` would collapse that to
+// Null and trip Terraform Core's "Provider produced inconsistent result after
+// apply" check when plan holds a non-empty user-authored string. The error path
+// is masked to the nearest non-sensitive parent block when the block contains a
+// Sensitive sibling (e.g. `.self_service` instead of `.self_service.self_service_description`),
+// which makes the root cause hard to spot — prefer this helper for any
+// user-authored string under a block that also carries a Sensitive attribute.
+// Observed at: macos / mobile_device configuration profile self-service blocks.
+func PreserveStringWhenWireEmpty(wire *string, current types.String) types.String {
+	if wire != nil && *wire != "" {
+		return types.StringValue(*wire)
+	}
+	return current
+}
+
 // IsNotFoundError reports whether an error represents a 404/not found response from the Jamf API.
 func IsNotFoundError(err error) bool {
 	if apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err); ok {

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
 // Each fixture is the original Definitions-API mobileconfig sent to the
@@ -39,7 +41,7 @@ func loadInputAndServer(t *testing.T, stem string) (input, serverResp []byte) {
 	t.Helper()
 	input = readFixture(t, stem+".mobileconfig")
 	wire := readFixture(t, stem+".create_response.xml")
-	srv, err := extractServerPayloadFromGeneral(wire)
+	srv, err := payloadhelpers.ExtractServerPayloadFromGeneral(wire)
 	if err != nil {
 		t.Fatalf("extracting server payload for %s: %v", stem, err)
 	}
@@ -55,13 +57,13 @@ func TestMaskPayload_SuppressesEveryKnownServerMutation(t *testing.T) {
 	for _, tc := range fixtureCases {
 		t.Run(tc.name, func(t *testing.T) {
 			input, serverResp := loadInputAndServer(t, tc.stem)
-			equal, err := payloadsSemanticallyEqual(input, serverResp)
+			equal, err := payloadhelpers.PayloadsSemanticallyEqual(input, serverResp)
 			if err != nil {
 				t.Fatalf("comparing payloads: %v", err)
 			}
 			if !equal {
-				ma, _ := maskPayload(input)
-				mb, _ := maskPayload(serverResp)
+				ma, _ := payloadhelpers.MaskPayload(input)
+				mb, _ := payloadhelpers.MaskPayload(serverResp)
 				t.Fatalf("mask did not neutralise diff for %s\nmasked_input=%#v\nmasked_server=%#v", tc.stem, ma, mb)
 			}
 		})
@@ -75,7 +77,7 @@ func TestPayloadsSemanticallyEqual_DetectsRealChange(t *testing.T) {
 	_, serverResp := loadInputAndServer(t, "1Password__managed_login_items_profile")
 	// Mutate the server payload to flip a non-masked field — Rules array
 	// inside PayloadContent[0] has a `Comment` field that survives masking.
-	parsed, _, err := parsePlist(serverResp)
+	parsed, _, err := payloadhelpers.ParsePlist(serverResp)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -84,11 +86,11 @@ func TestPayloadsSemanticallyEqual_DetectsRealChange(t *testing.T) {
 	rules := first["Rules"].([]any)
 	rule0 := rules[0].(map[string]any)
 	rule0["Comment"] = "tampered comment value"
-	mutated, err := marshalPlist(parsed)
+	mutated, err := payloadhelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	equal, err := payloadsSemanticallyEqual(serverResp, mutated)
+	equal, err := payloadhelpers.PayloadsSemanticallyEqual(serverResp, mutated)
 	if err != nil {
 		t.Fatalf("compare: %v", err)
 	}
@@ -132,7 +134,7 @@ func TestMaskPayload_StripsWhitespaceFromNestedStrings(t *testing.T) {
 </dict></array>
 </dict></array>
 </dict></plist>`
-	equal, err := payloadsSemanticallyEqual([]byte(plistWithLeadingWS), []byte(plistTrimmed))
+	equal, err := payloadhelpers.PayloadsSemanticallyEqual([]byte(plistWithLeadingWS), []byte(plistTrimmed))
 	if err != nil {
 		t.Fatalf("compare: %v", err)
 	}
@@ -148,26 +150,26 @@ func TestMaskPayload_StripsWhitespaceFromNestedStrings(t *testing.T) {
 func TestInjectTopLevelIdentifiers_PreservesUUIDAndIdentifier(t *testing.T) {
 	_, existing := loadInputAndServer(t, "1Password__managed_login_items_profile")
 	// Build a "new" payload by mutating the existing one's top-level UUIDs.
-	parsed, _, err := parsePlist(existing)
+	parsed, _, err := payloadhelpers.ParsePlist(existing)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	parsed["PayloadUUID"] = "00000000-NEW-NEW-NEW-000000000000"
 	parsed["PayloadIdentifier"] = "00000000-NEW-NEW-NEW-000000000000"
-	newPayload, err := marshalPlist(parsed)
+	newPayload, err := payloadhelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := injectTopLevelIdentifiers(newPayload, existing)
+	out, err := payloadhelpers.InjectTopLevelIdentifiers(newPayload, existing)
 	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
 	// Re-parse and verify the identifiers came from `existing`.
-	check, _, err := parsePlist(out)
+	check, _, err := payloadhelpers.ParsePlist(out)
 	if err != nil {
 		t.Fatalf("parse output: %v", err)
 	}
-	existingParsed, _, _ := parsePlist(existing)
+	existingParsed, _, _ := payloadhelpers.ParsePlist(existing)
 	if got, want := check["PayloadUUID"], existingParsed["PayloadUUID"]; got != want {
 		t.Errorf("PayloadUUID not preserved: got=%v want=%v", got, want)
 	}
@@ -181,7 +183,7 @@ func TestInjectTopLevelIdentifiers_PreservesUUIDAndIdentifier(t *testing.T) {
 // new payload unchanged.
 func TestInjectTopLevelIdentifiers_EmptyExisting_NoOp(t *testing.T) {
 	new := readFixture(t, "1Password__managed_login_items_profile.mobileconfig")
-	out, err := injectTopLevelIdentifiers(new, nil)
+	out, err := payloadhelpers.InjectTopLevelIdentifiers(new, nil)
 	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
@@ -194,7 +196,7 @@ func TestInjectTopLevelIdentifiers_EmptyExisting_NoOp(t *testing.T) {
 // Create just because state was corrupted; pass the new payload through.
 func TestInjectTopLevelIdentifiers_ExistingUnparseable_NoOp(t *testing.T) {
 	new := readFixture(t, "1Password__managed_login_items_profile.mobileconfig")
-	out, err := injectTopLevelIdentifiers(new, []byte("not a plist"))
+	out, err := payloadhelpers.InjectTopLevelIdentifiers(new, []byte("not a plist"))
 	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
@@ -208,11 +210,11 @@ func TestInjectTopLevelIdentifiers_ExistingUnparseable_NoOp(t *testing.T) {
 // CDATA. Confirm the helper round-trips a real captured response.
 func TestExtractServerPayloadFromGeneral_DecodesEntities(t *testing.T) {
 	wire := readFixture(t, "DEVONthink__pppcp_profile.create_response.xml")
-	payload, err := extractServerPayloadFromGeneral(wire)
+	payload, err := payloadhelpers.ExtractServerPayloadFromGeneral(wire)
 	if err != nil {
 		t.Fatalf("extract: %v", err)
 	}
-	if _, _, err := parsePlist(payload); err != nil {
+	if _, _, err := payloadhelpers.ParsePlist(payload); err != nil {
 		t.Fatalf("extracted bytes did not parse as plist: %v", err)
 	}
 }
@@ -231,15 +233,15 @@ func TestUpdateIdempotency_CreateResponse_EqualsUpdateResponse(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			createWire := readFixture(t, tc.stem+".create_response.xml")
 			updateWire := readFixture(t, tc.stem+".update_response.xml")
-			createPayload, err := extractServerPayloadFromGeneral(createWire)
+			createPayload, err := payloadhelpers.ExtractServerPayloadFromGeneral(createWire)
 			if err != nil {
 				t.Fatalf("create extract: %v", err)
 			}
-			updatePayload, err := extractServerPayloadFromGeneral(updateWire)
+			updatePayload, err := payloadhelpers.ExtractServerPayloadFromGeneral(updateWire)
 			if err != nil {
 				t.Fatalf("update extract: %v", err)
 			}
-			equal, err := payloadsSemanticallyEqual(createPayload, updatePayload)
+			equal, err := payloadhelpers.PayloadsSemanticallyEqual(createPayload, updatePayload)
 			if err != nil {
 				t.Fatalf("compare: %v", err)
 			}
