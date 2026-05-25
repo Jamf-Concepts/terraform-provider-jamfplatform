@@ -35,6 +35,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/macos_configuration_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/mobile_device_configuration_profile"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment_public_key"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
@@ -58,6 +60,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_groups"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/location"
 )
 
 // Constants for environment variable names.
@@ -215,6 +218,7 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 
 func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		automated_device_enrollment.NewAutomatedDeviceEnrollmentResource,
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
 		building.NewBuildingResource,
@@ -236,11 +240,14 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		site.NewSiteResource,
 		user_group.NewUserGroupResource,
+		location.NewVolumePurchasingLocationResource,
 	}
 }
 
 func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		automated_device_enrollment.NewAutomatedDeviceEnrollmentDataSource,
+		automated_device_enrollment_public_key.NewAutomatedDeviceEnrollmentPublicKeyDataSource,
 		blueprint.NewBlueprintDataSource,
 		blueprints.NewBlueprintsDataSource,
 		component.NewComponentDataSource,
@@ -277,11 +284,13 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		sites.NewSitesDataSource,
 		user_group.NewUserGroupDataSource,
 		user_groups.NewUserGroupsDataSource,
+		location.NewVolumePurchasingLocationDataSource,
 	}
 }
 
 func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.ListResource {
 	return []func() list.ListResource{
+		automated_device_enrollment.NewAutomatedDeviceEnrollmentListResource,
 		benchmark.NewBenchmarkListResource,
 		blueprint.NewBlueprintListResource,
 		building.NewBuildingListResource,
@@ -301,6 +310,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		script.NewScriptListResource,
 		site.NewSiteListResource,
 		user_group.NewUserGroupListResource,
+		location.NewVolumePurchasingLocationListResource,
 	}
 }
 
