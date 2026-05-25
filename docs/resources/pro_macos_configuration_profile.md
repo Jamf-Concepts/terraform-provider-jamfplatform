@@ -3,18 +3,18 @@
 page_title: "jamfplatform_pro_macos_configuration_profile Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a macOS configuration profile in Jamf Pro via the classic /JSSResource/osxconfigurationprofiles endpoint. The general.payloads attribute carries the raw .mobileconfig plist XML; the provider suppresses diffs produced by Jamf Pro's standard server-side normalisations while still surfacing drift on values the user has authored.
+  Manages a macOS configuration profile in Jamf Pro via the /api/proclassic/tenant/{tenantId}/osxconfigurationprofiles endpoint. The general.payloads attribute carries the raw .mobileconfig plist XML; the provider suppresses diffs produced by Jamf Pro's standard server-side normalisations while still surfacing drift on values the user has authored.
   Payload diff suppression — the comparison runs in three layers:
   Unconditional skip for fields Jamf Pro always re-derives on write: top-level PayloadDisplayName (set from general.name), top-level PayloadIdentifier and PayloadUUID (Jamf Pro assigns lowercase UUIDs), plus the same three keys on every entry of PayloadContent (Jamf Pro may assign inner UUIDs on Create; preserved on Update by the identifier injection step below).Empty-string normalisation — keys whose value is an empty string on either side are treated as absent. Jamf Pro substitutes a server default for an empty PayloadOrganization; this normalisation means "" and "key omitted" compare equal.Intersection compare for everything else — keys present on only one side are ignored. This is how server-defaulted fields stay quiet: when the user omits PayloadEnabled, PayloadDescription, PayloadRemovalDisallowed, PayloadOrganization, AllowUserOverrides, or when Jamf Pro removes VendorConfig from com.apple.webcontent-filter payloads, the asymmetric key falls out of the compare. When the user explicitly authors any of those keys, the value is present on both sides and any subsequent change is detected as real drift. Setting PayloadEnabled=false in the payload will produce a plan if state holds true; omitting PayloadEnabled lets Jamf Pro's true default ride.
   Whitespace inside string values is trimmed before comparison so the platform's whitespace handling (observed on Rules[].Comment and similar text fields) does not surface as drift.
-  See PROFILE_ROUNDTRIP_REPORT.md (developer-facing, gitignored) for the empirical 200-profile corpus the comparison is verified against, plus a per-fixture build-tagged regression test (go test -tags profile_corpus).
+  A per-fixture build-tagged regression test (go test -tags profile_corpus) replays a developer-machine-only corpus through the mask to catch new server-side mutations.
   Scope blocks mirror jamfplatform_pro_policy: targets / limitations / exclusions all carry flat sets of numeric Jamf Pro classic IDs (or directory-service names where the wire is name-keyed). all_computers and all_jss_users conflict with their per-ID siblings via attribute-level validators.
   Update behaviour — the provider re-applies the existing top-level PayloadUUID and PayloadIdentifier from state into every user-supplied payload before PUT, so Jamf Pro preserves them on update. This keeps the profile's identity stable across applies — otherwise connected macOS devices would treat each update as a fresh profile installation ("ghost profile"). Same mechanism as profileconvert.InjectIdentifiers in jamf-cli.
 ---
 
 # jamfplatform_pro_macos_configuration_profile (Resource)
 
-Manages a macOS configuration profile in Jamf Pro via the classic `/JSSResource/osxconfigurationprofiles` endpoint. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML; the provider suppresses diffs produced by Jamf Pro's standard server-side normalisations while still surfacing drift on values the user has authored.
+Manages a macOS configuration profile in Jamf Pro via the `/api/proclassic/tenant/{tenantId}/osxconfigurationprofiles` endpoint. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML; the provider suppresses diffs produced by Jamf Pro's standard server-side normalisations while still surfacing drift on values the user has authored.
 
 **Payload diff suppression** — the comparison runs in three layers:
 
@@ -24,7 +24,7 @@ Manages a macOS configuration profile in Jamf Pro via the classic `/JSSResource/
 
 Whitespace inside string values is trimmed before comparison so the platform's whitespace handling (observed on `Rules[].Comment` and similar text fields) does not surface as drift.
 
-See `PROFILE_ROUNDTRIP_REPORT.md` (developer-facing, gitignored) for the empirical 200-profile corpus the comparison is verified against, plus a per-fixture build-tagged regression test (`go test -tags profile_corpus`).
+A per-fixture build-tagged regression test (`go test -tags profile_corpus`) replays a developer-machine-only corpus through the mask to catch new server-side mutations.
 
 **Scope** blocks mirror `jamfplatform_pro_policy`: targets / limitations / exclusions all carry flat sets of numeric Jamf Pro classic IDs (or directory-service names where the wire is name-keyed). `all_computers` and `all_jss_users` conflict with their per-ID siblings via attribute-level validators.
 

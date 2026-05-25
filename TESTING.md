@@ -51,36 +51,25 @@ Test files live alongside the code they test, following Go convention. The Jamf 
 ```
 internal/
 ├── common/
-│   ├── helpers/
-│   │   ├── helpers_test.go
-│   │   └── dynamic_json_test.go
-│   └── filters/filters_test.go
-├── testhelpers/                          # Acceptance fixtures (mock server, real-client builder, smart group fixture)
+│   ├── helpers/                          # helpers_test.go, dynamic_json_test.go, ids_test.go, pro_version_test.go
+│   ├── filters/filters_test.go
+│   └── scope/                            # builders_test.go, schema_test.go, validators_test.go
+├── testhelpers/                          # Acceptance fixtures (mock server, real-client builder, shared fixtures)
 ├── actions/device/schema_test.go
 ├── resources/
-│   ├── blueprints/blueprint/
-│   │   ├── schema_test.go                # Unit: schema validation
-│   │   ├── helpers_test.go               # Unit: helpers
-│   │   ├── input_builders_test.go        # Unit: API input builders
-│   │   ├── state_builders_test.go        # Unit: API → state mapping
-│   │   ├── state_upgrader_test.go        # Unit: schema migrations
-│   │   └── resource_acceptance_test.go   # Acceptance: full CRUD
-│   ├── cbengine/benchmark/
-│   │   ├── schema_test.go
-│   │   ├── input_builders_test.go
-│   │   ├── state_builders_test.go
-│   │   └── resource_acceptance_test.go
-│   ├── device_group/
-│   │   ├── schema_test.go
-│   │   ├── helpers_test.go
-│   │   ├── input_builders_test.go
-│   │   ├── state_builders_test.go
-│   │   ├── state_upgrader_test.go
-│   │   └── resource_acceptance_test.go
-│   └── devices/
-│       ├── schema_test.go
-│       └── datasource_acceptance_test.go # Acceptance: data-source-only package
+│   ├── blueprints/blueprint/             # schema_test, helpers_test, input_builders_test, state_builders_test, state_upgrader_test, resource_acceptance_test
+│   ├── cbengine/benchmark/               # schema_test, input_builders_test, state_builders_test, resource_acceptance_test
+│   ├── device_group/                     # schema_test, helpers_test, input_builders_test, state_builders_test, state_upgrader_test, resource_acceptance_test
+│   ├── devices/                          # schema_test, datasource_acceptance_test (data-source-only)
+│   └── pro/                              # Same file shapes per resource, plus marshal_smoke_test for ProClassic XML resources
+│       ├── inventory/<resource>/         # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer
+│       ├── policies/{policy,script}/
+│       ├── configuration_profiles/macos_configuration_profile/  # + helpers_corpus_test (build tag profile_corpus)
+│       ├── settings/self_service_plus_settings/
+│       └── users/user_group/
 ```
+
+Each leaf folder follows the `*_test.go` (unit) + `resource_acceptance_test.go` / `datasource_acceptance_test.go` (acceptance, `//go:build acceptance`) split. Acceptance file names are flat — no per-scenario splits.
 
 ### Naming conventions
 
@@ -164,20 +153,30 @@ func TestAcceptance_MyResource_Create(t *testing.T) {
 
 The `testhelpers.RequireSmartGroupFixture(t)` function provides a shared smart group for tests that need a device group target. The fixture is created once per test binary and cleaned up via `TestMain`.
 
-### Jamf Pro fixtures (forthcoming)
+### Jamf Pro acceptance tests
 
-When the first Jamf Pro resource lands (`internal/resources/pro/...`), `internal/testhelpers` will gain Pro-specific fixtures. The acceptance client itself is unchanged — Pro resources use the same `*jamfplatform.Client` built from the same `JAMFPLATFORM_*` credentials as Platform Services resources.
+Pro resources use the same `*jamfplatform.Client` and the same `JAMFPLATFORM_*` credentials as Platform Services resources. Tenant data isolation conventions:
 
-**Tenant data isolation conventions for Pro acceptance tests:**
-
-- Use the existing `tf-acc-` prefix on every resource created (matches STYLE_GUIDE convention).
-- Pro resources have richer dependency graphs (a policy needs a category, smart group, script, package). Use `t.Cleanup` for dependency-ordered teardown — register cleanups in reverse-creation order so dependencies are torn down before their dependents.
-- Shared fixtures that span multiple test files (e.g., a long-lived test category, a known smart group) live in `internal/testhelpers` and are cleaned up via `TestMain` — same pattern as `RequireSmartGroupFixture`. Add new `Require*Fixture` helpers as needed.
+- Use the `tf-acc-` prefix on every resource created.
+- Pro resources have richer dependency graphs (a policy needs a category, smart group, script, package). Use `t.Cleanup` for dependency-ordered teardown — register cleanups in reverse-creation order.
+- Shared fixtures that span multiple test files live in `internal/testhelpers` and are cleaned up via `TestMain` (precedent: `RequireSmartGroupFixture`). Add new `Require*Fixture` helpers as needed.
 - Tests must be independent — never assume another test has run first.
 
-**CI scaling plan** (deferred until Pro suite exists):
+**Acceptance test files MUST declare `//go:build acceptance` on line 1** or they leak into the unit run.
 
-The current acceptance job in `.github/workflows/integration-tests.yml` has a 30-minute timeout and runs Platform Services tests serially (`-p=1`). As the Pro suite grows, plan is to **split acceptance into a dedicated workflow** (`acceptance-tests.yml`) — a single serial job (no matrix; parallel acceptance against the same tenant causes naming/ID collisions). The split also lets us tune the Pro job's timeout independently and run it on a different cadence (e.g., manual-only or post-merge) if needed.
+### Profile-corpus regression test (opt-in build tag)
+
+`internal/resources/pro/configuration_profiles/macos_configuration_profile/helpers_corpus_test.go` is gated by `//go:build profile_corpus`. It iterates a 200-profile mobileconfig corpus under `testing/profile_roundtrip/` (gitignored, developer-machine-only) and asserts the mask-and-compare diff suppression is stable. Run with:
+
+```bash
+go test -tags profile_corpus ./internal/resources/pro/configuration_profiles/macos_configuration_profile/...
+```
+
+Not part of CI. Regenerate the corpus before running by replaying `/tmp/sample_titles.py` + `/tmp/roundtrip.py` against a tenant. Background on the diff classes the mask covers: [STYLE_GUIDE.md §Configuration profile payload diff suppression](STYLE_GUIDE.md#configuration-profile-payload-diff-suppression-mask-and-compare).
+
+### CI scaling
+
+Current acceptance job in `.github/workflows/integration-tests.yml` runs Platform Services and Pro tests serially (`-p=1`, 30-minute timeout). When acceptance runtime starts pressing the timeout, split into a dedicated `acceptance-tests.yml` workflow — single serial job (no matrix; parallel acceptance against the same tenant causes naming/ID collisions), independently tunable timeout, optional post-merge-only cadence.
 
 ### Benchmark-specific considerations
 

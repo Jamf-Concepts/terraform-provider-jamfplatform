@@ -250,7 +250,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"target_device_group": schema.StringAttribute{
-				MarkdownDescription: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).",
+				MarkdownDescription: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the `/api/device-groups/v1/tenant/{tenantId}/device-groups` Jamf Platform API endpoint (also exposed by the `jamfplatform_device_group` data source / list resource). Required and immutable for this resource (replace on change).",
 				Required:            true,
 				Validators: []validator.String{stringvalidator.RegexMatches(uuidRegex,
 					"Device group ID must be a valid UUID")},

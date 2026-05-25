@@ -14,9 +14,9 @@ import (
 )
 
 // PackageResourceModel represents the Terraform resource model for a Jamf
-// Pro package. The flat envelope mirrors the UI-aligned attribute names
-// defined in PACKAGE_SPIKE §3.Q5; wire-side translation lives in
-// input_builders.go / state_builders.go.
+// Pro package. The flat envelope mirrors the UI-aligned attribute names;
+// wire-side translation (TF attribute → SDK request/response field) lives
+// in mappings.go, input_builders.go, and state_builders.go.
 //
 // Three operating modes are inferred at runtime, NOT modelled in the type:
 //   - JCDS: PackageFileSource non-empty. Hash attrs Computed-only post-upload.

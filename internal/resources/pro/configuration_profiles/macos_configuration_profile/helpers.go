@@ -17,7 +17,7 @@ import (
 
 // Server-controlled keys skipped on both sides before diff comparison.
 // Only keys Jamf Pro derives on every write/read regardless of input value
-// land here — see PROFILE_ROUNDTRIP_REPORT.md §3 (200/200 corpus coverage).
+// land here.
 //
 // Keys Jamf Pro only *conditionally* defaults (e.g. `PayloadEnabled` when
 // absent, `PayloadOrganization` when absent, `VendorConfig` only for
@@ -74,8 +74,8 @@ func marshalPlist(m map[string]any) ([]byte, error) {
 // — equality implies the two payloads are semantically the same modulo
 // Jamf's well-known server-side normalisations.
 //
-// Compare PROFILE_ROUNDTRIP_REPORT.md §3 for the full list of diff classes
-// the mask is designed to neutralise.
+// See STYLE_GUIDE.md §Configuration profile payload diff suppression for
+// the diff-class catalogue this mask is designed to neutralise.
 func maskPayload(raw []byte) (map[string]any, error) {
 	parsed, _, err := parsePlist(raw)
 	if err != nil {
@@ -155,7 +155,7 @@ func isEmpty(v any) bool {
 
 // trimAny recursively trims leading/trailing whitespace from every string
 // value in the plist tree. The server is observed to strip whitespace from
-// every string it stores (PROFILE_ROUNDTRIP_REPORT.md §3.6 Rules case).
+// every string it stores.
 func trimAny(v any) any {
 	switch t := v.(type) {
 	case string:
@@ -277,9 +277,9 @@ func numericEqual(a int64, b any) bool {
 // produces a new top-level UUID server-side and devices treat the
 // update as a fresh install ("ghost profile").
 //
-// PROFILE_ROUNDTRIP_REPORT.md §4 confirmed top-level-only injection is
-// sufficient: 34/34 update-path roundtrip samples produced parsed-plist-equal
-// output to the first create response when this function ran.
+// Top-level-only injection is sufficient: roundtrip samples produced
+// parsed-plist-equal output to the first create response when this
+// function ran.
 //
 // If both uuid and identifier are empty (Create path), newPayload is
 // returned unchanged.

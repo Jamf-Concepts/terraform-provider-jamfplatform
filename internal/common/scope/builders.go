@@ -18,7 +18,7 @@ import (
 //
 // Returns nil if the set is null, unknown, or empty so the SDK omits the
 // parent XML element entirely (matching the wire convention of "absent
-// block means no targets" — SCOPE_SPIKE §6.5).
+// block means no targets" — see STYLE_GUIDE.md §Scope helper omission semantics).
 //
 // Element parse errors do not short-circuit — every failure is collected
 // in one pass so the user sees them all at once. Returns (nil, diags) when

@@ -12,10 +12,9 @@ const CategoryIDDefault = "-1"
 const PriorityDefault = 10
 
 // PackageFilterSelectors enumerates the RSQL selectors the
-// /v1/packages list endpoint accepts. Lifted verbatim from PACKAGE_SPIKE
-// §13.1 (server error response when an unsupported selector is sent).
-// Note: alphabetised here for stable schema descriptions; semantics
-// unaffected.
+// /v1/packages list endpoint accepts. Sourced from the server error
+// response when an unsupported selector is sent. Note: alphabetised here
+// for stable schema descriptions; semantics unaffected.
 var PackageFilterSelectors = []string{
 	"categoryId",
 	"cloudTransferStatus",
@@ -30,5 +29,5 @@ var PackageFilterSelectors = []string{
 // AllowedHashTypeValues are the values accepted on the `hash_type` schema
 // attribute. The server may return additional historical values (notably
 // `"SHA_512"`, the unconfigured-record default) — those are accepted on
-// reads but rejected at plan time on writes per PACKAGE_SPIKE §3.Q5.
+// reads but rejected at plan time on writes.
 var AllowedHashTypeValues = []string{"MD5", "SHA_256", "SHA3_512"}

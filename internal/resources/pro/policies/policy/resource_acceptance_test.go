@@ -499,7 +499,7 @@ resource "jamfplatform_pro_policy" "test" {
 // TestAccPolicyResource_RebootFullCoverage exercises every reboot attribute
 // and sweeps specify_startup through all three values the validator accepts:
 // the wire-empty default, the standard restart label, and the MDM
-// kernel-cache-rebuild label (per Probe #2 in PHASE_2_6_SPIKE.md).
+// kernel-cache-rebuild label.
 // Import-state round-trip is not asserted — by design (see
 // state_builders.assignPolicyResourceModel) the reboot section is only
 // populated on Read when the caller already manages it, so a freshly-imported
@@ -519,9 +519,9 @@ resource "jamfplatform_pro_policy" "test" {
 
 // TestAccPolicyResource_PackageConfigurationDistributionPoint exercises the
 // top-level `<package_configuration><distribution_point>` wire field added in
-// SDK 0.8.1-…46aec40edb28. The wire returns this value as a peer of <packages>
-// (see PHASE_2_6_SPIKE.md §4 + Appendix). Test omits the `packages` set
-// entirely — there is no clean "NONE" value for packages[].id, so per-package
+// SDK 0.8.1-…46aec40edb28. The wire returns this value as a peer of <packages>.
+// Test omits the `packages` set entirely — there is no clean "NONE" value for
+// packages[].id, so per-package
 // coverage is deferred to PR #5 with a real `jamfplatform_pro_package` fixture.
 // Import-state round-trip is not asserted (per
 // state_builders.assignPolicyResourceModel, optional sub-blocks are only
@@ -726,8 +726,8 @@ resource "jamfplatform_pro_policy" "test" {
 // TestAccPolicyResource_ScriptsFullCoverage creates a jamfplatform_pro_script
 // fixture (the standalone script resource uses BEFORE/AFTER/AT_REBOOT) and
 // references its ID from policy.scripts.scripts. The policy's wire form for
-// `priority` is `Before`/`After`/`At Reboot` (per PHASE_2_6_SPIKE.md §5
-// + Appendix), distinct from the fixture's enum. Step 2 swaps priority and
+// `priority` is `Before`/`After`/`At Reboot`, distinct from the fixture's
+// enum. Step 2 swaps priority and
 // parameter4 to exercise the Update path on the scripts set without
 // recreating the fixture.
 func TestAccPolicyResource_ScriptsFullCoverage(t *testing.T) {
@@ -957,9 +957,9 @@ resource "jamfplatform_pro_policy" "test" {
 
 // TestAccPolicyResource_MaintenanceFullCoverage exercises every maintenance
 // attribute. Step 2 toggles update_inventory to exercise the Update path.
-// The wire-dead `heal` and `prebindings` fields (Probe #10 in
-// PHASE_2_6_SPIKE.md — wire rejected or echoed empty regardless of the value
-// sent) were dropped from the schema in the same PR as this rename batch.
+// The wire-dead `heal` and `prebindings` fields (wire rejected or echoed
+// empty regardless of the value sent) were dropped from the schema in the
+// same PR as this rename batch.
 func TestAccPolicyResource_MaintenanceFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -1202,9 +1202,8 @@ resource "jamfplatform_pro_policy" "test" {
 // jamfplatform_pro_disk_encryption_configuration fixture (key_type=Individual
 // is the minimal config — no IRK certificate required) and references its ID
 // from policy.disk_encryption. Step 2 toggles auth_restart to exercise the
-// Update path. Probe #12 in PHASE_2_6_SPIKE.md found that action=remediate
-// silently reverts to apply on the server, so this test sticks with
-// action=apply throughout.
+// Update path. action=remediate silently reverts to apply on the server,
+// so this test sticks with action=apply throughout.
 func TestAccPolicyResource_DiskEncryptionFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -1445,8 +1444,7 @@ resource "jamfplatform_pro_policy" "test" {
 // classic API rejects names that do not resolve against the tenant's LDAP
 // integration (`Error: Problem matching limitation user group`), so testing
 // them requires fixture LDAP entries the tenant does not generally provide.
-// Their wire round-trip is covered indirectly via the policy 6791 baseline
-// captured in PHASE_2_6_SPIKE.md §Appendix.
+// Their wire round-trip is covered indirectly via the policy 6791 baseline.
 func TestAccPolicyResource_ScopeLimitationsFixtureCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -1749,9 +1747,8 @@ resource "jamfplatform_pro_policy" "test" {
 //   - Reset:  password reset by username.
 //   - Delete: removal with `permanently_delete_home_directory = true`. This
 //     is the inverted-and-renamed form of the wire field
-//     `<archive_home_directory>` (Probe #8 in PHASE_2_6_SPIKE.md). Server
-//     receives the inverse on the wire; state stores the UI-canonical
-//     semantic.
+//     `<archive_home_directory>`. Server receives the inverse on the wire;
+//     state stores the UI-canonical semantic.
 //
 // Step layout: Step 1 creates three accounts. Step 2 rotates the first
 // account's `password_wo_version` to prove per-element rotation gating.
@@ -1760,14 +1757,13 @@ resource "jamfplatform_pro_policy" "test" {
 //
 // `DisableFileVault` is wired into the schema validator
 // (`stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault")`)
-// per Probe #9 — the wire string is `DisableFileVault` without a trailing
-// `2` despite older documentation. The action is NOT exercised in this
-// acceptance test because the classic /policies endpoint silently strips
+// — the wire string is `DisableFileVault` without a trailing `2` despite
+// older documentation. The action is NOT exercised in this acceptance test
+// because the classic /policies endpoint silently strips
 // `<account><action>DisableFileVault</action></account>` entries from new
 // policies (round-trip returns no account, framework then reports
-// "produced inconsistent result after apply"). The wire baseline in
-// PHASE_2_6_SPIKE.md §Appendix shows the action surviving on policy 6791,
-// which was created via the Jamf Pro UI — the rejection appears to be
+// "produced inconsistent result after apply"). The action does survive on
+// policies created via the Jamf Pro UI, so the rejection appears to be
 // API-only. Manually-probe the precise wire shape needed before adding
 // acceptance coverage.
 func TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage(t *testing.T) {

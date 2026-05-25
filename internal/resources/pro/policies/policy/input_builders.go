@@ -42,9 +42,9 @@ func noSecrets() *policyAccountMaintenanceSecrets {
 }
 
 // buildPolicyInput projects a plan PolicyResourceModel into a *proclassic.PolicyPost
-// suitable for Create / Update. Each section follows SCOPE_SPIKE §6.5 omission
-// semantics: nil-pointer sub-blocks suppress wire emission entirely; empty
-// child collections collapse all the way up to a nil parent.
+// suitable for Create / Update. Each section follows the scope omission rules
+// in STYLE_GUIDE.md §Scope helper: nil-pointer sub-blocks suppress wire emission
+// entirely; empty child collections collapse all the way up to a nil parent.
 func buildPolicyInput(ctx context.Context, plan PolicyResourceModel, secrets *policyAccountMaintenanceSecrets) (*proclassic.PolicyPost, diag.Diagnostics) {
 	if secrets == nil {
 		secrets = noSecrets()
@@ -273,9 +273,9 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 		s.Exclusions = e
 	}
 
-	// Omission semantics (SCOPE_SPIKE §6.5): collapse to nil when every child
-	// pointer is nil so the wire payload omits <scope> entirely rather than
-	// emitting an empty <scope></scope> element.
+	// Omission semantics (STYLE_GUIDE.md §Scope helper): collapse to nil when
+	// every child pointer is nil so the wire payload omits <scope> entirely
+	// rather than emitting an empty <scope></scope> element.
 	if s.AllComputers == nil && s.AllJssUsers == nil && s.Computers == nil &&
 		s.ComputerGroups == nil && s.Buildings == nil && s.Departments == nil &&
 		s.JssUsers == nil && s.JssUserGroups == nil &&

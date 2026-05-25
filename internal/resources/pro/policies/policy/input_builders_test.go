@@ -82,9 +82,9 @@ func TestBuildPolicyInput_ScopeWithComputerGroupAndBuilding(t *testing.T) {
 
 func TestBuildPolicyInput_ScopeOmissionSemantics(t *testing.T) {
 	t.Parallel()
-	// SCOPE_SPIKE §6.5: an empty scope block in HCL must collapse all the way
-	// up to a nil PolicyPostScope so the wire request omits the <scope>
-	// element entirely rather than emitting <scope></scope>.
+	// An empty scope block in HCL must collapse all the way up to a nil
+	// PolicyPostScope so the wire request omits the <scope> element entirely
+	// rather than emitting <scope></scope>.
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-empty-scope")},
 		Scope:   &PolicyScopeModel{},

@@ -13,7 +13,7 @@ import (
 // adjustments:
 //
 //   - Scope target sub-blocks are flattened Set<String> of numeric IDs via the
-//     internal/common/scope helper (see SCOPE_SPIKE.md §5).
+//     internal/common/scope helper (see STYLE_GUIDE.md §Scope helper).
 //   - self_service.display_notifications / notification_location are two TF
 //     attributes that round-trip through a single proclassic.NotificationValue
 //     (the wire emits two <notification> elements per policy).
@@ -106,7 +106,7 @@ type PolicyGeneralOverrideDefaultsModel struct {
 // PolicyScopeModel models <policy><scope>. Every target category is a flat
 // Set<String> of numeric Jamf Pro classic IDs (or names for the
 // directory-service / limit-to flavours), composed via the
-// internal/common/scope helper. See SCOPE_SPIKE.md §5 for the canonical rules.
+// internal/common/scope helper. See STYLE_GUIDE.md §Scope helper for the canonical rules.
 // User-side IDs use the UI-canonical names `user_ids` / `user_group_ids`; the
 // wire elements are `<jss_users>` and `<jss_user_groups>`.
 type PolicyScopeModel struct {
