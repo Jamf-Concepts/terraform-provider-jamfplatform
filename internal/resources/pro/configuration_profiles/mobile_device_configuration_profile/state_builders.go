@@ -66,7 +66,7 @@ func flattenGeneral(g *proclassic.MobileDeviceConfigurationProfileGeneral, state
 	// canonical form is semantically equivalent; only overwrite when genuine
 	// out-of-band drift is detected.
 	if g.Payloads != nil {
-		server := *g.Payloads
+		server := string(*g.Payloads)
 		keep := false
 		if !state.Payloads.IsNull() && !state.Payloads.IsUnknown() {
 			if eq, err := payloadhelpers.PayloadsSemanticallyEqual([]byte(state.Payloads.ValueString()), []byte(server)); err == nil && eq {
@@ -74,7 +74,7 @@ func flattenGeneral(g *proclassic.MobileDeviceConfigurationProfileGeneral, state
 			}
 		}
 		if !keep {
-			state.Payloads = types.StringValue(server)
+			state.Payloads = types.StringValue(string(payloadhelpers.CanonicalisePlistXML([]byte(server))))
 		}
 	}
 	// Wire element is <deployment_method>; TF attribute is distribution_method (UI-canonical).

@@ -110,11 +110,11 @@ func TestBuildGeneral_PayloadIdentifierInjectionOnUpdate(t *testing.T) {
 	if g.Payloads == nil {
 		t.Fatal("expected Payloads to be set")
 	}
-	if !strings.Contains(*g.Payloads, existingUUID) {
-		t.Fatalf("expected server-canonical UUID substituted; got %s", *g.Payloads)
+	if !strings.Contains(string(*g.Payloads), existingUUID) {
+		t.Fatalf("expected server-canonical UUID substituted; got %s", string(*g.Payloads))
 	}
-	if strings.Contains(*g.Payloads, "NEW-identifier") || strings.Contains(*g.Payloads, "NEW-UUID") {
-		t.Fatalf("expected user-supplied identifiers replaced; got %s", *g.Payloads)
+	if strings.Contains(string(*g.Payloads), "NEW-identifier") || strings.Contains(string(*g.Payloads), "NEW-UUID") {
+		t.Fatalf("expected user-supplied identifiers replaced; got %s", string(*g.Payloads))
 	}
 	if len(prepared) == 0 {
 		t.Fatal("expected prepared bytes returned")
@@ -133,7 +133,7 @@ func TestBuildGeneral_PayloadIdentifierInjection_CreatePathNoOp(t *testing.T) {
 		Name:     types.StringValue("x"),
 		Payloads: types.StringValue(newPayload),
 	}, "")
-	if g.Payloads == nil || !strings.Contains(*g.Payloads, "CREATE-id") {
+	if g.Payloads == nil || !strings.Contains(string(*g.Payloads), "CREATE-id") {
 		t.Fatal("expected create-path payload untouched")
 	}
 }

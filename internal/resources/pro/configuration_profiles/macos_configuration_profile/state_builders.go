@@ -80,7 +80,7 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 	// semantically equivalent; only overwrite with the server form when
 	// genuine out-of-band drift is detected.
 	if g.Payloads != nil {
-		server := *g.Payloads
+		server := string(*g.Payloads)
 		keep := false
 		if !state.Payloads.IsNull() && !state.Payloads.IsUnknown() {
 			if eq, err := payloadhelpers.PayloadsSemanticallyEqual([]byte(state.Payloads.ValueString()), []byte(server)); err == nil && eq {
@@ -88,7 +88,7 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 			}
 		}
 		if !keep {
-			state.Payloads = types.StringValue(server)
+			state.Payloads = types.StringValue(string(payloadhelpers.CanonicalisePlistXML([]byte(server))))
 		}
 	}
 	state.DistributionMethod = helpers.ReconcileOptionalStringPointer(g.DistributionMethod, state.DistributionMethod)

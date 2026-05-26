@@ -6,6 +6,7 @@ package macos_configuration_profile
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -60,13 +61,13 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 	state := &GeneralModel{}
 	flattenGeneral(&proclassic.OsXConfigurationProfileGeneral{
 		UUID:     new("abc-uuid"),
-		Payloads: new("<plist/>"),
+		Payloads: new(proclassic.PayloadsXMLText("<plist/>")),
 	}, state)
 	if state.UUID.ValueString() != "abc-uuid" {
 		t.Fatalf("UUID: got %v", state.UUID)
 	}
-	if state.Payloads.ValueString() != "<plist/>" {
-		t.Fatalf("Payloads: got %v", state.Payloads)
+	if got := state.Payloads.ValueString(); !strings.Contains(got, "<plist") {
+		t.Fatalf("Payloads: got %v", got)
 	}
 }
 

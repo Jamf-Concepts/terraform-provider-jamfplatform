@@ -9,6 +9,7 @@ package payloadhelpers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"html"
 	"strings"
@@ -21,26 +22,36 @@ import (
 // land here.
 //
 // Keys Jamf Pro only *conditionally* defaults (e.g. `PayloadEnabled` when
-// absent, `PayloadOrganization` when absent, `VendorConfig` only for
-// webcontent-filter payloads) are intentionally **not** in this list. The
-// intersection-compare in LenientEqualPlist drops asymmetric keys at
-// comparison time, which means:
+// absent, `VendorConfig` only for webcontent-filter payloads) are
+// intentionally **not** in this list. The intersection-compare in
+// LenientEqualPlist drops asymmetric keys at comparison time, which means:
 //
 //   - user omits the key → only server side has it → intersection drops it → no spurious diff.
 //   - user authors the key → both sides have it → compared → drift detected if the user later edits.
 //
-// Decision confirmed by the maintainer 2026-05-24: a static skip-list on
-// conditional-default keys would hide user-authored drift.
+// `PayloadOrganization` is in this list — wire-confirmed 2026-05-26 that
+// Jamf Pro Classic always overwrites the field with "JAMF Software" on
+// both top-level and per-PayloadContent slots, regardless of the
+// user-authored value. The previous "conditional default" assumption
+// produced persistent payload diffs on every plan that authored an
+// organization. Trade-off: a user-authored edit to PayloadOrganization
+// will be silently dropped on the wire — but Jamf already drops it
+// regardless, so masking the key matches reality. Drift detection on
+// every other value the user authors is unaffected.
 var (
 	maskedTopLevelKeys = map[string]struct{}{
-		"PayloadDisplayName": {}, // server sets from classic <general><name> on every write
-		"PayloadIdentifier":  {}, // server assigns a new lowercase UUID on create
-		"PayloadUUID":        {}, // server assigns a new lowercase UUID on create
+		"PayloadDisplayName":  {}, // server sets from classic <general><name> on every write
+		"PayloadIdentifier":   {}, // server assigns a new lowercase UUID on create
+		"PayloadUUID":         {}, // server assigns a new lowercase UUID on create
+		"PayloadOrganization": {}, // server always overwrites with "JAMF Software"
+		"PayloadDescription":  {}, // server always empties the top-level description
+		"PayloadEnabled":      {}, // server always strips at top-level (Apple-spec is per-payload, not top-level)
 	}
 	maskedPayloadContentKeys = map[string]struct{}{
-		"PayloadDisplayName": {}, // server-defaulted per PayloadType
-		"PayloadIdentifier":  {}, // server may assign on create
-		"PayloadUUID":        {}, // server may assign on create; preserved on update by InjectTopLevelIdentifiers
+		"PayloadDisplayName":  {}, // server-defaulted per PayloadType
+		"PayloadIdentifier":   {}, // server may assign on create
+		"PayloadUUID":         {}, // server may assign on create; preserved on update by InjectTopLevelIdentifiers
+		"PayloadOrganization": {}, // server always overwrites with "JAMF Software"
 	}
 	// serverInjectedPayloadTypes are PayloadContent[i].PayloadType values Jamf
 	// Pro inserts into the mobileconfig as a side-effect of a *different*
@@ -59,6 +70,19 @@ var (
 	// the resource already exposes, and the in-payload form is redundant.
 	serverInjectedPayloadTypes = map[string]struct{}{
 		"com.apple.profileRemovalPassword": {}, // mirrors self_service.authorization_password
+	}
+	// mcxLikePayloadTypes enumerates PayloadType values whose inner
+	// `.PayloadContent` child is opaque user-authored vendor preference data.
+	// For these types, drift detection compares the inner subtree strictly
+	// (keysets must match exactly) so admin-UI key add/remove inside the
+	// vendor preference dict surfaces on the next plan. Apple's MCX format
+	// (com.apple.ManagedClient.preferences) is the canonical case — Jamf Pro
+	// UI exposes it as "Application & Custom Settings" / "Custom Settings".
+	// Jamf is the transport for this subtree, not the editor: it never
+	// injects metadata at the inner preference depth, so strict compare is
+	// safe.
+	mcxLikePayloadTypes = map[string]struct{}{
+		"com.apple.ManagedClient.preferences": {},
 	}
 )
 
@@ -85,6 +109,28 @@ func MarshalPlist(m map[string]any) ([]byte, error) {
 		return nil, fmt.Errorf("encoding plist: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+// CanonicalisePlistXML parses a mobileconfig plist and re-emits it as
+// tab-indented XML. Used on the state-builder side to normalise Jamf's
+// compact single-line wire form into the same shape user-authored
+// payloads typically take (Apple's standard pretty-printed mobileconfig).
+// When state and plan share formatting, Terraform's diff narrows from a
+// whole-payload swap to the specific keys that changed.
+//
+// Falls back to returning the input unchanged if the plist fails to
+// parse — the caller still has a usable string, and the legibility
+// improvement is a UX nicety, not a correctness gate.
+func CanonicalisePlistXML(raw []byte) []byte {
+	parsed, _, err := ParsePlist(raw)
+	if err != nil {
+		return raw
+	}
+	out, err := MarshalPlist(parsed)
+	if err != nil {
+		return raw
+	}
+	return out
 }
 
 // MaskPayload returns a deep-cloned representation of the input plist with
@@ -170,12 +216,49 @@ func isEmpty(v any) bool {
 	}
 }
 
-// trimAny recursively trims leading/trailing whitespace from every string
-// value in the plist tree.
+// normalizeBase64InString collapses line-wrap whitespace from string values
+// that decode cleanly as base64. Apple-spec mobileconfig binary blobs live
+// inside `<data>` tags (which howett.net/plist decodes to []byte and carry
+// no whitespace), but some vendor payloads embed base64 inside `<string>`
+// values — and Jamf Pro can line-wrap long base64 strings on the way back.
+// Whitespace-only differences inside such strings would otherwise produce
+// spurious diffs.
+//
+// Heuristic deliberately conservative — only fires when:
+//   - The string contains an explicit newline (`\n` or `\r`). Plain spaces
+//     do not trigger; natural-language values like "Allow 1Password
+//     Launch Item" pass through untouched even when they happen to be
+//     all-alphanumeric.
+//   - After all-whitespace strip, the result is at least 32 characters and
+//     a multiple of 4. Real base64 cert/blob content is nearly always far
+//     longer; multi-line natural-language descriptions are vanishingly
+//     unlikely to satisfy both length floor and length-mod-4.
+//   - The cleaned form decodes successfully under standard base64.
+//
+// Anything that fails any gate is returned unchanged.
+func normalizeBase64InString(s string) string {
+	if !strings.ContainsAny(s, "\n\r") {
+		return s
+	}
+	clean := strings.Join(strings.Fields(s), "")
+	if len(clean) < 32 || len(clean)%4 != 0 {
+		return s
+	}
+	if _, err := base64.StdEncoding.DecodeString(clean); err == nil {
+		return clean
+	}
+	return s
+}
+
+// trimAny recursively trims whitespace from every string value in the plist
+// tree. For ordinary text values this is `strings.TrimSpace`. For string
+// values that decode as base64, internal whitespace is also collapsed (see
+// normalizeBase64InString) so server-side line wrapping does not produce
+// spurious diffs.
 func trimAny(v any) any {
 	switch t := v.(type) {
 	case string:
-		return strings.TrimSpace(t)
+		return strings.TrimSpace(normalizeBase64InString(t))
 	case []any:
 		out := make([]any, len(t))
 		for i, item := range t {
@@ -226,6 +309,20 @@ func PayloadsSemanticallyEqual(a, b []byte) (bool, error) {
 // shared keys must compare equal. Arrays compare positionally. Scalars
 // compare via numericEqual for ints (howett.net/plist returns int64 or
 // uint64 depending on sign).
+//
+// Exception: PayloadContent[i] entries whose PayloadType is in
+// mcxLikePayloadTypes (e.g. com.apple.ManagedClient.preferences — Jamf
+// Pro's "Application & Custom Settings") get their inner `.PayloadContent`
+// child strict-compared via strictEqual. That subtree is opaque
+// user-authored vendor preference data; admin-UI key add/remove inside it
+// is real drift and must surface on the next plan. Remaining keys at the
+// MCX entry depth still use intersection so per-payload metadata defaults
+// Jamf injects (e.g. PayloadEnabled) keep tolerating one-sided presence.
+//
+// Intersection compare elsewhere remains the documented trade-off: it
+// keeps the corpus quiet on Jamf's many conditional-default injections
+// (top-level `PayloadRemovalDisallowed`, per-payload `PayloadEnabled`,
+// PPPC service strips, etc.) without having to enumerate every one.
 func LenientEqualPlist(a, b any) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
@@ -235,6 +332,29 @@ func LenientEqualPlist(a, b any) bool {
 		bv, ok := b.(map[string]any)
 		if !ok {
 			return false
+		}
+		if pt, _ := av["PayloadType"].(string); pt != "" {
+			if _, isMCX := mcxLikePayloadTypes[pt]; isMCX {
+				ai, aHas := av["PayloadContent"]
+				bi, bHas := bv["PayloadContent"]
+				if aHas != bHas {
+					return false
+				}
+				if aHas && !strictEqual(ai, bi) {
+					return false
+				}
+				for k, va := range av {
+					if k == "PayloadContent" {
+						continue
+					}
+					if vb, exists := bv[k]; exists {
+						if !LenientEqualPlist(va, vb) {
+							return false
+						}
+					}
+				}
+				return true
+			}
 		}
 		for k, va := range av {
 			if vb, exists := bv[k]; exists {
@@ -251,6 +371,50 @@ func LenientEqualPlist(a, b any) bool {
 		}
 		for i := range av {
 			if !LenientEqualPlist(av[i], bv[i]) {
+				return false
+			}
+		}
+		return true
+	case uint64:
+		return numericEqual(int64(av), b)
+	case int64:
+		return numericEqual(av, b)
+	case int:
+		return numericEqual(int64(av), b)
+	default:
+		return a == b
+	}
+}
+
+// strictEqual is a structural-equality compare for the trimmed plist tree.
+// Unlike LenientEqualPlist, asymmetric keysets fail. Used for opaque
+// user-content subtrees (see mcxLikePayloadTypes) where every key is
+// author-controlled — admin-UI key add/remove inside the subtree is real
+// drift, not Jamf-side metadata injection.
+func strictEqual(a, b any) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	switch av := a.(type) {
+	case map[string]any:
+		bv, ok := b.(map[string]any)
+		if !ok || len(av) != len(bv) {
+			return false
+		}
+		for k, va := range av {
+			vb, exists := bv[k]
+			if !exists || !strictEqual(va, vb) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		bv, ok := b.([]any)
+		if !ok || len(av) != len(bv) {
+			return false
+		}
+		for i := range av {
+			if !strictEqual(av[i], bv[i]) {
 				return false
 			}
 		}
