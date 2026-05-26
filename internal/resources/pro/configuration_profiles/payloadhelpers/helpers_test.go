@@ -270,3 +270,238 @@ func TestLenientEqualPlist_SharedKeyDiffers_NotEqual(t *testing.T) {
 		t.Fatal("differing shared key must not be equal")
 	}
 }
+
+// MCX drift-detection fixtures: a minimal "Application & Custom Settings"
+// payload shaped like local-testing/pro/support_files/minimal_notifications.mobileconfig.
+// The inner mcx_preference_settings dict is opaque user-content; key add/remove
+// inside it must surface as drift.
+const mcxBaseline = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array><dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>mcx-id</string>
+<key>PayloadUUID</key><string>mcx-uuid</string>
+<key>PayloadContent</key><dict>
+<key>com.example.app</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>FeatureEnabled</key><true/>
+<key>BannerMessage</key><string>hello</string>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict></array>
+</dict></plist>`
+
+const mcxAddedInnerKey = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array><dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>mcx-id</string>
+<key>PayloadUUID</key><string>mcx-uuid</string>
+<key>PayloadContent</key><dict>
+<key>com.example.app</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>FeatureEnabled</key><true/>
+<key>BannerMessage</key><string>hello</string>
+<key>EnablePageZeroProtection2</key><false/>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict></array>
+</dict></plist>`
+
+const mcxRemovedInnerKey = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array><dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>mcx-id</string>
+<key>PayloadUUID</key><string>mcx-uuid</string>
+<key>PayloadContent</key><dict>
+<key>com.example.app</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>FeatureEnabled</key><true/>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict></array>
+</dict></plist>`
+
+const mcxChangedInnerValue = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array><dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>mcx-id</string>
+<key>PayloadUUID</key><string>mcx-uuid</string>
+<key>PayloadContent</key><dict>
+<key>com.example.app</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>FeatureEnabled</key><false/>
+<key>BannerMessage</key><string>hello</string>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict></array>
+</dict></plist>`
+
+func TestPayloadsSemanticallyEqual_MCXIdentical_Equal(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(mcxBaseline), []byte(mcxBaseline))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !eq {
+		t.Fatal("identical MCX payloads must compare equal")
+	}
+}
+
+func TestPayloadsSemanticallyEqual_MCXAddedInnerKey_NotEqual(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(mcxBaseline), []byte(mcxAddedInnerKey))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if eq {
+		t.Fatal("admin-injected key inside mcx_preference_settings must produce drift")
+	}
+}
+
+func TestPayloadsSemanticallyEqual_MCXRemovedInnerKey_NotEqual(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(mcxBaseline), []byte(mcxRemovedInnerKey))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if eq {
+		t.Fatal("admin-removed key inside mcx_preference_settings must produce drift")
+	}
+}
+
+func TestPayloadsSemanticallyEqual_MCXChangedInnerValue_NotEqual(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(mcxBaseline), []byte(mcxChangedInnerValue))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if eq {
+		t.Fatal("admin-changed value inside mcx_preference_settings must produce drift")
+	}
+}
+
+// Base64-in-string normalization: when a vendor payload embeds a base64 blob
+// inside a <string> value and Jamf Pro line-wraps it on read, the whitespace
+// difference must not produce a spurious diff.
+const base64Compact = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>EmbeddedCert</key><string>TUlJRENDQWZpZ0F3SUJBZ0lVTUJ4UkxEdGRCZW9PNkZ3MGZQMzZ5cFppL0VBd0RRWUpLb1pJaHZjTkFRRUw=</string>
+<key>PayloadContent</key><array/>
+</dict></plist>`
+
+const base64Wrapped = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>EmbeddedCert</key><string>TUlJRENDQWZpZ0F3SUJBZ0lVTUJ4
+UkxEdGRCZW9PNkZ3MGZQMzZ5cFpp
+L0VBd0RRWUpLb1pJaHZjTkFRRUw=</string>
+<key>PayloadContent</key><array/>
+</dict></plist>`
+
+func TestPayloadsSemanticallyEqual_Base64InString_WrappedAndCompactEqual(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(base64Compact), []byte(base64Wrapped))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !eq {
+		t.Fatal("base64-in-string differing only by line-wrap whitespace must compare equal")
+	}
+}
+
+func TestNormalizeBase64InString_NonBase64Unchanged(t *testing.T) {
+	in := "Allow 1Password Launch Item"
+	if got := normalizeBase64InString(in); got != in {
+		t.Errorf("non-base64 text mutated: got %q want %q", got, in)
+	}
+}
+
+func TestNormalizeBase64InString_NoWhitespaceUnchanged(t *testing.T) {
+	in := "TUlJRENDQWZpZw=="
+	if got := normalizeBase64InString(in); got != in {
+		t.Errorf("base64 without whitespace mutated: got %q want %q", got, in)
+	}
+}
+
+func TestNormalizeBase64InString_StripsInternalWhitespace(t *testing.T) {
+	in := "TUlJRENDQWZpZ0F3SUJBZ0lVTUJ4\nUkxEdGRCZW9PNkZ3MGZQMzZ5cFppL0VBd0RRWUpLb1pJaHZjTkFRRUw="
+	want := "TUlJRENDQWZpZ0F3SUJBZ0lVTUJ4UkxEdGRCZW9PNkZ3MGZQMzZ5cFppL0VBd0RRWUpLb1pJaHZjTkFRRUw="
+	if got := normalizeBase64InString(in); got != want {
+		t.Errorf("base64 with whitespace not collapsed: got %q want %q", got, want)
+	}
+}
+
+func TestNormalizeBase64InString_EmptyAfterStripUnchanged(t *testing.T) {
+	in := "   \n\t  "
+	if got := normalizeBase64InString(in); got != in {
+		t.Errorf("whitespace-only string mutated: got %q want %q", got, in)
+	}
+}
+
+func TestNormalizeBase64InString_NaturalTextWithSpacesUnchanged(t *testing.T) {
+	// Natural-language text containing only base64-alphabet characters and
+	// spaces — guards against the heuristic over-firing on values like
+	// "Allow 1Password Launch Item" whose whitespace-stripped form would
+	// coincidentally decode as base64.
+	in := "Allow 1Password Launch Item"
+	if got := normalizeBase64InString(in); got != in {
+		t.Errorf("natural text with spaces mutated: got %q want %q", got, in)
+	}
+}
+
+func TestNormalizeBase64InString_NewlineButTooShortUnchanged(t *testing.T) {
+	// Newline present but stripped form is below the 32-char floor — must
+	// not be collapsed even if it happens to decode as base64.
+	in := "TUlJ\nRENDQQ=="
+	if got := normalizeBase64InString(in); got != in {
+		t.Errorf("short newline-bearing string mutated: got %q want %q", got, in)
+	}
+}
+
+func TestNormalizeBase64InString_NewlineNotBase64Unchanged(t *testing.T) {
+	// Multi-line natural-language string that does not decode as base64 —
+	// must pass through untouched even though it has newlines.
+	in := "This is a multi-line description\nthat continues onto a second line\nand even a third for good measure."
+	if got := normalizeBase64InString(in); got != in {
+		t.Errorf("multi-line non-base64 text mutated: got %q want %q", got, in)
+	}
+}
