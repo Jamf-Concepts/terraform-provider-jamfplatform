@@ -5,6 +5,7 @@ package mobile_device_configuration_profile
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -81,13 +82,13 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 	state := &GeneralModel{}
 	flattenGeneral(&proclassic.MobileDeviceConfigurationProfileGeneral{
 		UUID:     new("test-uuid"),
-		Payloads: new("<plist/>"),
+		Payloads: new(proclassic.PayloadsXMLText("<plist/>")),
 	}, state)
 	if state.UUID.ValueString() != "test-uuid" {
 		t.Fatalf("UUID: got %v", state.UUID)
 	}
-	if state.Payloads.ValueString() != "<plist/>" {
-		t.Fatalf("Payloads: got %v", state.Payloads)
+	if got := state.Payloads.ValueString(); !strings.Contains(got, "<plist") {
+		t.Fatalf("Payloads: got %v", got)
 	}
 }
 

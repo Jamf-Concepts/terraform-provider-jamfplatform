@@ -21,26 +21,36 @@ import (
 // land here.
 //
 // Keys Jamf Pro only *conditionally* defaults (e.g. `PayloadEnabled` when
-// absent, `PayloadOrganization` when absent, `VendorConfig` only for
-// webcontent-filter payloads) are intentionally **not** in this list. The
-// intersection-compare in LenientEqualPlist drops asymmetric keys at
-// comparison time, which means:
+// absent, `VendorConfig` only for webcontent-filter payloads) are
+// intentionally **not** in this list. The intersection-compare in
+// LenientEqualPlist drops asymmetric keys at comparison time, which means:
 //
 //   - user omits the key → only server side has it → intersection drops it → no spurious diff.
 //   - user authors the key → both sides have it → compared → drift detected if the user later edits.
 //
-// Decision confirmed by the maintainer 2026-05-24: a static skip-list on
-// conditional-default keys would hide user-authored drift.
+// `PayloadOrganization` is in this list — wire-confirmed 2026-05-26 that
+// Jamf Pro Classic always overwrites the field with "JAMF Software" on
+// both top-level and per-PayloadContent slots, regardless of the
+// user-authored value. The previous "conditional default" assumption
+// produced persistent payload diffs on every plan that authored an
+// organization. Trade-off: a user-authored edit to PayloadOrganization
+// will be silently dropped on the wire — but Jamf already drops it
+// regardless, so masking the key matches reality. Drift detection on
+// every other value the user authors is unaffected.
 var (
 	maskedTopLevelKeys = map[string]struct{}{
-		"PayloadDisplayName": {}, // server sets from classic <general><name> on every write
-		"PayloadIdentifier":  {}, // server assigns a new lowercase UUID on create
-		"PayloadUUID":        {}, // server assigns a new lowercase UUID on create
+		"PayloadDisplayName":  {}, // server sets from classic <general><name> on every write
+		"PayloadIdentifier":   {}, // server assigns a new lowercase UUID on create
+		"PayloadUUID":         {}, // server assigns a new lowercase UUID on create
+		"PayloadOrganization": {}, // server always overwrites with "JAMF Software"
+		"PayloadDescription":  {}, // server always empties the top-level description
+		"PayloadEnabled":      {}, // server always strips at top-level (Apple-spec is per-payload, not top-level)
 	}
 	maskedPayloadContentKeys = map[string]struct{}{
-		"PayloadDisplayName": {}, // server-defaulted per PayloadType
-		"PayloadIdentifier":  {}, // server may assign on create
-		"PayloadUUID":        {}, // server may assign on create; preserved on update by InjectTopLevelIdentifiers
+		"PayloadDisplayName":  {}, // server-defaulted per PayloadType
+		"PayloadIdentifier":   {}, // server may assign on create
+		"PayloadUUID":         {}, // server may assign on create; preserved on update by InjectTopLevelIdentifiers
+		"PayloadOrganization": {}, // server always overwrites with "JAMF Software"
 	}
 	// serverInjectedPayloadTypes are PayloadContent[i].PayloadType values Jamf
 	// Pro inserts into the mobileconfig as a side-effect of a *different*
@@ -85,6 +95,28 @@ func MarshalPlist(m map[string]any) ([]byte, error) {
 		return nil, fmt.Errorf("encoding plist: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+// CanonicalisePlistXML parses a mobileconfig plist and re-emits it as
+// tab-indented XML. Used on the state-builder side to normalise Jamf's
+// compact single-line wire form into the same shape user-authored
+// payloads typically take (Apple's standard pretty-printed mobileconfig).
+// When state and plan share formatting, Terraform's diff narrows from a
+// whole-payload swap to the specific keys that changed.
+//
+// Falls back to returning the input unchanged if the plist fails to
+// parse — the caller still has a usable string, and the legibility
+// improvement is a UX nicety, not a correctness gate.
+func CanonicalisePlistXML(raw []byte) []byte {
+	parsed, _, err := ParsePlist(raw)
+	if err != nil {
+		return raw
+	}
+	out, err := MarshalPlist(parsed)
+	if err != nil {
+		return raw
+	}
+	return out
 }
 
 // MaskPayload returns a deep-cloned representation of the input plist with
@@ -226,6 +258,15 @@ func PayloadsSemanticallyEqual(a, b []byte) (bool, error) {
 // shared keys must compare equal. Arrays compare positionally. Scalars
 // compare via numericEqual for ints (howett.net/plist returns int64 or
 // uint64 depending on sign).
+//
+// Known limitation: keys server adds out-of-band (admin edits the
+// payload directly in the Jamf Pro UI) at depths the mask doesn't cover
+// will not surface as drift — the intersection compare ignores
+// state-only keys. The trade-off keeps the corpus quiet on Jamf's many
+// conditional-default injections (top-level `PayloadRemovalDisallowed`,
+// per-payload `PayloadEnabled`, PPPC service strips, etc.) without
+// having to enumerate every one. Detecting deep out-of-band UI edits
+// requires a depth-aware variant; pending design.
 func LenientEqualPlist(a, b any) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
