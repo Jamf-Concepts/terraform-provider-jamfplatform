@@ -306,20 +306,40 @@ Reference: `internal/resources/pro/inventory/directory_binding/data_source.go` (
 
 ### Cross-field validation
 
-Prefer **attribute-level validators** (`Validators: []validator.Bool{...}` on the schema attribute itself) over `resource.ResourceWithConfigValidators` for cross-field requirements. Errors attach to the offending attribute, the rule is co-located with the schema, and the convention matches existing usage across the provider.
+**Required pattern:** every cross-field rule MUST be expressed as an **attribute-level validator** (`Validators: []validator.Bool{...}` on the schema attribute itself), not as a resource-level `resource.ResourceWithConfigValidators`. Errors attach to the offending attribute, the rule is co-located with the schema, the diagnostic is field-named, and the convention matches every resource in the provider.
 
-**Default to off-the-shelf pairings from `hashicorp/terraform-plugin-framework-validators`:**
+**Decision matrix — which validator to reach for:**
 
-- `boolvalidator.AlsoRequires(path)` / `stringvalidator.AlsoRequires(path)` / `int64validator.AlsoRequires(path)` — when this attribute is set (non-null, non-unknown), the listed companion must also be set.
-- `boolvalidator.ConflictsWith(path)` / `stringvalidator.ConflictsWith(path)` / `int64validator.ConflictsWith(path)` — when this attribute is set, the listed companion must be unset.
+| Rule shape | Use |
+|---|---|
+| "A and B are paired — supplying either requires the other" (any value triggers) | Off-the-shelf `boolvalidator.AlsoRequires` / `stringvalidator.AlsoRequires` / `int64validator.AlsoRequires` |
+| "A and B are mutually exclusive" (any value triggers) | Off-the-shelf `boolvalidator.ConflictsWith` / `stringvalidator.ConflictsWith` / `int64validator.ConflictsWith` |
+| "Enum membership" | Off-the-shelf `stringvalidator.OneOf(values...)` |
+| "Required only when this bool is `true`" or "required only when this string equals `\"X\"`" — **value-specific** | Custom `validator.Bool` / `validator.String` in the package's `validators.go` |
+| "Exactly one of X / Y / Z" spanning several siblings | Framework `resourcevalidator.ExactlyOneOf` / `AtLeastOneOf` / `Conflicting` |
 
-Use `path.MatchRoot("other_attr")` for a root-level sibling and `path.MatchRelative().AtParent().AtName("other_attr")` for a sibling under the same nested object. References: `internal/resources/blueprints/blueprint/components/math_settings.go`, `software_update.go`, `internal/actions/device/erase.go`, `internal/resources/pro/inventory/network_segment/resource.go` (`override_buildings` / `override_departments` → `AlsoRequires` on the companion string).
+**Rule of thumb:** the off-the-shelf `AlsoRequires` / `ConflictsWith` fire whenever the validated attribute is *known* — true OR false, `"foo"` OR `""`. They do NOT inspect the value. **If the rule only applies for a specific value, the off-the-shelf semantics are wrong and a custom validator is the right tool — but only then.** Writing a custom validator when an off-the-shelf one fits is a code-review reject.
 
-The "any value triggers the rule" semantics of `AlsoRequires` work for paired toggles like `override_buildings` / `building`: the server only honours the toggle when the companion is set, so requiring it on any user-supplied value (true or false) is fine and avoids bespoke logic.
+**Path syntax:** `path.MatchRoot("other_attr")` for a root-level sibling; `path.MatchRelative().AtParent().AtName("other_attr")` for a sibling under the same nested object.
 
-**Value-specific requirements** (e.g. "required only when this bool is `true`", "required only when this string equals `"static"`") are not expressible via `AlsoRequires`. Reach for a custom `validator.Bool` / `validator.String` in the package's `validators.go` **only when the off-the-shelf helper's "any value" semantics would be wrong** — not as a default. When you do write one, read the companion via `req.Config.GetAttribute(ctx, path, &target)`, skip when `target.IsUnknown()` so apply-time references do not false-positive, and emit `resp.Diagnostics.AddAttributeError(req.Path, …)`.
+**Off-the-shelf references:**
+- `internal/resources/blueprints/blueprint/components/math_settings.go` — paired toggles with `boolvalidator.AlsoRequires`.
+- `internal/resources/blueprints/blueprint/components/software_update.go` — mix of `AlsoRequires`, `ConflictsWith`, `RegexMatches`, `Between`.
+- `internal/resources/pro/inventory/network_segment/resource.go` — `override_buildings` / `override_departments` pair with their companion string via `AlsoRequires`.
+- `internal/actions/device/erase.go` — toggle + companion via `AlsoRequires`.
 
-Avoid `resource.ResourceWithConfigValidators` unless a check truly spans many attributes (e.g. "exactly one of X, Y, Z must be set"); the framework's resourcevalidator package (`AtLeastOneOf`, `ExactlyOneOf`, `Conflicting`) covers the standard cases. Bespoke whole-config validators are a last resort.
+**Custom validator references (value-specific only):**
+- `internal/common/scope/validators.go` — `AllFlagConflictsWith` is a `validator.Bool` that fires only when the bool is `true`; off-the-shelf `ConflictsWith` would incorrectly fire when the bool is `false` too.
+- `internal/resources/pro/settings/sso_settings/validators.go` — value-discriminated validators for `configuration_type ∈ {SAML, OIDC, OIDC_WITH_SAML}`, `metadata_source ∈ {URL, FILE}`, `setup_type = "UPLOADED"`, etc., each requiring different companion sets.
+
+**Custom validator authoring rules:**
+- Implement `Validate{Bool,String,Int64,...}` on a struct in `validators.go`.
+- Skip when `req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown()` — apply-time references must not false-positive.
+- Skip when the value does not match the discriminator (e.g. `req.ConfigValue.ValueBool() == false` for a "true-only" rule).
+- Read companions via `req.Config.GetAttribute(ctx, path.Root("…") / path.MatchRelative()..., &target)`.
+- Attach errors to the **companion's** path (not the discriminator's), via `resp.Diagnostics.AddAttributeError(companionPath, summary, detail)` — that's where the user needs to look.
+
+Avoid `resource.ResourceWithConfigValidators` even for multi-attribute rules unless the framework's `resourcevalidator` package genuinely cannot express them. Bespoke whole-config validators are a last resort.
 
 ### Configuration profile payload diff suppression (mask-and-compare)
 
