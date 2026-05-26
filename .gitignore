@@ -161,6 +161,9 @@ PHASE_2_5_SPIKE.md
 PACKAGE_SPIKE.md
 PHASE_2_6_SPIKE.md
 ADE_VPP_SPIKE.md
+SSO_SPIKE.md
+SDK_SSO_SERIAL_BIGINT_FIX_PROMPT.md
+SDK_SSO_SAML_OMITEMPTY_FIX_PROMPT.md
 spike/
 
 # macOS configuration profile roundtrip working dir (gitignored)
