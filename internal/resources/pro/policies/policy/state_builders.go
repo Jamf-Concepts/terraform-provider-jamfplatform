@@ -651,12 +651,45 @@ func flattenPolicyFilesProcesses(fp *proclassic.PolicyFilesProcesses, state *Pol
 	state.ExecuteCommand = preferCurrentStringPointer(fp.RunCommand, state.ExecuteCommand)
 }
 
+// flattenPolicyUserInteraction collapses the wire's three-field deferral
+// representation back into the synthetic `deferral_type` enum the schema
+// exposes. The trio is treated as a unit — the wire is always authoritative
+// here (server enforces the cross-field invariants on every PUT, so the
+// stored values are always self-consistent).
 func flattenPolicyUserInteraction(u *proclassic.PolicyUserInteraction, state *PolicyUserInteractionModel) {
 	state.StartMessage = preferCurrentStringPointer(u.MessageStart, state.StartMessage)
-	state.AllowUsersToDefer = preferCurrentBoolPointer(u.AllowUsersToDefer, state.AllowUsersToDefer)
-	state.AllowDeferralUntilUtc = preferCurrentStringPointer(u.AllowDeferralUntilUtc, state.AllowDeferralUntilUtc)
-	state.AllowDeferralMinutes = preferCurrentInt(u.AllowDeferralMinutes, state.AllowDeferralMinutes)
 	state.CompleteMessage = preferCurrentStringPointer(u.MessageFinish, state.CompleteMessage)
+
+	defer_ := false
+	if u.AllowUsersToDefer != nil {
+		defer_ = *u.AllowUsersToDefer
+	}
+	until := ""
+	if u.AllowDeferralUntilUtc != nil {
+		until = *u.AllowDeferralUntilUtc
+	}
+	mins := 0
+	if u.AllowDeferralMinutes != nil {
+		mins = *u.AllowDeferralMinutes
+	}
+
+	switch {
+	case defer_ && until != "":
+		state.DeferralType = types.StringValue("date")
+		state.DeferralUntilUtc = types.StringValue(until)
+		state.DeferralDays = types.Int64Null()
+	case defer_ && mins > 0:
+		state.DeferralType = types.StringValue("duration")
+		state.DeferralUntilUtc = types.StringNull()
+		state.DeferralDays = types.Int64Value(int64(mins / minutesPerDay))
+	default:
+		// !defer OR (defer && until=="" && mins==0). The latter is a wire-
+		// inconsistent shape the server should never persist; normalise to
+		// "none" so state still satisfies the schema's enum constraint.
+		state.DeferralType = types.StringValue("none")
+		state.DeferralUntilUtc = types.StringNull()
+		state.DeferralDays = types.Int64Null()
+	}
 }
 
 func flattenPolicyDiskEncryption(d *proclassic.PolicyDiskEncryption, state *PolicyDiskEncryptionModel) {

@@ -14,7 +14,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -446,6 +448,19 @@ func TestAccPolicyResource_GeneralFullCoverage(t *testing.T) {
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("general").AtMapKey("date_time_limitations").AtMapKey("no_execute_start"),
 						knownvalue.StringExact("1:00 AM"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("date_time_limitations").AtMapKey("no_execute_end"),
+						knownvalue.StringExact("2:00 AM"),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("general").AtMapKey("date_time_limitations").AtMapKey("no_execute_on"),
+						knownvalue.SetExact([]knownvalue.Check{
+							knownvalue.StringExact("Sat"),
+							knownvalue.StringExact("Sun"),
+						}),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1079,46 +1094,59 @@ func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
 	})
 }
 
-func policyConfigUserInteractionUntilUTC(name, startMessage, untilUTC string) string {
+func policyConfigUserInteractionDate(name, startMessage, untilUTC string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
   user_interaction = {
-    start_message            = %q
-    allow_users_to_defer     = true
-    allow_deferral_until_utc = %q
-    complete_message         = "tf-acc complete_message"
+    start_message      = %q
+    deferral_type      = "date"
+    deferral_until_utc = %q
+    complete_message   = "tf-acc complete_message"
   }
 }
 `, name, startMessage, untilUTC)
 }
 
+func policyConfigUserInteractionDuration(name, startMessage string, days int) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  user_interaction = {
+    start_message    = %q
+    deferral_type    = "duration"
+    deferral_days    = %d
+    complete_message = "tf-acc complete_message"
+  }
+}
+`, name, startMessage, days)
+}
+
+func policyConfigUserInteractionNone(name, startMessage string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  user_interaction = {
+    start_message    = %q
+    deferral_type    = "none"
+    complete_message = "tf-acc complete_message"
+  }
+}
+`, name, startMessage)
+}
+
 // TestAccPolicyResource_UserInteractionFullCoverage exercises every
-// user_interaction attribute. Both steps use the cut-off form
-// (allow_deferral_until_utc); step 2 perturbs start_message and the cut-off
-// date to exercise the Update path. The duration form
-// (allow_deferral_minutes) is documented but not toggled in the same test
-// because the classic API cannot transition between the two forms without an
-// intermediate clear (see constraint notes below) and step coverage of the
-// minutes form belongs in a separate, dedicated test.
-//
-// Three server-side cross-field constraints surfaced during this test and
-// are noted here for follow-up plan-time validators:
-//   - allow_deferral_minutes must be a multiple of 1440 (one day): the server
-//     returns 409 with `Error: allow_deferral_minutes must be a multiple of
-//     1440 (minutes in day), currently the UI displays only number of days`.
-//   - When allow_users_to_defer=false, allow_deferral_until_utc and
-//     allow_deferral_minutes cannot be configured: the server returns 409
-//     with `Error: When 'allow_users_to_defer' is false,
-//     'allow_deferral_until_utc' and 'allow_deferral_minutes' cannot be
-//     configured`.
-//   - allow_deferral_until_utc and allow_deferral_minutes are mutually
-//     exclusive: the server returns 409 with `Error: You cannot use both
-//     'allow_deferral_until_utc' and 'allow_deferral_minutes'`. Omitting one
-//     field on an Update does not clear it (Optional+Computed semantics keep
-//     prior state); transitioning between forms requires destroy+recreate.
+// user_interaction attribute and every deferral_type variant, including
+// in-place transitions between Date / Duration / None. Wire-probe
+// 2026-05-27 confirmed the classic /policies PUT accepts these transitions
+// without destroy+recreate as long as the provider emits the off-axis wire
+// fields with explicit zero values (which buildPolicyUserInteraction does).
 func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -1129,7 +1157,7 @@ func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc start_message initial", "2030-01-01T01:00:00.000+0000"),
+				Config: policyConfigUserInteractionDate(name, "tf-acc start_message initial", "2030-01-01T01:00:00.000+0000"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1138,12 +1166,12 @@ func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("user_interaction").AtMapKey("allow_users_to_defer"),
-						knownvalue.Bool(true),
+						tfjsonpath.New("user_interaction").AtMapKey("deferral_type"),
+						knownvalue.StringExact("date"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("user_interaction").AtMapKey("allow_deferral_until_utc"),
+						tfjsonpath.New("user_interaction").AtMapKey("deferral_until_utc"),
 						knownvalue.StringExact("2030-01-01T01:00:00.000+0000"),
 					),
 					statecheck.ExpectKnownValue(
@@ -1153,8 +1181,10 @@ func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
 					),
 				},
 			},
+			// In-place Date → Duration transition. Wire probe confirmed the
+			// classic API zeroes the off-axis field on PUT.
 			{
-				Config: policyConfigUserInteractionUntilUTC(name, "tf-acc start_message updated", "2031-06-15T12:00:00.000+0000"),
+				Config: policyConfigUserInteractionDuration(name, "tf-acc start_message updated", 3),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
@@ -1163,15 +1193,151 @@ func TestAccPolicyResource_UserInteractionFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("user_interaction").AtMapKey("allow_users_to_defer"),
-						knownvalue.Bool(true),
+						tfjsonpath.New("user_interaction").AtMapKey("deferral_type"),
+						knownvalue.StringExact("duration"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("user_interaction").AtMapKey("allow_deferral_until_utc"),
-						knownvalue.StringExact("2031-06-15T12:00:00.000+0000"),
+						tfjsonpath.New("user_interaction").AtMapKey("deferral_days"),
+						knownvalue.Int64Exact(3),
 					),
 				},
+			},
+			// In-place Duration → None transition.
+			{
+				Config: policyConfigUserInteractionNone(name, "tf-acc start_message no-deferral"),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("user_interaction").AtMapKey("deferral_type"),
+						knownvalue.StringExact("none"),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigDateTimeLimitationBad(name, attr, value string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+    date_time_limitations = {
+      %s = %q
+    }
+  }
+}
+`, name, attr, value)
+}
+
+func policyConfigNoExecuteOnBad(name string, days []string) string {
+	quoted := make([]string, len(days))
+	for i, d := range days {
+		quoted[i] = fmt.Sprintf("%q", d)
+	}
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+    date_time_limitations = {
+      no_execute_on = [%s]
+    }
+  }
+}
+`, name, strings.Join(quoted, ", "))
+}
+
+func policyConfigDeferralUntilUtcBad(name, value string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  user_interaction = {
+    deferral_type      = "date"
+    deferral_until_utc = %q
+  }
+}
+`, name, value)
+}
+
+// TestAccPolicyResource_DateTimeLimitationsFormatRejection exercises each
+// regex validator on the date_time_limitations sub-block. Every step fails
+// at plan time with a message keyed off the validator's own error text — no
+// API round-trip occurs, so these are fast and credential-cheap once the
+// acc framework is up. Wire formats are documented in policy/validators.go.
+func TestAccPolicyResource_DateTimeLimitationsFormatRejection(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-dtl-bad-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      policyConfigDateTimeLimitationBad(name, "activation_date", "06/01/2027 14:30:00"),
+				ExpectError: regexp.MustCompile(`Value must be 24-hour`),
+			},
+			{
+				Config:      policyConfigDateTimeLimitationBad(name, "activation_date", "2027-06-01T14:30:00"),
+				ExpectError: regexp.MustCompile(`Value must be 24-hour`),
+			},
+			{
+				Config:      policyConfigDateTimeLimitationBad(name, "expiration_date", "2027-12-31"),
+				ExpectError: regexp.MustCompile(`Value must be 24-hour`),
+			},
+			{
+				Config:      policyConfigDateTimeLimitationBad(name, "no_execute_start", "17:00"),
+				ExpectError: regexp.MustCompile(`12-hour`),
+			},
+			{
+				Config:      policyConfigDateTimeLimitationBad(name, "no_execute_start", "5:00 am"),
+				ExpectError: regexp.MustCompile(`12-hour`),
+			},
+			{
+				Config:      policyConfigDateTimeLimitationBad(name, "no_execute_end", "13:00 PM"),
+				ExpectError: regexp.MustCompile(`12-hour`),
+			},
+			{
+				Config:      policyConfigDateTimeLimitationBad(name, "no_execute_end", "0:00 AM"),
+				ExpectError: regexp.MustCompile(`12-hour`),
+			},
+			{
+				Config:      policyConfigNoExecuteOnBad(name, []string{"Sunday"}),
+				ExpectError: regexp.MustCompile(`must be one of`),
+			},
+			{
+				Config:      policyConfigNoExecuteOnBad(name, []string{"Sun", "FOO"}),
+				ExpectError: regexp.MustCompile(`must be one of`),
+			},
+		},
+	})
+}
+
+// TestAccPolicyResource_DeferralUntilUtcFormatRejection exercises the regex
+// validator on user_interaction.deferral_until_utc. Wire format is documented
+// in policy/validators.go (ISO-8601 with millisecond precision + four-digit
+// numeric offset).
+func TestAccPolicyResource_DeferralUntilUtcFormatRejection(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-defer-bad-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      policyConfigDeferralUntilUtcBad(name, "2027-01-01T01:00:00Z"),
+				ExpectError: regexp.MustCompile(`Value must be ISO-8601`),
+			},
+			{
+				Config:      policyConfigDeferralUntilUtcBad(name, "2027-01-01 01:00:00.000+0000"),
+				ExpectError: regexp.MustCompile(`Value must be ISO-8601`),
+			},
+			{
+				Config:      policyConfigDeferralUntilUtcBad(name, "2027-01-01T01:00:00.000+00:00"),
+				ExpectError: regexp.MustCompile(`Value must be ISO-8601`),
 			},
 		},
 	})
