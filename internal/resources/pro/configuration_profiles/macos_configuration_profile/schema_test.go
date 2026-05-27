@@ -87,7 +87,10 @@ func TestResource_PayloadsAttributeRequired(t *testing.T) {
 	if !p.Required {
 		t.Fatal("expected general.payloads to be Required")
 	}
-	if len(p.PlanModifiers) == 0 {
-		t.Fatal("expected general.payloads to have a plan modifier (diff suppressor)")
+	// Payload diff suppression is implemented at the resource level via
+	// ModifyPlan (so it can read and write three-way-compare references
+	// in private state); the attribute itself carries no plan modifier.
+	if _, ok := r.(resource.ResourceWithModifyPlan); !ok {
+		t.Fatal("expected Resource to implement ResourceWithModifyPlan for payload diff suppression")
 	}
 }

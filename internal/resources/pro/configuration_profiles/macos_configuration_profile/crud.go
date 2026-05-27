@@ -51,6 +51,15 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		return
 	}
 
+	// Capture the user-authored payload before assignResourceModel
+	// overwrites plan.General.Payloads with the server-canonical form.
+	// ModifyPlan reads this from private state on the next plan to
+	// distinguish "user changed HCL" from "Jamf-stripped key noise".
+	var userAuthoredPayload string
+	if plan.General != nil && !plan.General.Payloads.IsNull() && !plan.General.Payloads.IsUnknown() {
+		userAuthoredPayload = plan.General.Payloads.ValueString()
+	}
+
 	created, err := r.client.CreateOSXConfigurationProfileByID(createCtx, "0", input)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro macOS configuration profile", err.Error())
@@ -73,11 +82,22 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		resp.Diagnostics.AddError("Error reading created macOS configuration profile", err.Error())
 		return
 	}
+	// Capture the raw server-canonical payload bytes before
+	// assignResourceModel's lenient self-healing mutates
+	// plan.General.Payloads back to the user-authored form.
+	var rawServerPayload []byte
+	if got != nil && got.General != nil && got.General.Payloads != nil {
+		rawServerPayload = []byte(string(*got.General.Payloads))
+	}
 	resp.Diagnostics.Append(assignResourceModel(createCtx, &plan, got)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(writePrivatePayloadRefs(createCtx, resp.Private, userAuthoredPayload, rawServerPayload)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -141,7 +161,28 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 		resp.Diagnostics.AddError("Error reading macOS configuration profile", err.Error())
 		return
 	}
+	var rawServerPayload []byte
+	if got != nil && got.General != nil && got.General.Payloads != nil {
+		rawServerPayload = []byte(string(*got.General.Payloads))
+	}
 	resp.Diagnostics.Append(assignResourceModel(readCtx, &state, got)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Post-self-heal drift detector. assignResourceModel's lenient
+	// compare keeps state.Payloads aligned to the user-authored form
+	// when the server response is only Jamf normalisation; the drift
+	// detector overwrites state.Payloads with the canonical server form
+	// when the strict compare against last-applied canonical surfaces
+	// an admin UI edit.
+	resp.Diagnostics.Append(reconcileReadDrift(readCtx, req.Private, &state, rawServerPayload)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Refresh the serverNow private reference so ModifyPlan's
+	// three-way compare uses the actual current server canonical
+	// rather than the self-healed state.Payloads bytes.
+	resp.Diagnostics.Append(writePrivateServerNow(readCtx, resp.Private, rawServerPayload)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -186,6 +227,13 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		return
 	}
 
+	// Capture the user-authored payload before assignResourceModel
+	// overwrites plan.General.Payloads with the server-canonical form.
+	var userAuthoredPayload string
+	if plan.General != nil && !plan.General.Payloads.IsNull() && !plan.General.Payloads.IsUnknown() {
+		userAuthoredPayload = plan.General.Payloads.ValueString()
+	}
+
 	id := state.ID.ValueString()
 	if err := r.client.UpdateOSXConfigurationProfileByID(updateCtx, id, input); err != nil {
 		resp.Diagnostics.AddError("Error updating macOS configuration profile", err.Error())
@@ -197,11 +245,19 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		resp.Diagnostics.AddError("Error reading updated macOS configuration profile", err.Error())
 		return
 	}
+	var rawServerPayload []byte
+	if got != nil && got.General != nil && got.General.Payloads != nil {
+		rawServerPayload = []byte(string(*got.General.Payloads))
+	}
 	resp.Diagnostics.Append(assignResourceModel(updateCtx, &plan, got)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(writePrivatePayloadRefs(updateCtx, resp.Private, userAuthoredPayload, rawServerPayload)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
