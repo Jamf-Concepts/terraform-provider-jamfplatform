@@ -73,7 +73,7 @@ func (r *UserGroupResource) IdentitySchema(ctx context.Context, req resource.Ide
 // Schema returns the Terraform schema for the user group resource.
 func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; the user list is server-resolved. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field acts as the discriminator and triggers a replace if changed — mirrors `jamfplatform_device_group`.",
+		MarkdownDescription: "Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; Jamf Pro resolves the user list. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field acts as the discriminator and triggers a replace if changed — mirrors `jamfplatform_device_group`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "User group ID assigned by Jamf Pro.",
@@ -115,14 +115,14 @@ func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"site_name": schema.StringAttribute{
-				MarkdownDescription: "Site name reported by Jamf Pro for the assigned `site_id`. Server-derived.",
+				MarkdownDescription: "Site name reported by Jamf Pro for the assigned `site_id`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"members": schema.SetAttribute{
-				MarkdownDescription: "User IDs (as strings) to assign as members of a static user group. Required when `group_type = \"static\"`. Forbidden when `group_type = \"smart\"` — smart-group membership is server-resolved from `criteria`.",
+				MarkdownDescription: "User IDs (as strings) to assign as members of a static user group. Required when `group_type = \"static\"`. Forbidden when `group_type = \"smart\"` — Jamf Pro resolves smart-group membership from `criteria`.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				PlanModifiers: []planmodifier.Set{

@@ -76,7 +76,7 @@ func (r *PackageResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the package resource.
 func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro package. A package record carries the metadata (name, category, restart requirement, OS requirement, info/notes, optional manifest, optional hashes) that Jamf Pro joins with a binary on a distribution point.\n\n**Three operating modes are inferred from the configuration**:\n\n- **JCDS upload** — set `package_file_source` (local path or `https?://` URL). The provider creates the metadata record, streams the binary to the Jamf Cloud Distribution Point, then polls until JCDS finishes computing every server-side hash and `cloud_transfer_status` becomes `READY`. In this mode the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`) are server-populated — supplying any of them in config errors at plan time (`ConflictsWith`).\n- **File-share DP with user-supplied hashes (FSDP-with-hashes)** — omit `package_file_source` and supply the hash attributes directly. The provider PUTs them verbatim; the server stores whatever the user supplies without validation. Use this when the binary lives on a customer-managed share and hashes are computed off-cluster.\n- **Pure metadata-only (FSDP)** — omit `package_file_source` and all hash attributes. The provider manages only the JSS metadata record; no upload, no hash compute, no verification poll.\n\n**Hash behaviour notes:**\n\n- `package_file_source_checksum` (optional) is a user-supplied SHA-3-512 hint validated locally before any bytes leave the workstation. A mismatch errors out without uploading — useful for guarding against on-disk corruption.\n- `size` is **Computed-only**. The server rejects user-supplied size PUTs even on FSDP records (audit §13.8 A.7).\n- Re-uploads are hash-aware: changing only metadata (`info`, `notes`, `priority`, ...) issues one `PUT /packages/{id}`; the binary is not re-uploaded.\n\n**Manifest sub-resource**: `manifest_file_source` (Optional) uploads a `.plist` to `POST /packages/{id}/manifest`. Setting the source after a state without one uploads; clearing the source deletes server-side. Re-upload only fires when the freshly-loaded source content differs from the stored `manifest` body.\n\n**URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider streams the URL into a sanitised tempfile under the OS tempdir, enforces an 8 GiB download cap, and follows up to 10 redirects.",
+		MarkdownDescription: "Manages a Jamf Pro package. A package record carries the metadata (name, category, restart requirement, OS requirement, info/notes, optional manifest, optional hashes) that Jamf Pro joins with a binary on a distribution point.\n\n**Three operating modes are inferred from the configuration**:\n\n- **JCDS upload** — set `package_file_source` (local path or `https?://` URL). The provider creates the metadata record, streams the binary to the Jamf Cloud Distribution Point, then polls until JCDS finishes computing every hash and `cloud_transfer_status` becomes `READY`. In this mode the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`) are populated by Jamf Pro — supplying any of them in config errors at plan time (`ConflictsWith`).\n- **File-share DP with user-supplied hashes (FSDP-with-hashes)** — omit `package_file_source` and supply the hash attributes directly. The provider sends them verbatim; Jamf Pro stores whatever the user supplies without validation. Use this when the binary lives on a customer-managed share and hashes are computed off-cluster.\n- **Pure metadata-only (FSDP)** — omit `package_file_source` and all hash attributes. The provider manages only the package metadata record; no upload, no hash compute, no verification poll.\n\n**Hash behaviour notes:**\n\n- `package_file_source_checksum` (optional) is a user-supplied SHA-3-512 hint validated locally before any bytes leave the workstation. A mismatch errors out without uploading — useful for guarding against on-disk corruption.\n- `size` is **Computed-only**. Jamf Pro rejects user-supplied size updates even on FSDP records.\n- Re-uploads are hash-aware: changing only metadata (`info`, `notes`, `priority`, ...) issues one metadata update; the binary is not re-uploaded.\n\n**Manifest sub-resource**: `manifest_file_source` (Optional) uploads a `.plist` manifest associated with the package. Setting the source after a state without one uploads; clearing the source deletes the manifest in Jamf Pro. Re-upload only fires when the freshly-loaded source content differs from the stored `manifest` body.\n\n**URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider streams the URL into a sanitised tempfile under the OS tempdir, enforces an 8 GiB download cap, and follows up to 10 redirects.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Package ID assigned by Jamf Pro.",
@@ -86,7 +86,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"display_name": schema.StringAttribute{
-				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Wire field `packageName`. Required.",
+				MarkdownDescription: "**\"Display Name\"** in the Jamf Pro admin UI. Required.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -100,7 +100,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"category_id": schema.StringAttribute{
-				MarkdownDescription: "**\"Category\"** in the Jamf Pro admin UI. Server default `\"-1\"` (None).",
+				MarkdownDescription: "**\"Category\"** in the Jamf Pro admin UI. Defaults to `\"-1\"` (None).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -108,7 +108,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"info": schema.StringAttribute{
-				MarkdownDescription: "**\"Info\"** in the Jamf Pro admin UI. Free-form metadata field. Server returns `\"\"` when null — provider reconciles to keep state stable.",
+				MarkdownDescription: "**\"Info\"** in the Jamf Pro admin UI. Free-form metadata field. Jamf Pro returns `\"\"` when null — the provider reconciles to keep state stable.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -116,7 +116,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"notes": schema.StringAttribute{
-				MarkdownDescription: "**\"Notes\"** in the Jamf Pro admin UI. Free-form notes field. Server returns `\"\"` when null — provider reconciles to keep state stable.",
+				MarkdownDescription: "**\"Notes\"** in the Jamf Pro admin UI. Free-form notes field. Jamf Pro returns `\"\"` when null — the provider reconciles to keep state stable.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -124,7 +124,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"priority": schema.Int64Attribute{
-				MarkdownDescription: "**\"Priority\"** in the Jamf Pro admin UI. Server default `10`. Lower values install first when multiple packages are queued.",
+				MarkdownDescription: "**\"Priority\"** in the Jamf Pro admin UI. Defaults to `10`. Lower values install first when multiple packages are queued.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.Int64{
@@ -135,7 +135,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"fill_user_template": schema.BoolAttribute{
-				MarkdownDescription: "**\"Fill user templates (FUT)\"** in the Jamf Pro admin UI. Wire field `fillUserTemplate`. Server default `false`.",
+				MarkdownDescription: "**\"Fill user templates (FUT)\"** in the Jamf Pro admin UI. Defaults to `false`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -143,7 +143,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"fill_existing_users": schema.BoolAttribute{
-				MarkdownDescription: "**\"Fill existing user home directories (FEU)\"** in the Jamf Pro admin UI. Wire field `fillExistingUsers`. Server default `false`.",
+				MarkdownDescription: "**\"Fill existing user home directories (FEU)\"** in the Jamf Pro admin UI. Defaults to `false`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -151,7 +151,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"reboot_required": schema.BoolAttribute{
-				MarkdownDescription: "**\"Requires restart\"** in the Jamf Pro admin UI. Wire field `rebootRequired`. Server default `false`.",
+				MarkdownDescription: "**\"Requires restart\"** in the Jamf Pro admin UI. Defaults to `false`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -167,7 +167,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"available_in_software_update": schema.BoolAttribute{
-				MarkdownDescription: "**\"Install only if available in Software Update\"** in the Jamf Pro admin UI. Wire field `swu`. Server default `false`. NOT the same as the deferred `osInstall` flag.",
+				MarkdownDescription: "**\"Install only if available in Software Update\"** in the Jamf Pro admin UI. Defaults to `false`. NOT the same as the deferred `osInstall` flag.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -177,7 +177,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 
 			// Upload-source inputs (no wire field — pure provider plumbing).
 			"package_file_source": schema.StringAttribute{
-				MarkdownDescription: "Optional local filesystem path or `http(s)://` URL pointing to the package binary. Setting this triggers a JCDS upload during Create/Update and gates the verification poll. When omitted, the resource manages only the JSS metadata record (FSDP modes). Mutually exclusive with the hash attributes — supplying both errors at plan time.",
+				MarkdownDescription: "Optional local filesystem path or `http(s)://` URL pointing to the package binary. Setting this triggers a JCDS upload during create/update and gates the verification poll. When omitted, the resource manages only the package metadata record (FSDP modes). Mutually exclusive with the hash attributes — supplying both errors at plan time.",
 				Optional:            true,
 			},
 			"package_file_source_checksum": schema.StringAttribute{
@@ -192,7 +192,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"manifest_file_source": schema.StringAttribute{
-				MarkdownDescription: "**\"Manifest file\"** in the Jamf Pro admin UI. Optional local path or `http(s)://` URL to a `.plist` manifest. The provider uploads when this is set and the stored `manifest` body differs from the freshly-loaded source content. Clearing this attribute deletes the manifest server-side.",
+				MarkdownDescription: "**\"Manifest file\"** in the Jamf Pro admin UI. Optional local path or `http(s)://` URL to a `.plist` manifest. The provider uploads when this is set and the stored `manifest` body differs from the freshly-loaded source content. Clearing this attribute deletes the manifest in Jamf Pro.",
 				Optional:            true,
 			},
 
@@ -214,7 +214,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 
 			// Hash attrs: Optional+Computed in both JCDS and FSDP modes.
 			"sha3_512": schema.StringAttribute{
-				MarkdownDescription: "SHA-3-512 hex digest of the package binary. JCDS uploads populate this server-side after verification; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
+				MarkdownDescription: "SHA-3-512 hex digest of the package binary. JCDS uploads populate this in Jamf Pro after verification; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -225,7 +225,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"sha256": schema.StringAttribute{
-				MarkdownDescription: "SHA-256 hex digest of the package binary. JCDS uploads populate this server-side; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
+				MarkdownDescription: "SHA-256 hex digest of the package binary. JCDS uploads populate this in Jamf Pro; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -236,7 +236,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"md5": schema.StringAttribute{
-				MarkdownDescription: "MD5 hex digest of the package binary. JCDS uploads populate this server-side; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
+				MarkdownDescription: "MD5 hex digest of the package binary. JCDS uploads populate this in Jamf Pro; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -247,7 +247,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"hash_type": schema.StringAttribute{
-				MarkdownDescription: "Hash algorithm advertised for the package. Allowed user-set values: `\"MD5\"`, `\"SHA_256\"`, `\"SHA3_512\"`. The server may also return the legacy default `\"SHA_512\"` on records that have never been uploaded — this value is accepted on reads but not on writes. Mutually exclusive with `package_file_source` (JCDS mode populates `\"SHA3_512\"` post-verification).",
+				MarkdownDescription: "Hash algorithm advertised for the package. Allowed user-set values: `\"MD5\"`, `\"SHA_256\"`, `\"SHA3_512\"`. Jamf Pro may also return the legacy default `\"SHA_512\"` on records that have never been uploaded — this value is accepted on read but not on write. Mutually exclusive with `package_file_source` (JCDS mode populates `\"SHA3_512\"` post-verification).",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -273,7 +273,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 
 			// Server-only / Computed-only fields.
 			"size": schema.StringAttribute{
-				MarkdownDescription: "Package binary size in bytes (server-derived; the wire type is `string`). Populated automatically by JCDS uploads. **Cannot be set by the user** — audit §13.8 A.7 confirmed the server silently drops user-supplied `size` PUTs.",
+				MarkdownDescription: "Package binary size in bytes. Returned by Jamf Pro; not user-settable. Populated automatically by JCDS uploads — Jamf Pro silently drops user-supplied size values on update.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					// Watch both upload sources — DeletePackageManifestV1
@@ -288,28 +288,28 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"install_language": schema.StringAttribute{
-				MarkdownDescription: "Server-derived locale tag, default `\"en_US\"`. Not exposed in the Jamf Pro admin UI; surfaced Computed-only to avoid drift on refresh.",
+				MarkdownDescription: "Locale tag, default `\"en_US\"`. Returned by Jamf Pro; not user-settable. Not exposed in the Jamf Pro admin UI; surfaced Computed-only to avoid drift on refresh.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"parent_package_id": schema.StringAttribute{
-				MarkdownDescription: "Server-derived parent package ID, default `\"-1\"` (no parent). Computed-only.",
+				MarkdownDescription: "Parent package ID, default `\"-1\"` (no parent). Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"self_healing_action": schema.StringAttribute{
-				MarkdownDescription: "Server-derived self-healing action, default `\"nothing\"`. Computed-only.",
+				MarkdownDescription: "Self-healing action, default `\"nothing\"`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"self_heal_notify": schema.BoolAttribute{
-				MarkdownDescription: "Server-derived self-healing notification flag. Default `false`. Computed-only.",
+				MarkdownDescription: "Self-healing notification flag. Default `false`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
@@ -323,14 +323,14 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"indexed": schema.BoolAttribute{
-				MarkdownDescription: "Distribution-point indexing telemetry. Server-derived. Computed-only.",
+				MarkdownDescription: "Distribution-point indexing telemetry. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"format": schema.StringAttribute{
-				MarkdownDescription: "Distribution-point format string. Server-derived. Computed-only.",
+				MarkdownDescription: "Distribution-point format string. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

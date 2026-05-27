@@ -1,5 +1,5 @@
-# Minimal policy: just an enabled flag and a name. Every other section is
-# omitted — the classic API accepts that and the wire <policy> is small.
+# Minimal policy: just an enabled flag and a name. Every other section
+# is optional.
 resource "jamfplatform_pro_policy" "minimal" {
   general = {
     name    = "tf-acc-minimal-policy"
@@ -9,7 +9,7 @@ resource "jamfplatform_pro_policy" "minimal" {
 
 # Fully-scoped policy demonstrating per-target IDs sourced from sibling
 # resources. Interpolate `.jamf_pro_id` on Platform Services device groups —
-# scope.computer_group_ids takes Jamf Pro classic IDs as strings.
+# `scope.computer_group_ids` takes Jamf Pro IDs as strings.
 resource "jamfplatform_pro_policy" "scoped" {
   general = {
     name            = "tf-acc-scoped-policy"

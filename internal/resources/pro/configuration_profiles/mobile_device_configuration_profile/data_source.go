@@ -60,7 +60,7 @@ func (d *DataSource) Metadata(_ context.Context, req datasource.MetadataRequest,
 // Schema returns the data source schema.
 func (d *DataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a mobile device configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a mobile device configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied. Returns a flat read-only projection of the most-frequently looked-up fields; to manage the full payload, use the `jamfplatform_pro_mobile_device_configuration_profile` resource.",
 		Attributes: map[string]schema.Attribute{
 			"id":                  schema.StringAttribute{MarkdownDescription: "Profile ID. Mutually exclusive with `name`.", Optional: true, Computed: true},
 			"name":                schema.StringAttribute{MarkdownDescription: "Profile display name (exact match). Mutually exclusive with `id`.", Optional: true, Computed: true},
@@ -69,7 +69,7 @@ func (d *DataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, res
 			"distribution_method": schema.StringAttribute{MarkdownDescription: "How the profile reaches devices.", Computed: true},
 			"redeploy_on_update":  schema.StringAttribute{MarkdownDescription: "Re-deploy policy on update.", Computed: true},
 			"redeploy_days_before_certificate_expires": schema.Int64Attribute{MarkdownDescription: "Days before certificate expiry to trigger redeployment.", Computed: true},
-			"uuid":          schema.StringAttribute{MarkdownDescription: "Profile UUID (server-derived).", Computed: true},
+			"uuid":          schema.StringAttribute{MarkdownDescription: "Profile UUID assigned by Jamf Pro.", Computed: true},
 			"category_id":   schema.StringAttribute{MarkdownDescription: "Category ID. `-1` means no category.", Computed: true},
 			"category_name": schema.StringAttribute{MarkdownDescription: "Category display name.", Computed: true},
 			"site_id":       schema.StringAttribute{MarkdownDescription: "Site ID. `-1` means no site.", Computed: true},

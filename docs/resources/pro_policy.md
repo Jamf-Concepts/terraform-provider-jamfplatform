@@ -3,18 +3,18 @@
 page_title: "jamfplatform_pro_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels; wire-level element names (where they differ from the UI label, e.g. <recon> for update_inventory) are documented per attribute. The classic <software_update> policy block is intentionally not modelled: software update via classic policy is an obsolete delivery path (superseded by MDM InstallApplication / ScheduleOSUpdate and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+  Manages a Jamf Pro policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of Jamf Pro IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels. The legacy software-update policy block is intentionally not modelled: driving software updates via policy is an obsolete delivery path superseded by MDM-driven app installs / OS update scheduling and the Jamf Pro patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 ---
 
 # jamfplatform_pro_policy (Resource)
 
-Manages a Jamf Pro classic policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of numeric Jamf Pro classic IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels; wire-level element names (where they differ from the UI label, e.g. `<recon>` for `update_inventory`) are documented per attribute. The classic `<software_update>` policy block is **intentionally not modelled**: software update via classic policy is an obsolete delivery path (superseded by MDM `InstallApplication` / `ScheduleOSUpdate` and the Jamf Pro patch-management surface). If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+Manages a Jamf Pro policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels. The legacy software-update policy block is **intentionally not modelled**: driving software updates via policy is an obsolete delivery path superseded by MDM-driven app installs / OS update scheduling and the Jamf Pro patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 
 ## Example Usage
 
 ```terraform
-# Minimal policy: just an enabled flag and a name. Every other section is
-# omitted — the classic API accepts that and the wire <policy> is small.
+# Minimal policy: just an enabled flag and a name. Every other section
+# is optional.
 resource "jamfplatform_pro_policy" "minimal" {
   general = {
     name    = "tf-acc-minimal-policy"
@@ -24,7 +24,7 @@ resource "jamfplatform_pro_policy" "minimal" {
 
 # Fully-scoped policy demonstrating per-target IDs sourced from sibling
 # resources. Interpolate `.jamf_pro_id` on Platform Services device groups —
-# scope.computer_group_ids takes Jamf Pro classic IDs as strings.
+# `scope.computer_group_ids` takes Jamf Pro IDs as strings.
 resource "jamfplatform_pro_policy" "scoped" {
   general = {
     name            = "tf-acc-scoped-policy"
@@ -80,23 +80,23 @@ resource "jamfplatform_pro_policy" "universal" {
 
 ### Required
 
-- `general` (Attributes) Policy general settings. `name` is required; every other field is optional. Server-derived fields (`category_name`, `site_name`, `id`) are Computed. (see [below for nested schema](#nestedatt--general))
+- `general` (Attributes) Policy general settings. `name` is required; every other field is optional. Read-only fields (`category_name`, `site_name`, `id`) are returned by Jamf Pro. (see [below for nested schema](#nestedatt--general))
 
 ### Optional
 
-- `account_maintenance` (Attributes) Account maintenance actions. Account secrets (`accounts[].password`, `management_account.managed_password`, `open_firmware_efi_password.of_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro on writes but never persisted in Terraform state. Each carries a `*_wo_version` Int64 companion: bump the integer to force a re-PUT of the current plaintext on the next apply. (see [below for nested schema](#nestedatt--account_maintenance))
+- `account_maintenance` (Attributes) Account maintenance actions. Account secrets (`accounts[].password`, `management_account.managed_password`, `open_firmware_efi_password.of_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro on writes but never persisted in Terraform state. Each carries a `*_wo_version` Int64 companion: bump the integer to force the current plaintext to be re-sent on the next apply. (see [below for nested schema](#nestedatt--account_maintenance))
 - `disk_encryption` (Attributes) Disk encryption configuration to apply. (see [below for nested schema](#nestedatt--disk_encryption))
 - `dock_items` (Attributes) Dock items to add or remove. (see [below for nested schema](#nestedatt--dock_items))
-- `files_processes` (Attributes) File and process operations. Attribute names mirror the Jamf Pro admin UI labels; the underlying wire element names (e.g. `<locate_file>` for `search_by_filename`) are noted per attribute. (see [below for nested schema](#nestedatt--files_processes))
-- `maintenance` (Attributes) Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels; the underlying wire element names (e.g. `<recon>` for `update_inventory`) are noted per attribute. (see [below for nested schema](#nestedatt--maintenance))
+- `files_processes` (Attributes) File and process operations. Attribute names mirror the Jamf Pro admin UI labels. (see [below for nested schema](#nestedatt--files_processes))
+- `maintenance` (Attributes) Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels. (see [below for nested schema](#nestedatt--maintenance))
 - `package_configuration` (Attributes) Packages to install / cache / remove. (see [below for nested schema](#nestedatt--package_configuration))
 - `printers` (Attributes) Printers to install or remove. (see [below for nested schema](#nestedatt--printers))
 - `reboot` (Attributes) Reboot configuration after the policy completes. (see [below for nested schema](#nestedatt--reboot))
-- `scope` (Attributes) Policy scope. Targets are flat sets of numeric Jamf Pro classic IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. The classic wire elements are `<jss_users>` and `<jss_user_groups>`; the Jamf Pro admin UI labels these tabs simply "Users" and "User Groups", so the provider exposes them as `user_ids` / `user_group_ids`. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Policy scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. `user_ids` / `user_group_ids` map to the admin UI's "Users" / "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
 - `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
-- `self_service` (Attributes) Self Service integration. The classic wire carries the notification bool as `<notification>` and the delivery method as the sibling `<notification_type>` element — the provider models them as `display_notifications` (bool) and `notification_location` (string), mirroring the Jamf Pro admin UI labels. (see [below for nested schema](#nestedatt--self_service))
+- `self_service` (Attributes) Self Service integration. Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the policy becomes available. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `user_interaction` (Attributes) User interaction prompts shown around policy execution. The "Deferral Type" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Transitioning between deferral types is an in-place Update. (see [below for nested schema](#nestedatt--user_interaction))
+- `user_interaction` (Attributes) User interaction prompts shown around policy execution. The "Deferral Type" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Switching between deferral types is an in-place change. (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
@@ -112,20 +112,20 @@ Required:
 Optional:
 
 - `category_id` (String) Jamf Pro category ID. Use `-1` to clear.
-- `date_time_limitations` (Attributes) Optional schedule limitations for when the policy may run. Only the user-settable inputs are surfaced — Jamf Pro internally also stores `activation_date_epoch`, `activation_date_utc`, `expiration_date_epoch`, and `expiration_date_utc` as deterministic transforms of `activation_date` / `expiration_date`, but those are derivable client-side via Terraform stdlib (`formatdate`, etc.) and are not modeled here. (see [below for nested schema](#nestedatt--general--date_time_limitations))
+- `date_time_limitations` (Attributes) Optional schedule limitations for when the policy may run. Only the user-authored date/time inputs are surfaced — the derived epoch / UTC siblings Jamf Pro also stores are deterministic transforms of `activation_date` / `expiration_date` and can be reproduced client-side with Terraform stdlib (`formatdate`, etc.). (see [below for nested schema](#nestedatt--general--date_time_limitations))
 - `enabled` (Boolean) Whether the policy is enabled.
 - `frequency` (String) How often the policy runs. Valid values include `Once per computer`, `Once per user per computer`, `Once per user`, `Once every day`, `Once every week`, `Once every month`, `Ongoing`.
-- `limit_to_jamf_pro_assigned_user` (Boolean) Restrict the policy to the Jamf Pro-assigned user only. UI label "Limit to Jamf Pro-assigned user" (Options → General → Client-Side Limitations); wire field `<location_user_only>`.
-- `network_limitations` (Attributes) Optional network limitations for when the policy may run. The Jamf classic `network_limitations` block uses `network_segments` under `general` independently of `scope.limitations.network_segment_ids` — both can carry network-segment IDs but apply to different policy stages. (see [below for nested schema](#nestedatt--general--network_limitations))
+- `limit_to_jamf_pro_assigned_user` (Boolean) Restrict the policy to the Jamf Pro-assigned user only. Mirrors Options > General > Client-Side Limitations > Limit to Jamf Pro-assigned user.
+- `network_limitations` (Attributes) Optional network limitations for when the policy may run. This `network_limitations.network_segment_ids` list applies independently of `scope.limitations.network_segment_ids` — both can carry network-segment IDs but apply to different policy stages. (see [below for nested schema](#nestedatt--general--network_limitations))
 - `network_requirements` (String) Network requirements label (`Any`, `Network Limitations`, etc.).
 - `notify_on_each_failed_retry` (Boolean) Notify the admin on each failed retry.
 - `offline` (Boolean) Allow execution while the device is offline.
 - `override_default_settings` (Attributes) Optional per-policy overrides for tenant-wide defaults. (see [below for nested schema](#nestedatt--general--override_default_settings))
 - `retry_attempts` (Number) Maximum number of retry attempts (-1 means no retries).
 - `retry_event` (String) Retry trigger: `none`, `trigger`, or `check-in`.
-- `site_id` (String) Jamf Pro site ID scoping the policy. `-1` means no site (`NONE`).
+- `site_id` (String) Jamf Pro site ID scoping the policy. Use `-1` for "no site".
 - `target_drive` (String) Drive target (e.g. `/`).
-- `trigger` (String) Aggregate legacy trigger label (`EVENT`, `USER_INITIATED`, etc.).
+- `trigger` (String) Aggregate trigger label (`EVENT`, `USER_INITIATED`, etc.).
 - `trigger_checkin` (Boolean) Fire on managed check-in.
 - `trigger_enrollment_complete` (Boolean) Fire when device enrollment completes.
 - `trigger_login` (Boolean) Fire on user login.
@@ -135,9 +135,9 @@ Optional:
 
 Read-Only:
 
-- `category_name` (String) Category display name reported by Jamf Pro. Server-derived.
-- `id` (String) Policy ID nested under `general` as returned by Jamf Pro. Server-derived; matches the top-level `id` attribute.
-- `site_name` (String) Site display name reported by Jamf Pro. Server-derived.
+- `category_name` (String) Category display name. Returned by Jamf Pro; not user-settable.
+- `id` (String) Policy ID under `general`. Matches the top-level `id`. Returned by Jamf Pro.
+- `site_name` (String) Site display name. Returned by Jamf Pro; not user-settable.
 
 <a id="nestedatt--general--date_time_limitations"></a>
 ### Nested Schema for `general.date_time_limitations`
@@ -158,7 +158,7 @@ Optional:
 
 - `any_ip_address` (Boolean) Whether the policy applies on any IP address.
 - `minimum_network_connection` (String) Minimum network connection label (`Ethernet`, `Wireless`, `No Minimum`).
-- `network_segment_ids` (Set of String) Network segment IDs to allow the policy to run on. Numeric Jamf Pro classic IDs as strings.
+- `network_segment_ids` (Set of String) Network segment IDs the policy may run on. Jamf Pro IDs as strings.
 
 
 <a id="nestedatt--general--override_default_settings"></a>
@@ -178,7 +178,7 @@ Optional:
 
 Optional:
 
-- `accounts` (Attributes List) Ordered list of local account operations. Switched from a Set to a List in the WriteOnly migration: the Plugin Framework forbids WriteOnly child attributes inside a SetNestedAttribute, and `password` here is WriteOnly. Order is preserved in state and on the wire; the classic API accepts accounts in any order. (see [below for nested schema](#nestedatt--account_maintenance--accounts))
+- `accounts` (Attributes List) Ordered list of local account operations. Modelled as a List (rather than a Set) so the `password` `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username` server-side and the order has no semantic effect. (see [below for nested schema](#nestedatt--account_maintenance--accounts))
 - `directory_bindings` (Attributes Set) Set of directory binding assignments. (see [below for nested schema](#nestedatt--account_maintenance--directory_bindings))
 - `management_account` (Attributes) Management account configuration. (see [below for nested schema](#nestedatt--account_maintenance--management_account))
 - `open_firmware_efi_password` (Attributes) Open Firmware / EFI password configuration. (see [below for nested schema](#nestedatt--account_maintenance--open_firmware_efi_password))
@@ -188,15 +188,15 @@ Optional:
 
 Optional:
 
-- `action` (String) Account action. Wire-accepted values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the classic UI labels the last action "Disable FileVault"; the wire string is `DisableFileVault` without a trailing `2` despite older documentation suggesting otherwise — confirmed against policy 6791 round-trip).
+- `action` (String) Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action "Disable FileVault" — supply `DisableFileVault` here, with no trailing `2`).
 - `admin` (Boolean) Whether the account is an admin.
 - `archive_home_directory_to` (String) Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`.
 - `filevault_enabled` (Boolean) Whether FileVault 2 is enabled for the account.
 - `hint` (String) Password hint.
 - `home` (String) Home directory path.
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index (Jamf matches accounts by `username` server-side).
-- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the `<password>` element for this account on the next PUT so Jamf retains the existing value.
-- `permanently_delete_home_directory` (Boolean) Permanently delete the home directory when `action = "Delete"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. The classic wire field is the inverse boolean `<archive_home_directory>` — the provider translates at the input/output boundary so the Terraform-facing semantic mirrors the Jamf Pro UI checkbox label "Permanently delete home directory".
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new apply that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
+- `permanently_delete_home_directory` (Boolean) Permanently delete the home directory when `action = "Delete"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. Mirrors the admin UI checkbox "Permanently delete home directory".
 - `picture` (String) Account picture path.
 - `realname` (String) Account real (full) name.
 - `secure_token_allowed` (Boolean) Whether the account is allowed to hold a Secure Token.
@@ -212,7 +212,7 @@ Required:
 
 Optional:
 
-- `name` (String) Directory binding name (server-derived).
+- `name` (String) Directory binding display name. Returned by Jamf Pro.
 
 
 <a id="nestedatt--account_maintenance--management_account"></a>
@@ -223,7 +223,7 @@ Optional:
 - `action` (String) Management account action (e.g. `doNotChange`, `rotate`).
 - `managed_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.
 - `managed_password_length` (Number) Length used when randomly generating the managed password.
-- `managed_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new Update that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the `<managed_password>` element on the next PUT so Jamf retains the existing value.
+- `managed_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
 
 
 <a id="nestedatt--account_maintenance--open_firmware_efi_password"></a>
@@ -233,7 +233,7 @@ Optional:
 
 - `of_mode` (String) Open Firmware mode (`command` or `full`).
 - `of_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.
-- `of_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new Update that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the `<of_password>` element on the next PUT so Jamf retains the existing value.
+- `of_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
 
 
 
@@ -266,7 +266,7 @@ Required:
 Optional:
 
 - `action` (String) Action (`Add To Beginning`, `Add To End`, `Remove`).
-- `name` (String) Dock item name (server-derived).
+- `name` (String) Dock item display name. Returned by Jamf Pro.
 
 
 
@@ -275,12 +275,12 @@ Optional:
 
 Optional:
 
-- `delete_file_if_found` (Boolean) Delete files matching the search criteria if found. Wire field `<delete_file>`.
-- `execute_command` (String) Command to execute. UI label "Execute Command"; wire field `<run_command>`.
-- `kill_process_if_found` (Boolean) Kill processes matching the search if found. Wire field `<kill_process>`.
-- `search_by_filename` (String) File name to search for. UI label "Search for File by Filename"; wire field `<locate_file>`.
-- `search_by_path` (String) Path to search for. UI label "Search for File by Path"; wire field `<search_by_path>`.
-- `search_by_spotlight` (String) Spotlight query. UI label "Search for File Using Spotlight"; wire field `<spotlight_search>`.
+- `delete_file_if_found` (Boolean) Delete files matching the search criteria if found.
+- `execute_command` (String) Command to execute. Mirrors the admin UI "Execute Command" input.
+- `kill_process_if_found` (Boolean) Kill processes matching the search if found.
+- `search_by_filename` (String) File name to search for. Mirrors the admin UI "Search for File by Filename" input.
+- `search_by_path` (String) Path to search for. Mirrors the admin UI "Search for File by Path" input.
+- `search_by_spotlight` (String) Spotlight query. Mirrors the admin UI "Search for File Using Spotlight" input.
 - `search_for_process` (String) Process name to search for.
 - `update_locate_database` (Boolean) Update the locate database before searching.
 
@@ -290,14 +290,14 @@ Optional:
 
 Optional:
 
-- `fix_byhost_files` (Boolean) Fix ByHost files. Wire field `<byhost>`.
-- `fix_disk_permissions` (Boolean) Fix disk permissions. Wire field `<permissions>`.
-- `flush_system_caches` (Boolean) Flush system caches. Wire field `<system_cache>`.
-- `flush_user_caches` (Boolean) Flush user caches. Wire field `<user_cache>`.
-- `install_cached_packages` (Boolean) Install cached packages. Wire field `<install_all_cached_packages>`.
-- `reset_computer_names` (Boolean) Reset computer names. Wire field `<reset_name>`.
-- `update_inventory` (Boolean) Update inventory. Wire field `<recon>`.
-- `verify_startup_disk` (Boolean) Verify startup disk. Wire field `<verify>`.
+- `fix_byhost_files` (Boolean) Fix ByHost files.
+- `fix_disk_permissions` (Boolean) Fix disk permissions.
+- `flush_system_caches` (Boolean) Flush system caches.
+- `flush_user_caches` (Boolean) Flush user caches.
+- `install_cached_packages` (Boolean) Install cached packages.
+- `reset_computer_names` (Boolean) Reset computer names.
+- `update_inventory` (Boolean) Update inventory.
+- `verify_startup_disk` (Boolean) Verify startup disk.
 
 
 <a id="nestedatt--package_configuration"></a>
@@ -305,8 +305,8 @@ Optional:
 
 Optional:
 
-- `distribution_point` (String) Name of the file share distribution point to use for the policy. Wire field `<package_configuration><distribution_point>`. Server echoes the configured DP name (e.g. `Dummy DP`); omit to inherit the tenant default.
-- `packages` (Attributes Set) Set of package assignments. Each item identifies the package by classic ID; `name` is server-derived. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. (see [below for nested schema](#nestedatt--package_configuration--packages))
+- `distribution_point` (String) Name of the file share distribution point used for the policy. Omit to inherit the tenant default.
+- `packages` (Attributes Set) Set of package assignments. Each item identifies the package by ID; `name` is returned by Jamf Pro. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. (see [below for nested schema](#nestedatt--package_configuration--packages))
 
 <a id="nestedatt--package_configuration--packages"></a>
 ### Nested Schema for `package_configuration.packages`
@@ -320,7 +320,7 @@ Optional:
 - `action` (String) Package action.
 - `feu` (Boolean) Fill existing user accounts.
 - `fut` (Boolean) Fill user template at install time.
-- `name` (String) Package name (server-derived).
+- `name` (String) Package display name. Returned by Jamf Pro.
 - `update_autorun` (Boolean) Update autorun data.
 
 
@@ -342,9 +342,9 @@ Required:
 
 Optional:
 
-- `action` (String) Action. UI-canonical values: `Map` (install printer) / `Unmap` (uninstall printer). The classic wire equivalents are `install` / `uninstall`; the provider translates Map↔install and Unmap↔uninstall at the input/output boundary so the Terraform-facing values mirror the Jamf Pro admin UI dropdown labels.
+- `action` (String) Action. Mirrors the admin UI dropdown: `Map` (install printer) or `Unmap` (uninstall printer).
 - `make_default` (Boolean) Make this printer the device's default.
-- `name` (String) Printer name (server-derived).
+- `name` (String) Printer display name. Returned by Jamf Pro.
 
 
 
@@ -353,11 +353,11 @@ Optional:
 
 Optional:
 
-- `delay_minutes` (Number) Minutes to wait before forcing reboot. UI label "Delay"; wire field `<minutes_until_reboot>`.
+- `delay_minutes` (Number) Minutes to wait before forcing reboot. Mirrors the admin UI "Delay" input.
 - `file_vault_2_reboot` (Boolean) Trigger a FileVault 2 reboot.
 - `message` (String) Reboot prompt message.
 - `no_user_logged_in` (String) Action when no user is logged in.
-- `specify_startup` (String) Reboot-method discriminator. Empty string is the default (standard reboot, no explicit method). `Standard Restart` matches the Jamf Pro UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. The wire round-trips this field unchanged; the Jamf UI surfaces a single "KEXT PATH" text input alongside the radio but the value does not appear in the policy XML response.
+- `specify_startup` (String) Reboot-method discriminator. Empty string is the default (standard reboot, no explicit method). `Standard Restart` matches the admin UI radio option. `MDM Restart with Kernel Cache Rebuild` issues an MDM-driven restart that rebuilds the kernel cache. Note: the admin UI surfaces a separate "KEXT PATH" text input alongside the radio, but Jamf Pro does not echo that value back, so it is not currently exposed here.
 - `start_reboot_timer_immediately` (Boolean) Start the reboot countdown immediately.
 - `startup_disk` (String) Startup disk label.
 - `user_logged_in` (String) Action when a user is logged in.
@@ -369,31 +369,31 @@ Optional:
 Optional:
 
 - `all_computers` (Boolean) Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
-- `all_jss_users` (Boolean) Scope the policy to every Jamf Pro user in the tenant. Forbids per-user / per-user-group targets when true. The wire field name is `all_jss_users`; the UI label is "All Users".
-- `building_ids` (Set of String) Set of Jamf Pro classic building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro classic computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro classic computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro classic department IDs.
+- `all_jss_users` (Boolean) Scope the policy to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle. Forbids per-user / per-user-group targets when true.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `limitations` (Attributes) Scope limitations narrow the audience after the targets are resolved. The wire form `<scope><limit_to_users><user_groups>` is **intentionally not modelled** as a separate attribute: probe 2026-05-24 confirmed the Jamf Pro server denormalises `<limitations><user_groups>` (the directory-service-user-group list) into `<limit_to_users><user_groups>` on every write and reflects changes the other way on every read, so the two wire paths always carry identical values. Exposing `limit_to_users` as a TF attribute would surface drift between two state slots tracking the same concept; the deploymenttheory provider omits it for the same reason. (see [below for nested schema](#nestedatt--scope--limitations))
-- `user_group_ids` (Set of String) Set of Jamf Pro classic user group IDs.
-- `user_ids` (Set of String) Set of Jamf Pro classic user IDs.
+- `limitations` (Attributes) Scope limitations narrow the audience after the targets are resolved. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. The legacy "Limit to Users" sub-list is **intentionally not modelled** — Jamf Pro keeps it in lock-step with `directory_service_user_group_names`, so exposing it separately would only surface phantom drift between two slots holding the same value. (see [below for nested schema](#nestedatt--scope--limitations))
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs.
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
 
 Optional:
 
-- `building_ids` (Set of String) Set of Jamf Pro classic building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro classic computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro classic computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro classic department IDs.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names.
-- `ibeacon_ids` (Set of String) Set of Jamf Pro classic iBeacon IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro classic network segment IDs.
-- `user_group_ids` (Set of String) Set of Jamf Pro classic user group IDs.
-- `user_ids` (Set of String) Set of Jamf Pro classic user IDs.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -403,8 +403,8 @@ Optional:
 
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names.
-- `ibeacon_ids` (Set of String) Set of Jamf Pro classic iBeacon IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro classic network segment IDs.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
 
 
 
@@ -424,7 +424,7 @@ Required:
 
 Optional:
 
-- `name` (String) Script name (server-derived).
+- `name` (String) Script display name. Returned by Jamf Pro.
 - `parameter10` (String) Parameter 10 passed to the script.
 - `parameter11` (String) Parameter 11 passed to the script.
 - `parameter4` (String) Parameter 4 passed to the script.
@@ -442,18 +442,18 @@ Optional:
 
 Optional:
 
-- `category` (Attributes) Self Service category. The classic wire form is `<self_service_categories><category>…</category></self_service_categories>`; the SDK models a single category — the provider mirrors that. (see [below for nested schema](#nestedatt--self_service--category))
-- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the policy becomes available. Wire field `<notification>`.
-- `ensure_users_view_description` (Boolean) Require users to view the description before installing. Wire field `<force_users_to_view_description>`.
-- `include_in_featured_category` (Boolean) Include the policy in the Self Service "Featured" category. Wire field `<feature_on_main_page>`.
-- `install_button_text` (String) Install-button label. Wire field `<install_button_text>`.
-- `notification_location` (String) Notification delivery location. Valid values are `Self Service` and `Self Service and Notification Center`. Wire field `<notification_type>`.
+- `category` (Attributes) Self Service category under which the policy appears. Only one category may be set. (see [below for nested schema](#nestedatt--self_service--category))
+- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the policy becomes available. Pair with `notification_location` to set the delivery target.
+- `ensure_users_view_description` (Boolean) Force users to view the description before installing.
+- `include_in_featured_category` (Boolean) Feature the policy on the Self Service main page.
+- `install_button_text` (String) Install-button label. Defaults to `Install`.
+- `notification_location` (String) Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`.
 - `notification_message` (String) Notification body text.
 - `notification_subject` (String) Notification subject line.
-- `reinstall_button_text` (String) Re-install-button label. Wire field `<reinstall_button_text>`.
-- `self_service_description` (String) Self Service description (Markdown supported).
+- `reinstall_button_text` (String) Re-install-button label. Defaults to `Reinstall`.
+- `self_service_description` (String) Self Service description. Markdown supported.
 - `self_service_display_name` (String) Self Service display name (defaults to the policy name).
-- `self_service_icon` (Attributes) Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. The SDK does not currently expose a base64 `data` field — track upstream if required. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
+- `self_service_icon` (Attributes) Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. Uploading the icon bytes inline is not currently supported — open an issue if you need it. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
 - `use_for_self_service` (Boolean) Expose the policy in Self Service.
 
 <a id="nestedatt--self_service--category"></a>
@@ -472,9 +472,9 @@ Optional:
 
 Optional:
 
-- `filename` (String) Icon filename (Computed).
+- `filename` (String) Icon filename. Returned by Jamf Pro.
 - `id` (String) Icon ID assigned by Jamf Pro.
-- `uri` (String) Icon URI (Computed).
+- `uri` (String) Icon URI. Returned by Jamf Pro.
 
 
 
@@ -494,14 +494,14 @@ Optional:
 
 Optional:
 
-- `complete_message` (String) Message displayed after the policy completes. UI label "Complete Message".
-- `deferral_days` (Number) Number of days the user may defer the policy after the first prompt. UI label "Duration" (in days). Required when `deferral_type = "duration"`; forbidden otherwise.
-- `deferral_type` (String) User deferral mode. UI label "Deferral Type". One of:
+- `complete_message` (String) Message displayed after the policy completes. Mirrors the admin UI "Complete Message" input.
+- `deferral_days` (Number) Number of days the user may defer the policy after the first prompt. Mirrors the admin UI "Duration" input (in days). Required when `deferral_type = "duration"`; forbidden otherwise.
+- `deferral_type` (String) User deferral mode. Mirrors the admin UI "Deferral Type" dropdown. One of:
   - `none` — no deferral allowed (the policy runs without prompting).
   - `date` — deferral allowed until `deferral_until_utc`; the policy runs after that cut-off regardless.
   - `duration` — deferral allowed for `deferral_days` days from first prompt.
 - `deferral_until_utc` (String) Date/time at which deferrals are prohibited and the policy runs. ISO-8601 with millisecond precision and a four-digit numeric offset (e.g. `2027-01-01T01:00:00.000+0000`). Required when `deferral_type = "date"`; forbidden otherwise.
-- `start_message` (String) Message displayed before the policy runs. UI label "Start Message".
+- `start_message` (String) Message displayed before the policy runs. Mirrors the admin UI "Start Message" input.
 
 ## Import
 
@@ -514,6 +514,6 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Copyright Jamf Software LLC 2026
 # SPDX-License-Identifier: MPL-2.0
 
-# Import an existing Jamf Pro classic policy by its numeric ID.
+# Import an existing Jamf Pro policy by its numeric ID.
 terraform import jamfplatform_pro_policy.example 42
 ```

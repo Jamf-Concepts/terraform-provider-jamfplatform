@@ -66,11 +66,11 @@ func (d *ScriptDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 				Computed:            true,
 			},
 			"os_requirements": schema.StringAttribute{
-				MarkdownDescription: "macOS version constraints (e.g., `13.0.x,14.0.x`).",
+				MarkdownDescription: "macOS version constraints (e.g. `13.0.x,14.0.x`).",
 				Computed:            true,
 			},
 			"priority": schema.StringAttribute{
-				MarkdownDescription: "Execution order. One of `BEFORE`, `AFTER`, `AT_REBOOT`.",
+				MarkdownDescription: "Execution order. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`.",
 				Computed:            true,
 			},
 			"parameter_4":  schema.StringAttribute{MarkdownDescription: "Label for script parameter slot 4.", Computed: true},

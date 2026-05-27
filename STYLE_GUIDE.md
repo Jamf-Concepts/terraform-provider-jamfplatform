@@ -115,24 +115,43 @@ Jamf Pro's wire payloads frequently use short, internal names that do not match 
 
 When the wire name is already a reasonable match for the UI label (e.g. `encrypt_using_ssl`, `use_unc_path`, `workstation_mode`), leave it alone — gratuitous renames produce churn without payoff.
 
-**Every renamed attribute's `MarkdownDescription`** must:
+**Every renamed attribute's `MarkdownDescription`** must lead with the exact UI label in bold quoted form (e.g. `**"Create Mobile Account"** in the Jamf Pro admin UI.`) so a `terraform plan` reviewer can match against the admin screen. The wire name should **not** appear in user-facing text — record it instead in a Go comment immediately above the attribute, where future maintainers searching for the wire name can find it without exposing API plumbing to end users.
 
-1. Lead with the exact UI label in bold quoted form (e.g. `**"Create Mobile Account"** in the Jamf Pro admin UI.`) so a `terraform plan` reviewer can match against the admin screen.
-2. Name the wire element when it differs (e.g. `Wire element: \`cache_last_user\`.`) so future maintainers searching for the wire name find the TF attribute that owns it.
+```go
+// Wire element: cache_last_user — renamed for UI alignment.
+"create_mobile_account": optBool("**\"Create Mobile Account\"** in the Jamf Pro admin UI. …"),
+```
 
 The rename rule applies to all current and future Jamf Pro resources. Where an existing shipped resource has cryptic wire-name attributes, do not retrofit in a feature PR — schedule a dedicated rename PR (the change is breaking for users).
 
-### Endpoint references in user-facing descriptions
+### User-facing descriptions are UI-aligned, not wire-aligned
 
-When a schema `Description` / `MarkdownDescription` or `doc.go` cites an underlying API endpoint, use the **Jamf Platform API** path convention — the one the SDK actually constructs and the one users see in HTTP logs. Do **not** use the legacy Jamf Pro paths (`/JSSResource/...`) or bare versioned paths (`/api/v1/...`) — those are wrong for this provider regardless of how familiar they look from Jamf Pro documentation.
+`MarkdownDescription` / `Description` strings on every `pro_` schema attribute, resource, data source, and list resource are **user-facing Terraform Registry documentation**. They render in the registry and in the IDE schema browser, side-by-side with the Jamf Pro admin UI. The provider exists to abstract Jamf Pro's API plumbing — descriptions should reflect that abstraction, not betray it.
 
-| Source | Convention | Example |
-|---|---|---|
-| Pro (`jamfplatform/pro/`) | `/api/pro/v{N}/tenant/{tenantId}/<resource>` | `/api/pro/v1/tenant/{tenantId}/buildings`, `/api/pro/v2/tenant/{tenantId}/groups` |
-| ProClassic (`jamfplatform/proclassic/`) | `/api/proclassic/tenant/{tenantId}/<resource>` | `/api/proclassic/tenant/{tenantId}/osxconfigurationprofiles`, `/api/proclassic/tenant/{tenantId}/networksegments` |
-| Platform Services (`blueprints/`, `devicegroups/`, etc.) | `/api/<namespace>/v{N}/tenant/{tenantId}/<resource>` | `/api/device-groups/v1/tenant/{tenantId}/device-groups`, `/api/blueprints/v1/tenant/{tenantId}/blueprints` |
+**Strip from user-facing descriptions** (move to Go comments above the attribute if the maintainer-side info is still useful):
 
-ProClassic does **not** carry a `v{N}` segment. Pro and Platform Services always do. `{tenantId}` is the literal placeholder — leave it as-is in user-facing text; the SDK substitutes the real tenant ID at request time.
+- `<xml_tag>` references and any other wire-shape literals (e.g. `<level>`, `<jss_users>`, `<security><password>`).
+- "Wire field …" / "wire field …" / "wire emits …" / "wire-symmetric" / "on the wire" / "wire shape" / "wire-canonical" framing.
+- "classic API" / "classic endpoint" mentions, and endpoint paths (`/api/proclassic/...`, `/api/pro/v1/...`, `/JSSResource/...`).
+- HTTP method names (`POST`, `PUT`, `GET`, `DELETE`) — rephrase as `create`/`update`/`read`/`delete` if the action matters to the user.
+- SDK package names, SDK function names, Go type names, internal helper names.
+- "Server-derived" — replace with `Returned by Jamf Pro; not user-settable` or `Read-only`.
+
+**Keep — but rephrase without wire jargon**:
+
+- Write-only / read-back quirks (e.g. *"Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only."*).
+- Field conflicts and validator notes (*"conflicts with X if Y"*).
+- Special-case behaviour (`-1 means none`, `0 disables`, valid value lists).
+- Cross-field relationships (*"Pair with X to set Y"*).
+- Mode-dependent or singleton-resource notes (e.g. SSO OIDC vs SAML, tenant-wide singletons).
+
+**Endpoint references and SDK annotations** belong in maintainer-side surfaces only:
+
+- The `crud.go` `// SDK endpoints:` annotation block at the top of every Pro/ProClassic resource (see `#### Tracking — in-code annotation` below).
+- Go file/function comments.
+- Never in `MarkdownDescription` strings.
+
+The reference implementations for the rewritten tone are `internal/resources/pro/configuration_profiles/macos_configuration_profile/resource.go` and `internal/resources/pro/configuration_profiles/mobile_device_configuration_profile/resource.go` — copy that voice for new resources.
 
 ### Sets vs Lists
 

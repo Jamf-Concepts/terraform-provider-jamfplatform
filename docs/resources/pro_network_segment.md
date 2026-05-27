@@ -50,11 +50,11 @@ resource "jamfplatform_pro_network_segment" "branch_with_overrides" {
 
 ### Read-Only
 
-- `distribution_point` (String) Distribution point assigned by Jamf Pro for this segment. Server-derived.
-- `distribution_server` (String) Distribution server assigned by Jamf Pro for this segment. Server-derived.
+- `distribution_point` (String) Distribution point assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.
+- `distribution_server` (String) Distribution server assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.
 - `id` (String) Network segment ID assigned by Jamf Pro.
-- `swu_server` (String) Software update server assigned by Jamf Pro for this segment. Server-derived.
-- `url` (String) NetBoot/imaging URL assigned by Jamf Pro for this segment. Server-derived.
+- `swu_server` (String) Software update server assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.
+- `url` (String) NetBoot/imaging URL assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

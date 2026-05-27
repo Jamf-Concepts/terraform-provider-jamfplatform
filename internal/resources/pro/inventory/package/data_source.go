@@ -45,7 +45,7 @@ func (d *PackageDataSource) Metadata(ctx context.Context, req datasource.Metadat
 // (apart from the id/display_name selectors, which are Optional+Computed).
 func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full server-state record including manifest body, every server-populated hash, and JCDS transfer status.",
+		MarkdownDescription: "Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and JCDS transfer status.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Package ID. Mutually exclusive with `display_name`.",
@@ -53,7 +53,7 @@ func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				Computed:            true,
 			},
 			"display_name": schema.StringAttribute{
-				MarkdownDescription: "Package display name (wire field `packageName`, exact match). Mutually exclusive with `id`.",
+				MarkdownDescription: "Package display name (exact match). Mutually exclusive with `id`.",
 				Optional:            true,
 				Computed:            true,
 			},
@@ -66,7 +66,7 @@ func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"fill_existing_users":          schema.BoolAttribute{MarkdownDescription: "Fill Existing User home directories (FEU) flag.", Computed: true},
 			"reboot_required":              schema.BoolAttribute{MarkdownDescription: "Requires restart flag.", Computed: true},
 			"os_requirements":              schema.StringAttribute{MarkdownDescription: "Operating system requirements (comma-separated).", Computed: true},
-			"available_in_software_update": schema.BoolAttribute{MarkdownDescription: "Available in Software Update flag (wire field `swu`).", Computed: true},
+			"available_in_software_update": schema.BoolAttribute{MarkdownDescription: "Available in Software Update flag.", Computed: true},
 			"manifest":                     schema.StringAttribute{MarkdownDescription: "Raw plist manifest body.", Computed: true},
 			"manifest_file_name":           schema.StringAttribute{MarkdownDescription: "Manifest upload filename.", Computed: true},
 			"sha3_512":                     schema.StringAttribute{MarkdownDescription: "SHA-3-512 hex digest of the package binary.", Computed: true},
@@ -74,7 +74,7 @@ func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"md5":                          schema.StringAttribute{MarkdownDescription: "MD5 hex digest.", Computed: true},
 			"hash_type":                    schema.StringAttribute{MarkdownDescription: "Hash algorithm tag.", Computed: true},
 			"hash_value":                   schema.StringAttribute{MarkdownDescription: "Primary hash value.", Computed: true},
-			"size":                         schema.StringAttribute{MarkdownDescription: "Package binary size in bytes (server-derived).", Computed: true},
+			"size":                         schema.StringAttribute{MarkdownDescription: "Package binary size in bytes. Returned by Jamf Pro; not user-settable.", Computed: true},
 			"install_language":             schema.StringAttribute{MarkdownDescription: "Locale tag (default `\"en_US\"`).", Computed: true},
 			"parent_package_id":            schema.StringAttribute{MarkdownDescription: "Parent package ID (`\"-1\"` for no parent).", Computed: true},
 			"self_healing_action":          schema.StringAttribute{MarkdownDescription: "Self-healing action.", Computed: true},

@@ -59,7 +59,7 @@ func (r *ScriptListResource) Configure(ctx context.Context, req resource.Configu
 // ListResourceConfigSchema describes the supported list filters.
 func (r *ScriptListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Pro scripts using the same filter clauses as the scripts data source.",
+		Description: "Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results — the supported selectors match the scripts data source.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(scripts.ScriptFilterSelectors),

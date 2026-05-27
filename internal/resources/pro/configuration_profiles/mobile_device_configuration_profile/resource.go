@@ -74,7 +74,7 @@ func (r *Resource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRe
 // Schema returns the Terraform schema.
 func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a mobile device configuration profile in Jamf Pro via the `/api/proclassic/tenant/{tenantId}/mobiledeviceconfigurationprofiles` endpoint. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML; the provider suppresses diffs produced by Jamf Pro's standard server-side normalisations while still surfacing drift on values the user has authored.\n\nPayload diff suppression is identical to `jamfplatform_pro_macos_configuration_profile` — see that resource's documentation for the full diff-class catalogue.\n\n**Update behaviour** — the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every user-supplied payload before PUT, preserving the profile's identity across updates so connected devices do not treat each update as a fresh profile installation.",
+		MarkdownDescription: "Manages a mobile device configuration profile in Jamf Pro. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML for the configuration that the profile delivers to enrolled iOS/iPadOS/tvOS devices.\n\n**Payload diff handling** — Jamf Pro normalises every uploaded payload server-side: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those server-side normalisations from `terraform plan` so applies stay quiet when nothing meaningful has changed, and surfaces real drift in two cases:\n\n  - **You edited the payload in Terraform** — `plan` shows the change and `apply` pushes it.\n  - **Someone edited the profile in the Jamf Pro admin UI** — `plan` shows the drift on the next refresh so you can either bring the change back into your Terraform config or `apply` to reassert the Terraform-managed value.\n\nA small set of profile-level fields (`PayloadDisplayName`, `PayloadIdentifier`, `PayloadUUID`, `PayloadOrganization`, `PayloadDescription`, `PayloadEnabled`) are managed entirely by Jamf Pro — any value you supply for them inside `payloads` is replaced on the server, so the provider ignores them in the diff. Use `general.name`, `general.description`, and the other top-level attributes to control the equivalent fields.\n\n**Scope** blocks mirror `jamfplatform_pro_policy`: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). `all_mobile_devices` and `all_jss_users` conflict with their per-ID siblings.\n\n**Profile identity on update** — the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled devices and the OS would treat it as a fresh installation.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Profile ID assigned by Jamf Pro.",
@@ -86,18 +86,18 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
-						MarkdownDescription: "Profile ID under <general> — server-derived. Matches the top-level `id`.",
+						MarkdownDescription: "Profile ID under `general`. Matches the top-level `id`. Assigned by Jamf Pro.",
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"name": schema.StringAttribute{
-						MarkdownDescription: "Display name of the profile. Must be unique within the tenant.",
+						MarkdownDescription: "Display name of the profile. Must be unique within the tenant. This value is also used as the profile's display name inside the `.mobileconfig` payload, so any name you set inside `payloads` is overridden.",
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"description": optComputedString("Free-text description shown in the Jamf Pro admin UI."),
 					"level": schema.StringAttribute{
-						MarkdownDescription: "Profile delivery level. UI-canonical values: `Device Level` (default) / `User Level`. Wire field `<level>`: the classic API accepts `Device`/`User` on write and reports `System`/`User` on read. The provider translates at the boundary so the Terraform-facing value mirrors the admin UI dropdown.",
+						MarkdownDescription: "Profile delivery level. Mirrors the admin UI dropdown: `Device Level` (default) or `User Level`.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -106,7 +106,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						},
 					},
 					"distribution_method": schema.StringAttribute{
-						MarkdownDescription: "How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service.",
+						MarkdownDescription: "How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile in Self Service so users install it manually.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -115,24 +115,24 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						},
 					},
 					"redeploy_on_update": schema.StringAttribute{
-						MarkdownDescription: "Re-deploy behaviour when the profile is updated. Valid values: `Newly Assigned` / `All`. **Note**: Jamf Pro's classic API always returns `Newly Assigned` on read, even after a successful PUT with `All`. The provider treats this as write-only — once the user has authored a value the wire response is ignored so subsequent refreshes do not snap state back to `Newly Assigned`.",
+						MarkdownDescription: "Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). **Note**: Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only — once you set it, subsequent refreshes will not snap it back to a default.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"redeploy_days_before_certificate_expires": schema.Int64Attribute{
-						MarkdownDescription: "Number of days before a certificate in the profile expires to trigger redeployment. `0` disables certificate-expiry redeployment.",
+						MarkdownDescription: "Number of days before a certificate in the profile expires that should trigger redeployment. `0` disables certificate-expiry redeployment.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 					},
 					"uuid": schema.StringAttribute{
-						MarkdownDescription: "Profile UUID — minted by Jamf Pro on creation and propagated as the top-level `PayloadUUID`. Server-derived; cannot be set by the user.",
+						MarkdownDescription: "Profile UUID assigned by Jamf Pro on creation. Also surfaces as the top-level `PayloadUUID` inside the `.mobileconfig` payload. Read-only.",
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"payloads": schema.StringAttribute{
-						MarkdownDescription: "The mobileconfig plist XML carrying the configuration the profile delivers. The provider's diff suppression treats Jamf Pro's server-side normalisations as no-ops.",
+						MarkdownDescription: "The `.mobileconfig` plist XML carrying the configuration the profile delivers. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations.",
 						Required:            true,
 					},
 					"category_id": schema.StringAttribute{
@@ -142,7 +142,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"category_name": schema.StringAttribute{
-						MarkdownDescription: "Category display name returned by Jamf Pro. Server-derived.",
+						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
@@ -153,14 +153,14 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"site_name": schema.StringAttribute{
-						MarkdownDescription: "Site display name returned by Jamf Pro. Server-derived.",
+						MarkdownDescription: "Site display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Profile scope. `all_mobile_devices = true` forbids per-device / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. Wire elements are `<jss_users>` / `<jss_user_groups>`; the provider exposes them as `user_ids` / `user_group_ids`.",
+				MarkdownDescription: "Profile scope. `all_mobile_devices = true` forbids per-device / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's \"Users\" / \"User Groups\" lists.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"all_mobile_devices": schema.BoolAttribute{
@@ -230,7 +230,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 					"self_service_description": optComputedString("Description shown in Self Service."),
 					"feature_on_main_page":     optComputedBool("Feature the profile on the Self Service main page."),
 					"removal_disallowed": schema.StringAttribute{
-						MarkdownDescription: "Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Wire field `<security><removal_disallowed>`.",
+						MarkdownDescription: "Removal-by-end-user policy. Valid values: `Never`, `Always`, `With Authorization`. Pair `With Authorization` with `authorization_password` to require a password at removal time.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -239,7 +239,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						},
 					},
 					"authorization_password": schema.StringAttribute{
-						MarkdownDescription: "Authorization password required to remove the profile. Only effective when `removal_disallowed = \"With Authorization\"`. Jamf Pro returns the value in plaintext on read — stored in Terraform state and masked in plan/apply output.",
+						MarkdownDescription: "Authorization password required to remove the profile. Only effective when `removal_disallowed = \"With Authorization\"`. Jamf Pro stores and returns the value in plaintext, so it is held in Terraform state and masked in plan/apply output.",
 						Optional:            true,
 						Sensitive:           true,
 					},
@@ -249,7 +249,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"id":   schema.StringAttribute{MarkdownDescription: "Category ID.", Required: true},
-								"name": optComputedStringInList("Category display name (server-derived)."),
+								"name": optComputedStringInList("Category display name. Returned by Jamf Pro."),
 							},
 						},
 					},

@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_automated_device_enrollment Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded server token — the wire never echoes it back. Use the jamfplatform_pro_automated_device_enrollment resource to manage the token.
+  Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded server token — Jamf Pro never returns it on reads. Use the jamfplatform_pro_automated_device_enrollment resource to manage the token.
 ---
 
 # jamfplatform_pro_automated_device_enrollment (Data Source)
 
-Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded server token — the wire never echoes it back. Use the `jamfplatform_pro_automated_device_enrollment` resource to manage the token.
+Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded server token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_automated_device_enrollment` resource to manage the token.
 
 ## Example Usage
 
@@ -42,10 +42,10 @@ output "ade_example_by_name" {
 ### Read-Only
 
 - `admin_id` (String) Apple administrator ID parsed from the uploaded server token.
-- `org_address` (String) Organization mailing address parsed from the uploaded server token. Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.
+- `org_address` (String) Organization mailing address parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.
 - `org_email` (String) Organization email address parsed from the uploaded server token.
 - `org_name` (String) Organization name parsed from the uploaded server token.
-- `org_phone` (String) Organization phone number parsed from the uploaded server token. Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.
+- `org_phone` (String) Organization phone number parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.
 - `server_name` (String) MDM server hostname recorded by Apple for this ADE instance.
 - `server_uuid` (String) MDM server UUID recorded by Apple for this ADE instance.
 - `site_id` (String) Jamf Pro site ID associated with this ADE instance, or the sentinel `"-1"` when no site is set.

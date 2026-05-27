@@ -80,7 +80,7 @@ func (r *DirectoryBindingResource) IdentitySchema(ctx context.Context, req resou
 // Schema returns the Terraform schema for the directory binding resource.
 func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new PUT carrying the current `password` value.",
+		MarkdownDescription: "Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new update carrying the current `password` value.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Directory binding ID assigned by Jamf Pro.",
@@ -108,7 +108,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				},
 			},
 			"type": schema.StringAttribute{
-				MarkdownDescription: "Directory service type. Selects which nested block is permitted. Wire-canonical values (note that the admin UI labels the Open Directory option \"Apple Open Directory\" but the wire value is `\"Open Directory\"`): `\"Active Directory\"`, `\"Open Directory\"`, `\"PowerBroker Identity Services\"`, `\"ADmitMac\"`, `\"Centrify\"`.",
+				MarkdownDescription: "Directory service type. Selects which nested block is permitted. Valid values (note that the admin UI labels the Open Directory option \"Apple Open Directory\" but the value Jamf Pro stores is `\"Open Directory\"`): `\"Active Directory\"`, `\"Open Directory\"`, `\"PowerBroker Identity Services\"`, `\"ADmitMac\"`, `\"Centrify\"`.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(allDirectoryBindingTypes...),
@@ -123,13 +123,13 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				Optional:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. The Jamf Pro server also never echoes the plaintext on reads, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger a new PUT carrying the current `password`).",
+				MarkdownDescription: "**\"Password\"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro also never returns the plaintext on read, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger a new update carrying the current `password`).",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 			},
 			"password_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro. Initial Create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals \"leave the stored password alone\" — the provider omits the `<password/>` element on the next PUT so Jamf retains the existing value.",
+				MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new update that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
 				Optional:            true,
 			},
 			"computer_ou": schema.StringAttribute{
@@ -141,16 +141,16 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				MarkdownDescription: "Active Directory–specific configuration. May only be set when `type = \"Active Directory\"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"forest":                     optString("Active Directory forest. Free text; an empty value round-trips as an empty `<forest/>` element."),
-					"create_mobile_account":      optBool("**\"Create Mobile Account\"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login. Wire element: `cache_last_user`."),
+					"forest":                     optString("Active Directory forest. Free text; an empty value is preserved."),
+					"create_mobile_account":      optBool("**\"Create Mobile Account\"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login."),
 					"require_confirmation":       optBool("**\"Require confirmation before creating a mobile account\"** in the Jamf Pro admin UI."),
-					"force_local_home_directory": optBool("**\"Force local home directory on startup disk\"** in the Jamf Pro admin UI. Wire element: `local_home`."),
+					"force_local_home_directory": optBool("**\"Force local home directory on startup disk\"** in the Jamf Pro admin UI."),
 					"use_unc_path":               optBool("**\"Use UNC path from Active Directory to derive network home location\"** in the Jamf Pro admin UI."),
-					"network_protocol":           optString("**\"Network Protocol\"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Wire element: `mount_style`."),
+					"network_protocol":           optString("**\"Network Protocol\"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`)."),
 					"default_shell":              optString("**\"Default User Shell\"** in the Jamf Pro admin UI. Login shell assigned to bound directory users (e.g. `/bin/bash`)."),
-					"uid_attribute_mapping":      optString("**\"Map UID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the POSIX UID. Wire element: `uid`."),
-					"user_gid_attribute_mapping": optString("**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the per-user primary group GID. Wire element: `user_gid`."),
-					"gid_attribute_mapping":      optString("**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the group GID. Wire element: `gid`."),
+					"uid_attribute_mapping":      optString("**\"Map UID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the POSIX UID."),
+					"user_gid_attribute_mapping": optString("**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the per-user primary group GID."),
+					"gid_attribute_mapping":      optString("**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the group GID."),
 					"multiple_domains":           optBool("**\"Allow authentication from any domain in the forest\"** in the Jamf Pro admin UI."),
 					"preferred_domain":           optString("**\"Preferred Domain Server\"** in the Jamf Pro admin UI. Preferred AD domain controller hostname."),
 					"admin_groups":               optString("**\"Allow administration by\"** in the Jamf Pro admin UI. Comma-separated list of AD groups whose members are granted local admin rights on bound Macs."),
@@ -173,14 +173,14 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"require_confirmation":       optBool("**\"Require confirmation\"** in the Jamf Pro admin UI. Require admin confirmation when binding new computers to the directory."),
-					"home_location":              optString("**\"Home Location\"** in the Jamf Pro admin UI. Where to create the user's home folder (e.g. `\"Local\"`). Free text. Wire element: `local_home`. (The AD type's wire `local_home` is a bool; ADmitMac's is a string — the renames disambiguate.)"),
-					"network_protocol":           optString("**\"Network Protocol\"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Wire element: `mount_style`."),
+					"home_location":              optString("**\"Home Location\"** in the Jamf Pro admin UI. Where to create the user's home folder (e.g. `\"Local\"`). Free text."),
+					"network_protocol":           optString("**\"Network Protocol\"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`)."),
 					"default_shell":              optString("**\"Default User Shell\"** in the Jamf Pro admin UI."),
 					"mount_network_home":         optBool("**\"Mount network home as sharepoint\"** in the Jamf Pro admin UI."),
 					"place_home_folders":         optString("**\"Place home folders in\"** in the Jamf Pro admin UI. Filesystem path under which local home folders are placed."),
-					"uid_attribute_mapping":      optString("**\"Map UID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the POSIX UID. Wire element: `uid`."),
-					"user_gid_attribute_mapping": optString("**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the per-user primary group GID. Wire element: `user_gid`."),
-					"gid_attribute_mapping":      optString("**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID. Wire element: `gid`."),
+					"uid_attribute_mapping":      optString("**\"Map UID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the POSIX UID."),
+					"user_gid_attribute_mapping": optString("**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the per-user primary group GID."),
+					"gid_attribute_mapping":      optString("**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID."),
 					"admin_group":                optString("**\"Allow administration by\"** in the Jamf Pro admin UI. Directory group whose members are granted local admin rights on bound Macs."),
 					"cached_credentials": schema.Int64Attribute{
 						MarkdownDescription: "**\"Cached credentials\"** in the Jamf Pro admin UI. Number of users whose credentials are cached for offline login.",
@@ -204,7 +204,7 @@ func (r *DirectoryBindingResource) Schema(ctx context.Context, req resource.Sche
 				Attributes: map[string]schema.Attribute{
 					"workstation_mode":        optBool("Bind in Workstation mode (versus joined mode)."),
 					"overwrite_existing":      optBool("Overwrite an existing Centrify configuration on the target Mac."),
-					"update_pam":              optBool("Update PAM configuration to integrate Centrify authentication. Wire element is `update_PAM` (uppercase preserved on the wire); the TF schema uses snake_case."),
+					"update_pam":              optBool("Update PAM configuration to integrate Centrify authentication."),
 					"zone":                    optString("Centrify zone name."),
 					"preferred_domain_server": optString("Preferred Centrify domain server hostname."),
 				},

@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_volume_purchasing_location List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The list endpoint returns the slim VolumePurchasingLocationListView shape per row; setting include_resource = true triggers a follow-up GetVolumePurchasingLocationV1 per row to populate the content catalog. Identity-only listing stays a single round trip.
+  Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting include_resource = true triggers a follow-up read per row to populate the content catalog. Identity-only listing stays a single round trip.
 ---
 
 # jamfplatform_pro_volume_purchasing_location (List Resource)
 
-Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The list endpoint returns the slim `VolumePurchasingLocationListView` shape per row; setting `include_resource = true` triggers a follow-up `GetVolumePurchasingLocationV1` per row to populate the `content` catalog. Identity-only listing stays a single round trip.
+Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting `include_resource = true` triggers a follow-up read per row to populate the `content` catalog. Identity-only listing stays a single round trip.
 
 ## Example Usage
 
@@ -39,7 +39,7 @@ list "jamfplatform_pro_volume_purchasing_location" "prod_locations" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

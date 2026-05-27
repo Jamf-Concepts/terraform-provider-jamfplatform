@@ -78,7 +78,7 @@ func (r *DiskEncryptionConfigurationResource) IdentitySchema(ctx context.Context
 // Schema returns the Terraform schema for the resource.
 func (r *DiskEncryptionConfigurationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The flat envelope (`name`, `key_type`, `file_vault_enabled_users`) is paired with an optional `institutional_recovery_key` block carrying the recovery certificate when `key_type` selects `Institutional` or `Individual and Institutional`.\n\n**Wire quirks worth knowing:**\n\n- `key_type` uses the **read-canonical** spellings (lowercase `and` in `Individual and Institutional`) in Terraform state. The classic write endpoint asymmetrically demands Title-Case `Individual And Institutional` and rejects the lowercase form with HTTP 409; the provider translates one-way at the input boundary so users only ever see the lowercase wire form.\n- The classic POST/PUT endpoints reject an `institutional_recovery_key` block without `certificate_type` (`Certificate type is required if a recovery key is specified`). The schema marks `certificate_type` Required inside the IRK block so any plan that supplies the block also supplies the format declarator.\n- `institutional_recovery_key.password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with `institutional_recovery_key.password_wo_version` to trigger rotation: bump the integer to force a new PUT carrying the current `password` value. The Jamf Pro server never echoes the plaintext on reads.\n- The `/api/proclassic/tenant/{tenantId}/diskencryptionconfigurations` PUT endpoint **cannot clear** the `institutional_recovery_key` block once set — an empty `<institutional_recovery_key/>` on PUT is treated as a no-op. Transitioning `key_type` from `Institutional`/`Individual and Institutional` back to `Individual` does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.",
+		MarkdownDescription: "Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The top-level fields (`name`, `key_type`, `file_vault_enabled_users`) are paired with an optional `institutional_recovery_key` block carrying the recovery certificate when `key_type` selects `Institutional` or `Individual and Institutional`.\n\n**Things worth knowing:**\n\n- `key_type` values use lowercase `and` in `Individual and Institutional` — see the attribute description for the full list.\n- `certificate_type` is required whenever `institutional_recovery_key` is supplied. Jamf Pro rejects the block otherwise with `Certificate type is required if a recovery key is specified`.\n- `institutional_recovery_key.password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with `institutional_recovery_key.password_wo_version` to trigger rotation: bump the integer to force a new update carrying the current `password` value. Jamf Pro never returns the plaintext on read.\n- **Clearing the recovery key is not supported by Jamf Pro.** Once the `institutional_recovery_key` block is set, removing it or transitioning `key_type` from `Institutional` / `Individual and Institutional` back to `Individual` does not remove the stored certificate on the server. Destroy and recreate the resource to fully clear the recovery key material.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Disk encryption configuration ID assigned by Jamf Pro.",
@@ -95,7 +95,7 @@ func (r *DiskEncryptionConfigurationResource) Schema(ctx context.Context, req re
 				},
 			},
 			"key_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Recovery Key Type\"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Wire-canonical values (must be supplied verbatim — the server normalises any case variant on read so writing the wire form keeps state stable): `\"Individual\"`, `\"Institutional\"`, `\"Individual and Institutional\"` (note the lowercase `and`).",
+				MarkdownDescription: "**\"Recovery Key Type\"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Accepted values (must be supplied verbatim): `\"Individual\"`, `\"Institutional\"`, `\"Individual and Institutional\"` (note the lowercase `and`).",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(allKeyTypeWireValues...),
@@ -113,14 +113,14 @@ func (r *DiskEncryptionConfigurationResource) Schema(ctx context.Context, req re
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"key": schema.StringAttribute{
-						MarkdownDescription: "Server-derived Subject DN extracted from the uploaded certificate (`data`). Read-only — the user's input is ignored and overwritten by the server on every read. Sample: `C=US, O=jamf-tf-provider, CN=tf-audit-probe`.",
+						MarkdownDescription: "Subject DN extracted from the uploaded certificate (`data`). Returned by Jamf Pro; not user-settable. Sample: `C=US, O=jamf-tf-provider, CN=tf-audit-probe`.",
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
 							stringplanmodifier.UseStateForUnknown(),
 						},
 					},
 					"certificate_type": schema.StringAttribute{
-						MarkdownDescription: "Certificate format declarator. Required by the Jamf Pro classic POST endpoint whenever a recovery key is supplied (server: `Certificate type is required if a recovery key is specified`). Accepted values: `\"PKCS12\"` (private-key-containing .p12 upload), `\"DER\"` (public-cert binary), `\"PEM\"` (public-cert text). Use `\"PKCS12\"` (with `password` set) when `key_type` is `Institutional` or `Individual and Institutional` — only PKCS12 carries the private key Jamf needs to derive per-Mac recovery keys.",
+						MarkdownDescription: "Certificate format. Required by Jamf Pro whenever a recovery key is supplied (server: `Certificate type is required if a recovery key is specified`). Accepted values: `\"PKCS12\"` (private-key-containing .p12 upload), `\"DER\"` (public-cert binary), `\"PEM\"` (public-cert text). Use `\"PKCS12\"` (with `password` set) when `key_type` is `Institutional` or `Individual and Institutional` — only PKCS12 carries the private key Jamf needs to derive per-Mac recovery keys.",
 						Required:            true,
 					},
 					"password": schema.StringAttribute{
@@ -130,7 +130,7 @@ func (r *DiskEncryptionConfigurationResource) Schema(ctx context.Context, req re
 						WriteOnly:           true,
 					},
 					"password_wo_version": schema.Int64Attribute{
-						MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro. Initial Create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals \"leave the stored password alone\" — the provider omits the `<password/>` element on the next PUT so Jamf retains the existing value.",
+						MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new update that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
 						Optional:            true,
 					},
 					"data": schema.StringAttribute{

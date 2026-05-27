@@ -3,21 +3,21 @@
 page_title: "jamfplatform_pro_disk_encryption_configuration Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The flat envelope (name, key_type, file_vault_enabled_users) is paired with an optional institutional_recovery_key block carrying the recovery certificate when key_type selects Institutional or Individual and Institutional.
-  Wire quirks worth knowing:
-  key_type uses the read-canonical spellings (lowercase and in Individual and Institutional) in Terraform state. The classic write endpoint asymmetrically demands Title-Case Individual And Institutional and rejects the lowercase form with HTTP 409; the provider translates one-way at the input boundary so users only ever see the lowercase wire form.The classic POST/PUT endpoints reject an institutional_recovery_key block without certificate_type (Certificate type is required if a recovery key is specified). The schema marks certificate_type Required inside the IRK block so any plan that supplies the block also supplies the format declarator.institutional_recovery_key.password is a Terraform WriteOnly attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with institutional_recovery_key.password_wo_version to trigger rotation: bump the integer to force a new PUT carrying the current password value. The Jamf Pro server never echoes the plaintext on reads.The /api/proclassic/tenant/{tenantId}/diskencryptionconfigurations PUT endpoint cannot clear the institutional_recovery_key block once set — an empty <institutional_recovery_key/> on PUT is treated as a no-op. Transitioning key_type from Institutional/Individual and Institutional back to Individual does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
+  Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The top-level fields (name, key_type, file_vault_enabled_users) are paired with an optional institutional_recovery_key block carrying the recovery certificate when key_type selects Institutional or Individual and Institutional.
+  Things worth knowing:
+  key_type values use lowercase and in Individual and Institutional — see the attribute description for the full list.certificate_type is required whenever institutional_recovery_key is supplied. Jamf Pro rejects the block otherwise with Certificate type is required if a recovery key is specified.institutional_recovery_key.password is a Terraform WriteOnly attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with institutional_recovery_key.password_wo_version to trigger rotation: bump the integer to force a new update carrying the current password value. Jamf Pro never returns the plaintext on read.Clearing the recovery key is not supported by Jamf Pro. Once the institutional_recovery_key block is set, removing it or transitioning key_type from Institutional / Individual and Institutional back to Individual does not remove the stored certificate on the server. Destroy and recreate the resource to fully clear the recovery key material.
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Resource)
 
-Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The flat envelope (`name`, `key_type`, `file_vault_enabled_users`) is paired with an optional `institutional_recovery_key` block carrying the recovery certificate when `key_type` selects `Institutional` or `Individual and Institutional`.
+Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The top-level fields (`name`, `key_type`, `file_vault_enabled_users`) are paired with an optional `institutional_recovery_key` block carrying the recovery certificate when `key_type` selects `Institutional` or `Individual and Institutional`.
 
-**Wire quirks worth knowing:**
+**Things worth knowing:**
 
-- `key_type` uses the **read-canonical** spellings (lowercase `and` in `Individual and Institutional`) in Terraform state. The classic write endpoint asymmetrically demands Title-Case `Individual And Institutional` and rejects the lowercase form with HTTP 409; the provider translates one-way at the input boundary so users only ever see the lowercase wire form.
-- The classic POST/PUT endpoints reject an `institutional_recovery_key` block without `certificate_type` (`Certificate type is required if a recovery key is specified`). The schema marks `certificate_type` Required inside the IRK block so any plan that supplies the block also supplies the format declarator.
-- `institutional_recovery_key.password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with `institutional_recovery_key.password_wo_version` to trigger rotation: bump the integer to force a new PUT carrying the current `password` value. The Jamf Pro server never echoes the plaintext on reads.
-- The `/api/proclassic/tenant/{tenantId}/diskencryptionconfigurations` PUT endpoint **cannot clear** the `institutional_recovery_key` block once set — an empty `<institutional_recovery_key/>` on PUT is treated as a no-op. Transitioning `key_type` from `Institutional`/`Individual and Institutional` back to `Individual` does not remove the stored cert on the server. This is a known server limitation; destroy and recreate the resource to fully clear the IRK material.
+- `key_type` values use lowercase `and` in `Individual and Institutional` — see the attribute description for the full list.
+- `certificate_type` is required whenever `institutional_recovery_key` is supplied. Jamf Pro rejects the block otherwise with `Certificate type is required if a recovery key is specified`.
+- `institutional_recovery_key.password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with `institutional_recovery_key.password_wo_version` to trigger rotation: bump the integer to force a new update carrying the current `password` value. Jamf Pro never returns the plaintext on read.
+- **Clearing the recovery key is not supported by Jamf Pro.** Once the `institutional_recovery_key` block is set, removing it or transitioning `key_type` from `Institutional` / `Individual and Institutional` back to `Individual` does not remove the stored certificate on the server. Destroy and recreate the resource to fully clear the recovery key material.
 
 ## Example Usage
 
@@ -35,17 +35,19 @@ resource "jamfplatform_pro_disk_encryption_configuration" "individual" {
 # `.p12` file contents; `password` is the import password. The plaintext
 # `password` is a Terraform `WriteOnly` attribute — sent on writes but
 # never persisted in state. Pair with `password_wo_version` to rotate
-# the stored password (bump the integer to force a re-PUT). The
-# `certificate_type` and `key` (Subject DN) are server-derived.
+# the stored password (bump the integer to force the next apply to re-send
+# the certificate). `certificate_type` and `key` (Subject DN) are returned
+# by Jamf Pro and not user-settable beyond the create-time values supplied
+# here.
 resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
   name                     = "Institutional recovery key"
   key_type                 = "Institutional"
   file_vault_enabled_users = "Current or Next User"
 
   institutional_recovery_key = {
-    # `certificate_type` is required by the classic POST endpoint
-    # whenever an IRK block is supplied. Use "PKCS12" for .p12 uploads,
-    # "DER" for .cer binary, or "PEM" for .pem text.
+    # `certificate_type` is required whenever an IRK block is supplied.
+    # Use "PKCS12" for .p12 uploads, "DER" for .cer binary, or "PEM" for
+    # .pem text.
     certificate_type = "PKCS12"
     # Base64 of your `.p12` file. Replace with `filebase64("./irk.p12")`
     # or the contents of a Vault-backed secret.
@@ -56,11 +58,8 @@ resource "jamfplatform_pro_disk_encryption_configuration" "institutional" {
 
 # Individual + Institutional: a per-Mac personal key AND a recovery key
 # derived from the uploaded cert. Same upload shape as the Institutional
-# example. Note that `key_type` must use the wire-canonical spelling
-# (`Individual and Institutional`, lowercase `and`) — the server
-# normalises any case variant on read, and Terraform rejects plan-modifier
-# rewrites on a Required attribute, so case-folding is intentionally not
-# offered.
+# example. Note that `key_type` is case-sensitive — use the exact string
+# `Individual and Institutional` (lowercase `and`).
 resource "jamfplatform_pro_disk_encryption_configuration" "both" {
   name                     = "Individual and Institutional"
   key_type                 = "Individual and Institutional"
@@ -80,7 +79,7 @@ resource "jamfplatform_pro_disk_encryption_configuration" "both" {
 ### Required
 
 - `file_vault_enabled_users` (String) **"Enabled FileVault 2 User"** in the Jamf Pro admin UI. Account allowed to unlock FileVault. Accepted values: `"Current or Next User"`, `"Management Account"`.
-- `key_type` (String) **"Recovery Key Type"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Wire-canonical values (must be supplied verbatim — the server normalises any case variant on read so writing the wire form keeps state stable): `"Individual"`, `"Institutional"`, `"Individual and Institutional"` (note the lowercase `and`).
+- `key_type` (String) **"Recovery Key Type"** in the Jamf Pro admin UI. Selects which recovery key Jamf provisions when the Mac enables FileVault. Accepted values (must be supplied verbatim): `"Individual"`, `"Institutional"`, `"Individual and Institutional"` (note the lowercase `and`).
 - `name` (String) **"Display Name"** in the Jamf Pro admin UI. Disk encryption configuration name. Must not be empty.
 
 ### Optional
@@ -99,17 +98,17 @@ This block stays Optional-only (not Computed) because the framework cannot fit a
 
 Required:
 
-- `certificate_type` (String) Certificate format declarator. Required by the Jamf Pro classic POST endpoint whenever a recovery key is supplied (server: `Certificate type is required if a recovery key is specified`). Accepted values: `"PKCS12"` (private-key-containing .p12 upload), `"DER"` (public-cert binary), `"PEM"` (public-cert text). Use `"PKCS12"` (with `password` set) when `key_type` is `Institutional` or `Individual and Institutional` — only PKCS12 carries the private key Jamf needs to derive per-Mac recovery keys.
+- `certificate_type` (String) Certificate format. Required by Jamf Pro whenever a recovery key is supplied (server: `Certificate type is required if a recovery key is specified`). Accepted values: `"PKCS12"` (private-key-containing .p12 upload), `"DER"` (public-cert binary), `"PEM"` (public-cert text). Use `"PKCS12"` (with `password` set) when `key_type` is `Institutional` or `Individual and Institutional` — only PKCS12 carries the private key Jamf needs to derive per-Mac recovery keys.
 - `data` (String, Sensitive) Base64-encoded recovery certificate payload. Required whenever the IRK block is supplied. Jamf Pro accepts `.p12` (PKCS12 with private key — required for the IRK to issue keys), `.cer` (DER binary), and `.pem` (PEM text). For PKCS12 uploads, also set `password`. Round-trips exactly on read. **Sensitive** because PKCS12 payloads contain the wrapped private key.
 
 Optional:
 
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PKCS12 import password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. Required when uploading a `.p12` certificate (the `data` payload contains the private key wrapped by this password). Omit for `.cer` / `.pem` uploads. Pair with `password_wo_version` to rotate the stored password.
-- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro. Initial Create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals "leave the stored password alone" — the provider omits the `<password/>` element on the next PUT so Jamf retains the existing value.
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new update that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
 
 Read-Only:
 
-- `key` (String) Server-derived Subject DN extracted from the uploaded certificate (`data`). Read-only — the user's input is ignored and overwritten by the server on every read. Sample: `C=US, O=jamf-tf-provider, CN=tf-audit-probe`.
+- `key` (String) Subject DN extracted from the uploaded certificate (`data`). Returned by Jamf Pro; not user-settable. Sample: `C=US, O=jamf-tf-provider, CN=tf-audit-probe`.
 
 
 <a id="nestedatt--timeouts"></a>

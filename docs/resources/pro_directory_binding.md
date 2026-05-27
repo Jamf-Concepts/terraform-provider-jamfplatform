@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_directory_binding Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by type. A plan-time cross-field validator enforces that the supplied nested block matches type. The plaintext password is a Terraform WriteOnly attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with password_wo_version to trigger rotation: bump the integer to force a new PUT carrying the current password value.
+  Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by type. A plan-time cross-field validator enforces that the supplied nested block matches type. The plaintext password is a Terraform WriteOnly attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with password_wo_version to trigger rotation: bump the integer to force a new update carrying the current password value.
 ---
 
 # jamfplatform_pro_directory_binding (Resource)
 
-Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The wire shape is a flat envelope (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new PUT carrying the current `password` value.
+Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new update carrying the current `password` value.
 
 ## Example Usage
 
@@ -17,8 +17,7 @@ Manages a Jamf Pro directory binding. Directory bindings are reusable definition
 # on writes but never persisted in Terraform state. Bump `password_wo_version`
 # to rotate the stored password on the next apply.
 #
-# TF attribute names mirror the Jamf Pro admin UI labels; the wire (XML
-# element) names are documented in each attribute's schema description.
+# Attribute names mirror the labels used in the Jamf Pro admin UI.
 resource "jamfplatform_pro_directory_binding" "ad" {
   name                = "ad-prod"
   priority            = 1
@@ -43,8 +42,8 @@ resource "jamfplatform_pro_directory_binding" "ad" {
 }
 
 # Apple Open Directory binding. Note: the admin UI labels this "Apple Open
-# Directory" but the wire `type` value is the bare "Open Directory" —
-# match the wire form.
+# Directory" but the value Jamf Pro stores is the bare "Open Directory" —
+# use that form for the `type` attribute.
 resource "jamfplatform_pro_directory_binding" "open_directory" {
   name                = "od-staging"
   priority            = 2
@@ -62,10 +61,9 @@ resource "jamfplatform_pro_directory_binding" "open_directory" {
   }
 }
 
-# PowerBroker Identity Services. PowerBroker carries no per-type
-# configuration on the wire, so no nested block is supplied — the `type`
-# attribute on its own conveys the PowerBroker identity. The provider
-# emits the empty <powerbroker_identity_services/> element automatically.
+# PowerBroker Identity Services. PowerBroker has no per-type configuration
+# options, so no nested block is supplied — setting `type` alone is enough
+# to register the binding as PowerBroker.
 resource "jamfplatform_pro_directory_binding" "powerbroker" {
   name                = "pb-lab"
   priority            = 3
@@ -78,8 +76,7 @@ resource "jamfplatform_pro_directory_binding" "powerbroker" {
 }
 
 # ADmitMac binding. `home_location` is the ADmitMac UI's "Home Location"
-# field — distinct from the AD type's bool `force_local_home_directory`,
-# even though both round-trip through a wire element named `local_home`.
+# field — distinct from the AD type's bool `force_local_home_directory`.
 resource "jamfplatform_pro_directory_binding" "admitmac" {
   name                = "admitmac-prod"
   priority            = 4
@@ -107,9 +104,7 @@ resource "jamfplatform_pro_directory_binding" "admitmac" {
   }
 }
 
-# Centrify binding. `update_pam` round-trips through the wire element
-# <update_PAM> (uppercase preserved on the wire); the TF schema uses
-# snake_case.
+# Centrify binding.
 resource "jamfplatform_pro_directory_binding" "centrify" {
   name                = "centrify-prod"
   priority            = 5
@@ -135,7 +130,7 @@ resource "jamfplatform_pro_directory_binding" "centrify" {
 ### Required
 
 - `name` (String) Directory binding display name. Must not be empty.
-- `type` (String) Directory service type. Selects which nested block is permitted. Wire-canonical values (note that the admin UI labels the Open Directory option "Apple Open Directory" but the wire value is `"Open Directory"`): `"Active Directory"`, `"Open Directory"`, `"PowerBroker Identity Services"`, `"ADmitMac"`, `"Centrify"`.
+- `type` (String) Directory service type. Selects which nested block is permitted. Valid values (note that the admin UI labels the Open Directory option "Apple Open Directory" but the value Jamf Pro stores is `"Open Directory"`): `"Active Directory"`, `"Open Directory"`, `"PowerBroker Identity Services"`, `"ADmitMac"`, `"Centrify"`.
 
 ### Optional
 
@@ -147,8 +142,8 @@ resource "jamfplatform_pro_directory_binding" "centrify" {
 - `computer_ou` (String) Computer object's organisational unit (OU) within the directory. Free text. The format is type-specific (e.g. an LDAP-style `OU=...` path for Active Directory).
 - `domain` (String) **"Domain Server"** in the Jamf Pro admin UI. The interpretation depends on `type` — DNS domain for Active Directory; LDAP host for Open Directory; bind domain for PowerBroker / ADmitMac / Centrify.
 - `open_directory` (Attributes) Open Directory–specific configuration. May only be set when `type = "Open Directory"`; setting it for any other type is a plan-time error. When you supply the block, the server fills in defaults for any inner field you omit; each inner field is Optional+Computed for that reason. (see [below for nested schema](#nestedatt--open_directory))
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. The Jamf Pro server also never echoes the plaintext on reads, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger a new PUT carrying the current `password`).
-- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new Update that re-sends `password` to Jamf Pro. Initial Create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals "leave the stored password alone" — the provider omits the `<password/>` element on the next PUT so Jamf retains the existing value.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** in the Jamf Pro admin UI. Plaintext bind password. `WriteOnly` — the value is sent to Jamf Pro on writes but **never persisted in Terraform state**. Jamf Pro also never returns the plaintext on read, so the only signal Terraform can use to rotate the stored password is the companion `password_wo_version` integer (bump it to trigger a new update carrying the current `password`).
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new update that re-sends `password` to Jamf Pro. Initial create should set `password_wo_version = 1`. Leaving this attribute unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
 - `priority` (Number) Binding priority — accepted range is 1–10. Lower numbers run earlier when Jamf evaluates multiple bindings. Optional+Computed: omit to let the server assign the default.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `username` (String) **"Username"** in the Jamf Pro admin UI. The directory account used to perform the bind. May be a domain account name, an LDAP DN, or another type-specific identifier.
@@ -163,18 +158,18 @@ resource "jamfplatform_pro_directory_binding" "centrify" {
 Optional:
 
 - `admin_groups` (String) **"Allow administration by"** in the Jamf Pro admin UI. Comma-separated list of AD groups whose members are granted local admin rights on bound Macs.
-- `create_mobile_account` (Boolean) **"Create Mobile Account"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login. Wire element: `cache_last_user`.
+- `create_mobile_account` (Boolean) **"Create Mobile Account"** in the Jamf Pro admin UI. Cache the directory user's account on the bound Mac for offline login.
 - `default_shell` (String) **"Default User Shell"** in the Jamf Pro admin UI. Login shell assigned to bound directory users (e.g. `/bin/bash`).
-- `force_local_home_directory` (Boolean) **"Force local home directory on startup disk"** in the Jamf Pro admin UI. Wire element: `local_home`.
-- `forest` (String) Active Directory forest. Free text; an empty value round-trips as an empty `<forest/>` element.
-- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the group GID. Wire element: `gid`.
+- `force_local_home_directory` (Boolean) **"Force local home directory on startup disk"** in the Jamf Pro admin UI.
+- `forest` (String) Active Directory forest. Free text; an empty value is preserved.
+- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the group GID.
 - `multiple_domains` (Boolean) **"Allow authentication from any domain in the forest"** in the Jamf Pro admin UI.
-- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Wire element: `mount_style`.
+- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`).
 - `preferred_domain` (String) **"Preferred Domain Server"** in the Jamf Pro admin UI. Preferred AD domain controller hostname.
 - `require_confirmation` (Boolean) **"Require confirmation before creating a mobile account"** in the Jamf Pro admin UI.
-- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the POSIX UID. Wire element: `uid`.
+- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the POSIX UID.
 - `use_unc_path` (Boolean) **"Use UNC path from Active Directory to derive network home location"** in the Jamf Pro admin UI.
-- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the per-user primary group GID. Wire element: `user_gid`.
+- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the AD attribute that supplies the per-user primary group GID.
 
 
 <a id="nestedatt--admitmac"></a>
@@ -186,17 +181,17 @@ Optional:
 - `admin_group` (String) **"Allow administration by"** in the Jamf Pro admin UI. Directory group whose members are granted local admin rights on bound Macs.
 - `cached_credentials` (Number) **"Cached credentials"** in the Jamf Pro admin UI. Number of users whose credentials are cached for offline login.
 - `default_shell` (String) **"Default User Shell"** in the Jamf Pro admin UI.
-- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID. Wire element: `gid`.
+- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the group GID.
 - `groups_ou` (String) **"Groups OU"** in the Jamf Pro admin UI.
-- `home_location` (String) **"Home Location"** in the Jamf Pro admin UI. Where to create the user's home folder (e.g. `"Local"`). Free text. Wire element: `local_home`. (The AD type's wire `local_home` is a bool; ADmitMac's is a string — the renames disambiguate.)
+- `home_location` (String) **"Home Location"** in the Jamf Pro admin UI. Where to create the user's home folder (e.g. `"Local"`). Free text.
 - `mount_network_home` (Boolean) **"Mount network home as sharepoint"** in the Jamf Pro admin UI.
-- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`). Wire element: `mount_style`.
+- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Network protocol used to mount the user's home (e.g. `smb` or `afp`).
 - `place_home_folders` (String) **"Place home folders in"** in the Jamf Pro admin UI. Filesystem path under which local home folders are placed.
 - `printers_ou` (String) **"Printers OU"** in the Jamf Pro admin UI.
 - `require_confirmation` (Boolean) **"Require confirmation"** in the Jamf Pro admin UI. Require admin confirmation when binding new computers to the directory.
 - `shared_folders_ou` (String) **"Shared Folders OU"** in the Jamf Pro admin UI.
-- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the POSIX UID. Wire element: `uid`.
-- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the per-user primary group GID. Wire element: `user_gid`.
+- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the POSIX UID.
+- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Name of the directory attribute that supplies the per-user primary group GID.
 - `users_ou` (String) **"Users OU"** in the Jamf Pro admin UI.
 
 
@@ -207,7 +202,7 @@ Optional:
 
 - `overwrite_existing` (Boolean) Overwrite an existing Centrify configuration on the target Mac.
 - `preferred_domain_server` (String) Preferred Centrify domain server hostname.
-- `update_pam` (Boolean) Update PAM configuration to integrate Centrify authentication. Wire element is `update_PAM` (uppercase preserved on the wire); the TF schema uses snake_case.
+- `update_pam` (Boolean) Update PAM configuration to integrate Centrify authentication.
 - `workstation_mode` (Boolean) Bind in Workstation mode (versus joined mode).
 - `zone` (String) Centrify zone name.
 

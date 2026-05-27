@@ -3,32 +3,28 @@
 page_title: "jamfplatform_pro_macos_configuration_profile Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a macOS configuration profile in Jamf Pro via the /api/proclassic/tenant/{tenantId}/osxconfigurationprofiles endpoint. The general.payloads attribute carries the raw .mobileconfig plist XML; the provider suppresses diffs produced by Jamf Pro's standard server-side normalisations while still surfacing drift on values the user has authored.
-  Payload diff suppression — the comparison runs in three layers:
-  Unconditional skip for fields Jamf Pro always re-derives on write: top-level PayloadDisplayName (set from general.name), top-level PayloadIdentifier and PayloadUUID (Jamf Pro assigns lowercase UUIDs), plus the same three keys on every entry of PayloadContent (Jamf Pro may assign inner UUIDs on Create; preserved on Update by the identifier injection step below).Empty-string normalisation — keys whose value is an empty string on either side are treated as absent. Jamf Pro substitutes a server default for an empty PayloadOrganization; this normalisation means "" and "key omitted" compare equal.Intersection compare for everything else — keys present on only one side are ignored. This is how server-defaulted fields stay quiet: when the user omits PayloadEnabled, PayloadDescription, PayloadRemovalDisallowed, PayloadOrganization, AllowUserOverrides, or when Jamf Pro removes VendorConfig from com.apple.webcontent-filter payloads, the asymmetric key falls out of the compare. When the user explicitly authors any of those keys, the value is present on both sides and any subsequent change is detected as real drift. Setting PayloadEnabled=false in the payload will produce a plan if state holds true; omitting PayloadEnabled lets Jamf Pro's true default ride.
-  Whitespace inside string values is trimmed before comparison so the platform's whitespace handling (observed on Rules[].Comment and similar text fields) does not surface as drift.
-  A per-fixture build-tagged regression test (go test -tags profile_corpus) replays a developer-machine-only corpus through the mask to catch new server-side mutations.
-  Scope blocks mirror jamfplatform_pro_policy: targets / limitations / exclusions all carry flat sets of numeric Jamf Pro classic IDs (or directory-service names where the wire is name-keyed). all_computers and all_jss_users conflict with their per-ID siblings via attribute-level validators.
-  Update behaviour — the provider re-applies the existing top-level PayloadUUID and PayloadIdentifier from state into every user-supplied payload before PUT, so Jamf Pro preserves them on update. This keeps the profile's identity stable across applies — otherwise connected macOS devices would treat each update as a fresh profile installation ("ghost profile"). Same mechanism as profileconvert.InjectIdentifiers in jamf-cli.
+  Manages a macOS configuration profile in Jamf Pro. The general.payloads attribute carries the raw .mobileconfig plist XML for the configuration that the profile delivers to enrolled Macs.
+  Payload diff handling — Jamf Pro normalises every uploaded payload server-side: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those server-side normalisations from terraform plan so applies stay quiet when nothing meaningful has changed, and surfaces real drift in two cases:
+  You edited the payload in Terraform — plan shows the change and apply pushes it.Someone edited the profile in the Jamf Pro admin UI — plan shows the drift on the next refresh so you can either bring the change back into your Terraform config or apply to reassert the Terraform-managed value.
+  A small set of profile-level fields (PayloadDisplayName, PayloadIdentifier, PayloadUUID, PayloadOrganization, PayloadDescription, PayloadEnabled) are managed entirely by Jamf Pro — any value you supply for them inside payloads is replaced on the server, so the provider ignores them in the diff. Use general.name, general.description, and the other top-level attributes to control the equivalent fields.
+  Scope blocks mirror jamfplatform_pro_policy: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). all_computers and all_jss_users conflict with their per-ID siblings.
+  Profile identity on update — the provider re-applies the existing top-level PayloadUUID and PayloadIdentifier from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled Macs and the OS would treat it as a fresh installation.
 ---
 
 # jamfplatform_pro_macos_configuration_profile (Resource)
 
-Manages a macOS configuration profile in Jamf Pro via the `/api/proclassic/tenant/{tenantId}/osxconfigurationprofiles` endpoint. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML; the provider suppresses diffs produced by Jamf Pro's standard server-side normalisations while still surfacing drift on values the user has authored.
+Manages a macOS configuration profile in Jamf Pro. The `general.payloads` attribute carries the raw `.mobileconfig` plist XML for the configuration that the profile delivers to enrolled Macs.
 
-**Payload diff suppression** — the comparison runs in three layers:
+**Payload diff handling** — Jamf Pro normalises every uploaded payload server-side: it assigns its own top-level identifiers, fills in default values for fields you omit, and re-serialises the XML. The provider hides those server-side normalisations from `terraform plan` so applies stay quiet when nothing meaningful has changed, and surfaces real drift in two cases:
 
-1. **Unconditional skip** for fields Jamf Pro always re-derives on write: top-level `PayloadDisplayName` (set from `general.name`), top-level `PayloadIdentifier` and `PayloadUUID` (Jamf Pro assigns lowercase UUIDs), plus the same three keys on every entry of `PayloadContent` (Jamf Pro may assign inner UUIDs on Create; preserved on Update by the identifier injection step below).
-2. **Empty-string normalisation** — keys whose value is an empty string on either side are treated as absent. Jamf Pro substitutes a server default for an empty `PayloadOrganization`; this normalisation means `""` and "key omitted" compare equal.
-3. **Intersection compare** for everything else — keys present on only one side are ignored. This is how server-defaulted fields stay quiet: when the user omits `PayloadEnabled`, `PayloadDescription`, `PayloadRemovalDisallowed`, `PayloadOrganization`, `AllowUserOverrides`, or when Jamf Pro removes `VendorConfig` from `com.apple.webcontent-filter` payloads, the asymmetric key falls out of the compare. **When the user explicitly authors any of those keys**, the value is present on both sides and any subsequent change is detected as real drift. Setting `PayloadEnabled=false` in the payload will produce a plan if state holds `true`; omitting `PayloadEnabled` lets Jamf Pro's `true` default ride.
+  - **You edited the payload in Terraform** — `plan` shows the change and `apply` pushes it.
+  - **Someone edited the profile in the Jamf Pro admin UI** — `plan` shows the drift on the next refresh so you can either bring the change back into your Terraform config or `apply` to reassert the Terraform-managed value.
 
-Whitespace inside string values is trimmed before comparison so the platform's whitespace handling (observed on `Rules[].Comment` and similar text fields) does not surface as drift.
+A small set of profile-level fields (`PayloadDisplayName`, `PayloadIdentifier`, `PayloadUUID`, `PayloadOrganization`, `PayloadDescription`, `PayloadEnabled`) are managed entirely by Jamf Pro — any value you supply for them inside `payloads` is replaced on the server, so the provider ignores them in the diff. Use `general.name`, `general.description`, and the other top-level attributes to control the equivalent fields.
 
-A per-fixture build-tagged regression test (`go test -tags profile_corpus`) replays a developer-machine-only corpus through the mask to catch new server-side mutations.
+**Scope** blocks mirror `jamfplatform_pro_policy`: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). `all_computers` and `all_jss_users` conflict with their per-ID siblings.
 
-**Scope** blocks mirror `jamfplatform_pro_policy`: targets / limitations / exclusions all carry flat sets of numeric Jamf Pro classic IDs (or directory-service names where the wire is name-keyed). `all_computers` and `all_jss_users` conflict with their per-ID siblings via attribute-level validators.
-
-**Update behaviour** — the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every user-supplied payload before PUT, so Jamf Pro preserves them on update. This keeps the profile's identity stable across applies — otherwise connected macOS devices would treat each update as a fresh profile installation ("ghost profile"). Same mechanism as `profileconvert.InjectIdentifiers` in jamf-cli.
+**Profile identity on update** — the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled Macs and the OS would treat it as a fresh installation.
 
 ## Example Usage
 
@@ -107,10 +103,10 @@ resource "jamfplatform_pro_macos_configuration_profile" "self_service" {
 
 ### Optional
 
-- `scope` (Attributes) Profile scope. `all_computers = true` forbids per-computer / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. The wire elements are `<jss_users>` and `<jss_user_groups>`; the UI labels them "Users" / "User Groups", so the provider exposes them as `user_ids` / `user_group_ids`. (see [below for nested schema](#nestedatt--scope))
-- `self_service` (Attributes) Self Service integration. Only meaningful when `general.distribution_method = "Make Available in Self Service"` — for `Install Automatically` profiles the server still emits a populated `<self_service>` block but the values are ignored by the Self Service tab.
+- `scope` (Attributes) Profile scope. `all_computers = true` forbids per-computer / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's "Users" / "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
+- `self_service` (Attributes) Self Service integration. Only meaningful when `general.distribution_method = "Make Available in Self Service"` — for `Install Automatically` profiles Jamf Pro still stores these values but they are not shown to users.
 
-The `display_notifications` boolean and `notification_location` string project into the wire's dual `<notification>` elements (the server emits one bool form and one string form per profile). (see [below for nested schema](#nestedatt--self_service))
+Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the profile becomes available. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -122,25 +118,25 @@ The `display_notifications` boolean and `notification_location` string project i
 
 Required:
 
-- `name` (String) Display name of the profile. Must be unique within the tenant. Jamf Pro also propagates this value into the top-level `PayloadDisplayName` of the mobileconfig payload, so any value supplied for that key inside `payloads` is superseded on the wire.
-- `payloads` (String) The mobileconfig plist XML carrying the configuration the profile delivers. Jamf Pro re-serialises the plist server-side (compact format, `plist version="1"`, server-assigned top-level UUIDs, defaults for fields the user omits, etc.); the provider's diff suppression treats those normalisations as no-ops. See the resource description for the exact comparison rules.
+- `name` (String) Display name of the profile. Must be unique within the tenant. This value is also used as the profile's display name inside the `.mobileconfig` payload, so any name you set inside `payloads` is overridden.
+- `payloads` (String) The `.mobileconfig` plist XML carrying the configuration the profile delivers. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations.
 
 Optional:
 
-- `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category". String form to mirror the rest of the provider's classic-API ID handling.
+- `category_id` (String) Jamf Pro category ID. Use `-1` (default) for "no category".
 - `description` (String) Free-text description shown in the Jamf Pro admin UI.
-- `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile under the Self Service tab. Wire-symmetric — no translation.
-- `level` (String) Profile delivery level. UI-canonical values: `Computer Level` (default) / `User Level`. Wire field `<level>`: the classic API accepts `Computer`/`User` on write and reports `System`/`User` on read. The provider translates at the boundary so the Terraform-facing value mirrors the admin UI dropdown.
-- `redeploy_on_update` (String) Re-deploy behaviour when the profile is updated. Wire field `<redeploy_on_update>`. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). **Note**: Jamf Pro's classic API always returns `Newly Assigned` on read, even after a successful PUT with `All`. The provider treats this as a write-only field — once the user has authored a value the wire response is ignored so subsequent refreshes do not snap state back to `Newly Assigned`. Set this attribute explicitly to control redeployment behaviour on Update.
+- `distribution_method` (String) How the profile reaches devices. `Install Automatically` pushes via MDM; `Make Available in Self Service` lists the profile under the Self Service tab so users install it manually.
+- `level` (String) Profile delivery level. Mirrors the admin UI dropdown: `Computer Level` (default) or `User Level`.
+- `redeploy_on_update` (String) Redeployment behaviour when the profile changes. Valid values: `Newly Assigned` (push to newly-scoped devices only) or `All` (push to every scoped device on the next update). **Note**: Jamf Pro does not echo this value back after it is set, so the provider treats it as write-only — once you set it, subsequent refreshes will not snap it back to a default. Set this attribute explicitly to control redeployment behaviour on update.
 - `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "no site".
-- `user_removable` (Boolean) Whether the device user can remove the profile from System Settings. Defaults to false. Wire field `<user_removable>`. Note that this is independent of the Self Service `removal_disallowed` security setting — the two interact only for Self Service profiles.
+- `user_removable` (Boolean) Whether end users can remove the profile from System Settings. Defaults to `false`. Independent of the Self Service `removal_disallowed` setting — the two only interact for Self Service profiles.
 
 Read-Only:
 
-- `category_name` (String) Category display name returned by Jamf Pro. Server-derived.
-- `id` (String) Profile ID under <general> — server-derived. Matches the top-level `id`.
-- `site_name` (String) Site display name returned by Jamf Pro. Server-derived.
-- `uuid` (String) Profile UUID — minted by Jamf Pro on creation and propagated as the top-level `PayloadUUID` inside the mobileconfig payload. Server-derived; cannot be set by the user.
+- `category_name` (String) Category display name. Returned by Jamf Pro; not user-settable.
+- `id` (String) Profile ID under `general`. Matches the top-level `id`. Assigned by Jamf Pro.
+- `site_name` (String) Site display name. Returned by Jamf Pro; not user-settable.
+- `uuid` (String) Profile UUID assigned by Jamf Pro on creation. Also surfaces as the top-level `PayloadUUID` inside the `.mobileconfig` payload. Read-only.
 
 
 <a id="nestedatt--scope"></a>
@@ -149,31 +145,31 @@ Read-Only:
 Optional:
 
 - `all_computers` (Boolean) Scope to every computer in the tenant.
-- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Wire field `all_jss_users`; UI label "All Users".
-- `building_ids` (Set of String) Set of Jamf Pro classic building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro classic computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro classic computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro classic department IDs.
+- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` carries names (no IDs) per wire shape; `directory_service_user_group_names` similarly. (see [below for nested schema](#nestedatt--scope--limitations))
-- `user_group_ids` (Set of String) Set of Jamf Pro classic user group IDs.
-- `user_ids` (Set of String) Set of Jamf Pro classic user IDs.
+- `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs.
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
 
 Optional:
 
-- `building_ids` (Set of String) Set of Jamf Pro classic building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro classic computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro classic computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro classic department IDs.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names.
-- `ibeacon_ids` (Set of String) Set of Jamf Pro classic iBeacon IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro classic network segment IDs.
-- `user_group_ids` (Set of String) Set of Jamf Pro classic user group IDs.
-- `user_ids` (Set of String) Set of Jamf Pro classic user IDs.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -183,8 +179,8 @@ Optional:
 
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names.
-- `ibeacon_ids` (Set of String) Set of Jamf Pro classic iBeacon IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro classic network segment IDs.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
 
 
 
@@ -194,16 +190,16 @@ Optional:
 Optional:
 
 - `categories` (Attributes List) Categories under which the profile appears in Self Service. Each entry pairs a category ID with `display_in` / `feature_in` toggles matching the Self Service "Display in" / "Feature in" columns of the admin UI. (see [below for nested schema](#nestedatt--self_service--categories))
-- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the profile becomes available. Wire emits as `<notification>true|false</notification>` (first form). Pair with `notification_location` for the delivery target.
-- `ensure_users_view_description` (Boolean) Force users to view the description before installing. Wire field `<force_users_to_view_description>`.
-- `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page. Wire field `<feature_on_main_page>`.
-- `install_button_text` (String) Install-button label. Defaults to `Install`. Wire field `<install_button_text>`.
-- `notification_location` (String) Notification delivery location. Wire emits as `<notification>Self Service|Self Service and Notification Center</notification>` (second form). Valid values: `Self Service`, `Self Service and Notification Center`.
+- `display_notifications` (Boolean) Whether Self Service surfaces a notification when the profile becomes available. Pair with `notification_location` to set the delivery target.
+- `ensure_users_view_description` (Boolean) Force users to view the description before installing.
+- `feature_on_main_page` (Boolean) Feature the profile on the Self Service main page.
+- `install_button_text` (String) Install-button label. Defaults to `Install`.
+- `notification_location` (String) Notification delivery location. Valid values: `Self Service`, `Self Service and Notification Center`.
 - `notification_message` (String) Notification body text. Displays in Self Service only.
 - `notification_subject` (String) Notification subject line.
-- `removal_disallowed` (String) Removal-by-end-user policy for the Self Service profile. Valid values: `Never`, `Always`, `With Authorization`. Wire field `<security><removal_disallowed>`. `With Authorization` additionally requires a `<security><password>` companion that the provider does not currently surface — open an issue if you need this knob.
+- `removal_disallowed` (String) Removal-by-end-user policy for the Self Service profile. Valid values: `Never`, `Always`, `With Authorization`. The `With Authorization` mode additionally requires an authorization password, which the macOS resource does not currently expose — open an issue if you need it.
 - `self_service_description` (String) Description shown in Self Service. Markdown supported.
-- `self_service_display_name` (String) Display name shown in Self Service. Defaults to the profile name when blank. Wire field `<self_service_display_name>` (Self Service 10.0.0+).
+- `self_service_display_name` (String) Display name shown in Self Service. Defaults to the profile name when blank. Requires Self Service 10.0.0+.
 
 <a id="nestedatt--self_service--categories"></a>
 ### Nested Schema for `self_service.categories`
@@ -216,7 +212,7 @@ Optional:
 
 - `display_in` (Boolean) Display the profile in this category.
 - `feature_in` (Boolean) Feature the profile in this category.
-- `name` (String) Category display name (server-derived).
+- `name` (String) Category display name. Returned by Jamf Pro.
 
 
 

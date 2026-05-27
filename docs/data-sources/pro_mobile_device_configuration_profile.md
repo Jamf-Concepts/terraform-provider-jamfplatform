@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_mobile_device_configuration_profile Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a mobile device configuration profile by ID or by exact name. Exactly one of id or name must be supplied.
+  Look up a mobile device configuration profile by ID or by exact name. Exactly one of id or name must be supplied. Returns a flat read-only projection of the most-frequently looked-up fields; to manage the full payload, use the jamfplatform_pro_mobile_device_configuration_profile resource.
 ---
 
 # jamfplatform_pro_mobile_device_configuration_profile (Data Source)
 
-Look up a mobile device configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+Look up a mobile device configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied. Returns a flat read-only projection of the most-frequently looked-up fields; to manage the full payload, use the `jamfplatform_pro_mobile_device_configuration_profile` resource.
 
 ## Example Usage
 
@@ -48,7 +48,7 @@ output "category_name" {
 - `redeploy_on_update` (String) Re-deploy policy on update.
 - `site_id` (String) Site ID. `-1` means no site.
 - `site_name` (String) Site display name.
-- `uuid` (String) Profile UUID (server-derived).
+- `uuid` (String) Profile UUID assigned by Jamf Pro.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

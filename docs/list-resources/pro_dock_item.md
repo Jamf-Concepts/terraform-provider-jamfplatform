@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_dock_item List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro dock items. Classic has no RSQL — supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The /dockitems list endpoint only returns id + name per row; setting include_resource = true triggers a follow-up GET per item to populate the full record (type, path, server-computed contents).
+  Lists Jamf Pro dock items. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. The list returns id and name per row by default — setting include_resource = true fetches the full record for each item (type, path, and the Jamf-computed contents).
 ---
 
 # jamfplatform_pro_dock_item (List Resource)
 
-Lists Jamf Pro dock items. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The /dockitems list endpoint only returns `id` + `name` per row; setting `include_resource = true` triggers a follow-up GET per item to populate the full record (`type`, `path`, server-computed `contents`).
+Lists Jamf Pro dock items. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — setting `include_resource = true` fetches the full record for each item (`type`, `path`, and the Jamf-computed `contents`).
 
 ## Example Usage
 
@@ -35,7 +35,7 @@ list "jamfplatform_pro_dock_item" "calculator_like" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

@@ -54,7 +54,7 @@ func (d *VolumePurchasingLocationDataSource) Metadata(ctx context.Context, req d
 // Schema returns the data source schema.
 func (d *VolumePurchasingLocationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded service token — the wire never echoes it back. Use the `jamfplatform_pro_volume_purchasing_location` resource to manage the token.",
+		MarkdownDescription: "Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded service token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_volume_purchasing_location` resource to manage the token.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Volume Purchasing location ID. Mutually exclusive with `name`.",
@@ -83,7 +83,7 @@ func (d *VolumePurchasingLocationDataSource) Schema(ctx context.Context, req dat
 				Computed:            true,
 			},
 			"site_name": schema.StringAttribute{
-				MarkdownDescription: "Human-readable site name for the associated `site_id`. Server-derived.",
+				MarkdownDescription: "Site display name for the associated `site_id`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 			},
 			"apple_id": schema.StringAttribute{
@@ -91,11 +91,11 @@ func (d *VolumePurchasingLocationDataSource) Schema(ctx context.Context, req dat
 				Computed:            true,
 			},
 			"organization_name": schema.StringAttribute{
-				MarkdownDescription: "Organization name parsed from the uploaded service token. Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.",
+				MarkdownDescription: "Organization name parsed from the uploaded service token. Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.",
 				Computed:            true,
 			},
 			"location_name": schema.StringAttribute{
-				MarkdownDescription: "Apple-returned location name (distinct from the user-supplied `name`). Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.",
+				MarkdownDescription: "Apple-returned location name (distinct from the user-supplied `name`). Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.",
 				Computed:            true,
 			},
 			"country_code": schema.StringAttribute{

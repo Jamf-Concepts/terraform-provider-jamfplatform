@@ -41,7 +41,7 @@ output "dock_item_example_by_name" {
 
 ### Read-Only
 
-- `contents` (String) Server-computed PLIST representation of the dock tile.
+- `contents` (String) PLIST representation of the dock tile. Returned by Jamf Pro; not user-settable.
 - `path` (String) Dock item path.
 - `type` (String) Dock item type (`App`, `File`, or `Folder`).
 

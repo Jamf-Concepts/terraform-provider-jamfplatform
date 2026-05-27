@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_automated_device_enrollment_public_key Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. The endpoint returns a binary blob; the data source base64-encodes the bytes into the public_key attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required.
+  Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob; the data source base64-encodes the bytes into the public_key attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required.
 ---
 
 # jamfplatform_pro_automated_device_enrollment_public_key (Data Source)
 
-Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. The endpoint returns a binary blob; the data source base64-encodes the bytes into the `public_key` attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required.
+Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob; the data source base64-encodes the bytes into the `public_key` attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required.
 
 ## Example Usage
 
@@ -35,7 +35,7 @@ output "ade_public_key" {
 ### Read-Only
 
 - `id` (String) Stable synthetic identifier for the singleton public key (`"singleton"`).
-- `public_key` (String) Base64-encoded body of the Jamf Pro ADE public key returned by the `/api/v1/device-enrollments/public-key` endpoint.
+- `public_key` (String) Base64-encoded body of the Jamf Pro ADE public key.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

@@ -48,7 +48,7 @@ output "category_name" {
 - `site_id` (String) Site ID. `-1` means no site.
 - `site_name` (String) Site display name.
 - `user_removable` (Boolean) Whether the device user can remove the profile.
-- `uuid` (String) Profile UUID (server-derived).
+- `uuid` (String) Profile UUID assigned by Jamf Pro.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

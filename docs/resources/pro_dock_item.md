@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_dock_item Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST contents field is server-computed from name, type, and path and is exposed read-only.
+  Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST contents field is derived from name, type, and path by Jamf Pro and exposed read-only.
 ---
 
 # jamfplatform_pro_dock_item (Resource)
 
-Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST `contents` field is server-computed from `name`, `type`, and `path` and is exposed read-only.
+Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST `contents` field is derived from `name`, `type`, and `path` by Jamf Pro and exposed read-only.
 
 ## Example Usage
 
@@ -38,7 +38,7 @@ resource "jamfplatform_pro_dock_item" "downloads" {
 ### Required
 
 - `name` (String) Dock item display name. Must not be empty.
-- `path` (String) Path to the dock item. The Jamf UI hints at `file://localhost/Applications/App%20Store.app/` style URIs for apps; the classic API also accepts raw filesystem paths (`/My/App.app`). Must not be empty.
+- `path` (String) Path to the dock item. The Jamf Pro admin UI hints at `file://localhost/Applications/App%20Store.app/` style URIs for apps; raw filesystem paths (`/My/App.app`) are also accepted. Must not be empty.
 - `type` (String) Dock item type. Must be one of `App`, `File`, `Folder`.
 
 ### Optional
@@ -47,7 +47,7 @@ resource "jamfplatform_pro_dock_item" "downloads" {
 
 ### Read-Only
 
-- `contents` (String) PLIST representation of the dock tile. Read-only — Jamf Pro derives this from `name`, `type`, and `path` on every write and exposes it as a server-computed field. Any user input is ignored.
+- `contents` (String) PLIST representation of the dock tile. Read-only — Jamf Pro derives this from `name`, `type`, and `path` on every write. Returned by Jamf Pro; not user-settable.
 - `id` (String) Dock item ID assigned by Jamf Pro.
 
 <a id="nestedatt--timeouts"></a>

@@ -53,7 +53,7 @@ func (d *AutomatedDeviceEnrollmentDataSource) Metadata(ctx context.Context, req 
 // Schema returns the data source schema.
 func (d *AutomatedDeviceEnrollmentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded server token — the wire never echoes it back. Use the `jamfplatform_pro_automated_device_enrollment` resource to manage the token.",
+		MarkdownDescription: "Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded server token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_automated_device_enrollment` resource to manage the token.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Automated Device Enrollment instance ID. Mutually exclusive with `name`.",
@@ -86,11 +86,11 @@ func (d *AutomatedDeviceEnrollmentDataSource) Schema(ctx context.Context, req da
 				Computed:            true,
 			},
 			"org_phone": schema.StringAttribute{
-				MarkdownDescription: "Organization phone number parsed from the uploaded server token. Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.",
+				MarkdownDescription: "Organization phone number parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.",
 				Computed:            true,
 			},
 			"org_address": schema.StringAttribute{
-				MarkdownDescription: "Organization mailing address parsed from the uploaded server token. Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.",
+				MarkdownDescription: "Organization mailing address parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.",
 				Computed:            true,
 			},
 			"server_name": schema.StringAttribute{

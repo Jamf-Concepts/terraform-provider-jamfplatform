@@ -81,7 +81,7 @@ func (d *DirectoryBindingDataSource) Metadata(ctx context.Context, req datasourc
 // Schema returns the data source schema.
 func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — the wire never echoes it back. Use the resource (not the data source) to manage the password.",
+		MarkdownDescription: "Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Directory binding ID. Mutually exclusive with `name`.",
@@ -104,15 +104,15 @@ func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
 					"forest":                     schema.StringAttribute{Computed: true, MarkdownDescription: "Active Directory forest."},
-					"create_mobile_account":      schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Create Mobile Account\"** in the Jamf Pro admin UI. Wire element: `cache_last_user`."},
+					"create_mobile_account":      schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Create Mobile Account\"** in the Jamf Pro admin UI."},
 					"require_confirmation":       schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Require confirmation before creating a mobile account\"** in the Jamf Pro admin UI."},
-					"force_local_home_directory": schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Force local home directory on startup disk\"** in the Jamf Pro admin UI. Wire element: `local_home`."},
+					"force_local_home_directory": schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Force local home directory on startup disk\"** in the Jamf Pro admin UI."},
 					"use_unc_path":               schema.BoolAttribute{Computed: true, MarkdownDescription: "Use a UNC path for the network home location."},
-					"network_protocol":           schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Network Protocol\"** in the Jamf Pro admin UI. Wire element: `mount_style`."},
+					"network_protocol":           schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Network Protocol\"** in the Jamf Pro admin UI."},
 					"default_shell":              schema.StringAttribute{Computed: true, MarkdownDescription: "Default login shell."},
-					"uid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map UID to attribute\"** in the Jamf Pro admin UI. Wire element: `uid`."},
-					"user_gid_attribute_mapping": schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Wire element: `user_gid`."},
-					"gid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Wire element: `gid`."},
+					"uid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map UID to attribute\"** in the Jamf Pro admin UI."},
+					"user_gid_attribute_mapping": schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map User GID to attribute\"** in the Jamf Pro admin UI."},
+					"gid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map Group GID to attribute\"** in the Jamf Pro admin UI."},
 					"multiple_domains":           schema.BoolAttribute{Computed: true, MarkdownDescription: "Allow multiple AD domains."},
 					"preferred_domain":           schema.StringAttribute{Computed: true, MarkdownDescription: "Preferred AD domain controller hostname."},
 					"admin_groups":               schema.StringAttribute{Computed: true, MarkdownDescription: "Comma-separated AD groups granted local admin."},
@@ -133,14 +133,14 @@ func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
 					"require_confirmation":       schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Require confirmation\"** in the Jamf Pro admin UI."},
-					"home_location":              schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Home Location\"** in the Jamf Pro admin UI. Wire element: `local_home` (string for ADmitMac)."},
-					"network_protocol":           schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Network Protocol\"** in the Jamf Pro admin UI. Wire element: `mount_style`."},
+					"home_location":              schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Home Location\"** in the Jamf Pro admin UI."},
+					"network_protocol":           schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Network Protocol\"** in the Jamf Pro admin UI."},
 					"default_shell":              schema.StringAttribute{Computed: true, MarkdownDescription: "Default login shell."},
 					"mount_network_home":         schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Mount network home as sharepoint\"** in the Jamf Pro admin UI."},
 					"place_home_folders":         schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Place home folders in\"** in the Jamf Pro admin UI."},
-					"uid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map UID to attribute\"** in the Jamf Pro admin UI. Wire element: `uid`."},
-					"user_gid_attribute_mapping": schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map User GID to attribute\"** in the Jamf Pro admin UI. Wire element: `user_gid`."},
-					"gid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map Group GID to attribute\"** in the Jamf Pro admin UI. Wire element: `gid`."},
+					"uid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map UID to attribute\"** in the Jamf Pro admin UI."},
+					"user_gid_attribute_mapping": schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map User GID to attribute\"** in the Jamf Pro admin UI."},
+					"gid_attribute_mapping":      schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Map Group GID to attribute\"** in the Jamf Pro admin UI."},
 					"admin_group":                schema.StringAttribute{Computed: true, MarkdownDescription: "**\"Allow administration by\"** in the Jamf Pro admin UI."},
 					"cached_credentials":         schema.Int64Attribute{Computed: true, MarkdownDescription: "**\"Cached credentials\"** in the Jamf Pro admin UI."},
 					"add_user_to_local":          schema.BoolAttribute{Computed: true, MarkdownDescription: "**\"Add user to local administrators group\"** in the Jamf Pro admin UI."},
@@ -156,7 +156,7 @@ func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.
 				Attributes: map[string]schema.Attribute{
 					"workstation_mode":        schema.BoolAttribute{Computed: true, MarkdownDescription: "Bind in Workstation mode."},
 					"overwrite_existing":      schema.BoolAttribute{Computed: true, MarkdownDescription: "Overwrite an existing Centrify configuration."},
-					"update_pam":              schema.BoolAttribute{Computed: true, MarkdownDescription: "Update PAM configuration (wire element is `update_PAM`)."},
+					"update_pam":              schema.BoolAttribute{Computed: true, MarkdownDescription: "Update PAM configuration."},
 					"zone":                    schema.StringAttribute{Computed: true, MarkdownDescription: "Centrify zone name."},
 					"preferred_domain_server": schema.StringAttribute{Computed: true, MarkdownDescription: "Preferred Centrify domain server hostname."},
 				},

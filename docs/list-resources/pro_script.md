@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_script List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Searches for Jamf Pro scripts using the same filter clauses as the scripts data source.
+  Lists Jamf Pro scripts. Supply an optional filter block to narrow results — the supported selectors match the scripts data source.
 ---
 
 # jamfplatform_pro_script (List Resource)
 
-Searches for Jamf Pro scripts using the same filter clauses as the scripts data source.
+Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results — the supported selectors match the scripts data source.
 
 ## Example Usage
 

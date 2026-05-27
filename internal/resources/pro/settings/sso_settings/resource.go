@@ -80,7 +80,7 @@ func (r *SsoSettingsResource) IdentitySchema(ctx context.Context, req resource.I
 // Schema returns the resource schema.
 func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO settings configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.\n\n" +
+		MarkdownDescription: "Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.\n\n" +
 			"**Cross-field requirements** (enforced at plan time):\n" +
 			"- `configuration_type = \"SAML\"` requires the `saml_settings` block.\n" +
 			"- `configuration_type = \"OIDC\"` requires the `oidc_settings` block and forbids `saml_settings` (Jamf Pro ignores SAML configuration in pure OIDC mode).\n" +
@@ -92,7 +92,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 			"- `group_enrollment_access_enabled = true` together with `sso_for_enrollment_enabled = true` requires `group_enrollment_access_name`.\n" +
 			"- `signing_certificate.setup_type = \"UPLOADED\"` requires `type`, `key`, `keystore_file`, `keystore_file_name`, `keystore_password`, and `password`.\n\n" +
 			"**Account-Driven Enrollment dependency** — `enrollment_sso_for_account_driven_enrollment_enabled = true` requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro will reject the apply with a field-named error if the prerequisite is missing.\n\n" +
-			"**Concurrency** — Jamf Pro has no optimistic-concurrency control on the SSO endpoints; concurrent applies are last-writer-wins with no 409 conflict. Use Terraform state-locking to serialise applies that touch this resource.\n\n" +
+			"**Concurrency** — Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.\n\n" +
 			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set `sso_enabled = false` explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.\n\n" +
 			"Import with `terraform import jamfplatform_pro_sso_settings.<name> singleton`.",
 		Attributes: map[string]schema.Attribute{
@@ -170,13 +170,13 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"jamf_id_authentication_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Allow Jamf ID authentication alongside the configured OIDC provider. Server-derived default applies when omitted.",
+						MarkdownDescription: "Allow Jamf ID authentication alongside the configured OIDC provider. Jamf Pro applies its default when omitted.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 					},
 					"username_attribute_claim_mapping": schema.StringAttribute{
-						MarkdownDescription: "OIDC claim used as the username attribute. One of `USERNAME` or `EMAIL`. Server-derived default applies when omitted.",
+						MarkdownDescription: "OIDC claim used as the username attribute. One of `USERNAME` or `EMAIL`. Jamf Pro applies its default when omitted.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
@@ -253,7 +253,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"token_expiration_disabled": schema.BoolAttribute{
-						MarkdownDescription: "Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted — Jamf Pro's SAML validator rejects JSON `null` for this field, so the provider sends an explicit boolean on every PUT.",
+						MarkdownDescription: "Disable SAML token expiration. When `true`, `session_timeout` becomes runtime-inactive but is still stored. Defaults to `true` when omitted — Jamf Pro requires an explicit boolean for this field, so the provider always sends one on update.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -268,7 +268,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 						},
 					},
 					"user_attribute_enabled": schema.BoolAttribute{
-						MarkdownDescription: "Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted — Jamf Pro's SAML validator rejects JSON `null` for this field, so the provider sends an explicit boolean on every PUT.",
+						MarkdownDescription: "Use a custom SAML attribute (`user_attribute_name`) for username lookup instead of NameID. Requires `user_attribute_name` when `true`. Defaults to `false` when omitted — Jamf Pro requires an explicit boolean for this field, so the provider always sends one on update.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
@@ -348,7 +348,7 @@ func signingCertificateResourceSchema() schema.SingleNestedAttribute {
 				},
 			},
 			"type": schema.StringAttribute{
-				MarkdownDescription: "Keystore type. `PKCS12` or `JKS`. User-supplied for `setup_type = \"UPLOADED\"`; server-derived for `\"GENERATED\"`.",
+				MarkdownDescription: "Keystore type. `PKCS12` or `JKS`. User-supplied for `setup_type = \"UPLOADED\"`; set by Jamf Pro for `\"GENERATED\"`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -356,7 +356,7 @@ func signingCertificateResourceSchema() schema.SingleNestedAttribute {
 				},
 			},
 			"key": schema.StringAttribute{
-				MarkdownDescription: "Alias inside the keystore that selects the private key and certificate to use. Case-sensitive. Required when `setup_type = \"UPLOADED\"`; server-derived for `\"GENERATED\"`. Discover aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.",
+				MarkdownDescription: "Alias inside the keystore that selects the private key and certificate to use. Case-sensitive. Required when `setup_type = \"UPLOADED\"`; set by Jamf Pro for `\"GENERATED\"`. Discover aliases with `keytool -list -keystore foo.p12 -storetype PKCS12 -storepass <pw>`.",
 				Optional:            true,
 				Computed:            true,
 			},
@@ -366,7 +366,7 @@ func signingCertificateResourceSchema() schema.SingleNestedAttribute {
 				Sensitive:           true,
 			},
 			"keystore_file_name": schema.StringAttribute{
-				MarkdownDescription: "Display filename for the keystore. Required when `setup_type = \"UPLOADED\"`; server-derived for `\"GENERATED\"`.",
+				MarkdownDescription: "Display filename for the keystore. Required when `setup_type = \"UPLOADED\"`; set by Jamf Pro for `\"GENERATED\"`.",
 				Optional:            true,
 				Computed:            true,
 			},

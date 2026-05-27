@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_mobile_device_configuration_profile List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists mobile device configuration profiles. Classic has no RSQL — supply an optional case-insensitive name_substring filter applied client-side.
+  Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive name_substring filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the jamfplatform_pro_mobile_device_configuration_profile data source to fetch per-profile detail.
 ---
 
 # jamfplatform_pro_mobile_device_configuration_profile (List Resource)
 
-Lists mobile device configuration profiles. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side.
+Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive `name_substring` filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the `jamfplatform_pro_mobile_device_configuration_profile` data source to fetch per-profile detail.
 
 ## Example Usage
 
@@ -27,7 +27,7 @@ list "jamfplatform_pro_mobile_device_configuration_profile" "vpn" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

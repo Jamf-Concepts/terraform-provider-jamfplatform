@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_volume_purchasing_location Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded service token — the wire never echoes it back. Use the jamfplatform_pro_volume_purchasing_location resource to manage the token.
+  Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded service token — Jamf Pro never returns it on reads. Use the jamfplatform_pro_volume_purchasing_location resource to manage the token.
 ---
 
 # jamfplatform_pro_volume_purchasing_location (Data Source)
 
-Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded service token — the wire never echoes it back. Use the `jamfplatform_pro_volume_purchasing_location` resource to manage the token.
+Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded service token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_volume_purchasing_location` resource to manage the token.
 
 ## Example Usage
 
@@ -58,11 +58,11 @@ output "vpp_microsoft_word_licenses_available" {
 - `country_code` (String) Apple-returned country code for the location.
 - `email` (String) Apple-returned contact email for the location.
 - `last_sync_time` (String) ISO 8601 timestamp of the most recent Apple content sync for this location.
-- `location_name` (String) Apple-returned location name (distinct from the user-supplied `name`). Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.
-- `organization_name` (String) Organization name parsed from the uploaded service token. Apple may emit values containing trailing whitespace; the provider preserves the byte-exact server representation.
+- `location_name` (String) Apple-returned location name (distinct from the user-supplied `name`). Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.
+- `organization_name` (String) Organization name parsed from the uploaded service token. Apple may return values containing trailing whitespace; the provider preserves the exact value Jamf Pro reports.
 - `send_notification_when_no_longer_assigned` (Boolean) Whether Jamf Pro sends a notification when a previously-assigned content item is no longer assigned to the location.
 - `site_id` (String) Jamf Pro site ID associated with this VPP location, or the sentinel `"-1"` when no site is set.
-- `site_name` (String) Human-readable site name for the associated `site_id`. Server-derived.
+- `site_name` (String) Site display name for the associated `site_id`. Returned by Jamf Pro; not user-settable.
 - `token_expiration` (String) ISO 8601 expiration timestamp for the uploaded service token.
 - `total_purchased_licenses` (Number) Total number of licenses purchased across all content items for this location.
 - `total_used_licenses` (Number) Total number of licenses currently in use across all content items for this location.

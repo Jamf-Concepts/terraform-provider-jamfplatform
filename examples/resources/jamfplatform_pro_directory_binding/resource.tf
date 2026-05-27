@@ -2,8 +2,7 @@
 # on writes but never persisted in Terraform state. Bump `password_wo_version`
 # to rotate the stored password on the next apply.
 #
-# TF attribute names mirror the Jamf Pro admin UI labels; the wire (XML
-# element) names are documented in each attribute's schema description.
+# Attribute names mirror the labels used in the Jamf Pro admin UI.
 resource "jamfplatform_pro_directory_binding" "ad" {
   name                = "ad-prod"
   priority            = 1
@@ -28,8 +27,8 @@ resource "jamfplatform_pro_directory_binding" "ad" {
 }
 
 # Apple Open Directory binding. Note: the admin UI labels this "Apple Open
-# Directory" but the wire `type` value is the bare "Open Directory" —
-# match the wire form.
+# Directory" but the value Jamf Pro stores is the bare "Open Directory" —
+# use that form for the `type` attribute.
 resource "jamfplatform_pro_directory_binding" "open_directory" {
   name                = "od-staging"
   priority            = 2
@@ -47,10 +46,9 @@ resource "jamfplatform_pro_directory_binding" "open_directory" {
   }
 }
 
-# PowerBroker Identity Services. PowerBroker carries no per-type
-# configuration on the wire, so no nested block is supplied — the `type`
-# attribute on its own conveys the PowerBroker identity. The provider
-# emits the empty <powerbroker_identity_services/> element automatically.
+# PowerBroker Identity Services. PowerBroker has no per-type configuration
+# options, so no nested block is supplied — setting `type` alone is enough
+# to register the binding as PowerBroker.
 resource "jamfplatform_pro_directory_binding" "powerbroker" {
   name                = "pb-lab"
   priority            = 3
@@ -63,8 +61,7 @@ resource "jamfplatform_pro_directory_binding" "powerbroker" {
 }
 
 # ADmitMac binding. `home_location` is the ADmitMac UI's "Home Location"
-# field — distinct from the AD type's bool `force_local_home_directory`,
-# even though both round-trip through a wire element named `local_home`.
+# field — distinct from the AD type's bool `force_local_home_directory`.
 resource "jamfplatform_pro_directory_binding" "admitmac" {
   name                = "admitmac-prod"
   priority            = 4
@@ -92,9 +89,7 @@ resource "jamfplatform_pro_directory_binding" "admitmac" {
   }
 }
 
-# Centrify binding. `update_pam` round-trips through the wire element
-# <update_PAM> (uppercase preserved on the wire); the TF schema uses
-# snake_case.
+# Centrify binding.
 resource "jamfplatform_pro_directory_binding" "centrify" {
   name                = "centrify-prod"
   priority            = 5

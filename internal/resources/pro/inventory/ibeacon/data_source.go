@@ -59,8 +59,8 @@ func (d *IbeaconDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"uuid":                    schema.StringAttribute{MarkdownDescription: "iBeacon UUID in canonical 8-4-4-4-12 hex form.", Computed: true},
 			"major":                   schema.Int64Attribute{MarkdownDescription: "iBeacon major value (0–65535). Null when `include_any_major_value` is true.", Computed: true},
 			"minor":                   schema.Int64Attribute{MarkdownDescription: "iBeacon minor value (0–65535). Null when `include_any_minor_value` is true.", Computed: true},
-			"include_any_major_value": schema.BoolAttribute{MarkdownDescription: "True when the iBeacon matches any major value (Jamf encodes this as `major = \"-1\"` on the wire).", Computed: true},
-			"include_any_minor_value": schema.BoolAttribute{MarkdownDescription: "True when the iBeacon matches any minor value (Jamf encodes this as `minor = \"-1\"` on the wire).", Computed: true},
+			"include_any_major_value": schema.BoolAttribute{MarkdownDescription: "True when the iBeacon matches any major value.", Computed: true},
+			"include_any_minor_value": schema.BoolAttribute{MarkdownDescription: "True when the iBeacon matches any minor value.", Computed: true},
 			"timeouts":                timeouts.Attributes(ctx),
 		},
 	}

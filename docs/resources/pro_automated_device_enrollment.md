@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_automated_device_enrollment Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a .p7m server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: UploadDeviceEnrollmentTokenV1 is called first with the decoded token bytes to allocate the instance ID, then UpdateDeviceEnrollmentV1 is called to set the user-visible name and any optional site_id / supervision_identity_id associations. If the rename PUT fails, the provider deletes the partially-created instance so Terraform's Create either fully succeeds or leaves no resource behind.
+  Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a .p7m server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible name and any optional site_id / supervision_identity_id associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind.
 ---
 
 # jamfplatform_pro_automated_device_enrollment (Resource)
 
-Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a `.p7m` server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: `UploadDeviceEnrollmentTokenV1` is called first with the decoded token bytes to allocate the instance ID, then `UpdateDeviceEnrollmentV1` is called to set the user-visible `name` and any optional `site_id` / `supervision_identity_id` associations. If the rename PUT fails, the provider deletes the partially-created instance so Terraform's Create either fully succeeds or leaves no resource behind.
+Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a `.p7m` server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible `name` and any optional `site_id` / `supervision_identity_id` associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind.
 
 ## Example Usage
 
@@ -54,24 +54,24 @@ output "ade_prod_token_expiration" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `name` (String) Display name for the ADE instance in the Jamf Pro admin UI. Must not be empty.
-- `server_token` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded contents of the `.p7m` server token downloaded from Apple Business Manager / Apple School Manager for this MDM server. `WriteOnly` — the value is sent to Jamf Pro on Create and on token-rotating Updates but **never persisted in Terraform state**. The Jamf Pro server also never echoes the token back on reads, so the only signal Terraform can use to rotate the stored token is the companion `server_token_wo_version` integer. The provider TrimSpaces the supplied string and then base64-decodes it to raw bytes before sending; a decode failure surfaces as a plan-time diagnostic.
-- `server_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `server_token`. Bump this integer (any change) to force an Update that re-sends the current `server_token` via `ReplaceDeviceEnrollmentTokenV1`. Initial Create should set `server_token_wo_version = 1`. Required because `server_token` itself is Required — keeping the companion Required keeps the rotation signal explicit in config.
+- `server_token` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Base64-encoded contents of the `.p7m` server token downloaded from Apple Business Manager / Apple School Manager for this MDM server. `WriteOnly` — the value is sent to Jamf Pro on create and on token-rotating updates but **never persisted in Terraform state**. Jamf Pro also never returns the token on reads, so the only signal Terraform can use to rotate the stored token is the companion `server_token_wo_version` integer. The provider trims surrounding whitespace and then base64-decodes the supplied string to raw bytes before sending; a decode failure surfaces as a plan-time diagnostic.
+- `server_token_wo_version` (Number) Rotation trigger for the `WriteOnly` `server_token`. Bump this integer (any change) to force an update that re-sends the current `server_token` to Jamf Pro. Initial create should set `server_token_wo_version = 1`. Required because `server_token` itself is Required — keeping the companion Required keeps the rotation signal explicit in config.
 
 ### Optional
 
-- `site_id` (String) Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro emits the sentinel `"-1"` when no site is set; the provider mirrors whatever the server reports into state and does not apply a default — leave the attribute unset to let the server decide.
-- `supervision_identity_id` (String) Optional Jamf Pro supervision identity ID to associate with this ADE instance. Jamf Pro emits the sentinel `"-1"` when no supervision identity is set; the provider mirrors whatever the server reports into state and does not apply a default.
+- `site_id` (String) Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no site is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default — leave the attribute unset to let Jamf Pro decide.
+- `supervision_identity_id` (String) Optional Jamf Pro supervision identity ID to associate with this ADE instance. Jamf Pro reports the sentinel `"-1"` when no supervision identity is set; the provider mirrors whatever Jamf Pro reports into state and does not apply a default.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `token_file_name` (String) Optional file name to send alongside the uploaded token (e.g. `"my-org-ade-token.p7m"`). The Jamf Pro GET response for an ADE instance does not echo this field back, so the attribute is plain `Optional` (not `Optional+Computed`) — it is only used at upload time and is not refreshed from the server on Read.
+- `token_file_name` (String) Optional file name to send alongside the uploaded token (e.g. `"my-org-ade-token.p7m"`). Jamf Pro does not return this field on reads, so the attribute is plain `Optional` (not `Optional+Computed`) — it is only used at upload time and is not refreshed on read.
 
 ### Read-Only
 
 - `admin_id` (String) Apple administrator ID parsed from the uploaded server token.
 - `id` (String) Automated Device Enrollment instance ID assigned by Jamf Pro.
-- `org_address` (String) Organization mailing address parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves whatever the server emits without trimming.
+- `org_address` (String) Organization mailing address parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves whatever Jamf Pro reports without trimming.
 - `org_email` (String) Organization email address parsed from the uploaded server token.
 - `org_name` (String) Organization name parsed from the uploaded server token.
-- `org_phone` (String) Organization phone number parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves whatever the server emits without trimming.
+- `org_phone` (String) Organization phone number parsed from the uploaded server token. Apple may return values containing trailing whitespace; the provider preserves whatever Jamf Pro reports without trimming.
 - `server_name` (String) MDM server hostname recorded by Apple for this ADE instance.
 - `server_uuid` (String) MDM server UUID recorded by Apple for this ADE instance.
 - `token_expiration_date` (String) Expiration date of the uploaded ADE server token, in `YYYY-MM-DD` format.

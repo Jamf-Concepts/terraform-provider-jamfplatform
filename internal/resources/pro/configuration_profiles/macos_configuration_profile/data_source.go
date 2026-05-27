@@ -70,7 +70,7 @@ func (d *DataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, res
 			"distribution_method": schema.StringAttribute{MarkdownDescription: "How the profile reaches devices.", Computed: true},
 			"user_removable":      schema.BoolAttribute{MarkdownDescription: "Whether the device user can remove the profile.", Computed: true},
 			"redeploy_on_update":  schema.StringAttribute{MarkdownDescription: "Re-deploy policy on update.", Computed: true},
-			"uuid":                schema.StringAttribute{MarkdownDescription: "Profile UUID (server-derived).", Computed: true},
+			"uuid":                schema.StringAttribute{MarkdownDescription: "Profile UUID assigned by Jamf Pro.", Computed: true},
 			"category_id":         schema.StringAttribute{MarkdownDescription: "Category ID. `-1` means no category.", Computed: true},
 			"category_name":       schema.StringAttribute{MarkdownDescription: "Category display name.", Computed: true},
 			"site_id":             schema.StringAttribute{MarkdownDescription: "Site ID. `-1` means no site.", Computed: true},

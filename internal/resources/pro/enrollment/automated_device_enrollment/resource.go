@@ -79,11 +79,10 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 		MarkdownDescription: "Manages a Jamf Pro Automated Device Enrollment (ADE) instance. " +
 			"ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM " +
 			"server using a `.p7m` server token downloaded from Apple. The provider performs the " +
-			"two-step upload-and-rename flow internally: `UploadDeviceEnrollmentTokenV1` is called " +
-			"first with the decoded token bytes to allocate the instance ID, then " +
-			"`UpdateDeviceEnrollmentV1` is called to set the user-visible `name` and any optional " +
-			"`site_id` / `supervision_identity_id` associations. If the rename PUT fails, the " +
-			"provider deletes the partially-created instance so Terraform's Create either fully " +
+			"two-step upload-and-rename flow internally: it first uploads the decoded token bytes " +
+			"to allocate the instance, then sets the user-visible `name` and any optional " +
+			"`site_id` / `supervision_identity_id` associations. If the rename step fails the " +
+			"provider deletes the partially-created instance so Terraform's create either fully " +
 			"succeeds or leaves no resource behind.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -103,12 +102,11 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"server_token": schema.StringAttribute{
 				MarkdownDescription: "Base64-encoded contents of the `.p7m` server token downloaded from Apple " +
 					"Business Manager / Apple School Manager for this MDM server. `WriteOnly` — the value is " +
-					"sent to Jamf Pro on Create and on token-rotating Updates but **never persisted in " +
-					"Terraform state**. The Jamf Pro server also never echoes the token back on reads, so the " +
-					"only signal Terraform can use to rotate the stored token is the companion " +
-					"`server_token_wo_version` integer. The provider TrimSpaces the supplied string and then " +
-					"base64-decodes it to raw bytes before sending; a decode failure surfaces as a plan-time " +
-					"diagnostic.",
+					"sent to Jamf Pro on create and on token-rotating updates but **never persisted in " +
+					"Terraform state**. Jamf Pro also never returns the token on reads, so the only signal " +
+					"Terraform can use to rotate the stored token is the companion `server_token_wo_version` " +
+					"integer. The provider trims surrounding whitespace and then base64-decodes the supplied " +
+					"string to raw bytes before sending; a decode failure surfaces as a plan-time diagnostic.",
 				Required:  true,
 				Sensitive: true,
 				WriteOnly: true,
@@ -118,24 +116,24 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			},
 			"server_token_wo_version": schema.Int64Attribute{
 				MarkdownDescription: "Rotation trigger for the `WriteOnly` `server_token`. Bump this integer " +
-					"(any change) to force an Update that re-sends the current `server_token` via " +
-					"`ReplaceDeviceEnrollmentTokenV1`. Initial Create should set `server_token_wo_version = 1`. " +
-					"Required because `server_token` itself is Required — keeping the companion Required keeps " +
-					"the rotation signal explicit in config.",
+					"(any change) to force an update that re-sends the current `server_token` to Jamf Pro. " +
+					"Initial create should set `server_token_wo_version = 1`. Required because `server_token` " +
+					"itself is Required — keeping the companion Required keeps the rotation signal explicit in " +
+					"config.",
 				Required: true,
 			},
 			"token_file_name": schema.StringAttribute{
 				MarkdownDescription: "Optional file name to send alongside the uploaded token (e.g. " +
-					"`\"my-org-ade-token.p7m\"`). The Jamf Pro GET response for an ADE instance does not echo " +
-					"this field back, so the attribute is plain `Optional` (not `Optional+Computed`) — it is " +
-					"only used at upload time and is not refreshed from the server on Read.",
+					"`\"my-org-ade-token.p7m\"`). Jamf Pro does not return this field on reads, so the " +
+					"attribute is plain `Optional` (not `Optional+Computed`) — it is only used at upload time " +
+					"and is not refreshed on read.",
 				Optional: true,
 			},
 			"site_id": schema.StringAttribute{
 				MarkdownDescription: "Optional Jamf Pro site ID to associate with this ADE instance. Jamf Pro " +
-					"emits the sentinel `\"-1\"` when no site is set; the provider mirrors whatever the server " +
-					"reports into state and does not apply a default — leave the attribute unset to let the " +
-					"server decide.",
+					"reports the sentinel `\"-1\"` when no site is set; the provider mirrors whatever Jamf Pro " +
+					"reports into state and does not apply a default — leave the attribute unset to let Jamf " +
+					"Pro decide.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -144,8 +142,8 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			},
 			"supervision_identity_id": schema.StringAttribute{
 				MarkdownDescription: "Optional Jamf Pro supervision identity ID to associate with this ADE " +
-					"instance. Jamf Pro emits the sentinel `\"-1\"` when no supervision identity is set; the " +
-					"provider mirrors whatever the server reports into state and does not apply a default.",
+					"instance. Jamf Pro reports the sentinel `\"-1\"` when no supervision identity is set; the " +
+					"provider mirrors whatever Jamf Pro reports into state and does not apply a default.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -175,8 +173,8 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			},
 			"org_phone": schema.StringAttribute{
 				MarkdownDescription: "Organization phone number parsed from the uploaded server token. Apple " +
-					"may return values containing trailing whitespace; the provider preserves whatever the " +
-					"server emits without trimming.",
+					"may return values containing trailing whitespace; the provider preserves whatever Jamf " +
+					"Pro reports without trimming.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -185,7 +183,7 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"org_address": schema.StringAttribute{
 				MarkdownDescription: "Organization mailing address parsed from the uploaded server token. " +
 					"Apple may return values containing trailing whitespace; the provider preserves whatever " +
-					"the server emits without trimming.",
+					"Jamf Pro reports without trimming.",
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

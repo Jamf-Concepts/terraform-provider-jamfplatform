@@ -63,7 +63,7 @@ func (d *PolicyDataSource) Metadata(ctx context.Context, req datasource.Metadata
 // Schema returns the data source schema.
 func (d *PolicyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro classic policy by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat Computed projection of the most-frequently looked-up fields; manage the policy as a resource for full payload detail.",
+		MarkdownDescription: "Look up a Jamf Pro policy by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the most-frequently looked-up fields; manage the policy as a resource for full detail.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Policy ID. Mutually exclusive with `name`.",
@@ -80,7 +80,7 @@ func (d *PolicyDataSource) Schema(ctx context.Context, req datasource.SchemaRequ
 			"trigger":       schema.StringAttribute{MarkdownDescription: "Aggregate trigger label.", Computed: true},
 			"category_id":   schema.StringAttribute{MarkdownDescription: "Category ID.", Computed: true},
 			"category_name": schema.StringAttribute{MarkdownDescription: "Category display name.", Computed: true},
-			"site_id":       schema.StringAttribute{MarkdownDescription: "Site ID. `-1` means no site (`NONE`).", Computed: true},
+			"site_id":       schema.StringAttribute{MarkdownDescription: "Site ID. `-1` means no site.", Computed: true},
 			"site_name":     schema.StringAttribute{MarkdownDescription: "Site display name.", Computed: true},
 			"timeouts":      timeouts.Attributes(ctx),
 		},
