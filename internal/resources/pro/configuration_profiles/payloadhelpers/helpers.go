@@ -10,7 +10,6 @@ package payloadhelpers
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/xml"
 	"fmt"
 	"html"
 	"strings"
@@ -127,74 +126,11 @@ func CanonicalisePlistXML(raw []byte) []byte {
 	if err != nil {
 		return raw
 	}
-	if normalised, ok := decodeStringEntitiesInTree(parsed).(map[string]any); ok {
-		parsed = normalised
-	}
 	out, err := MarshalPlist(parsed)
 	if err != nil {
 		return raw
 	}
 	return out
-}
-
-// decodeStringEntitiesInTree walks a parsed plist tree and applies one extra
-// XML entity decode pass to every string scalar. Collapses the extra entity
-// layer Jamf Pro Classic leaves on the Update return path.
-//
-// The SDK's PayloadsXMLText.MarshalXML pre-escapes once so the server's
-// double-decode bug round-trips Create payloads correctly. Wire-verified
-// 2026-05-27 against tenant ff584e5b: that compensation works on POST
-// (Create) — GET-after-Create returns the inner plist with literal `"` in
-// `<string>` values. On PUT (Update) the server only fully decodes one
-// layer, so the stored plist keeps an extra entity layer and GET-after-
-// Update returns `&amp;#34;` where the user wrote `"`. Re-decoding once
-// here normalises both code paths to a single canonical shape (single-
-// layer `&#34;` in state bytes, decoded `"` during MaskPayload compare).
-//
-// Remove this helper once Jamf Pro Classic's Update path matches Create's
-// double-decode behaviour (or the SDK drops the PayloadsXMLText
-// pre-escape entirely).
-func decodeStringEntitiesInTree(v any) any {
-	switch t := v.(type) {
-	case string:
-		return decodeXMLEntitiesOnce(t)
-	case []any:
-		out := make([]any, len(t))
-		for i, item := range t {
-			out[i] = decodeStringEntitiesInTree(item)
-		}
-		return out
-	case map[string]any:
-		out := make(map[string]any, len(t))
-		for k, val := range t {
-			out[k] = decodeStringEntitiesInTree(val)
-		}
-		return out
-	default:
-		return v
-	}
-}
-
-// decodeXMLEntitiesOnce runs encoding/xml's standard CharData entity-decode
-// pass over a single value string. It only resolves XML-spec entities
-// (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, numeric `&#NN;` /
-// `&#xNN;`). Unknown entities and bare `<` cause a safe fallback that
-// returns the input unchanged, so user-authored values containing literal
-// `&` or `<` are never corrupted.
-func decodeXMLEntitiesOnce(s string) string {
-	if !strings.Contains(s, "&") {
-		return s
-	}
-	if strings.Contains(s, "<") {
-		return s
-	}
-	var wrapped struct {
-		V string `xml:",chardata"`
-	}
-	if err := xml.Unmarshal([]byte("<x>"+s+"</x>"), &wrapped); err != nil {
-		return s
-	}
-	return wrapped.V
 }
 
 // MaskPayload returns a deep-cloned representation of the input plist with
@@ -322,7 +258,7 @@ func normalizeBase64InString(s string) string {
 func trimAny(v any) any {
 	switch t := v.(type) {
 	case string:
-		return strings.TrimSpace(normalizeBase64InString(decodeXMLEntitiesOnce(t)))
+		return strings.TrimSpace(normalizeBase64InString(t))
 	case []any:
 		out := make([]any, len(t))
 		for i, item := range t {
