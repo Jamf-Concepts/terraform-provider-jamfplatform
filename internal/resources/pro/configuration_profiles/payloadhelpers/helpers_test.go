@@ -505,4 +505,3 @@ func TestNormalizeBase64InString_NewlineNotBase64Unchanged(t *testing.T) {
 		t.Errorf("multi-line non-base64 text mutated: got %q want %q", got, in)
 	}
 }
-

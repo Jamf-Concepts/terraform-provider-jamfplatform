@@ -5,83 +5,338 @@ package macos_configuration_profile
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
-// payloadsDiffSuppressor returns a string plan modifier that suppresses
-// diffs on the `general.payloads` attribute when the user's plan value is
-// semantically equivalent to the current state value modulo Jamf Pro's
-// well-known server-side normalisations. See helpers.go for the mask logic.
-//
-// When the plan and state payloads are semantically equal, the plan is
-// rewritten to match state so Terraform considers the attribute unchanged.
-// When the plan is genuinely different, the modifier leaves the plan value
-// alone — Terraform will surface the change as drift.
-//
-// The TF_LOG=DEBUG path always prints both the suppression decision and
-// (when suppressing) a coarse byte-length / structural summary so operators
-// debugging unexpected silence can see what the mask is doing.
-func payloadsDiffSuppressor() planmodifier.String {
-	return payloadsDiffSuppressorModifier{}
+// privatePayloadWriter is the subset of *resource.PrivateState used in
+// Create/Update for stashing the two payload references the three-way
+// compare consumes on the next plan. Decoupled from the concrete
+// framework type so the helper is testable and callable from any of the
+// CreateResponse/UpdateResponse private surfaces uniformly.
+type privatePayloadWriter interface {
+	SetKey(ctx context.Context, key string, value []byte) diag.Diagnostics
 }
 
-type payloadsDiffSuppressorModifier struct{}
-
-func (m payloadsDiffSuppressorModifier) Description(_ context.Context) string {
-	return "Suppresses diffs on the mobileconfig payload when the user-supplied plan matches the server-canonical state modulo Jamf Pro normalisations."
-}
-
-func (m payloadsDiffSuppressorModifier) MarkdownDescription(_ context.Context) string {
-	return "Suppresses diffs on the mobileconfig `payloads` attribute when the user-supplied plan matches the server-canonical state modulo Jamf Pro normalisations (UUID/Identifier/DisplayName rewrites, server-injected defaults, whitespace, etc.)."
-}
-
-func (m payloadsDiffSuppressorModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	// Skip on Create — no state to compare against. The plan value is the
-	// canonical form for first apply.
-	if req.StateValue.IsNull() {
-		return
-	}
-	// Skip when the user clears the field (Required schema rejects this
-	// anyway, but defend in depth).
-	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
-		return
-	}
-	if req.StateValue.IsUnknown() {
-		return
-	}
-
-	planRaw := req.PlanValue.ValueString()
-	stateRaw := req.StateValue.ValueString()
-	if planRaw == stateRaw {
-		tflog.Debug(ctx, "payload diff: byte-equal, no action needed")
-		return
-	}
-
-	equal, err := payloadhelpers.PayloadsSemanticallyEqual([]byte(planRaw), []byte(stateRaw))
+// Terraform's private-state API requires every stashed value to be valid
+// JSON. Mobileconfig XML is not, so wrap the bytes in a JSON string at
+// write time and decode at read time. json.Marshal of a Go string emits
+// a single JSON string literal that round-trips losslessly through
+// json.Unmarshal back into the same bytes.
+func encodePrivatePayload(b []byte) ([]byte, error) {
+	encoded, err := json.Marshal(string(b))
 	if err != nil {
-		resp.Diagnostics.AddAttributeWarning(req.Path,
+		return nil, fmt.Errorf("JSON-encoding payload for private state: %w", err)
+	}
+	return encoded, nil
+}
+
+func decodePrivatePayload(jsonValue []byte) ([]byte, error) {
+	if len(jsonValue) == 0 {
+		return nil, nil
+	}
+	var s string
+	if err := json.Unmarshal(jsonValue, &s); err != nil {
+		return nil, fmt.Errorf("JSON-decoding payload from private state: %w", err)
+	}
+	return []byte(s), nil
+}
+
+// privatePayloadReader is the subset of *resource.PrivateState used in
+// Read for fetching the three-way references stashed at the last Apply.
+type privatePayloadReader interface {
+	GetKey(ctx context.Context, key string) ([]byte, diag.Diagnostics)
+}
+
+// reconcileReadDrift overwrites state.Payloads with the server-canonical
+// form when an out-of-band admin UI edit is detected. assignResourceModel
+// runs first with its lenient self-healing (keeps state aligned to the
+// user-authored bytes when the server response is only Jamf
+// normalisation), but lenient compare absorbs admin-side service
+// add/remove/edit. The strict compare against the last-applied
+// canonical (private state) distinguishes:
+//
+//   - server equals lastCanonical → no drift since last Apply →
+//     keep the self-healed (user-authored) state.Payloads bytes.
+//   - server differs from lastCanonical → admin edited via UI →
+//     overwrite state.Payloads with the canonicalised server bytes so
+//     ModifyPlan's three-way decision surfaces a non-empty plan.
+//
+// When private state is empty (first Read post-import, pre-tracking
+// resources) the function is a no-op and the existing lenient
+// self-healing carries the day.
+func reconcileReadDrift(ctx context.Context, priv privatePayloadReader, state *ResourceModel, rawServerCanonical []byte) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if priv == nil || state == nil || state.General == nil || len(rawServerCanonical) == 0 {
+		return diags
+	}
+	lastCanonicalRaw, d := priv.GetKey(ctx, privateKeyLastCanonical)
+	diags.Append(d...)
+	if diags.HasError() {
+		return diags
+	}
+	lastCanonical, err := decodePrivatePayload(lastCanonicalRaw)
+	if err != nil || len(lastCanonical) == 0 {
+		// No baseline to compare against — preserve existing
+		// (lenient) self-healing behaviour.
+		return diags
+	}
+	canonicalisedServer := payloadhelpers.CanonicalisePlistXML(rawServerCanonical)
+	equal, err := payloadhelpers.PayloadsStructurallyEqual(lastCanonical, canonicalisedServer)
+	if err != nil {
+		diags.AddWarning("Read-side drift compare failed; leaving lenient self-healing in place", err.Error())
+		return diags
+	}
+	if equal {
+		// No drift — keep the lenient self-heal that assignResourceModel
+		// already applied.
+		return diags
+	}
+	// Drift detected: state.Payloads currently mirrors the user's HCL
+	// (from lenient self-heal). Overwrite with the server-canonical
+	// bytes so ModifyPlan's three-way decision and Terraform's diff
+	// engine see the admin's edit.
+	tflog.Info(ctx, "payload Read-side drift: server diverged from last-applied canonical; overwriting state.payloads with server canonical", map[string]any{
+		"server_bytes":         len(canonicalisedServer),
+		"last_canonical_bytes": len(lastCanonical),
+	})
+	state.General.Payloads = types.StringValue(string(canonicalisedServer))
+	return diags
+}
+
+// writePrivatePayloadRefs stashes the user-authored input bytes and the
+// raw server-canonical bytes captured immediately after the just-completed
+// Create or Update. Empty inputs are skipped — the three-way compare
+// falls back to the legacy two-way path when either reference is empty.
+//
+// IMPORTANT: rawServerCanonical must be the bytes returned by the SDK
+// GET (before any self-healing in assignResourceModel mutates
+// plan.General.Payloads). Self-healed bytes equal the user's HCL
+// authoring form, not the server-canonical form — using them here would
+// turn every Jamf-side strip (e.g. PPPC Location sanitisation) into a
+// perpetual false-positive drift on subsequent plans, because the
+// Read-side drift detector strict-compares this reference against the
+// next GET response.
+func writePrivatePayloadRefs(ctx context.Context, w privatePayloadWriter, userAuthoredInput string, rawServerCanonical []byte) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if w == nil {
+		return diags
+	}
+	if userAuthoredInput != "" {
+		encoded, err := encodePrivatePayload([]byte(userAuthoredInput))
+		if err != nil {
+			diags.AddError("Failed to encode last-applied input for private state", err.Error())
+			return diags
+		}
+		diags.Append(w.SetKey(ctx, privateKeyLastInput, encoded)...)
+	}
+	if len(rawServerCanonical) > 0 {
+		// Re-emit through CanonicalisePlistXML so the bytes share the
+		// same tab-indented format used elsewhere, keeping the strict
+		// compare in PayloadsStructurallyEqual formatting-insensitive.
+		canonicalised := payloadhelpers.CanonicalisePlistXML(rawServerCanonical)
+		encoded, err := encodePrivatePayload(canonicalised)
+		if err != nil {
+			diags.AddError("Failed to encode last-applied canonical for private state", err.Error())
+			return diags
+		}
+		// At Apply time, lastCanonical and serverNow share the same
+		// value — the next Read may diverge serverNow on admin drift.
+		diags.Append(w.SetKey(ctx, privateKeyLastCanonical, encoded)...)
+		diags.Append(w.SetKey(ctx, privateKeyServerNow, encoded)...)
+	}
+	return diags
+}
+
+// writePrivateServerNow refreshes the serverNow reference from the
+// current Read's server response. Does not touch lastCanonical, which
+// must stay frozen at the value captured by the most recent Create or
+// Update — that's the baseline the three-way drift detection compares
+// against.
+func writePrivateServerNow(ctx context.Context, w privatePayloadWriter, rawServerCanonical []byte) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if w == nil || len(rawServerCanonical) == 0 {
+		return diags
+	}
+	canonicalised := payloadhelpers.CanonicalisePlistXML(rawServerCanonical)
+	encoded, err := encodePrivatePayload(canonicalised)
+	if err != nil {
+		diags.AddError("Failed to encode server-now canonical for private state", err.Error())
+		return diags
+	}
+	diags.Append(w.SetKey(ctx, privateKeyServerNow, encoded)...)
+	return diags
+}
+
+// privateKeyLastInput stashes the user-authored mobileconfig payload from
+// the most recent successful Apply. Compared against the current plan's
+// payload to decide whether the user has changed their HCL.
+const privateKeyLastInput = "payload_last_input"
+
+// privateKeyLastCanonical stashes the server-canonical mobileconfig
+// payload returned immediately after the most recent successful Apply.
+// Frozen at apply time — never overwritten on Read. Compared against
+// privateKeyServerNow to detect admin UI edits since the last Apply.
+const privateKeyLastCanonical = "payload_last_canonical"
+
+// privateKeyServerNow stashes the server-canonical mobileconfig payload
+// observed at the most recent Read (refresh). Updated on every Read.
+// Used by ModifyPlan as the "serverNow" arm of ThreeWayCompare —
+// state.General.Payloads cannot be used for that purpose because
+// assignResourceModel's lenient self-healing rewrites it back to the
+// user-authored HCL form whenever the server response is only Jamf
+// normalisation.
+const privateKeyServerNow = "payload_server_now"
+
+// ModifyPlan runs the payload-diff decision before the per-attribute
+// modifiers fire. When both private-state references are present
+// (post-first-Apply, non-imported), it runs the three-way compare to
+// distinguish three cases:
+//
+//   - NoOp     — plan rewritten to state so Terraform reports no change.
+//   - Apply    — diff propagates naturally so Update runs.
+//   - Drift    — diff propagates so Terraform surfaces server-side change.
+//
+// When either reference is empty (Create, freshly imported, pre-tracking
+// resources) it falls back to the legacy two-way intersection compare via
+// PayloadsSemanticallyEqual. Same behaviour as the attribute-level
+// suppressor that previously lived in plan_modifiers.go.
+func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Create has no state; Delete has no plan. Either way the payload
+	// compare does not apply.
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var plan ResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var state ResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if plan.General == nil || state.General == nil {
+		return
+	}
+	if plan.General.Payloads.IsNull() || plan.General.Payloads.IsUnknown() {
+		return
+	}
+	if state.General.Payloads.IsNull() {
+		return
+	}
+
+	planBytes := []byte(plan.General.Payloads.ValueString())
+	stateBytes := []byte(state.General.Payloads.ValueString())
+	if string(planBytes) == string(stateBytes) {
+		return
+	}
+
+	lastInputRaw, diags := req.Private.GetKey(ctx, privateKeyLastInput)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	lastCanonicalRaw, diags := req.Private.GetKey(ctx, privateKeyLastCanonical)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	serverNowRaw, diags := req.Private.GetKey(ctx, privateKeyServerNow)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	lastInput, err := decodePrivatePayload(lastInputRaw)
+	if err != nil {
+		resp.Diagnostics.AddWarning("Could not decode payload_last_input from private state; falling back to two-way compare", err.Error())
+		lastInput = nil
+	}
+	lastCanonical, err := decodePrivatePayload(lastCanonicalRaw)
+	if err != nil {
+		resp.Diagnostics.AddWarning("Could not decode payload_last_canonical from private state; falling back to two-way compare", err.Error())
+		lastCanonical = nil
+	}
+	serverNow, err := decodePrivatePayload(serverNowRaw)
+	if err != nil {
+		resp.Diagnostics.AddWarning("Could not decode payload_server_now from private state; falling back to two-way compare", err.Error())
+		serverNow = nil
+	}
+	// Three-way's serverNow arm must compare against the actual current
+	// server canonical, not state.General.Payloads — assignResourceModel's
+	// lenient self-healing keeps state aligned to the user-authored HCL
+	// even when Jamf-side normalisations are present, which would
+	// produce structural false-positive drift here. Fall back to
+	// stateBytes only when private state has not yet been populated.
+	threeWayServerNow := serverNow
+	if len(threeWayServerNow) == 0 {
+		threeWayServerNow = stateBytes
+	}
+
+	if len(lastInput) > 0 && len(lastCanonical) > 0 {
+		decision, err := payloadhelpers.ThreeWayCompare(planBytes, lastInput, lastCanonical, threeWayServerNow)
+		if err != nil {
+			resp.Diagnostics.AddWarning(
+				"Payload three-way compare failed; falling back to two-way compare",
+				err.Error(),
+			)
+		} else {
+			switch decision {
+			case payloadhelpers.DecisionNoOp:
+				tflog.Info(ctx, "payload three-way: NoOp", map[string]any{
+					"plan_bytes":  len(planBytes),
+					"state_bytes": len(stateBytes),
+				})
+				plan.General.Payloads = state.General.Payloads
+				resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+				return
+			case payloadhelpers.DecisionApply:
+				tflog.Info(ctx, "payload three-way: Apply (user HCL changed since last apply)", map[string]any{
+					"plan_bytes":       len(planBytes),
+					"last_input_bytes": len(lastInput),
+					"state_bytes":      len(stateBytes),
+				})
+				return
+			case payloadhelpers.DecisionDrift:
+				tflog.Info(ctx, "payload three-way: Drift (server diverged from last-applied canonical)", map[string]any{
+					"last_canonical_bytes": len(lastCanonical),
+					"state_bytes":          len(stateBytes),
+				})
+				return
+			}
+		}
+	}
+
+	// Fallback: legacy two-way intersection compare. Used on the first
+	// plan post-Create, post-import, and any resource pre-dating the
+	// three-way private-state tracking.
+	equal, err := payloadhelpers.PayloadsSemanticallyEqual(planBytes, stateBytes)
+	if err != nil {
+		resp.Diagnostics.AddAttributeWarning(
+			path.Root("general").AtName("payloads"),
 			"Payload diff comparison failed; falling through to byte-level diff",
-			fmt.Sprintf("Could not parse or mask the payload for diff suppression: %v. Terraform will treat the change as drift.", err),
+			err.Error(),
 		)
 		return
 	}
-	if !equal {
-		tflog.Info(ctx, "payload diff: state and plan differ after masking; surfacing as drift",
+	if equal {
+		tflog.Info(ctx, "payload two-way fallback: semantically equal, suppressing diff",
 			map[string]any{
-				"plan_bytes":  len(planRaw),
-				"state_bytes": len(stateRaw),
+				"plan_bytes":  len(planBytes),
+				"state_bytes": len(stateBytes),
 			})
-		return
+		plan.General.Payloads = state.General.Payloads
+		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 	}
-	tflog.Info(ctx, "payload diff suppressed: state and plan semantically equal after masking",
-		map[string]any{
-			"plan_bytes":  len(planRaw),
-			"state_bytes": len(stateRaw),
-		})
-	resp.PlanValue = req.StateValue
 }

@@ -38,6 +38,7 @@ var (
 	_ resource.Resource                = &Resource{}
 	_ resource.ResourceWithImportState = &Resource{}
 	_ resource.ResourceWithIdentity    = &Resource{}
+	_ resource.ResourceWithModifyPlan  = &Resource{}
 )
 
 const (
@@ -132,9 +133,6 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 					"payloads": schema.StringAttribute{
 						MarkdownDescription: "The mobileconfig plist XML carrying the configuration the profile delivers. Jamf Pro re-serialises the plist server-side (compact format, `plist version=\"1\"`, server-assigned top-level UUIDs, defaults for fields the user omits, etc.); the provider's diff suppression treats those normalisations as no-ops. See the resource description for the exact comparison rules.",
 						Required:            true,
-						PlanModifiers: []planmodifier.String{
-							payloadsDiffSuppressor(),
-						},
 					},
 					"category_id": schema.StringAttribute{
 						MarkdownDescription: "Jamf Pro category ID. Use `-1` (default) for \"no category\". String form to mirror the rest of the provider's classic-API ID handling.",

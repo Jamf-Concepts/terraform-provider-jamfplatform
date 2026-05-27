@@ -39,6 +39,7 @@ var (
 	_ resource.Resource                = &Resource{}
 	_ resource.ResourceWithImportState = &Resource{}
 	_ resource.ResourceWithIdentity    = &Resource{}
+	_ resource.ResourceWithModifyPlan  = &Resource{}
 )
 
 const (
@@ -133,9 +134,6 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 					"payloads": schema.StringAttribute{
 						MarkdownDescription: "The mobileconfig plist XML carrying the configuration the profile delivers. The provider's diff suppression treats Jamf Pro's server-side normalisations as no-ops.",
 						Required:            true,
-						PlanModifiers: []planmodifier.String{
-							payloadsDiffSuppressor(),
-						},
 					},
 					"category_id": schema.StringAttribute{
 						MarkdownDescription: "Jamf Pro category ID. Use `-1` (default) for \"no category\".",

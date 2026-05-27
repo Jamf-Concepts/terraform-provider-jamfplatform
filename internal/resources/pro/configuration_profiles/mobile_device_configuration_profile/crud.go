@@ -47,6 +47,13 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		return
 	}
 
+	// Capture the user-authored payload before assignResourceModel
+	// overwrites plan.General.Payloads with the server-canonical form.
+	var userAuthoredPayload string
+	if plan.General != nil && !plan.General.Payloads.IsNull() && !plan.General.Payloads.IsUnknown() {
+		userAuthoredPayload = plan.General.Payloads.ValueString()
+	}
+
 	created, err := r.client.CreateMobileDeviceConfigurationProfileByID(createCtx, "0", input)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device configuration profile", err.Error())
@@ -69,11 +76,19 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		resp.Diagnostics.AddError("Error reading created mobile device configuration profile", err.Error())
 		return
 	}
+	var rawServerPayload []byte
+	if got != nil && got.General != nil && got.General.Payloads != nil {
+		rawServerPayload = []byte(string(*got.General.Payloads))
+	}
 	resp.Diagnostics.Append(assignResourceModel(createCtx, &plan, got)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(writePrivatePayloadRefs(createCtx, resp.Private, userAuthoredPayload, rawServerPayload)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -137,7 +152,19 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 		resp.Diagnostics.AddError("Error reading mobile device configuration profile", err.Error())
 		return
 	}
+	var rawServerPayload []byte
+	if got != nil && got.General != nil && got.General.Payloads != nil {
+		rawServerPayload = []byte(string(*got.General.Payloads))
+	}
 	resp.Diagnostics.Append(assignResourceModel(readCtx, &state, got)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(reconcileReadDrift(readCtx, req.Private, &state, rawServerPayload)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(writePrivateServerNow(readCtx, resp.Private, rawServerPayload)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -182,6 +209,13 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		return
 	}
 
+	// Capture the user-authored payload before assignResourceModel
+	// overwrites plan.General.Payloads with the server-canonical form.
+	var userAuthoredPayload string
+	if plan.General != nil && !plan.General.Payloads.IsNull() && !plan.General.Payloads.IsUnknown() {
+		userAuthoredPayload = plan.General.Payloads.ValueString()
+	}
+
 	id := state.ID.ValueString()
 	if err := r.client.UpdateMobileDeviceConfigurationProfileByID(updateCtx, id, input); err != nil {
 		resp.Diagnostics.AddError("Error updating mobile device configuration profile", err.Error())
@@ -193,11 +227,19 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		resp.Diagnostics.AddError("Error reading updated mobile device configuration profile", err.Error())
 		return
 	}
+	var rawServerPayload []byte
+	if got != nil && got.General != nil && got.General.Payloads != nil {
+		rawServerPayload = []byte(string(*got.General.Payloads))
+	}
 	resp.Diagnostics.Append(assignResourceModel(updateCtx, &plan, got)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(writePrivatePayloadRefs(updateCtx, resp.Private, userAuthoredPayload, rawServerPayload)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

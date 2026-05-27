@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
@@ -607,6 +608,343 @@ func TestAccResource_MacOSConfigurationProfile_ImportState(t *testing.T) {
 				ImportState:                          true,
 				ImportStateVerify:                    false,
 				ImportStateVerifyIdentifierAttribute: "id",
+			},
+		},
+	})
+}
+
+// mutatePPPCProfileChangeIdentifier simulates an out-of-band admin UI
+// edit by fetching a PPPC profile, parsing its mobileconfig payload, and
+// changing the Identifier of the first existing TCC service entry. The
+// modified payload is then PUT back via the SDK. Mutating an existing
+// service value rather than adding a new service avoids Jamf's
+// invalid-service sanitisation pass (Jamf silently strips unknown or
+// malformed service entries — see the DEVONthink Location case
+// documented in helpers.go), so the modification is guaranteed to
+// survive the round-trip and surface as drift on the next plan.
+func mutatePPPCProfileChangeIdentifier(t *testing.T, profileID, newIdentifierValue string) {
+	t.Helper()
+	c := newSDKClient(t)
+	ctx := context.Background()
+
+	got, err := c.GetOSXConfigurationProfileByID(ctx, profileID)
+	if err != nil {
+		t.Fatalf("GetOSXConfigurationProfileByID(%s): %v", profileID, err)
+	}
+	if got == nil || got.General == nil || got.General.Payloads == nil {
+		t.Fatalf("profile %s missing payload in GET response", profileID)
+	}
+	currentPayload := []byte(string(*got.General.Payloads))
+
+	parsed, _, err := payloadhelpers.ParsePlist(currentPayload)
+	if err != nil {
+		t.Fatalf("ParsePlist for profile %s: %v", profileID, err)
+	}
+	pcAny, ok := parsed["PayloadContent"]
+	if !ok {
+		t.Fatalf("profile %s payload missing PayloadContent", profileID)
+	}
+	pc, ok := pcAny.([]any)
+	if !ok || len(pc) == 0 {
+		t.Fatalf("profile %s PayloadContent not a non-empty array", profileID)
+	}
+	first, ok := pc[0].(map[string]any)
+	if !ok {
+		t.Fatalf("profile %s PayloadContent[0] not a dict", profileID)
+	}
+	servicesAny, ok := first["Services"]
+	if !ok {
+		t.Fatalf("profile %s PayloadContent[0] missing Services (not a PPPC payload)", profileID)
+	}
+	services, ok := servicesAny.(map[string]any)
+	if !ok {
+		t.Fatalf("profile %s PayloadContent[0].Services not a dict", profileID)
+	}
+	mutated := false
+	for serviceKey, entriesAny := range services {
+		entries, ok := entriesAny.([]any)
+		if !ok || len(entries) == 0 {
+			continue
+		}
+		entry, ok := entries[0].(map[string]any)
+		if !ok {
+			continue
+		}
+		entry["Identifier"] = newIdentifierValue
+		t.Logf("admin-UI simulation: mutated Services[%q][0].Identifier → %q", serviceKey, newIdentifierValue)
+		mutated = true
+		break
+	}
+	if !mutated {
+		t.Fatalf("profile %s had no Services[*] entries to mutate", profileID)
+	}
+
+	newPayloadBytes, err := payloadhelpers.MarshalPlist(parsed)
+	if err != nil {
+		t.Fatalf("MarshalPlist for profile %s: %v", profileID, err)
+	}
+
+	newName := ""
+	if got.General.Name != nil {
+		newName = *got.General.Name
+	}
+	pxt := proclassic.PayloadsXMLText(newPayloadBytes)
+	update := &proclassic.OsXConfigurationProfile{
+		General: &proclassic.OsXConfigurationProfileGeneral{
+			Name:     &newName,
+			Payloads: &pxt,
+		},
+	}
+	if err := c.UpdateOSXConfigurationProfileByID(ctx, profileID, update); err != nil {
+		t.Fatalf("UpdateOSXConfigurationProfileByID(%s) during admin-UI simulation: %v", profileID, err)
+	}
+}
+
+// TestAccResource_MacOSConfigurationProfile_AdminUIEdit_SurfacesAsDrift —
+// the three-way payload compare must catch an out-of-band UI edit: the
+// admin adds a service to the PPPC profile's Services dict via the Jamf
+// Pro UI (simulated here via a direct SDK PUT). The next terraform plan
+// against unchanged HCL must produce a non-empty plan so the drift is
+// surfaced and the next apply re-aligns the server with the user's HCL.
+//
+// Before the three-way ModifyPlan landed, the legacy two-way compare
+// with intersection semantics dropped the asymmetric Services key and
+// silently reported "no changes" — the bug this test pins.
+func TestAccResource_MacOSConfigurationProfile_AdminUIEdit_SurfacesAsDrift(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-drift-" + suffix
+	payload := readFixture(t, "1Password__screen_recording_profile.mobileconfig")
+
+	var profileID string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configMinimal(name, payload),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					func(s *terraform.State) error {
+						rs, ok := s.RootModule().Resources["jamfplatform_pro_macos_configuration_profile.test"]
+						if !ok {
+							return fmt.Errorf("resource not found in state after Create")
+						}
+						profileID = rs.Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				// Re-apply identical config immediately after Create: with the
+				// three-way private-state references freshly populated, the
+				// plan must be empty.
+				Config: configMinimal(name, payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+			{
+				// Out-of-band admin UI edit between this step's plan-refresh
+				// and plan: the Identifier of a TCC service entry is mutated
+				// server-side. The plan must report drift (non-empty), which
+				// the immediately-following apply step will then reconcile
+				// back to the HCL baseline.
+				PreConfig: func() {
+					if profileID == "" {
+						t.Fatal("profileID empty; Step 1 Check should have captured it")
+					}
+					mutatePPPCProfileChangeIdentifier(t, profileID, "com.acceptance.injected-by-ui-simulation")
+				},
+				Config: configMinimal(name, payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectNonEmptyPlan(),
+					},
+				},
+			},
+		},
+	})
+}
+
+// mutatePPPCProfileAddValidService is the add-direction counterpart to
+// mutatePPPCProfileChangeIdentifier. It injects a real-shape entry under
+// a known-valid TCC service key. Jamf's invalid-service sanitisation
+// pass is *key-name-driven* — well-known TCC service keys
+// (Accessibility, Reminders, SpeechRecognition, …) survive the round
+// trip when the entry dict is well-formed.
+func mutatePPPCProfileAddValidService(t *testing.T, profileID, serviceKey string) {
+	t.Helper()
+	c := newSDKClient(t)
+	ctx := context.Background()
+
+	got, err := c.GetOSXConfigurationProfileByID(ctx, profileID)
+	if err != nil {
+		t.Fatalf("GetOSXConfigurationProfileByID(%s): %v", profileID, err)
+	}
+	currentPayload := []byte(string(*got.General.Payloads))
+	parsed, _, err := payloadhelpers.ParsePlist(currentPayload)
+	if err != nil {
+		t.Fatalf("ParsePlist: %v", err)
+	}
+	services := parsed["PayloadContent"].([]any)[0].(map[string]any)["Services"].(map[string]any)
+	services[serviceKey] = []any{
+		map[string]any{
+			"Authorization":   "Allow",
+			"Identifier":      "com.acceptance.added-via-ui",
+			"CodeRequirement": "anchor apple generic",
+			"IdentifierType":  "bundleID",
+		},
+	}
+	newPayloadBytes, err := payloadhelpers.MarshalPlist(parsed)
+	if err != nil {
+		t.Fatalf("MarshalPlist: %v", err)
+	}
+	newName := ""
+	if got.General.Name != nil {
+		newName = *got.General.Name
+	}
+	pxt := proclassic.PayloadsXMLText(newPayloadBytes)
+	if err := c.UpdateOSXConfigurationProfileByID(ctx, profileID, &proclassic.OsXConfigurationProfile{
+		General: &proclassic.OsXConfigurationProfileGeneral{Name: &newName, Payloads: &pxt},
+	}); err != nil {
+		t.Fatalf("UpdateOSXConfigurationProfileByID add-service: %v", err)
+	}
+	t.Logf("admin-UI simulation: added Services[%q]", serviceKey)
+}
+
+// mutatePPPCProfileRemoveFirstService removes the first service entry
+// from PayloadContent[0].Services.
+func mutatePPPCProfileRemoveFirstService(t *testing.T, profileID string) {
+	t.Helper()
+	c := newSDKClient(t)
+	ctx := context.Background()
+
+	got, err := c.GetOSXConfigurationProfileByID(ctx, profileID)
+	if err != nil {
+		t.Fatalf("GetOSXConfigurationProfileByID(%s): %v", profileID, err)
+	}
+	currentPayload := []byte(string(*got.General.Payloads))
+	parsed, _, err := payloadhelpers.ParsePlist(currentPayload)
+	if err != nil {
+		t.Fatalf("ParsePlist: %v", err)
+	}
+	services := parsed["PayloadContent"].([]any)[0].(map[string]any)["Services"].(map[string]any)
+	if len(services) < 2 {
+		t.Fatalf("profile %s has fewer than 2 services; remove-test needs >= 2 to leave a non-empty Services dict", profileID)
+	}
+	for k := range services {
+		t.Logf("admin-UI simulation: removed Services[%q]", k)
+		delete(services, k)
+		break
+	}
+	newPayloadBytes, err := payloadhelpers.MarshalPlist(parsed)
+	if err != nil {
+		t.Fatalf("MarshalPlist: %v", err)
+	}
+	newName := ""
+	if got.General.Name != nil {
+		newName = *got.General.Name
+	}
+	pxt := proclassic.PayloadsXMLText(newPayloadBytes)
+	if err := c.UpdateOSXConfigurationProfileByID(ctx, profileID, &proclassic.OsXConfigurationProfile{
+		General: &proclassic.OsXConfigurationProfileGeneral{Name: &newName, Payloads: &pxt},
+	}); err != nil {
+		t.Fatalf("UpdateOSXConfigurationProfileByID remove-service: %v", err)
+	}
+}
+
+// TestAccResource_MacOSConfigurationProfile_AdminUIAdd_SurfacesAsDrift —
+// admin adds a new service to a PPPC profile via the UI; plan must
+// produce non-empty.
+func TestAccResource_MacOSConfigurationProfile_AdminUIAdd_SurfacesAsDrift(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-add-" + suffix
+	payload := readFixture(t, "1Password__screen_recording_profile.mobileconfig")
+
+	var profileID string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configMinimal(name, payload),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					func(s *terraform.State) error {
+						rs, ok := s.RootModule().Resources["jamfplatform_pro_macos_configuration_profile.test"]
+						if !ok {
+							return fmt.Errorf("resource not found in state after Create")
+						}
+						profileID = rs.Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				PreConfig: func() {
+					if profileID == "" {
+						t.Fatal("profileID empty")
+					}
+					mutatePPPCProfileAddValidService(t, profileID, "Accessibility")
+				},
+				Config: configMinimal(name, payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectNonEmptyPlan(),
+					},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_MacOSConfigurationProfile_AdminUIRemove_SurfacesAsDrift —
+// admin removes a service from a PPPC profile via the UI; plan must
+// produce non-empty.
+func TestAccResource_MacOSConfigurationProfile_AdminUIRemove_SurfacesAsDrift(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-rm-" + suffix
+	// DEVONthink fixture carries multiple services so removing one still
+	// leaves a non-empty Services dict on the wire.
+	payload := readFixture(t, "DEVONthink__pppcp_profile.mobileconfig")
+
+	var profileID string
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configMinimal(name, payload),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					func(s *terraform.State) error {
+						rs, ok := s.RootModule().Resources["jamfplatform_pro_macos_configuration_profile.test"]
+						if !ok {
+							return fmt.Errorf("resource not found in state after Create")
+						}
+						profileID = rs.Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				PreConfig: func() {
+					if profileID == "" {
+						t.Fatal("profileID empty")
+					}
+					mutatePPPCProfileRemoveFirstService(t, profileID)
+				},
+				Config: configMinimal(name, payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectNonEmptyPlan(),
+					},
+				},
 			},
 		},
 	})
