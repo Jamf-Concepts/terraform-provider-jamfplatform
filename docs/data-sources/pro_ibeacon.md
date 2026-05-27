@@ -41,8 +41,8 @@ output "ibeacon_example_by_name" {
 
 ### Read-Only
 
-- `include_any_major_value` (Boolean) True when the iBeacon matches any major value (Jamf encodes this as `major = "-1"` on the wire).
-- `include_any_minor_value` (Boolean) True when the iBeacon matches any minor value (Jamf encodes this as `minor = "-1"` on the wire).
+- `include_any_major_value` (Boolean) True when the iBeacon matches any major value.
+- `include_any_minor_value` (Boolean) True when the iBeacon matches any minor value.
 - `major` (Number) iBeacon major value (0–65535). Null when `include_any_major_value` is true.
 - `minor` (Number) iBeacon minor value (0–65535). Null when `include_any_minor_value` is true.
 - `uuid` (String) iBeacon UUID in canonical 8-4-4-4-12 hex form.

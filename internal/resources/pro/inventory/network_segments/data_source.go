@@ -54,7 +54,7 @@ func (d *NetworkSegmentsDataSource) Metadata(ctx context.Context, req datasource
 // range — and omits the per-item fields that require an extra GET per segment.
 func (d *NetworkSegmentsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "List Jamf Pro network segments. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular `jamfplatform_pro_network_segment` data source lookup.",
+		MarkdownDescription: "List Jamf Pro network segments. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular `jamfplatform_pro_network_segment` data source lookup.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

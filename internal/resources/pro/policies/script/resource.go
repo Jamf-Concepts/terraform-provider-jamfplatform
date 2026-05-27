@@ -73,7 +73,7 @@ func (r *ScriptResource) IdentitySchema(ctx context.Context, req resource.Identi
 // Schema returns the Terraform schema for the script resource.
 func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows. Parameter slots 1–3 are reserved by Jamf; user-managed labels are exposed via `parameter_4` through `parameter_11`.",
+		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Script ID assigned by Jamf Pro.",
@@ -90,7 +90,7 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"category_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the Jamf Pro category this script belongs to. Lookup via the `jamfplatform_pro_category` data source. When omitted, the server reports `-1` (no category).",
+				MarkdownDescription: "ID of the Jamf Pro category this script belongs to. Look it up via the `jamfplatform_pro_category` data source. When omitted, Jamf Pro reports `-1` (no category).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -98,14 +98,14 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"category_name": schema.StringAttribute{
-				MarkdownDescription: "Display name of the category referenced by `category_id`. Server-derived.",
+				MarkdownDescription: "Display name of the category referenced by `category_id`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"info": schema.StringAttribute{
-				MarkdownDescription: "Informational text shown to end users (e.g., in Self Service) describing the script.",
+				MarkdownDescription: "Informational text shown to end users (e.g. in Self Service) describing the script.",
 				Optional:            true,
 			},
 			"notes": schema.StringAttribute{
@@ -113,11 +113,11 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Optional:            true,
 			},
 			"os_requirements": schema.StringAttribute{
-				MarkdownDescription: "Comma-separated macOS versions the script supports (e.g., `13.0.x,14.0.x`). Empty allows all.",
+				MarkdownDescription: "Comma-separated macOS versions the script supports (e.g. `13.0.x,14.0.x`). Empty allows all.",
 				Optional:            true,
 			},
 			"priority": schema.StringAttribute{
-				MarkdownDescription: "Execution order relative to other policy actions. One of `BEFORE`, `AFTER`, `AT_REBOOT`. Server defaults to `AFTER`.",
+				MarkdownDescription: "Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -136,7 +136,7 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			"parameter_10": optionalParameterAttribute(10),
 			"parameter_11": optionalParameterAttribute(11),
 			"script_contents": schema.StringAttribute{
-				MarkdownDescription: "Raw script contents. Plain text (shell, Python, etc.).",
+				MarkdownDescription: "Script contents as plain text (shell, Python, etc.).",
 				Optional:            true,
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{

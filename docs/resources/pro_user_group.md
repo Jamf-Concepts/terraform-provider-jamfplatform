@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_user_group Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro user group (smart or static). For smart groups, supply criteria; the user list is server-resolved. For static groups, supply members (user IDs as strings); criteria is forbidden. The group_type field acts as the discriminator and triggers a replace if changed — mirrors jamfplatform_device_group.
+  Manages a Jamf Pro user group (smart or static). For smart groups, supply criteria; Jamf Pro resolves the user list. For static groups, supply members (user IDs as strings); criteria is forbidden. The group_type field acts as the discriminator and triggers a replace if changed — mirrors jamfplatform_device_group.
 ---
 
 # jamfplatform_pro_user_group (Resource)
 
-Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; the user list is server-resolved. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field acts as the discriminator and triggers a replace if changed — mirrors `jamfplatform_device_group`.
+Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; Jamf Pro resolves the user list. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field acts as the discriminator and triggers a replace if changed — mirrors `jamfplatform_device_group`.
 
 ## Example Usage
 
@@ -56,7 +56,7 @@ resource "jamfplatform_pro_user_group" "managed_apple_ids_vpp_associated" {
 ### Optional
 
 - `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to determine smart-group membership. Required when `group_type = "smart"`. Forbidden when `group_type = "static"`. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins. (see [below for nested schema](#nestedatt--criteria))
-- `members` (Set of String) User IDs (as strings) to assign as members of a static user group. Required when `group_type = "static"`. Forbidden when `group_type = "smart"` — smart-group membership is server-resolved from `criteria`.
+- `members` (Set of String) User IDs (as strings) to assign as members of a static user group. Required when `group_type = "static"`. Forbidden when `group_type = "smart"` — Jamf Pro resolves smart-group membership from `criteria`.
 - `notify_on_membership_change` (Boolean) Whether Jamf Pro emits a notification when group membership changes. Defaults to `false`.
 - `site_id` (String) Optional Jamf Pro site ID to scope the user group. Omit to leave unscoped (server sets the `NONE` site, id `-1`).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
@@ -65,7 +65,7 @@ resource "jamfplatform_pro_user_group" "managed_apple_ids_vpp_associated" {
 
 - `id` (String) User group ID assigned by Jamf Pro.
 - `member_count` (Number) Total members reported by Jamf Pro.
-- `site_name` (String) Site name reported by Jamf Pro for the assigned `site_id`. Server-derived.
+- `site_name` (String) Site name reported by Jamf Pro for the assigned `site_id`. Returned by Jamf Pro; not user-settable.
 
 <a id="nestedatt--criteria"></a>
 ### Nested Schema for `criteria`

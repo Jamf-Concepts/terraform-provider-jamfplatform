@@ -41,7 +41,7 @@ output "script_example_by_id" {
 - `info` (String) Informational text shown to end users.
 - `name` (String) Script display name.
 - `notes` (String) Administrator-only notes.
-- `os_requirements` (String) macOS version constraints (e.g., `13.0.x,14.0.x`).
+- `os_requirements` (String) macOS version constraints (e.g. `13.0.x,14.0.x`).
 - `parameter_10` (String) Label for script parameter slot 10.
 - `parameter_11` (String) Label for script parameter slot 11.
 - `parameter_4` (String) Label for script parameter slot 4.
@@ -50,7 +50,7 @@ output "script_example_by_id" {
 - `parameter_7` (String) Label for script parameter slot 7.
 - `parameter_8` (String) Label for script parameter slot 8.
 - `parameter_9` (String) Label for script parameter slot 9.
-- `priority` (String) Execution order. One of `BEFORE`, `AFTER`, `AT_REBOOT`.
+- `priority` (String) Execution order. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`.
 - `script_contents` (String) Raw script contents.
 
 <a id="nestedatt--timeouts"></a>

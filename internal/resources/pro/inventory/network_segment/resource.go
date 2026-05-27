@@ -124,28 +124,28 @@ func (r *NetworkSegmentResource) Schema(ctx context.Context, req resource.Schema
 				},
 			},
 			"distribution_point": schema.StringAttribute{
-				MarkdownDescription: "Distribution point assigned by Jamf Pro for this segment. Server-derived.",
+				MarkdownDescription: "Distribution point assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"distribution_server": schema.StringAttribute{
-				MarkdownDescription: "Distribution server assigned by Jamf Pro for this segment. Server-derived.",
+				MarkdownDescription: "Distribution server assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"swu_server": schema.StringAttribute{
-				MarkdownDescription: "Software update server assigned by Jamf Pro for this segment. Server-derived.",
+				MarkdownDescription: "Software update server assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"url": schema.StringAttribute{
-				MarkdownDescription: "NetBoot/imaging URL assigned by Jamf Pro for this segment. Server-derived.",
+				MarkdownDescription: "NetBoot/imaging URL assigned by Jamf Pro for this segment. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

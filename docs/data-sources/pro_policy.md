@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_policy Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro classic policy by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat Computed projection of the most-frequently looked-up fields; manage the policy as a resource for full payload detail.
+  Look up a Jamf Pro policy by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection of the most-frequently looked-up fields; manage the policy as a resource for full detail.
 ---
 
 # jamfplatform_pro_policy (Data Source)
 
-Look up a Jamf Pro classic policy by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat Computed projection of the most-frequently looked-up fields; manage the policy as a resource for full payload detail.
+Look up a Jamf Pro policy by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the most-frequently looked-up fields; manage the policy as a resource for full detail.
 
 ## Example Usage
 
@@ -43,7 +43,7 @@ data "jamfplatform_pro_policy" "by_id" {
 - `category_name` (String) Category display name.
 - `enabled` (Boolean) Whether the policy is enabled.
 - `frequency` (String) Policy frequency.
-- `site_id` (String) Site ID. `-1` means no site (`NONE`).
+- `site_id` (String) Site ID. `-1` means no site.
 - `site_name` (String) Site display name.
 - `trigger` (String) Aggregate trigger label.
 

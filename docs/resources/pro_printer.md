@@ -53,7 +53,7 @@ resource "jamfplatform_pro_printer" "lab_color" {
 ### Optional
 
 - `category` (String) Display name of an existing Jamf Pro category to assign this printer to. The category must already exist in the tenant; supplying an unknown name produces a 409 Conflict at apply time. Leave unset to mean "no category assigned."
-- `cups_name` (String) CUPS queue name (Jamf classic wire field `CUPS_name`).
+- `cups_name` (String) CUPS queue name.
 - `info` (String) Free-text information shown to administrators when the printer is mapped or unmapped.
 - `location` (String) Physical location of the printer (free text).
 - `make_default` (Boolean) Whether to set this printer as the default printer on target Macs when mapped. Defaults to `false`.
@@ -61,9 +61,9 @@ resource "jamfplatform_pro_printer" "lab_color" {
 - `notes` (String) Free-text notes about the printer (e.g. who created it, when, why).
 - `os_requirements` (String) Operating-system version requirement for this printer (admin-UI Limitations tab). Free-text, typically a comma-separated list of macOS versions (e.g. `"13.5.2, 16.6"`).
 - `ppd` (String) Short name of the PPD file (e.g. `HP DeskJet 2600 series.ppd`). Only valid when `use_generic = false`. Plan-time error if set with `use_generic = true`.
-- `ppd_contents` (String) Inline contents of the PPD file. Only valid when `use_generic = false`. The Jamf Pro server strips trailing whitespace from this field on every round-trip; the provider's custom type treats two values as semantically equal when they differ only by trailing whitespace, so `ppd_contents = file("some.ppd")` does not produce drift on subsequent plans. PPD bodies are driver descriptors rather than secrets — `terraform plan` shows the full text. Wrap the value in `sensitive(...)` in config if you would like Terraform to redact it.
+- `ppd_contents` (String) Inline contents of the PPD file. Only valid when `use_generic = false`. Jamf Pro strips trailing whitespace from this field on every round-trip; the provider's custom type treats two values as semantically equal when they differ only by trailing whitespace, so `ppd_contents = file("some.ppd")` does not produce drift on subsequent plans. PPD bodies are driver descriptors rather than secrets — `terraform plan` shows the full text. Wrap the value in `sensitive(...)` in config if you would like Terraform to redact it.
 - `ppd_path` (String) Filesystem path to the PPD file on target Macs (e.g. `/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd`). Required when `use_generic = false` — without it the server silently falls back to the generic PPD. Plan-time error if set with `use_generic = true`. Computed when unset: the server populates it with the bundled Generic.ppd path under the generic configuration.
-- `shared` (Boolean) Whether the printer is shared. Jamf Classic serializes this as the strings `"true"` / `"false"`; the provider translates to and from a Terraform Bool transparently.
+- `shared` (Boolean) Whether the printer is shared.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `uri` (String) Device URI of the printer (e.g. `ipp://10.1.20.120/`, `lpd://printer.local/queue1`).
 - `use_generic` (Boolean) Whether to use the bundled macOS Generic.ppd. When `true` (the default) the Jamf Pro server uses the generic PPD and clears any user-supplied `ppd`, `ppd_path`, or `ppd_contents`. When `false` you must supply a concrete `ppd_path` — `ppd` and `ppd_contents` alone are not sufficient; the server falls back to the generic PPD if `ppd_path` is missing.

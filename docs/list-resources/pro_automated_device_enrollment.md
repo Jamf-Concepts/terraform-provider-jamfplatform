@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_automated_device_enrollment List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro Automated Device Enrollment instances. The Pro /v1/device-enrollments endpoint accepts no RSQL filter — supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The list endpoint returns the full instance shape per row, so include_resource = true does not require a follow-up GET per item.
+  Lists Jamf Pro Automated Device Enrollment instances. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so include_resource = true does not require a follow-up read per item.
 ---
 
 # jamfplatform_pro_automated_device_enrollment (List Resource)
 
-Lists Jamf Pro Automated Device Enrollment instances. The Pro `/v1/device-enrollments` endpoint accepts no RSQL filter — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The list endpoint returns the full instance shape per row, so `include_resource = true` does not require a follow-up GET per item.
+Lists Jamf Pro Automated Device Enrollment instances. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so `include_resource = true` does not require a follow-up read per item.
 
 ## Example Usage
 
@@ -37,7 +37,7 @@ list "jamfplatform_pro_automated_device_enrollment" "prod_instances" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

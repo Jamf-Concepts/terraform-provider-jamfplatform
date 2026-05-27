@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_package List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Searches Jamf Pro packages via the V1 /packages endpoint's RSQL filter. The supported selectors are a server-enforced whitelist — see selector attribute for the allowed values.
+  Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the selector attribute for the allowed values.
 ---
 
 # jamfplatform_pro_package (List Resource)
 
-Searches Jamf Pro packages via the V1 /packages endpoint's RSQL filter. The supported selectors are a server-enforced whitelist — see `selector` attribute for the allowed values.
+Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the `selector` attribute for the allowed values.
 
 
 

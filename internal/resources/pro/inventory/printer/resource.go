@@ -103,7 +103,7 @@ func (r *PrinterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 			},
 			"cups_name": schema.StringAttribute{
-				MarkdownDescription: "CUPS queue name (Jamf classic wire field `CUPS_name`).",
+				MarkdownDescription: "CUPS queue name.",
 				Optional:            true,
 			},
 			"location": schema.StringAttribute{
@@ -147,13 +147,13 @@ func (r *PrinterResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"ppd_contents": schema.StringAttribute{
-				MarkdownDescription: "Inline contents of the PPD file. Only valid when `use_generic = false`. The Jamf Pro server strips trailing whitespace from this field on every round-trip; the provider's custom type treats two values as semantically equal when they differ only by trailing whitespace, so `ppd_contents = file(\"some.ppd\")` does not produce drift on subsequent plans. PPD bodies are driver descriptors rather than secrets — `terraform plan` shows the full text. Wrap the value in `sensitive(...)` in config if you would like Terraform to redact it.",
+				MarkdownDescription: "Inline contents of the PPD file. Only valid when `use_generic = false`. Jamf Pro strips trailing whitespace from this field on every round-trip; the provider's custom type treats two values as semantically equal when they differ only by trailing whitespace, so `ppd_contents = file(\"some.ppd\")` does not produce drift on subsequent plans. PPD bodies are driver descriptors rather than secrets — `terraform plan` shows the full text. Wrap the value in `sensitive(...)` in config if you would like Terraform to redact it.",
 				CustomType:          trimmedStringType{},
 				Optional:            true,
 				Computed:            true,
 			},
 			"shared": schema.BoolAttribute{
-				MarkdownDescription: "Whether the printer is shared. Jamf Classic serializes this as the strings `\"true\"` / `\"false\"`; the provider translates to and from a Terraform Bool transparently.",
+				MarkdownDescription: "Whether the printer is shared.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),

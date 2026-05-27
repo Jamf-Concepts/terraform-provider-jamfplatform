@@ -3,24 +3,22 @@
 page_title: "jamfplatform_pro_package Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro package by ID or by exact display name. Exactly one of id or display_name must be supplied. Returns the full server-state record including manifest body, every server-populated hash, and JCDS transfer status.
+  Look up a Jamf Pro package by ID or by exact display name. Exactly one of id or display_name must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and JCDS transfer status.
 ---
 
 # jamfplatform_pro_package (Data Source)
 
-Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full server-state record including manifest body, every server-populated hash, and JCDS transfer status.
+Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and JCDS transfer status.
 
 ## Example Usage
 
 ```terraform
-# Look up a Jamf Pro package by its server-assigned ID.
+# Look up a Jamf Pro package by its ID.
 data "jamfplatform_pro_package" "by_id" {
   id = "123"
 }
 
-# Look up a Jamf Pro package by its display name (wire field `packageName`,
-# exact match). Resolves via the V1 list endpoint with an RSQL
-# packageName=="..." clause server-side.
+# Look up a Jamf Pro package by its display name (exact match).
 data "jamfplatform_pro_package" "by_name" {
   display_name = "MyApp 1.0.0"
 }
@@ -31,13 +29,13 @@ data "jamfplatform_pro_package" "by_name" {
 
 ### Optional
 
-- `display_name` (String) Package display name (wire field `packageName`, exact match). Mutually exclusive with `id`.
+- `display_name` (String) Package display name (exact match). Mutually exclusive with `id`.
 - `id` (String) Package ID. Mutually exclusive with `display_name`.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
-- `available_in_software_update` (Boolean) Available in Software Update flag (wire field `swu`).
+- `available_in_software_update` (Boolean) Available in Software Update flag.
 - `category_id` (String) Category ID (`"-1"` sentinel for None).
 - `cloud_transfer_status` (String) JCDS transfer status.
 - `file_name` (String) On-disk filename Jamf Pro associates with the binary.
@@ -61,7 +59,7 @@ data "jamfplatform_pro_package" "by_name" {
 - `self_healing_action` (String) Self-healing action.
 - `sha256` (String) SHA-256 hex digest.
 - `sha3_512` (String) SHA-3-512 hex digest of the package binary.
-- `size` (String) Package binary size in bytes (server-derived).
+- `size` (String) Package binary size in bytes. Returned by Jamf Pro; not user-settable.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`

@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_script Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows. Parameter slots 1–3 are reserved by Jamf; user-managed labels are exposed via parameter_4 through parameter_11.
+  Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via parameter_4 through parameter_11.
 ---
 
 # jamfplatform_pro_script (Resource)
 
-Manages a Jamf Pro script. Scripts execute on managed devices via policies or self service workflows. Parameter slots 1–3 are reserved by Jamf; user-managed labels are exposed via `parameter_4` through `parameter_11`.
+Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`.
 
 ## Example Usage
 
@@ -53,10 +53,10 @@ resource "jamfplatform_pro_script" "cleanup_temp" {
 
 ### Optional
 
-- `category_id` (String) ID of the Jamf Pro category this script belongs to. Lookup via the `jamfplatform_pro_category` data source. When omitted, the server reports `-1` (no category).
-- `info` (String) Informational text shown to end users (e.g., in Self Service) describing the script.
+- `category_id` (String) ID of the Jamf Pro category this script belongs to. Look it up via the `jamfplatform_pro_category` data source. When omitted, Jamf Pro reports `-1` (no category).
+- `info` (String) Informational text shown to end users (e.g. in Self Service) describing the script.
 - `notes` (String) Administrator-only notes about the script.
-- `os_requirements` (String) Comma-separated macOS versions the script supports (e.g., `13.0.x,14.0.x`). Empty allows all.
+- `os_requirements` (String) Comma-separated macOS versions the script supports (e.g. `13.0.x,14.0.x`). Empty allows all.
 - `parameter_10` (String) Label for script parameter slot 10.
 - `parameter_11` (String) Label for script parameter slot 11.
 - `parameter_4` (String) Label for script parameter slot 4.
@@ -65,13 +65,13 @@ resource "jamfplatform_pro_script" "cleanup_temp" {
 - `parameter_7` (String) Label for script parameter slot 7.
 - `parameter_8` (String) Label for script parameter slot 8.
 - `parameter_9` (String) Label for script parameter slot 9.
-- `priority` (String) Execution order relative to other policy actions. One of `BEFORE`, `AFTER`, `AT_REBOOT`. Server defaults to `AFTER`.
-- `script_contents` (String) Raw script contents. Plain text (shell, Python, etc.).
+- `priority` (String) Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`.
+- `script_contents` (String) Script contents as plain text (shell, Python, etc.).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
-- `category_name` (String) Display name of the category referenced by `category_id`. Server-derived.
+- `category_name` (String) Display name of the category referenced by `category_id`. Returned by Jamf Pro; not user-settable.
 - `id` (String) Script ID assigned by Jamf Pro.
 
 <a id="nestedatt--timeouts"></a>

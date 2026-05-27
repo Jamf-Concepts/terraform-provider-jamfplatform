@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_directory_binding List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro directory bindings. Classic has no RSQL — supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The /directorybindings list endpoint only returns id + name per row; setting include_resource = true triggers a follow-up GET per item to populate the full record.
+  Lists Jamf Pro directory bindings. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. The list returns id and name per row by default — setting include_resource = true fetches the full record for each item.
 ---
 
 # jamfplatform_pro_directory_binding (List Resource)
 
-Lists Jamf Pro directory bindings. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The /directorybindings list endpoint only returns `id` + `name` per row; setting `include_resource = true` triggers a follow-up GET per item to populate the full record.
+Lists Jamf Pro directory bindings. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — setting `include_resource = true` fetches the full record for each item.
 
 ## Example Usage
 
@@ -36,7 +36,7 @@ list "jamfplatform_pro_directory_binding" "prod_bindings" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

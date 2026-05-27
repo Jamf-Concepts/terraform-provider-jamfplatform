@@ -21,7 +21,7 @@ func IDSetAttribute(attrLabel string) schema.SetAttribute {
 	return schema.SetAttribute{
 		ElementType:         types.StringType,
 		Optional:            true,
-		MarkdownDescription: fmt.Sprintf("Set of Jamf Pro classic %s IDs.", attrLabel),
+		MarkdownDescription: fmt.Sprintf("Set of Jamf Pro %s IDs.", attrLabel),
 	}
 }
 

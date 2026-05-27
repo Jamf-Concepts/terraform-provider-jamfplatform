@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_user_groups Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  List Jamf Pro user groups. Classic has no RSQL — supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular jamfplatform_pro_user_group lookup.
+  List Jamf Pro user groups. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular jamfplatform_pro_user_group lookup.
 ---
 
 # jamfplatform_pro_user_groups (Data Source)
 
-List Jamf Pro user groups. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular `jamfplatform_pro_user_group` lookup.
+List Jamf Pro user groups. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular `jamfplatform_pro_user_group` lookup.
 
 ## Example Usage
 
@@ -35,7 +35,7 @@ output "vpp_user_groups" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

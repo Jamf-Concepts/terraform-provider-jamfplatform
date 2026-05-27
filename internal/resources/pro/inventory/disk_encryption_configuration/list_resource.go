@@ -64,7 +64,7 @@ func (r *DiskEncryptionConfigurationListResource) Configure(ctx context.Context,
 // ListResourceConfigSchema describes the supported list filters.
 func (r *DiskEncryptionConfigurationListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro disk encryption configurations. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The /diskencryptionconfigurations list endpoint only returns `id` + `name` per row; setting `include_resource = true` triggers a follow-up GET per item to populate the full record.",
+		Description: "Lists Jamf Pro disk encryption configurations. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — setting `include_resource = true` fetches the full record for each item.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

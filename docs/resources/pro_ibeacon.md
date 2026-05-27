@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_ibeacon Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set include_any_major_value = true (the classic API encodes this as major = "-1" on the wire) and leave major unset — same for include_any_minor_value and minor. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
+  Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set include_any_major_value = true and leave major unset — same for include_any_minor_value and minor. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
 ---
 
 # jamfplatform_pro_ibeacon (Resource)
 
-Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set `include_any_major_value = true` (the classic API encodes this as `major = "-1"` on the wire) and leave `major` unset — same for `include_any_minor_value` and `minor`. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
+Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set `include_any_major_value = true` and leave `major` unset — same for `include_any_minor_value` and `minor`. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
 
 ## Example Usage
 
@@ -45,8 +45,8 @@ resource "jamfplatform_pro_ibeacon" "specific_major_any_minor" {
 
 ### Optional
 
-- `include_any_major_value` (Boolean) When `true`, the iBeacon matches any major value (Jamf encodes this as `major = "-1"` on the wire). When `true`, `major` must NOT be set. Defaults to `false`. Independent of `include_any_minor_value`.
-- `include_any_minor_value` (Boolean) When `true`, the iBeacon matches any minor value (Jamf encodes this as `minor = "-1"` on the wire). When `true`, `minor` must NOT be set. Defaults to `false`. Independent of `include_any_major_value`.
+- `include_any_major_value` (Boolean) When `true`, the iBeacon matches any major value. When `true`, `major` must NOT be set. Defaults to `false`. Independent of `include_any_minor_value`.
+- `include_any_minor_value` (Boolean) When `true`, the iBeacon matches any minor value. When `true`, `minor` must NOT be set. Defaults to `false`. Independent of `include_any_major_value`.
 - `major` (Number) Major value of the iBeacon region. Must be 0–65535. Required when `include_any_major_value` is omitted or set to `false`. Must NOT be set when `include_any_major_value = true`.
 - `minor` (Number) Minor value of the iBeacon region. Must be 0–65535. Required when `include_any_minor_value` is omitted or set to `false`. Must NOT be set when `include_any_minor_value = true`.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))

@@ -57,7 +57,7 @@ func (d *UserGroupsDataSource) Metadata(ctx context.Context, req datasource.Meta
 // a singular `jamfplatform_pro_user_group` data source lookup.
 func (d *UserGroupsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "List Jamf Pro user groups. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular `jamfplatform_pro_user_group` lookup.",
+		MarkdownDescription: "List Jamf Pro user groups. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular `jamfplatform_pro_user_group` lookup.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

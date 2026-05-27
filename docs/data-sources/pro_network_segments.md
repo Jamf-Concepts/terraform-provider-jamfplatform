@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_network_segments Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  List Jamf Pro network segments. Classic has no RSQL — supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular jamfplatform_pro_network_segment data source lookup.
+  List Jamf Pro network segments. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular jamfplatform_pro_network_segment data source lookup.
 ---
 
 # jamfplatform_pro_network_segments (Data Source)
 
-List Jamf Pro network segments. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular `jamfplatform_pro_network_segment` data source lookup.
+List Jamf Pro network segments. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular `jamfplatform_pro_network_segment` data source lookup.
 
 ## Example Usage
 
@@ -35,7 +35,7 @@ output "hq_network_segments" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

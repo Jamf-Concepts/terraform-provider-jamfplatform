@@ -79,20 +79,20 @@ func (r *IconResource) IdentitySchema(ctx context.Context, req resource.Identity
 // Schema returns the Terraform schema for the icon resource.
 func (r *IconResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: `Manages a Jamf Pro icon. Icons are uploaded via the ` + "`/api/pro/v1/tenant/{tenantId}/icon`" + ` endpoint and referenced by ID from Self Service branding configurations.
+		MarkdownDescription: `Manages a Jamf Pro icon. Icons are uploaded to Jamf Pro and referenced by ID from Self Service branding configurations.
 
-**Source-driven change detection**: the provider opens ` + "`icon_file_source`" + ` during every plan, computes a SHA-256 of the bytes, and stores it as ` + "`source_hash`" + `. When the hash changes, Terraform replaces the resource (no in-place update — Jamf Pro has no icon update endpoint). When the hash is unchanged the resource is stable.
+**Source-driven change detection**: the provider opens ` + "`icon_file_source`" + ` during every plan, computes a SHA-256 of the bytes, and stores it as ` + "`source_hash`" + `. When the hash changes, Terraform replaces the resource (no in-place update — Jamf Pro does not support icon updates). When the hash is unchanged the resource is stable.
 
 **Source types**:
 - **Local file**: ` + "`icon_file_source = \"./icon.png\"`" + `. Provider reads bytes on every plan. Stable across plans unless file content changes.
 - **URL**: ` + "`icon_file_source = \"https://cdn.example.com/icon.png\"`" + `. Provider downloads on every plan (~tens of KB). Triggers replacement when the remote content changes — useful for tracking upstream icons (e.g. App Store CDN).
 - **Frozen URL behaviour**: if you need a URL-sourced icon to NOT track upstream changes, download the icon locally and switch ` + "`icon_file_source`" + ` to the local path.
 
-**No DELETE endpoint**: Jamf Pro does not expose a delete API for icons. ` + "`terraform destroy`" + ` and replacements both remove the resource from Terraform state only; the icon record persists on the tenant.
+**Destroy behaviour**: Jamf Pro does not support deleting an icon record. ` + "`terraform destroy`" + ` and replacements both remove the resource from Terraform state only; the icon record persists on the tenant.
 
 **Import workflow** (no spurious replacement):
 1. ` + "`terraform import jamfplatform_pro_icon.example 42`" + `. Provider downloads the icon bytes via the CDN URL and stores the SHA-256 in state.
-2. Download the icon locally from the URL stored in state (e.g. ` + "`curl -o ./icon.png \"$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\\\"')\"`" + `). **You must download from the URL — do NOT reuse the file you originally uploaded.** Jamf Pro re-encodes uploaded PNGs server-side (different zlib compression and/or metadata), so the bytes served back from the CDN are not byte-identical to what you uploaded.
+2. Download the icon locally from the URL stored in state (e.g. ` + "`curl -o ./icon.png \"$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\\\"')\"`" + `). **You must download from the URL — do NOT reuse the file you originally uploaded.** Jamf Pro re-encodes uploaded PNGs (different zlib compression and/or metadata), so the bytes served back from the CDN are not byte-identical to what you uploaded.
 3. Add ` + "`icon_file_source = \"./icon.png\"`" + ` to your config.
 4. ` + "`terraform plan`" + ` shows an in-place update on ` + "`icon_file_source`" + ` (null → path). No replacement because the local bytes now match what was stored on import.
 

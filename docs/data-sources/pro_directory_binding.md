@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_directory_binding Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext bind password — the wire never echoes it back. Use the resource (not the data source) to manage the password.
+  Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
 ---
 
 # jamfplatform_pro_directory_binding (Data Source)
 
-Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — the wire never echoes it back. Use the resource (not the data source) to manage the password.
+Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
 
 ## Example Usage
 
@@ -65,18 +65,18 @@ Optional:
 Read-Only:
 
 - `admin_groups` (String) Comma-separated AD groups granted local admin.
-- `create_mobile_account` (Boolean) **"Create Mobile Account"** in the Jamf Pro admin UI. Wire element: `cache_last_user`.
+- `create_mobile_account` (Boolean) **"Create Mobile Account"** in the Jamf Pro admin UI.
 - `default_shell` (String) Default login shell.
-- `force_local_home_directory` (Boolean) **"Force local home directory on startup disk"** in the Jamf Pro admin UI. Wire element: `local_home`.
+- `force_local_home_directory` (Boolean) **"Force local home directory on startup disk"** in the Jamf Pro admin UI.
 - `forest` (String) Active Directory forest.
-- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Wire element: `gid`.
+- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI.
 - `multiple_domains` (Boolean) Allow multiple AD domains.
-- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Wire element: `mount_style`.
+- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI.
 - `preferred_domain` (String) Preferred AD domain controller hostname.
 - `require_confirmation` (Boolean) **"Require confirmation before creating a mobile account"** in the Jamf Pro admin UI.
-- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Wire element: `uid`.
+- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI.
 - `use_unc_path` (Boolean) Use a UNC path for the network home location.
-- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Wire element: `user_gid`.
+- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI.
 
 
 <a id="nestedatt--admitmac"></a>
@@ -88,17 +88,17 @@ Read-Only:
 - `admin_group` (String) **"Allow administration by"** in the Jamf Pro admin UI.
 - `cached_credentials` (Number) **"Cached credentials"** in the Jamf Pro admin UI.
 - `default_shell` (String) Default login shell.
-- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI. Wire element: `gid`.
+- `gid_attribute_mapping` (String) **"Map Group GID to attribute"** in the Jamf Pro admin UI.
 - `groups_ou` (String) **"Groups OU"** in the Jamf Pro admin UI.
-- `home_location` (String) **"Home Location"** in the Jamf Pro admin UI. Wire element: `local_home` (string for ADmitMac).
+- `home_location` (String) **"Home Location"** in the Jamf Pro admin UI.
 - `mount_network_home` (Boolean) **"Mount network home as sharepoint"** in the Jamf Pro admin UI.
-- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI. Wire element: `mount_style`.
+- `network_protocol` (String) **"Network Protocol"** in the Jamf Pro admin UI.
 - `place_home_folders` (String) **"Place home folders in"** in the Jamf Pro admin UI.
 - `printers_ou` (String) **"Printers OU"** in the Jamf Pro admin UI.
 - `require_confirmation` (Boolean) **"Require confirmation"** in the Jamf Pro admin UI.
 - `shared_folders_ou` (String) **"Shared Folders OU"** in the Jamf Pro admin UI.
-- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI. Wire element: `uid`.
-- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI. Wire element: `user_gid`.
+- `uid_attribute_mapping` (String) **"Map UID to attribute"** in the Jamf Pro admin UI.
+- `user_gid_attribute_mapping` (String) **"Map User GID to attribute"** in the Jamf Pro admin UI.
 - `users_ou` (String) **"Users OU"** in the Jamf Pro admin UI.
 
 
@@ -109,7 +109,7 @@ Read-Only:
 
 - `overwrite_existing` (Boolean) Overwrite an existing Centrify configuration.
 - `preferred_domain_server` (String) Preferred Centrify domain server hostname.
-- `update_pam` (Boolean) Update PAM configuration (wire element is `update_PAM`).
+- `update_pam` (Boolean) Update PAM configuration.
 - `workstation_mode` (Boolean) Bind in Workstation mode.
 - `zone` (String) Centrify zone name.
 

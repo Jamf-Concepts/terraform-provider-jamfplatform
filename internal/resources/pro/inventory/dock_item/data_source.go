@@ -58,7 +58,7 @@ func (d *DockItemDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 			},
 			"type":     schema.StringAttribute{MarkdownDescription: "Dock item type (`App`, `File`, or `Folder`).", Computed: true},
 			"path":     schema.StringAttribute{MarkdownDescription: "Dock item path.", Computed: true},
-			"contents": schema.StringAttribute{MarkdownDescription: "Server-computed PLIST representation of the dock tile.", Computed: true},
+			"contents": schema.StringAttribute{MarkdownDescription: "PLIST representation of the dock tile. Returned by Jamf Pro; not user-settable.", Computed: true},
 			"timeouts": timeouts.Attributes(ctx),
 		},
 	}

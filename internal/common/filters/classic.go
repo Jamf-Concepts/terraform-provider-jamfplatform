@@ -17,7 +17,7 @@ import (
 // fetched. It is intentionally narrow: a single case-insensitive substring match
 // against the resource's display name. For exact-name lookup, use the singular
 // "by name" data source instead.
-const classicFilterBlockDescription = "Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup."
+const classicFilterBlockDescription = "Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead."
 
 const classicNameSubstringDescription = "Case-insensitive substring matched against the resource's display name. Empty or omitted returns every item."
 

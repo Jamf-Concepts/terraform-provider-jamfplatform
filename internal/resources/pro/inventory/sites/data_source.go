@@ -50,7 +50,7 @@ func (d *SitesDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 // Schema returns the plural data source schema.
 func (d *SitesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "List Jamf Pro sites. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Omit the filter to receive every site.",
+		MarkdownDescription: "List Jamf Pro sites. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every site.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

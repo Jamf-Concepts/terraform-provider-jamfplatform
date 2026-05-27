@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_site List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro sites. Classic has no RSQL — supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched.
+  Lists Jamf Pro sites. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
 ---
 
 # jamfplatform_pro_site (List Resource)
 
-Lists Jamf Pro sites. Classic has no RSQL — supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched.
+Lists Jamf Pro sites. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
 
 ## Example Usage
 
@@ -35,7 +35,7 @@ list "jamfplatform_pro_site" "primary_like" {
 
 ### Optional
 
-- `filter` (Attributes) Optional client-side filter for classic-API list operations. Applied after the full list is fetched (classic endpoints do not accept query parameters). Use the singular `by name` data source for exact-name lookup. (see [below for nested schema](#nestedatt--filter))
+- `filter` (Attributes) Optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. For exact-name lookup, use the singular `by name` data source instead. (see [below for nested schema](#nestedatt--filter))
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`
