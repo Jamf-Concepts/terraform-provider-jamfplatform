@@ -96,7 +96,7 @@ resource "jamfplatform_pro_policy" "universal" {
 - `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
 - `self_service` (Attributes) Self Service integration. The classic wire carries the notification bool as `<notification>` and the delivery method as the sibling `<notification_type>` element — the provider models them as `display_notifications` (bool) and `notification_location` (string), mirroring the Jamf Pro admin UI labels. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `user_interaction` (Attributes) User interaction prompts shown around policy execution. Cross-field rules: `allow_users_to_defer = false` forbids both deferral fields; `allow_deferral_until_utc` and `allow_deferral_minutes` are mutually exclusive (transitioning between forms requires destroy+recreate). (see [below for nested schema](#nestedatt--user_interaction))
+- `user_interaction` (Attributes) User interaction prompts shown around policy execution. The "Deferral Type" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Transitioning between deferral types is an in-place Update. (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
@@ -144,11 +144,11 @@ Read-Only:
 
 Optional:
 
-- `activation_date` (String) Activation date (`yyyy-mm-dd hh:mm:ss`).
-- `expiration_date` (String) Expiration date (`yyyy-mm-dd hh:mm:ss`).
-- `no_execute_end` (String) Daily end of the no-execute window (e.g. `7:00 AM`).
-- `no_execute_on` (Set of String) Day-of-week labels on which the policy must not execute (e.g. `Sun`, `Mon`, …).
-- `no_execute_start` (String) Daily start of the no-execute window (e.g. `5:00 PM`).
+- `activation_date` (String) Activation date in 24-hour `YYYY-MM-DD HH:MM:SS` form (e.g. `2027-06-01 14:30:00`).
+- `expiration_date` (String) Expiration date in 24-hour `YYYY-MM-DD HH:MM:SS` form (e.g. `2027-12-31 23:59:59`).
+- `no_execute_end` (String) Daily end of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1-12 with no leading zero (e.g. `7:00 AM`, `12:30 PM`).
+- `no_execute_on` (Set of String) Day-of-week labels on which the policy must not execute. Three-letter abbreviations: `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`.
+- `no_execute_start` (String) Daily start of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1-12 with no leading zero (e.g. `5:00 PM`, `12:30 AM`).
 
 
 <a id="nestedatt--general--network_limitations"></a>
@@ -494,11 +494,14 @@ Optional:
 
 Optional:
 
-- `allow_deferral_minutes` (Number) Maximum deferral duration in minutes. Must be a positive multiple of 1440 (one day) — the classic API rejects any other value with HTTP 409. Mutually exclusive with `allow_deferral_until_utc`.
-- `allow_deferral_until_utc` (String) Maximum deferral cut-off in UTC ISO-8601. Mutually exclusive with `allow_deferral_minutes`.
-- `allow_users_to_defer` (Boolean) Allow the user to defer the policy.
-- `complete_message` (String) Message displayed after the policy completes. UI label "Complete Message"; wire field `<message_finish>`.
-- `start_message` (String) Message displayed before the policy runs. UI label "Start Message"; wire field `<message_start>`.
+- `complete_message` (String) Message displayed after the policy completes. UI label "Complete Message".
+- `deferral_days` (Number) Number of days the user may defer the policy after the first prompt. UI label "Duration" (in days). Required when `deferral_type = "duration"`; forbidden otherwise.
+- `deferral_type` (String) User deferral mode. UI label "Deferral Type". One of:
+  - `none` — no deferral allowed (the policy runs without prompting).
+  - `date` — deferral allowed until `deferral_until_utc`; the policy runs after that cut-off regardless.
+  - `duration` — deferral allowed for `deferral_days` days from first prompt.
+- `deferral_until_utc` (String) Date/time at which deferrals are prohibited and the policy runs. ISO-8601 with millisecond precision and a four-digit numeric offset (e.g. `2027-01-01T01:00:00.000+0000`). Required when `deferral_type = "date"`; forbidden otherwise.
+- `start_message` (String) Message displayed before the policy runs. UI label "Start Message".
 
 ## Import
 

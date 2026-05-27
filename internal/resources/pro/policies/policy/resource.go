@@ -13,6 +13,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -41,7 +42,6 @@ type PolicyResource struct {
 var _ resource.Resource = &PolicyResource{}
 var _ resource.ResourceWithImportState = &PolicyResource{}
 var _ resource.ResourceWithIdentity = &PolicyResource{}
-var _ resource.ResourceWithConfigValidators = &PolicyResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -135,16 +135,65 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						MarkdownDescription: "Optional schedule limitations for when the policy may run. Only the user-settable inputs are surfaced — Jamf Pro internally also stores `activation_date_epoch`, `activation_date_utc`, `expiration_date_epoch`, and `expiration_date_utc` as deterministic transforms of `activation_date` / `expiration_date`, but those are derivable client-side via Terraform stdlib (`formatdate`, etc.) and are not modeled here.",
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
-							"activation_date": optComputedString("Activation date (`yyyy-mm-dd hh:mm:ss`)."),
-							"expiration_date": optComputedString("Expiration date (`yyyy-mm-dd hh:mm:ss`)."),
+							"activation_date": schema.StringAttribute{
+								MarkdownDescription: "Activation date in 24-hour `YYYY-MM-DD HH:MM:SS` form (e.g. `2027-06-01 14:30:00`).",
+								Optional:            true,
+								Computed:            true,
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										activationExpirationDatePattern,
+										"Value must be 24-hour YYYY-MM-DD HH:MM:SS (e.g. 2027-06-01 14:30:00)",
+									),
+								},
+							},
+							"expiration_date": schema.StringAttribute{
+								MarkdownDescription: "Expiration date in 24-hour `YYYY-MM-DD HH:MM:SS` form (e.g. `2027-12-31 23:59:59`).",
+								Optional:            true,
+								Computed:            true,
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										activationExpirationDatePattern,
+										"Value must be 24-hour YYYY-MM-DD HH:MM:SS (e.g. 2027-12-31 23:59:59)",
+									),
+								},
+							},
 							"no_execute_on": schema.SetAttribute{
-								MarkdownDescription: "Day-of-week labels on which the policy must not execute (e.g. `Sun`, `Mon`, …).",
+								MarkdownDescription: "Day-of-week labels on which the policy must not execute. Three-letter abbreviations: `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`.",
 								ElementType:         types.StringType,
 								Optional:            true,
 								Computed:            true,
+								Validators: []validator.Set{
+									setvalidator.ValueStringsAre(
+										stringvalidator.OneOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"),
+									),
+								},
 							},
-							"no_execute_start": optComputedString("Daily start of the no-execute window (e.g. `5:00 PM`)."),
-							"no_execute_end":   optComputedString("Daily end of the no-execute window (e.g. `7:00 AM`)."),
+							"no_execute_start": schema.StringAttribute{
+								MarkdownDescription: "Daily start of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1-12 with no leading zero (e.g. `5:00 PM`, `12:30 AM`).",
+								Optional:            true,
+								Computed:            true,
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										noExecuteTimePattern,
+										"Value must be 12-hour h:MM AM / h:MM PM (e.g. 5:00 PM)",
+									),
+								},
+							},
+							"no_execute_end": schema.StringAttribute{
+								MarkdownDescription: "Daily end of the no-execute window in 12-hour `h:MM AM` / `h:MM PM` form, hour 1-12 with no leading zero (e.g. `7:00 AM`, `12:30 PM`).",
+								Optional:            true,
+								Computed:            true,
+								PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+								Validators: []validator.String{
+									stringvalidator.RegexMatches(
+										noExecuteTimePattern,
+										"Value must be 12-hour h:MM AM / h:MM PM (e.g. 7:00 AM)",
+									),
+								},
+							},
 						},
 					},
 					"network_limitations": schema.SingleNestedAttribute{
@@ -517,22 +566,44 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"user_interaction": schema.SingleNestedAttribute{
-				MarkdownDescription: "User interaction prompts shown around policy execution. Cross-field rules: `allow_users_to_defer = false` forbids both deferral fields; `allow_deferral_until_utc` and `allow_deferral_minutes` are mutually exclusive (transitioning between forms requires destroy+recreate).",
+				MarkdownDescription: "User interaction prompts shown around policy execution. The \"Deferral Type\" dropdown (None / Date / Duration) is modelled as `deferral_type`, with `deferral_until_utc` (Date form) and `deferral_days` (Duration form) as type-specific siblings. Transitioning between deferral types is an in-place Update.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"start_message":            optComputedString("Message displayed before the policy runs. UI label \"Start Message\"; wire field `<message_start>`."),
-					"allow_users_to_defer":     optComputedBool("Allow the user to defer the policy."),
-					"allow_deferral_until_utc": optComputedString("Maximum deferral cut-off in UTC ISO-8601. Mutually exclusive with `allow_deferral_minutes`."),
-					"allow_deferral_minutes": schema.Int64Attribute{
-						MarkdownDescription: "Maximum deferral duration in minutes. Must be a positive multiple of 1440 (one day) — the classic API rejects any other value with HTTP 409. Mutually exclusive with `allow_deferral_until_utc`.",
+					"start_message": optComputedString("Message displayed before the policy runs. UI label \"Start Message\"."),
+					"deferral_type": schema.StringAttribute{
+						MarkdownDescription: "User deferral mode. UI label \"Deferral Type\". One of:\n  - `none` — no deferral allowed (the policy runs without prompting).\n  - `date` — deferral allowed until `deferral_until_utc`; the policy runs after that cut-off regardless.\n  - `duration` — deferral allowed for `deferral_days` days from first prompt.",
 						Optional:            true,
 						Computed:            true,
-						PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
-						Validators: []validator.Int64{
-							MultipleOfInt64(minutesPerDay),
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+						Validators: []validator.String{
+							stringvalidator.OneOf("none", "date", "duration"),
+							DeferralTypeCompanionsValidator(),
 						},
 					},
-					"complete_message": optComputedString("Message displayed after the policy completes. UI label \"Complete Message\"; wire field `<message_finish>`."),
+					// deferral_until_utc and deferral_days are plain Optional (no
+					// Computed, no UseNonNullStateForUnknown) — value-discriminated
+					// siblings of deferral_type. The companions must clear to null
+					// in the plan on a type transition (e.g. Date→Duration removes
+					// `deferral_until_utc`); UseNonNullStateForUnknown would
+					// resurrect the prior-step value and trip the cross-field
+					// validator. The server never independently surfaces these
+					// (their wire values are always derived from deferral_type),
+					// so Computed buys nothing.
+					"deferral_until_utc": schema.StringAttribute{
+						MarkdownDescription: "Date/time at which deferrals are prohibited and the policy runs. ISO-8601 with millisecond precision and a four-digit numeric offset (e.g. `2027-01-01T01:00:00.000+0000`). Required when `deferral_type = \"date\"`; forbidden otherwise.",
+						Optional:            true,
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(
+								deferralUntilUtcPattern,
+								"Value must be ISO-8601 with millisecond precision and a four-digit numeric offset (e.g. 2027-01-01T01:00:00.000+0000)",
+							),
+						},
+					},
+					"deferral_days": schema.Int64Attribute{
+						MarkdownDescription: "Number of days the user may defer the policy after the first prompt. UI label \"Duration\" (in days). Required when `deferral_type = \"duration\"`; forbidden otherwise.",
+						Optional:            true,
+					},
+					"complete_message": optComputedString("Message displayed after the policy completes. UI label \"Complete Message\"."),
 				},
 			},
 			"disk_encryption": schema.SingleNestedAttribute{
@@ -553,16 +624,6 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Delete: true,
 			}),
 		},
-	}
-}
-
-// ConfigValidators registers plan-time cross-field validators that mirror the
-// Jamf Pro classic /policies endpoint's server-side checks. Catching the
-// constraints at plan time gives users a clear error before apply rather than
-// the bare HTTP 409 the server surfaces.
-func (r *PolicyResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
-	return []resource.ConfigValidator{
-		UserInteractionConfigValidator(),
 	}
 }
 

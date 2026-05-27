@@ -331,13 +331,27 @@ type PolicyFilesProcessesModel struct {
 	ExecuteCommand       types.String `tfsdk:"execute_command"`       // wire: <run_command>
 }
 
-// PolicyUserInteractionModel models <policy><user_interaction>.
+// PolicyUserInteractionModel models <policy><user_interaction>. Attribute names
+// mirror the Jamf Pro admin UI labels on the "User Interaction" tab.
+//
+// The UI surfaces a single "Deferral Type" dropdown with three options
+// (None / Date / Duration); the wire splits this across
+// <allow_users_to_defer>, <allow_deferral_until_utc>, and
+// <allow_deferral_minutes>. The provider hides that split:
+//
+//   - `deferral_type = "none"`     → wire: defer=false, until="", minutes=0
+//   - `deferral_type = "date"`     → wire: defer=true,  until=<deferral_until_utc>, minutes=0
+//   - `deferral_type = "duration"` → wire: defer=true,  until="", minutes=<deferral_days>*1440
+//
+// The wire `<allow_deferral_minutes>` granularity (multiples of 1440) and the
+// raw `<allow_users_to_defer>` master switch are no longer exposed; the
+// admin UI matches the same abstraction.
 type PolicyUserInteractionModel struct {
-	StartMessage          types.String `tfsdk:"start_message"` // wire: <message_start>
-	AllowUsersToDefer     types.Bool   `tfsdk:"allow_users_to_defer"`
-	AllowDeferralUntilUtc types.String `tfsdk:"allow_deferral_until_utc"`
-	AllowDeferralMinutes  types.Int64  `tfsdk:"allow_deferral_minutes"`
-	CompleteMessage       types.String `tfsdk:"complete_message"` // wire: <message_finish>
+	StartMessage     types.String `tfsdk:"start_message"`      // wire: <message_start>
+	DeferralType     types.String `tfsdk:"deferral_type"`      // synthetic: none/date/duration
+	DeferralUntilUtc types.String `tfsdk:"deferral_until_utc"` // wire: <allow_deferral_until_utc>
+	DeferralDays     types.Int64  `tfsdk:"deferral_days"`      // wire: <allow_deferral_minutes>/1440
+	CompleteMessage  types.String `tfsdk:"complete_message"`   // wire: <message_finish>
 }
 
 // PolicyDiskEncryptionModel models <policy><disk_encryption>.

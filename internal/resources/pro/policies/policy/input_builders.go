@@ -676,14 +676,60 @@ func buildPolicyFilesProcesses(m *PolicyFilesProcessesModel) *proclassic.PolicyP
 	}
 }
 
+// minutesPerDay is the wire granularity for <allow_deferral_minutes>. The
+// classic API stores deferral duration in minutes and enforces a
+// multiple-of-1440 (one day) constraint; the provider only sends multiples
+// derived from `deferral_days * minutesPerDay`.
+const minutesPerDay = 1440
+
+// buildPolicyUserInteraction maps the synthetic `deferral_type` enum onto the
+// classic API's three underlying wire fields:
+//
+//   - `none`     → <allow_users_to_defer>false</> <allow_deferral_until_utc/> <allow_deferral_minutes>0</>
+//   - `date`     → <allow_users_to_defer>true</>  <allow_deferral_until_utc>UTC</> <allow_deferral_minutes>0</>
+//   - `duration` → <allow_users_to_defer>true</>  <allow_deferral_until_utc/> <allow_deferral_minutes>days*1440</>
+//
+// When `deferral_type` is null/unknown the deferral trio is left out of the
+// payload so the server retains its prior values (matches every other
+// Optional+Computed attribute in this resource). All three wire fields are
+// always emitted together when a type is set — including explicit zeroes for
+// the off-axis fields — so in-place transitions between Date and Duration
+// clear the previously-stored value (wire-confirmed Update probe 2026-05-27).
 func buildPolicyUserInteraction(m *PolicyUserInteractionModel) *proclassic.PolicyPostUserInteraction {
-	return &proclassic.PolicyPostUserInteraction{
-		MessageStart:          helpers.OptionalStringPointer(m.StartMessage),
-		AllowUsersToDefer:     optionalBoolPointer(m.AllowUsersToDefer),
-		AllowDeferralUntilUtc: helpers.OptionalStringPointer(m.AllowDeferralUntilUtc),
-		AllowDeferralMinutes:  optionalInt64ToInt(m.AllowDeferralMinutes),
-		MessageFinish:         helpers.OptionalStringPointer(m.CompleteMessage),
+	out := &proclassic.PolicyPostUserInteraction{
+		MessageStart:  helpers.OptionalStringPointer(m.StartMessage),
+		MessageFinish: helpers.OptionalStringPointer(m.CompleteMessage),
 	}
+	if !helpers.IsConfiguredValue(m.DeferralType) {
+		return out
+	}
+	emptyStr := ""
+	zero := 0
+	yes := true
+	no := false
+	switch m.DeferralType.ValueString() {
+	case "none":
+		out.AllowUsersToDefer = &no
+		out.AllowDeferralUntilUtc = &emptyStr
+		out.AllowDeferralMinutes = &zero
+	case "date":
+		until := emptyStr
+		if helpers.IsConfiguredValue(m.DeferralUntilUtc) {
+			until = m.DeferralUntilUtc.ValueString()
+		}
+		out.AllowUsersToDefer = &yes
+		out.AllowDeferralUntilUtc = &until
+		out.AllowDeferralMinutes = &zero
+	case "duration":
+		mins := 0
+		if helpers.IsConfiguredValue(m.DeferralDays) {
+			mins = int(m.DeferralDays.ValueInt64()) * minutesPerDay
+		}
+		out.AllowUsersToDefer = &yes
+		out.AllowDeferralUntilUtc = &emptyStr
+		out.AllowDeferralMinutes = &mins
+	}
+	return out
 }
 
 func buildPolicyDiskEncryption(m *PolicyDiskEncryptionModel) *proclassic.PolicyPostDiskEncryption {
