@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 # Minimal Computer PreStage Enrollment. `device_enrollment_program_instance_id`
-# must be the ID of an ADE/DEP instance already provisioned in Jamf Pro.
+# must be the ID of an ADE instance already provisioned in Jamf Pro.
 resource "jamfplatform_pro_computer_prestage_enrollment" "example" {
   display_name                          = "Standard macOS PreStage"
   mandatory                             = true
