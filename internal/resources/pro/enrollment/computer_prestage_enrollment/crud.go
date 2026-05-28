@@ -288,18 +288,36 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 
 	// Scope reconciliation: PUT replaces the entire serial-number set if
 	// the plan differs from the prior state.
+	scopeApplyDiags := diag.Diagnostics{}
 	if !setsEqual(plan.ScopeSerialNumbers, state.ScopeSerialNumbers) {
-		if d := applyScope(updateCtx, r.client, id, plan.ScopeSerialNumbers); d.HasError() {
-			resp.Diagnostics.Append(d...)
-			return
-		}
+		scopeApplyDiags = applyScope(updateCtx, r.client, id, plan.ScopeSerialNumbers)
 	}
+
+	// Always re-read scope after the apply attempt (whether or not it
+	// errored). Persisting the server's actual scope into plan before
+	// returning keeps Terraform's consistency check happy when the
+	// scope write failed — otherwise the framework masks our
+	// user-facing diagnostic with "Provider produced inconsistent
+	// result after apply".
 	scope, err := r.client.GetComputerPrestageScopeV2(updateCtx, id)
 	if err != nil {
+		resp.Diagnostics.Append(scopeApplyDiags...)
 		resp.Diagnostics.AddError("Error reading prestage scope after update", err.Error())
 		return
 	}
 	plan.ScopeSerialNumbers = scopeSerialsToSet(scope)
+
+	if scopeApplyDiags.HasError() {
+		resp.Diagnostics.Append(scopeApplyDiags...)
+		// Persist the new (parent-updated, scope-unchanged) state so the
+		// framework sees a coherent post-apply value alongside our
+		// error. Without this resp.State.Set, the framework adds its
+		// own "planned X does not correlate with actual" diagnostic
+		// that hides the real failure.
+		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ComputerPrestageEnrollmentIdentityModel{ID: plan.ID})...)
+		_ = resp.State.Set(ctx, &plan)
+		return
+	}
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ComputerPrestageEnrollmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
