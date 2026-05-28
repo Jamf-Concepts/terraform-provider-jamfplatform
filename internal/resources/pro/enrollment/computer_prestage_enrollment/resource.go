@@ -37,10 +37,19 @@ import (
 const minJamfProVersion = ""
 
 const (
-	defaultCreateTimeout = 60 * time.Second
+	// Defaults span the post-Create / post-Update readiness wait — Jamf
+	// Pro generates the prestage's profile_uuid asynchronously and any
+	// scope or PUT operation against the prestage returns
+	// `500 + empty errors[]` until that field populates. The wait is
+	// usually under a few seconds but can stretch to 30s under load.
+	defaultCreateTimeout = 5 * time.Minute
 	defaultReadTimeout   = 60 * time.Second
-	defaultUpdateTimeout = 60 * time.Second
+	defaultUpdateTimeout = 5 * time.Minute
 	defaultDeleteTimeout = 60 * time.Second
+
+	// prestageReadyPollInterval is how often the provider polls the
+	// per-prestage GET while waiting for `profile_uuid` to populate.
+	prestageReadyPollInterval = 2 * time.Second
 )
 
 // ComputerPrestageEnrollmentResource implements the Terraform resource.
