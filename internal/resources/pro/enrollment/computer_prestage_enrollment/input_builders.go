@@ -52,17 +52,16 @@ func buildPostInput(ctx context.Context, plan, cfg ComputerPrestageEnrollmentRes
 
 	prestageIDs, d := stringSetToSlice(ctx, plan.PrestageInstalledProfileIds)
 	diags.Append(d...)
-	post.PrestageInstalledProfileIds = prestageIDs
+	post.PrestageInstalledProfileIds = nilSafeStringSlice(prestageIDs)
 
 	customIDs, d := stringSetToSlice(ctx, plan.CustomPackageIds)
 	diags.Append(d...)
-	post.CustomPackageIds = customIDs
+	post.CustomPackageIds = nilSafeStringSlice(customIDs)
 
 	anchors, d := stringListToSlice(ctx, plan.AnchorCertificates)
 	diags.Append(d...)
-	if anchors != nil {
-		post.AnchorCertificates = &anchors
-	}
+	safeAnchors := nilSafeStringSlice(anchors)
+	post.AnchorCertificates = &safeAnchors
 
 	post.LocationInformation = buildLocationInformation(plan.LocationInformation, sentinelNestedIDForCreate, 0)
 	post.PurchasingInformation = buildPurchasingInformation(plan.PurchasingInformation, sentinelNestedIDForCreate, 0)
@@ -121,17 +120,16 @@ func buildPutInput(ctx context.Context, plan, cfg ComputerPrestageEnrollmentReso
 
 	prestageIDs, d := stringSetToSlice(ctx, plan.PrestageInstalledProfileIds)
 	diags.Append(d...)
-	put.PrestageInstalledProfileIds = prestageIDs
+	put.PrestageInstalledProfileIds = nilSafeStringSlice(prestageIDs)
 
 	customIDs, d := stringSetToSlice(ctx, plan.CustomPackageIds)
 	diags.Append(d...)
-	put.CustomPackageIds = customIDs
+	put.CustomPackageIds = nilSafeStringSlice(customIDs)
 
 	anchors, d := stringListToSlice(ctx, plan.AnchorCertificates)
 	diags.Append(d...)
-	if anchors != nil {
-		put.AnchorCertificates = &anchors
-	}
+	safeAnchors := nilSafeStringSlice(anchors)
+	put.AnchorCertificates = &safeAnchors
 
 	put.LocationInformation = buildLocationInformation(plan.LocationInformation, "", 0)
 	put.PurchasingInformation = buildPurchasingInformation(plan.PurchasingInformation, "", 0)
@@ -325,6 +323,18 @@ func stringListToSlice(ctx context.Context, l types.List) ([]string, diag.Diagno
 	out := []string{}
 	d := l.ElementsAs(ctx, &out, false)
 	return out, d
+}
+
+// nilSafeStringSlice returns an empty (non-nil) slice when the input is nil.
+// Jamf Pro V3 PreStage POST/PUT rejects null array fields with
+// `400 INVALID_FIELD: Cannot invoke "java.util.Collection.toArray()" because
+// "c" is null`. Every list/set field in the body must be a JSON `[]`, never
+// `null`.
+func nilSafeStringSlice(in []string) []string {
+	if in == nil {
+		return []string{}
+	}
+	return in
 }
 
 func stringOrSentinel(v types.String, sentinel string) string {
