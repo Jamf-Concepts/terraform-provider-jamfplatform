@@ -370,11 +370,11 @@ func TestAccResource_ProComputerPrestageEnrollment_ScopeAssignments(t *testing.T
 // exercises the (POST add + POST remove-multiple) diff logic in
 // `applyScope` across every transition shape:
 //
-//   Step 1: [] → [s1]                  (pure add of one serial)
-//   Step 2: [s1] → [s1, s2]            (pure add when scope is non-empty)
-//   Step 3: [s1, s2] → [s2]            (pure remove of one of two serials)
-//   Step 4: [s2] → [s1]                (combined add + remove in one apply)
-//   Step 5: [s1] → []                  (pure remove of last serial)
+//	Step 1: [] → [s1]                  (pure add of one serial)
+//	Step 2: [s1] → [s1, s2]            (pure add when scope is non-empty)
+//	Step 3: [s1, s2] → [s2]            (pure remove of one of two serials)
+//	Step 4: [s2] → [s1]                (combined add + remove in one apply)
+//	Step 5: [s1] → []                  (pure remove of last serial)
 //
 // Gated on `JAMFPLATFORM_ADE_TOKEN`, `JAMFPLATFORM_ADE_SERIAL`, and
 // `JAMFPLATFORM_ADE_SERIAL2` — all three must be set, both serials must
