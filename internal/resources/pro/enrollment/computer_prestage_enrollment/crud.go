@@ -10,18 +10,18 @@
 //   pro.ResolveComputerPrestageV3IDByName                 (data source name lookup ID-only path)
 //   pro.ListComputerPrestagesV3                           (list resource + data source name lookup paging)
 //   pro.GetComputerPrestageScopeV2                        (folded scope_serial_numbers read)
-//   pro.AddToComputerPrestageScopeV2                      (folded scope_serial_numbers add diff)
-//   pro.RemoveFromComputerPrestageScopeV2                 (folded scope_serial_numbers remove diff)
+//   pro.ReplaceComputerPrestageScopeV2                    (folded scope_serial_numbers write)
 //
-// pro.ReplaceComputerPrestageScopeV2 (PUT /v2/computer-prestages/{id}/scope)
-// is documented as the "replace whole set" call, but on this tenant it
-// returns `HTTP 500 + {"httpStatus":500,"errors":[]}` and DOES NOT commit
-// for any non-empty serialNumbers payload (PUT with empty array works).
-// Verified 2026-05-28 with a freshly-uploaded ADE token + a serial
-// confirmed present on the token via /v1/device-enrollments/{id}/devices.
-// The provider works around the bug by replacing the single Replace
-// call with a (remove + add) diff computed against the current scope.
-// Upstream tracking: file with Jamf API team.
+// All endpoint families gated on `profileUuid != ""` via
+// `waitForPrestageReady` after Create / before Update. Wire-probe
+// 2026-05-28 confirmed that scope reads / writes (and the per-prestage
+// PUT update itself) return the bug-shaped `HTTP 500 + empty errors[]`
+// — without committing — until Jamf finishes its async post-Create
+// setup of the prestage (visible in the admin UI as "information out
+// of date"). After the wait, the documented behaviour returns:
+// 200 on success, 400 ALREADY_SCOPED / DEVICE_DOES_NOT_EXIST_ON_TOKEN
+// for the documented error paths, 409 OPTIMISTIC_LOCK_FAILED on stale
+// versionLock.
 //
 // Status: current. Last reviewed 2026-05-28.
 
@@ -31,6 +31,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -90,6 +91,14 @@ func (r *ComputerPrestageEnrollmentResource) Create(ctx context.Context, req res
 	}
 	resp.Diagnostics.Append(assignGetToResource(createCtx, &plan, plan, got)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Wait for Jamf Pro to finish async setup of the prestage (profile_uuid
+	// populates). Scope endpoints + further PUT updates return the
+	// bug-shaped HTTP 500 with empty errors[] until this point.
+	if d := waitForPrestageReady(createCtx, r.client, id); d.HasError() {
+		resp.Diagnostics.Append(d...)
 		return
 	}
 
@@ -238,6 +247,14 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 		return
 	}
 
+	// Wait for the prestage to be scope-ready before any PUT. Without
+	// this, Update PUTs against a prestage whose async post-Create
+	// setup is still in flight return `HTTP 500 + empty errors[]`.
+	if d := waitForPrestageReady(updateCtx, r.client, id); d.HasError() {
+		resp.Diagnostics.Append(d...)
+		return
+	}
+
 	// Pre-PUT GET to source versionLocks.
 	preGet, err := r.client.GetComputerPrestageV3(updateCtx, id)
 	if err != nil {
@@ -367,6 +384,54 @@ func (r *ComputerPrestageEnrollmentResource) Delete(ctx context.Context, req res
 	}
 }
 
+// waitForPrestageReady blocks until the prestage's server-assigned
+// `profileUuid` is non-empty. Verified wire-probe 2026-05-28: immediately
+// after POST or after a PUT update the prestage GET returns
+// `profileUuid: ""` for several seconds (occasionally tens of seconds
+// under load), during which the scope endpoints (and other PUT updates)
+// return the bug-shaped `HTTP 500 + {"httpStatus":500,"errors":[]}`
+// instead of a documented response. Once `profileUuid` populates, the
+// same endpoints return the proper 200/400/409 responses.
+//
+// The Jamf admin UI surfaces this as a transient "information out of
+// date" banner on the prestage; there is no API-level sync-state
+// endpoint for computer prestages (mobile_device_prestages has one but
+// computer_prestages does not — verified against pro_api.json). The
+// provider uses `profileUuid != ""` as the only available readiness
+// signal.
+func waitForPrestageReady(ctx context.Context, client *pro.Client, id string) diag.Diagnostics {
+	var diags diag.Diagnostics
+	ticker := time.NewTicker(prestageReadyPollInterval)
+	defer ticker.Stop()
+
+	for {
+		got, err := client.GetComputerPrestageV3(ctx, id)
+		if err != nil {
+			diags.AddError(
+				"Error polling Jamf Pro computer prestage readiness",
+				fmt.Sprintf("Could not fetch prestage %s: %s", id, err.Error()),
+			)
+			return diags
+		}
+		if got != nil && got.ProfileUUID != "" {
+			tflog.Trace(ctx, "Jamf Pro computer prestage ready", map[string]any{
+				"id":           id,
+				"profile_uuid": got.ProfileUUID,
+			})
+			return diags
+		}
+		select {
+		case <-ctx.Done():
+			diags.AddError(
+				"Jamf Pro computer prestage readiness wait timed out",
+				fmt.Sprintf("Prestage %s did not populate `profileUuid` before the operation timeout fired. The admin UI shows this state as an \"information out of date\" banner. Increase `timeouts.create` (or `timeouts.update`) on the resource if this consistently times out on this tenant.", id),
+			)
+			return diags
+		case <-ticker.C:
+		}
+	}
+}
+
 // seedImportNestedSentinels initialises empty model pointers for every
 // Optional-only typed-pointer nested block. Used by the import code path so
 // the state-builder rebuilds each block from the GET response instead of
@@ -381,84 +446,43 @@ func seedImportNestedSentinels(state *ComputerPrestageEnrollmentResourceModel) {
 	state.AccountSettings = &AccountSettingsModel{}
 }
 
-// applyScope reconciles the prestage's serial-number scope to the user's
-// desired set by computing a (remove + add) diff against the current
-// server-side scope. Uses POST add (`AddToComputerPrestageScopeV2`) and
-// POST remove-multiple (`RemoveFromComputerPrestageScopeV2`) instead of
-// PUT replace (`ReplaceComputerPrestageScopeV2`) because the latter is
-// currently broken on Jamf Pro (see file-header comment for the bug
-// detail).
+// applyScope drives a ReplaceComputerPrestageScopeV2 call. Always GETs first
+// to source the scope versionLock. Caller must ensure the prestage has
+// finished its async post-Create setup (waitForPrestageReady).
 //
-// Order of operations:
-//  1. GET current scope → existing serial set + scope versionLock.
-//  2. Remove serials that exist server-side but are NOT in the plan.
-//  3. Add serials that ARE in the plan but NOT server-side.
-//
-// Each step sources its own versionLock from the GET (the lock advances
-// across the remove call but we don't refetch — Jamf accepts the prior
-// lock for the immediately-following add).
-//
-// `400 ALREADY_SCOPED` on the add path is rewrapped with workflow
-// guidance: Jamf does not move serials between PreStages transparently;
-// the user must remove the serial from the holding PreStage first.
-func applyScope(ctx context.Context, client *pro.Client, prestageID string, planSerials types.Set) diag.Diagnostics {
+// Jamf Pro returns `400 ALREADY_SCOPED` (with the offending serial in the
+// `description` field) when any serial in the requested set is currently
+// scoped to a different PreStage. The provider rewraps that diagnostic
+// with workflow guidance — Jamf does not move serials between PreStages
+// transparently; the user must remove the serial from the holding
+// PreStage first.
+func applyScope(ctx context.Context, client *pro.Client, prestageID string, serials types.Set) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	scope, err := client.GetComputerPrestageScopeV2(ctx, prestageID)
 	if err != nil {
-		diags.AddError("Error reading prestage scope before diff", err.Error())
+		diags.AddError("Error reading prestage scope before replace", err.Error())
 		return diags
 	}
 
-	planSlice, d := stringSetToSlice(ctx, planSerials)
+	planSlice, d := stringSetToSlice(ctx, serials)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
-	planSet := map[string]struct{}{}
-	for _, s := range planSlice {
-		planSet[s] = struct{}{}
+	if planSlice == nil {
+		planSlice = []string{}
 	}
-	existingSet := map[string]struct{}{}
-	for _, a := range scope.Assignments {
-		existingSet[a.SerialNumber] = struct{}{}
-	}
+	body := &pro.PrestageScopeUpdate{SerialNumbers: planSlice, VersionLock: scope.VersionLock}
 
-	var toRemove, toAdd []string
-	for s := range existingSet {
-		if _, ok := planSet[s]; !ok {
-			toRemove = append(toRemove, s)
+	if _, err := client.ReplaceComputerPrestageScopeV2(ctx, prestageID, body); err != nil {
+		summary := "Error replacing prestage scope"
+		detail := err.Error()
+		if strings.Contains(detail, "ALREADY_SCOPED") {
+			summary = "Jamf Pro PreStage scope conflict (serial already assigned)"
+			detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf does not move serials between PreStages transparently — remove the serial from the holding PreStage first (in the same `terraform apply` via `depends_on`, in two separate applies, or via the Jamf Pro admin UI) and re-run."
 		}
-	}
-	for s := range planSet {
-		if _, ok := existingSet[s]; !ok {
-			toAdd = append(toAdd, s)
-		}
-	}
-
-	versionLock := scope.VersionLock
-	if len(toRemove) > 0 {
-		body := &pro.PrestageScopeUpdate{SerialNumbers: toRemove, VersionLock: versionLock}
-		removed, err := client.RemoveFromComputerPrestageScopeV2(ctx, prestageID, body)
-		if err != nil {
-			diags.AddError("Error removing serials from prestage scope", err.Error())
-			return diags
-		}
-		if removed != nil {
-			versionLock = removed.VersionLock
-		}
-	}
-	if len(toAdd) > 0 {
-		body := &pro.PrestageScopeUpdate{SerialNumbers: toAdd, VersionLock: versionLock}
-		if _, err := client.AddToComputerPrestageScopeV2(ctx, prestageID, body); err != nil {
-			summary := "Error adding serials to prestage scope"
-			detail := err.Error()
-			if strings.Contains(detail, "ALREADY_SCOPED") {
-				summary = "Jamf Pro PreStage scope conflict (serial already assigned)"
-				detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf does not move serials between PreStages transparently — remove the serial from the holding PreStage first (in the same `terraform apply` via `depends_on`, in two separate applies, or via the Jamf Pro admin UI) and re-run."
-			}
-			diags.AddError(summary, detail)
-		}
+		diags.AddError(summary, detail)
 	}
 	return diags
 }

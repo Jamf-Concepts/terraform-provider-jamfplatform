@@ -498,6 +498,11 @@ func TestAccResource_ProComputerPrestageEnrollment_ScopeAlreadyScopedConflict(t 
 				Config: adeFixtureBlock(suffix, token) +
 					testAccTwoComputerPrestagesScopeConflictConfig("tf-acc-conflict-"+suffix, serial, true),
 				ExpectError: regexp.MustCompile(`scope conflict|ALREADY_SCOPED`),
+				// scope conflict matches both the documented `400
+				// ALREADY_SCOPED` path and the 500-empty-errors
+				// fallback wording the provider emits when Jamf
+				// returns the bug-shaped 500 instead of the proper
+				// 400.
 			},
 		},
 	})
