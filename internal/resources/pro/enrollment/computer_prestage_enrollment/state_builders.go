@@ -67,27 +67,52 @@ func assignGetToResource(_ context.Context, plan *ComputerPrestageEnrollmentReso
 	plan.CustomPackageIds = stringSliceToSet(got.CustomPackageIds)
 	plan.AnchorCertificates = stringSliceToList(got.AnchorCertificates)
 
-	plan.SkipSetupItems = flattenSkipSetupItems(got.SkipSetupItems)
-	plan.LocationInformation = flattenLocationInformation(got.LocationInformation)
-	plan.PurchasingInformation = flattenPurchasingInformation(got.PurchasingInformation)
-	plan.AccountSettings = flattenAccountSettings(got.AccountSettings, state.AccountSettings)
+	// Preserve the user-supplied wo_version values BEFORE we rebuild the
+	// nested blocks from the GET. The wire never echoes wo_version; the
+	// provider owns it client-side, and the user's plan value is what
+	// should end up in state (not the prior state value — that would
+	// trip the consistency check whenever the user bumps wo_version on
+	// an Update).
+	planAdminPwdWoVersion := types.Int64Null()
+	if plan.AccountSettings != nil {
+		planAdminPwdWoVersion = plan.AccountSettings.AdminPasswordWoVersion
+	}
+	planRecoveryLockPwdWoVersion := plan.RecoveryLockPasswordWoVersion
 
-	// Round-trip *_wo_version rotation triggers (wire never echoes; carry
-	// prior state).
-	plan.AdminPasswordWoVersionRoundTrip(state)
-	plan.RecoveryLockPasswordWoVersion = roundTripInt64(state.RecoveryLockPasswordWoVersion)
+	// Optional-only typed-pointer nested blocks (see STYLE_GUIDE: block
+	// omission == "do not manage this section"). When the user omits the
+	// block in HCL, the prior state's pointer is nil; preserve that nil
+	// rather than synthesising a populated zero-value model from the
+	// wire — Terraform Core rejects a `null → ObjectVal(...)` transition
+	// with "was null, but now …".
+	if state.SkipSetupItems != nil {
+		plan.SkipSetupItems = flattenSkipSetupItems(got.SkipSetupItems)
+	} else {
+		plan.SkipSetupItems = nil
+	}
+	if state.LocationInformation != nil {
+		plan.LocationInformation = flattenLocationInformation(got.LocationInformation)
+	} else {
+		plan.LocationInformation = nil
+	}
+	if state.PurchasingInformation != nil {
+		plan.PurchasingInformation = flattenPurchasingInformation(got.PurchasingInformation)
+	} else {
+		plan.PurchasingInformation = nil
+	}
+	if state.AccountSettings != nil {
+		plan.AccountSettings = flattenAccountSettings(got.AccountSettings, state.AccountSettings)
+	} else {
+		plan.AccountSettings = nil
+	}
+
+	// Restore the user's wo_version inputs onto the freshly-built models.
+	if plan.AccountSettings != nil {
+		plan.AccountSettings.AdminPasswordWoVersion = planAdminPwdWoVersion
+	}
+	plan.RecoveryLockPasswordWoVersion = planRecoveryLockPwdWoVersion
 
 	return diags
-}
-
-// AdminPasswordWoVersionRoundTrip copies the prior state's
-// account_settings.admin_password_wo_version into the freshly-built model.
-// Wire never echoes the value; we own it client-side.
-func (m *ComputerPrestageEnrollmentResourceModel) AdminPasswordWoVersionRoundTrip(state ComputerPrestageEnrollmentResourceModel) {
-	if m.AccountSettings == nil || state.AccountSettings == nil {
-		return
-	}
-	m.AccountSettings.AdminPasswordWoVersion = roundTripInt64(state.AccountSettings.AdminPasswordWoVersion)
 }
 
 func roundTripInt64(prior types.Int64) types.Int64 {
