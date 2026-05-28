@@ -6,15 +6,67 @@
 package computer_prestage_enrollment_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
+
+// accCleanupOrphans registers a t.Cleanup that force-deletes any
+// prestages or ADE fixtures whose display name contains the test's
+// unique suffix. Runs unconditionally — Terraform's own
+// `terraform destroy` step is the primary teardown, but mid-step
+// failures (or destroy itself erroring) can leak fixtures on the
+// tenant. The cleanup is idempotent: 404 / INVALID_ID are tolerated.
+func accCleanupOrphans(t *testing.T, suffix string) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx := context.Background()
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+
+		// Computer prestages — list, match displayName by suffix, DELETE.
+		prestages, err := c.ListComputerPrestagesV3(ctx, nil)
+		if err != nil {
+			t.Logf("orphan cleanup: list computer prestages failed: %v", err)
+		} else {
+			for _, p := range prestages {
+				if !strings.Contains(p.DisplayName, suffix) {
+					continue
+				}
+				if err := c.DeleteComputerPrestageV3(ctx, p.ID); err != nil && !helpers.IsNotFoundError(err) {
+					t.Logf("orphan cleanup: delete prestage %s (%s) failed: %v", p.ID, p.DisplayName, err)
+				} else {
+					t.Logf("orphan cleanup: deleted prestage %s (%s)", p.ID, p.DisplayName)
+				}
+			}
+		}
+
+		// ADE fixtures — list, match name by suffix, DELETE.
+		ades, err := c.ListDeviceEnrollmentsV1(ctx, nil)
+		if err != nil {
+			t.Logf("orphan cleanup: list ADE instances failed: %v", err)
+			return
+		}
+		for _, a := range ades {
+			if a.ID == nil || a.Name == "" || !strings.Contains(a.Name, suffix) {
+				continue
+			}
+			if err := c.DeleteDeviceEnrollmentV1(ctx, *a.ID); err != nil && !helpers.IsNotFoundError(err) {
+				t.Logf("orphan cleanup: delete ADE %s (%s) failed: %v", *a.ID, a.Name, err)
+			} else {
+				t.Logf("orphan cleanup: deleted ADE %s (%s)", *a.ID, a.Name)
+			}
+		}
+	})
+}
 
 const (
 	resourceName  = "jamfplatform_pro_computer_prestage_enrollment.test"
@@ -77,6 +129,7 @@ func TestAccResource_ProComputerPrestageEnrollment_Minimal(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 	name := "tf-acc-computer-prestage-minimal-" + suffix
 
 	resource.Test(t, resource.TestCase{
@@ -118,6 +171,7 @@ func TestAccResource_ProComputerPrestageEnrollment_Full_UpdateRoundTrip(t *testi
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 	name := "tf-acc-computer-prestage-full-" + suffix
 
 	resource.Test(t, resource.TestCase{
@@ -158,6 +212,7 @@ func TestAccResource_ProComputerPrestageEnrollment_RecoveryLockManual(t *testing
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -178,6 +233,7 @@ func TestAccResource_ProComputerPrestageEnrollment_RecoveryLockRandom(t *testing
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -200,6 +256,7 @@ func TestAccResource_ProComputerPrestageEnrollment_AccountSettingsPrefillCustom(
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -221,6 +278,7 @@ func TestAccResource_ProComputerPrestageEnrollment_AccountSettingsPrefillDeviceO
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -242,6 +300,7 @@ func TestAccResource_ProComputerPrestageEnrollment_NoPSSOFields(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -264,6 +323,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ScopeAssignments(t *testing.T
 	token := requireADETokenBlob(t)
 	serial := requireADESerialFixture(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 	name := "tf-acc-scope-" + suffix
 
 	resource.Test(t, resource.TestCase{
@@ -303,6 +363,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ScopeAlreadyScopedConflict(t 
 	token := requireADETokenBlob(t)
 	serial := requireADESerialFixture(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -388,6 +449,7 @@ func TestAccResource_ProComputerPrestageEnrollment_AnchorCertificatesRollback(t 
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 	name := "tf-acc-anchor-" + suffix
 
 	resource.Test(t, resource.TestCase{
@@ -411,6 +473,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ExpectError_RandomConflictsWi
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -446,6 +509,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ExpectError_PasswordRequiresE
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -481,6 +545,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ExpectError_PrefillCustomRequ
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -516,6 +581,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ExpectError_BadRecoveryLockTy
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -548,6 +614,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ExpectError_BadPrefillType(t 
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -582,6 +649,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ExpectError_BadUserAccountTyp
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -616,6 +684,7 @@ func TestAccResource_ProComputerPrestageEnrollment_ExpectError_BadMinOsTarget(t 
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
 	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
