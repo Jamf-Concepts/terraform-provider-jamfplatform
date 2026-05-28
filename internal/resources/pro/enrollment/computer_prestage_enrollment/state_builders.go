@@ -49,9 +49,13 @@ func assignGetToResource(_ context.Context, plan *ComputerPrestageEnrollmentReso
 	plan.PrestageMinimumOsTargetVersionType = types.StringValue(got.PrestageMinimumOsTargetVersionType)
 	plan.MinimumOsSpecificVersion = types.StringValue(got.MinimumOsSpecificVersion)
 	plan.PssoEnabled = types.BoolValue(got.PssoEnabled)
-	// PreserveStringWhenWireEmpty defends against the null↔"" flicker
-	// observed across the GET corpus.
-	plan.PlatformSsoAppBundleID = helpers.PreserveStringWhenWireEmpty(&got.PlatformSsoAppBundleID, state.PlatformSsoAppBundleID)
+	// SDK type is plain `string`, so any wire-level null is decoded as ""
+	// by Go before we see it. No null/"" flicker risk at the Go boundary;
+	// use the value directly. (Spike OQ-8 had this on
+	// PreserveStringWhenWireEmpty, but that helper returns the prior
+	// state when wire is empty — and a fresh Create's plan is Unknown,
+	// which leaks past apply.)
+	plan.PlatformSsoAppBundleID = types.StringValue(got.PlatformSsoAppBundleID)
 	plan.PssoConfigProfileID = helpers.ReconcileOptionalStringPointer(got.PssoConfigProfileID, state.PssoConfigProfileID)
 	plan.ProfileURL = helpers.StringPointerValueOrNull(got.ProfileURL)
 	plan.ManifestURL = helpers.StringPointerValueOrNull(got.ManifestURL)
