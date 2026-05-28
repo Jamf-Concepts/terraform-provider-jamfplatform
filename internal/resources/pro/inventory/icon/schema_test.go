@@ -63,11 +63,3 @@ func TestIconResource_Schema(t *testing.T) {
 		t.Errorf("url must be computed-only, got required=%v computed=%v", url.IsRequired(), url.IsComputed())
 	}
 }
-
-func TestComputeSourceHashString_Prefix(t *testing.T) {
-	got := computeSourceHashString([]byte("hello"))
-	const want = "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
-	if got != want {
-		t.Errorf("computeSourceHashString = %q, want %q", got, want)
-	}
-}

@@ -137,6 +137,21 @@ func TestAccResource_MyResource(t *testing.T) {
 - Always provide a `CheckDestroy` function that verifies resources are removed after the test.
 - Use unique resource names per test to avoid conflicts (e.g. include the test name or a suffix).
 
+**Coverage requirements (every new resource):**
+
+A single Create-only test is **not** sufficient. The acceptance suite for a resource must collectively exercise:
+
+1. **An Update round-trip — required.** At least one test must drive a multi-step `resource.TestCase` that mutates the resource in place. Every Optional/Required attribute that is *not* `RequiresReplace` must be exercised across steps, including:
+   - At least one nested-block / list-attribute element add **and** remove (proves list reconciliation, not just element-content mutation).
+   - At least one server-derived computed sibling (hash, URL, epoch) re-resolves correctly after the change.
+   - This is the highest-value test in the file — it catches `mergePlanIntoServerState`, `UseStateForUnknown`, and lossy-PUT regressions that single-step Create tests cannot.
+2. **A negative case per declared cross-field validator.** Every `ConflictsWith`, `AlsoRequires`, `OneOf`, and custom plan-time validator on the resource needs an `ExpectError` test. The positive case alone is not enough — silent validator removal is the easiest regression to ship.
+3. **An import round-trip** via `ImportStateVerify: true`. List `ImportStateVerifyIgnore` for any attribute the importer legitimately cannot recover (e.g. write-only inputs, local-path fields) and justify each entry in a code comment.
+4. **All "shape" branches** — for any resource with mutually exclusive sub-blocks (auth modes, scope variants, payload kinds), include at least one happy-path test per shape so each input-builder branch is wire-validated.
+5. **Server-side drift recovery** where applicable. For self-healing resources (image uploads, hash convergence, lossy GETs), include a multi-step test that mutates a user input and asserts the Computed echo attributes update — not just that they remain `Set`.
+
+The reference enumeration of these patterns lives in `internal/resources/pro/enrollment/enrollment_customization/resource_acceptance_test.go`. Copy from there when scaffolding a new resource's acceptance file.
+
 ### Client acceptance tests
 
 Client-level acceptance tests call API methods directly to validate the client layer:
