@@ -14,6 +14,9 @@ Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts t
 
 ```terraform
 # Example: Create a Jamf Compliance Benchmark
+#
+# Targeting accepts either a set of device group Platform IDs (preferred) via
+# target_device_groups, or the deprecated single-value target_device_group.
 
 data "jamfplatform_cbengine_rules" "cis_lvl1" {
   baseline_id = "cis_lvl1"
@@ -38,8 +41,12 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
     }
   ]
 
-  target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
-  enforcement_mode    = "MONITOR_AND_ENFORCE"
+  # Multiple device groups can be targeted simultaneously.
+  target_device_groups = [
+    "4a36a1fe-e45a-430d-a966-a4d3ac993577",
+    "8b9b5fa0-66ed-43d9-9b9a-2b1f3f7d1e21",
+  ]
+  enforcement_mode = "MONITOR_AND_ENFORCE"
 }
 
 resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
@@ -65,6 +72,9 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
       enabled = true
     }
   ]
+
+  # target_device_group remains supported for backwards compatibility but is
+  # deprecated. Prefer target_device_groups (set form) for new configurations.
   target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
   enforcement_mode    = "MONITOR"
 }
@@ -78,13 +88,14 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 - `enforcement_mode` (String) Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).
 - `rules` (Attributes List) Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules. (see [below for nested schema](#nestedatt--rules))
 - `sources` (Attributes List) Set of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources. (see [below for nested schema](#nestedatt--sources))
-- `target_device_group` (String) Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the /api/v1/groups Jamf Pro API endpoint. Required and immutable for this resource (replace on change).
 - `title` (String) Benchmark title (max length 100). Required and replaces the resource when changed.
 
 ### Optional
 
 - `description` (String) Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.
 - `source_baseline_id` (String) mSCP baseline identifier used as the source for rules. Required on creation, but computed for imports. Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.
+- `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups` instead. Single device group Platform ID targeted by this benchmark, in UUID format. Mutually exclusive with `target_device_groups`. Immutable (replace on change).
+- `target_device_groups` (Set of String) Device group Platform IDs targeted by this benchmark. Specified as a set of UUID strings; Platform IDs can be sourced from the response body of the `/api/v1/groups` Jamf Pro API endpoint. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

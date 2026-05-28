@@ -6,8 +6,19 @@ package benchmark
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// setOfStrings constructs a non-null types.Set of string elements for test setup.
+func setOfStrings(ids ...string) types.Set {
+	vals := make([]attr.Value, len(ids))
+	for i, id := range ids {
+		vals[i] = types.StringValue(id)
+	}
+	out, _ := types.SetValue(types.StringType, vals)
+	return out
+}
 
 func TestBuildBenchmarkRequest_Full(t *testing.T) {
 	data := &BenchmarkResourceModel{
@@ -30,8 +41,9 @@ func TestBuildBenchmarkRequest_Full(t *testing.T) {
 				ODVValue: types.StringNull(),
 			},
 		},
-		TargetDeviceGroup: types.StringValue("group-1"),
-		EnforcementMode:   types.StringValue("audit"),
+		TargetDeviceGroup:  types.StringValue("group-1"),
+		TargetDeviceGroups: types.SetNull(types.StringType),
+		EnforcementMode:    types.StringValue("audit"),
 	}
 
 	req := buildBenchmarkRequest(data)
@@ -85,13 +97,14 @@ func TestBuildBenchmarkRequest_Full(t *testing.T) {
 
 func TestBuildBenchmarkRequest_EmptyRulesAndSources(t *testing.T) {
 	data := &BenchmarkResourceModel{
-		Title:             types.StringValue("Empty"),
-		Description:       types.StringValue(""),
-		SourceBaselineID:  types.StringValue("bl-1"),
-		Sources:           nil,
-		Rules:             nil,
-		TargetDeviceGroup: types.StringValue("dg-1"),
-		EnforcementMode:   types.StringValue("audit"),
+		Title:              types.StringValue("Empty"),
+		Description:        types.StringValue(""),
+		SourceBaselineID:   types.StringValue("bl-1"),
+		Sources:            nil,
+		Rules:              nil,
+		TargetDeviceGroup:  types.StringValue("dg-1"),
+		TargetDeviceGroups: types.SetNull(types.StringType),
+		EnforcementMode:    types.StringValue("audit"),
 	}
 
 	req := buildBenchmarkRequest(data)
@@ -115,8 +128,9 @@ func TestBuildBenchmarkRequest_ODVNull(t *testing.T) {
 				ODVValue: types.StringNull(),
 			},
 		},
-		TargetDeviceGroup: types.StringValue("dg-1"),
-		EnforcementMode:   types.StringValue("audit"),
+		TargetDeviceGroup:  types.StringValue("dg-1"),
+		TargetDeviceGroups: types.SetNull(types.StringType),
+		EnforcementMode:    types.StringValue("audit"),
 	}
 
 	req := buildBenchmarkRequest(data)
@@ -137,13 +151,60 @@ func TestBuildBenchmarkRequest_ODVEmpty(t *testing.T) {
 				ODVValue: types.StringValue(""),
 			},
 		},
-		TargetDeviceGroup: types.StringValue("dg-1"),
-		EnforcementMode:   types.StringValue("audit"),
+		TargetDeviceGroup:  types.StringValue("dg-1"),
+		TargetDeviceGroups: types.SetNull(types.StringType),
+		EnforcementMode:    types.StringValue("audit"),
 	}
 
 	req := buildBenchmarkRequest(data)
 
 	if req.Rules[0].ODV != nil {
 		t.Error("expected nil ODV for empty ODVValue — API rejects odv:{value:\"\"}")
+	}
+}
+
+func TestBuildBenchmarkRequest_PluralTargetDeviceGroups(t *testing.T) {
+	data := &BenchmarkResourceModel{
+		Title:              types.StringValue("Plural Scope"),
+		SourceBaselineID:   types.StringValue("bl-1"),
+		Rules:              nil,
+		Sources:            nil,
+		TargetDeviceGroup:  types.StringNull(),
+		TargetDeviceGroups: setOfStrings("group-a", "group-b", "group-c"),
+		EnforcementMode:    types.StringValue("audit"),
+	}
+
+	req := buildBenchmarkRequest(data)
+
+	if len(req.Target.DeviceGroups) != 3 {
+		t.Fatalf("expected 3 device groups, got %d (%v)", len(req.Target.DeviceGroups), req.Target.DeviceGroups)
+	}
+	seen := map[string]bool{}
+	for _, g := range req.Target.DeviceGroups {
+		seen[g] = true
+	}
+	for _, want := range []string{"group-a", "group-b", "group-c"} {
+		if !seen[want] {
+			t.Errorf("expected device group %q in payload, got %v", want, req.Target.DeviceGroups)
+		}
+	}
+}
+
+func TestBuildBenchmarkRequest_PluralWinsOverSingular(t *testing.T) {
+	// ConflictsWith makes this impossible in practice, but the builder must still
+	// prefer the plural path when both happen to be set — defensive behaviour for
+	// older imported state or programmatic callers.
+	data := &BenchmarkResourceModel{
+		Title:              types.StringValue("Both"),
+		SourceBaselineID:   types.StringValue("bl-1"),
+		TargetDeviceGroup:  types.StringValue("should-be-ignored"),
+		TargetDeviceGroups: setOfStrings("kept"),
+		EnforcementMode:    types.StringValue("audit"),
+	}
+
+	req := buildBenchmarkRequest(data)
+
+	if len(req.Target.DeviceGroups) != 1 || req.Target.DeviceGroups[0] != "kept" {
+		t.Errorf("expected plural to win with ['kept'], got %v", req.Target.DeviceGroups)
 	}
 }
