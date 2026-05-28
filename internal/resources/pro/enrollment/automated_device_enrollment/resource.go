@@ -43,10 +43,28 @@ var (
 )
 
 const (
-	defaultCreateTimeout = 60 * time.Second
+	// defaultCreateTimeout bounds the whole Create operation including the
+	// post-upload sync wait. Apple's DEP round-trip is the slow leg —
+	// uploading the .p7m token is sub-second but Jamf then has to fetch
+	// the device list from Apple, which can take a few minutes on cold
+	// tokens.
+	defaultCreateTimeout = 5 * time.Minute
 	defaultReadTimeout   = 60 * time.Second
-	defaultUpdateTimeout = 60 * time.Second
+	// defaultUpdateTimeout also covers the post-rotation sync wait when
+	// `server_token_wo_version` is bumped.
+	defaultUpdateTimeout = 5 * time.Minute
 	defaultDeleteTimeout = 60 * time.Second
+
+	// syncPollInterval is how often the provider polls
+	// pro.GetLatestDeviceEnrollmentSyncV1 while waiting for the Apple DEP
+	// sync to finish. Conservative — Apple's side is the bottleneck, not
+	// the polling cadence.
+	syncPollInterval = 5 * time.Second
+
+	// adeSyncStateSuccessful is the terminal-success value of
+	// DeviceEnrollmentInstanceSyncStatus.SyncState (verified via live
+	// wire-probe against a synced tenant ADE instance, 2026-05-28).
+	adeSyncStateSuccessful = "SUCCESSFUL"
 )
 
 // NewAutomatedDeviceEnrollmentResource returns a new instance of
