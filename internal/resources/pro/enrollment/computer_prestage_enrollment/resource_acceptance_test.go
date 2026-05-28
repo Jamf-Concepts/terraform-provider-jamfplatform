@@ -291,6 +291,97 @@ func TestAccResource_ProComputerPrestageEnrollment_ScopeAssignments(t *testing.T
 	})
 }
 
+// --- §13 #8b: Scope ALREADY_SCOPED conflict ---------------------------------
+
+// TestAccResource_ProComputerPrestageEnrollment_ScopeAlreadyScopedConflict
+// verifies the provider's user-facing error path when a serial is assigned
+// to one PreStage and a second PreStage tries to claim the same serial.
+// Jamf Pro enforces single-PreStage-per-serial with `400 ALREADY_SCOPED`;
+// the provider rewraps that diagnostic with guidance.
+func TestAccResource_ProComputerPrestageEnrollment_ScopeAlreadyScopedConflict(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	token := requireADETokenBlob(t)
+	serial := requireADESerialFixture(t)
+	suffix := testhelpers.RunSuffix()
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: create both PreStages, scope serial to A only.
+			{
+				Config: adeFixtureBlock(suffix, token) +
+					testAccTwoComputerPrestagesScopeConflictConfig("tf-acc-conflict-"+suffix, serial, false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_computer_prestage_enrollment.a", "scope_serial_numbers.#", "1"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_computer_prestage_enrollment.b", "scope_serial_numbers.#", "0"),
+				),
+			},
+			// Step 2: try to scope the same serial to B without removing
+			// from A. Jamf returns 400 ALREADY_SCOPED; the provider
+			// surfaces a user-facing "scope conflict" error.
+			{
+				Config: adeFixtureBlock(suffix, token) +
+					testAccTwoComputerPrestagesScopeConflictConfig("tf-acc-conflict-"+suffix, serial, true),
+				ExpectError: regexp.MustCompile(`scope conflict|ALREADY_SCOPED`),
+			},
+		},
+	})
+}
+
+// testAccTwoComputerPrestagesScopeConflictConfig emits two prestage blocks
+// (a and b). When `bClaims` is false, only a is scoped to the serial; when
+// true, both attempt to claim the same serial (and Jamf rejects b's
+// attempt).
+func testAccTwoComputerPrestagesScopeConflictConfig(nameBase, serial string, bClaims bool) string {
+	bScope := "[]"
+	if bClaims {
+		bScope = fmt.Sprintf(`[%q]`, serial)
+	}
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_computer_prestage_enrollment" "a" {
+  display_name                          = "%s-a"
+  mandatory                             = true
+  mdm_removable                         = true
+  require_authentication                = false
+  device_enrollment_program_instance_id = %s
+  keep_existing_location_information    = false
+  keep_existing_site_membership         = false
+  auto_advance_setup                    = false
+  install_profiles_during_setup         = false
+  prevent_activation_lock               = false
+  enable_device_based_activation_lock   = false
+
+  location_information   = {}
+  purchasing_information = {}
+  account_settings       = {}
+
+  scope_serial_numbers = [%q]
+}
+
+resource "jamfplatform_pro_computer_prestage_enrollment" "b" {
+  display_name                          = "%s-b"
+  mandatory                             = true
+  mdm_removable                         = true
+  require_authentication                = false
+  device_enrollment_program_instance_id = %s
+  keep_existing_location_information    = false
+  keep_existing_site_membership         = false
+  auto_advance_setup                    = false
+  install_profiles_during_setup         = false
+  prevent_activation_lock               = false
+  enable_device_based_activation_lock   = false
+
+  location_information   = {}
+  purchasing_information = {}
+  account_settings       = {}
+
+  scope_serial_numbers = %s
+
+  depends_on = [jamfplatform_pro_computer_prestage_enrollment.a]
+}
+`, nameBase, adeFixtureRef, serial, nameBase, adeFixtureRef, bScope)
+}
+
 // --- §13 #9: anchor_certificates silent-rollback hard-error path ------------
 
 func TestAccResource_ProComputerPrestageEnrollment_AnchorCertificatesRollback(t *testing.T) {
