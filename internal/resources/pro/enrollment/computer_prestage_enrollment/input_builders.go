@@ -283,7 +283,6 @@ func plaintextRecoveryPassword(cfg ComputerPrestageEnrollmentResourceModel) *str
 	return &s
 }
 
-
 // stringSetToSlice extracts a TF Set<String> into a Go []string.
 // Returns nil when the set is null/unknown.
 func stringSetToSlice(ctx context.Context, s types.Set) ([]string, diag.Diagnostics) {
