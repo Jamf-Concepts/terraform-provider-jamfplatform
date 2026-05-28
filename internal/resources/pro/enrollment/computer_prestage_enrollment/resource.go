@@ -80,7 +80,6 @@ func (r *ComputerPrestageEnrollmentResource) IdentitySchema(ctx context.Context,
 func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at *Settings → Computer Management → PreStage Enrollments* in the Jamf Pro admin UI. " +
-			"The provider hides server-side optimistic-locking (`versionLock`) bookkeeping; users manage display-time attributes only. " +
 			"Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -156,8 +155,12 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
+			// `site_id` is read-only on this resource because Jamf Pro
+			// does not accept `siteId` in the Pro V3 PreStage create or
+			// update payloads. Use `enrollment_site_id` to drive site
+			// assignment for devices enrolled through this PreStage.
 			"site_id": schema.StringAttribute{
-				MarkdownDescription: "Jamf Pro site ID that owns this PreStage. Returned by Jamf Pro; not user-settable on this resource — the Pro V3 PreStage endpoint omits `siteId` from the POST and PUT bodies. Use `enrollment_site_id` to drive site assignment for devices enrolled through this PreStage. Jamf Pro reports `\"-1\"` when no site is set.",
+				MarkdownDescription: "Jamf Pro site ID that owns this PreStage. Returned by Jamf Pro; not user-settable on this resource. Use `enrollment_site_id` to drive site assignment for devices enrolled through this PreStage. Jamf Pro reports `\"-1\"` when no site is set.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -237,8 +240,13 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			// Jamf Pro validates certificate content on save; supplying
+			// invalid PEM bytes silently rolls the whole save back
+			// (HTTP 500 with empty errors[] on the wire, no per-field
+			// rejection). The provider's update path detects this via a
+			// post-write diff and surfaces a hard error.
 			"anchor_certificates": schema.ListAttribute{
-				MarkdownDescription: "Ordered list of base64-encoded PEM certificates to embed in the PreStage. Jamf Pro validates certificate content; supplying invalid PEM data causes the entire write to be silently rolled back.",
+				MarkdownDescription: "Ordered list of base64-encoded PEM certificates to embed in the PreStage. Each entry must be a valid X.509 certificate in PEM format; Jamf Pro rejects malformed entries by silently discarding the entire change — the provider catches this and surfaces a hard error.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
@@ -275,7 +283,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"recovery_lock_password": schema.StringAttribute{
-				MarkdownDescription: "Recovery Lock plaintext password. Only meaningful when `recovery_lock_password_type = \"MANUAL\"` AND `enable_recovery_lock = true`. WriteOnly: the value is sent to Jamf Pro but never persisted in Terraform state. Bump `recovery_lock_password_wo_version` to force a re-PUT.",
+				MarkdownDescription: "Recovery Lock plaintext password. Only meaningful when `recovery_lock_password_type = \"MANUAL\"` AND `enable_recovery_lock = true`. WriteOnly: the value is sent to Jamf Pro but never persisted in Terraform state. Bump `recovery_lock_password_wo_version` to force the provider to re-send the current value.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -284,7 +292,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"recovery_lock_password_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the WriteOnly `recovery_lock_password`. Bump to force a re-PUT.",
+				MarkdownDescription: "Rotation trigger for the WriteOnly `recovery_lock_password`. Bump to force the provider to re-send the current password value.",
 				Optional:            true,
 			},
 			"rotate_recovery_lock_password": schema.BoolAttribute{
@@ -370,9 +378,13 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 			"location_information":   locationInformationSchema(),
 			"purchasing_information": purchasingInformationSchema(),
 			"account_settings":       accountSettingsSchema(),
+			// Scope is managed via the Pro V2 scope endpoint
+			// (/v2/computer-prestages/{id}/scope). The provider always
+			// rewrites the full set; partial add/remove is not
+			// supported by the underlying SDK call used here.
 			"scope_serial_numbers": schema.SetAttribute{
-				MarkdownDescription: "Set of device serial numbers assigned to this PreStage. Each serial must exist on the underlying ADE token. Scope is managed via the Jamf Pro `/v2/computer-prestages/{id}/scope` endpoint and is rewritten in full on every change. " +
-					"Jamf Pro enforces single-PreStage-per-serial: assigning a serial that is currently scoped to a different PreStage returns `400 ALREADY_SCOPED` — there is no transparent reassignment. To move a serial between PreStages, first remove it from the holding PreStage (e.g. in the same `terraform apply` with an explicit `depends_on` ordering or a two-step apply).",
+				MarkdownDescription: "Set of device serial numbers assigned to this PreStage. Each serial must exist on the underlying ADE token. The full set is rewritten on every change. " +
+					"Jamf Pro enforces single-PreStage-per-serial: assigning a serial that is currently scoped to a different PreStage is rejected with a scope-conflict error and there is no transparent reassignment. To move a serial between PreStages, first remove it from the holding PreStage (e.g. in the same `terraform apply` with an explicit `depends_on` ordering or in two separate applies).",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
@@ -553,22 +565,25 @@ func purchasingInformationSchema() schema.SingleNestedAttribute {
 
 // accountSettingsSchema returns the Account Settings block. Contains the
 // WriteOnly `admin_password` + `admin_password_wo_version` rotation pair.
+// Jamf Pro rejects mixed states (any non-default field set while
+// `payloadConfigured=false`) with 400 INVALID_CONTENT; surface that as
+// part of the user-facing constraint.
 func accountSettingsSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Account Settings\"** in the Jamf Pro admin UI. Supply the block (even empty: `account_settings = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. When any non-default field is set, `payload_configured` must be `true` — Jamf Pro rejects mixed states with `400 INVALID_CONTENT`.",
+		MarkdownDescription: "**\"Account Settings\"** in the Jamf Pro admin UI. Supply the block (even empty: `account_settings = {}`) to manage this section — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. When any non-default field is set, `payload_configured` must be `true` — Jamf Pro rejects mixed states.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"payload_configured":          optBool("**\"Configure Account Settings\"** toggle. Must be `true` when any other account-settings field is non-default."),
 			"local_admin_account_enabled": optBool("**\"Create Local Administrator Account\"** in the Jamf Pro admin UI."),
 			"admin_username":              optString("**\"Username\"** for the local admin account."),
 			"admin_password": schema.StringAttribute{
-				MarkdownDescription: "Plaintext password for the local admin account. WriteOnly: the value is sent to Jamf Pro but never persisted in Terraform state. Bump `admin_password_wo_version` to force a re-PUT.",
+				MarkdownDescription: "Plaintext password for the local admin account. WriteOnly: the value is sent to Jamf Pro but never persisted in Terraform state. Bump `admin_password_wo_version` to force the provider to re-send the current value.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 			},
 			"admin_password_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the WriteOnly `admin_password`. Bump to force a re-PUT.",
+				MarkdownDescription: "Rotation trigger for the WriteOnly `admin_password`. Bump to force the provider to re-send the current password value.",
 				Optional:            true,
 			},
 			"hidden_admin_account": optBool("**\"Hide Local Admin Account\"** in the Jamf Pro admin UI."),
