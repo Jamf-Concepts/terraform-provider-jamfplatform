@@ -127,19 +127,26 @@ func (r *ComputerPrestageEnrollmentResource) Read(ctx context.Context, req resou
 		}
 		state.ID = identity.ID
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes)
-		// On import we have no user plan to signal "manage this nested
-		// section". Populate sentinel empty models so the state-builder
-		// rebuilds every block from the GET — anything else would leave
-		// the imported state missing all four nested blocks and
-		// ImportStateVerify would diff against the post-Create state.
-		state.SkipSetupItems = &SkipSetupItemsModel{}
-		state.LocationInformation = &LocationInformationModel{}
-		state.PurchasingInformation = &PurchasingInformationModel{}
-		state.AccountSettings = &AccountSettingsModel{}
+		seedImportNestedSentinels(&state)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
 			return
+		}
+		// `ImportStatePassthroughID` stores the ID in the new state and
+		// invokes Read with that state — so `req.State.Raw.IsNull()` is
+		// FALSE on the post-import Read and the explicit isImport branch
+		// above never fires here. Use a Computed-only attribute as the
+		// signal instead: `site_id` is always populated by Create from
+		// the GET response, so a null value with the ID set can only
+		// mean "this is the first Read after ImportStatePassthroughID".
+		// In that case seed sentinel empty nested-block pointers so the
+		// state-builder rebuilds them — the user's intent for which
+		// blocks to manage cannot be inferred yet, and showing nothing
+		// would diff against the post-Create state under
+		// ImportStateVerify.
+		if state.SiteID.IsNull() {
+			seedImportNestedSentinels(&state)
 		}
 	}
 
@@ -328,6 +335,20 @@ func (r *ComputerPrestageEnrollmentResource) Delete(ctx context.Context, req res
 		}
 		resp.Diagnostics.AddError("Error deleting Jamf Pro computer prestage enrollment", err.Error())
 	}
+}
+
+// seedImportNestedSentinels initialises empty model pointers for every
+// Optional-only typed-pointer nested block. Used by the import code path so
+// the state-builder rebuilds each block from the GET response instead of
+// applying the "user omitted the block" preservation rule (which keeps the
+// block nil — correct for normal Create/Update where state reflects the
+// user's HCL, wrong for a freshly-imported resource where no user HCL has
+// ever been parsed).
+func seedImportNestedSentinels(state *ComputerPrestageEnrollmentResourceModel) {
+	state.SkipSetupItems = &SkipSetupItemsModel{}
+	state.LocationInformation = &LocationInformationModel{}
+	state.PurchasingInformation = &PurchasingInformationModel{}
+	state.AccountSettings = &AccountSettingsModel{}
 }
 
 // applyScope drives a ReplaceComputerPrestageScopeV2 call. Always GETs first
