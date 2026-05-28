@@ -37,6 +37,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/mobile_device_configuration_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment_public_key"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/enrollment_customization"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
@@ -230,6 +231,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		directory_binding.NewDirectoryBindingResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationResource,
 		dock_item.NewDockItemResource,
+		enrollment_customization.NewEnrollmentCustomizationResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
 		macos_configuration_profile.NewResource,
@@ -273,6 +275,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		directory_binding.NewDirectoryBindingDataSource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationDataSource,
 		dock_item.NewDockItemDataSource,
+		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		ibeacon.NewIbeaconDataSource,
 		macos_configuration_profile.NewDataSource,
 		mobile_device_configuration_profile.NewDataSource,
@@ -308,6 +311,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		directory_binding.NewDirectoryBindingListResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationListResource,
 		dock_item.NewDockItemListResource,
+		enrollment_customization.NewEnrollmentCustomizationListResource,
 		ibeacon.NewIbeaconListResource,
 		macos_configuration_profile.NewListResource,
 		mobile_device_configuration_profile.NewListResource,

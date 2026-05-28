@@ -156,7 +156,7 @@ func (r *IconResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 			})
 			state.SourceHash = types.StringNull()
 		} else {
-			state.SourceHash = types.StringValue(computeSourceHashString(data))
+			state.SourceHash = types.StringValue(files.ComputeContentSHA256(data))
 			tflog.Info(ctx, "icon Read populated source_hash from server bytes", map[string]any{
 				"id":          state.ID.ValueString(),
 				"source_hash": state.SourceHash.ValueString(),
