@@ -7,7 +7,8 @@
 //   pro.UpdateDeviceEnrollmentV1
 //   pro.ReplaceDeviceEnrollmentTokenV1
 //   pro.DeleteDeviceEnrollmentV1
-// Status: current. Last reviewed 2026-05-25.
+//   pro.GetLatestDeviceEnrollmentSyncV1                    (Create / token-rotation sync wait)
+// Status: current. Last reviewed 2026-05-28.
 
 package automated_device_enrollment
 
@@ -16,7 +17,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -94,6 +97,17 @@ func (r *AutomatedDeviceEnrollmentResource) Create(ctx context.Context, req reso
 			"Error finalising Jamf Pro Automated Device Enrollment instance",
 			fmt.Sprintf("Token upload succeeded but the follow-up metadata PUT failed; the partial instance was deleted. Underlying error: %s", err.Error()),
 		)
+		return
+	}
+
+	// Wait for the first Apple ADE sync to complete before declaring
+	// Create successful. Downstream resources (computer prestages,
+	// scope assignments) assume the device list is known to Jamf;
+	// returning before the sync finishes lets the caller hit
+	// `context deadline exceeded` on the very next API call against
+	// the freshly-created instance.
+	if d := waitForAdeSync(createCtx, r.client, id); d.HasError() {
+		resp.Diagnostics.Append(d...)
 		return
 	}
 
@@ -232,6 +246,13 @@ func (r *AutomatedDeviceEnrollmentResource) Update(ctx context.Context, req reso
 			resp.Diagnostics.AddError("Error rotating Jamf Pro Automated Device Enrollment token", err.Error())
 			return
 		}
+		// Token rotation triggers a fresh Apple ADE sync; wait for it
+		// to finish so the next downstream call lands on a synced
+		// instance (mirrors Create behaviour).
+		if d := waitForAdeSync(updateCtx, r.client, id); d.HasError() {
+			resp.Diagnostics.Append(d...)
+			return
+		}
 	}
 
 	if _, err := r.client.UpdateDeviceEnrollmentV1(updateCtx, id, buildMetadataInput(plan)); err != nil {
@@ -280,6 +301,71 @@ func (r *AutomatedDeviceEnrollmentResource) Delete(ctx context.Context, req reso
 			return
 		}
 		resp.Diagnostics.AddError("Error deleting Jamf Pro Automated Device Enrollment instance", fmt.Sprintf("API error: %v", err))
+	}
+}
+
+// waitForAdeSync polls the per-instance latest-sync endpoint until the sync
+// state reaches `SUCCESSFUL` (terminal success), surfaces a failure-shaped
+// state as a diagnostic error, or the surrounding context deadline fires.
+//
+// Apple's ADE round-trip is the bottleneck — uploading the .p7m to Jamf is
+// sub-second but Jamf then has to fetch the device list from Apple, which
+// can take a few minutes on cold tokens. Downstream resources (computer
+// prestages, scope assignments) assume the device list is known, so the
+// ADE Create / token-rotation Update must block until the sync completes.
+//
+// Terminal-success value sourced from a live wire-probe against a healthy
+// tenant ADE instance (2026-05-28). Any state whose name contains "FAIL"
+// is treated as terminal failure; everything else is treated as in-flight
+// and polled again.
+func waitForAdeSync(ctx context.Context, client *pro.Client, id string) diag.Diagnostics {
+	var diags diag.Diagnostics
+	ticker := time.NewTicker(syncPollInterval)
+	defer ticker.Stop()
+
+	for {
+		sync, err := client.GetLatestDeviceEnrollmentSyncV1(ctx, id)
+		if err != nil {
+			// 404 is expected briefly immediately after upload — the
+			// sync record may not exist yet. Tolerate and re-poll.
+			if !helpers.IsNotFoundError(err) {
+				diags.AddError(
+					"Error polling Jamf Pro Automated Device Enrollment sync status",
+					fmt.Sprintf("Could not fetch sync status for instance %s: %s", id, err.Error()),
+				)
+				return diags
+			}
+		} else if sync != nil {
+			switch {
+			case sync.SyncState == adeSyncStateSuccessful:
+				tflog.Trace(ctx, "Jamf Pro Automated Device Enrollment sync completed", map[string]any{
+					"id":        id,
+					"timestamp": sync.Timestamp,
+				})
+				return diags
+			case strings.Contains(sync.SyncState, "FAIL"):
+				diags.AddError(
+					"Jamf Pro Automated Device Enrollment sync failed",
+					fmt.Sprintf("Sync state for instance %s is %q (timestamp %s). Inspect the ADE instance in the Jamf Pro admin UI to diagnose the failure.", id, sync.SyncState, sync.Timestamp),
+				)
+				return diags
+			default:
+				tflog.Trace(ctx, "Jamf Pro Automated Device Enrollment sync in progress", map[string]any{
+					"id":         id,
+					"sync_state": sync.SyncState,
+				})
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			diags.AddError(
+				"Jamf Pro Automated Device Enrollment sync wait timed out",
+				fmt.Sprintf("Sync for instance %s did not reach state %q before the operation timeout fired. Increase the `timeouts.create` (or `timeouts.update`) on the resource if Apple ADE sync is consistently slow on this tenant.", id, adeSyncStateSuccessful),
+			)
+			return diags
+		case <-ticker.C:
+		}
 	}
 }
 

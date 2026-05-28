@@ -37,6 +37,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/mobile_device_configuration_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment_public_key"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/computer_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/enrollment_customization"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
@@ -230,6 +231,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		device_group.NewDeviceGroupResource,
 		directory_binding.NewDirectoryBindingResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationResource,
+		computer_prestage_enrollment.NewComputerPrestageEnrollmentResource,
 		dock_item.NewDockItemResource,
 		enrollment_customization.NewEnrollmentCustomizationResource,
 		ibeacon.NewIbeaconResource,
@@ -274,6 +276,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		devices.NewDevicesDataSource,
 		directory_binding.NewDirectoryBindingDataSource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationDataSource,
+		computer_prestage_enrollment.NewComputerPrestageEnrollmentDataSource,
 		dock_item.NewDockItemDataSource,
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		ibeacon.NewIbeaconDataSource,
@@ -310,6 +313,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		device_group.NewDeviceGroupListResource,
 		directory_binding.NewDirectoryBindingListResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationListResource,
+		computer_prestage_enrollment.NewComputerPrestageEnrollmentListResource,
 		dock_item.NewDockItemListResource,
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		ibeacon.NewIbeaconListResource,
