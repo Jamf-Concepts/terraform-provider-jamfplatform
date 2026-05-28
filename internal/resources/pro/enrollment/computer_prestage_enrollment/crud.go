@@ -379,13 +379,6 @@ func seedImportNestedSentinels(state *ComputerPrestageEnrollmentResourceModel) {
 // with workflow guidance — Jamf does not move serials between PreStages
 // transparently; the user must remove the serial from the holding
 // PreStage first.
-//
-// The scope endpoint exhibits the same `HTTP 500 + empty errors[]` response-
-// serializer bug as the prestage Update endpoint (observed 2026-05-28 on a
-// freshly-created prestage's first scope PUT). When isPutSerializerBug
-// matches the error, the write itself has committed server-side; the
-// caller is expected to verify the post-write state via the subsequent
-// scope GET that every CRUD path already runs.
 func applyScope(ctx context.Context, client *pro.Client, prestageID string, serials types.Set) diag.Diagnostics {
 	var diags diag.Diagnostics
 	scope, err := client.GetComputerPrestageScopeV2(ctx, prestageID)
@@ -399,11 +392,6 @@ func applyScope(ctx context.Context, client *pro.Client, prestageID string, seri
 		return diags
 	}
 	if _, err := client.ReplaceComputerPrestageScopeV2(ctx, prestageID, body); err != nil {
-		if isPutSerializerBug(err) {
-			// Write committed server-side; the response-serializer
-			// crashed. Subsequent scope GET will reflect the new state.
-			return diags
-		}
 		summary := "Error replacing prestage scope"
 		detail := err.Error()
 		if strings.Contains(detail, "ALREADY_SCOPED") {
