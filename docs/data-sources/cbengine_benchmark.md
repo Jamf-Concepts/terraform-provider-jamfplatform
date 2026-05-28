@@ -60,7 +60,8 @@ output "benchmark_by_title_rules" {
 - `last_updated_at` (String) Last updated at (RFC3339).
 - `rules` (Attributes List) Rules. (see [below for nested schema](#nestedatt--rules))
 - `sources` (Attributes List) Sources. (see [below for nested schema](#nestedatt--sources))
-- `target_device_group` (String) Device group for the target configuration.
+- `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups`. First device group ID returned by the API, kept for backwards compatibility.
+- `target_device_groups` (Set of String) All device group Platform IDs targeted by this benchmark.
 - `tenant_id` (String) Tenant ID.
 - `update_available` (Boolean) Update available flag.
 
