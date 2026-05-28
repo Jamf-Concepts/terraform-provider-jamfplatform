@@ -9,10 +9,23 @@
 //   pro.ResolveComputerPrestageV3ByName                   (data source name lookup)
 //   pro.ResolveComputerPrestageV3IDByName                 (data source name lookup ID-only path)
 //   pro.ListComputerPrestagesV3                           (list resource + data source name lookup paging)
-//   pro.GetComputerPrestageScopeV2                        (folded scope_serial_numbers read)
-//   pro.ReplaceComputerPrestageScopeV2                    (folded scope_serial_numbers write)
+//   pro.GetAllComputerPrestageScopeV2                     (folded scope_serial_numbers read — workaround for SDK time.Time decode bug, see scopeSerialsForPrestage)
+//   pro.ReplaceComputerPrestageScopeV2                    (folded scope_serial_numbers write — decode-error tolerated, see applyScope)
 //
 // Status: current. Last reviewed 2026-05-28.
+//
+// SDK bug being worked around: pro.PrestageScopeAssignmentV2.AssignmentDate
+// is *time.Time, but Jamf Pro emits e.g. "2026-05-28T13:59:26.491" (no
+// timezone), which fails Go's default RFC3339 decode. Both the per-prestage
+// GET and the Replace endpoint embed `assignments[]` in their response,
+// so naive use of pro.GetComputerPrestageScopeV2 / decoded Replace return
+// values trips a `parsing time ... cannot parse "" as "Z07:00"` error.
+// Provider workaround:
+//   * Use the global pro.GetAllComputerPrestageScopeV2 (returns
+//     map[serial]prestageID, no dates) and filter for our prestage ID.
+//   * On Replace, tolerate the decode error specifically (the write itself
+//     committed before serialization) and re-verify via GetAll.
+// Upstream tracking: file SDK PR fixing AssignmentDate decode.
 
 package computer_prestage_enrollment
 
@@ -89,12 +102,11 @@ func (r *ComputerPrestageEnrollmentResource) Create(ctx context.Context, req res
 			return
 		}
 	}
-	scope, err := r.client.GetComputerPrestageScopeV2(createCtx, id)
+	plan.ScopeSerialNumbers, err = scopeSerialsForPrestage(createCtx, r.client, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading prestage scope after create", err.Error())
 		return
 	}
-	plan.ScopeSerialNumbers = scopeSerialsToSet(scope)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ComputerPrestageEnrollmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -179,12 +191,11 @@ func (r *ComputerPrestageEnrollmentResource) Read(ctx context.Context, req resou
 		return
 	}
 
-	scope, err := r.client.GetComputerPrestageScopeV2(readCtx, state.ID.ValueString())
+	state.ScopeSerialNumbers, err = scopeSerialsForPrestage(readCtx, r.client, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading prestage scope", err.Error())
 		return
 	}
-	state.ScopeSerialNumbers = scopeSerialsToSet(scope)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ComputerPrestageEnrollmentIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -294,12 +305,11 @@ func (r *ComputerPrestageEnrollmentResource) Update(ctx context.Context, req res
 			return
 		}
 	}
-	scope, err := r.client.GetComputerPrestageScopeV2(updateCtx, id)
+	plan.ScopeSerialNumbers, err = scopeSerialsForPrestage(updateCtx, r.client, id)
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading prestage scope after update", err.Error())
 		return
 	}
-	plan.ScopeSerialNumbers = scopeSerialsToSet(scope)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ComputerPrestageEnrollmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -352,27 +362,45 @@ func seedImportNestedSentinels(state *ComputerPrestageEnrollmentResourceModel) {
 	state.AccountSettings = &AccountSettingsModel{}
 }
 
-// applyScope drives a ReplaceComputerPrestageScopeV2 call. Always GETs first
-// to source the scope versionLock.
+// applyScope drives a ReplaceComputerPrestageScopeV2 call.
 //
-// Jamf Pro returns `400 ALREADY_SCOPED` (with the offending serial in the
-// `description` field) when any serial in the requested set is currently
-// scoped to a different PreStage. The provider rewraps that diagnostic with
-// guidance — Jamf does not move serials between PreStages transparently;
-// the user must remove the serial from the holding PreStage first.
+// The scope versionLock is sourced from the SDK's existing per-prestage GET
+// (whose decode also trips on AssignmentDate — see file header). When the
+// GET fails with the time-decode error we tolerate it and default the lock
+// to 0; the server will surface a real OPTIMISTIC_LOCK_FAILED if the value
+// has actually drifted.
+//
+// On Replace, two upstream errors get special handling:
+//
+//   * `400 ALREADY_SCOPED` — the diagnostic gets rewrapped with workflow
+//     guidance because Jamf does not move serials between PreStages
+//     transparently. User must remove the serial from the holding PreStage
+//     first.
+//
+//   * The SDK time-decode bug ("parsing time ... cannot parse ...") — the
+//     write itself committed server-side; tolerate the error and continue.
+//     Read paths use `pro.GetAllComputerPrestageScopeV2` to verify state.
 func applyScope(ctx context.Context, client *pro.Client, prestageID string, serials types.Set) diag.Diagnostics {
 	var diags diag.Diagnostics
-	scope, err := client.GetComputerPrestageScopeV2(ctx, prestageID)
-	if err != nil {
+
+	versionLock := 0
+	if scope, err := client.GetComputerPrestageScopeV2(ctx, prestageID); err == nil {
+		versionLock = scope.VersionLock
+	} else if !isScopeTimeDecodeBug(err) {
 		diags.AddError("Error reading prestage scope before replace", err.Error())
 		return diags
 	}
-	body, d := buildScopeReplaceRequest(ctx, serials, scope.VersionLock)
+
+	body, d := buildScopeReplaceRequest(ctx, serials, versionLock)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
 	if _, err := client.ReplaceComputerPrestageScopeV2(ctx, prestageID, body); err != nil {
+		if isScopeTimeDecodeBug(err) {
+			// Write committed; only the SDK's response decode tripped.
+			return diags
+		}
 		summary := "Error replacing prestage scope"
 		detail := err.Error()
 		if strings.Contains(detail, "ALREADY_SCOPED") {
@@ -382,6 +410,41 @@ func applyScope(ctx context.Context, client *pro.Client, prestageID string, seri
 		diags.AddError(summary, detail)
 	}
 	return diags
+}
+
+// scopeSerialsForPrestage returns the set of serial numbers currently scoped
+// to the given prestage by calling the tenant-wide
+// `GetAllComputerPrestageScopeV2` (whose response is a flat
+// `map[serial]prestageID` and contains no AssignmentDate fields). The
+// per-prestage `GetComputerPrestageScopeV2` cannot currently be used due to
+// the SDK time-decode bug noted in the file header.
+func scopeSerialsForPrestage(ctx context.Context, client *pro.Client, prestageID string) (types.Set, error) {
+	all, err := client.GetAllComputerPrestageScopeV2(ctx)
+	if err != nil {
+		return types.SetValueMust(types.StringType, nil), err
+	}
+	if all == nil {
+		return types.SetValueMust(types.StringType, nil), nil
+	}
+	serials := make([]string, 0)
+	for serial, pid := range all.SerialsByPrestageID {
+		if pid == prestageID {
+			serials = append(serials, serial)
+		}
+	}
+	return stringSliceToSet(serials), nil
+}
+
+// isScopeTimeDecodeBug detects the upstream SDK bug where decoding
+// `PrestageScopeAssignmentV2.AssignmentDate *time.Time` fails on Jamf's
+// timezone-less wire format (e.g. `"2026-05-28T13:59:26.491"`). Match is
+// narrow — only the specific Go time-parse error surfaces this pattern.
+func isScopeTimeDecodeBug(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, `parsing time`) && strings.Contains(msg, `cannot parse "" as "Z07:00"`)
 }
 
 func recoveryLockPasswordWoBumped(plan, state ComputerPrestageEnrollmentResourceModel) bool {
