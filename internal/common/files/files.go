@@ -14,6 +14,8 @@ package files
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -269,6 +271,20 @@ func OpenUploadSource(ctx context.Context, src string, maxBytes int64) (*os.File
 		_ = os.Remove(tempPath)
 	}
 	return tmp, filename, cleanup, nil
+}
+
+// ContentSHA256Prefix is the algorithm tag prepended to every value returned
+// by ComputeContentSHA256. Resources that surface the hash in Terraform state
+// use this prefix so callers can recognise the hash format across files.
+const ContentSHA256Prefix = "sha256:"
+
+// ComputeContentSHA256 returns the canonical hash string for the supplied
+// bytes: the ContentSHA256Prefix followed by the lowercase hex SHA-256.
+// Centralised so resources that store an uploaded file's hash in state (icon,
+// enrollment customization image) compute the value identically.
+func ComputeContentSHA256(b []byte) string {
+	sum := sha256.Sum256(b)
+	return ContentSHA256Prefix + hex.EncodeToString(sum[:])
 }
 
 // uniqueTempPath appends a nanosecond suffix when the requested temp path is

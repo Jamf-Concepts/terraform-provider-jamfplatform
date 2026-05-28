@@ -189,7 +189,7 @@ func (r *IconResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRe
 		resp.Diagnostics.AddError("Error reading icon source during plan", readErr.Error())
 		return
 	}
-	newHash := computeSourceHashString(data)
+	newHash := files.ComputeContentSHA256(data)
 
 	// Create case — set computed source_hash on the plan.
 	if req.State.Raw.IsNull() {
