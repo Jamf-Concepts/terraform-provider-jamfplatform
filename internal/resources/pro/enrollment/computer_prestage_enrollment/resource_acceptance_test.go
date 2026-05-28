@@ -442,7 +442,7 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
   recovery_lock_password_type = "BOGUS_VALUE"
 }
 `, suffix, adeFixtureRef),
-				ExpectError: regexp.MustCompile(`must be one of: \["MANUAL" "RANDOM"\]`),
+				ExpectError: regexp.MustCompile(`must be one of: \["MANUAL"\s+"RANDOM"\]`),
 			},
 		},
 	})
@@ -476,7 +476,7 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
   }
 }
 `, suffix, adeFixtureRef),
-				ExpectError: regexp.MustCompile(`must be one of: \["CUSTOM" "DEVICE_OWNER"\]`),
+				ExpectError: regexp.MustCompile(`must be one of: \["CUSTOM"\s+"DEVICE_OWNER"\]`),
 			},
 		},
 	})
@@ -510,7 +510,7 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
   }
 }
 `, suffix, adeFixtureRef),
-				ExpectError: regexp.MustCompile(`must be one of: \["ADMINISTRATOR" "STANDARD" "SKIP"\]`),
+				ExpectError: regexp.MustCompile(`must be one of: \["ADMINISTRATOR"\s+"STANDARD"\s+"SKIP"\]`),
 			},
 		},
 	})
