@@ -100,6 +100,19 @@ func requireADESerialFixture(t *testing.T) string {
 	return v
 }
 
+// requireADESerial2Fixture skips when JAMFPLATFORM_ADE_SERIAL2 is unset.
+// A second real ADE-bound serial used by the multi-serial diff test
+// (exercises the add+remove paths that drive scope_serial_numbers
+// changes between non-empty sets).
+func requireADESerial2Fixture(t *testing.T) string {
+	t.Helper()
+	v := os.Getenv("JAMFPLATFORM_ADE_SERIAL2")
+	if v == "" {
+		t.Skip("JAMFPLATFORM_ADE_SERIAL2 not set — multi-serial diff acc test requires a second real ADE-bound device serial.")
+	}
+	return v
+}
+
 // adeFixtureBlock emits a Terraform resource block that creates an ADE
 // instance from the supplied base64 token. Returned HCL is concatenated
 // with the prestage block in each test config.
@@ -349,6 +362,107 @@ func TestAccResource_ProComputerPrestageEnrollment_ScopeAssignments(t *testing.T
 			},
 		},
 	})
+}
+
+// --- §13 #8a: Scope multi-serial add/remove diff ---------------------------
+
+// TestAccResource_ProComputerPrestageEnrollment_ScopeMultiSerialDiff
+// exercises the (POST add + POST remove-multiple) diff logic in
+// `applyScope` across every transition shape:
+//
+//   Step 1: [] → [s1]                  (pure add of one serial)
+//   Step 2: [s1] → [s1, s2]            (pure add when scope is non-empty)
+//   Step 3: [s1, s2] → [s2]            (pure remove of one of two serials)
+//   Step 4: [s2] → [s1]                (combined add + remove in one apply)
+//   Step 5: [s1] → []                  (pure remove of last serial)
+//
+// Gated on `JAMFPLATFORM_ADE_TOKEN`, `JAMFPLATFORM_ADE_SERIAL`, and
+// `JAMFPLATFORM_ADE_SERIAL2` — all three must be set, both serials must
+// be present on the uploaded ADE token, and neither serial may be
+// scoped to any other PreStage at the time the test starts.
+func TestAccResource_ProComputerPrestageEnrollment_ScopeMultiSerialDiff(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	token := requireADETokenBlob(t)
+	s1 := requireADESerialFixture(t)
+	s2 := requireADESerial2Fixture(t)
+	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
+	name := "tf-acc-scope-multi-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// Step 1: [] → [s1]
+			{
+				Config: adeFixtureBlock(suffix, token) + testAccComputerPrestageMultiScopeConfig(name, []string{s1}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "scope_serial_numbers.#", "1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope_serial_numbers.*", s1),
+				),
+			},
+			// Step 2: [s1] → [s1, s2]
+			{
+				Config: adeFixtureBlock(suffix, token) + testAccComputerPrestageMultiScopeConfig(name, []string{s1, s2}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "scope_serial_numbers.#", "2"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope_serial_numbers.*", s1),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope_serial_numbers.*", s2),
+				),
+			},
+			// Step 3: [s1, s2] → [s2]  (pure remove)
+			{
+				Config: adeFixtureBlock(suffix, token) + testAccComputerPrestageMultiScopeConfig(name, []string{s2}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "scope_serial_numbers.#", "1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope_serial_numbers.*", s2),
+				),
+			},
+			// Step 4: [s2] → [s1]  (combined add + remove)
+			{
+				Config: adeFixtureBlock(suffix, token) + testAccComputerPrestageMultiScopeConfig(name, []string{s1}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "scope_serial_numbers.#", "1"),
+					resource.TestCheckTypeSetElemAttr(resourceName, "scope_serial_numbers.*", s1),
+				),
+			},
+			// Step 5: [s1] → []  (pure remove of last serial)
+			{
+				Config: adeFixtureBlock(suffix, token) + testAccComputerPrestageMultiScopeConfig(name, []string{}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "scope_serial_numbers.#", "0"),
+				),
+			},
+		},
+	})
+}
+
+func testAccComputerPrestageMultiScopeConfig(name string, serials []string) string {
+	parts := make([]string, 0, len(serials))
+	for _, s := range serials {
+		parts = append(parts, fmt.Sprintf("%q", s))
+	}
+	scope := "[" + strings.Join(parts, ", ") + "]"
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
+  display_name                          = %q
+  mandatory                             = true
+  mdm_removable                         = true
+  require_authentication                = false
+  device_enrollment_program_instance_id = %s
+  keep_existing_location_information    = false
+  keep_existing_site_membership         = false
+  auto_advance_setup                    = false
+  install_profiles_during_setup         = false
+  prevent_activation_lock               = false
+  enable_device_based_activation_lock   = false
+
+  location_information   = {}
+  purchasing_information = {}
+  account_settings       = {}
+
+  scope_serial_numbers = %s
+}
+`, name, adeFixtureRef, scope)
 }
 
 // --- §13 #8b: Scope ALREADY_SCOPED conflict ---------------------------------
