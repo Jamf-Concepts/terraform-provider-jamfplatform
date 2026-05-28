@@ -28,8 +28,7 @@ import (
 //     confirmed the Jamf Pro server denormalises
 //     `<limitations><user_groups>` into `<limit_to_users><user_groups>` on
 //     every write (and vice versa on every read), so the two wire paths
-//     carry identical values. deploymenttheory/terraform-provider-jamfpro
-//     omits it for the same reason. SDK commit 748aa25 still fixed the
+//     carry identical values. SDK commit 748aa25 still fixed the
 //     underlying wrapper-shape defect on the SDK type for any future
 //     non-policy consumer.
 type PolicyResourceModel struct {

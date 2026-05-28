@@ -259,7 +259,7 @@ Create already follows this pattern (POST → HrefResponse → GET); Update must
 
 Nested blocks modelled as `*StructModel` (typed pointer to a struct with `tfsdk:` tags on every field) cannot be `Optional+Computed`. The Plugin Framework decodes an absent-but-Computed block as **Unknown**, and `*StructModel` has no representation for Unknown — apply fails with:
 
-> `Received unknown value, however the target type cannot handle unknown values. Use the corresponding `types` package type or a custom type that handles unknown values.`
+> `Received unknown value, however the target type cannot handle unknown values. Use the corresponding`types`package type or a custom type that handles unknown values.`
 
 Two ways out:
 
@@ -342,16 +342,19 @@ Reference: `internal/resources/pro/inventory/directory_binding/data_source.go` (
 **Path syntax:** `path.MatchRoot("other_attr")` for a root-level sibling; `path.MatchRelative().AtParent().AtName("other_attr")` for a sibling under the same nested object.
 
 **Off-the-shelf references:**
+
 - `internal/resources/blueprints/blueprint/components/math_settings.go` — paired toggles with `boolvalidator.AlsoRequires`.
 - `internal/resources/blueprints/blueprint/components/software_update.go` — mix of `AlsoRequires`, `ConflictsWith`, `RegexMatches`, `Between`.
 - `internal/resources/pro/inventory/network_segment/resource.go` — `override_buildings` / `override_departments` pair with their companion string via `AlsoRequires`.
 - `internal/actions/device/erase.go` — toggle + companion via `AlsoRequires`.
 
 **Custom validator references (value-specific only):**
+
 - `internal/common/scope/validators.go` — `AllFlagConflictsWith` is a `validator.Bool` that fires only when the bool is `true`; off-the-shelf `ConflictsWith` would incorrectly fire when the bool is `false` too.
 - `internal/resources/pro/settings/sso_settings/validators.go` — value-discriminated validators for `configuration_type ∈ {SAML, OIDC, OIDC_WITH_SAML}`, `metadata_source ∈ {URL, FILE}`, `setup_type = "UPLOADED"`, etc., each requiring different companion sets.
 
 **Custom validator authoring rules:**
+
 - Implement `Validate{Bool,String,Int64,...}` on a struct in `validators.go`.
 - Skip when `req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown()` — apply-time references must not false-positive.
 - Skip when the value does not match the discriminator (e.g. `req.ConfigValue.ValueBool() == false` for a "true-only" rule).
@@ -749,7 +752,7 @@ Trigger summary:
 
 The `<scope>` block of every Jamf Classic-API resource (policies, ebooks, mac applications, mobile device applications, OS X configuration profiles, mobile device configuration profiles, patch policies, restricted software) shares its sub-block target categories — buildings, departments, computers, computer_groups, mobile_devices, mobile_device_groups, network_segments, jss_users, jss_user_groups, ibeacons, and the directory-service name-only siblings. The 3-consumer rule fires at **sub-block granularity**, not at the top-level scope shape (which diverges across the eight scope-bearing resources). Shared helpers live under `internal/common/scope/`.
 
-**Item shape — IDs-only `Set<String>`.** Sub-blocks collapse to a flat `schema.SetAttribute{ElementType: types.StringType, Optional: true}` carrying only the numeric Jamf Pro classic ID (or name string, for the directory-service categories). Server-augmented `<name>` and `<udid>` wire fields are discarded on read; only IDs round-trip through Terraform state. Authoring uses interpolation: `computer_ids = [for c in data.jamfplatform_pro_computers.example: c.id]`. Rationale: confirmed against `Jamf-Concepts/jamf-cli/internal/scope` and `deploymenttheory/terraform-provider-jamfpro/internal/common/shared_schemas/*_scope.go`. The richer alternative — nested `{ id, name }` objects — replays server-derived names back into TF state and forces drift suppression on every refresh; IDs-only sidesteps it.
+**Item shape — IDs-only `Set<String>`.** Sub-blocks collapse to a flat `schema.SetAttribute{ElementType: types.StringType, Optional: true}` carrying only the numeric Jamf Pro classic ID (or name string, for the directory-service categories). Server-augmented `<name>` and `<udid>` wire fields are discarded on read; only IDs round-trip through Terraform state. Authoring uses interpolation: `computer_ids = [for c in data.jamfplatform_pro_computers.example: c.id]`.
 
 **Naming convention.**
 
