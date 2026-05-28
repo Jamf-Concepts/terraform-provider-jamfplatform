@@ -10,7 +10,18 @@
 //   pro.ResolveComputerPrestageV3IDByName                 (data source name lookup ID-only path)
 //   pro.ListComputerPrestagesV3                           (list resource + data source name lookup paging)
 //   pro.GetComputerPrestageScopeV2                        (folded scope_serial_numbers read)
-//   pro.ReplaceComputerPrestageScopeV2                    (folded scope_serial_numbers write)
+//   pro.AddToComputerPrestageScopeV2                      (folded scope_serial_numbers add diff)
+//   pro.RemoveFromComputerPrestageScopeV2                 (folded scope_serial_numbers remove diff)
+//
+// pro.ReplaceComputerPrestageScopeV2 (PUT /v2/computer-prestages/{id}/scope)
+// is documented as the "replace whole set" call, but on this tenant it
+// returns `HTTP 500 + {"httpStatus":500,"errors":[]}` and DOES NOT commit
+// for any non-empty serialNumbers payload (PUT with empty array works).
+// Verified 2026-05-28 with a freshly-uploaded ADE token + a serial
+// confirmed present on the token via /v1/device-enrollments/{id}/devices.
+// The provider works around the bug by replacing the single Replace
+// call with a (remove + add) diff computed against the current scope.
+// Upstream tracking: file with Jamf API team.
 //
 // Status: current. Last reviewed 2026-05-28.
 
@@ -370,35 +381,84 @@ func seedImportNestedSentinels(state *ComputerPrestageEnrollmentResourceModel) {
 	state.AccountSettings = &AccountSettingsModel{}
 }
 
-// applyScope drives a ReplaceComputerPrestageScopeV2 call. Always GETs first
-// to source the scope versionLock.
+// applyScope reconciles the prestage's serial-number scope to the user's
+// desired set by computing a (remove + add) diff against the current
+// server-side scope. Uses POST add (`AddToComputerPrestageScopeV2`) and
+// POST remove-multiple (`RemoveFromComputerPrestageScopeV2`) instead of
+// PUT replace (`ReplaceComputerPrestageScopeV2`) because the latter is
+// currently broken on Jamf Pro (see file-header comment for the bug
+// detail).
 //
-// Jamf Pro returns `400 ALREADY_SCOPED` (with the offending serial in the
-// `description` field) when any serial in the requested set is currently
-// scoped to a different PreStage. The provider rewraps that diagnostic
-// with workflow guidance — Jamf does not move serials between PreStages
-// transparently; the user must remove the serial from the holding
-// PreStage first.
-func applyScope(ctx context.Context, client *pro.Client, prestageID string, serials types.Set) diag.Diagnostics {
+// Order of operations:
+//  1. GET current scope → existing serial set + scope versionLock.
+//  2. Remove serials that exist server-side but are NOT in the plan.
+//  3. Add serials that ARE in the plan but NOT server-side.
+//
+// Each step sources its own versionLock from the GET (the lock advances
+// across the remove call but we don't refetch — Jamf accepts the prior
+// lock for the immediately-following add).
+//
+// `400 ALREADY_SCOPED` on the add path is rewrapped with workflow
+// guidance: Jamf does not move serials between PreStages transparently;
+// the user must remove the serial from the holding PreStage first.
+func applyScope(ctx context.Context, client *pro.Client, prestageID string, planSerials types.Set) diag.Diagnostics {
 	var diags diag.Diagnostics
+
 	scope, err := client.GetComputerPrestageScopeV2(ctx, prestageID)
 	if err != nil {
-		diags.AddError("Error reading prestage scope before replace", err.Error())
+		diags.AddError("Error reading prestage scope before diff", err.Error())
 		return diags
 	}
-	body, d := buildScopeReplaceRequest(ctx, serials, scope.VersionLock)
+
+	planSlice, d := stringSetToSlice(ctx, planSerials)
 	diags.Append(d...)
 	if diags.HasError() {
 		return diags
 	}
-	if _, err := client.ReplaceComputerPrestageScopeV2(ctx, prestageID, body); err != nil {
-		summary := "Error replacing prestage scope"
-		detail := err.Error()
-		if strings.Contains(detail, "ALREADY_SCOPED") {
-			summary = "Jamf Pro PreStage scope conflict (serial already assigned)"
-			detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf does not move serials between PreStages transparently — remove the serial from the holding PreStage first (in the same `terraform apply` via `depends_on`, in two separate applies, or via the Jamf Pro admin UI) and re-run."
+	planSet := map[string]struct{}{}
+	for _, s := range planSlice {
+		planSet[s] = struct{}{}
+	}
+	existingSet := map[string]struct{}{}
+	for _, a := range scope.Assignments {
+		existingSet[a.SerialNumber] = struct{}{}
+	}
+
+	var toRemove, toAdd []string
+	for s := range existingSet {
+		if _, ok := planSet[s]; !ok {
+			toRemove = append(toRemove, s)
 		}
-		diags.AddError(summary, detail)
+	}
+	for s := range planSet {
+		if _, ok := existingSet[s]; !ok {
+			toAdd = append(toAdd, s)
+		}
+	}
+
+	versionLock := scope.VersionLock
+	if len(toRemove) > 0 {
+		body := &pro.PrestageScopeUpdate{SerialNumbers: toRemove, VersionLock: versionLock}
+		removed, err := client.RemoveFromComputerPrestageScopeV2(ctx, prestageID, body)
+		if err != nil {
+			diags.AddError("Error removing serials from prestage scope", err.Error())
+			return diags
+		}
+		if removed != nil {
+			versionLock = removed.VersionLock
+		}
+	}
+	if len(toAdd) > 0 {
+		body := &pro.PrestageScopeUpdate{SerialNumbers: toAdd, VersionLock: versionLock}
+		if _, err := client.AddToComputerPrestageScopeV2(ctx, prestageID, body); err != nil {
+			summary := "Error adding serials to prestage scope"
+			detail := err.Error()
+			if strings.Contains(detail, "ALREADY_SCOPED") {
+				summary = "Jamf Pro PreStage scope conflict (serial already assigned)"
+				detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf does not move serials between PreStages transparently — remove the serial from the holding PreStage first (in the same `terraform apply` via `depends_on`, in two separate applies, or via the Jamf Pro admin UI) and re-run."
+			}
+			diags.AddError(summary, detail)
+		}
 	}
 	return diags
 }
