@@ -101,7 +101,13 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"to allocate the instance, then sets the user-visible `name` and any optional " +
 			"`site_id` / `supervision_identity_id` associations. If the rename step fails the " +
 			"provider deletes the partially-created instance so Terraform's create either fully " +
-			"succeeds or leaves no resource behind.",
+			"succeeds or leaves no resource behind. " +
+			"After every token write (initial create AND any update that bumps " +
+			"`server_token_wo_version`), the provider blocks until Jamf Pro reports the " +
+			"Apple DEP sync as `SUCCESSFUL` — until that completes the device list is not known " +
+			"to Jamf and downstream resources (e.g. `jamfplatform_pro_computer_prestage_enrollment` " +
+			"scope assignments) will fail. Default create/update timeout is 5 minutes; override " +
+			"via the `timeouts` block when Apple's round-trip is slower on a particular tenant.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Automated Device Enrollment instance ID assigned by Jamf Pro.",
@@ -137,7 +143,9 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 					"(any change) to force an update that re-sends the current `server_token` to Jamf Pro. " +
 					"Initial create should set `server_token_wo_version = 1`. Required because `server_token` " +
 					"itself is Required — keeping the companion Required keeps the rotation signal explicit in " +
-					"config.",
+					"config. " +
+					"Bumping this value triggers a fresh Apple DEP sync; the update operation blocks until " +
+					"Jamf Pro reports the sync as `SUCCESSFUL` (subject to `timeouts.update`, default 5 minutes).",
 				Required: true,
 			},
 			"token_file_name": schema.StringAttribute{
