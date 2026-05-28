@@ -100,7 +100,7 @@ func (r *AutomatedDeviceEnrollmentResource) Create(ctx context.Context, req reso
 		return
 	}
 
-	// Wait for the first Apple DEP sync to complete before declaring
+	// Wait for the first Apple ADE sync to complete before declaring
 	// Create successful. Downstream resources (computer prestages,
 	// scope assignments) assume the device list is known to Jamf;
 	// returning before the sync finishes lets the caller hit
@@ -246,7 +246,7 @@ func (r *AutomatedDeviceEnrollmentResource) Update(ctx context.Context, req reso
 			resp.Diagnostics.AddError("Error rotating Jamf Pro Automated Device Enrollment token", err.Error())
 			return
 		}
-		// Token rotation triggers a fresh Apple DEP sync; wait for it
+		// Token rotation triggers a fresh Apple ADE sync; wait for it
 		// to finish so the next downstream call lands on a synced
 		// instance (mirrors Create behaviour).
 		if d := waitForAdeSync(updateCtx, r.client, id); d.HasError() {
@@ -308,7 +308,7 @@ func (r *AutomatedDeviceEnrollmentResource) Delete(ctx context.Context, req reso
 // state reaches `SUCCESSFUL` (terminal success), surfaces a failure-shaped
 // state as a diagnostic error, or the surrounding context deadline fires.
 //
-// Apple's DEP round-trip is the bottleneck — uploading the .p7m to Jamf is
+// Apple's ADE round-trip is the bottleneck — uploading the .p7m to Jamf is
 // sub-second but Jamf then has to fetch the device list from Apple, which
 // can take a few minutes on cold tokens. Downstream resources (computer
 // prestages, scope assignments) assume the device list is known, so the
@@ -361,7 +361,7 @@ func waitForAdeSync(ctx context.Context, client *pro.Client, id string) diag.Dia
 		case <-ctx.Done():
 			diags.AddError(
 				"Jamf Pro Automated Device Enrollment sync wait timed out",
-				fmt.Sprintf("Sync for instance %s did not reach state %q before the operation timeout fired. Increase the `timeouts.create` (or `timeouts.update`) on the resource if Apple DEP sync is consistently slow on this tenant.", id, adeSyncStateSuccessful),
+				fmt.Sprintf("Sync for instance %s did not reach state %q before the operation timeout fired. Increase the `timeouts.create` (or `timeouts.update`) on the resource if Apple ADE sync is consistently slow on this tenant.", id, adeSyncStateSuccessful),
 			)
 			return diags
 		case <-ticker.C:

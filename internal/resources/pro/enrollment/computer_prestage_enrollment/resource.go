@@ -150,7 +150,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"device_enrollment_program_instance_id": schema.StringAttribute{
-				MarkdownDescription: "ID of the Automated Device Enrollment (ADE/DEP) instance that backs this PreStage. Required.",
+				MarkdownDescription: "ID of the Automated Device Enrollment (ADE) instance that backs this PreStage. Required.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),

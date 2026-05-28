@@ -17,7 +17,7 @@ Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device E
 # SPDX-License-Identifier: MPL-2.0
 
 # Minimal Computer PreStage Enrollment. `device_enrollment_program_instance_id`
-# must be the ID of an ADE/DEP instance already provisioned in Jamf Pro.
+# must be the ID of an ADE instance already provisioned in Jamf Pro.
 resource "jamfplatform_pro_computer_prestage_enrollment" "example" {
   display_name                          = "Standard macOS PreStage"
   mandatory                             = true
@@ -60,7 +60,7 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "example" {
 ### Required
 
 - `auto_advance_setup` (Boolean) **"Auto Advance Setup"** in the Jamf Pro admin UI.
-- `device_enrollment_program_instance_id` (String) ID of the Automated Device Enrollment (ADE/DEP) instance that backs this PreStage. Required.
+- `device_enrollment_program_instance_id` (String) ID of the Automated Device Enrollment (ADE) instance that backs this PreStage. Required.
 - `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. Required. Must not be blank.
 - `enable_device_based_activation_lock` (Boolean) **"Enable Device-Based Activation Lock"** in the Jamf Pro admin UI.
 - `install_profiles_during_setup` (Boolean) When `true`, Jamf Pro installs the configuration profiles listed in `prestage_installed_profile_ids` during Setup Assistant.

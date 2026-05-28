@@ -44,7 +44,7 @@ var (
 
 const (
 	// defaultCreateTimeout bounds the whole Create operation including the
-	// post-upload sync wait. Apple's DEP round-trip is the slow leg —
+	// post-upload sync wait. Apple's ADE round-trip is the slow leg —
 	// uploading the .p7m token is sub-second but Jamf then has to fetch
 	// the device list from Apple, which can take a few minutes on cold
 	// tokens.
@@ -56,7 +56,7 @@ const (
 	defaultDeleteTimeout = 60 * time.Second
 
 	// syncPollInterval is how often the provider polls
-	// pro.GetLatestDeviceEnrollmentSyncV1 while waiting for the Apple DEP
+	// pro.GetLatestDeviceEnrollmentSyncV1 while waiting for the Apple ADE
 	// sync to finish. Conservative — Apple's side is the bottleneck, not
 	// the polling cadence.
 	syncPollInterval = 5 * time.Second
@@ -104,7 +104,7 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"succeeds or leaves no resource behind. " +
 			"After every token write (initial create AND any update that bumps " +
 			"`server_token_wo_version`), the provider blocks until Jamf Pro reports the " +
-			"Apple DEP sync as `SUCCESSFUL` — until that completes the device list is not known " +
+			"Apple ADE sync as `SUCCESSFUL` — until that completes the device list is not known " +
 			"to Jamf and downstream resources (e.g. `jamfplatform_pro_computer_prestage_enrollment` " +
 			"scope assignments) will fail. Default create/update timeout is 5 minutes; override " +
 			"via the `timeouts` block when Apple's round-trip is slower on a particular tenant.",
@@ -144,7 +144,7 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 					"Initial create should set `server_token_wo_version = 1`. Required because `server_token` " +
 					"itself is Required — keeping the companion Required keeps the rotation signal explicit in " +
 					"config. " +
-					"Bumping this value triggers a fresh Apple DEP sync; the update operation blocks until " +
+					"Bumping this value triggers a fresh Apple ADE sync; the update operation blocks until " +
 					"Jamf Pro reports the sync as `SUCCESSFUL` (subject to `timeouts.update`, default 5 minutes).",
 				Required: true,
 			},
