@@ -371,7 +371,8 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 			"purchasing_information": purchasingInformationSchema(),
 			"account_settings":       accountSettingsSchema(),
 			"scope_serial_numbers": schema.SetAttribute{
-				MarkdownDescription: "Set of device serial numbers assigned to this PreStage. Each serial must exist on the underlying ADE token. Scope is managed via the Jamf Pro `/v2/computer-prestages/{id}/scope` endpoint and is rewritten in full on every change.",
+				MarkdownDescription: "Set of device serial numbers assigned to this PreStage. Each serial must exist on the underlying ADE token. Scope is managed via the Jamf Pro `/v2/computer-prestages/{id}/scope` endpoint and is rewritten in full on every change. " +
+					"Jamf Pro enforces single-PreStage-per-serial: assigning a serial that is currently scoped to a different PreStage returns `400 ALREADY_SCOPED` — there is no transparent reassignment. To move a serial between PreStages, first remove it from the holding PreStage (e.g. in the same `terraform apply` with an explicit `depends_on` ordering or a two-step apply).",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,

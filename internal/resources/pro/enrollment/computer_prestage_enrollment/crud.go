@@ -19,6 +19,7 @@ package computer_prestage_enrollment
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -353,6 +354,12 @@ func seedImportNestedSentinels(state *ComputerPrestageEnrollmentResourceModel) {
 
 // applyScope drives a ReplaceComputerPrestageScopeV2 call. Always GETs first
 // to source the scope versionLock.
+//
+// Jamf Pro returns `400 ALREADY_SCOPED` (with the offending serial in the
+// `description` field) when any serial in the requested set is currently
+// scoped to a different PreStage. The provider rewraps that diagnostic with
+// guidance — Jamf does not move serials between PreStages transparently;
+// the user must remove the serial from the holding PreStage first.
 func applyScope(ctx context.Context, client *pro.Client, prestageID string, serials types.Set) diag.Diagnostics {
 	var diags diag.Diagnostics
 	scope, err := client.GetComputerPrestageScopeV2(ctx, prestageID)
@@ -366,7 +373,13 @@ func applyScope(ctx context.Context, client *pro.Client, prestageID string, seri
 		return diags
 	}
 	if _, err := client.ReplaceComputerPrestageScopeV2(ctx, prestageID, body); err != nil {
-		diags.AddError("Error replacing prestage scope", err.Error())
+		summary := "Error replacing prestage scope"
+		detail := err.Error()
+		if strings.Contains(detail, "ALREADY_SCOPED") {
+			summary = "Jamf Pro PreStage scope conflict (serial already assigned)"
+			detail += "\n\nJamf Pro enforces single-PreStage-per-serial: at least one serial in `scope_serial_numbers` is currently assigned to a different PreStage. Jamf does not move serials between PreStages transparently — remove the serial from the holding PreStage first (in the same `terraform apply` via `depends_on`, in two separate applies, or via the Jamf Pro admin UI) and re-run."
+		}
+		diags.AddError(summary, detail)
 	}
 	return diags
 }
