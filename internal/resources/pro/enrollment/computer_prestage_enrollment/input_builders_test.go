@@ -12,19 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func newSet(t *testing.T, in []string) types.Set {
-	t.Helper()
-	elems := make([]attr.Value, 0, len(in))
-	for _, s := range in {
-		elems = append(elems, types.StringValue(s))
-	}
-	set, diags := types.SetValue(types.StringType, elems)
-	if diags.HasError() {
-		t.Fatalf("set construction: %v", diags)
-	}
-	return set
-}
-
 func newList(t *testing.T, in []string) types.List {
 	t.Helper()
 	elems := make([]attr.Value, 0, len(in))
@@ -191,32 +178,6 @@ func TestPlaintextRecoveryPassword(t *testing.T) {
 	cfg.RecoveryLockPassword = types.StringValue("RecP@ss")
 	if got := plaintextRecoveryPassword(cfg); got == nil || *got != "RecP@ss" {
 		t.Errorf("populated pwd should round-trip: %v", got)
-	}
-}
-
-func TestBuildScopeReplaceRequest_Empty(t *testing.T) {
-	body, d := buildScopeReplaceRequest(context.Background(), types.SetNull(types.StringType), 5)
-	if d.HasError() {
-		t.Fatalf("diags: %v", d)
-	}
-	if body.VersionLock != 5 {
-		t.Errorf("versionLock not passed through")
-	}
-	if body.SerialNumbers == nil || len(body.SerialNumbers) != 0 {
-		t.Errorf("null set must produce empty (not nil) slice: %v", body.SerialNumbers)
-	}
-}
-
-func TestBuildScopeReplaceRequest_WithSerials(t *testing.T) {
-	body, d := buildScopeReplaceRequest(context.Background(), newSet(t, []string{"S1", "S2"}), 12)
-	if d.HasError() {
-		t.Fatalf("diags: %v", d)
-	}
-	if len(body.SerialNumbers) != 2 {
-		t.Errorf("expected 2 serials, got %d", len(body.SerialNumbers))
-	}
-	if body.VersionLock != 12 {
-		t.Errorf("versionLock not passed through")
 	}
 }
 

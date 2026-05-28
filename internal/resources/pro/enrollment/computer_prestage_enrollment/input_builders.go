@@ -283,25 +283,6 @@ func plaintextRecoveryPassword(cfg ComputerPrestageEnrollmentResourceModel) *str
 	return &s
 }
 
-// buildScopeReplaceRequest assembles the SDK PrestageScopeUpdate body.
-// versionLock is fetched from a prior GET on the scope endpoint.
-func buildScopeReplaceRequest(ctx context.Context, serials types.Set, versionLock int) (*pro.PrestageScopeUpdate, diag.Diagnostics) {
-	out := &pro.PrestageScopeUpdate{
-		SerialNumbers: []string{},
-		VersionLock:   versionLock,
-	}
-	if serials.IsNull() || serials.IsUnknown() {
-		return out, nil
-	}
-	slice, d := stringSetToSlice(ctx, serials)
-	if d.HasError() {
-		return nil, d
-	}
-	if slice != nil {
-		out.SerialNumbers = slice
-	}
-	return out, d
-}
 
 // stringSetToSlice extracts a TF Set<String> into a Go []string.
 // Returns nil when the set is null/unknown.
