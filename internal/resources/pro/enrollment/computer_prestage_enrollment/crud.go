@@ -127,6 +127,15 @@ func (r *ComputerPrestageEnrollmentResource) Read(ctx context.Context, req resou
 		}
 		state.ID = identity.ID
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes)
+		// On import we have no user plan to signal "manage this nested
+		// section". Populate sentinel empty models so the state-builder
+		// rebuilds every block from the GET — anything else would leave
+		// the imported state missing all four nested blocks and
+		// ImportStateVerify would diff against the post-Create state.
+		state.SkipSetupItems = &SkipSetupItemsModel{}
+		state.LocationInformation = &LocationInformationModel{}
+		state.PurchasingInformation = &PurchasingInformationModel{}
+		state.AccountSettings = &AccountSettingsModel{}
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
