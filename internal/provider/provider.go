@@ -59,9 +59,11 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/policy"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/user_initiated_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/location"
@@ -242,6 +244,8 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		pkg.NewPackageResource,
 		policy.NewPolicyResource,
 		printer.NewPrinterResource,
+		re_enrollment_settings.NewReEnrollmentSettingsResource,
+		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsResource,
 		script.NewScriptResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		site.NewSiteResource,
@@ -287,6 +291,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		pkg.NewPackageDataSource,
 		policy.NewPolicyDataSource,
 		printer.NewPrinterDataSource,
+		re_enrollment_settings.NewReEnrollmentSettingsDataSource,
+		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
 		script.NewScriptDataSource,
 		scripts.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
