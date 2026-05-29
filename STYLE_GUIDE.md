@@ -690,6 +690,24 @@ Jamf Pro objects that exist one-per-tenant and are exposed as Update-only on the
 
 **Before opening the PR**: run `make fix fmt lint test` (must be clean) then `make generate` to rebuild `docs/resources/pro_<name>.md` and `docs/data-sources/pro_<name>.md`. Commit the generated docs with the source.
 
+### Full-replace endpoints & shared backing stores
+
+Some Jamf Pro `PUT` endpoints are **full-replace**: any field omitted from the request body is reset to its server-side default, not left untouched. This is **not** discoverable from the SDK type or the OpenAPI spec — you **must** wire-probe it during the in-design phase. Probe: `GET` the object, `PUT` a body with one field changed and several others omitted, then `GET` again. If the omitted fields reverted to defaults, the endpoint is full-replace. Probe **both directions** (omit field A, then omit field B) — `/v4/enrollment` resets *every* omitted scalar. Record the finding in the spike doc and the `crud.go` annotation block.
+
+Full-replace has three consequences:
+
+**1. Every write must send a complete body.** Build the `PUT` payload from a fresh `GET` (not from plan alone), overlaying the fields the resource owns. Never send a sparse body.
+
+**2. Required vs `Optional+Computed` for owned scalars.** For a full-replace settings resource whose fields are owned by a single resource, **prefer `Required`** for any field without a natural, conventional default — `Optional+Computed` silently rewrites an omitted field to a default on every apply, which reads as a "preserve" but is actually a wipe. Reserve `Optional+Computed` for fields with a genuinely conventional default (a boolean's `false` = "unticked checkbox" is defensible; an enum with no "unset" state is not). When in doubt, make it `Required` and document the full-replace nature in the schema `MarkdownDescription`. `jamfplatform_pro_re_enrollment_settings` is the reference: **all** six settings attributes are `Required` precisely because every one is full-replaced. Mixing is fine when principled — but the bias is toward `Required`.
+
+**3. Shared backing store → read-merge-write + a process-shared mutex.** When two endpoints (or two resources) are two views of *one* record — a write to either propagates to the other's read — extra care is required:
+
+- **Round-trip non-owned fields.** A resource that owns only a *subset* of a full-replace object must read the live `GET`, overlay its own fields, and pass the fields it does **not** own back **unchanged** (they are not in its schema or state). `jamfplatform_pro_user_initiated_enrollment_settings` round-trips the six re-enrollment fields it does not own (see `mergeEnrollmentSettingsInput`).
+- **Serialize with a provider-shared mutex.** Terraform applies dependency-free resources concurrently (e.g. both created on first apply), so two resources doing read-merge-write against one store can clobber each other from a stale read. Add a by-reference `sync.Mutex` to `providerdata.Data` with an exported accessor (precedent: `EnrollmentWriteLock()`), grab it in each resource's `Configure` (type-assert `req.ProviderData.(*providerdata.Data)`, nil-safe), and lock it around the **entire** `GET → merge → PUT` critical section in `Create`/`Update`. `Read` is `GET`-only and takes no lock. Operations against a *different* endpoint (e.g. the access-group sub-collection on `/v3`) run outside the lock.
+- **Document the residual cross-process gap.** A process-shared mutex only serializes within one provider process; two separate `terraform apply` runs against the same tenant still race when the object carries no version/ETag for optimistic concurrency. State this limit in the resource doc-comment.
+
+**Write-only secrets are the exception to full-replace.** A write-only keystore/identity object (e.g. a signing certificate) may be **preserve-on-omit**: omitting the object keeps the stored secret, while a sibling toggle (not the object) is what deletes it. Wire-probe the lifecycle (set / keep-on-omit / delete) explicitly. In the merge, set such pointers to `nil` so `omitempty` omits them (preserves the secret) — **never** echo the server's `null` back, and only build the object when the user is uploading. See `applyCertToBody` in `user_initiated_enrollment_settings`. This mirrors the WriteOnly + `_wo_version` rotation pattern in [§Plaintext secrets](#plaintext-secrets--writeonly-with-_wo_version-rotation-companion).
+
 ### Pro error/retry helpers (planned extension)
 
 Existing `internal/common/helpers/helpers.go` provides `IsNotFoundError` and `IsServerError`. Pro APIs add cases the existing helpers don't cover:
