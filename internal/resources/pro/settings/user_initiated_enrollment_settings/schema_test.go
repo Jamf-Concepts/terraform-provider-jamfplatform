@@ -127,6 +127,44 @@ func TestResource_Schema_AccessGroup(t *testing.T) {
 	}
 }
 
+// TestResource_Schema_MessagingLanguage checks the messaging_languages block: it
+// is a map keyed by language code (so no language_code attribute), name is
+// Computed, and the text fields are Optional+Computed (read-merge model).
+func TestResource_Schema_MessagingLanguage(t *testing.T) {
+	r := NewUserInitiatedEnrollmentSettingsResource()
+	var resp resource.SchemaResponse
+	r.(*UserInitiatedEnrollmentSettingsResource).Schema(context.Background(), resource.SchemaRequest{}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("schema diagnostics: %v", resp.Diagnostics)
+	}
+
+	ml, ok := resp.Schema.Attributes["messaging_languages"].(rschema.MapNestedAttribute)
+	if !ok {
+		t.Fatalf("messaging_languages must be MapNestedAttribute")
+	}
+	// language_code is the MAP KEY, not an attribute.
+	if _, present := ml.NestedObject.Attributes["language_code"]; present {
+		t.Errorf("messaging_languages must not carry a language_code attribute (it is the map key)")
+	}
+	name, ok := ml.NestedObject.Attributes["name"]
+	if !ok || !name.IsComputed() || name.IsRequired() {
+		t.Errorf("messaging_languages.name must be Computed, not Required")
+	}
+	// A representative text field must be Optional+Computed (read-merge).
+	pt, ok := ml.NestedObject.Attributes["page_title"]
+	if !ok || !pt.IsOptional() || !pt.IsComputed() {
+		t.Errorf("messaging_languages.page_title must be Optional+Computed")
+	}
+	// The 4 unmodelled personal* fields must NOT be present.
+	if _, present := ml.NestedObject.Attributes["personal_mdm_installation_text"]; present {
+		t.Errorf("unmodelled personal* fields must not appear in the schema")
+	}
+	// Attribute count: 1 name + 38 text = 39 (language_code is the key).
+	if got := len(ml.NestedObject.Attributes); got != 39 {
+		t.Errorf("expected 39 messaging_languages value attributes, got %d", got)
+	}
+}
+
 // TestDataSource_Metadata checks the DS type name.
 func TestDataSource_Metadata(t *testing.T) {
 	d := NewUserInitiatedEnrollmentSettingsDataSource()

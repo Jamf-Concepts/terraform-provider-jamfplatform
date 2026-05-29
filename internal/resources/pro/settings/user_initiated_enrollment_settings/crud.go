@@ -9,6 +9,11 @@
 //   pro.GetEnrollmentAccessGroupV3
 //   pro.UpdateEnrollmentAccessGroupV3
 //   pro.DeleteEnrollmentAccessGroupV3
+//   pro.ListEnrollmentLanguagesV3
+//   pro.GetEnrollmentLanguageV3
+//   pro.UpdateEnrollmentLanguageV3
+//   pro.DeleteEnrollmentLanguageV3
+//   pro.ListEnrollmentLanguageCodesV3
 //
 // Status: current. Last reviewed 2026-05-29.
 
@@ -63,6 +68,9 @@ func (r *UserInitiatedEnrollmentSettingsResource) Create(ctx context.Context, re
 	if !r.reconcileAccessGroups(createCtx, &plan, nil, &resp.Diagnostics) {
 		return
 	}
+	if !r.reconcileMessagingLanguages(createCtx, &plan, &resp.Diagnostics) {
+		return
+	}
 	if !r.refresh(createCtx, &plan, &resp.Diagnostics) {
 		return
 	}
@@ -90,6 +98,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Read(ctx context.Context, req 
 		state.ID = initialID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(userInitiatedEnrollmentSettingsTimeoutAttributeTypes)
 		state.AccessGroups = types.SetNull(types.ObjectType{AttrTypes: accessGroupAttrTypes})
+		state.MessagingLanguages = types.MapNull(types.ObjectType{AttrTypes: messagingLanguageAttrTypes})
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
@@ -144,6 +153,9 @@ func (r *UserInitiatedEnrollmentSettingsResource) Update(ctx context.Context, re
 		return
 	}
 	if !r.reconcileAccessGroups(updateCtx, &plan, &state, &resp.Diagnostics) {
+		return
+	}
+	if !r.reconcileMessagingLanguages(updateCtx, &plan, &resp.Diagnostics) {
 		return
 	}
 	if !r.refresh(updateCtx, &plan, &resp.Diagnostics) {
@@ -296,16 +308,18 @@ func priorCert(state *UserInitiatedEnrollmentSettingsResourceModel, mdm bool) *c
 	return state.DeveloperCertificate
 }
 
-// refresh reads /v4 and the /v3 access-group list and folds both into state.
+// refresh reads /v4 settings plus both /v3 nested collections (access groups and
+// messaging languages) and folds them into state.
 //
-// Access-group readback respects declared cardinality. When the incoming model
-// carries a KNOWN access_group set (the user manages the collection), state
+// Each nested collection's readback respects declared cardinality. When the
+// incoming model carries a KNOWN set (the user manages the collection), state
 // reflects ONLY the managed subset — the declared elements matched to the fresh
 // server list — so the applied set cardinality equals the planned set and
-// Terraform Core's plan-vs-apply consistency check holds. Undeclared groups
-// (including the always-present built-in) are left on the tenant but never
-// echoed into state. When the set is null/unknown (the user did not author the
-// collection) the full server list is reflected as a Computed value.
+// Terraform Core's plan-vs-apply consistency check holds. Undeclared elements
+// (the always-present built-in access group, the English language) are left on
+// the tenant but never echoed into state. When the set is null/unknown (the user
+// did not author the collection) the full server list is reflected as a Computed
+// value.
 func (r *UserInitiatedEnrollmentSettingsResource) refresh(ctx context.Context, state *UserInitiatedEnrollmentSettingsResourceModel, diags *diag.Diagnostics) bool {
 	got, err := r.client.GetEnrollmentSettingsV4(ctx)
 	if err != nil {
@@ -314,6 +328,19 @@ func (r *UserInitiatedEnrollmentSettingsResource) refresh(ctx context.Context, s
 	}
 	assignSettingsResourceModel(state, got)
 
+	// Both nested /v3 collections are always refreshed, independently of whether
+	// the other is managed — each folds its own Computed set into state.
+	if !r.refreshAccessGroups(ctx, state, diags) {
+		return false
+	}
+	return r.refreshMessagingLanguages(ctx, state, diags)
+}
+
+// refreshAccessGroups reads the /v3 access-group list and folds it into state,
+// honouring declared cardinality. A managed (known) collection reflects only the
+// declared subset matched to the fresh list; a null/unknown collection reflects
+// the full server list as a Computed value.
+func (r *UserInitiatedEnrollmentSettingsResource) refreshAccessGroups(ctx context.Context, state *UserInitiatedEnrollmentSettingsResourceModel, diags *diag.Diagnostics) bool {
 	groups, err := r.client.ListEnrollmentAccessGroupsV3(ctx, nil, true)
 	if err != nil {
 		diags.AddError("Error reading Jamf Pro enrollment Access Groups", err.Error())
@@ -345,6 +372,45 @@ func (r *UserInitiatedEnrollmentSettingsResource) refresh(ctx context.Context, s
 		return false
 	}
 	state.AccessGroups = set
+	return true
+}
+
+// refreshMessagingLanguages reads the /v3 language list and folds it into state
+// as a map keyed by language code, honouring declared cardinality exactly like
+// the Access-Group readback: a managed (known) collection reflects only the
+// declared subset matched to the fresh list, so the applied map keys equal the
+// planned keys; a null/unknown collection reflects the full server list as a
+// Computed value.
+func (r *UserInitiatedEnrollmentSettingsResource) refreshMessagingLanguages(ctx context.Context, state *UserInitiatedEnrollmentSettingsResourceModel, diags *diag.Diagnostics) bool {
+	langs, err := r.client.ListEnrollmentLanguagesV3(ctx, nil)
+	if err != nil {
+		diags.AddError("Error reading Jamf Pro enrollment languages", err.Error())
+		return false
+	}
+
+	declared := state.MessagingLanguages
+	if declared.IsNull() || declared.IsUnknown() {
+		m, d := messagingLanguagesToMap(ctx, langs)
+		diags.Append(d...)
+		if diags.HasError() {
+			return false
+		}
+		state.MessagingLanguages = m
+		return true
+	}
+
+	var declaredModels map[string]messagingLanguageModel
+	diags.Append(declared.ElementsAs(ctx, &declaredModels, false)...)
+	if diags.HasError() {
+		return false
+	}
+	managed := projectManagedMessagingLanguages(declaredModels, langs)
+	m, d := messagingLanguagesToMap(ctx, managed)
+	diags.Append(d...)
+	if diags.HasError() {
+		return false
+	}
+	state.MessagingLanguages = m
 	return true
 }
 

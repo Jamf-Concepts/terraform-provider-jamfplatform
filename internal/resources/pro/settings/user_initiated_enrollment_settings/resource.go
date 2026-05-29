@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -61,6 +62,7 @@ var _ resource.Resource = &UserInitiatedEnrollmentSettingsResource{}
 var _ resource.ResourceWithImportState = &UserInitiatedEnrollmentSettingsResource{}
 var _ resource.ResourceWithIdentity = &UserInitiatedEnrollmentSettingsResource{}
 var _ resource.ResourceWithConfigValidators = &UserInitiatedEnrollmentSettingsResource{}
+var _ resource.ResourceWithModifyPlan = &UserInitiatedEnrollmentSettingsResource{}
 
 // Default timeouts.
 const (
@@ -376,6 +378,60 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 				},
 			},
 
+			"messaging_languages": schema.MapNestedAttribute{
+				MarkdownDescription: "Per-language enrollment messaging (UI: Messaging tab), keyed by ISO 639-1 language code (e.g. `fr`, `de`, `en`; a few locale variants such as `en-gb` and `zh-Hant` are also accepted). Each entry configures the text shown during user-initiated enrollment for that language. All text is displayed to the user exactly as entered. Omit the attribute entirely to leave the tenant's languages unmanaged. Only the fields you set are overridden; unset fields are seeded from the current English messaging when a language is first added, and otherwise left at their current server value. The built-in English language always exists, is the default shown when no language matches a device's locale, and cannot be removed — set the `en` key to edit its messaging, or leave it out to keep it untouched. Map keys are validated at plan time against the language codes Jamf Pro recognises.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Map{mapplanmodifier.UseStateForUnknown()},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							MarkdownDescription: "Display name of the language (e.g. `English`), resolved by the provider from the language-code key. Computed — do not set.",
+							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+						},
+						"page_title":                                  messagingLanguageStringAttribute("Title to display on all enrollment pages (UI: Page Title for Enrollment)."),
+						"login_page_text":                             messagingLanguageStringAttribute("Text to display below the title on the login page during enrollment (UI: Login → Login Page Text)."),
+						"username_text":                               messagingLanguageStringAttribute("Text to display for the username field on the login page during enrollment (UI: Login → Username Text)."),
+						"password_text":                               messagingLanguageStringAttribute("Text to display for the password field on the login page during enrollment (UI: Login → Password Text)."),
+						"login_button_text":                           messagingLanguageStringAttribute("Name for the button that users tap/click to log in (UI: Login → Login Button Text)."),
+						"device_ownership_page_text":                  messagingLanguageStringAttribute("Text to display during enrollment that prompts the user to specify the device ownership type (UI: Device ownership → Device Ownership Page Text)."),
+						"personal_device_button_name":                 messagingLanguageStringAttribute("Name for the button that users tap to enroll a personally owned device (UI: Device ownership → Personal Device Button Name)."),
+						"institutional_ownership_button_name":         messagingLanguageStringAttribute("Name for the button that users tap to enroll an institutionally owned device (UI: Device ownership → Institutional Ownership Button Name)."),
+						"personal_device_management_description":      messagingLanguageStringAttribute("Description to display for personal device management when users enroll a personally owned device (UI: Device ownership → Personal Device Management Description)."),
+						"institutional_device_management_description": messagingLanguageStringAttribute("Description to display for institutional device management when users enroll an institutionally owned device (UI: Device ownership → Institutional Device Management Description)."),
+						"enroll_device_button_name":                   messagingLanguageStringAttribute("Name for the button that users tap to start enrollment (UI: Device ownership → Enroll Device Button Name)."),
+						"personal_eula":                               messagingLanguageStringAttribute("End User License Agreement to display during enrollment of personally owned devices (UI: EULA → For Personally Owned Devices)."),
+						"institutional_eula":                          messagingLanguageStringAttribute("End User License Agreement to display during enrollment of institutionally owned devices and computers (UI: EULA → For Institutionally Owned Devices And Computers)."),
+						"eula_accept_button_text":                     messagingLanguageStringAttribute("Name for the button that users tap/click to accept the End User License Agreement (UI: EULA → Accept Button Text)."),
+						"site_selection_text":                         messagingLanguageStringAttribute("Text to display that prompts the user to select a site if the user has more than one site to choose from during enrollment (UI: Sites → Site Selection Text)."),
+						"ca_certificate_installation_text":            messagingLanguageStringAttribute("Text to display when installing the CA certificate during enrollment (UI: Certificate → CA Certificate Installation Text)."),
+						"ca_certificate_name":                         messagingLanguageStringAttribute("Name to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Name)."),
+						"ca_certificate_description":                  messagingLanguageStringAttribute("Description to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Description)."),
+						"ca_certificate_install_button_name":          messagingLanguageStringAttribute("Name for the button that users tap to install the CA certificate (UI: Certificate → CA Certificate Install Button Name)."),
+						"institutional_mdm_installation_text":         messagingLanguageStringAttribute("Text to display when installing the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Installation Text)."),
+						"institutional_mdm_profile_name":              messagingLanguageStringAttribute("Name to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Name)."),
+						"institutional_mdm_profile_description":       messagingLanguageStringAttribute("Description to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Description)."),
+						"institutional_mdm_pending_text":              messagingLanguageStringAttribute("Text to display when the user is installing the MDM profile on their computer (UI: Institutional MDM → MDM Profile Pending Page Text)."),
+						"institutional_mdm_install_button_name":       messagingLanguageStringAttribute("Name for the button that users tap to install the MDM profile (UI: Institutional MDM → MDM Profile Install Button Name)."),
+						"user_enrollment_mdm_installation_text":       messagingLanguageStringAttribute("Text to display when prompting to install the MDM profile (UI: User Enrollment MDM → MDM Profile Installation Text)."),
+						"user_enrollment_mdm_profile_name":            messagingLanguageStringAttribute("Name to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Name)."),
+						"user_enrollment_mdm_profile_description":     messagingLanguageStringAttribute("Description to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Description)."),
+						"user_enrollment_mdm_install_button_name":     messagingLanguageStringAttribute("Name for the button that users tap to install the MDM profile (UI: User Enrollment MDM → MDM Profile Install Button Name)."),
+						"quickadd_installation_text":                  messagingLanguageStringAttribute("Text to display when installing the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Installation Text)."),
+						"quickadd_name":                               messagingLanguageStringAttribute("Name to display for the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Name)."),
+						"quickadd_progress_text":                      messagingLanguageStringAttribute("Text to display when the QuickAdd package is downloading (UI: QuickAdd → QuickAdd Package Progress Text)."),
+						"quickadd_install_button_name":                messagingLanguageStringAttribute("Name for the button that users tap to install the QuickAdd package (UI: QuickAdd → QuickAdd Package Install Button Name)."),
+						"enrollment_complete_text":                    messagingLanguageStringAttribute("Text to display when enrollment is complete (UI: Complete → Enrollment Complete Text)."),
+						"enrollment_failed_text":                      messagingLanguageStringAttribute("Text to display when enrollment fails (UI: Complete → Enrollment Failed Text)."),
+						"try_again_button_name":                       messagingLanguageStringAttribute("Name for the button that users tap/click to try enrolling again (UI: Complete → Try Again Button Name)."),
+						"view_enrollment_status_button_name":          messagingLanguageStringAttribute("Name for the button that users tap to view the enrollment status for the device (UI: Complete → View Enrollment Status Button Name)."),
+						"view_enrollment_status_text":                 messagingLanguageStringAttribute("Text to display during enrollment that prompts the user to view the enrollment status for the device (UI: Complete → View Enrollment Status Text)."),
+						"log_out_button_name":                         messagingLanguageStringAttribute("Name for the button that users tap/click to log out (UI: Complete → Log Out Button Name)."),
+					},
+				},
+			},
+
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
 				Create: true,
 				Read:   true,
@@ -386,11 +442,48 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 	}
 }
 
+// messagingLanguageStringAttribute builds an Optional+Computed string attribute
+// for a messaging-language text field. Optional+Computed because the write path
+// is read-merge: a field the user does not set is seeded from English (on first
+// add) or preserved from the current server value, so the server resolves it.
+// UseNonNullStateForUnknown is mandatory for Optional+Computed leaves inside a
+// nested set (a null prior state on set growth would otherwise trip Terraform's
+// "was null, now …" consistency check).
+func messagingLanguageStringAttribute(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+	}
+}
+
 // ConfigValidators registers the plan-time cross-field invariants.
 func (r *UserInitiatedEnrollmentSettingsResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		mdmSigningCertificateRequiredValidator{},
 	}
+}
+
+// ModifyPlan validates each planned messaging_languages key (a language code)
+// against the live language-codes endpoint at plan time. Because the collection
+// is a map keyed by the always-known language code, Terraform correlates
+// elements by key and tolerates unknown Computed leaves (resolved at apply) — so
+// no plan-time leaf resolution is needed, only key validation.
+//
+// This needs the configured client (so it cannot be a pure schema/config
+// validator) and is skipped during bare `terraform validate` (client nil) and on
+// destroy (null plan).
+func (r *UserInitiatedEnrollmentSettingsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.client == nil || req.Plan.Raw.IsNull() {
+		return
+	}
+	var languages types.Map
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("messaging_languages"), &languages)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.validateMessagingLanguageKeys(ctx, languages, &resp.Diagnostics)
 }
 
 // Configure wires the Jamf Pro client and the shared enrollment write lock.

@@ -50,6 +50,7 @@ output "access_groups" {
 - `management_username` (String) Username for the managed local administrator account.
 - `mdm_signing_certificate` (Attributes) Third-party MDM profile signing certificate details. (see [below for nested schema](#nestedatt--mdm_signing_certificate))
 - `merge_managed_apple_account_usernames` (Boolean) Whether matching Managed Apple Account usernames are merged during enrollment.
+- `messaging_languages` (Attributes Map) Per-language enrollment messaging configured on the tenant (UI: Messaging tab), keyed by ISO 639-1 language code. (see [below for nested schema](#nestedatt--messaging_languages))
 - `personal_device_enrollment_type` (String) Personal-device enrollment type (deprecated; always `USERENROLLMENT`).
 - `profile_driven_enrollment_via_url_institutional` (Boolean) Whether Profile-Driven Enrollment via URL is enabled for institutionally owned mobile devices.
 - `profile_driven_enrollment_via_url_personal` (Boolean) Whether Profile-Driven Enrollment via URL is enabled for personally owned mobile devices.
@@ -100,3 +101,49 @@ Read-Only:
 - `keystore_file_name` (String) Display filename for the uploaded keystore.
 - `serial_number` (String) Certificate serial number.
 - `subject` (String) Certificate subject DN.
+
+
+<a id="nestedatt--messaging_languages"></a>
+### Nested Schema for `messaging_languages`
+
+Read-Only:
+
+- `ca_certificate_description` (String) Description for the CA certificate.
+- `ca_certificate_install_button_name` (String) Name of the CA certificate install button.
+- `ca_certificate_installation_text` (String) Text shown when installing the CA certificate.
+- `ca_certificate_name` (String) Display name for the CA certificate.
+- `device_ownership_page_text` (String) Text prompting the user to specify device ownership.
+- `enroll_device_button_name` (String) Name of the start-enrollment button.
+- `enrollment_complete_text` (String) Text shown when enrollment is complete.
+- `enrollment_failed_text` (String) Text shown when enrollment fails.
+- `eula_accept_button_text` (String) Name of the EULA accept button.
+- `institutional_device_management_description` (String) Description shown for institutional device management.
+- `institutional_eula` (String) EULA shown for institutionally owned devices and computers.
+- `institutional_mdm_install_button_name` (String) Name of the MDM profile install button (institutional).
+- `institutional_mdm_installation_text` (String) Text shown when installing the MDM profile (institutional).
+- `institutional_mdm_pending_text` (String) Text shown while the MDM profile installs (institutional).
+- `institutional_mdm_profile_description` (String) Description for the MDM profile (institutional).
+- `institutional_mdm_profile_name` (String) Display name for the MDM profile (institutional).
+- `institutional_ownership_button_name` (String) Name of the enroll-institutional-device button.
+- `log_out_button_name` (String) Name of the log-out button.
+- `login_button_text` (String) Name of the log-in button.
+- `login_page_text` (String) Text shown below the title on the login page during enrollment.
+- `name` (String) Display name of the language.
+- `page_title` (String) Title shown on all enrollment pages.
+- `password_text` (String) Text for the password field on the login page.
+- `personal_device_button_name` (String) Name of the enroll-personal-device button.
+- `personal_device_management_description` (String) Description shown for personal device management.
+- `personal_eula` (String) EULA shown for personally owned devices.
+- `quickadd_install_button_name` (String) Name of the QuickAdd package install button.
+- `quickadd_installation_text` (String) Text shown when installing the QuickAdd package.
+- `quickadd_name` (String) Display name for the QuickAdd package.
+- `quickadd_progress_text` (String) Text shown while the QuickAdd package downloads.
+- `site_selection_text` (String) Text prompting site selection during enrollment.
+- `try_again_button_name` (String) Name of the try-again button.
+- `user_enrollment_mdm_install_button_name` (String) Name of the MDM profile install button (user enrollment).
+- `user_enrollment_mdm_installation_text` (String) Text shown when prompting to install the MDM profile (user enrollment).
+- `user_enrollment_mdm_profile_description` (String) Description for the MDM profile (user enrollment).
+- `user_enrollment_mdm_profile_name` (String) Display name for the MDM profile (user enrollment).
+- `username_text` (String) Text for the username field on the login page.
+- `view_enrollment_status_button_name` (String) Name of the view-enrollment-status button.
+- `view_enrollment_status_text` (String) Text prompting the user to view enrollment status.
