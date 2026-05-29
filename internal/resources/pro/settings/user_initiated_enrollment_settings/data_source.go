@@ -35,7 +35,6 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Metadata(ctx context.Context
 	resp.TypeName = req.ProviderTypeName + "_pro_user_initiated_enrollment_settings"
 }
 
-// dsBool returns a Computed bool data-source attribute.
 // Schema returns the data source schema. Every attribute is Computed. Per the
 // style guide it is kept inline and flat — no attribute-returning helpers.
 func (d *UserInitiatedEnrollmentSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
@@ -105,6 +104,63 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Schema(ctx context.Context, 
 				},
 			},
 
+			"messaging_languages": schema.MapNestedAttribute{
+				Computed:            true,
+				MarkdownDescription: "Per-language enrollment messaging configured on the tenant (UI: Messaging tab), keyed by ISO 639-1 language code.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"name":       schema.StringAttribute{Computed: true, MarkdownDescription: "Display name of the language."},
+						"page_title": schema.StringAttribute{Computed: true, MarkdownDescription: "Title shown on all enrollment pages."},
+
+						"login_page_text":   schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown below the title on the login page during enrollment."},
+						"username_text":     schema.StringAttribute{Computed: true, MarkdownDescription: "Text for the username field on the login page."},
+						"password_text":     schema.StringAttribute{Computed: true, MarkdownDescription: "Text for the password field on the login page."},
+						"login_button_text": schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the log-in button."},
+
+						"device_ownership_page_text":                  schema.StringAttribute{Computed: true, MarkdownDescription: "Text prompting the user to specify device ownership."},
+						"personal_device_button_name":                 schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the enroll-personal-device button."},
+						"institutional_ownership_button_name":         schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the enroll-institutional-device button."},
+						"personal_device_management_description":      schema.StringAttribute{Computed: true, MarkdownDescription: "Description shown for personal device management."},
+						"institutional_device_management_description": schema.StringAttribute{Computed: true, MarkdownDescription: "Description shown for institutional device management."},
+						"enroll_device_button_name":                   schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the start-enrollment button."},
+
+						"personal_eula":           schema.StringAttribute{Computed: true, MarkdownDescription: "EULA shown for personally owned devices."},
+						"institutional_eula":      schema.StringAttribute{Computed: true, MarkdownDescription: "EULA shown for institutionally owned devices and computers."},
+						"eula_accept_button_text": schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the EULA accept button."},
+
+						"site_selection_text": schema.StringAttribute{Computed: true, MarkdownDescription: "Text prompting site selection during enrollment."},
+
+						"ca_certificate_installation_text":   schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown when installing the CA certificate."},
+						"ca_certificate_name":                schema.StringAttribute{Computed: true, MarkdownDescription: "Display name for the CA certificate."},
+						"ca_certificate_description":         schema.StringAttribute{Computed: true, MarkdownDescription: "Description for the CA certificate."},
+						"ca_certificate_install_button_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the CA certificate install button."},
+
+						"institutional_mdm_installation_text":   schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown when installing the MDM profile (institutional)."},
+						"institutional_mdm_profile_name":        schema.StringAttribute{Computed: true, MarkdownDescription: "Display name for the MDM profile (institutional)."},
+						"institutional_mdm_profile_description": schema.StringAttribute{Computed: true, MarkdownDescription: "Description for the MDM profile (institutional)."},
+						"institutional_mdm_pending_text":        schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown while the MDM profile installs (institutional)."},
+						"institutional_mdm_install_button_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the MDM profile install button (institutional)."},
+
+						"user_enrollment_mdm_installation_text":   schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown when prompting to install the MDM profile (user enrollment)."},
+						"user_enrollment_mdm_profile_name":        schema.StringAttribute{Computed: true, MarkdownDescription: "Display name for the MDM profile (user enrollment)."},
+						"user_enrollment_mdm_profile_description": schema.StringAttribute{Computed: true, MarkdownDescription: "Description for the MDM profile (user enrollment)."},
+						"user_enrollment_mdm_install_button_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the MDM profile install button (user enrollment)."},
+
+						"quickadd_installation_text":   schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown when installing the QuickAdd package."},
+						"quickadd_name":                schema.StringAttribute{Computed: true, MarkdownDescription: "Display name for the QuickAdd package."},
+						"quickadd_progress_text":       schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown while the QuickAdd package downloads."},
+						"quickadd_install_button_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the QuickAdd package install button."},
+
+						"enrollment_complete_text":           schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown when enrollment is complete."},
+						"enrollment_failed_text":             schema.StringAttribute{Computed: true, MarkdownDescription: "Text shown when enrollment fails."},
+						"try_again_button_name":              schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the try-again button."},
+						"view_enrollment_status_button_name": schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the view-enrollment-status button."},
+						"view_enrollment_status_text":        schema.StringAttribute{Computed: true, MarkdownDescription: "Text prompting the user to view enrollment status."},
+						"log_out_button_name":                schema.StringAttribute{Computed: true, MarkdownDescription: "Name of the log-out button."},
+					},
+				},
+			},
+
 			"timeouts": timeouts.Attributes(ctx),
 		},
 	}
@@ -162,6 +218,19 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Read(ctx context.Context, re
 		return
 	}
 	data.AccessGroups = set
+
+	langs, err := d.client.ListEnrollmentLanguagesV3(readCtx, nil)
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to read Jamf Pro enrollment languages", err.Error())
+		return
+	}
+	langMap, d3 := messagingLanguagesToMap(readCtx, langs)
+	resp.Diagnostics.Append(d3...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	data.MessagingLanguages = langMap
+
 	data.ID = types.StringValue(helpers.SingletonID)
 
 	tflog.Trace(ctx, "read Jamf Pro User-Initiated Enrollment settings data source")

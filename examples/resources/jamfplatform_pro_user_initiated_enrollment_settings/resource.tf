@@ -36,6 +36,20 @@ resource "jamfplatform_pro_user_initiated_enrollment_settings" "this" {
       enterprise_enrollment_enabled = true
     },
   ]
+
+  # Per-language enrollment messaging (Messaging tab), keyed by ISO 639-1
+  # language code. Set only the fields you want to override; unset fields are
+  # seeded from the current English messaging when a language is first added,
+  # and otherwise left at their current server value. The built-in English
+  # language always exists and is never removed — set the "en" key to edit its
+  # text, or omit it to leave it untouched.
+  messaging_languages = {
+    fr = {
+      page_title                = "Inscrivez votre appareil"
+      login_button_text         = "Connexion"
+      enroll_device_button_name = "Inscrire"
+    }
+  }
 }
 
 # To use a third-party MDM signing certificate, set
