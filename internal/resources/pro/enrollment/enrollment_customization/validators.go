@@ -55,6 +55,11 @@ func (accessGroupNameValidator) ValidateString(ctx context.Context, req validato
 	if enrollmentAccess.ValueString() != enrollmentAccessSpecificGroup {
 		return
 	}
+	// Defer when the value is unknown (variable/for_each-driven): config-time
+	// validation cannot see it. Error only when genuinely absent/empty.
+	if req.ConfigValue.IsUnknown() {
+		return
+	}
 	if !req.ConfigValue.IsNull() && !req.ConfigValue.IsUnknown() && req.ConfigValue.ValueString() != "" {
 		return
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -37,25 +38,45 @@ func (v smartStaticConfigValidator) MarkdownDescription(ctx context.Context) str
 
 // ValidateResource implements the plan-time cross-field check.
 func (smartStaticConfigValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var data UserGroupResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	// Read only the three attributes this cross-field check needs, via
+	// GetAttribute, so the validator is light to unit-test (no full-model
+	// fixture). Reading criteria/members as their typed collection values is
+	// also what lets the check tell "unknown" (variable/for_each-driven) apart
+	// from "empty"/"absent" — decoding into Go slices collapses unknown to len 0.
+	var groupType types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("group_type"), &groupType)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if data.GroupType.IsNull() || data.GroupType.IsUnknown() {
+	if groupType.IsNull() || groupType.IsUnknown() {
 		return
 	}
 
-	switch data.GroupType.ValueString() {
+	var criteria types.List
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("criteria"), &criteria)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var members types.Set
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("members"), &members)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	switch groupType.ValueString() {
 	case "smart":
-		if len(data.Criteria) == 0 {
+		// Config-time validation cannot see an unknown value, so defer on
+		// unknown criteria — flagging it would false-error on every non-literal
+		// config. Only a known-empty list is the error.
+		if !criteria.IsUnknown() && len(criteria.Elements()) == 0 {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("criteria"),
 				"Missing required criteria",
 				"Smart user groups require at least one criterion. Supply `criteria = [...]` or change `group_type` to `\"static\"`.",
 			)
 		}
-		if helpers.IsConfiguredValue(data.Members) {
+		if helpers.IsConfiguredValue(members) {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("members"),
 				"members forbidden on smart user groups",
@@ -63,7 +84,8 @@ func (smartStaticConfigValidator) ValidateResource(ctx context.Context, req reso
 			)
 		}
 	case "static":
-		if len(data.Criteria) > 0 {
+		// Defer on unknown criteria; only a known, non-empty list is forbidden.
+		if !criteria.IsNull() && !criteria.IsUnknown() && len(criteria.Elements()) > 0 {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("criteria"),
 				"criteria forbidden on static user groups",

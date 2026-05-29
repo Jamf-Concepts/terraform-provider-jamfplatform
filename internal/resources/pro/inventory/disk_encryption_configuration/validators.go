@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // institutionalKeyTypeRequiresIRKConfigValidator enforces the rule that
@@ -39,26 +40,43 @@ func (v institutionalKeyTypeRequiresIRKConfigValidator) MarkdownDescription(ctx 
 
 // ValidateResource implements the plan-time check.
 func (institutionalKeyTypeRequiresIRKConfigValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var data DiskEncryptionConfigurationResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	// Read only the two attributes this cross-field check needs, via
+	// GetAttribute, so the validator is light to unit-test (no full-model
+	// fixture) and reads no more than necessary.
+	var keyType types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("key_type"), &keyType)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if data.KeyType.IsNull() || data.KeyType.IsUnknown() {
+	if keyType.IsNull() || keyType.IsUnknown() {
 		return
 	}
 
-	kt := data.KeyType.ValueString()
+	kt := keyType.ValueString()
 	needsIRK := kt == keyTypeInstitutional || kt == keyTypeIndividualInstitutional
 	if !needsIRK {
+		return
+	}
+
+	// Read the block as a typed Object to tell "unknown" (driven by a variable /
+	// for_each / another resource) apart from "absent": decoding into the Go
+	// *struct collapses both to nil. Config-time validation cannot see an
+	// unknown value, so defer — erroring here would break every non-literal
+	// config. Only a genuinely-absent (null) block is the error.
+	var irk types.Object
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("institutional_recovery_key"), &irk)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if irk.IsUnknown() {
 		return
 	}
 
 	// IRK block absent: error. `data` and `certificate_type` are marked
 	// Required at the schema layer so we don't double-check them here —
 	// the framework rejects a partially-populated block at plan time.
-	if data.InstitutionalRecoveryKey == nil {
+	if irk.IsNull() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("institutional_recovery_key"),
 			fmt.Sprintf("institutional_recovery_key required when key_type = %q", kt),

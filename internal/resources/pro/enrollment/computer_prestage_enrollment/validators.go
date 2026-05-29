@@ -86,7 +86,10 @@ func (recoveryLockPasswordRequiresManualAndEnabledValidator) ValidateString(ctx 
 		resp.Diagnostics.Append(d...)
 		return
 	}
-	if enable.IsNull() || enable.IsUnknown() || !enable.ValueBool() {
+	if enable.IsUnknown() {
+		return
+	}
+	if enable.IsNull() || !enable.ValueBool() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("recovery_lock_password"),
 			"recovery_lock_password requires enable_recovery_lock = true",
@@ -143,7 +146,10 @@ func (prefillTypeCustomRequiresFullAndUserNamesValidator) ValidateString(ctx con
 			resp.Diagnostics.Append(d...)
 			return
 		}
-		if v.IsNull() || v.IsUnknown() || v.ValueString() == "" {
+		if v.IsUnknown() {
+			return
+		}
+		if v.IsNull() || v.ValueString() == "" {
 			resp.Diagnostics.AddAttributeError(
 				sibling,
 				fmt.Sprintf(`%s is required when prefill_type = "CUSTOM"`, name),
