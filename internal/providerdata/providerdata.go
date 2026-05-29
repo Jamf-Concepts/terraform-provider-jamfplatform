@@ -52,9 +52,32 @@ type Data struct {
 	onceMu    sync.Mutex
 	onceFired map[string]struct{}
 
+	// enrollmentWriteMu serializes writes to the shared Jamf Pro enrollment-settings
+	// backing store. The /v4/enrollment object and the /v1/reenrollment object are two
+	// views of ONE record: a write to either propagates to the other's read, and the
+	// /v4 PUT is full-replace (it must round-trip every field it does not change). The
+	// jamfplatform_pro_user_initiated_enrollment_settings resource does a read-merge-write
+	// against /v4; jamfplatform_pro_re_enrollment_settings writes /v1. Terraform applies
+	// resources with no dependency edge concurrently (e.g. both Created on first apply),
+	// so without serialization one resource's read-merge-write can clobber the other's
+	// write from a stale read. Both resources lock this mutex around their entire
+	// read→modify→write critical section. NOTE: this only serializes within a single
+	// provider process; two separate `terraform apply` runs against the same tenant can
+	// still race (EnrollmentSettingsV4 carries no version/ETag for optimistic concurrency).
+	enrollmentWriteMu sync.Mutex
+
 	// versionFetcher is the function used to retrieve the tenant Jamf Pro version.
 	// Tests override this to avoid real HTTP calls. Nil means use the default SDK path.
 	versionFetcher func(ctx context.Context) (string, error)
+}
+
+// EnrollmentWriteLock returns the process-shared mutex that serializes writes to the
+// shared enrollment-settings backing store. Both the user-initiated-enrollment-settings
+// (/v4) and re-enrollment-settings (/v1) resources must lock it around their entire
+// read→modify→write critical section. Because Data is shared by pointer across every
+// resource's Configure, all callers receive the same *sync.Mutex instance.
+func (d *Data) EnrollmentWriteLock() *sync.Mutex {
+	return &d.enrollmentWriteMu
 }
 
 // New wraps a configured SDK client in a Data value.
