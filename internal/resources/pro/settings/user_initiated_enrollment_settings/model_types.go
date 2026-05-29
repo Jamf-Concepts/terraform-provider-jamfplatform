@@ -61,6 +61,15 @@ type UserInitiatedEnrollmentSettingsResourceModel struct {
 	// the user manages the groups.
 	AccessGroups types.Set `tfsdk:"access_group"`
 
+	// Nested per-language enrollment-messaging collection (UI: Messaging tab),
+	// keyed by ISO 639-1 language code. A map (not a set) so Terraform correlates
+	// elements by the always-known language-code key rather than by value — sets
+	// and lists mis-correlate when a collection of objects with unknown Computed
+	// leaves changes membership. Optional+Computed with the same
+	// managed-vs-unmanaged semantics as AccessGroups: null when the user does not
+	// author the collection.
+	MessagingLanguages types.Map `tfsdk:"messaging_languages"`
+
 	Timeouts resourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -96,7 +105,8 @@ type UserInitiatedEnrollmentSettingsDataSourceModel struct {
 	MdmSigningCertificate *certificateReadOnlyModel `tfsdk:"mdm_signing_certificate"`
 	DeveloperCertificate  *certificateReadOnlyModel `tfsdk:"developer_certificate"`
 
-	AccessGroups types.Set `tfsdk:"access_group"`
+	AccessGroups       types.Set `tfsdk:"access_group"`
+	MessagingLanguages types.Map `tfsdk:"messaging_languages"`
 
 	Timeouts datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
@@ -140,6 +150,74 @@ type accessGroupModel struct {
 	PersonalEnrollmentEnabled          types.Bool   `tfsdk:"personal_enrollment_enabled"`
 	AccountDrivenUserEnrollmentEnabled types.Bool   `tfsdk:"account_driven_user_enrollment_enabled"`
 	RequireEula                        types.Bool   `tfsdk:"require_eula"`
+}
+
+// messagingLanguageModel maps one per-language enrollment-messaging item
+// (pro.EnrollmentProcessTextObject) from the Messaging tab. Attribute names
+// mirror the Jamf Pro "Edit language" modal; the cryptic wire field each maps
+// to is noted in a trailing comment. The 4 personal* wire fields
+// (personalText/personalButton/personalProfileName/personalProfileDescription)
+// have no control in the current UI and are intentionally not modelled — the
+// read-merge write path preserves them on the wire rather than clearing them.
+type messagingLanguageModel struct {
+	// Identity. The language code is the MAP KEY, not a field here.
+	Name      types.String `tfsdk:"name"`       // name (Computed, derived from code)
+	PageTitle types.String `tfsdk:"page_title"` // title
+
+	// Login.
+	LoginPageText   types.String `tfsdk:"login_page_text"`   // loginDescription
+	UsernameText    types.String `tfsdk:"username_text"`     // username
+	PasswordText    types.String `tfsdk:"password_text"`     // password
+	LoginButtonText types.String `tfsdk:"login_button_text"` // loginButton
+
+	// Device ownership.
+	DeviceOwnershipPageText                  types.String `tfsdk:"device_ownership_page_text"`                  // deviceClassDescription
+	PersonalDeviceButtonName                 types.String `tfsdk:"personal_device_button_name"`                 // deviceClassPersonal
+	InstitutionalOwnershipButtonName         types.String `tfsdk:"institutional_ownership_button_name"`         // deviceClassEnterprise
+	PersonalDeviceManagementDescription      types.String `tfsdk:"personal_device_management_description"`      // deviceClassPersonalDescription
+	InstitutionalDeviceManagementDescription types.String `tfsdk:"institutional_device_management_description"` // deviceClassEnterpriseDescription
+	EnrollDeviceButtonName                   types.String `tfsdk:"enroll_device_button_name"`                   // deviceClassButton
+
+	// End User License Agreement.
+	PersonalEula         types.String `tfsdk:"personal_eula"`           // personalEula
+	InstitutionalEula    types.String `tfsdk:"institutional_eula"`      // enterpriseEula
+	EulaAcceptButtonText types.String `tfsdk:"eula_accept_button_text"` // eulaButton
+
+	// Sites.
+	SiteSelectionText types.String `tfsdk:"site_selection_text"` // siteDescription
+
+	// Certificate.
+	CaCertificateInstallationText  types.String `tfsdk:"ca_certificate_installation_text"`   // certificateText
+	CaCertificateName              types.String `tfsdk:"ca_certificate_name"`                // certificateProfileName
+	CaCertificateDescription       types.String `tfsdk:"ca_certificate_description"`         // certificateProfileDescription
+	CaCertificateInstallButtonName types.String `tfsdk:"ca_certificate_install_button_name"` // certificateButton
+
+	// Institutional MDM.
+	InstitutionalMdmInstallationText   types.String `tfsdk:"institutional_mdm_installation_text"`   // enterpriseText
+	InstitutionalMdmProfileName        types.String `tfsdk:"institutional_mdm_profile_name"`        // enterpriseProfileName
+	InstitutionalMdmProfileDescription types.String `tfsdk:"institutional_mdm_profile_description"` // enterpriseProfileDescription
+	InstitutionalMdmPendingText        types.String `tfsdk:"institutional_mdm_pending_text"`        // enterprisePending
+	InstitutionalMdmInstallButtonName  types.String `tfsdk:"institutional_mdm_install_button_name"` // enterpriseButton
+
+	// User Enrollment MDM.
+	UserEnrollmentMdmInstallationText   types.String `tfsdk:"user_enrollment_mdm_installation_text"`   // userEnrollmentText
+	UserEnrollmentMdmProfileName        types.String `tfsdk:"user_enrollment_mdm_profile_name"`        // userEnrollmentProfileName
+	UserEnrollmentMdmProfileDescription types.String `tfsdk:"user_enrollment_mdm_profile_description"` // userEnrollmentProfileDescription
+	UserEnrollmentMdmInstallButtonName  types.String `tfsdk:"user_enrollment_mdm_install_button_name"` // userEnrollmentButton
+
+	// QuickAdd.
+	QuickaddInstallationText  types.String `tfsdk:"quickadd_installation_text"`   // quickAddText
+	QuickaddName              types.String `tfsdk:"quickadd_name"`                // quickAddName
+	QuickaddProgressText      types.String `tfsdk:"quickadd_progress_text"`       // quickAddPending
+	QuickaddInstallButtonName types.String `tfsdk:"quickadd_install_button_name"` // quickAddButton
+
+	// Complete.
+	EnrollmentCompleteText         types.String `tfsdk:"enrollment_complete_text"`           // completeMessage
+	EnrollmentFailedText           types.String `tfsdk:"enrollment_failed_text"`             // failedMessage
+	TryAgainButtonName             types.String `tfsdk:"try_again_button_name"`              // tryAgainButton
+	ViewEnrollmentStatusButtonName types.String `tfsdk:"view_enrollment_status_button_name"` // checkNowButton
+	ViewEnrollmentStatusText       types.String `tfsdk:"view_enrollment_status_text"`        // checkEnrollmentMessage
+	LogOutButtonName               types.String `tfsdk:"log_out_button_name"`                // logoutButton
 }
 
 // userInitiatedEnrollmentSettingsIdentityModel is the identity object used on

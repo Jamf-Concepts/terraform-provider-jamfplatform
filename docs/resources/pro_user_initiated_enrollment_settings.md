@@ -63,6 +63,20 @@ resource "jamfplatform_pro_user_initiated_enrollment_settings" "this" {
       enterprise_enrollment_enabled = true
     },
   ]
+
+  # Per-language enrollment messaging (Messaging tab), keyed by ISO 639-1
+  # language code. Set only the fields you want to override; unset fields are
+  # seeded from the current English messaging when a language is first added,
+  # and otherwise left at their current server value. The built-in English
+  # language always exists and is never removed — set the "en" key to edit its
+  # text, or omit it to leave it untouched.
+  messaging_languages = {
+    fr = {
+      page_title                = "Inscrivez votre appareil"
+      login_button_text         = "Connexion"
+      enroll_device_button_name = "Inscrire"
+    }
+  }
 }
 
 # To use a third-party MDM signing certificate, set
@@ -104,6 +118,7 @@ resource "jamfplatform_pro_user_initiated_enrollment_settings" "this" {
 
 `keystore_password` is `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Bump `keystore_password_wo_version` to force the next apply to re-send the keystore and password. (see [below for nested schema](#nestedatt--mdm_signing_certificate))
 - `merge_managed_apple_account_usernames` (Boolean) Merge matching Managed Apple Account usernames during enrollment. Matches the "Merge matching Managed Apple Account usernames" checkbox.
+- `messaging_languages` (Attributes Map) Per-language enrollment messaging (UI: Messaging tab), keyed by ISO 639-1 language code (e.g. `fr`, `de`, `en`; a few locale variants such as `en-gb` and `zh-Hant` are also accepted). Each entry configures the text shown during user-initiated enrollment for that language. All text is displayed to the user exactly as entered. Omit the attribute entirely to leave the tenant's languages unmanaged. Only the fields you set are overridden; unset fields are seeded from the current English messaging when a language is first added, and otherwise left at their current server value. The built-in English language always exists, is the default shown when no language matches a device's locale, and cannot be removed — set the `en` key to edit its messaging, or leave it out to keep it untouched. Map keys are validated at plan time against the language codes Jamf Pro recognises. (see [below for nested schema](#nestedatt--messaging_languages))
 - `profile_driven_enrollment_via_url_institutional` (Boolean) Enable Profile-Driven Enrollment via URL for institutionally owned mobile devices. Matches the institutional Profile-Driven Enrollment via URL toggle.
 - `profile_driven_enrollment_via_url_personal` (Boolean) Enable Profile-Driven Enrollment via URL for personally owned mobile devices. Matches the personal Profile-Driven Enrollment via URL toggle.
 - `restrict_reenrollment` (Boolean) Restrict re-enrollment to authorized users only. Matches the "Restrict re-enrollment to authorized users only" checkbox.
@@ -169,6 +184,55 @@ Read-Only:
 
 - `serial_number` (String) Certificate serial number. Populated by Jamf Pro while the certificate is in use; may be empty when the matching toggle is disabled.
 - `subject` (String) Certificate subject DN. Populated by Jamf Pro while the certificate is in use; may be empty when the matching toggle is disabled.
+
+
+<a id="nestedatt--messaging_languages"></a>
+### Nested Schema for `messaging_languages`
+
+Optional:
+
+- `ca_certificate_description` (String) Description to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Description).
+- `ca_certificate_install_button_name` (String) Name for the button that users tap to install the CA certificate (UI: Certificate → CA Certificate Install Button Name).
+- `ca_certificate_installation_text` (String) Text to display when installing the CA certificate during enrollment (UI: Certificate → CA Certificate Installation Text).
+- `ca_certificate_name` (String) Name to display for the CA certificate during enrollment (UI: Certificate → CA Certificate Name).
+- `device_ownership_page_text` (String) Text to display during enrollment that prompts the user to specify the device ownership type (UI: Device ownership → Device Ownership Page Text).
+- `enroll_device_button_name` (String) Name for the button that users tap to start enrollment (UI: Device ownership → Enroll Device Button Name).
+- `enrollment_complete_text` (String) Text to display when enrollment is complete (UI: Complete → Enrollment Complete Text).
+- `enrollment_failed_text` (String) Text to display when enrollment fails (UI: Complete → Enrollment Failed Text).
+- `eula_accept_button_text` (String) Name for the button that users tap/click to accept the End User License Agreement (UI: EULA → Accept Button Text).
+- `institutional_device_management_description` (String) Description to display for institutional device management when users enroll an institutionally owned device (UI: Device ownership → Institutional Device Management Description).
+- `institutional_eula` (String) End User License Agreement to display during enrollment of institutionally owned devices and computers (UI: EULA → For Institutionally Owned Devices And Computers).
+- `institutional_mdm_install_button_name` (String) Name for the button that users tap to install the MDM profile (UI: Institutional MDM → MDM Profile Install Button Name).
+- `institutional_mdm_installation_text` (String) Text to display when installing the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Installation Text).
+- `institutional_mdm_pending_text` (String) Text to display when the user is installing the MDM profile on their computer (UI: Institutional MDM → MDM Profile Pending Page Text).
+- `institutional_mdm_profile_description` (String) Description to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Description).
+- `institutional_mdm_profile_name` (String) Name to display for the MDM profile during enrollment of an institutionally owned device (UI: Institutional MDM → MDM Profile Name).
+- `institutional_ownership_button_name` (String) Name for the button that users tap to enroll an institutionally owned device (UI: Device ownership → Institutional Ownership Button Name).
+- `log_out_button_name` (String) Name for the button that users tap/click to log out (UI: Complete → Log Out Button Name).
+- `login_button_text` (String) Name for the button that users tap/click to log in (UI: Login → Login Button Text).
+- `login_page_text` (String) Text to display below the title on the login page during enrollment (UI: Login → Login Page Text).
+- `page_title` (String) Title to display on all enrollment pages (UI: Page Title for Enrollment).
+- `password_text` (String) Text to display for the password field on the login page during enrollment (UI: Login → Password Text).
+- `personal_device_button_name` (String) Name for the button that users tap to enroll a personally owned device (UI: Device ownership → Personal Device Button Name).
+- `personal_device_management_description` (String) Description to display for personal device management when users enroll a personally owned device (UI: Device ownership → Personal Device Management Description).
+- `personal_eula` (String) End User License Agreement to display during enrollment of personally owned devices (UI: EULA → For Personally Owned Devices).
+- `quickadd_install_button_name` (String) Name for the button that users tap to install the QuickAdd package (UI: QuickAdd → QuickAdd Package Install Button Name).
+- `quickadd_installation_text` (String) Text to display when installing the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Installation Text).
+- `quickadd_name` (String) Name to display for the QuickAdd package during enrollment (UI: QuickAdd → QuickAdd Package Name).
+- `quickadd_progress_text` (String) Text to display when the QuickAdd package is downloading (UI: QuickAdd → QuickAdd Package Progress Text).
+- `site_selection_text` (String) Text to display that prompts the user to select a site if the user has more than one site to choose from during enrollment (UI: Sites → Site Selection Text).
+- `try_again_button_name` (String) Name for the button that users tap/click to try enrolling again (UI: Complete → Try Again Button Name).
+- `user_enrollment_mdm_install_button_name` (String) Name for the button that users tap to install the MDM profile (UI: User Enrollment MDM → MDM Profile Install Button Name).
+- `user_enrollment_mdm_installation_text` (String) Text to display when prompting to install the MDM profile (UI: User Enrollment MDM → MDM Profile Installation Text).
+- `user_enrollment_mdm_profile_description` (String) Description to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Description).
+- `user_enrollment_mdm_profile_name` (String) Name to display for the MDM profile (UI: User Enrollment MDM → MDM Profile Name).
+- `username_text` (String) Text to display for the username field on the login page during enrollment (UI: Login → Username Text).
+- `view_enrollment_status_button_name` (String) Name for the button that users tap to view the enrollment status for the device (UI: Complete → View Enrollment Status Button Name).
+- `view_enrollment_status_text` (String) Text to display during enrollment that prompts the user to view the enrollment status for the device (UI: Complete → View Enrollment Status Text).
+
+Read-Only:
+
+- `name` (String) Display name of the language (e.g. `English`), resolved by the provider from the language-code key. Computed — do not set.
 
 
 <a id="nestedatt--timeouts"></a>

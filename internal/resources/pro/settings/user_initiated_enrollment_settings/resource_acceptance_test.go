@@ -560,6 +560,152 @@ func TestAccResource_ProUserInitiatedEnrollmentSettings_CoexistenceWithReEnrollm
 	})
 }
 
+// checkEnglishLanguageStillExists asserts the built-in English messaging
+// language survives — it is the default and must never be deleted.
+func checkEnglishLanguageStillExists(t *testing.T) resource.TestCheckFunc {
+	return func(_ *terraform.State) error {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		got, err := c.GetEnrollmentLanguageV3(context.Background(), "en")
+		if err != nil {
+			return fmt.Errorf("expected built-in English messaging language to persist: %w", err)
+		}
+		if got == nil {
+			return fmt.Errorf("expected non-nil English messaging language")
+		}
+		return nil
+	}
+}
+
+// TestAccResource_ProUserInitiatedEnrollmentSettings_MessagingLanguage drives the
+// per-language messaging collection through create / update / delete, keyed by
+// language_code. It mutates only NON-English languages (fr, de) so the tenant's
+// English messaging is never altered; the built-in English language is asserted
+// to survive throughout.
+//
+//   - Step 1 adds French AND German in ONE apply from a clean tenant — two
+//     brand-new map entries whose Computed leaves are all unknown at plan.
+//     A map keys by language code, so each entry correlates by key (the case
+//     sets/lists mis-handle, producing "inconsistent result after apply").
+//   - Step 2 (PlanOnly) re-plans the same map for idempotency.
+//   - Step 3 updates French and deletes German (single-entry map).
+//   - Step 4 reconciles to an empty managed map, deleting fr and proving
+//     English is NOT deleted. This also restores the tenant before the
+//     state-only destroy (Delete does not remove languages remotely).
+//   - Step 5 re-plans the empty map for idempotency.
+//
+// name is Computed and asserted to be resolved from the server ("French",
+// "German"), proving readback resolution.
+func TestAccResource_ProUserInitiatedEnrollmentSettings_MessagingLanguage(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	cfg := func(body string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_pro_user_initiated_enrollment_settings" "test" {
+				messaging_languages = %s
+			}
+		`, body)
+	}
+
+	frenchAndGerman := cfg(`{
+		fr = {
+			page_title = "Inscrivez votre appareil (TF)"
+		}
+		de = {
+			page_title = "Registrieren Sie Ihr Gerat (TF)"
+		}
+	}`)
+
+	frenchOnly := cfg(`{
+		fr = {
+			page_title = "Inscrivez votre appareil (TF mod)"
+		}
+	}`)
+
+	emptyMap := cfg(`{}`)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy: resource.ComposeAggregateTestCheckFunc(
+			checkUIEStillExists(t),
+			checkEnglishLanguageStillExists(t),
+		),
+		Steps: []resource.TestStep{
+			{
+				// CREATE two brand-new languages in one apply (both seeded from
+				// English). The map is keyed by language code, so each entry
+				// correlates by key — the case sets/lists mis-handle.
+				Config: frenchAndGerman,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.%", "2"),
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.fr.name", "French"),
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.fr.page_title", "Inscrivez votre appareil (TF)"),
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.de.name", "German"),
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.de.page_title", "Registrieren Sie Ihr Gerat (TF)"),
+				),
+			},
+			{
+				// Idempotency for the POPULATED map: re-plan the identical
+				// two-language config and assert no diff. This is the load-bearing
+				// drift check for the read-merge + Optional+Computed model — an
+				// unset field that round-trips to a different value (or stays
+				// unknown) would surface here as a perpetual diff.
+				Config:             frenchAndGerman,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+			{
+				// UPDATE French (page_title) + DELETE German.
+				Config: frenchOnly,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.%", "1"),
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.fr.name", "French"),
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.fr.page_title", "Inscrivez votre appareil (TF mod)"),
+				),
+			},
+			{
+				// DELETE fr; English must survive.
+				Config: emptyMap,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(uieResourceAddr, "messaging_languages.%", "0"),
+					checkEnglishLanguageStillExists(t),
+				),
+			},
+			{
+				// Idempotency: empty managed map re-plans clean.
+				Config:             emptyMap,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
+}
+
+// TestAccResource_ProUserInitiatedEnrollmentSettings_MessagingLanguageInvalidCode
+// verifies the plan-time language-code validation in ModifyPlan: an unknown code
+// must fail at plan against the live language-codes endpoint. The regex matches
+// the contiguous token "recognised" to avoid Terraform's ~80-col wrap points.
+func TestAccResource_ProUserInitiatedEnrollmentSettings_MessagingLanguageInvalidCode(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_user_initiated_enrollment_settings" "test" {
+						messaging_languages = {
+							zz = {
+								page_title = "nope"
+							}
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`recognised`),
+			},
+		},
+	})
+}
+
 // TestAccDataSource_ProUserInitiatedEnrollmentSettings_Basic applies the
 // resource then reads it back through the data source.
 func TestAccDataSource_ProUserInitiatedEnrollmentSettings_Basic(t *testing.T) {
@@ -579,6 +725,9 @@ func TestAccDataSource_ProUserInitiatedEnrollmentSettings_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_user_initiated_enrollment_settings.ds", "id", "singleton"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_user_initiated_enrollment_settings.ds", "management_username", "tf-acc-ds"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_user_initiated_enrollment_settings.ds", "launch_self_service", "true"),
+					// The data source reflects the full configured-language list;
+					// the built-in English language is always present.
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_user_initiated_enrollment_settings.ds", "messaging_languages.%"),
 				),
 			},
 		},
