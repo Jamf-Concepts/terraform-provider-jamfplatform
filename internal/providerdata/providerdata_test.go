@@ -331,3 +331,29 @@ func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 		t.Errorf("expected exactly 1 fetch for cached success, got %d", calls)
 	}
 }
+
+// TestEnrollmentWriteLock_StableIdentity verifies the shared enrollment write lock
+// is the same *sync.Mutex instance on every call for a given Data value, so the
+// user-initiated-enrollment-settings (/v4) and re-enrollment-settings (/v1) resources
+// — which receive the same *Data by pointer at Configure — serialize against one lock.
+func TestEnrollmentWriteLock_StableIdentity(t *testing.T) {
+	pd := New(newFakeClient())
+	a := pd.EnrollmentWriteLock()
+	b := pd.EnrollmentWriteLock()
+	if a == nil {
+		t.Fatal("EnrollmentWriteLock returned nil")
+	}
+	if a != b {
+		t.Errorf("expected the same mutex instance across calls, got %p and %p", a, b)
+	}
+	// Sanity: the returned lock is usable and starts unlocked.
+	if !a.TryLock() {
+		t.Fatal("fresh enrollment write lock should be acquirable")
+	}
+	a.Unlock()
+
+	// Distinct Data values must not share a lock.
+	if other := New(newFakeClient()).EnrollmentWriteLock(); other == a {
+		t.Error("distinct Data values unexpectedly share one enrollment write lock")
+	}
+}
