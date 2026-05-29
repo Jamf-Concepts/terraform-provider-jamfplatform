@@ -83,10 +83,20 @@ func (deferralTypeCompanionsValidator) ValidateString(ctx context.Context, req v
 	untilSet := !untilVal.IsNull() && !untilVal.IsUnknown()
 	daysSet := !daysVal.IsNull() && !daysVal.IsUnknown()
 
-	// When deferral_type is null/unknown we still reject orphaned siblings —
+	// When deferral_type is UNKNOWN (e.g. sourced from a variable) a
+	// config-time validator must DEFER — see STYLE_GUIDE "Config-time
+	// validators MUST defer on unknown values". The discriminator's value is
+	// not yet decidable, so we cannot judge the companions.
+	if req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	// When deferral_type is genuinely NULL we still reject orphaned siblings —
 	// the trio is a single Optional concept and a companion without its
-	// discriminator is meaningless.
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+	// discriminator is meaningless. These are forbidden-when checks (error on
+	// PRESENT), so unknown companions are correctly ignored (untilSet/daysSet
+	// are false for unknown).
+	if req.ConfigValue.IsNull() {
 		if untilSet {
 			resp.Diagnostics.AddAttributeError(
 				untilPath,
@@ -121,7 +131,9 @@ func (deferralTypeCompanionsValidator) ValidateString(ctx context.Context, req v
 			)
 		}
 	case "date":
-		if !untilSet {
+		// Required-when check: error only when deferral_until_utc is genuinely
+		// null; defer when it is unknown (unknown != absent).
+		if untilVal.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				untilPath,
 				"deferral_until_utc required when deferral_type = \"date\"",
@@ -136,13 +148,15 @@ func (deferralTypeCompanionsValidator) ValidateString(ctx context.Context, req v
 			)
 		}
 	case "duration":
-		if !daysSet {
+		// Required-when check: error only when deferral_days is genuinely null;
+		// defer when it is unknown (unknown != absent).
+		if daysVal.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				daysPath,
 				"deferral_days required when deferral_type = \"duration\"",
 				"Provide a positive day count (e.g. `deferral_days = 3`).",
 			)
-		} else if daysVal.ValueInt64() < 1 {
+		} else if !daysVal.IsUnknown() && daysVal.ValueInt64() < 1 {
 			resp.Diagnostics.AddAttributeError(
 				daysPath,
 				"deferral_days must be >= 1",

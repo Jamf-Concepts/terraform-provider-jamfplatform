@@ -63,8 +63,10 @@ func (configurationTypeBlockValidator) ValidateString(ctx context.Context, req v
 		return
 	}
 
+	// "Present" (known, non-null) drives the forbidden checks; a genuinely-null
+	// block drives the required checks. An UNKNOWN block (variable-driven)
+	// defers on both — it is neither proven present nor proven absent.
 	samlSet := !samlPresent.IsNull() && !samlPresent.IsUnknown()
-	oidcSet := !oidcPresent.IsNull() && !oidcPresent.IsUnknown()
 
 	switch req.ConfigValue.ValueString() {
 	case configurationTypeOIDC:
@@ -75,7 +77,7 @@ func (configurationTypeBlockValidator) ValidateString(ctx context.Context, req v
 				"Remove the `saml_settings` block, or set `configuration_type = \"OIDC_WITH_SAML\"` to mix both modes.",
 			)
 		}
-		if !oidcSet {
+		if oidcPresent.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("oidc_settings"),
 				"oidc_settings required when configuration_type = \"OIDC\"",
@@ -83,7 +85,7 @@ func (configurationTypeBlockValidator) ValidateString(ctx context.Context, req v
 			)
 		}
 	case configurationTypeSAML:
-		if !samlSet {
+		if samlPresent.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("saml_settings"),
 				"saml_settings required when configuration_type = \"SAML\"",
@@ -91,14 +93,14 @@ func (configurationTypeBlockValidator) ValidateString(ctx context.Context, req v
 			)
 		}
 	case configurationTypeOIDCWithSAML:
-		if !samlSet {
+		if samlPresent.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("saml_settings"),
 				"saml_settings required when configuration_type = \"OIDC_WITH_SAML\"",
 				"Both `saml_settings` and `oidc_settings` must be supplied.",
 			)
 		}
-		if !oidcSet {
+		if oidcPresent.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("oidc_settings"),
 				"oidc_settings required when configuration_type = \"OIDC_WITH_SAML\"",
@@ -168,7 +170,12 @@ func validateSamlActiveStringNonEmpty(ctx context.Context, req validator.StringR
 	if configType.ValueString() != configurationTypeSAML && configType.ValueString() != configurationTypeOIDCWithSAML {
 		return
 	}
-	if !req.ConfigValue.IsNull() && !req.ConfigValue.IsUnknown() && req.ConfigValue.ValueString() != "" {
+	// Defer when the validated value is unknown (variable/for_each-driven):
+	// config-time validation cannot see it. Error only when genuinely null/empty.
+	if req.ConfigValue.IsUnknown() {
+		return
+	}
+	if !req.ConfigValue.IsNull() && req.ConfigValue.ValueString() != "" {
 		return
 	}
 	resp.Diagnostics.AddAttributeError(
@@ -217,7 +224,7 @@ func (metadataSourceBranchValidator) ValidateString(ctx context.Context, req val
 
 	switch req.ConfigValue.ValueString() {
 	case metadataSourceURL:
-		if !isStringConfigured(idpURL) {
+		if !isStringConfigured(idpURL) && !idpURL.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				parent.AtName("idp_url"),
 				"idp_url required when metadata_source = \"URL\"",
@@ -239,14 +246,14 @@ func (metadataSourceBranchValidator) ValidateString(ctx context.Context, req val
 			)
 		}
 	case metadataSourceFILE:
-		if !isStringConfigured(fmf) {
+		if !isStringConfigured(fmf) && !fmf.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				parent.AtName("federation_metadata_file"),
 				"federation_metadata_file required when metadata_source = \"FILE\"",
 				"Supply `federation_metadata_file = filebase64(\"idp-metadata.xml\")`.",
 			)
 		}
-		if !isStringConfigured(mfn) {
+		if !isStringConfigured(mfn) && !mfn.IsUnknown() {
 			resp.Diagnostics.AddAttributeError(
 				parent.AtName("metadata_file_name"),
 				"metadata_file_name required when metadata_source = \"FILE\"",
@@ -295,7 +302,7 @@ func (idpProviderTypeOtherValidator) ValidateString(ctx context.Context, req val
 	if d := req.Config.GetAttribute(ctx, parent.AtName("other_provider_type_name"), &other); d.HasError() {
 		return
 	}
-	if isStringConfigured(other) {
+	if other.IsUnknown() || isStringConfigured(other) {
 		return
 	}
 	resp.Diagnostics.AddAttributeError(
@@ -337,7 +344,7 @@ func (userAttributeEnabledValidator) ValidateBool(ctx context.Context, req valid
 	if d := req.Config.GetAttribute(ctx, parent.AtName("user_attribute_name"), &name); d.HasError() {
 		return
 	}
-	if isStringConfigured(name) {
+	if name.IsUnknown() || isStringConfigured(name) {
 		return
 	}
 	resp.Diagnostics.AddAttributeError(
@@ -436,7 +443,7 @@ func (groupEnrollmentAccessEnabledValidator) ValidateBool(ctx context.Context, r
 	if d := req.Config.GetAttribute(ctx, path.Root("group_enrollment_access_name"), &name); d.HasError() {
 		return
 	}
-	if isStringConfigured(name) {
+	if name.IsUnknown() || isStringConfigured(name) {
 		return
 	}
 	resp.Diagnostics.AddAttributeError(
@@ -489,7 +496,7 @@ func (signingCertificateSetupTypeValidator) ValidateString(ctx context.Context, 
 		if d := req.Config.GetAttribute(ctx, parent.AtName(name), &v); d.HasError() {
 			continue
 		}
-		if isStringConfigured(v) {
+		if v.IsUnknown() || isStringConfigured(v) {
 			continue
 		}
 		resp.Diagnostics.AddAttributeError(

@@ -51,7 +51,14 @@ func (mdmSigningCertificateRequiredValidator) ValidateResource(ctx context.Conte
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if !cert.IsNull() && !cert.IsUnknown() {
+	// Defer when the certificate block is unknown (e.g. driven by a variable,
+	// for_each, or another resource): config-time validation cannot see its
+	// eventual value, and erroring here would break every non-literal config.
+	// Only a genuinely-absent (null) block is an error.
+	if cert.IsUnknown() {
+		return
+	}
+	if !cert.IsNull() {
 		return
 	}
 	resp.Diagnostics.AddAttributeError(
