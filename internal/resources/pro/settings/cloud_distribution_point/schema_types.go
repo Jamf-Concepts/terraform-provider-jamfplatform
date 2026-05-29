@@ -1,0 +1,28 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package cloud_distribution_point
+
+import (
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+// cdnTypeNone is the server's sentinel for "no cloud distribution point
+// configured". GET returns this (HTTP 200, never 404) once the object is
+// deleted; Read treats it as resource-absent and removes the resource from
+// state. It is NOT a settable cdn_type — the API rejects it on POST/PATCH.
+const cdnTypeNone = "NONE"
+
+// validCdnTypes are the settable cdn_type values, sourced from the server's own
+// validation error: "Allowed values are: [RACKSPACE_CLOUD_FILES, AMAZON_S3,
+// AKAMAI, JAMF_CLOUD]".
+var validCdnTypes = []string{"JAMF_CLOUD", "AMAZON_S3", "AKAMAI", "RACKSPACE_CLOUD_FILES"}
+
+// cloudDistributionPointTimeoutAttributeTypes defines the timeout attribute types.
+var cloudDistributionPointTimeoutAttributeTypes = map[string]attr.Type{
+	"create": types.StringType,
+	"read":   types.StringType,
+	"update": types.StringType,
+	"delete": types.StringType,
+}
