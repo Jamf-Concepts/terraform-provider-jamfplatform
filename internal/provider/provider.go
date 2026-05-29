@@ -59,6 +59,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/policy"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_failover_url"
@@ -229,6 +230,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		blueprint.NewBlueprintResource,
 		building.NewBuildingResource,
 		category.NewCategoryResource,
+		cloud_distribution_point.NewCloudDistributionPointResource,
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
 		directory_binding.NewDirectoryBindingResource,
@@ -272,6 +274,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		buildings.NewBuildingsDataSource,
 		categories.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		cloud_distribution_point.NewCloudDistributionPointDataSource,
 		department.NewDepartmentDataSource,
 		departments.NewDepartmentsDataSource,
 		device_group.NewDeviceGroupDataSource,
