@@ -361,6 +361,15 @@ Reference: `internal/resources/pro/inventory/directory_binding/data_source.go` (
 - Read companions via `req.Config.GetAttribute(ctx, path.Root("…") / path.MatchRelative()..., &target)`.
 - Attach errors to the **companion's** path (not the discriminator's), via `resp.Diagnostics.AddAttributeError(companionPath, summary, detail)` — that's where the user needs to look.
 
+##### Config-time validators MUST defer on unknown values — for EVERY attribute they read, not just the discriminator
+
+Config validation (`ValidateConfig` / any `ConfigValidator` / schema `Validate{String,…}`) runs with **unknown** values for anything sourced from a variable, `for_each`, `count`, or another resource. `Unknown` means "not resolvable yet", **not** "missing". A validator that errors on unknown makes the resource unusable from anything but hard-coded literals — it breaks `terraform validate`/`plan` for every reusable module. (Caught provider-wide 2026-05; cf. deploymenttheory/terraform-provider-jamfpro #1111.)
+
+- **Skip on unknown before treating absence as an error.** A "required-when" check must `return` (defer) when the *dependent* attribute is unknown, and error only when it is genuinely `null`. The discriminator is not enough — guard the companion too.
+- **Never let a Go decode hide unknown.** `req.Config.Get(ctx, &model)` collapses `unknown` to a zero value: a nested block becomes a `nil` pointer, a list/set becomes `len() == 0`, a custom "is-set" helper returns false. So `if block == nil`, `if len(slice) == 0`, `if !isSet(x)` all **false-error on unknown**. Read the dependent attribute as its **typed value** (`types.Object` / `types.List` / `types.String`) via `GetAttribute` and branch on `IsUnknown()` / `IsNull()` explicitly — do not infer presence from the decoded Go value.
+- **Forbidden-when checks are safe** (they fire on *presence*, so unknown-treated-as-absent just defers) — but required-when checks are the trap.
+- **Regression-test with unknowns, not just literals.** Acceptance tests use literal HCL (always known) and therefore CANNOT catch this. Add a unit test that feeds `tftypes.UnknownValue` to the dependent attribute and asserts no diagnostic. References: `internal/resources/pro/settings/user_initiated_enrollment_settings/validators_test.go` (`TestCertInvariant_SilentWhenCertUnknown`), `…/inventory/disk_encryption_configuration/validators_test.go`, `…/users/user_group/validators_test.go`. `inventory/ibeacon/validators.go` is the reference body (validates only when both values are known).
+
 Avoid `resource.ResourceWithConfigValidators` even for multi-attribute rules unless the framework's `resourcevalidator` package genuinely cannot express them. Bespoke whole-config validators are a last resort.
 
 ### Configuration profile payload diff suppression (mask-and-compare)

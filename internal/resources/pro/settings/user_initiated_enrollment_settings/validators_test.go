@@ -24,28 +24,30 @@ var certObjType = tftypes.Object{AttributeTypes: map[string]tftypes.Type{
 	"serial_number":                tftypes.String,
 }}
 
+// validatorCertSchema / validatorObjType are the schema + tftypes shapes the
+// mdm_signing_certificate ConfigValidator reads, shared across fixtures.
+var validatorCertSchema = schema.SingleNestedAttribute{
+	Optional: true,
+	Attributes: map[string]schema.Attribute{
+		"keystore_file":                schema.StringAttribute{Optional: true},
+		"keystore_file_name":           schema.StringAttribute{Optional: true, Computed: true},
+		"keystore_password":            schema.StringAttribute{Optional: true},
+		"keystore_password_wo_version": schema.Int64Attribute{Optional: true},
+		"subject":                      schema.StringAttribute{Computed: true},
+		"serial_number":                schema.StringAttribute{Computed: true},
+	},
+}
+
+var validatorObjType = tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+	"signing_mdm_profile_enabled": tftypes.Bool,
+	"mdm_signing_certificate":     certObjType,
+}}
+
 // buildValidatorConfig synthesises a tfsdk.Config carrying
 // signing_mdm_profile_enabled and an (optionally present) mdm_signing_certificate
 // block, matching the attributes the ConfigValidator reads.
 func buildValidatorConfig(t *testing.T, enabled *bool, certPresent bool) tfsdk.Config {
 	t.Helper()
-
-	certSchema := schema.SingleNestedAttribute{
-		Optional: true,
-		Attributes: map[string]schema.Attribute{
-			"keystore_file":                schema.StringAttribute{Optional: true},
-			"keystore_file_name":           schema.StringAttribute{Optional: true, Computed: true},
-			"keystore_password":            schema.StringAttribute{Optional: true},
-			"keystore_password_wo_version": schema.Int64Attribute{Optional: true},
-			"subject":                      schema.StringAttribute{Computed: true},
-			"serial_number":                schema.StringAttribute{Computed: true},
-		},
-	}
-
-	objType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-		"signing_mdm_profile_enabled": tftypes.Bool,
-		"mdm_signing_certificate":     certObjType,
-	}}
 
 	var enabledVal tftypes.Value
 	if enabled == nil {
@@ -66,12 +68,19 @@ func buildValidatorConfig(t *testing.T, enabled *bool, certPresent bool) tfsdk.C
 		})
 	}
 
+	return validatorConfigFrom(enabledVal, certVal)
+}
+
+// validatorConfigFrom assembles the tfsdk.Config from already-built tftypes
+// values, so callers can inject states the bool-driven helper can't express
+// (notably an unknown mdm_signing_certificate block).
+func validatorConfigFrom(enabledVal, certVal tftypes.Value) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema.Schema{Attributes: map[string]schema.Attribute{
 			"signing_mdm_profile_enabled": schema.BoolAttribute{Optional: true},
-			"mdm_signing_certificate":     certSchema,
+			"mdm_signing_certificate":     validatorCertSchema,
 		}},
-		Raw: tftypes.NewValue(objType, map[string]tftypes.Value{
+		Raw: tftypes.NewValue(validatorObjType, map[string]tftypes.Value{
 			"signing_mdm_profile_enabled": enabledVal,
 			"mdm_signing_certificate":     certVal,
 		}),
@@ -127,5 +136,21 @@ func TestCertInvariant_SilentWhenUnset(t *testing.T) {
 	out := runCertValidator(t, buildValidatorConfig(t, nil, false))
 	if len(out) != 0 {
 		t.Errorf("validator should not fire when toggle unset, got %v", out)
+	}
+}
+
+// TestCertInvariant_SilentWhenCertUnknown is the defer-on-unknown regression
+// guard: with signing_mdm_profile_enabled = true (known) and the
+// mdm_signing_certificate block UNKNOWN (e.g. sourced from a variable), a
+// config-time validator must DEFER, not treat unknown as missing and error.
+// See STYLE_GUIDE "Config-time validators must defer on unknown values".
+func TestCertInvariant_SilentWhenCertUnknown(t *testing.T) {
+	cfg := validatorConfigFrom(
+		tftypes.NewValue(tftypes.Bool, true),
+		tftypes.NewValue(certObjType, tftypes.UnknownValue),
+	)
+	out := runCertValidator(t, cfg)
+	if len(out) != 0 {
+		t.Errorf("validator must defer (not fire) when cert block is unknown, got %v", out)
 	}
 }

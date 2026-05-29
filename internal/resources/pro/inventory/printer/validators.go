@@ -86,6 +86,13 @@ func (useGenericPPDConfigValidator) ValidateResource(ctx context.Context, req re
 	}
 
 	// use_generic = false
+	// Defer when ppd_path is unknown (variable/for_each/resource-driven):
+	// config-time validation cannot see its eventual value, so treating unknown
+	// as "missing" would false-error on every non-literal config. isSet() treats
+	// unknown as not-set, so guard explicitly here.
+	if data.PPDPath.IsUnknown() {
+		return
+	}
 	if !isSet(data.PPDPath) {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("ppd_path"),
