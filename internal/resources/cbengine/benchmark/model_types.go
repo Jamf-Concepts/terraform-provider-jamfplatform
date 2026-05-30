@@ -24,6 +24,7 @@ type BenchmarkResourceModel struct {
 	Sources            []SourceModel          `tfsdk:"sources"`
 	Rules              []RuleModel            `tfsdk:"rules"`
 	TargetDeviceGroup  types.String           `tfsdk:"target_device_group"`
+	TargetDeviceGroups types.Set              `tfsdk:"target_device_groups"`
 	EnforcementMode    types.String           `tfsdk:"enforcement_mode"`
 	TenantID           types.String           `tfsdk:"tenant_id"`
 	Deleted            types.Bool             `tfsdk:"deleted"`
@@ -43,6 +44,7 @@ type BenchmarkDataSourceModel struct {
 	Sources            []SourceModel            `tfsdk:"sources"`
 	Rules              []RuleModel              `tfsdk:"rules"`
 	TargetDeviceGroup  types.String             `tfsdk:"target_device_group"`
+	TargetDeviceGroups types.Set                `tfsdk:"target_device_groups"`
 	EnforcementMode    types.String             `tfsdk:"enforcement_mode"`
 	Deleted            types.Bool               `tfsdk:"deleted"`
 	UpdateAvailable    types.Bool               `tfsdk:"update_available"`

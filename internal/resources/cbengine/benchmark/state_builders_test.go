@@ -8,11 +8,18 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
-	model := &BenchmarkResourceModel{}
+	// Pre-populate the singular slot so assignTargetDeviceGroups takes the
+	// backwards-compat path and writes the API value into TargetDeviceGroup
+	// rather than the plural set.
+	model := &BenchmarkResourceModel{
+		TargetDeviceGroup:  types.StringValue("placeholder"),
+		TargetDeviceGroups: types.SetNull(types.StringType),
+	}
 	lastUpdated, _ := time.Parse(time.RFC3339, "2025-06-15T10:30:00Z")
 	bench := &compliancebenchmarks.BenchmarkResponseV2{
 		BenchmarkID:     "bench-1",
@@ -267,10 +274,76 @@ func TestBuildRuleModel_ODVWithoutValidation(t *testing.T) {
 	}
 }
 
+func TestAssignBenchmarkModelFromResponse_PluralPath(t *testing.T) {
+	// Model carries TargetDeviceGroups pre-set (the plural-path signal).
+	// State assignment must keep singular null and populate the plural set
+	// with every group the API returned.
+	preset, _ := types.SetValue(types.StringType, []attr.Value{types.StringValue("placeholder")})
+	model := &BenchmarkResourceModel{
+		TargetDeviceGroup:  types.StringNull(),
+		TargetDeviceGroups: preset,
+	}
+	bench := &compliancebenchmarks.BenchmarkResponseV2{
+		BenchmarkID: "bench-plural",
+		Target:      &compliancebenchmarks.TargetV2{DeviceGroups: []string{"g1", "g2", "g3"}},
+	}
+
+	assignBenchmarkModelFromResponse(model, bench)
+
+	if !model.TargetDeviceGroup.IsNull() {
+		t.Errorf("expected TargetDeviceGroup null when plural path active, got %q", model.TargetDeviceGroup.ValueString())
+	}
+	if model.TargetDeviceGroups.IsNull() {
+		t.Fatal("expected TargetDeviceGroups populated")
+	}
+	if len(model.TargetDeviceGroups.Elements()) != 3 {
+		t.Errorf("expected 3 elements in TargetDeviceGroups, got %d", len(model.TargetDeviceGroups.Elements()))
+	}
+}
+
+func TestAssignBenchmarkModelFromResponse_ImportDefaultsToPlural(t *testing.T) {
+	// Both attribute slots null/unknown (typical import). State builder should
+	// default to populating the plural set so imports surface every group.
+	model := &BenchmarkResourceModel{
+		TargetDeviceGroup:  types.StringNull(),
+		TargetDeviceGroups: types.SetNull(types.StringType),
+	}
+	bench := &compliancebenchmarks.BenchmarkResponseV2{
+		BenchmarkID: "bench-import",
+		Target:      &compliancebenchmarks.TargetV2{DeviceGroups: []string{"g1"}},
+	}
+
+	assignBenchmarkModelFromResponse(model, bench)
+
+	if !model.TargetDeviceGroup.IsNull() {
+		t.Errorf("expected singular null on import, got %q", model.TargetDeviceGroup.ValueString())
+	}
+	if model.TargetDeviceGroups.IsNull() || len(model.TargetDeviceGroups.Elements()) != 1 {
+		t.Errorf("expected plural populated on import")
+	}
+}
+
 func TestBuildTargetDeviceGroup(t *testing.T) {
 	result := buildTargetDeviceGroup([]string{"group-a", "group-b"})
 	if result.ValueString() != "group-a" {
 		t.Errorf("expected 'group-a', got %q", result.ValueString())
+	}
+}
+
+func TestBuildTargetDeviceGroupsSet(t *testing.T) {
+	result := buildTargetDeviceGroupsSet([]string{"a", "b", "c"})
+	if result.IsNull() {
+		t.Fatal("expected non-null set")
+	}
+	if len(result.Elements()) != 3 {
+		t.Errorf("expected 3 elements, got %d", len(result.Elements()))
+	}
+}
+
+func TestBuildTargetDeviceGroupsSet_Empty(t *testing.T) {
+	result := buildTargetDeviceGroupsSet(nil)
+	if !result.IsNull() {
+		t.Error("expected null set for empty input")
 	}
 }
 
