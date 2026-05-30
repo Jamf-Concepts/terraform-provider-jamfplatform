@@ -82,6 +82,7 @@ func (d *MobileDevicePrestageEnrollmentDataSource) Schema(ctx context.Context, r
 			"enrollment_site_id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "Site ID applied to enrolled devices, or `\"-1\"` when no site."},
 			"enrollment_customization_id":           schema.StringAttribute{Computed: true, MarkdownDescription: "Enrollment customization ID, or `\"0\"` when no customization."},
 			"profile_uuid":                          schema.StringAttribute{Computed: true, MarkdownDescription: "MDM profile UUID assigned by Jamf Pro."},
+			"timezone":                              schema.StringAttribute{Computed: true, MarkdownDescription: "Time zone (IANA identifier, e.g. `\"America/Chicago\"`)."},
 			"multi_user":                            schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether Shared iPad is enabled."},
 			"prestage_minimum_os_target_version_type_ios":  schema.StringAttribute{Computed: true, MarkdownDescription: "Minimum-iOS enforcement mode."},
 			"prestage_minimum_os_target_version_type_ipad": schema.StringAttribute{Computed: true, MarkdownDescription: "Minimum-iPadOS enforcement mode."},
@@ -170,6 +171,7 @@ func (d *MobileDevicePrestageEnrollmentDataSource) Read(ctx context.Context, req
 	data.EnrollmentSiteID = types.StringValue(got.EnrollmentSiteID)
 	data.EnrollmentCustomizationID = types.StringValue(got.EnrollmentCustomizationID)
 	data.ProfileUUID = types.StringValue(got.ProfileUUID)
+	data.Timezone = types.StringValue(got.Timezone)
 	data.MultiUser = types.BoolValue(got.MultiUser)
 	data.PrestageMinimumOsTargetVersionTypeIos = types.StringValue(got.PrestageMinimumOsTargetVersionTypeIos)
 	data.PrestageMinimumOsTargetVersionTypeIpad = types.StringValue(got.PrestageMinimumOsTargetVersionTypeIpad)

@@ -424,10 +424,20 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_ExpectError_StorageVsTemp
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = "tf-acc-expect-storage-temp-%s"
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
 
-  multi_user             = true
-  use_storage_quota_size = true
-  temporary_session_only = true
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
+
+  multi_user              = true
+  supervised              = true
+  prevent_activation_lock = true
+  use_storage_quota_size  = true
+  temporary_session_only  = true
 }
 `, suffix, adeFixtureRef),
 				ExpectError: regexp.MustCompile(`mutually-exclusive|conflicts with temporary_session_only`),
@@ -452,8 +462,18 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_ExpectError_TempSessionTi
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = "tf-acc-expect-temp-timeout-%s"
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   multi_user                        = true
+  supervised                        = true
+  prevent_activation_lock           = true
   temporary_session_only            = true
   enforce_temporary_session_timeout = true
   temporary_session_timeout         = 15
@@ -481,6 +501,14 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_ExpectError_BadMinOsIos(t
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = "tf-acc-expect-bad-min-os-ios-%s"
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   prestage_minimum_os_target_version_type_ios = "LATEST_ONLY"
 }
@@ -505,6 +533,14 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_ExpectError_BadMinOsIpad(
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = "tf-acc-expect-bad-min-os-ipad-%s"
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   prestage_minimum_os_target_version_type_ipad = "LATEST_ONLY"
 }
@@ -532,6 +568,14 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_MinOsSpecific(t *testing.
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   prestage_minimum_os_target_version_type_ios  = "MINIMUM_OS_SPECIFIC_VERSION"
   minimum_os_specific_version_ios              = "17.1"
@@ -673,6 +717,14 @@ func testAccMobilePrestageMinimalConfig(name string) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   location_information   = {}
   purchasing_information = {}
@@ -689,6 +741,14 @@ func testAccMobilePrestageFullConfigV1(name string) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
   mandatory                             = true
   mdm_removable                         = true
   supervised                            = true
@@ -734,6 +794,14 @@ func testAccMobilePrestageFullConfigV2(name string) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
   mandatory                             = false
   mdm_removable                         = false
   supervised                            = true
@@ -783,8 +851,18 @@ func testAccMobilePrestageStorageQuotaConfig(name string, maxUsers int) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   multi_user              = true
+  supervised              = true
+  prevent_activation_lock = true
   use_storage_quota_size  = true
   maximum_shared_accounts = %d
 
@@ -802,8 +880,18 @@ func testAccMobilePrestageTemporarySessionConfig(name string) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   multi_user                        = true
+  supervised                        = true
+  prevent_activation_lock           = true
   temporary_session_only            = true
   enforce_temporary_session_timeout = true
   temporary_session_timeout         = 60
@@ -824,6 +912,14 @@ func testAccMobilePrestageNamesModeConfig(name, namesBlock string) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   location_information   = {}
   purchasing_information = {}
@@ -838,6 +934,14 @@ func testAccMobilePrestageAnchorsConfig(name, anchors string) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   anchor_certificates = %s
 
@@ -862,6 +966,14 @@ func testAccMobilePrestageScopeListConfig(name string, serials []string) string 
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   location_information   = {}
   purchasing_information = {}
@@ -881,6 +993,14 @@ func testAccMobilePrestageScopeConfig(name, serial string) string {
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
   display_name                          = %q
   device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
 
   location_information   = {}
   purchasing_information = {}

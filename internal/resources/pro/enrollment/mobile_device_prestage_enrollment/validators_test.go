@@ -18,6 +18,10 @@ import (
 // unknownBool is a sentinel for buildConfig signalling an UNKNOWN Bool value.
 type unknownBool struct{}
 
+// nullBool is a sentinel for buildConfig signalling a NULL Bool value (the
+// shape an Optional companion takes when the user omits it from config).
+type nullBool struct{}
+
 // buildConfig synthesises a *tfsdk.Config from a small flat attribute map for
 // use by the cross-field validators that call req.Config.GetAttribute(...).
 // All three validators read their companion via an absolute (path.Root) or
@@ -42,6 +46,10 @@ func buildConfig(t *testing.T, attrs map[string]any) tfsdk.Config {
 		case unknownBool:
 			typeMap[k] = tftypes.Bool
 			valMap[k] = tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue)
+			tfsdkAttrs[k] = schema.BoolAttribute{Optional: true}
+		case nullBool:
+			typeMap[k] = tftypes.Bool
+			valMap[k] = tftypes.NewValue(tftypes.Bool, nil)
 			tfsdkAttrs[k] = schema.BoolAttribute{Optional: true}
 		case nil:
 			// null String (used for the absent-companion case).
@@ -234,5 +242,156 @@ func TestTemporarySessionTimeoutMinimum_DefersWhenEnforceUnknown(t *testing.T) {
 		cfg, "temporary_session_timeout", types.Int64Value(15))
 	if len(out) != 0 {
 		t.Errorf("unknown enforce companion must defer, got %v", out)
+	}
+}
+
+// runValidTimezone invokes validTimezone() against a single ConfigValue and
+// returns the diagnostics. validTimezone reads only req.ConfigValue (no
+// companion lookups), so no synthesised config is needed.
+func runValidTimezone(v types.String) []string {
+	resp := &validator.StringResponse{}
+	validTimezone().ValidateString(context.Background(), validator.StringRequest{
+		Path:        path.Root("timezone"),
+		ConfigValue: v,
+	}, resp)
+	out := []string{}
+	for _, d := range resp.Diagnostics {
+		out = append(out, d.Summary())
+	}
+	return out
+}
+
+func TestValidTimezone(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   types.String
+		wantErr bool
+	}{
+		{"UTC accepted (absent from /v1/time-zones but create-valid)", types.StringValue("UTC"), false},
+		{"region id", types.StringValue("America/Chicago"), false},
+		{"Etc/UTC", types.StringValue("Etc/UTC"), false},
+		{"GMT", types.StringValue("GMT"), false},
+		{"typo rejected", types.StringValue("America/Chicagoo"), true},
+		{"garbage rejected", types.StringValue("garbage"), true},
+		{"Go-only Local alias rejected", types.StringValue("Local"), true},
+		{"empty deferred to LengthAtLeast", types.StringValue(""), false},
+		{"null skipped", types.StringNull(), false},
+		{"unknown skipped", types.StringUnknown(), false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := runValidTimezone(tc.value)
+			if tc.wantErr && len(got) == 0 {
+				t.Fatalf("expected a validation error, got none")
+			}
+			if !tc.wantErr && len(got) != 0 {
+				t.Fatalf("expected no error, got %v", got)
+			}
+		})
+	}
+}
+
+// --- multiUserRequiresPreventActivationLock --------------------------------
+
+func TestMultiUserRequiresPreventActivationLock_SatisfiedWhenBothTrue(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"prevent_activation_lock": true})
+	out := runBoolValidator(t, multiUserRequiresPreventActivationLock(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) != 0 {
+		t.Errorf("multi_user=true + prevent_activation_lock=true must not fire, got %v", out)
+	}
+}
+
+func TestMultiUserRequiresPreventActivationLock_FiresWhenCompanionFalse(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"prevent_activation_lock": false})
+	out := runBoolValidator(t, multiUserRequiresPreventActivationLock(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) == 0 {
+		t.Errorf("multi_user=true + prevent_activation_lock=false must fire")
+	}
+}
+
+func TestMultiUserRequiresPreventActivationLock_FiresWhenCompanionNull(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"prevent_activation_lock": nullBool{}})
+	out := runBoolValidator(t, multiUserRequiresPreventActivationLock(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) == 0 {
+		t.Errorf("multi_user=true + prevent_activation_lock omitted (null) must fire")
+	}
+}
+
+func TestMultiUserRequiresPreventActivationLock_DefersWhenCompanionUnknown(t *testing.T) {
+	// STYLE_GUIDE §Config-time validators MUST defer on unknown: a companion
+	// sourced from a variable/for_each is Unknown at validate/plan time.
+	cfg := buildConfig(t, map[string]any{"prevent_activation_lock": unknownBool{}})
+	out := runBoolValidator(t, multiUserRequiresPreventActivationLock(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) != 0 {
+		t.Errorf("unknown companion must defer (no diagnostic), got %v", out)
+	}
+}
+
+func TestMultiUserRequiresPreventActivationLock_ShortCircuitsWhenMultiUserFalse(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"prevent_activation_lock": false})
+	out := runBoolValidator(t, multiUserRequiresPreventActivationLock(),
+		cfg, "multi_user", types.BoolValue(false))
+	if len(out) != 0 {
+		t.Errorf("multi_user=false must short-circuit, got %v", out)
+	}
+}
+
+func TestMultiUserRequiresPreventActivationLock_DefersWhenMultiUserUnknown(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"prevent_activation_lock": false})
+	out := runBoolValidator(t, multiUserRequiresPreventActivationLock(),
+		cfg, "multi_user", types.BoolUnknown())
+	if len(out) != 0 {
+		t.Errorf("multi_user unknown must defer, got %v", out)
+	}
+}
+
+// --- multiUserRequiresSupervised -------------------------------------------
+
+func TestMultiUserRequiresSupervised_SatisfiedWhenBothTrue(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"supervised": true})
+	out := runBoolValidator(t, multiUserRequiresSupervised(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) != 0 {
+		t.Errorf("multi_user=true + supervised=true must not fire, got %v", out)
+	}
+}
+
+func TestMultiUserRequiresSupervised_FiresWhenCompanionFalse(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"supervised": false})
+	out := runBoolValidator(t, multiUserRequiresSupervised(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) == 0 {
+		t.Errorf("multi_user=true + supervised=false must fire")
+	}
+}
+
+func TestMultiUserRequiresSupervised_FiresWhenCompanionNull(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"supervised": nullBool{}})
+	out := runBoolValidator(t, multiUserRequiresSupervised(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) == 0 {
+		t.Errorf("multi_user=true + supervised omitted (null) must fire")
+	}
+}
+
+func TestMultiUserRequiresSupervised_DefersWhenCompanionUnknown(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"supervised": unknownBool{}})
+	out := runBoolValidator(t, multiUserRequiresSupervised(),
+		cfg, "multi_user", types.BoolValue(true))
+	if len(out) != 0 {
+		t.Errorf("unknown companion must defer (no diagnostic), got %v", out)
+	}
+}
+
+func TestMultiUserRequiresSupervised_ShortCircuitsWhenMultiUserFalse(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{"supervised": false})
+	out := runBoolValidator(t, multiUserRequiresSupervised(),
+		cfg, "multi_user", types.BoolValue(false))
+	if len(out) != 0 {
+		t.Errorf("multi_user=false must short-circuit, got %v", out)
 	}
 }

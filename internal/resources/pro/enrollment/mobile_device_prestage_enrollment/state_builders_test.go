@@ -13,9 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func strPtr(s string) *string { return &s }
-func boolPtr(b bool) *bool    { return &b }
-
 func newStringList(t *testing.T, in []string) types.List {
 	t.Helper()
 	elems := make([]attr.Value, 0, len(in))
@@ -78,8 +75,8 @@ func TestFlattenNames_NilIn(t *testing.T) {
 
 func TestFlattenNames_PrestageDeviceNamesNilWhenServerEmpty(t *testing.T) {
 	n := &pro.MobileDevicePrestageNamesV3{
-		AssignNamesUsing: strPtr("Serial Numbers"),
-		ManageNames:      boolPtr(false),
+		AssignNamesUsing: new("Serial Numbers"),
+		ManageNames:      new(false),
 		// PrestageDeviceNames nil — the server returned no entries.
 	}
 	m := flattenNames(n)
@@ -96,9 +93,9 @@ func TestFlattenNames_PrestageDeviceNamesNilWhenServerEmpty(t *testing.T) {
 
 func TestFlattenNames_PrestageDeviceNamesPopulated(t *testing.T) {
 	n := &pro.MobileDevicePrestageNamesV3{
-		AssignNamesUsing: strPtr("List of Names"),
+		AssignNamesUsing: new("List of Names"),
 		PrestageDeviceNames: &[]pro.MobileDevicePrestageNameV3{
-			{DeviceName: strPtr("iPad-1"), ID: strPtr("42"), Used: boolPtr(true)},
+			{DeviceName: new("iPad-1"), ID: new("42"), Used: new(true)},
 		},
 	}
 	m := flattenNames(n)
@@ -219,7 +216,7 @@ func TestDiffPlanAgainstGet_RealRollbackDetected(t *testing.T) {
 	got := &pro.GetMobileDevicePrestageV3{
 		AnchorCertificates: []string{"cert-B"}, // rolled back
 		Names: &pro.MobileDevicePrestageNamesV3{
-			AssignNamesUsing: strPtr("Serial Numbers"), // rolled back
+			AssignNamesUsing: new("Serial Numbers"), // rolled back
 		},
 	}
 	diff := diffPlanAgainstGet(context.Background(), plan, got)

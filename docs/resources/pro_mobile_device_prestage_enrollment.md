@@ -97,6 +97,7 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 
 - `device_enrollment_program_instance_id` (String) ID of the Automated Device Enrollment (ADE) instance that backs this PreStage. Required.
 - `display_name` (String) **"Display Name"** in the Jamf Pro admin UI. Required. Must not be blank.
+- `timezone` (String) **"Time Zone"** in the Jamf Pro admin UI (e.g. `"America/Chicago"`). Required by the Jamf Pro API — must be a valid IANA time-zone identifier and may not be empty.
 
 ### Optional
 
@@ -123,7 +124,7 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 - `mdm_removable` (Boolean) **"Allow MDM Profile Removal"** in the Jamf Pro admin UI.
 - `minimum_os_specific_version_ios` (String) Specific minimum iOS version (e.g. `"17.1"`). Used only when `prestage_minimum_os_target_version_type_ios = "MINIMUM_OS_SPECIFIC_VERSION"`.
 - `minimum_os_specific_version_ipad` (String) Specific minimum iPadOS version (e.g. `"17.1"`). Used only when `prestage_minimum_os_target_version_type_ipad = "MINIMUM_OS_SPECIFIC_VERSION"`.
-- `multi_user` (Boolean) **"Enable Shared iPad"** in the Jamf Pro admin UI.
+- `multi_user` (Boolean) **"Enable Shared iPad"** in the Jamf Pro admin UI. Requires both `supervised = true` and `prevent_activation_lock = true` — Jamf Pro rejects Shared iPad otherwise (`prevent_activation_lock` with a hard error; `supervised` by silently disabling Shared iPad).
 - `names` (Attributes) **"Mobile device names"** in the Jamf Pro admin UI. Supply the block (even empty: `names = {}`) to manage device naming — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--names))
 - `preserve_managed_apps` (Boolean) **"Preserve Managed Apps"** in the Jamf Pro admin UI.
 - `prestage_minimum_os_target_version_type_ios` (String) Minimum-iOS enforcement mode. One of `NO_ENFORCEMENT`, `MINIMUM_OS_LATEST_VERSION`, `MINIMUM_OS_LATEST_MAJOR_VERSION`, `MINIMUM_OS_LATEST_MINOR_VERSION`, `MINIMUM_OS_SPECIFIC_VERSION`. Pair `MINIMUM_OS_SPECIFIC_VERSION` with `minimum_os_specific_version_ios`.
@@ -143,7 +144,6 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 - `temporary_session_only` (Boolean) **"Temporary Session Only"** shared-iPad storage mode. Mutually exclusive with `use_storage_quota_size` — Jamf Pro forces `use_storage_quota_size` to `false` when this is `true`.
 - `temporary_session_timeout` (Number) **"Temporary Session Timeout"** (minutes). Jamf Pro silently nulls values below the UI minimum of 30 when enforcement is on.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `timezone` (String) **"Time Zone"** in the Jamf Pro admin UI (e.g. `"America/Chicago"`).
 - `use_storage_quota_size` (Boolean) **"Use Storage Quota Size"** shared-iPad storage mode. Mutually exclusive with `temporary_session_only` — Jamf Pro forces this to `false` when `temporary_session_only = true`.
 - `user_session_timeout` (Number) **"User Session Timeout"** (minutes).
 

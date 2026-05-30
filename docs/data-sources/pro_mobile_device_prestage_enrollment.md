@@ -58,6 +58,7 @@ output "prestage_uuid" {
 - `supervised` (Boolean) Whether enrolled devices are supervised.
 - `support_email_address` (String) Support email address shown during Setup Assistant.
 - `support_phone_number` (String) Support phone number shown during Setup Assistant.
+- `timezone` (String) Time zone (IANA identifier, e.g. `"America/Chicago"`).
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
