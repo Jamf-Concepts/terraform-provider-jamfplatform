@@ -1,4 +1,7 @@
 # Example: Create a Jamf Compliance Benchmark
+#
+# Targeting accepts either a set of device group Platform IDs (preferred) via
+# target_device_groups, or the deprecated single-value target_device_group.
 
 data "jamfplatform_cbengine_rules" "cis_lvl1" {
   baseline_id = "cis_lvl1"
@@ -23,8 +26,12 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
     }
   ]
 
-  target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
-  enforcement_mode    = "MONITOR_AND_ENFORCE"
+  # Multiple device groups can be targeted simultaneously.
+  target_device_groups = [
+    "4a36a1fe-e45a-430d-a966-a4d3ac993577",
+    "8b9b5fa0-66ed-43d9-9b9a-2b1f3f7d1e21",
+  ]
+  enforcement_mode = "MONITOR_AND_ENFORCE"
 }
 
 resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
@@ -50,6 +57,9 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
       enabled = true
     }
   ]
+
+  # target_device_group remains supported for backwards compatibility but is
+  # deprecated. Prefer target_device_groups (set form) for new configurations.
   target_device_group = "4a36a1fe-e45a-430d-a966-a4d3ac993577"
   enforcement_mode    = "MONITOR"
 }

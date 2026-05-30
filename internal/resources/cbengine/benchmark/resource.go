@@ -12,6 +12,8 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -19,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -33,6 +36,7 @@ type BenchmarkResource struct {
 var _ resource.Resource = &BenchmarkResource{}
 var _ resource.ResourceWithImportState = &BenchmarkResource{}
 var _ resource.ResourceWithIdentity = &BenchmarkResource{}
+var _ resource.ResourceWithConfigValidators = &BenchmarkResource{}
 
 const (
 	defaultCreateTimeout = 15 * time.Minute
@@ -250,12 +254,28 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"target_device_group": schema.StringAttribute{
-				MarkdownDescription: "Device group Platform ID targeted by this benchmark. Specified as a string in UUID format. The Platform ID can be sourced from the response body of the `/api/device-groups/v1/tenant/{tenantId}/device-groups` Jamf Platform API endpoint (also exposed by the `jamfplatform_device_group` data source / list resource). Required and immutable for this resource (replace on change).",
-				Required:            true,
-				Validators: []validator.String{stringvalidator.RegexMatches(uuidRegex,
-					"Device group ID must be a valid UUID")},
+				MarkdownDescription: "**Deprecated** — use `target_device_groups` instead. Single device group Platform ID targeted by this benchmark, in UUID format. Mutually exclusive with `target_device_groups`. Immutable (replace on change).",
+				DeprecationMessage:  "Use target_device_groups (set of UUIDs) instead. The singular attribute is retained for backwards compatibility and will be removed in a future major release.",
+				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(uuidRegex, "Device group ID must be a valid UUID"),
+					stringvalidator.ConflictsWith(path.MatchRoot("target_device_groups")),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"target_device_groups": schema.SetAttribute{
+				MarkdownDescription: "Device group Platform IDs targeted by this benchmark. Specified as a set of UUID strings; Platform IDs can be sourced from the response body of the `/api/v1/groups` Jamf Pro API endpoint. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).",
+				ElementType:         types.StringType,
+				Optional:            true,
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
+					setvalidator.ValueStringsAre(stringvalidator.RegexMatches(uuidRegex, "Each device group ID must be a valid UUID")),
+					setvalidator.ConflictsWith(path.MatchRoot("target_device_group")),
+				},
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.RequiresReplace(),
 				},
 			},
 			"enforcement_mode": schema.StringAttribute{
@@ -292,6 +312,18 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				Delete: true,
 			}),
 		},
+	}
+}
+
+// ConfigValidators enforces that callers supply exactly one of the singular or
+// plural device-group attributes. ConflictsWith on each attribute already rejects
+// the both-set case; AtLeastOneOf adds the neither-set case.
+func (r *BenchmarkResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		resourcevalidator.AtLeastOneOf(
+			path.MatchRoot("target_device_group"),
+			path.MatchRoot("target_device_groups"),
+		),
 	}
 }
 

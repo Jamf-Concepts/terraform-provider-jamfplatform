@@ -12,6 +12,8 @@ import (
 )
 
 // assignBenchmarkModelFromResponse maps the API response into the Terraform benchmark resource model.
+// For device-group targeting, the API always returns a slice; we preserve whichever attribute the
+// user originally configured (singular or plural) so post-apply state matches plan without drift.
 func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *compliancebenchmarks.BenchmarkResponseV2) {
 	if model == nil || bench == nil {
 		return
@@ -27,15 +29,36 @@ func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *comp
 	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format(time.RFC3339))
 	model.Sources = buildSourceModels(bench.Sources)
 	model.Rules = buildRuleModels(bench.Rules)
-	if bench.Target != nil {
-		model.TargetDeviceGroup = buildTargetDeviceGroup(bench.Target.DeviceGroups)
-	} else {
-		model.TargetDeviceGroup = types.StringNull()
-	}
+	assignTargetDeviceGroups(model, bench)
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
 }
 
+// assignTargetDeviceGroups populates whichever of the two target-device-group attributes
+// the user configured. Singular path: keep TargetDeviceGroup populated, leave plural null.
+// Plural path: keep TargetDeviceGroups populated, leave singular null. If neither is
+// currently set (e.g. import), default to the plural representation.
+func assignTargetDeviceGroups(model *BenchmarkResourceModel, bench *compliancebenchmarks.BenchmarkResponseV2) {
+	var apiGroups []string
+	if bench.Target != nil {
+		apiGroups = bench.Target.DeviceGroups
+	}
+
+	usedSingular := !model.TargetDeviceGroup.IsNull() && !model.TargetDeviceGroup.IsUnknown()
+	usedPlural := !model.TargetDeviceGroups.IsNull() && !model.TargetDeviceGroups.IsUnknown()
+
+	switch {
+	case usedSingular && !usedPlural:
+		model.TargetDeviceGroup = buildTargetDeviceGroup(apiGroups)
+		model.TargetDeviceGroups = types.SetNull(types.StringType)
+	default:
+		// Plural path, neither configured (import / drift), or both (impossible per schema).
+		model.TargetDeviceGroups = buildTargetDeviceGroupsSet(apiGroups)
+		model.TargetDeviceGroup = types.StringNull()
+	}
+}
+
 // assignBenchmarkDataSourceFromResponse maps the API response into the Terraform benchmark data source model.
+// Data sources always populate both attributes — readers can use whichever shape they prefer.
 func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, bench *compliancebenchmarks.BenchmarkResponseV2) {
 	if model == nil || bench == nil {
 		return
@@ -47,11 +70,12 @@ func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, benc
 	model.Description = types.StringValue(bench.Description)
 	model.Sources = buildSourceModels(bench.Sources)
 	model.Rules = buildRuleModels(bench.Rules)
+	var apiGroups []string
 	if bench.Target != nil {
-		model.TargetDeviceGroup = buildTargetDeviceGroup(bench.Target.DeviceGroups)
-	} else {
-		model.TargetDeviceGroup = types.StringNull()
+		apiGroups = bench.Target.DeviceGroups
 	}
+	model.TargetDeviceGroup = buildTargetDeviceGroup(apiGroups)
+	model.TargetDeviceGroups = buildTargetDeviceGroupsSet(apiGroups)
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
 	model.Deleted = types.BoolValue(bench.Deleted)
 	model.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
@@ -111,6 +135,20 @@ func buildTargetDeviceGroup(deviceGroups []string) types.String {
 		return types.StringValue(deviceGroups[0])
 	}
 	return types.StringNull()
+}
+
+// buildTargetDeviceGroupsSet converts the API slice into a Terraform set of strings,
+// returning a null set when the API responded with no groups.
+func buildTargetDeviceGroupsSet(deviceGroups []string) types.Set {
+	if len(deviceGroups) == 0 {
+		return types.SetNull(types.StringType)
+	}
+	vals := make([]attr.Value, len(deviceGroups))
+	for i, g := range deviceGroups {
+		vals[i] = types.StringValue(g)
+	}
+	result, _ := types.SetValue(types.StringType, vals)
+	return result
 }
 
 // buildStringList converts a string slice into a Terraform list of strings, returning null for empty.
