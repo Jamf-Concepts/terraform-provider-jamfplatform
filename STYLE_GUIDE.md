@@ -323,6 +323,26 @@ When the SDK call backed by a broken endpoint is on a non-critical path (data so
 
 Reference: `internal/resources/pro/inventory/directory_binding/data_source.go` (`lookupByName`).
 
+### SDK type-decode bugs — fix by generator override, not provider hand-decode
+
+The previous section is about a broken *endpoint* (the server misbehaves). This one is about a broken *SDK type* — the endpoint works, but the generated Go struct can't decode the server's response. The two are different and have different fixes.
+
+**The recurring shape.** Jamf's OpenAPI spec declares a field `type:string, format:date-time` (often with a `Z`-suffixed example), so the SDK generator maps it to `*time.Time`. But the live server emits a **timezone-less** ISO-8601 value (e.g. `"2028-05-15T13:41:46"`, `"2026-05-28T13:59:26.491"`). Go's RFC3339 decoder rejects it, and because `json.Unmarshal` aborts the **whole body** on the first field error, the SDK call returns `nil, err` — the entire response is unrecoverable, not partially populated. The spec is self-inconsistent (the server violates its own declared `date-time` format); the SDK faithfully generated the wrong type. The same trap exists for any spec/server type mismatch (int vs string, object vs map, etc.), not just dates.
+
+**The rule: fix it in the SDK via a generator override. Never hand-decode in the provider.** Adding a bespoke `UnmarshalJSON`, a regex pre-parse, or an error-tolerant fallback inside a resource package is a code-review reject — it hides the defect from every other SDK consumer, rots silently, and duplicates per resource. The SDK is the single correct place to fix a wire-shape bug.
+
+**How to fix (SDK side):**
+
+1. Add one entry to the SDK's `tools/generate/config.json` → the `pro` (or relevant package) block's `fieldTypeOverrides` map. Key is `<snake_case_schema_name>.<jsonFieldName>`; value is the correct Go type. For timezone-less dates that's `"*string"` — the raw wire value round-trips and callers parse it themselves if needed. Example: `"cloud_ldap_keystore.expirationDate": "*string"`.
+2. Regenerate so `types.go` picks up the override (the file is `DO NOT EDIT` — never patch it by hand; the override is what survives regen).
+3. Add/extend an SDK test with a **realistic** body. The bug usually hides because the existing SDK test returns an empty object (`map[string]any{}`) that never reaches the parser — close that coverage hole.
+
+**Precedent in the same spec:** `SsoKeystoreDetails.expiration` is declared plain `type:string` (no `date-time`) and decodes fine — that's the target shape for timezone-less Jamf datetimes.
+
+**Provider-side consequence:** model the field as a Computed echo string and read the SDK's `*string` straight through. No workaround to remove later.
+
+**Workflow:** write a fix-prompt doc at the provider repo root (gitignored), mirroring `SDK_PRESTAGE_SCOPE_ASSIGNMENT_DATE_FIX_PROMPT.md` / `SDK_CLOUD_LDAP_KEYSTORE_DATE_FIX_PROMPT.md`: state the bug, the affected SDK functions, the wire evidence, the spec quote, the exact override entry, and the test gap. Hand it to a session in the SDK repo; land the SDK PR; bump the provider `go.mod`. If a resource is blocked on the fix, record it in that resource's spike/memory and pin the dependency rather than hand-decoding to unblock.
+
 ### Cross-field validation
 
 **Required pattern:** every cross-field rule MUST be expressed as an **attribute-level validator** (`Validators: []validator.Bool{...}` on the schema attribute itself), not as a resource-level `resource.ResourceWithConfigValidators`. Errors attach to the offending attribute, the rule is co-located with the schema, the diagnostic is field-named, and the convention matches every resource in the provider.
