@@ -128,7 +128,18 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 			"enable_device_based_activation_lock": optBool("**\"Enable Device-Based Activation Lock\"** in the Jamf Pro admin UI."),
 			"keep_existing_site_membership":       optBool("**\"Keep Existing Site Membership\"** in the Jamf Pro admin UI."),
 			"keep_existing_location_information":  optBool("**\"Keep Existing Location Information\"** in the Jamf Pro admin UI."),
-			"multi_user":                          optBool("**\"Enable Shared iPad\"** in the Jamf Pro admin UI."),
+			"multi_user": schema.BoolAttribute{
+				MarkdownDescription: "**\"Enable Shared iPad\"** in the Jamf Pro admin UI. Requires both `supervised = true` and `prevent_activation_lock = true` — Jamf Pro rejects Shared iPad otherwise (`prevent_activation_lock` with a hard error; `supervised` by silently disabling Shared iPad).",
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.Bool{
+					multiUserRequiresPreventActivationLock(),
+					multiUserRequiresSupervised(),
+				},
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"use_storage_quota_size": schema.BoolAttribute{
 				MarkdownDescription: "**\"Use Storage Quota Size\"** shared-iPad storage mode. Mutually exclusive with `temporary_session_only` — Jamf Pro forces this to `false` when `temporary_session_only = true`.",
 				Optional:            true,
@@ -152,9 +163,23 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 			"support_phone_number":  optString("**\"Support Phone Number\"** in the Jamf Pro admin UI."),
 			"support_email_address": optString("**\"Support Email Address\"** in the Jamf Pro admin UI."),
 			"department":            optString("**\"Department\"** label shown during Setup Assistant. Free-form text; *not* the department ID (`location_information.department_id`)."),
-			"timezone":              optString("**\"Time Zone\"** in the Jamf Pro admin UI (e.g. `\"America/Chicago\"`)."),
-			"language":              optString("Default Setup Assistant language (ISO-639 code, e.g. `\"en\"`). Invalid values are silently coerced to empty by Jamf Pro."),
-			"region":                optString("Default Setup Assistant region (ISO-3166 code, e.g. `\"US\"`). Invalid values are silently coerced to empty by Jamf Pro."),
+			"timezone": schema.StringAttribute{
+				// Required + non-empty: the Jamf Pro API always validates this
+				// field (the SDK serialises it with no omitempty) and rejects an
+				// empty string with `[INVALID_CONTENT] timezone: Not a valid
+				// timezone`. Required blocks null; LengthAtLeast(1) blocks "".
+				// We do not validate IANA validity client-side — the server is
+				// Java TimeZone, whose accepted zone set need not match Go's
+				// tzdata, so we let the server adjudicate and surface its error.
+				MarkdownDescription: "**\"Time Zone\"** in the Jamf Pro admin UI (e.g. `\"America/Chicago\"`). Required by the Jamf Pro API — must be a valid IANA time-zone identifier and may not be empty.",
+				Required:            true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+					validTimezone(),
+				},
+			},
+			"language": optString("Default Setup Assistant language (ISO-639 code, e.g. `\"en\"`). Invalid values are silently coerced to empty by Jamf Pro."),
+			"region":   optString("Default Setup Assistant region (ISO-3166 code, e.g. `\"US\"`). Invalid values are silently coerced to empty by Jamf Pro."),
 
 			"enrollment_site_id":          optString("Site ID applied to devices enrolled through this PreStage. Sentinel `\"-1\"` = no site."),
 			"enrollment_customization_id": optString("Enrollment customization ID to apply during Setup Assistant. Sentinel `\"0\"` = no customization (note: `\"0\"`, not `\"-1\"`). Invalid IDs are silently coerced to `\"0\"`."),

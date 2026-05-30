@@ -99,6 +99,8 @@ func (r *MobileDevicePrestageEnrollmentResource) ModifyPlan(ctx context.Context,
 		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("use_storage_quota_size"), types.BoolUnknown())...)
 		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("temporary_session_only"), types.BoolUnknown())...)
 	}
+	// timezone validity is enforced by validTimezone() on the schema attribute
+	// (Go's embedded IANA database) — no plan-time API call needed.
 }
 
 // isKnownTrue reports whether a Bool is a concrete true (not null/unknown).

@@ -53,10 +53,15 @@ func buildPostInput(ctx context.Context, plan MobileDevicePrestageEnrollmentReso
 		MaximumSharedAccounts:     int(plan.MaximumSharedAccounts.ValueInt64()),
 		StorageQuotaSizeMegabytes: createStorageQuota(plan.StorageQuotaSizeMegabytes),
 
-		Language:                               helpers.OptionalStringPointer(plan.Language),
-		Region:                                 helpers.OptionalStringPointer(plan.Region),
-		EnrollmentCustomizationID:              helpers.OptionalStringPointer(plan.EnrollmentCustomizationID),
-		RtsConfigProfileID:                     helpers.OptionalStringPointer(plan.RtsConfigProfileID),
+		Language:                  helpers.OptionalStringPointer(plan.Language),
+		Region:                    helpers.OptionalStringPointer(plan.Region),
+		EnrollmentCustomizationID: helpers.OptionalStringPointer(plan.EnrollmentCustomizationID),
+		// rtsConfigProfileId is an id-sentinel field: the PUT rejects "" with
+		// 400 INVALID_ID ("must be string of positive numeric value or -1").
+		// On update, UseStateForUnknown feeds back the server-echoed "" when no
+		// RTS profile is set, so normalise null/empty to the "-1" none sentinel
+		// (never send a bare pointer-to-empty-string). Mirrors enrollment_site_id.
+		RtsConfigProfileID:                     stringPtrOrSentinel(plan.RtsConfigProfileID, sentinelNoneIDDash1),
 		MinimumOsSpecificVersionIos:            helpers.OptionalStringPointer(plan.MinimumOsSpecificVersionIos),
 		MinimumOsSpecificVersionIpad:           helpers.OptionalStringPointer(plan.MinimumOsSpecificVersionIpad),
 		PrestageMinimumOsTargetVersionTypeIos:  helpers.OptionalStringPointer(plan.PrestageMinimumOsTargetVersionTypeIos),
@@ -130,10 +135,15 @@ func buildPutInput(ctx context.Context, plan MobileDevicePrestageEnrollmentResou
 		// the server recalculates regardless (§F8).
 		StorageQuotaSizeMegabytes: createStorageQuota(plan.StorageQuotaSizeMegabytes),
 
-		Language:                               helpers.OptionalStringPointer(plan.Language),
-		Region:                                 helpers.OptionalStringPointer(plan.Region),
-		EnrollmentCustomizationID:              helpers.OptionalStringPointer(plan.EnrollmentCustomizationID),
-		RtsConfigProfileID:                     helpers.OptionalStringPointer(plan.RtsConfigProfileID),
+		Language:                  helpers.OptionalStringPointer(plan.Language),
+		Region:                    helpers.OptionalStringPointer(plan.Region),
+		EnrollmentCustomizationID: helpers.OptionalStringPointer(plan.EnrollmentCustomizationID),
+		// rtsConfigProfileId is an id-sentinel field: the PUT rejects "" with
+		// 400 INVALID_ID ("must be string of positive numeric value or -1").
+		// On update, UseStateForUnknown feeds back the server-echoed "" when no
+		// RTS profile is set, so normalise null/empty to the "-1" none sentinel
+		// (never send a bare pointer-to-empty-string). Mirrors enrollment_site_id.
+		RtsConfigProfileID:                     stringPtrOrSentinel(plan.RtsConfigProfileID, sentinelNoneIDDash1),
 		MinimumOsSpecificVersionIos:            helpers.OptionalStringPointer(plan.MinimumOsSpecificVersionIos),
 		MinimumOsSpecificVersionIpad:           helpers.OptionalStringPointer(plan.MinimumOsSpecificVersionIpad),
 		PrestageMinimumOsTargetVersionTypeIos:  helpers.OptionalStringPointer(plan.PrestageMinimumOsTargetVersionTypeIos),

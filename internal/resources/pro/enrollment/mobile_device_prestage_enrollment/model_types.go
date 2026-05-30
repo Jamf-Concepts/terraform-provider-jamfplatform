@@ -211,6 +211,7 @@ type MobileDevicePrestageEnrollmentDataSourceModel struct {
 	EnrollmentSiteID                       types.String             `tfsdk:"enrollment_site_id"`
 	EnrollmentCustomizationID              types.String             `tfsdk:"enrollment_customization_id"`
 	ProfileUUID                            types.String             `tfsdk:"profile_uuid"`
+	Timezone                               types.String             `tfsdk:"timezone"`
 	MultiUser                              types.Bool               `tfsdk:"multi_user"`
 	PrestageMinimumOsTargetVersionTypeIos  types.String             `tfsdk:"prestage_minimum_os_target_version_type_ios"`
 	PrestageMinimumOsTargetVersionTypeIpad types.String             `tfsdk:"prestage_minimum_os_target_version_type_ipad"`
