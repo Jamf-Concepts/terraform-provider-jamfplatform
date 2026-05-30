@@ -61,6 +61,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_failover_url"
@@ -232,6 +233,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		building.NewBuildingResource,
 		category.NewCategoryResource,
 		cloud_distribution_point.NewCloudDistributionPointResource,
+		cloud_identity_provider.NewCloudIdentityProviderResource,
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
 		directory_binding.NewDirectoryBindingResource,
@@ -277,6 +279,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		categories.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
 		cloud_distribution_point.NewCloudDistributionPointDataSource,
+		cloud_identity_provider.NewCloudIdentityProviderDataSource,
+		cloud_identity_provider.NewCloudIdentityProvidersDataSource,
 		department.NewDepartmentDataSource,
 		departments.NewDepartmentsDataSource,
 		device_group.NewDeviceGroupDataSource,
@@ -321,6 +325,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		blueprint.NewBlueprintListResource,
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
+		cloud_identity_provider.NewCloudIdentityProviderListResource,
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
 		directory_binding.NewDirectoryBindingListResource,
