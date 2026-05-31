@@ -96,7 +96,7 @@ func flattenGeneral(g *proclassic.MobileDeviceConfigurationProfileGeneral, state
 	}
 }
 
-func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationProfileScope, state *ScopeModel) diag.Diagnostics {
+func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationProfileScope, state *scope.MobileScopeModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
@@ -159,7 +159,7 @@ func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationPr
 	return diags
 }
 
-func flattenScopeLimitations(ctx context.Context, l *proclassic.MobileDeviceConfigurationProfileScopeLimitations, state *ScopeLimitationsModel) diag.Diagnostics {
+func flattenScopeLimitations(ctx context.Context, l *proclassic.MobileDeviceConfigurationProfileScopeLimitations, state *scope.MobileScopeLimitationsModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if l == nil {
 		return diags
@@ -195,7 +195,7 @@ func flattenScopeLimitations(ctx context.Context, l *proclassic.MobileDeviceConf
 	return diags
 }
 
-func flattenScopeExclusions(ctx context.Context, e *proclassic.MobileDeviceConfigurationProfileScopeExclusions, state *ScopeExclusionsModel) diag.Diagnostics {
+func flattenScopeExclusions(ctx context.Context, e *proclassic.MobileDeviceConfigurationProfileScopeExclusions, state *scope.MobileScopeExclusionsModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if e == nil {
 		return diags
