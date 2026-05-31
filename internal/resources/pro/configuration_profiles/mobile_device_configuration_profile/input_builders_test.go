@@ -11,6 +11,8 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func stringSet(t *testing.T, values ...string) types.Set {
@@ -140,7 +142,7 @@ func TestBuildGeneral_PayloadIdentifierInjection_CreatePathNoOp(t *testing.T) {
 
 func TestBuildScope_NullCollapsesToNil(t *testing.T) {
 	t.Parallel()
-	s, diags := buildScope(context.Background(), &ScopeModel{})
+	s, diags := buildScope(context.Background(), &scope.MobileScopeModel{})
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -151,7 +153,7 @@ func TestBuildScope_NullCollapsesToNil(t *testing.T) {
 
 func TestBuildScope_AllMobileDevicesOnly(t *testing.T) {
 	t.Parallel()
-	s, _ := buildScope(context.Background(), &ScopeModel{
+	s, _ := buildScope(context.Background(), &scope.MobileScopeModel{
 		AllMobileDevices: types.BoolValue(true),
 	})
 	if s == nil || s.AllMobileDevices == nil || !*s.AllMobileDevices {
@@ -164,7 +166,7 @@ func TestBuildScope_AllMobileDevicesOnly(t *testing.T) {
 
 func TestBuildScope_MobileDeviceIDsPopulated(t *testing.T) {
 	t.Parallel()
-	s, _ := buildScope(context.Background(), &ScopeModel{
+	s, _ := buildScope(context.Background(), &scope.MobileScopeModel{
 		MobileDeviceIDs: stringSet(t, "11", "22"),
 	})
 	if s == nil || s.MobileDevices == nil || len(*s.MobileDevices.MobileDevice) != 2 {
@@ -174,8 +176,8 @@ func TestBuildScope_MobileDeviceIDsPopulated(t *testing.T) {
 
 func TestBuildScope_LimitationsPopulated(t *testing.T) {
 	t.Parallel()
-	s, _ := buildScope(context.Background(), &ScopeModel{
-		Limitations: &ScopeLimitationsModel{
+	s, _ := buildScope(context.Background(), &scope.MobileScopeModel{
+		Limitations: &scope.MobileScopeLimitationsModel{
 			NetworkSegmentIDs:                stringSet(t, "5"),
 			DirectoryServiceOrLocalUserNames: stringSet(t, "alice", "bob"),
 		},
@@ -193,9 +195,9 @@ func TestBuildScope_LimitationsPopulated(t *testing.T) {
 
 func TestBuildScope_ExclusionsPopulated(t *testing.T) {
 	t.Parallel()
-	s, _ := buildScope(context.Background(), &ScopeModel{
+	s, _ := buildScope(context.Background(), &scope.MobileScopeModel{
 		AllMobileDevices: types.BoolValue(true),
-		Exclusions: &ScopeExclusionsModel{
+		Exclusions: &scope.MobileScopeExclusionsModel{
 			MobileDeviceIDs:                stringSet(t, "99"),
 			DirectoryServiceUserGroupNames: stringSet(t, "DS-Group"),
 		},
@@ -278,7 +280,7 @@ func TestBuildInput_EndToEndCreatePath(t *testing.T) {
 			Level:              types.StringValue(levelUIDevice),
 			DistributionMethod: types.StringValue(distributionMethodInstallAutomatically),
 		},
-		Scope: &ScopeModel{
+		Scope: &scope.MobileScopeModel{
 			AllMobileDevices: types.BoolValue(true),
 		},
 	}
@@ -310,7 +312,7 @@ func TestBuildInput_NilSubBlocksProduceNilWire(t *testing.T) {
 
 func TestBuildScopeExclusions_NetworkSegmentsCarryDedicatedItemType(t *testing.T) {
 	t.Parallel()
-	e, _ := buildScopeExclusions(context.Background(), &ScopeExclusionsModel{
+	e, _ := buildScopeExclusions(context.Background(), &scope.MobileScopeExclusionsModel{
 		NetworkSegmentIDs: stringSet(t, "5"),
 	})
 	if e == nil || e.NetworkSegments == nil || len(*e.NetworkSegments.NetworkSegment) != 1 {
