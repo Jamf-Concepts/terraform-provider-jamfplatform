@@ -213,10 +213,12 @@ func (r *MobileAppResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 // Delete removes a Jamf Pro mobile device app. The classic DELETE returns HTTP
-// 400 but still deletes the app (server bug, maintainer-confirmed), so a delete
-// error is tolerated and verified with a follow-up GET: a not-found GET means
-// the app is gone and the delete succeeded. A clean (nil-error) delete and an
-// already-removed app both short-circuit to success.
+// 400 even when it removes the app (server bug, maintainer-confirmed), but the
+// SDK absorbs this: its 4xx eventual-consistency retry re-issues the DELETE,
+// hits the now-absent id, and treats the resulting 404 as an idempotent-delete
+// success (returns nil). So the bug needs no provider-side handling — a clean
+// nil and an already-removed (404) app both short-circuit to success, and a
+// persistent error surfaces as a real failure.
 func (r *MobileAppResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state MobileAppResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -237,22 +239,11 @@ func (r *MobileAppResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	id := state.ID.ValueString()
-	err := r.client.DeleteMobileDeviceApplicationByID(deleteCtx, id)
-	if err == nil {
-		return
+	if err := r.client.DeleteMobileDeviceApplicationByID(deleteCtx, state.ID.ValueString()); err != nil {
+		if helpers.IsNotFoundError(err) {
+			tflog.Info(ctx, "Jamf Pro mobile device app already removed", map[string]any{"id": state.ID.ValueString()})
+			return
+		}
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", fmt.Sprintf("API error: %v", err))
 	}
-	if helpers.IsNotFoundError(err) {
-		tflog.Info(ctx, "Jamf Pro mobile device app already removed", map[string]any{"id": id})
-		return
-	}
-
-	// The server returns 400 on a successful delete (known bug). Verify with a
-	// GET: a not-found result confirms the app is gone.
-	if _, getErr := r.client.GetMobileDeviceApplicationByID(deleteCtx, id); getErr != nil && helpers.IsNotFoundError(getErr) {
-		tflog.Info(ctx, "Jamf Pro mobile device app delete returned an error but the app is gone (server returns 400 on successful delete)", map[string]any{"id": id})
-		return
-	}
-
-	resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", fmt.Sprintf("API error: %v", err))
 }
