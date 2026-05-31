@@ -141,15 +141,19 @@ func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					},
 					"category_id": optComputedString("Jamf Pro category ID. Use `-1` for \"No category\"."),
 					"category_name": schema.StringAttribute{
+						// No UseStateForUnknown: category_name is derived from
+						// category_id, so it must go Unknown (not pin the stale
+						// value) when category_id changes, or the post-apply
+						// consistency check trips.
 						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
-						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"site_id": optComputedString("Jamf Pro site ID scoping the app. Use `-1` for \"No site\"."),
 					"site_name": schema.StringAttribute{
+						// No UseStateForUnknown: site_name is derived from site_id
+						// (same rationale as category_name above).
 						MarkdownDescription: "Site display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
-						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 				},
 			},
