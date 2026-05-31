@@ -136,12 +136,10 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 				ResourceName:      mobileAppResourceAddr,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// timeouts: not returned by the API.
-				// general.os_type: write-mostly — the server requires it on write
-				// but does not echo it on GET after a POST create, so an imported
-				// app cannot recover it (it stays null until the next apply
-				// re-sends the configured value). Not verifiable on import.
-				ImportStateVerifyIgnore: []string{"timeouts", "general.os_type"},
+				// timeouts: not returned by the API. os_type IS verifiable here:
+				// Create issues a follow-up PUT that persists it, so the GET (incl.
+				// import's) echoes it for this in-house app.
+				ImportStateVerifyIgnore: []string{"timeouts"},
 			},
 			{
 				Config: mobileAppGeneralOnlyConfig(name, "2.0", "Install Automatically/Prompt Users to Install"),
