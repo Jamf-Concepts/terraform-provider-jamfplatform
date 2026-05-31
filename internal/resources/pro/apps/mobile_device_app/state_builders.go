@@ -47,7 +47,10 @@ func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceM
 		flattenMobileAppVpp(a.Vpp, state.Vpp)
 	}
 	if state.AppConfiguration != nil && a.AppConfiguration != nil {
-		state.AppConfiguration.Preferences = helpers.StringPointerValueOrNull(a.AppConfiguration.Preferences)
+		// Preserve the configured value when the server differs only by newline
+		// style / a stripped trailing newline (server strips it on round-trip);
+		// otherwise reflect the server value as drift.
+		state.AppConfiguration.Preferences = preservePreferences(a.AppConfiguration.Preferences, state.AppConfiguration.Preferences)
 	}
 
 	return diags
@@ -70,10 +73,9 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	// follow-up PUT precisely so the server persists it and this echo is present.
 	state.OsType = serverWhenPresentString(g.OsType, state.OsType)
 
-	// Server-managed read-only fields. (display_name is not modeled — it is
-	// always == name server-side.)
+	// Server-managed read-only field. (display_name and internal_app are not
+	// modeled — see MobileAppGeneralModel.)
 	state.Description = helpers.StringPointerValueOrNull(g.Description)
-	state.InternalApp = helpers.BoolPointerValueOrNull(g.InternalApp)
 
 	// Optional+Computed echoes.
 	state.IsFree = preferCurrentBoolPointer(g.Free, state.IsFree)

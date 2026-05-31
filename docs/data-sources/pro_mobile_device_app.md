@@ -43,7 +43,6 @@ data "jamfplatform_pro_mobile_device_app" "by_id" {
 - `category_id` (String) Category ID.
 - `category_name` (String) Category display name.
 - `deployment_type` (String) Install method.
-- `internal_app` (Boolean) Whether Jamf Pro treats the app as in-house.
 - `is_free` (Boolean) Whether the app is free.
 - `os_type` (String) Operating system the app targets (`iOS` or `tvOS`). Populated for in-house apps once set; null otherwise.
 - `site_id` (String) Site ID. `-1` means no site.

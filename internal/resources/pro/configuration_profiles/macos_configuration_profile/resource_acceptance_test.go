@@ -28,7 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
@@ -636,7 +636,7 @@ func mutatePPPCProfileChangeIdentifier(t *testing.T, profileID, newIdentifierVal
 	}
 	currentPayload := []byte(string(*got.General.Payloads))
 
-	parsed, _, err := payloadhelpers.ParsePlist(currentPayload)
+	parsed, _, err := plisthelpers.ParsePlist(currentPayload)
 	if err != nil {
 		t.Fatalf("ParsePlist for profile %s: %v", profileID, err)
 	}
@@ -679,7 +679,7 @@ func mutatePPPCProfileChangeIdentifier(t *testing.T, profileID, newIdentifierVal
 		t.Fatalf("profile %s had no Services[*] entries to mutate", profileID)
 	}
 
-	newPayloadBytes, err := payloadhelpers.MarshalPlist(parsed)
+	newPayloadBytes, err := plisthelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("MarshalPlist for profile %s: %v", profileID, err)
 	}
@@ -785,7 +785,7 @@ func mutatePPPCProfileAddValidService(t *testing.T, profileID, serviceKey string
 		t.Fatalf("GetOSXConfigurationProfileByID(%s): %v", profileID, err)
 	}
 	currentPayload := []byte(string(*got.General.Payloads))
-	parsed, _, err := payloadhelpers.ParsePlist(currentPayload)
+	parsed, _, err := plisthelpers.ParsePlist(currentPayload)
 	if err != nil {
 		t.Fatalf("ParsePlist: %v", err)
 	}
@@ -798,7 +798,7 @@ func mutatePPPCProfileAddValidService(t *testing.T, profileID, serviceKey string
 			"IdentifierType":  "bundleID",
 		},
 	}
-	newPayloadBytes, err := payloadhelpers.MarshalPlist(parsed)
+	newPayloadBytes, err := plisthelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("MarshalPlist: %v", err)
 	}
@@ -827,7 +827,7 @@ func mutatePPPCProfileRemoveFirstService(t *testing.T, profileID string) {
 		t.Fatalf("GetOSXConfigurationProfileByID(%s): %v", profileID, err)
 	}
 	currentPayload := []byte(string(*got.General.Payloads))
-	parsed, _, err := payloadhelpers.ParsePlist(currentPayload)
+	parsed, _, err := plisthelpers.ParsePlist(currentPayload)
 	if err != nil {
 		t.Fatalf("ParsePlist: %v", err)
 	}
@@ -840,7 +840,7 @@ func mutatePPPCProfileRemoveFirstService(t *testing.T, profileID string) {
 		delete(services, k)
 		break
 	}
-	newPayloadBytes, err := payloadhelpers.MarshalPlist(parsed)
+	newPayloadBytes, err := plisthelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("MarshalPlist: %v", err)
 	}

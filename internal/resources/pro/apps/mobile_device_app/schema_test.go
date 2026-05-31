@@ -50,8 +50,7 @@ func TestMobileAppResource_Schema(t *testing.T) {
 	if !ok {
 		t.Fatalf("general must be a SingleNestedAttribute")
 	}
-	// os_type is required (the server demands it on every write to an in-house app).
-	for _, name := range []string{"name", "version", "bundle_id", "os_type"} {
+	for _, name := range []string{"name", "version", "bundle_id"} {
 		a, ok := general.Attributes[name]
 		if !ok {
 			t.Errorf("general missing %q", name)
@@ -61,7 +60,14 @@ func TestMobileAppResource_Schema(t *testing.T) {
 			t.Errorf("general.%s must be required", name)
 		}
 	}
-	for _, name := range []string{"description", "internal_app", "category_name", "site_name"} {
+	// os_type is Optional+Computed: only required for in-house apps, which the
+	// server enforces with a 409 — the schema does not force it.
+	if a, ok := general.Attributes["os_type"]; !ok {
+		t.Error("general missing os_type")
+	} else if a.IsRequired() || !a.IsOptional() || !a.IsComputed() {
+		t.Error("general.os_type must be Optional+Computed")
+	}
+	for _, name := range []string{"description", "category_name", "site_name"} {
 		a, ok := general.Attributes[name]
 		if !ok {
 			t.Errorf("general missing %q", name)

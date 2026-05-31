@@ -88,7 +88,7 @@ func (r *MobileAppResource) IdentitySchema(ctx context.Context, req resource.Ide
 // attribute descriptions.
 func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro mobile device app (the classic `/mobiledeviceapplications` endpoint — the \"App Store App\" / in-house app entries under the \"Mobile Device Apps\" sidebar). The resource models the app's **metadata**; there is no IPA binary-upload endpoint, so in-house binary upload is not modeled. `general.name`, `general.version`, `general.bundle_id`, and `general.os_type` are required. `os_type` is sent on every write because the server demands it on a PUT to an in-house app. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint drops them.\n\n**Update is a partial-merge**: the provider sends the full plan payload on every update, so in-place edits converge cleanly, but removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config retains the previously-stored block server-side. To clear a block, null its individual fields rather than deleting the block.",
+		MarkdownDescription: "Manages a Jamf Pro mobile device app — the \"App Store App\" / in-house app entries under the \"Mobile Device Apps\" sidebar. The resource models the app's **metadata**; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version`, and `general.bundle_id` are required. `general.os_type` is required only for in-house apps; App Store apps (with an `itunes_store_url`) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.\n\n**Updates are merged, not replaced**: removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App ID assigned by Jamf Pro.",
@@ -96,7 +96,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"general": schema.SingleNestedAttribute{
-				MarkdownDescription: "General settings. `name`, `version`, `bundle_id`, and `os_type` are required. Read-only fields (`description`, `internal_app`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name is always equal to `name` (the server forces it), so it is not modeled separately.",
+				MarkdownDescription: "General settings. `name`, `version`, and `bundle_id` are required; `os_type` is required only for in-house apps. Read-only fields (`description`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name always equals `name`, so it is not modeled separately.",
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
@@ -105,12 +105,12 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"name": schema.StringAttribute{
-						MarkdownDescription: "App display name. Must be unique within the tenant. The server forces the app's `display_name` to equal this value.",
+						MarkdownDescription: "App display name. Must be unique within the tenant; also used as the app's display name in Self Service.",
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"version": schema.StringAttribute{
-						MarkdownDescription: "App version string. Required by the server on create.",
+						MarkdownDescription: "App version string.",
 						Required:            true,
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
@@ -120,17 +120,18 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 					},
 					"os_type": schema.StringAttribute{
-						MarkdownDescription: "Operating system the app targets. One of `iOS` or `tvOS`. The server requires this on every write to an in-house app (the common case), so the provider always sends it; it is echoed back on read once set.",
-						Required:            true,
+						MarkdownDescription: "Operating system the app targets. One of `iOS` or `tvOS`. Required for in-house apps; App Store apps (those with an `itunes_store_url`) do not need it.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						Validators: []validator.String{
 							stringvalidator.OneOf(osTypeIOS, osTypeTVOS),
 						},
 					},
-					"description":  computedString("App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable."),
-					"internal_app": computedBool("Whether Jamf Pro treats the app as in-house. Server-managed — it flips to false only as a side-effect of a coherent external-hosting combination (`is_free = true` + `host_externally = true` + `external_url`), not by direct assignment."),
-					"is_free":      optComputedBool("Whether the app is free."),
+					"description": computedString("App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable."),
+					"is_free":     optComputedBool("Whether the app is free."),
 					"deployment_type": schema.StringAttribute{
-						MarkdownDescription: "Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Server-defaults to `Make Available in Self Service`.",
+						MarkdownDescription: "Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Defaults to `Make Available in Self Service`.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -160,7 +161,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "App scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are intentionally absent — the endpoint drops them.",
+				MarkdownDescription: "App scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are not supported for mobile device apps.",
 				Optional:            true,
 				Attributes:          scope.MobileScopeAttributes(scope.MobileScopeOptions{IncludeIbeacons: false}),
 			},
@@ -189,15 +190,15 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"id":         schema.StringAttribute{MarkdownDescription: "Category ID.", Required: true},
-								"name":       optComputedString("Category display name. Returned by Jamf Pro."),
-								"display_in": optComputedBool("Display the app in this category."),
+								"name":       optComputedStringInList("Category display name. Returned by Jamf Pro."),
+								"display_in": optComputedBoolInList("Display the app in this category."),
 							},
 						},
 					},
 				},
 			},
 			"vpp": schema.SingleNestedAttribute{
-				MarkdownDescription: "Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title — setting `assign_vpp_device_based_licenses = true` on a non-VPP app returns HTTP 409 \"App is not available for device assignment\".",
+				MarkdownDescription: "Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title; setting `assign_vpp_device_based_licenses = true` on an app that is not VPP-backed is rejected.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"assign_vpp_device_based_licenses": optComputedBool("Assign VPP device-based licenses."),
@@ -209,7 +210,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"preferences": schema.StringAttribute{
-						MarkdownDescription: "App-configuration plist content. Round-trips verbatim; newline style (CRLF vs LF) is normalised when comparing.",
+						MarkdownDescription: "App-configuration property list content. Whitespace, indentation, and newline-style differences are ignored when comparing, so reformatting the same configuration does not show as a change.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{preferencesNewlineSemanticEquality{}},
@@ -285,12 +286,43 @@ func (r *MobileAppResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 	}
 }
 
-// optComputedString returns an Optional+Computed StringAttribute with the
-// UseNonNullStateForUnknown plan modifier for server-augmented fields. Used both
-// at top level and inside SetNested list elements — see the policy resource doc
-// comment for why UseNonNullStateForUnknown (not UseStateForUnknown) is required
-// for nested-list growth.
+// optComputedString returns a top-level Optional+Computed StringAttribute with
+// UseStateForUnknown. UseStateForUnknown copies the prior state value — INCLUDING
+// null — into an unset plan, so a field the server omits when unconfigured (e.g.
+// self_service.after_install_button_text, which the server returns absent → null)
+// stays null on every plan instead of churning to "(known after apply)". For
+// fields the server does default (e.g. install_button_text → "Install") the prior
+// state is non-null and the behaviour is identical to UseNonNullStateForUnknown.
+//
+// Do NOT use this inside SetNested/ListNested elements: list growth produces a
+// null prior for the new element, which UseStateForUnknown would copy as a known
+// null and then trip "inconsistent result" when the element materialises — use
+// optComputedStringInList there.
 func optComputedString(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+	}
+}
+
+// optComputedBool is the bool sibling of optComputedString (top-level).
+func optComputedBool(desc string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+	}
+}
+
+// optComputedStringInList is the SetNested/ListNested-element flavour of
+// optComputedString: it uses UseNonNullStateForUnknown so a new element's null
+// prior is NOT copied as a known value (which would break the post-apply
+// consistency check as the set grows). See the policy/profile resources for why
+// nested-list Optional+Computed must use the non-null variant.
+func optComputedStringInList(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,
 		Optional:            true,
@@ -299,8 +331,8 @@ func optComputedString(desc string) schema.StringAttribute {
 	}
 }
 
-// optComputedBool is the bool sibling of optComputedString.
-func optComputedBool(desc string) schema.BoolAttribute {
+// optComputedBoolInList is the bool sibling of optComputedStringInList.
+func optComputedBoolInList(desc string) schema.BoolAttribute {
 	return schema.BoolAttribute{
 		MarkdownDescription: desc,
 		Optional:            true,
@@ -330,24 +362,17 @@ func optComputedInt64(desc string) schema.Int64Attribute {
 // site_name from category_id/site_id, description from the App Store sync). If a
 // user changes the driving input, the plan shows the stale echo and the apply
 // recomputes it — the accepted ProClassic latent posture (mac_app carries the
-// same). It is NOT used for display_name: that echo is deterministically == name
-// and would trip "inconsistent result after apply" on any rename, so display_name
-// is not modeled (callers read `name`).
+// same).
+//
+// NB: this is intentionally NOT used for display_name (deterministically ==
+// name) or internal_app (server-flips based on the store/hosting inputs) —
+// those echoes would trip "inconsistent result after apply" when their driving
+// input changes, so they are not modeled at all (callers read `name`, and
+// in-house status is derivable from whether a store/external URL is set).
 func computedString(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,
 		Computed:            true,
 		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-	}
-}
-
-// computedBool is the bool sibling of computedString (internal_app, which the
-// server flips as a side-effect of the free + host_externally + external_url
-// combo; unchanged by a rename, so UseStateForUnknown is consistent here).
-func computedBool(desc string) schema.BoolAttribute {
-	return schema.BoolAttribute{
-		MarkdownDescription: desc,
-		Computed:            true,
-		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 	}
 }

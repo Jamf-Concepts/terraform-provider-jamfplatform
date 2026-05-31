@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
@@ -77,7 +78,7 @@ func TestPayloadsSemanticallyEqual_DetectsRealChange(t *testing.T) {
 	_, serverResp := loadInputAndServer(t, "1Password__managed_login_items_profile")
 	// Mutate the server payload to flip a non-masked field — Rules array
 	// inside PayloadContent[0] has a `Comment` field that survives masking.
-	parsed, _, err := payloadhelpers.ParsePlist(serverResp)
+	parsed, _, err := plisthelpers.ParsePlist(serverResp)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestPayloadsSemanticallyEqual_DetectsRealChange(t *testing.T) {
 	rules := first["Rules"].([]any)
 	rule0 := rules[0].(map[string]any)
 	rule0["Comment"] = "tampered comment value"
-	mutated, err := payloadhelpers.MarshalPlist(parsed)
+	mutated, err := plisthelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -150,13 +151,13 @@ func TestMaskPayload_StripsWhitespaceFromNestedStrings(t *testing.T) {
 func TestInjectTopLevelIdentifiers_PreservesUUIDAndIdentifier(t *testing.T) {
 	_, existing := loadInputAndServer(t, "1Password__managed_login_items_profile")
 	// Build a "new" payload by mutating the existing one's top-level UUIDs.
-	parsed, _, err := payloadhelpers.ParsePlist(existing)
+	parsed, _, err := plisthelpers.ParsePlist(existing)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	parsed["PayloadUUID"] = "00000000-NEW-NEW-NEW-000000000000"
 	parsed["PayloadIdentifier"] = "00000000-NEW-NEW-NEW-000000000000"
-	newPayload, err := payloadhelpers.MarshalPlist(parsed)
+	newPayload, err := plisthelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -165,11 +166,11 @@ func TestInjectTopLevelIdentifiers_PreservesUUIDAndIdentifier(t *testing.T) {
 		t.Fatalf("inject: %v", err)
 	}
 	// Re-parse and verify the identifiers came from `existing`.
-	check, _, err := payloadhelpers.ParsePlist(out)
+	check, _, err := plisthelpers.ParsePlist(out)
 	if err != nil {
 		t.Fatalf("parse output: %v", err)
 	}
-	existingParsed, _, _ := payloadhelpers.ParsePlist(existing)
+	existingParsed, _, _ := plisthelpers.ParsePlist(existing)
 	if got, want := check["PayloadUUID"], existingParsed["PayloadUUID"]; got != want {
 		t.Errorf("PayloadUUID not preserved: got=%v want=%v", got, want)
 	}
@@ -214,7 +215,7 @@ func TestExtractServerPayloadFromGeneral_DecodesEntities(t *testing.T) {
 	if err != nil {
 		t.Fatalf("extract: %v", err)
 	}
-	if _, _, err := payloadhelpers.ParsePlist(payload); err != nil {
+	if _, _, err := plisthelpers.ParsePlist(payload); err != nil {
 		t.Fatalf("extracted bytes did not parse as plist: %v", err)
 	}
 }

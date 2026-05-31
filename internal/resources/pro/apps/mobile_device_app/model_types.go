@@ -28,11 +28,13 @@ type MobileAppResourceModel struct {
 }
 
 // MobileAppGeneralModel models <mobile_device_application><general>. name,
-// version, bundle_id, and os_type are required on create; the server 409s on a
-// PUT to an in-house app without os_type, so the provider sends it on every
-// write. description / internal_app are server-managed and surfaced read-only.
-// The app's display name (server-forced == name) and url (a deprecated mirror of
-// itunes_store_url) are not modeled.
+// version, and bundle_id are required on create; os_type is optional (only
+// in-house apps need it). description is server-managed and surfaced read-only.
+// Not modeled: the app's display name (always == name); url (a deprecated mirror
+// of itunes_store_url); and internal_app — a read-only flag the server flips
+// based on the store/hosting inputs, so modeling it would trip a plan/apply
+// inconsistency when those change (in-house status is derivable from whether a
+// store/external URL is set).
 type MobileAppGeneralModel struct {
 	ID                               types.String `tfsdk:"id"`
 	Name                             types.String `tfsdk:"name"`
@@ -40,7 +42,6 @@ type MobileAppGeneralModel struct {
 	BundleID                         types.String `tfsdk:"bundle_id"`
 	OsType                           types.String `tfsdk:"os_type"`
 	Description                      types.String `tfsdk:"description"`
-	InternalApp                      types.Bool   `tfsdk:"internal_app"`
 	IsFree                           types.Bool   `tfsdk:"is_free"`
 	DeploymentType                   types.String `tfsdk:"deployment_type"`
 	ExternalURL                      types.String `tfsdk:"external_url"`
@@ -119,7 +120,6 @@ type MobileAppDataSourceModel struct {
 	Version        types.String             `tfsdk:"version"`
 	BundleID       types.String             `tfsdk:"bundle_id"`
 	OsType         types.String             `tfsdk:"os_type"`
-	InternalApp    types.Bool               `tfsdk:"internal_app"`
 	IsFree         types.Bool               `tfsdk:"is_free"`
 	DeploymentType types.String             `tfsdk:"deployment_type"`
 	CategoryID     types.String             `tfsdk:"category_id"`
