@@ -61,7 +61,13 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
 	state.Version = helpers.StringPointerValueOrNull(g.Version)
 	state.BundleID = helpers.StringPointerValueOrNull(g.BundleID)
-	state.OsType = helpers.StringPointerValueOrNull(g.OsType)
+	// os_type is write-mostly: the server requires it on a PUT to an in-house
+	// app but does NOT echo it back on the GET after a POST create (wire-probed:
+	// returns null). It is a Required input, so trusting the server echo would
+	// clobber the configured value with null and trip "inconsistent result after
+	// apply". Prefer the configured value; fall back to the server only when
+	// state is unset (e.g. import of an app whose os_type was set via PUT).
+	state.OsType = preferCurrentStringPointer(g.OsType, state.OsType)
 
 	// Server-managed read-only fields.
 	state.DisplayName = helpers.StringPointerValueOrNull(g.DisplayName)
