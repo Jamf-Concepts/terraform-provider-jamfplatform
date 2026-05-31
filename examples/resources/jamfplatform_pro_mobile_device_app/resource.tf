@@ -1,12 +1,12 @@
-# Minimal mobile device app. name, version, bundle_id, and os_type are required.
-# os_type is sent on every write because the server demands it on a PUT to an
-# in-house app (the common case for App-Store-added titles).
+# Minimal App Store app. name, version, and bundle_id are always required.
+# An itunes_store_url marks it as an App Store title, so os_type is not needed.
+# (os_type is only required for in-house apps, which have no itunes_store_url.)
 resource "jamfplatform_pro_mobile_device_app" "minimal" {
   general = {
-    name      = "Maps"
-    version   = "1.0"
-    bundle_id = "com.apple.Maps"
-    os_type   = "iOS"
+    name             = "Maps"
+    version          = "1.0"
+    bundle_id        = "com.apple.Maps"
+    itunes_store_url = "https://apps.apple.com/us/app/apple-maps/id915056765"
   }
 }
 
@@ -14,12 +14,12 @@ resource "jamfplatform_pro_mobile_device_app" "minimal" {
 # listing. deployment_type defaults to "Make Available in Self Service".
 resource "jamfplatform_pro_mobile_device_app" "self_service" {
   general = {
-    name            = "Pages"
-    version         = "14.1"
-    bundle_id       = "com.apple.Pages"
-    os_type         = "iOS"
-    deployment_type = "Make Available in Self Service"
-    category_id     = jamfplatform_pro_category.productivity.id
+    name             = "Pages"
+    version          = "14.1"
+    bundle_id        = "com.apple.Pages"
+    itunes_store_url = "https://apps.apple.com/us/app/pages/id361309726"
+    deployment_type  = "Make Available in Self Service"
+    category_id      = jamfplatform_pro_category.productivity.id
   }
 
   scope = {
@@ -49,7 +49,7 @@ resource "jamfplatform_pro_mobile_device_app" "automatic" {
     name                  = "Numbers"
     version               = "14.1"
     bundle_id             = "com.apple.Numbers"
-    os_type               = "iOS"
+    itunes_store_url      = "https://apps.apple.com/us/app/numbers/id361304891"
     deployment_type       = "Install Automatically/Prompt Users to Install"
     deploy_as_managed_app = true
   }
