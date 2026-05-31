@@ -108,7 +108,6 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 - `update_available` (Boolean) Whether an update is available for the benchmark relative to current mSCP sources.
 
 <a id="nestedatt--rules"></a>
-
 ### Nested Schema for `rules`
 
 Required:
@@ -140,7 +139,6 @@ Read-Only:
 - `title` (String) Rule title resolved from the baseline.
 
 <a id="nestedatt--rules--os_specific_defaults"></a>
-
 ### Nested Schema for `rules.os_specific_defaults`
 
 Read-Only:
@@ -150,8 +148,8 @@ Read-Only:
 - `odv_value` (String) Recommended organization-defined value for this OS.
 - `title` (String) OS-specific rule title.
 
-<a id="nestedatt--rules--supported_os"></a>
 
+<a id="nestedatt--rules--supported_os"></a>
 ### Nested Schema for `rules.supported_os`
 
 Read-Only:
@@ -160,8 +158,9 @@ Read-Only:
 - `os_type` (String) Operating system type (e.g. `MAC_OS`, `IOS`).
 - `os_version` (Number) OS version integer.
 
-<a id="nestedatt--sources"></a>
 
+
+<a id="nestedatt--sources"></a>
 ### Nested Schema for `sources`
 
 Required:
@@ -169,8 +168,8 @@ Required:
 - `branch` (String) Source branch name.
 - `revision` (String) Source revision identifier.
 
-<a id="nestedatt--timeouts"></a>
 
+<a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
