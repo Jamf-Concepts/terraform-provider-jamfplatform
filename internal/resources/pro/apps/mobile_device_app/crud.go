@@ -86,7 +86,13 @@ func (r *MobileAppResource) Create(ctx context.Context, req resource.CreateReque
 	// payload is re-sent (partial-merge, idempotent); without this the app would
 	// be left without the os_type the config declares.
 	if err := r.client.UpdateMobileDeviceApplicationByID(createCtx, id, payload); err != nil {
-		resp.Diagnostics.AddError("Error finalizing created Jamf Pro mobile device app", fmt.Sprintf("the app was created (id %s) but persisting os_type via the follow-up update failed: %v", id, err))
+		// The POST already created the app; a failed follow-up PUT would orphan it
+		// (Terraform persists no state on a failed Create, so a retry would create
+		// a duplicate). Best-effort rollback to keep Create all-or-nothing.
+		if delErr := r.client.DeleteMobileDeviceApplicationByID(createCtx, id); delErr != nil {
+			tflog.Warn(ctx, "failed to roll back partially-created Jamf Pro mobile device app after a failed finalize PUT; it may be orphaned in the tenant", map[string]any{"id": id, "delete_error": delErr.Error()})
+		}
+		resp.Diagnostics.AddError("Error finalizing created Jamf Pro mobile device app", fmt.Sprintf("the app was created (id %s) but persisting os_type via the follow-up update failed; rolled back the partial create: %v", id, err))
 		return
 	}
 
