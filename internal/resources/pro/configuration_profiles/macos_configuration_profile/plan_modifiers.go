@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
@@ -196,6 +197,35 @@ const privateKeyLastCanonical = "payload_last_canonical"
 // normalisation.
 const privateKeyServerNow = "payload_server_now"
 
+// preflightScopeGroups runs the plan-time directory-service user-group
+// preflight on the scope limitations/exclusions, surfacing an unknown group as
+// a clear plan error instead of the apply-time 409 ("Problem matching
+// limitation user group"). No-op on destroy (null plan), when LDAP is not yet
+// configured, and when no scope groups are declared.
+func (r *Resource) preflightScopeGroups(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.ldapSearcher == nil || req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan ResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() || plan.Scope == nil {
+		return
+	}
+	scopeRoot := path.Root("scope")
+	if plan.Scope.Limitations != nil {
+		resp.Diagnostics.Append(scope.ValidateDirectoryServiceUserGroupNames(
+			ctx, r.ldapSearcher, plan.Scope.Limitations.DirectoryServiceUserGroupNames,
+			scopeRoot.AtName("limitations").AtName("directory_service_user_group_names"),
+		)...)
+	}
+	if plan.Scope.Exclusions != nil {
+		resp.Diagnostics.Append(scope.ValidateDirectoryServiceUserGroupNames(
+			ctx, r.ldapSearcher, plan.Scope.Exclusions.DirectoryServiceUserGroupNames,
+			scopeRoot.AtName("exclusions").AtName("directory_service_user_group_names"),
+		)...)
+	}
+}
+
 // ModifyPlan runs the payload-diff decision before the per-attribute
 // modifiers fire. When both private-state references are present
 // (post-first-Apply, non-imported), it runs the three-way compare to
@@ -210,6 +240,14 @@ const privateKeyServerNow = "payload_server_now"
 // PayloadsSemanticallyEqual. Same behaviour as the attribute-level
 // suppressor that previously lived in plan_modifiers.go.
 func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Scope directory-service user-group preflight runs first so it covers
+	// create-plans too (the payload compare below early-returns on create). It
+	// is skipped only on destroy (null plan).
+	r.preflightScopeGroups(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Create has no state; Delete has no plan. Either way the payload
 	// compare does not apply.
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {

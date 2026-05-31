@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
@@ -33,6 +34,10 @@ const minJamfProVersion = ""
 // Resource implements jamfplatform_pro_mobile_device_configuration_profile.
 type Resource struct {
 	client *proclassic.Client
+	// ldapSearcher backs the plan-time scope directory-service user-group
+	// preflight (ModifyPlan). The LDAP group search is a Pro (v1) endpoint, so
+	// it is a separate client from the ProClassic CRUD client. nil until Configure.
+	ldapSearcher ldapgroups.Searcher
 }
 
 var (
@@ -273,6 +278,16 @@ func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest,
 		return
 	}
 	r.client = client
+
+	// Pro (v1) client for the scope directory-service group preflight.
+	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_mobile_device_configuration_profile")
+	resp.Diagnostics.Append(proDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if proClient != nil {
+		r.ldapSearcher = proClient
+	}
 }
 
 // ImportState handles import by Jamf Pro profile ID.
