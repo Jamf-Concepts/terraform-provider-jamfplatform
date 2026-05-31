@@ -10,6 +10,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func TestFlattenGeneral_LevelWireReadTranslated(t *testing.T) {
@@ -94,7 +96,7 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 
 func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 	t.Parallel()
-	state := &ScopeModel{AllMobileDevices: types.BoolValue(false)}
+	state := &scope.MobileScopeModel{AllMobileDevices: types.BoolValue(false)}
 	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: new(true),
 	}, state)
@@ -120,7 +122,7 @@ func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 
 func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 	t.Parallel()
-	state := &ScopeModel{}
+	state := &scope.MobileScopeModel{}
 	flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: new(true),
 	}, state)
@@ -131,7 +133,7 @@ func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 
 func TestFlattenScope_MobileDeviceIDsPopulated(t *testing.T) {
 	t.Parallel()
-	state := &ScopeModel{}
+	state := &scope.MobileScopeModel{}
 	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		MobileDevices: &proclassic.MobileDeviceConfigurationProfileScopeMobileDevices{
 			MobileDevice: &[]proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem{
@@ -157,7 +159,7 @@ func TestFlattenScope_MobileDeviceIDsPopulated(t *testing.T) {
 
 func TestFlattenScopeLimitations_DSUserNamesAndNetworkSegments(t *testing.T) {
 	t.Parallel()
-	state := &ScopeLimitationsModel{}
+	state := &scope.MobileScopeLimitationsModel{}
 	diags := flattenScopeLimitations(context.Background(), &proclassic.MobileDeviceConfigurationProfileScopeLimitations{
 		Users: &proclassic.MobileDeviceConfigurationProfileScopeLimitationsUsers{
 			User: &[]proclassic.IDName{{Name: new("alice")}, {Name: new("bob")}},
@@ -187,7 +189,7 @@ func TestFlattenScopeLimitations_DSUserNamesAndNetworkSegments(t *testing.T) {
 
 func TestFlattenScopeExclusions_MobileDevicesAndUserGroups(t *testing.T) {
 	t.Parallel()
-	state := &ScopeExclusionsModel{}
+	state := &scope.MobileScopeExclusionsModel{}
 	diags := flattenScopeExclusions(context.Background(), &proclassic.MobileDeviceConfigurationProfileScopeExclusions{
 		MobileDevices: &proclassic.MobileDeviceConfigurationProfileScopeExclusionsMobileDevices{
 			MobileDevice: &[]proclassic.MobileDeviceConfigurationProfileScopeExclusionsMobileDevicesMobileDeviceItem{
@@ -300,7 +302,7 @@ func TestAssignResourceModel_OptionalSubBlocksSkippedWhenStateNil(t *testing.T) 
 func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	t.Parallel()
 	state := &ResourceModel{
-		Scope:       &ScopeModel{AllMobileDevices: types.BoolValue(false)},
+		Scope:       &scope.MobileScopeModel{AllMobileDevices: types.BoolValue(false)},
 		SelfService: &SelfServiceModel{RemovalDisallowed: types.StringValue("")},
 	}
 	diags := assignResourceModel(context.Background(), state, &proclassic.MobileDeviceConfigurationProfile{

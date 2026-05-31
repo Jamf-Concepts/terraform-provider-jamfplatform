@@ -167,66 +167,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 			"scope": schema.SingleNestedAttribute{
 				MarkdownDescription: "Profile scope. `all_mobile_devices = true` forbids per-device / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's \"Users\" / \"User Groups\" lists.",
 				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"all_mobile_devices": schema.BoolAttribute{
-						MarkdownDescription: "Scope to every mobile device in the tenant.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-						Validators: []validator.Bool{
-							scope.AllFlagConflictsWith(
-								path.MatchRelative().AtParent().AtName("mobile_device_ids"),
-								path.MatchRelative().AtParent().AtName("mobile_device_group_ids"),
-								path.MatchRelative().AtParent().AtName("building_ids"),
-								path.MatchRelative().AtParent().AtName("department_ids"),
-							),
-						},
-					},
-					"all_jss_users": schema.BoolAttribute{
-						MarkdownDescription: "Scope to every Jamf Pro user in the tenant.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-						Validators: []validator.Bool{
-							scope.AllFlagConflictsWith(
-								path.MatchRelative().AtParent().AtName("user_ids"),
-								path.MatchRelative().AtParent().AtName("user_group_ids"),
-							),
-						},
-					},
-					"mobile_device_ids":       scope.IDSetAttribute("mobile device"),
-					"mobile_device_group_ids": scope.IDSetAttribute("mobile device group"),
-					"building_ids":            scope.IDSetAttribute("building"),
-					"department_ids":          scope.IDSetAttribute("department"),
-					"user_ids":                scope.IDSetAttribute("user"),
-					"user_group_ids":          scope.IDSetAttribute("user group"),
-					"limitations": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope limitations narrow the audience after the targets resolve.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"network_segment_ids":                   scope.IDSetAttribute("network segment"),
-							"ibeacon_ids":                           scope.IDSetAttribute("iBeacon"),
-							"directory_service_or_local_user_names": scope.NameSetAttribute("directory service or local user"),
-							"directory_service_user_group_names":    scope.NameSetAttribute("directory service user group"),
-						},
-					},
-					"exclusions": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope exclusions remove items that would otherwise be included by targets or limitations.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"mobile_device_ids":                     scope.IDSetAttribute("mobile device"),
-							"mobile_device_group_ids":               scope.IDSetAttribute("mobile device group"),
-							"building_ids":                          scope.IDSetAttribute("building"),
-							"department_ids":                        scope.IDSetAttribute("department"),
-							"user_ids":                              scope.IDSetAttribute("user"),
-							"user_group_ids":                        scope.IDSetAttribute("user group"),
-							"network_segment_ids":                   scope.IDSetAttribute("network segment"),
-							"ibeacon_ids":                           scope.IDSetAttribute("iBeacon"),
-							"directory_service_or_local_user_names": scope.NameSetAttribute("directory service or local user"),
-							"directory_service_user_group_names":    scope.NameSetAttribute("directory service user group"),
-						},
-					},
-				},
+				Attributes:          scope.MobileScopeAttributes(scope.MobileScopeOptions{IncludeIbeacons: true}),
 			},
 			"self_service": schema.SingleNestedAttribute{
 				MarkdownDescription: "Self Service integration. Only meaningful when `general.distribution_method = \"Make Available in Self Service\"`.",

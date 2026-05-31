@@ -80,7 +80,7 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.MobileDevic
 	return g, nil, diags
 }
 
-func buildScope(ctx context.Context, m *ScopeModel) (*proclassic.MobileDeviceConfigurationProfileScope, diag.Diagnostics) {
+func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.MobileDeviceConfigurationProfileScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	s := &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: optionalBoolPointer(m.AllMobileDevices),
@@ -155,7 +155,7 @@ func buildScope(ctx context.Context, m *ScopeModel) (*proclassic.MobileDeviceCon
 	return s, diags
 }
 
-func buildScopeLimitations(ctx context.Context, m *ScopeLimitationsModel) (*proclassic.MobileDeviceConfigurationProfileScopeLimitations, diag.Diagnostics) {
+func buildScopeLimitations(ctx context.Context, m *scope.MobileScopeLimitationsModel) (*proclassic.MobileDeviceConfigurationProfileScopeLimitations, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	l := &proclassic.MobileDeviceConfigurationProfileScopeLimitations{}
 
@@ -199,7 +199,7 @@ func buildScopeLimitations(ctx context.Context, m *ScopeLimitationsModel) (*proc
 	return l, diags
 }
 
-func buildScopeExclusions(ctx context.Context, m *ScopeExclusionsModel) (*proclassic.MobileDeviceConfigurationProfileScopeExclusions, diag.Diagnostics) {
+func buildScopeExclusions(ctx context.Context, m *scope.MobileScopeExclusionsModel) (*proclassic.MobileDeviceConfigurationProfileScopeExclusions, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	e := &proclassic.MobileDeviceConfigurationProfileScopeExclusions{}
 
