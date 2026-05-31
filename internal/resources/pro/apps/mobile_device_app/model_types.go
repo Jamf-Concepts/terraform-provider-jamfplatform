@@ -28,11 +28,11 @@ type MobileAppResourceModel struct {
 }
 
 // MobileAppGeneralModel models <mobile_device_application><general>. name,
-// version, bundle_id, and os_type are required on create; the server 409s on a
-// PUT to an in-house app without os_type, so the provider sends it on every
-// write. description / internal_app are server-managed and surfaced read-only.
-// The app's display name (server-forced == name) and url (a deprecated mirror of
-// itunes_store_url) are not modeled.
+// version, and bundle_id are required on create; os_type is optional (only
+// in-house apps need it — the server 409s on a write to an in-house app without
+// it; App Store apps do not). description / internal_app are server-managed and
+// surfaced read-only. The app's display name (server-forced == name) and url (a
+// deprecated mirror of itunes_store_url) are not modeled.
 type MobileAppGeneralModel struct {
 	ID                               types.String `tfsdk:"id"`
 	Name                             types.String `tfsdk:"name"`
