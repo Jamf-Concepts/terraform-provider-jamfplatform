@@ -59,9 +59,10 @@ func (d *MobileAppDataSource) Schema(ctx context.Context, req datasource.SchemaR
 			},
 			"version":   schema.StringAttribute{MarkdownDescription: "App version string.", Computed: true},
 			"bundle_id": schema.StringAttribute{MarkdownDescription: "App bundle identifier.", Computed: true},
-			// os_type is intentionally absent: the classic GET does not return it
-			// (write-mostly — the server requires it on write but never echoes it),
-			// so a data source could only ever report it as null.
+			// os_type is populated for in-house apps once it has been set (the
+			// server echoes it on GET after a PUT); null for never-set or
+			// externally-hosted apps.
+			"os_type":         schema.StringAttribute{MarkdownDescription: "Operating system the app targets (`iOS` or `tvOS`). Populated for in-house apps once set; null otherwise.", Computed: true},
 			"internal_app":    schema.BoolAttribute{MarkdownDescription: "Whether Jamf Pro treats the app as in-house.", Computed: true},
 			"is_free":         schema.BoolAttribute{MarkdownDescription: "Whether the app is free.", Computed: true},
 			"deployment_type": schema.StringAttribute{MarkdownDescription: "Install method.", Computed: true},
@@ -154,6 +155,7 @@ func assignMobileAppFlatDataSource(state *MobileAppDataSourceModel, a *proclassi
 		state.Name = helpers.StringPointerValueOrNull(a.General.Name)
 		state.Version = helpers.StringPointerValueOrNull(a.General.Version)
 		state.BundleID = helpers.StringPointerValueOrNull(a.General.BundleID)
+		state.OsType = helpers.StringPointerValueOrNull(a.General.OsType)
 		state.InternalApp = helpers.BoolPointerValueOrNull(a.General.InternalApp)
 		state.IsFree = helpers.BoolPointerValueOrNull(a.General.Free)
 		state.DeploymentType = helpers.StringPointerValueOrNull(a.General.DeploymentType)

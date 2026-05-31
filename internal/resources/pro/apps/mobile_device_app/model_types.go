@@ -118,6 +118,7 @@ type MobileAppDataSourceModel struct {
 	Name           types.String             `tfsdk:"name"`
 	Version        types.String             `tfsdk:"version"`
 	BundleID       types.String             `tfsdk:"bundle_id"`
+	OsType         types.String             `tfsdk:"os_type"`
 	InternalApp    types.Bool               `tfsdk:"internal_app"`
 	IsFree         types.Bool               `tfsdk:"is_free"`
 	DeploymentType types.String             `tfsdk:"deployment_type"`

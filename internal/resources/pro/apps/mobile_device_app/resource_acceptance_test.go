@@ -507,6 +507,9 @@ func TestAccDataSource_ProMobileApp(t *testing.T) {
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_mobile_device_app.by_id", "name", mobileAppResourceAddr, "general.name"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_mobile_device_app.by_id", "version", "3.1"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_mobile_device_app.by_id", "bundle_id", "com.example.tfacc.mobileapp.ds"),
+					// os_type is recoverable on read because Create persists it via
+					// the follow-up PUT (this is an in-house app).
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_mobile_device_app.by_id", "os_type", "iOS"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_mobile_device_app.by_id", "is_free", "true"),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_mobile_device_app.by_name", "id", mobileAppResourceAddr, "id"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_mobile_device_app.by_name", "name", name),
