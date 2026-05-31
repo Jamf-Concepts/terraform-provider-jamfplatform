@@ -106,7 +106,7 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.OsXConfigur
 	return g, nil, diags
 }
 
-func buildScope(ctx context.Context, m *ScopeModel) (*proclassic.OsXConfigurationProfileScope, diag.Diagnostics) {
+func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.OsXConfigurationProfileScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	s := &proclassic.OsXConfigurationProfileScope{
 		AllComputers: optionalBoolPointer(m.AllComputers),
@@ -181,7 +181,7 @@ func buildScope(ctx context.Context, m *ScopeModel) (*proclassic.OsXConfiguratio
 	return s, diags
 }
 
-func buildScopeLimitations(ctx context.Context, m *ScopeLimitationsModel) (*proclassic.OsXConfigurationProfileScopeLimitations, diag.Diagnostics) {
+func buildScopeLimitations(ctx context.Context, m *scope.ComputerScopeLimitationsModel) (*proclassic.OsXConfigurationProfileScopeLimitations, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	l := &proclassic.OsXConfigurationProfileScopeLimitations{}
 
@@ -225,7 +225,7 @@ func buildScopeLimitations(ctx context.Context, m *ScopeLimitationsModel) (*proc
 	return l, diags
 }
 
-func buildScopeExclusions(ctx context.Context, m *ScopeExclusionsModel) (*proclassic.OsXConfigurationProfileScopeExclusions, diag.Diagnostics) {
+func buildScopeExclusions(ctx context.Context, m *scope.ComputerScopeExclusionsModel) (*proclassic.OsXConfigurationProfileScopeExclusions, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	e := &proclassic.OsXConfigurationProfileScopeExclusions{}
 

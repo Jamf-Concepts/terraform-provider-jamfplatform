@@ -6,6 +6,8 @@ package macos_configuration_profile
 import (
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // ResourceModel is the Terraform model for jamfplatform_pro_macos_configuration_profile.
@@ -21,11 +23,11 @@ import (
 //     (see helpers.go and plan_modifiers.go).
 //   - general.uuid is server-derived (Computed-only).
 type ResourceModel struct {
-	ID          types.String           `tfsdk:"id"`
-	General     *GeneralModel          `tfsdk:"general"`
-	Scope       *ScopeModel            `tfsdk:"scope"`
-	SelfService *SelfServiceModel      `tfsdk:"self_service"`
-	Timeouts    resourceTimeouts.Value `tfsdk:"timeouts"`
+	ID          types.String              `tfsdk:"id"`
+	General     *GeneralModel             `tfsdk:"general"`
+	Scope       *scope.ComputerScopeModel `tfsdk:"scope"`
+	SelfService *SelfServiceModel         `tfsdk:"self_service"`
+	Timeouts    resourceTimeouts.Value    `tfsdk:"timeouts"`
 }
 
 // GeneralModel models <os_x_configuration_profile><general>. The `level`
@@ -46,45 +48,6 @@ type GeneralModel struct {
 	CategoryName       types.String `tfsdk:"category_name"`
 	SiteID             types.String `tfsdk:"site_id"`
 	SiteName           types.String `tfsdk:"site_name"`
-}
-
-// ScopeModel models <os_x_configuration_profile><scope>. Computer-side only
-// — macOS configuration profiles never carry mobile_devices or
-// mobile_device_groups. User IDs use the UI-canonical names; the wire
-// elements are `<jss_users>` and `<jss_user_groups>`.
-type ScopeModel struct {
-	AllComputers     types.Bool             `tfsdk:"all_computers"`
-	AllJssUsers      types.Bool             `tfsdk:"all_jss_users"`
-	ComputerIDs      types.Set              `tfsdk:"computer_ids"`
-	ComputerGroupIDs types.Set              `tfsdk:"computer_group_ids"`
-	BuildingIDs      types.Set              `tfsdk:"building_ids"`
-	DepartmentIDs    types.Set              `tfsdk:"department_ids"`
-	UserIDs          types.Set              `tfsdk:"user_ids"`
-	UserGroupIDs     types.Set              `tfsdk:"user_group_ids"`
-	Limitations      *ScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions       *ScopeExclusionsModel  `tfsdk:"exclusions"`
-}
-
-// ScopeLimitationsModel models <scope><limitations>.
-type ScopeLimitationsModel struct {
-	NetworkSegmentIDs                types.Set `tfsdk:"network_segment_ids"`
-	IbeaconIDs                       types.Set `tfsdk:"ibeacon_ids"`
-	DirectoryServiceOrLocalUserNames types.Set `tfsdk:"directory_service_or_local_user_names"`
-	DirectoryServiceUserGroupNames   types.Set `tfsdk:"directory_service_user_group_names"`
-}
-
-// ScopeExclusionsModel models <scope><exclusions>.
-type ScopeExclusionsModel struct {
-	ComputerIDs                      types.Set `tfsdk:"computer_ids"`
-	ComputerGroupIDs                 types.Set `tfsdk:"computer_group_ids"`
-	BuildingIDs                      types.Set `tfsdk:"building_ids"`
-	DepartmentIDs                    types.Set `tfsdk:"department_ids"`
-	UserIDs                          types.Set `tfsdk:"user_ids"`
-	UserGroupIDs                     types.Set `tfsdk:"user_group_ids"`
-	NetworkSegmentIDs                types.Set `tfsdk:"network_segment_ids"`
-	IbeaconIDs                       types.Set `tfsdk:"ibeacon_ids"`
-	DirectoryServiceOrLocalUserNames types.Set `tfsdk:"directory_service_or_local_user_names"`
-	DirectoryServiceUserGroupNames   types.Set `tfsdk:"directory_service_user_group_names"`
 }
 
 // SelfServiceModel models <os_x_configuration_profile><self_service>. The
@@ -123,11 +86,11 @@ type identityModel struct {
 // DataSourceModel is the read-only data-source projection of the resource
 // model. ID or Name selects the profile.
 type DataSourceModel struct {
-	ID          types.String      `tfsdk:"id"`
-	Name        types.String      `tfsdk:"name"`
-	General     *GeneralModel     `tfsdk:"general"`
-	Scope       *ScopeModel       `tfsdk:"scope"`
-	SelfService *SelfServiceModel `tfsdk:"self_service"`
+	ID          types.String              `tfsdk:"id"`
+	Name        types.String              `tfsdk:"name"`
+	General     *GeneralModel             `tfsdk:"general"`
+	Scope       *scope.ComputerScopeModel `tfsdk:"scope"`
+	SelfService *SelfServiceModel         `tfsdk:"self_service"`
 }
 
 // PluralDataSourceModel is the projection for the plural data source — a

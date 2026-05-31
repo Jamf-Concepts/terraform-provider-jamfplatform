@@ -368,14 +368,14 @@ Optional:
 
 Optional:
 
-- `all_computers` (Boolean) Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
-- `all_jss_users` (Boolean) Scope the policy to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle. Forbids per-user / per-user-group targets when true.
+- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
+- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle. Forbids per-user / per-user-group targets when true.
 - `building_ids` (Set of String) Set of Jamf Pro building IDs.
 - `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
 - `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
 - `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `limitations` (Attributes) Scope limitations narrow the audience after the targets are resolved. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. The legacy "Limit to Users" sub-list is **intentionally not modelled** — Jamf Pro keeps it in lock-step with `directory_service_user_group_names`, so exposing it separately would only surface phantom drift between two slots holding the same value. (see [below for nested schema](#nestedatt--scope--limitations))
+- `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
 - `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
 - `user_ids` (Set of String) Set of Jamf Pro user IDs.
 

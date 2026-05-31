@@ -11,6 +11,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func TestFlattenGeneral_LevelWireReadTranslated(t *testing.T) {
@@ -77,7 +79,7 @@ func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 	// not author it, even if the server reports a value (Optional+Computed
 	// contract). Pre-populate to BoolValue(false) so reconcile substitutes
 	// the server value.
-	state := &ScopeModel{AllComputers: types.BoolValue(false)}
+	state := &scope.ComputerScopeModel{AllComputers: types.BoolValue(false)}
 	diags := flattenScope(context.Background(), &proclassic.OsXConfigurationProfileScope{
 		AllComputers: new(true),
 	}, state)
@@ -106,7 +108,7 @@ func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 // stays at null in state even when the server reports a value.
 func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 	t.Parallel()
-	state := &ScopeModel{}
+	state := &scope.ComputerScopeModel{}
 	flattenScope(context.Background(), &proclassic.OsXConfigurationProfileScope{
 		AllComputers: new(true),
 	}, state)
@@ -117,7 +119,7 @@ func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 
 func TestFlattenScope_ComputerIDsPopulated(t *testing.T) {
 	t.Parallel()
-	state := &ScopeModel{}
+	state := &scope.ComputerScopeModel{}
 	src := &proclassic.OsXConfigurationProfileScope{
 		Computers: &proclassic.OsXConfigurationProfileScopeComputers{
 			Computer: &[]proclassic.OsXConfigurationProfileScopeComputersComputerItem{
@@ -145,7 +147,7 @@ func TestFlattenScope_ComputerIDsPopulated(t *testing.T) {
 
 func TestFlattenScopeLimitations_NetworkSegmentWithUID(t *testing.T) {
 	t.Parallel()
-	state := &ScopeLimitationsModel{}
+	state := &scope.ComputerScopeLimitationsModel{}
 	src := &proclassic.OsXConfigurationProfileScopeLimitations{
 		NetworkSegments: &proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegments{
 			NetworkSegment: &[]proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem{
@@ -168,7 +170,7 @@ func TestFlattenScopeLimitations_NetworkSegmentWithUID(t *testing.T) {
 
 func TestFlattenScopeLimitations_DSUserNames(t *testing.T) {
 	t.Parallel()
-	state := &ScopeLimitationsModel{}
+	state := &scope.ComputerScopeLimitationsModel{}
 	diags := flattenScopeLimitations(context.Background(), &proclassic.OsXConfigurationProfileScopeLimitations{
 		Users: &proclassic.OsXConfigurationProfileScopeLimitationsUsers{
 			User: &[]proclassic.IDName{{Name: new("alice")}, {Name: new("bob")}},
@@ -188,7 +190,7 @@ func TestFlattenScopeLimitations_DSUserNames(t *testing.T) {
 
 func TestFlattenScopeExclusions_ComputersAndUserGroupsByName(t *testing.T) {
 	t.Parallel()
-	state := &ScopeExclusionsModel{}
+	state := &scope.ComputerScopeExclusionsModel{}
 	src := &proclassic.OsXConfigurationProfileScopeExclusions{
 		Computers: &proclassic.OsXConfigurationProfileScopeExclusionsComputers{
 			Computer: &[]proclassic.OsXConfigurationProfileScopeExclusionsComputersComputerItem{
@@ -339,7 +341,7 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	// Pre-populate with configured values so the reconcile helpers
 	// substitute server-returned values.
 	state := &ResourceModel{
-		Scope:       &ScopeModel{AllComputers: types.BoolValue(false)},
+		Scope:       &scope.ComputerScopeModel{AllComputers: types.BoolValue(false)},
 		SelfService: &SelfServiceModel{InstallButtonText: types.StringValue("")},
 	}
 	diags := assignResourceModel(context.Background(), state, &proclassic.OsXConfigurationProfile{

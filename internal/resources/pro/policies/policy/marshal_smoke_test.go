@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // TestMarshal_RepresentativePolicy round-trips a representative PolicyPost
@@ -27,7 +29,7 @@ func TestMarshal_RepresentativePolicy(t *testing.T) {
 			TriggerCheckin: types.BoolValue(true),
 			Frequency:      types.StringValue("Once per computer"),
 		},
-		Scope: &PolicyScopeModel{
+		Scope: &scope.ComputerScopeModel{
 			ComputerGroupIDs: stringSet(t, "11", "22"),
 			BuildingIDs:      stringSet(t, "7"),
 		},
@@ -92,7 +94,7 @@ func TestMarshal_EmptyScopeOmitsElement(t *testing.T) {
 	t.Parallel()
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-empty-scope")},
-		Scope:   &PolicyScopeModel{},
+		Scope:   &scope.ComputerScopeModel{},
 	}
 	post, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {

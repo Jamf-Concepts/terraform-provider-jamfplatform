@@ -9,6 +9,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func stringSet(t *testing.T, values ...string) types.Set {
@@ -54,7 +56,7 @@ func TestBuildPolicyInput_ScopeWithComputerGroupAndBuilding(t *testing.T) {
 	t.Parallel()
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-scoped")},
-		Scope: &PolicyScopeModel{
+		Scope: &scope.ComputerScopeModel{
 			ComputerGroupIDs: stringSet(t, "11", "22"),
 			BuildingIDs:      stringSet(t, "7"),
 		},
@@ -87,7 +89,7 @@ func TestBuildPolicyInput_ScopeOmissionSemantics(t *testing.T) {
 	// rather than emitting <scope></scope>.
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-empty-scope")},
-		Scope:   &PolicyScopeModel{},
+		Scope:   &scope.ComputerScopeModel{},
 	}
 	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
 	if diags.HasError() {
@@ -102,7 +104,7 @@ func TestBuildPolicyInput_AllComputersFlag(t *testing.T) {
 	t.Parallel()
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-universal")},
-		Scope: &PolicyScopeModel{
+		Scope: &scope.ComputerScopeModel{
 			AllComputers: types.BoolValue(true),
 		},
 	}

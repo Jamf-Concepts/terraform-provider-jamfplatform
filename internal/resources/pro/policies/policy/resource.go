@@ -225,66 +225,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			"scope": schema.SingleNestedAttribute{
 				MarkdownDescription: "Policy scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. `user_ids` / `user_group_ids` map to the admin UI's \"Users\" / \"User Groups\" lists.",
 				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"all_computers": schema.BoolAttribute{
-						MarkdownDescription: "Scope the policy to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-						Validators: []validator.Bool{
-							scope.AllFlagConflictsWith(
-								path.MatchRelative().AtParent().AtName("computer_ids"),
-								path.MatchRelative().AtParent().AtName("computer_group_ids"),
-								path.MatchRelative().AtParent().AtName("building_ids"),
-								path.MatchRelative().AtParent().AtName("department_ids"),
-							),
-						},
-					},
-					"all_jss_users": schema.BoolAttribute{
-						MarkdownDescription: "Scope the policy to every Jamf Pro user in the tenant. Equivalent to the admin UI's \"All Users\" toggle. Forbids per-user / per-user-group targets when true.",
-						Optional:            true,
-						Computed:            true,
-						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-						Validators: []validator.Bool{
-							scope.AllFlagConflictsWith(
-								path.MatchRelative().AtParent().AtName("user_ids"),
-								path.MatchRelative().AtParent().AtName("user_group_ids"),
-							),
-						},
-					},
-					"computer_ids":       scope.IDSetAttribute("computer"),
-					"computer_group_ids": scope.IDSetAttribute("computer group"),
-					"building_ids":       scope.IDSetAttribute("building"),
-					"department_ids":     scope.IDSetAttribute("department"),
-					"user_ids":           scope.IDSetAttribute("user"),
-					"user_group_ids":     scope.IDSetAttribute("user group"),
-					"limitations": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope limitations narrow the audience after the targets are resolved. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. The legacy \"Limit to Users\" sub-list is **intentionally not modelled** — Jamf Pro keeps it in lock-step with `directory_service_user_group_names`, so exposing it separately would only surface phantom drift between two slots holding the same value.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"network_segment_ids":                   scope.IDSetAttribute("network segment"),
-							"ibeacon_ids":                           scope.IDSetAttribute("iBeacon"),
-							"directory_service_or_local_user_names": scope.NameSetAttribute("directory service or local user"),
-							"directory_service_user_group_names":    scope.NameSetAttribute("directory service user group"),
-						},
-					},
-					"exclusions": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope exclusions remove items that would otherwise be included by targets or limitations.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"computer_ids":                          scope.IDSetAttribute("computer"),
-							"computer_group_ids":                    scope.IDSetAttribute("computer group"),
-							"building_ids":                          scope.IDSetAttribute("building"),
-							"department_ids":                        scope.IDSetAttribute("department"),
-							"user_ids":                              scope.IDSetAttribute("user"),
-							"user_group_ids":                        scope.IDSetAttribute("user group"),
-							"network_segment_ids":                   scope.IDSetAttribute("network segment"),
-							"ibeacon_ids":                           scope.IDSetAttribute("iBeacon"),
-							"directory_service_or_local_user_names": scope.NameSetAttribute("directory service or local user"),
-							"directory_service_user_group_names":    scope.NameSetAttribute("directory service user group"),
-						},
-					},
-				},
+				Attributes:          scope.ComputerScopeAttributes(scope.ComputerScopeOptions{IncludeIbeacons: true}),
 			},
 			"self_service": schema.SingleNestedAttribute{
 				MarkdownDescription: "Self Service integration. Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the policy becomes available.",
