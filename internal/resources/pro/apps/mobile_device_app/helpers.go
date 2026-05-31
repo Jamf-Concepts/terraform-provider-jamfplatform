@@ -132,6 +132,13 @@ func serverWhenPresentString(api *string, current types.String) types.String {
 	if api != nil {
 		return types.StringValue(*api)
 	}
+	// Server omitted it. Keep the caller's value only if it is known (a
+	// configured value, or a prior-state null); never propagate an unknown
+	// (Optional+Computed unset on create), which would leave an unknown value
+	// after apply. Resolve unknown to null.
+	if current.IsUnknown() {
+		return types.StringNull()
+	}
 	return current
 }
 
