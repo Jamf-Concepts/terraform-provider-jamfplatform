@@ -63,6 +63,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_failover_url"
@@ -238,6 +239,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
 		directory_binding.NewDirectoryBindingResource,
+		ldap_server.NewLdapServerResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationResource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentResource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentResource,
@@ -290,6 +292,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		device.NewDeviceDataSource,
 		devices.NewDevicesDataSource,
 		directory_binding.NewDirectoryBindingDataSource,
+		ldap_server.NewLdapServerDataSource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationDataSource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentDataSource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentDataSource,
@@ -332,6 +335,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
 		directory_binding.NewDirectoryBindingListResource,
+		ldap_server.NewLdapServerListResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationListResource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentListResource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentListResource,
