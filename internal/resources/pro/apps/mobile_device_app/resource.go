@@ -324,20 +324,29 @@ func optComputedInt64(desc string) schema.Int64Attribute {
 }
 
 // computedString returns a Computed-only StringAttribute for server-managed
-// fields (display_name, description, category_name, site_name).
+// fields (display_name, description, category_name, site_name). These echo
+// values the server derives from *mutable* inputs — display_name == name,
+// category_name/site_name from category_id/site_id, description from the App
+// Store sync. They deliberately carry NO UseStateForUnknown plan modifier: on
+// an update that changes the driving input (e.g. a rename), UseStateForUnknown
+// would copy the stale prior value into the plan while apply produces the new
+// one, tripping "provider produced inconsistent result after apply". Plain
+// Computed makes them "known after apply" on every change, which the server
+// then fills — slightly noisier plans, correct applies. (mac_app_store_app
+// carries the same latent bug on category_name/site_name, untested.)
 func computedString(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,
 		Computed:            true,
-		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 	}
 }
 
-// computedBool is the bool sibling of computedString (internal_app).
+// computedBool is the bool sibling of computedString (internal_app, which flips
+// as a side-effect of free + host_externally + external_url — all mutable, so
+// the same no-UseStateForUnknown rule applies).
 func computedBool(desc string) schema.BoolAttribute {
 	return schema.BoolAttribute{
 		MarkdownDescription: desc,
 		Computed:            true,
-		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 	}
 }
