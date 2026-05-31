@@ -6,6 +6,8 @@ package policy
 import (
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // PolicyResourceModel is the Terraform resource model for a Jamf Pro classic
@@ -34,7 +36,7 @@ import (
 type PolicyResourceModel struct {
 	ID                   types.String                     `tfsdk:"id"`
 	General              *PolicyGeneralModel              `tfsdk:"general"`
-	Scope                *PolicyScopeModel                `tfsdk:"scope"`
+	Scope                *scope.ComputerScopeModel        `tfsdk:"scope"`
 	SelfService          *PolicySelfServiceModel          `tfsdk:"self_service"`
 	PackageConfiguration *PolicyPackageConfigurationModel `tfsdk:"package_configuration"`
 	Scripts              *PolicyScriptsModel              `tfsdk:"scripts"`
@@ -100,47 +102,6 @@ type PolicyGeneralOverrideDefaultsModel struct {
 	DistributionPoint types.String `tfsdk:"distribution_point"`
 	ForceAfpSmb       types.Bool   `tfsdk:"force_afp_smb"`
 	Sus               types.String `tfsdk:"sus"`
-}
-
-// PolicyScopeModel models <policy><scope>. Every target category is a flat
-// Set<String> of numeric Jamf Pro classic IDs (or names for the
-// directory-service / limit-to flavours), composed via the
-// internal/common/scope helper. See STYLE_GUIDE.md §Scope helper for the canonical rules.
-// User-side IDs use the UI-canonical names `user_ids` / `user_group_ids`; the
-// wire elements are `<jss_users>` and `<jss_user_groups>`.
-type PolicyScopeModel struct {
-	AllComputers     types.Bool                   `tfsdk:"all_computers"`
-	AllJssUsers      types.Bool                   `tfsdk:"all_jss_users"`
-	ComputerIDs      types.Set                    `tfsdk:"computer_ids"`
-	ComputerGroupIDs types.Set                    `tfsdk:"computer_group_ids"`
-	BuildingIDs      types.Set                    `tfsdk:"building_ids"`
-	DepartmentIDs    types.Set                    `tfsdk:"department_ids"`
-	UserIDs          types.Set                    `tfsdk:"user_ids"`
-	UserGroupIDs     types.Set                    `tfsdk:"user_group_ids"`
-	Limitations      *PolicyScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions       *PolicyScopeExclusionsModel  `tfsdk:"exclusions"`
-}
-
-// PolicyScopeLimitationsModel models <scope><limitations>.
-type PolicyScopeLimitationsModel struct {
-	NetworkSegmentIDs                types.Set `tfsdk:"network_segment_ids"`
-	IbeaconIDs                       types.Set `tfsdk:"ibeacon_ids"`
-	DirectoryServiceOrLocalUserNames types.Set `tfsdk:"directory_service_or_local_user_names"`
-	DirectoryServiceUserGroupNames   types.Set `tfsdk:"directory_service_user_group_names"`
-}
-
-// PolicyScopeExclusionsModel models <scope><exclusions>.
-type PolicyScopeExclusionsModel struct {
-	ComputerIDs                      types.Set `tfsdk:"computer_ids"`
-	ComputerGroupIDs                 types.Set `tfsdk:"computer_group_ids"`
-	BuildingIDs                      types.Set `tfsdk:"building_ids"`
-	DepartmentIDs                    types.Set `tfsdk:"department_ids"`
-	UserIDs                          types.Set `tfsdk:"user_ids"`
-	UserGroupIDs                     types.Set `tfsdk:"user_group_ids"`
-	NetworkSegmentIDs                types.Set `tfsdk:"network_segment_ids"`
-	IbeaconIDs                       types.Set `tfsdk:"ibeacon_ids"`
-	DirectoryServiceOrLocalUserNames types.Set `tfsdk:"directory_service_or_local_user_names"`
-	DirectoryServiceUserGroupNames   types.Set `tfsdk:"directory_service_user_group_names"`
 }
 
 // PolicySelfServiceModel models <policy><self_service>. DisplayNotifications

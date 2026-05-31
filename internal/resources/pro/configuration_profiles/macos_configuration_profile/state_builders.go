@@ -113,7 +113,7 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 	}
 }
 
-func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScope, state *ScopeModel) diag.Diagnostics {
+func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScope, state *scope.ComputerScopeModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
@@ -176,7 +176,7 @@ func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScop
 	return diags
 }
 
-func flattenScopeLimitations(ctx context.Context, l *proclassic.OsXConfigurationProfileScopeLimitations, state *ScopeLimitationsModel) diag.Diagnostics {
+func flattenScopeLimitations(ctx context.Context, l *proclassic.OsXConfigurationProfileScopeLimitations, state *scope.ComputerScopeLimitationsModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if l == nil {
 		return diags
@@ -214,7 +214,7 @@ func flattenScopeLimitations(ctx context.Context, l *proclassic.OsXConfiguration
 	return diags
 }
 
-func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationProfileScopeExclusions, state *ScopeExclusionsModel) diag.Diagnostics {
+func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationProfileScopeExclusions, state *scope.ComputerScopeExclusionsModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if e == nil {
 		return diags

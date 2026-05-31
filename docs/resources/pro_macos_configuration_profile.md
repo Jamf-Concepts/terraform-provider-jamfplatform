@@ -144,8 +144,8 @@ Read-Only:
 
 Optional:
 
-- `all_computers` (Boolean) Scope to every computer in the tenant.
-- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle.
+- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
+- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle. Forbids per-user / per-user-group targets when true.
 - `building_ids` (Set of String) Set of Jamf Pro building IDs.
 - `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
 - `computer_ids` (Set of String) Set of Jamf Pro computer IDs.

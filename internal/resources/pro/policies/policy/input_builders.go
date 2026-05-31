@@ -206,7 +206,7 @@ func buildPolicyNetworkLimitations(ctx context.Context, m *PolicyGeneralNetworkL
 	return nl, diags
 }
 
-func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.PolicyPostScope, diag.Diagnostics) {
+func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.PolicyPostScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	s := &proclassic.PolicyPostScope{
 		AllComputers: optionalBoolPointer(m.AllComputers),
@@ -285,7 +285,7 @@ func buildPolicyScope(ctx context.Context, m *PolicyScopeModel) (*proclassic.Pol
 	return s, diags
 }
 
-func buildPolicyScopeLimitations(ctx context.Context, m *PolicyScopeLimitationsModel) (*proclassic.PolicyScopeLimitations, diag.Diagnostics) {
+func buildPolicyScopeLimitations(ctx context.Context, m *scope.ComputerScopeLimitationsModel) (*proclassic.PolicyScopeLimitations, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	l := &proclassic.PolicyScopeLimitations{}
 
@@ -330,7 +330,7 @@ func buildPolicyScopeLimitations(ctx context.Context, m *PolicyScopeLimitationsM
 	return l, diags
 }
 
-func buildPolicyScopeExclusions(ctx context.Context, m *PolicyScopeExclusionsModel) (*proclassic.PolicyScopeExclusions, diag.Diagnostics) {
+func buildPolicyScopeExclusions(ctx context.Context, m *scope.ComputerScopeExclusionsModel) (*proclassic.PolicyScopeExclusions, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	e := &proclassic.PolicyScopeExclusions{}
 

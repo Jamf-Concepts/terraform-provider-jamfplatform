@@ -9,6 +9,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func TestAssignPolicyResourceModel_MinimalPolicy(t *testing.T) {
@@ -46,7 +48,7 @@ func TestAssignPolicyResourceModel_FlattensScopeIDs(t *testing.T) {
 	t.Parallel()
 	state := &PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
-		Scope:   &PolicyScopeModel{},
+		Scope:   &scope.ComputerScopeModel{},
 	}
 	src := &proclassic.Policy{
 		ID:      new(7),

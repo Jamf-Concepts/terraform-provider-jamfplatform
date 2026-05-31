@@ -166,7 +166,7 @@ func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyG
 	}
 }
 
-func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *PolicyScopeModel) diag.Diagnostics {
+func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *scope.ComputerScopeModel) diag.Diagnostics {
 	var diags diag.Diagnostics
 	state.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.AllComputers)
 	state.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.AllJssUsers)
