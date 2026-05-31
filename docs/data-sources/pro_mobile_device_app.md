@@ -45,7 +45,6 @@ data "jamfplatform_pro_mobile_device_app" "by_id" {
 - `deployment_type` (String) Install method.
 - `internal_app` (Boolean) Whether Jamf Pro treats the app as in-house.
 - `is_free` (Boolean) Whether the app is free.
-- `os_type` (String) Operating system the app targets (`iOS` or `tvOS`).
 - `site_id` (String) Site ID. `-1` means no site.
 - `site_name` (String) Site display name.
 - `version` (String) App version string.
