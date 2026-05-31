@@ -130,12 +130,12 @@ Read-Only:
 
 Optional:
 
-- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant.
-- `all_mobile_devices` (Boolean) Scope to every mobile device in the tenant.
+- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle. Forbids per-user / per-user-group targets when true.
+- `all_mobile_devices` (Boolean) Scope to every mobile device in the tenant. Forbids per-device / per-group / per-building / per-department targets when true.
 - `building_ids` (Set of String) Set of Jamf Pro building IDs.
 - `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. (see [below for nested schema](#nestedatt--scope--limitations))
+- `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
 - `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs.
 - `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs.
 - `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
