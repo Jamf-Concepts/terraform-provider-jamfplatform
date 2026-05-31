@@ -11,6 +11,12 @@
 //
 // Status: current. Last reviewed 2026-05-31.
 //
+// Create semantics: the classic POST silently drops os_type (wire-probed — a
+// POST never persists it, even when sent). Create therefore POSTs to allocate
+// the id, then issues a follow-up PUT with the full payload to persist os_type
+// (the server requires it on a PUT to an in-house app and stores+echoes it
+// thereafter), then GETs to refresh state.
+//
 // Update semantics: the classic /mobiledeviceapplications PUT is a partial-merge,
 // not a full-replace (wire-probed). The provider sends the full plan payload on
 // every Update, including os_type (the server 409s on a PUT to an in-house app
@@ -70,6 +76,17 @@ func (r *MobileAppResource) Create(ctx context.Context, req resource.CreateReque
 			"Create response missing app ID",
 			"Jamf Pro returned 201 Created with no app ID; cannot persist state.",
 		)
+		return
+	}
+
+	// The classic POST silently drops os_type (wire-probed: a POST never
+	// persists it, so the freshly-created app has no os_type server-side). A
+	// follow-up PUT to the new id persists it — the server requires os_type on a
+	// PUT to an in-house app and stores+echoes it thereafter. The full plan
+	// payload is re-sent (partial-merge, idempotent); without this the app would
+	// be left without the os_type the config declares.
+	if err := r.client.UpdateMobileDeviceApplicationByID(createCtx, id, payload); err != nil {
+		resp.Diagnostics.AddError("Error finalizing created Jamf Pro mobile device app", fmt.Sprintf("the app was created (id %s) but persisting os_type via the follow-up update failed: %v", id, err))
 		return
 	}
 

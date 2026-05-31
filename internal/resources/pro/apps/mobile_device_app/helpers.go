@@ -119,6 +119,21 @@ func preferCurrentBoolPointer(api *bool, current types.Bool) types.Bool {
 	return types.BoolValue(*api)
 }
 
+// serverWhenPresentString reflects the API value when the server returns one,
+// otherwise retains the caller's current (configured/prior) value. Used for
+// os_type, whose echo is asymmetric (wire-probed): a POST never persists or
+// echoes it, and a non-internal app never carries it — but once set via a PUT to
+// an internal app it is stored and echoed on every GET. So: trust the echo when
+// present (authoritative; surfaces external drift), and fall back to the
+// configured value when absent (the create path and non-internal apps) to avoid
+// nulling a Required attribute and tripping "inconsistent result after apply".
+func serverWhenPresentString(api *string, current types.String) types.String {
+	if api != nil {
+		return types.StringValue(*api)
+	}
+	return current
+}
+
 // preferCurrentInt64Pointer is the Int64 sibling of preferCurrentStringPointer.
 func preferCurrentInt64Pointer(api *int, current types.Int64) types.Int64 {
 	if !current.IsNull() && !current.IsUnknown() {
