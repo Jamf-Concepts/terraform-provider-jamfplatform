@@ -6,6 +6,7 @@ package mobile_device_configuration_profile
 import (
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
 
@@ -100,15 +101,15 @@ func TestPayloadsSemanticallyEqual_DetectsRealChange(t *testing.T) {
 
 // TestMarshalPlist_RoundTrip verifies parsePlist + marshalPlist preserves key values.
 func TestMarshalPlist_RoundTrip(t *testing.T) {
-	parsed, _, err := payloadhelpers.ParsePlist([]byte(minimalMobileconfig))
+	parsed, _, err := plisthelpers.ParsePlist([]byte(minimalMobileconfig))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	out, err := payloadhelpers.MarshalPlist(parsed)
+	out, err := plisthelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	reparsed, _, err := payloadhelpers.ParsePlist(out)
+	reparsed, _, err := plisthelpers.ParsePlist(out)
 	if err != nil {
 		t.Fatalf("reparse: %v", err)
 	}
@@ -121,13 +122,13 @@ func TestMarshalPlist_RoundTrip(t *testing.T) {
 // overwrites PayloadUUID / PayloadIdentifier from the existing source.
 func TestInjectTopLevelIdentifiers_Preserves(t *testing.T) {
 	existing := []byte(minimalMobileconfig)
-	parsed, _, err := payloadhelpers.ParsePlist(existing)
+	parsed, _, err := plisthelpers.ParsePlist(existing)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	parsed["PayloadUUID"] = "NEW-UUID"
 	parsed["PayloadIdentifier"] = "NEW-IDENTIFIER"
-	newPayload, err := payloadhelpers.MarshalPlist(parsed)
+	newPayload, err := plisthelpers.MarshalPlist(parsed)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -135,7 +136,7 @@ func TestInjectTopLevelIdentifiers_Preserves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	check, _, err := payloadhelpers.ParsePlist(out)
+	check, _, err := plisthelpers.ParsePlist(out)
 	if err != nil {
 		t.Fatalf("parse output: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestExtractServerPayloadFromGeneral_DecodesEntities(t *testing.T) {
 	if err != nil {
 		t.Fatalf("extract: %v", err)
 	}
-	if _, _, err := payloadhelpers.ParsePlist(payload); err != nil {
+	if _, _, err := plisthelpers.ParsePlist(payload); err != nil {
 		t.Fatalf("extracted bytes are not valid plist: %v", err)
 	}
 }

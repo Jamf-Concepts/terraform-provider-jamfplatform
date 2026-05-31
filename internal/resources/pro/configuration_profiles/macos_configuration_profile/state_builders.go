@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
@@ -88,7 +89,7 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 			}
 		}
 		if !keep {
-			state.Payloads = types.StringValue(string(payloadhelpers.CanonicalisePlistXML([]byte(server))))
+			state.Payloads = types.StringValue(string(plisthelpers.CanonicalisePlistXML([]byte(server))))
 		}
 	}
 	state.DistributionMethod = helpers.ReconcileOptionalStringPointer(g.DistributionMethod, state.DistributionMethod)

@@ -6,6 +6,8 @@ package payloadhelpers
 import (
 	"strings"
 	"testing"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 const minimalPlist = `<?xml version="1.0" encoding="UTF-8"?>
@@ -30,41 +32,6 @@ const minimalWireXML = `<?xml version="1.0" encoding="UTF-8"?>
 &lt;key&gt;PayloadDisplayName&lt;/key&gt;&lt;string&gt;Test Profile&lt;/string&gt;
 &lt;key&gt;PayloadContent&lt;/key&gt;&lt;array/&gt;
 &lt;/dict&gt;&lt;/plist&gt;</payloads></general></configuration_profile>`
-
-func TestParsePlist_BasicRoundTrip(t *testing.T) {
-	m, _, err := ParsePlist([]byte(minimalPlist))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if m["PayloadType"] != "Configuration" {
-		t.Fatalf("PayloadType: got %v", m["PayloadType"])
-	}
-}
-
-func TestParsePlist_InvalidInput(t *testing.T) {
-	_, _, err := ParsePlist([]byte("not a plist"))
-	if err == nil {
-		t.Fatal("expected error on invalid input")
-	}
-}
-
-func TestMarshalPlist_RoundTrip(t *testing.T) {
-	parsed, _, err := ParsePlist([]byte(minimalPlist))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	out, err := MarshalPlist(parsed)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	reparsed, _, err := ParsePlist(out)
-	if err != nil {
-		t.Fatalf("reparse: %v", err)
-	}
-	if reparsed["PayloadType"] != parsed["PayloadType"] {
-		t.Errorf("PayloadType: got=%v want=%v", reparsed["PayloadType"], parsed["PayloadType"])
-	}
-}
 
 func TestPayloadsSemanticallyEqual_Identical(t *testing.T) {
 	eq, err := PayloadsSemanticallyEqual([]byte(minimalPlist), []byte(minimalPlist))
@@ -121,7 +88,7 @@ func TestInjectTopLevelIdentifierValues_ReplacesUUIDs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("inject: %v", err)
 	}
-	check, _, err := ParsePlist(out)
+	check, _, err := plisthelpers.ParsePlist(out)
 	if err != nil {
 		t.Fatalf("parse output: %v", err)
 	}
@@ -170,7 +137,7 @@ func TestExtractServerPayloadFromGeneral_DecodesEntities(t *testing.T) {
 	if err != nil {
 		t.Fatalf("extract: %v", err)
 	}
-	if _, _, err := ParsePlist(payload); err != nil {
+	if _, _, err := plisthelpers.ParsePlist(payload); err != nil {
 		t.Fatalf("extracted bytes not valid plist: %v", err)
 	}
 }
