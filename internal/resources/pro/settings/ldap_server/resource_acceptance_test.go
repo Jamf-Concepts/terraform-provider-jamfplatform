@@ -1,0 +1,464 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+//go:build acceptance
+
+// Tests in this file talk to the Jamf ProClassic /ldapservers endpoint.
+// Creating an LDAP server stores the supplied configuration without verifying
+// that the directory is reachable (connection verification is not modelled —
+// the classic lookup endpoints give no usable bind signal), so these tests use
+// a dummy hostname and dummy credentials and still exercise full CRUD.
+//
+// Classic has known concurrency issues when multiple writes hit the same
+// resource type — keep these tests serial with other classic acceptance work.
+
+package ldap_server_test
+
+import (
+	"context"
+	"fmt"
+	"regexp"
+	"testing"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
+)
+
+const ldapServerResource = "jamfplatform_pro_ldap_server.test"
+
+// testAccCheckLdapServerDestroy verifies servers created during the test were
+// destroyed.
+func testAccCheckLdapServerDestroy(t *testing.T) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		for _, rs := range s.RootModule().Resources {
+			if rs.Type != "jamfplatform_pro_ldap_server" {
+				continue
+			}
+			_, err := c.GetLDAPServerByID(ctx, rs.Primary.ID)
+			if err != nil {
+				if helpers.IsNotFoundError(err) {
+					continue
+				}
+				return fmt.Errorf("error checking Jamf Pro LDAP server %s: %s", rs.Primary.ID, err)
+			}
+			return fmt.Errorf("Jamf Pro LDAP server %s still exists", rs.Primary.ID)
+		}
+		return nil
+	}
+}
+
+// TestAccResource_ProLdapServer_Anonymous covers the anonymous-bind shape
+// (authentication_type = "none", no account block) plus an ImportStateVerify
+// round-trip.
+func TestAccResource_ProLdapServer_Anonymous(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ldap-anon-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLdapServerDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Open Directory"
+							hostname            = "ldap.acc-anon.example.com"
+							port                = 389
+							use_ssl             = false
+							authentication_type = "none"
+						}
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(ldapServerResource, "id"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.display_name", name),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.directory_service", "Open Directory"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.authentication_type", "none"),
+					// Server-managed echo is self-healing and present after apply.
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.is_enabled", "true"),
+				),
+			},
+			{
+				ResourceName:      ldapServerResource,
+				ImportState:       true,
+				ImportStateVerify: true,
+				// This server declares no mappings_for_users, so its managed state
+				// has none — but Jamf Pro fills server-side mapping defaults, and
+				// import surfaces them (full fidelity). The managed (mapping-less)
+				// state therefore cannot equal the imported state; ignore mappings
+				// here. (The SimpleUpdate test declares all three blocks and DOES
+				// verify mappings on import.)
+				ImportStateVerifyIgnore: []string{"timeouts", "mappings_for_users"},
+			},
+		},
+	})
+}
+
+// TestAccResource_ProLdapServer_SimpleUpdate covers the authenticated-bind
+// shape with a full mappings tree, then a multi-attribute update that mutates
+// every non-RequiresReplace surface: connection fields, the bind account,
+// every mapping sub-block, and a password rotation (wo_version bump).
+func TestAccResource_ProLdapServer_SimpleUpdate(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ldap-simple-" + suffix
+	renamed := "tf-acc-ldap-simple-renamed-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLdapServerDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Active Directory"
+							hostname            = "ldap.acc-simple.example.com"
+							port                = 636
+							use_ssl             = true
+							authentication_type = "simple"
+							connection_timeout  = 15
+							search_timeout      = 60
+							referral_response   = "follow"
+							use_wildcards       = true
+							account = {
+								distinguished_username = "CN=svc,DC=example,DC=com"
+								password               = "initial-pw"
+								password_wo_version    = 1
+							}
+						}
+						mappings_for_users = {
+							user_mappings = {
+								object_class_limitation = "any"
+								object_classes          = "organizationalPerson"
+								search_base              = "OU=Users,DC=example,DC=com"
+								search_scope             = "All Subtrees"
+								username                 = "mail"
+								real_name                = "displayName"
+								email_address            = "mail"
+								phone                    = "telephoneNumber"
+								user_uuid                = "objectGUID"
+							}
+							user_group_mappings = {
+								object_class_limitation = "any"
+								object_classes          = "group"
+								search_base              = "OU=Groups,DC=example,DC=com"
+								search_scope             = "All Subtrees"
+								group_name               = "sAMAccountName"
+								group_uuid               = "objectGUID"
+							}
+							user_group_membership_mappings = {
+								membership_location  = "group object"
+								member_user_mapping  = "member"
+								use_dn               = true
+								use_ldap_compare     = true
+								recursive_lookups    = true
+							}
+						}
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(ldapServerResource, "id"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.display_name", name),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.port", "636"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.use_ssl", "true"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.referral_response", "follow"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.account.distinguished_username", "CN=svc,DC=example,DC=com"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.phone", "telephoneNumber"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.username", "mail"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_mappings.group_name", "sAMAccountName"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.member_user_mapping", "member"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.is_enabled", "true"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Active Directory"
+							hostname            = "ldap.acc-simple-2.example.com"
+							port                = 3269
+							use_ssl             = true
+							authentication_type = "simple"
+							connection_timeout  = 30
+							search_timeout      = 120
+							referral_response   = "ignore"
+							use_wildcards       = false
+							account = {
+								distinguished_username = "CN=svc2,DC=example,DC=com"
+								password               = "rotated-pw"
+								password_wo_version    = 2
+							}
+						}
+						mappings_for_users = {
+							user_mappings = {
+								object_class_limitation = "all"
+								object_classes          = "user"
+								search_base              = "OU=People,DC=example,DC=com"
+								search_scope             = "First Level Only"
+								username                 = "userPrincipalName"
+								real_name                = "cn"
+								phone                    = "mobile"
+							}
+							user_group_mappings = {
+								object_class_limitation = "all"
+								group_name               = "cn"
+							}
+							user_group_membership_mappings = {
+								membership_location                 = "user object"
+								group_membership_mapping            = "memberOf"
+								map_user_membership_use_dn          = true
+								recursive_lookups                   = true
+								use_member_field_for_select_queries = true
+							}
+						}
+					}
+				`, renamed),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.display_name", renamed),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.hostname", "ldap.acc-simple-2.example.com"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.port", "3269"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.connection_timeout", "30"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.search_timeout", "120"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.referral_response", "ignore"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.use_wildcards", "false"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.account.distinguished_username", "CN=svc2,DC=example,DC=com"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.object_class_limitation", "all"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.search_scope", "First Level Only"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.username", "userPrincipalName"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.membership_location", "user object"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.use_member_field_for_select_queries", "true"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.group_membership_mapping", "memberOf"),
+				),
+			},
+			{
+				ResourceName:      ldapServerResource,
+				ImportState:       true,
+				ImportStateVerify: true,
+				// password is WriteOnly (never in state); password_wo_version is
+				// not echoed by Jamf Pro so import cannot reconstruct it. Mappings
+				// ARE verified: this config declares all three sub-blocks, and
+				// import populates every block from the server (full fidelity).
+				ImportStateVerifyIgnore: []string{"timeouts", "connection_settings.account.password", "connection_settings.account.password_wo_version"},
+			},
+		},
+	})
+}
+
+// TestAccResource_ProLdapServer_PartialMappingsGating pins the mappings
+// gating: the server echoes all three mapping sub-blocks, but the provider
+// keeps only the ones the user declared. Step 1 declares only user_mappings
+// (the other two must be absent from state). Step 2 drops user_mappings and
+// declares only user_group_membership_mappings — exercising sub-block remove
+// + add and the membership "Other-mode" fields (object_classes / search_base /
+// username_mapping / group_id_mapping) under a real membership_location. The
+// framework's implicit post-apply plan check pins no permadiff for each
+// partial shape — the regression path the gating fix addresses.
+func TestAccResource_ProLdapServer_PartialMappingsGating(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ldap-gate-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLdapServerDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Active Directory"
+							hostname            = "ldap.acc-gate.example.com"
+							authentication_type = "none"
+						}
+						mappings_for_users = {
+							user_mappings = {
+								object_class_limitation = "any"
+								search_scope            = "All Subtrees"
+								username                = "uid"
+							}
+						}
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.username", "uid"),
+					// Undeclared sub-blocks (echoed by the server) must be gated out.
+					resource.TestCheckNoResourceAttr(ldapServerResource, "mappings_for_users.user_group_mappings.group_name"),
+					resource.TestCheckNoResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.membership_location"),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Active Directory"
+							hostname            = "ldap.acc-gate.example.com"
+							authentication_type = "none"
+						}
+						mappings_for_users = {
+							user_group_membership_mappings = {
+								membership_location     = "group object"
+								object_class_limitation = "any"
+								object_classes          = "posixGroup"
+								search_base             = "OU=Groups,DC=example,DC=com"
+								search_scope            = "All Subtrees"
+								username_mapping        = "uid"
+								group_id_mapping        = "gidNumber"
+							}
+						}
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// user_mappings was declared in step 1, dropped here → absent.
+					resource.TestCheckNoResourceAttr(ldapServerResource, "mappings_for_users.user_mappings.username"),
+					// Membership "Other-mode" fields round-trip under a real location.
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.membership_location", "group object"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.object_classes", "posixGroup"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.username_mapping", "uid"),
+					resource.TestCheckResourceAttr(ldapServerResource, "mappings_for_users.user_group_membership_mappings.group_id_mapping", "gidNumber"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProLdapServer_AccountForbiddenForNone asserts the
+// account-vs-auth cross-field validator rejects an account block for an
+// anonymous bind.
+func TestAccResource_ProLdapServer_AccountForbiddenForNone(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = "tf-acc-ldap-bad"
+							directory_service   = "Active Directory"
+							hostname            = "ldap.example.com"
+							authentication_type = "none"
+							account = {
+								distinguished_username = "CN=svc"
+							}
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`account forbidden for anonymous bind`),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProLdapServer_AccountRequiredForSimple asserts the validator
+// requires an account block for a non-anonymous bind.
+func TestAccResource_ProLdapServer_AccountRequiredForSimple(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = "tf-acc-ldap-bad"
+							directory_service   = "Active Directory"
+							hostname            = "ldap.example.com"
+							authentication_type = "simple"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`account required for authenticated bind`),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProLdapServer_InvalidDirectoryService asserts the OneOf
+// validator blocks an unknown server_type (which the server would silently
+// coerce to Active Directory).
+func TestAccResource_ProLdapServer_InvalidDirectoryService(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name      = "tf-acc-ldap-bad"
+							directory_service = "Microsoft Active Directory"
+							hostname          = "ldap.example.com"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`Attribute connection_settings.directory_service value must be one of`),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProLdapServer_InvalidReferralResponse asserts the OneOf
+// validator blocks a non-lowercase referral_response (the server lower-cases
+// it, which would otherwise be an inconsistent-result-after-apply).
+func TestAccResource_ProLdapServer_InvalidReferralResponse(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name      = "tf-acc-ldap-bad"
+							directory_service = "Active Directory"
+							hostname          = "ldap.example.com"
+							referral_response = "Follow"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`value must be one of`),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProLdapServer_InvalidAuthType asserts the OneOf validator
+// preserves the load-bearing mixed case of the authentication_type values.
+func TestAccResource_ProLdapServer_InvalidAuthType(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = "tf-acc-ldap-bad"
+							directory_service   = "Active Directory"
+							hostname            = "ldap.example.com"
+							authentication_type = "Simple"
+							account = {
+								distinguished_username = "CN=svc"
+							}
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`value must be one of`),
+			},
+		},
+	})
+}
