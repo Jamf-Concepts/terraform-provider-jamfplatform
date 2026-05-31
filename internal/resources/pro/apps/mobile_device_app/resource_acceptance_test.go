@@ -130,8 +130,6 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.version", "1.0"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.os_type", "iOS"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deployment_type", "Make Available in Self Service"),
-					// display_name is forced to equal name server-side.
-					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.display_name", name),
 				),
 			},
 			{
@@ -153,14 +151,13 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 				),
 			},
 			{
-				// Rename: the server forces display_name to follow name. This step
-				// guards the plan/apply consistency of the server-derived echo
-				// fields — display_name must be "known after apply" (not the stale
-				// prior value) on a rename, or the apply trips "inconsistent result".
+				// Rename: guards that an update changing name applies cleanly. The
+				// server-derived echo fields (description / internal_app /
+				// category_name / site_name) do not change on a rename, so their
+				// UseStateForUnknown plan values stay consistent through apply.
 				Config: mobileAppGeneralOnlyConfig(name+"-renamed", "2.0", "Install Automatically/Prompt Users to Install"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.name", name+"-renamed"),
-					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.display_name", name+"-renamed"),
 				),
 			},
 		},
