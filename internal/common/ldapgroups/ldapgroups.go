@@ -89,6 +89,40 @@ func Resolve(ctx context.Context, c Searcher, name string, ldapServerID int) (*G
 	}
 }
 
+// ResolveByName looks up every directory group whose name EXACTLY matches the
+// given name, across all LDAP servers. Unlike Resolve it is server-agnostic:
+// it serves the classic scope surface, where directory_service_user_group_names
+// carry a name only (no server id), so a name that exists on any configured
+// server is valid.
+//
+// Returns the (possibly empty) slice of exact-name matches, or an error only
+// when the underlying search fails. An empty result is not an error — callers
+// decide whether "no match" is a problem.
+func ResolveByName(ctx context.Context, c Searcher, name string) ([]Group, error) {
+	if name == "" {
+		return nil, nil
+	}
+	res, err := c.SearchLdapGroupsV1(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("searching directory groups for %q: %w", name, err)
+	}
+	var matches []Group
+	if res != nil {
+		for _, g := range res.Results {
+			if g.Name == name {
+				matches = append(matches, Group{
+					ID:                g.ID,
+					Name:              g.Name,
+					LdapServerID:      g.LdapServerID,
+					DistinguishedName: g.DistinguishedName,
+					UUID:              g.UUID,
+				})
+			}
+		}
+	}
+	return matches, nil
+}
+
 // Validate confirms a (name, ldapServerID, groupID) triple refers to a real
 // directory group. It resolves by name+server and checks the resolved id equals
 // the supplied groupID. Returns nil when consistent, ErrGroupNotFound /

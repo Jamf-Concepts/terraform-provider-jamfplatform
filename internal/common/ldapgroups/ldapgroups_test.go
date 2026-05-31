@@ -108,3 +108,45 @@ func TestValidate(t *testing.T) {
 		t.Errorf("mismatched id should be a mismatch error, got %v", err)
 	}
 }
+
+func TestResolveByName_ExactMatchesAcrossServers(t *testing.T) {
+	// "Admins" exists on servers 31 and 42 — both valid for name-only
+	// (server-agnostic) scope use; the contains-match "Harbinger_Admins" is not.
+	f := &fakeSearcher{results: sampleGroups()}
+	got, err := ResolveByName(context.Background(), f, "Admins")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 exact matches across servers, got %d: %+v", len(got), got)
+	}
+	if f.gotQ != "Admins" {
+		t.Errorf("search query = %q, want Admins", f.gotQ)
+	}
+}
+
+func TestResolveByName_NoMatch(t *testing.T) {
+	f := &fakeSearcher{results: sampleGroups()}
+	got, err := ResolveByName(context.Background(), f, "Nonexistent")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no matches, got %+v", got)
+	}
+}
+
+func TestResolveByName_SearchError(t *testing.T) {
+	f := &fakeSearcher{err: errors.New("boom")}
+	if _, err := ResolveByName(context.Background(), f, "Admins"); err == nil {
+		t.Fatal("expected error when search fails")
+	}
+}
+
+func TestResolveByName_EmptyName(t *testing.T) {
+	f := &fakeSearcher{results: sampleGroups()}
+	got, err := ResolveByName(context.Background(), f, "")
+	if err != nil || got != nil {
+		t.Fatalf("empty name should return (nil, nil), got (%v, %v)", got, err)
+	}
+}
