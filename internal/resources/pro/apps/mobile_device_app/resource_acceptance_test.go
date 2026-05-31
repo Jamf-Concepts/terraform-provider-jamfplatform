@@ -147,6 +147,17 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.deployment_type", "Install Automatically/Prompt Users to Install"),
 				),
 			},
+			{
+				// Rename: the server forces display_name to follow name. This step
+				// guards the plan/apply consistency of the server-derived echo
+				// fields — display_name must be "known after apply" (not the stale
+				// prior value) on a rename, or the apply trips "inconsistent result".
+				Config: mobileAppGeneralOnlyConfig(name+"-renamed", "2.0", "Install Automatically/Prompt Users to Install"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.name", name+"-renamed"),
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.display_name", name+"-renamed"),
+				),
+			},
 		},
 	})
 }
