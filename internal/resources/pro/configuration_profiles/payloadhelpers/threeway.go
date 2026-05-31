@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // ThreeWayDecision is the outcome of comparing a plan's payload to two
@@ -140,11 +142,11 @@ func structuralEqual(a, b any) bool {
 		}
 		return slices.EqualFunc(av, bv, structuralEqual)
 	case uint64:
-		return numericEqual(int64(av), b)
+		return plisthelpers.NumericEqual(int64(av), b)
 	case int64:
-		return numericEqual(av, b)
+		return plisthelpers.NumericEqual(av, b)
 	case int:
-		return numericEqual(int64(av), b)
+		return plisthelpers.NumericEqual(int64(av), b)
 	default:
 		return a == b
 	}

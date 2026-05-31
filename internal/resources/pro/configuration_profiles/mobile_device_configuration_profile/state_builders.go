@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
@@ -74,7 +75,7 @@ func flattenGeneral(g *proclassic.MobileDeviceConfigurationProfileGeneral, state
 			}
 		}
 		if !keep {
-			state.Payloads = types.StringValue(string(payloadhelpers.CanonicalisePlistXML([]byte(server))))
+			state.Payloads = types.StringValue(string(plisthelpers.CanonicalisePlistXML([]byte(server))))
 		}
 	}
 	// Wire element is <deployment_method>; TF attribute is distribution_method (UI-canonical).

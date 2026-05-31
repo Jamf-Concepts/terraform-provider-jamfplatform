@@ -11,17 +11,18 @@ import (
 
 // preferencesNewlineSemanticEquality suppresses a plan diff on
 // app_configuration.preferences when the only difference between the prior state
-// and the planned config is newline style (CRLF vs LF). Jamf Pro round-trips
-// provider-authored content verbatim, but UI-authored or imported apps store
-// CRLF; without this, an LF-authored config would permadiff against a CRLF
-// server value. Real content edits still surface — only newline-only differences
-// are collapsed (to the prior state value, so the wire bytes stay stable).
+// and the planned config is newline style (CRLF vs LF) or a trailing newline.
+// Jamf Pro round-trips the content but strips the trailing newline and stores
+// CRLF for UI-authored/imported apps; without this, an LF-authored or heredoc
+// (`<<-EOT`, trailing newline) config would permadiff against the server value.
+// Real content edits still surface — only those normalisations are collapsed
+// (to the prior state value, so the wire bytes stay stable).
 type preferencesNewlineSemanticEquality struct{}
 
 var _ planmodifier.String = preferencesNewlineSemanticEquality{}
 
 func (preferencesNewlineSemanticEquality) Description(_ context.Context) string {
-	return "Treats CRLF and LF newlines as equivalent so newline-only differences do not produce a diff."
+	return "Treats CRLF/LF and a trailing newline as equivalent so those differences do not produce a diff."
 }
 
 func (m preferencesNewlineSemanticEquality) MarkdownDescription(ctx context.Context) string {
@@ -37,7 +38,7 @@ func (preferencesNewlineSemanticEquality) PlanModifyString(_ context.Context, re
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
-	if normalizeNewlines(req.StateValue.ValueString()) == normalizeNewlines(req.ConfigValue.ValueString()) {
+	if preferencesEqual(req.StateValue.ValueString(), req.ConfigValue.ValueString()) {
 		resp.PlanValue = req.StateValue
 	}
 }

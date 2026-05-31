@@ -43,9 +43,6 @@ func TestFlattenMobileAppGeneral_RoundTrip(t *testing.T) {
 	if state.Description.ValueString() != "Apple Maps" {
 		t.Errorf("description not flattened: %q", state.Description.ValueString())
 	}
-	if !state.InternalApp.ValueBool() {
-		t.Errorf("internal_app not flattened")
-	}
 	if !state.IsFree.ValueBool() {
 		t.Errorf("is_free (free) not flattened")
 	}

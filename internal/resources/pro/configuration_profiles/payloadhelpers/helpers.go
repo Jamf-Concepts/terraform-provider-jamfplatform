@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"howett.net/plist"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // Server-controlled keys skipped on both sides before diff comparison.
@@ -86,53 +88,6 @@ var (
 	}
 )
 
-// ParsePlist decodes a mobileconfig XML plist into a Go map. The returned
-// int is howett.net/plist's format identifier (plist.XMLFormat,
-// plist.BinaryFormat, etc.) — typed as int because the library exposes
-// formats as untyped int constants.
-func ParsePlist(raw []byte) (map[string]any, int, error) {
-	var out map[string]any
-	format, err := plist.Unmarshal(raw, &out)
-	if err != nil {
-		return nil, 0, fmt.Errorf("parsing plist: %w", err)
-	}
-	return out, format, nil
-}
-
-// MarshalPlist serialises a plist dict back to XML form. Used by the input
-// builder when re-emitting a payload after identifier injection.
-func MarshalPlist(m map[string]any) ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := plist.NewEncoderForFormat(buf, plist.XMLFormat)
-	enc.Indent("\t")
-	if err := enc.Encode(m); err != nil {
-		return nil, fmt.Errorf("encoding plist: %w", err)
-	}
-	return buf.Bytes(), nil
-}
-
-// CanonicalisePlistXML parses a mobileconfig plist and re-emits it as
-// tab-indented XML. Used on the state-builder side to normalise Jamf's
-// compact single-line wire form into the same shape user-authored
-// payloads typically take (Apple's standard pretty-printed mobileconfig).
-// When state and plan share formatting, Terraform's diff narrows from a
-// whole-payload swap to the specific keys that changed.
-//
-// Falls back to returning the input unchanged if the plist fails to
-// parse — the caller still has a usable string, and the legibility
-// improvement is a UX nicety, not a correctness gate.
-func CanonicalisePlistXML(raw []byte) []byte {
-	parsed, _, err := ParsePlist(raw)
-	if err != nil {
-		return raw
-	}
-	out, err := MarshalPlist(parsed)
-	if err != nil {
-		return raw
-	}
-	return out
-}
-
 // MaskPayload returns a deep-cloned representation of the input plist with
 // every server-controlled key dropped and every string value trimmed. The
 // result is suitable for equality comparison against another masked payload
@@ -142,7 +97,7 @@ func CanonicalisePlistXML(raw []byte) []byte {
 // See STYLE_GUIDE.md §Configuration profile payload diff suppression for
 // the diff-class catalogue this mask is designed to neutralise.
 func MaskPayload(raw []byte) (map[string]any, error) {
-	parsed, _, err := ParsePlist(raw)
+	parsed, _, err := plisthelpers.ParsePlist(raw)
 	if err != nil {
 		return nil, err
 	}
@@ -307,13 +262,13 @@ func PayloadsSemanticallyEqual(a, b []byte) (bool, error) {
 // LenientEqualPlist compares two parsed-and-masked plist trees with
 // intersection semantics: dict keys present on only one side are ignored;
 // shared keys must compare equal. Arrays compare positionally. Scalars
-// compare via numericEqual for ints (howett.net/plist returns int64 or
+// compare via plisthelpers.NumericEqual for ints (howett.net/plist returns int64 or
 // uint64 depending on sign).
 //
 // Exception: PayloadContent[i] entries whose PayloadType is in
 // mcxLikePayloadTypes (e.g. com.apple.ManagedClient.preferences — Jamf
 // Pro's "Application & Custom Settings") get their inner `.PayloadContent`
-// child strict-compared via strictEqual. That subtree is opaque
+// child strict-compared via plisthelpers.Equal. That subtree is opaque
 // user-authored vendor preference data; admin-UI key add/remove inside it
 // is real drift and must surface on the next plan. Remaining keys at the
 // MCX entry depth still use intersection so per-payload metadata defaults
@@ -340,7 +295,7 @@ func LenientEqualPlist(a, b any) bool {
 				if aHas != bHas {
 					return false
 				}
-				if aHas && !strictEqual(ai, bi) {
+				if aHas && !plisthelpers.Equal(ai, bi) {
 					return false
 				}
 				for k, va := range av {
@@ -376,70 +331,13 @@ func LenientEqualPlist(a, b any) bool {
 		}
 		return true
 	case uint64:
-		return numericEqual(int64(av), b)
+		return plisthelpers.NumericEqual(int64(av), b)
 	case int64:
-		return numericEqual(av, b)
+		return plisthelpers.NumericEqual(av, b)
 	case int:
-		return numericEqual(int64(av), b)
+		return plisthelpers.NumericEqual(int64(av), b)
 	default:
 		return a == b
-	}
-}
-
-// strictEqual is a structural-equality compare for the trimmed plist tree.
-// Unlike LenientEqualPlist, asymmetric keysets fail. Used for opaque
-// user-content subtrees (see mcxLikePayloadTypes) where every key is
-// author-controlled — admin-UI key add/remove inside the subtree is real
-// drift, not Jamf-side metadata injection.
-func strictEqual(a, b any) bool {
-	if a == nil || b == nil {
-		return a == nil && b == nil
-	}
-	switch av := a.(type) {
-	case map[string]any:
-		bv, ok := b.(map[string]any)
-		if !ok || len(av) != len(bv) {
-			return false
-		}
-		for k, va := range av {
-			vb, exists := bv[k]
-			if !exists || !strictEqual(va, vb) {
-				return false
-			}
-		}
-		return true
-	case []any:
-		bv, ok := b.([]any)
-		if !ok || len(av) != len(bv) {
-			return false
-		}
-		for i := range av {
-			if !strictEqual(av[i], bv[i]) {
-				return false
-			}
-		}
-		return true
-	case uint64:
-		return numericEqual(int64(av), b)
-	case int64:
-		return numericEqual(av, b)
-	case int:
-		return numericEqual(int64(av), b)
-	default:
-		return a == b
-	}
-}
-
-func numericEqual(a int64, b any) bool {
-	switch bv := b.(type) {
-	case uint64:
-		return a >= 0 && uint64(a) == bv
-	case int64:
-		return a == bv
-	case int:
-		return a == int64(bv)
-	default:
-		return false
 	}
 }
 
@@ -455,7 +353,7 @@ func InjectTopLevelIdentifierValues(newPayload []byte, uuid, identifier string) 
 	if uuid == "" && identifier == "" {
 		return newPayload, nil
 	}
-	next, format, err := ParsePlist(newPayload)
+	next, format, err := plisthelpers.ParsePlist(newPayload)
 	if err != nil {
 		return nil, fmt.Errorf("parsing new payload for identifier injection: %w", err)
 	}
@@ -481,7 +379,7 @@ func InjectTopLevelIdentifiers(newPayload, existingPayload []byte) ([]byte, erro
 	if len(existingPayload) == 0 {
 		return newPayload, nil
 	}
-	exist, _, err := ParsePlist(existingPayload)
+	exist, _, err := plisthelpers.ParsePlist(existingPayload)
 	if err != nil {
 		return newPayload, nil //nolint:nilerr // best-effort
 	}
