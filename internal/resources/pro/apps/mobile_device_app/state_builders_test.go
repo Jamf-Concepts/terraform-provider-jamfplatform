@@ -21,7 +21,6 @@ func TestFlattenMobileAppGeneral_RoundTrip(t *testing.T) {
 		Version:        new("1.0"),
 		BundleID:       new("com.apple.Maps"),
 		OsType:         new(osTypeIOS),
-		DisplayName:    new("Maps"),
 		Description:    new("Apple Maps"),
 		InternalApp:    new(true),
 		Free:           new(true),
@@ -40,9 +39,6 @@ func TestFlattenMobileAppGeneral_RoundTrip(t *testing.T) {
 	}
 	if state.OsType.ValueString() != osTypeIOS {
 		t.Errorf("os_type: got %q", state.OsType.ValueString())
-	}
-	if state.DisplayName.ValueString() != "Maps" {
-		t.Errorf("display_name not flattened: %q", state.DisplayName.ValueString())
 	}
 	if state.Description.ValueString() != "Apple Maps" {
 		t.Errorf("description not flattened: %q", state.Description.ValueString())

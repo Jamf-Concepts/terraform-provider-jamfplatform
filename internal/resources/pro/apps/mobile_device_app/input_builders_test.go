@@ -65,8 +65,8 @@ func TestBuildMobileAppGeneral(t *testing.T) {
 		t.Errorf("site id not mapped: %+v", g.Site)
 	}
 	// Server-managed fields are never written from the model.
-	if g.DisplayName != nil || g.Description != nil || g.InternalApp != nil {
-		t.Errorf("server-managed fields must not be written: %+v %+v %+v", g.DisplayName, g.Description, g.InternalApp)
+	if g.Description != nil || g.InternalApp != nil {
+		t.Errorf("server-managed fields must not be written: %+v %+v", g.Description, g.InternalApp)
 	}
 }
 

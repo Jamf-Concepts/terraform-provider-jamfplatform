@@ -61,7 +61,7 @@ func TestMobileAppResource_Schema(t *testing.T) {
 			t.Errorf("general.%s must be required", name)
 		}
 	}
-	for _, name := range []string{"display_name", "description", "internal_app", "category_name", "site_name"} {
+	for _, name := range []string{"description", "internal_app", "category_name", "site_name"} {
 		a, ok := general.Attributes[name]
 		if !ok {
 			t.Errorf("general missing %q", name)

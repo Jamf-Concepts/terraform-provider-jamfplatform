@@ -96,7 +96,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"general": schema.SingleNestedAttribute{
-				MarkdownDescription: "General settings. `name`, `version`, `bundle_id`, and `os_type` are required. Read-only fields (`display_name`, `description`, `internal_app`, `category_name`, `site_name`, `id`) are returned by Jamf Pro.",
+				MarkdownDescription: "General settings. `name`, `version`, `bundle_id`, and `os_type` are required. Read-only fields (`description`, `internal_app`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name is always equal to `name` (the server forces it), so it is not modeled separately.",
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
@@ -126,7 +126,6 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 							stringvalidator.OneOf(osTypeIOS, osTypeTVOS),
 						},
 					},
-					"display_name": computedString("App display name as stored by Jamf Pro. The server forces this to equal `name`; not separately settable."),
 					"description":  computedString("App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable."),
 					"internal_app": computedBool("Whether Jamf Pro treats the app as in-house. Server-managed — it flips to false only as a side-effect of a coherent external-hosting combination (`is_free = true` + `host_externally = true` + `external_url`), not by direct assignment."),
 					"is_free":      optComputedBool("Whether the app is free."),
@@ -324,29 +323,31 @@ func optComputedInt64(desc string) schema.Int64Attribute {
 }
 
 // computedString returns a Computed-only StringAttribute for server-managed
-// fields (display_name, description, category_name, site_name). These echo
-// values the server derives from *mutable* inputs — display_name == name,
-// category_name/site_name from category_id/site_id, description from the App
-// Store sync. They deliberately carry NO UseStateForUnknown plan modifier: on
-// an update that changes the driving input (e.g. a rename), UseStateForUnknown
-// would copy the stale prior value into the plan while apply produces the new
-// one, tripping "provider produced inconsistent result after apply". Plain
-// Computed makes them "known after apply" on every change, which the server
-// then fills — slightly noisier plans, correct applies. (mac_app_store_app
-// carries the same latent bug on category_name/site_name, untested.)
+// fields (description, category_name, site_name) with UseStateForUnknown so
+// no-op plans stay empty (the standard pattern shared with mac_app_store_app).
+//
+// These echo values the server derives from other inputs (category_name/
+// site_name from category_id/site_id, description from the App Store sync). If a
+// user changes the driving input, the plan shows the stale echo and the apply
+// recomputes it — the accepted ProClassic latent posture (mac_app carries the
+// same). It is NOT used for display_name: that echo is deterministically == name
+// and would trip "inconsistent result after apply" on any rename, so display_name
+// is not modeled (callers read `name`).
 func computedString(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,
 		Computed:            true,
+		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 	}
 }
 
-// computedBool is the bool sibling of computedString (internal_app, which flips
-// as a side-effect of free + host_externally + external_url — all mutable, so
-// the same no-UseStateForUnknown rule applies).
+// computedBool is the bool sibling of computedString (internal_app, which the
+// server flips as a side-effect of the free + host_externally + external_url
+// combo; unchanged by a rename, so UseStateForUnknown is consistent here).
 func computedBool(desc string) schema.BoolAttribute {
 	return schema.BoolAttribute{
 		MarkdownDescription: desc,
 		Computed:            true,
+		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 	}
 }

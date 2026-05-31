@@ -69,8 +69,8 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	// state is unset (e.g. import of an app whose os_type was set via PUT).
 	state.OsType = preferCurrentStringPointer(g.OsType, state.OsType)
 
-	// Server-managed read-only fields.
-	state.DisplayName = helpers.StringPointerValueOrNull(g.DisplayName)
+	// Server-managed read-only fields. (display_name is not modeled — it is
+	// always == name server-side.)
 	state.Description = helpers.StringPointerValueOrNull(g.Description)
 	state.InternalApp = helpers.BoolPointerValueOrNull(g.InternalApp)
 
