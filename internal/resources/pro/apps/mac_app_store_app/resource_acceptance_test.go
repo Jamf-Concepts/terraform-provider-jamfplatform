@@ -271,6 +271,64 @@ func TestAccResource_ProMacApp_AllJssUsersConflict(t *testing.T) {
 	})
 }
 
+// macAppCategoryFlipConfig builds an app whose category points at one of two
+// jamfplatform_pro_category fixtures (selectedCat is "one" or "two").
+func macAppCategoryFlipConfig(name, suffix, selectedCat string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_category" "one" {
+			name     = "tf-acc-macapp-cat1-%[2]s"
+			priority = 9
+		}
+
+		resource "jamfplatform_pro_category" "two" {
+			name     = "tf-acc-macapp-cat2-%[2]s"
+			priority = 9
+		}
+
+		resource "jamfplatform_pro_mac_app_store_app" "test" {
+			general = {
+				name        = %[1]q
+				version     = "1.0"
+				bundle_id   = "com.example.tfacc.macapp"
+				url         = "https://apps.apple.com/app/id000000001"
+				category_id = jamfplatform_pro_category.%[3]s.id
+			}
+		}
+	`, name, suffix, selectedCat)
+}
+
+// TestAccResource_ProMacApp_CategoryFlip flips category_id between two category
+// fixtures. category_name is server-derived from category_id; the second step
+// asserts it re-resolves to the new category, guarding against the derived-name
+// plan-modifier regression (UseStateForUnknown would pin the stale name and
+// trip "produced inconsistent result after apply").
+func TestAccResource_ProMacApp_CategoryFlip(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-macapp-cat-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckMacAppDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: macAppCategoryFlipConfig(name, suffix, "one"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(macAppResourceAddr, "general.category_id", "jamfplatform_pro_category.one", "id"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "general.category_name", "tf-acc-macapp-cat1-"+suffix),
+				),
+			},
+			{
+				Config: macAppCategoryFlipConfig(name, suffix, "two"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(macAppResourceAddr, "general.category_id", "jamfplatform_pro_category.two", "id"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "general.category_name", "tf-acc-macapp-cat2-"+suffix),
+				),
+			},
+		},
+	})
+}
+
 // Jamf Parent App Store metadata, captured from the iTunes Lookup API
 // (https://itunes.apple.com/lookup?id=1458797105) on 2026-05-31. These are
 // stored verbatim by /macapplications (no App Store resolution), so they are
