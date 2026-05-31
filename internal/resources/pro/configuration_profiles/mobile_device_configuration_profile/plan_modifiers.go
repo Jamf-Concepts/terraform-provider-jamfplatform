@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/payloadhelpers"
 )
@@ -70,7 +71,7 @@ func reconcileReadDrift(ctx context.Context, priv privatePayloadReader, state *R
 	if err != nil || len(lastCanonical) == 0 {
 		return diags
 	}
-	canonicalisedServer := payloadhelpers.CanonicalisePlistXML(rawServerCanonical)
+	canonicalisedServer := plisthelpers.CanonicalisePlistXML(rawServerCanonical)
 	equal, err := payloadhelpers.PayloadsStructurallyEqual(lastCanonical, canonicalisedServer)
 	if err != nil {
 		diags.AddWarning("Read-side drift compare failed; leaving lenient self-healing in place", err.Error())
@@ -108,7 +109,7 @@ func writePrivatePayloadRefs(ctx context.Context, w privatePayloadWriter, userAu
 		diags.Append(w.SetKey(ctx, privateKeyLastInput, encoded)...)
 	}
 	if len(rawServerCanonical) > 0 {
-		canonicalised := payloadhelpers.CanonicalisePlistXML(rawServerCanonical)
+		canonicalised := plisthelpers.CanonicalisePlistXML(rawServerCanonical)
 		encoded, err := encodePrivatePayload(canonicalised)
 		if err != nil {
 			diags.AddError("Failed to encode last-applied canonical for private state", err.Error())
@@ -127,7 +128,7 @@ func writePrivateServerNow(ctx context.Context, w privatePayloadWriter, rawServe
 	if w == nil || len(rawServerCanonical) == 0 {
 		return diags
 	}
-	canonicalised := payloadhelpers.CanonicalisePlistXML(rawServerCanonical)
+	canonicalised := plisthelpers.CanonicalisePlistXML(rawServerCanonical)
 	encoded, err := encodePrivatePayload(canonicalised)
 	if err != nil {
 		diags.AddError("Failed to encode server-now canonical for private state", err.Error())
