@@ -3,15 +3,15 @@
 page_title: "jamfplatform_pro_mobile_device_app Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro mobile device app (the classic /mobiledeviceapplications endpoint — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar). The resource models the app's metadata; there is no IPA binary-upload endpoint, so in-house binary upload is not modeled. general.name, general.version, general.bundle_id, and general.os_type are required. os_type is sent on every write because the server demands it on a PUT to an in-house app. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint drops them.
-  Update is a partial-merge: the provider sends the full plan payload on every update, so in-place edits converge cleanly, but removing an entire optional block (scope / self_service / vpp / app_configuration) from config retains the previously-stored block server-side. To clear a block, null its individual fields rather than deleting the block.
+  Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata; uploading an in-house binary (IPA) is not supported. general.name, general.version, and general.bundle_id are required. general.os_type is required only for in-house apps; App Store apps (with an itunes_store_url) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.
+  Updates are merged, not replaced: removing an entire optional block (scope / self_service / vpp / app_configuration) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
 ---
 
 # jamfplatform_pro_mobile_device_app (Resource)
 
-Manages a Jamf Pro mobile device app (the classic `/mobiledeviceapplications` endpoint — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar). The resource models the app's **metadata**; there is no IPA binary-upload endpoint, so in-house binary upload is not modeled. `general.name`, `general.version`, `general.bundle_id`, and `general.os_type` are required. `os_type` is sent on every write because the server demands it on a PUT to an in-house app. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint drops them.
+Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's **metadata**; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version`, and `general.bundle_id` are required. `general.os_type` is required only for in-house apps; App Store apps (with an `itunes_store_url`) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.
 
-**Update is a partial-merge**: the provider sends the full plan payload on every update, so in-place edits converge cleanly, but removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config retains the previously-stored block server-side. To clear a block, null its individual fields rather than deleting the block.
+**Updates are merged, not replaced**: removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
 
 ## Example Usage
 
@@ -98,15 +98,15 @@ resource "jamfplatform_pro_mobile_device_app" "automatic" {
 
 ### Required
 
-- `general` (Attributes) General settings. `name`, `version`, `bundle_id`, and `os_type` are required. Read-only fields (`description`, `internal_app`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name is always equal to `name` (the server forces it), so it is not modeled separately. (see [below for nested schema](#nestedatt--general))
+- `general` (Attributes) General settings. `name`, `version`, and `bundle_id` are required; `os_type` is required only for in-house apps. Read-only fields (`description`, `internal_app`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name always equals `name`, so it is not modeled separately. (see [below for nested schema](#nestedatt--general))
 
 ### Optional
 
 - `app_configuration` (Attributes) Managed-app configuration. `preferences` carries the app-configuration plist; CRLF and LF newlines are treated as equivalent so an import or admin-UI edit does not permadiff against an LF-authored config. (see [below for nested schema](#nestedatt--app_configuration))
-- `scope` (Attributes) App scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are intentionally absent — the endpoint drops them. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) App scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are not supported for mobile device apps. (see [below for nested schema](#nestedatt--scope))
 - `self_service` (Attributes) Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `vpp` (Attributes) Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title — setting `assign_vpp_device_based_licenses = true` on a non-VPP app returns HTTP 409 "App is not available for device assignment". (see [below for nested schema](#nestedatt--vpp))
+- `vpp` (Attributes) Volume Purchasing (VPP) assignment. `assign_vpp_device_based_licenses` and `vpp_admin_account_id` are writable only for a genuinely VPP-backed title; setting `assign_vpp_device_based_licenses = true` on an app that is not VPP-backed is rejected. (see [below for nested schema](#nestedatt--vpp))
 
 ### Read-Only
 
@@ -118,9 +118,8 @@ resource "jamfplatform_pro_mobile_device_app" "automatic" {
 Required:
 
 - `bundle_id` (String) App bundle identifier (e.g. `com.apple.Maps`). Required on create.
-- `name` (String) App display name. Must be unique within the tenant. The server forces the app's `display_name` to equal this value.
-- `os_type` (String) Operating system the app targets. One of `iOS` or `tvOS`. The server requires this on every write to an in-house app (the common case), so the provider always sends it; it is echoed back on read once set.
-- `version` (String) App version string. Required by the server on create.
+- `name` (String) App display name. Must be unique within the tenant; also used as the app's display name in Self Service.
+- `version` (String) App version string.
 
 Optional:
 
@@ -128,7 +127,7 @@ Optional:
 - `category_id` (String) Jamf Pro category ID. Use `-1` for "No category".
 - `deploy_as_managed_app` (Boolean) Deploy as a managed app (enables managed-app capabilities such as app configuration).
 - `deploy_automatically` (Boolean) Automatically push the app to in-scope devices.
-- `deployment_type` (String) Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Server-defaults to `Make Available in Self Service`.
+- `deployment_type` (String) Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Defaults to `Make Available in Self Service`.
 - `external_url` (String) External / in-house hosting URL. Independent of the App Store URL; setting it flips `host_externally` to true server-side.
 - `host_externally` (Boolean) Host the app externally (in-house hosting). Flips to true automatically when an `external_url` or App Store URL is set.
 - `is_free` (Boolean) Whether the app is free.
@@ -138,6 +137,7 @@ Optional:
 - `keep_app_updated_on_devices` (Boolean) Automatically update the app on managed devices when a new version ships.
 - `keep_description_and_icon_up_to_date` (Boolean) Keep the app description and icon in sync with the App Store listing.
 - `make_available_after_install` (Boolean) Make the app available in Self Service after it is installed automatically.
+- `os_type` (String) Operating system the app targets. One of `iOS` or `tvOS`. Required for in-house apps; App Store apps (those with an `itunes_store_url`) do not need it.
 - `prevent_backup_of_app_data` (Boolean) Prevent the app's data from being backed up to iCloud / iTunes.
 - `remove_app_when_mdm_profile_is_removed` (Boolean) Remove the app from a device when its MDM profile is removed.
 - `require_network_tethered` (Boolean) Require a network-tethered connection to install. Relevant for automatically-deployed apps.
@@ -158,7 +158,7 @@ Read-Only:
 
 Optional:
 
-- `preferences` (String) App-configuration plist content. Round-trips verbatim; newline style (CRLF vs LF) is normalised when comparing.
+- `preferences` (String) App-configuration property list content. Whitespace, indentation, and newline-style differences are ignored when comparing, so reformatting the same configuration does not show as a change.
 
 
 <a id="nestedatt--scope"></a>

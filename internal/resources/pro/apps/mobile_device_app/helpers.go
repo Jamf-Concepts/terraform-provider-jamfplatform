@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 // deploymentTypeSelfService and deploymentTypeAutomatic are the two wire values
@@ -165,4 +166,38 @@ func buildMobileNotification(enabled types.Bool) *proclassic.NotificationValue {
 // does not permadiff against an LF-authored config.
 func normalizeNewlines(s string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
+}
+
+// preferencesEqual reports whether two app_configuration.preferences values are
+// semantically equal. preferences is an Apple property list; the primary
+// comparison parses both as plist and compares the decoded structures
+// (plisthelpers.SemanticallyEqual), which erases every formatting difference —
+// whitespace, indentation, line endings, the server's stripped trailing newline,
+// and dict key order — generically, rather than guessing at the specific
+// normalisations the server applies. Falls back to a string normalise
+// (CRLF→LF + trailing-newline trim) when either side is not valid plist.
+func preferencesEqual(a, b string) bool {
+	if eq, ok := plisthelpers.SemanticallyEqual([]byte(a), []byte(b)); ok {
+		return eq
+	}
+	return normalizePreferences(a) == normalizePreferences(b)
+}
+
+// normalizePreferences is the string-level fallback normaliser for
+// preferencesEqual when the content is not valid plist: CRLF→LF plus a
+// trailing-newline trim (the server strips the trailing newline on round-trip).
+func normalizePreferences(s string) string {
+	return strings.TrimRight(normalizeNewlines(s), "\n")
+}
+
+// preservePreferences keeps the caller's configured preferences when the server
+// value is semantically equal (see preferencesEqual). This makes apply
+// consistent on create/update (the flattened value stays equal to the planned
+// config) while still surfacing a genuine server-side content change as drift.
+func preservePreferences(api *string, current types.String) types.String {
+	if api != nil && helpers.IsConfiguredValue(current) &&
+		preferencesEqual(*api, current.ValueString()) {
+		return current
+	}
+	return helpers.StringPointerValueOrNull(api)
 }
