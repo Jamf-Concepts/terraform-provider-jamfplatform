@@ -1,0 +1,198 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package ldap_server
+
+import (
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+// Wire enum values for the Jamf ProClassic /ldapservers endpoint, captured by
+// the 2026-05-31 wire probe (see spike/LDAP_SERVER_SPIKE.md). The OneOf
+// validators built from these block values the server silently normalises —
+// unknown server_type falls back to "Active Directory", and referral_response
+// is lower-cased — so divergent input can't reach apply.
+const (
+	// server_type. UI "Directory Service": "Microsoft's Active Directory" →
+	// Active Directory, "Apple's Open Directory" → Open Directory, "Novell's
+	// eDirectory" → eDirectory, "Configure Manually" → Custom.
+	serverTypeActiveDirectory = "Active Directory"
+	serverTypeOpenDirectory   = "Open Directory"
+	serverTypeEDirectory      = "eDirectory"
+	serverTypeCustom          = "Custom"
+
+	// authentication_type. Mixed case is load-bearing: none/simple are
+	// lower-case but CRAM-MD5/DIGEST-MD5 are upper-case on the wire.
+	authTypeNone      = "none"
+	authTypeSimple    = "simple"
+	authTypeCRAMMD5   = "CRAM-MD5"
+	authTypeDigestMD5 = "DIGEST-MD5"
+
+	// referral_response. Empty string = "Use default from LDAP service".
+	referralDefault = ""
+	referralFollow  = "follow"
+	referralIgnore  = "ignore"
+
+	// map_object_class_to_any_or_all. UI "Object Class Limitation".
+	objectClassAny = "any"
+	objectClassAll = "all"
+
+	// search_scope.
+	searchScopeAllSubtrees    = "All Subtrees"
+	searchScopeFirstLevelOnly = "First Level Only"
+
+	// user_group_membership_stored_in. UI "Membership Location" dropdown shows
+	// Group Object / User Object / Other, but only these two values round-trip
+	// on the wire — sending "Other" is silently coerced to "group object"
+	// (wire-probe 2026-05-31). "Other" is a UI-only display state for a config
+	// that doesn't match either template; its extra fields (object_classes,
+	// search_base, username_mapping, group_id_mapping) are plain optional
+	// attributes here and round-trip regardless of membership_location.
+	membershipGroupObject = "group object"
+	membershipUserObject  = "user object"
+)
+
+// Alphabetised OneOf value lists for diff-stable schema docs.
+var (
+	allServerTypes         = []string{serverTypeActiveDirectory, serverTypeCustom, serverTypeEDirectory, serverTypeOpenDirectory}
+	allAuthenticationTypes = []string{authTypeCRAMMD5, authTypeDigestMD5, authTypeNone, authTypeSimple}
+	allReferralResponses   = []string{referralDefault, referralFollow, referralIgnore}
+	allObjectClassLimits   = []string{objectClassAll, objectClassAny}
+	allSearchScopes        = []string{searchScopeAllSubtrees, searchScopeFirstLevelOnly}
+	allMembershipLocations = []string{membershipGroupObject, membershipUserObject}
+)
+
+// optString is an Optional+Computed schema.StringAttribute with the canonical
+// UseStateForUnknown plan modifier. Used for connection / mapping fields the
+// Jamf Pro server populates with a default when omitted: Optional+Computed
+// keeps the server value out of the diff, and UseStateForUnknown keeps the
+// prior state value across refreshes so omitted fields do not flap.
+//
+// Consequence (documented per advisor): because omitted fields fall back to
+// the prior state value, deleting an HCL line for a mapping field does not
+// clear it on the server — consistent with Classic's partial-merge PUT.
+func optString(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers: []planmodifier.String{
+			stringplanmodifier.UseNonNullStateForUnknown(),
+		},
+	}
+}
+
+// optStringOneOf is optString constrained to a fixed set of wire values. The
+// OneOf blocks server-normalised input from reaching apply (which would throw
+// "inconsistent result after apply" because the planned value is known).
+func optStringOneOf(desc string, vals []string) schema.StringAttribute {
+	a := optString(desc)
+	a.Validators = []validator.String{stringvalidator.OneOf(vals...)}
+	return a
+}
+
+// reqString is a Required schema.StringAttribute with a non-empty constraint.
+func reqString(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Required:            true,
+		Validators: []validator.String{
+			stringvalidator.LengthAtLeast(1),
+		},
+	}
+}
+
+// reqStringOneOf is a Required schema.StringAttribute constrained to a fixed
+// set of wire values.
+func reqStringOneOf(desc string, vals []string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Required:            true,
+		Validators: []validator.String{
+			stringvalidator.OneOf(vals...),
+		},
+	}
+}
+
+// optBool is the bool counterpart of optString.
+func optBool(desc string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers: []planmodifier.Bool{
+			boolplanmodifier.UseNonNullStateForUnknown(),
+		},
+	}
+}
+
+// optInt64 is the int64 counterpart of optString.
+func optInt64(desc string) schema.Int64Attribute {
+	return schema.Int64Attribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers: []planmodifier.Int64{
+			int64planmodifier.UseNonNullStateForUnknown(),
+		},
+	}
+}
+
+// computedString is a Computed-only schema.StringAttribute for server-managed
+// echoes the user never sets (e.g. certificates_used).
+func computedString(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+		PlanModifiers: []planmodifier.String{
+			stringplanmodifier.UseNonNullStateForUnknown(),
+		},
+	}
+}
+
+// computedBool is the bool counterpart of computedString.
+func computedBool(desc string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+		PlanModifiers: []planmodifier.Bool{
+			boolplanmodifier.UseNonNullStateForUnknown(),
+		},
+	}
+}
+
+// computedInt64 is the int64 counterpart of computedString.
+func computedInt64(desc string) schema.Int64Attribute {
+	return schema.Int64Attribute{
+		MarkdownDescription: desc,
+		Computed:            true,
+		PlanModifiers: []planmodifier.Int64{
+			int64planmodifier.UseNonNullStateForUnknown(),
+		},
+	}
+}
+
+// int64ValueFromPtr converts a nil-safe *int (the SDK shape) into a TF Int64,
+// mapping nil to null.
+func int64ValueFromPtr(p *int) types.Int64 {
+	if p == nil {
+		return types.Int64Null()
+	}
+	return types.Int64Value(int64(*p))
+}
+
+// accountWoVersion returns the connection.account.password_wo_version value
+// from a model, or a null Int64 when there is no account block.
+func accountWoVersion(m LdapServerResourceModel) types.Int64 {
+	if m.Connection == nil || m.Connection.Account == nil {
+		return types.Int64Null()
+	}
+	return m.Connection.Account.PasswordWoVersion
+}
