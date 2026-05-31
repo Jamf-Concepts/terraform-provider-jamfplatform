@@ -98,7 +98,7 @@ resource "jamfplatform_pro_mobile_device_app" "automatic" {
 
 ### Required
 
-- `general` (Attributes) General settings. `name`, `version`, and `bundle_id` are required; `os_type` is required only for in-house apps. Read-only fields (`description`, `internal_app`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name always equals `name`, so it is not modeled separately. (see [below for nested schema](#nestedatt--general))
+- `general` (Attributes) General settings. `name`, `version`, and `bundle_id` are required; `os_type` is required only for in-house apps. Read-only fields (`description`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name always equals `name`, so it is not modeled separately. (see [below for nested schema](#nestedatt--general))
 
 ### Optional
 
@@ -149,7 +149,6 @@ Read-Only:
 - `category_name` (String) Category display name. Returned by Jamf Pro; not user-settable.
 - `description` (String) App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable.
 - `id` (String) App ID under `general`. Matches the top-level `id`. Returned by Jamf Pro.
-- `internal_app` (Boolean) Whether Jamf Pro treats the app as in-house. Server-managed — it flips to false only as a side-effect of a coherent external-hosting combination (`is_free = true` + `host_externally = true` + `external_url`), not by direct assignment.
 - `site_name` (String) Site display name. Returned by Jamf Pro; not user-settable.
 
 

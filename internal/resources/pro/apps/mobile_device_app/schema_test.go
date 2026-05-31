@@ -67,7 +67,7 @@ func TestMobileAppResource_Schema(t *testing.T) {
 	} else if a.IsRequired() || !a.IsOptional() || !a.IsComputed() {
 		t.Error("general.os_type must be Optional+Computed")
 	}
-	for _, name := range []string{"description", "internal_app", "category_name", "site_name"} {
+	for _, name := range []string{"description", "category_name", "site_name"} {
 		a, ok := general.Attributes[name]
 		if !ok {
 			t.Errorf("general missing %q", name)
