@@ -33,6 +33,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mac_app_store_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/macos_configuration_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/mobile_device_configuration_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment"
@@ -244,6 +245,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		enrollment_customization.NewEnrollmentCustomizationResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
+		mac_app_store_app.NewMacAppResource,
 		macos_configuration_profile.NewResource,
 		mobile_device_configuration_profile.NewResource,
 		network_segment.NewNetworkSegmentResource,
@@ -294,6 +296,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		dock_item.NewDockItemDataSource,
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		ibeacon.NewIbeaconDataSource,
+		mac_app_store_app.NewMacAppDataSource,
 		macos_configuration_profile.NewDataSource,
 		mobile_device_configuration_profile.NewDataSource,
 		network_segment.NewNetworkSegmentDataSource,
@@ -335,6 +338,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		dock_item.NewDockItemListResource,
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		ibeacon.NewIbeaconListResource,
+		mac_app_store_app.NewMacAppListResource,
 		macos_configuration_profile.NewListResource,
 		mobile_device_configuration_profile.NewListResource,
 		network_segment.NewNetworkSegmentListResource,

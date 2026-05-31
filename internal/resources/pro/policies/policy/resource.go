@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
@@ -37,11 +38,16 @@ const minJamfProVersion = ""
 // PolicyResource implements the Terraform resource for Jamf Pro classic policies.
 type PolicyResource struct {
 	client *proclassic.Client
+	// ldapSearcher backs the plan-time scope directory-service user-group
+	// preflight (ModifyPlan). The LDAP group search is a Pro (v1) endpoint, so
+	// it is a separate client from the ProClassic CRUD client. nil until Configure.
+	ldapSearcher ldapgroups.Searcher
 }
 
 var _ resource.Resource = &PolicyResource{}
 var _ resource.ResourceWithImportState = &PolicyResource{}
 var _ resource.ResourceWithIdentity = &PolicyResource{}
+var _ resource.ResourceWithModifyPlan = &PolicyResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -577,11 +583,50 @@ func (r *PolicyResource) Configure(ctx context.Context, req resource.ConfigureRe
 		return
 	}
 	r.client = client
+
+	// Pro (v1) client for the scope directory-service group preflight.
+	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_policy")
+	resp.Diagnostics.Append(proDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if proClient != nil {
+		r.ldapSearcher = proClient
+	}
 }
 
 // ImportState handles import by the Jamf Pro policy ID.
 func (r *PolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// ModifyPlan runs the plan-time directory-service user-group preflight on the
+// policy scope limitations/exclusions — surfacing an unknown group as a clear
+// plan error instead of the apply-time 409 ("Problem matching limitation user
+// group"). Best-effort: search errors / unconfigured LDAP downgrade to a
+// warning. No-op on destroy and when no scope groups are declared.
+func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.ldapSearcher == nil || req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan PolicyResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() || plan.Scope == nil {
+		return
+	}
+	scopeRoot := path.Root("scope")
+	if plan.Scope.Limitations != nil {
+		resp.Diagnostics.Append(scope.ValidateDirectoryServiceUserGroupNames(
+			ctx, r.ldapSearcher, plan.Scope.Limitations.DirectoryServiceUserGroupNames,
+			scopeRoot.AtName("limitations").AtName("directory_service_user_group_names"),
+		)...)
+	}
+	if plan.Scope.Exclusions != nil {
+		resp.Diagnostics.Append(scope.ValidateDirectoryServiceUserGroupNames(
+			ctx, r.ldapSearcher, plan.Scope.Exclusions.DirectoryServiceUserGroupNames,
+			scopeRoot.AtName("exclusions").AtName("directory_service_user_group_names"),
+		)...)
+	}
 }
 
 // optComputedString returns an Optional+Computed StringAttribute with the
