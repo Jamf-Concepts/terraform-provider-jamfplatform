@@ -96,7 +96,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"general": schema.SingleNestedAttribute{
-				MarkdownDescription: "General settings. `name`, `version`, and `bundle_id` are required; `os_type` is required only for in-house apps. Read-only fields (`description`, `internal_app`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name always equals `name`, so it is not modeled separately.",
+				MarkdownDescription: "General settings. `name`, `version`, and `bundle_id` are required; `os_type` is required only for in-house apps. Read-only fields (`description`, `category_name`, `site_name`, `id`) are returned by Jamf Pro. The app's display name always equals `name`, so it is not modeled separately.",
 				Required:            true,
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
@@ -128,9 +128,8 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 							stringvalidator.OneOf(osTypeIOS, osTypeTVOS),
 						},
 					},
-					"description":  computedString("App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable."),
-					"internal_app": computedBool("Whether Jamf Pro treats the app as in-house. Server-managed — it flips to false only as a side-effect of a coherent external-hosting combination (`is_free = true` + `host_externally = true` + `external_url`), not by direct assignment."),
-					"is_free":      optComputedBool("Whether the app is free."),
+					"description": computedString("App description. App-Store-synced when `keep_description_and_icon_up_to_date = true`; not user-settable."),
+					"is_free":     optComputedBool("Whether the app is free."),
 					"deployment_type": schema.StringAttribute{
 						MarkdownDescription: "Install method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`. Defaults to `Make Available in Self Service`.",
 						Optional:            true,
@@ -363,24 +362,17 @@ func optComputedInt64(desc string) schema.Int64Attribute {
 // site_name from category_id/site_id, description from the App Store sync). If a
 // user changes the driving input, the plan shows the stale echo and the apply
 // recomputes it — the accepted ProClassic latent posture (mac_app carries the
-// same). It is NOT used for display_name: that echo is deterministically == name
-// and would trip "inconsistent result after apply" on any rename, so display_name
-// is not modeled (callers read `name`).
+// same).
+//
+// NB: this is intentionally NOT used for display_name (deterministically ==
+// name) or internal_app (server-flips based on the store/hosting inputs) —
+// those echoes would trip "inconsistent result after apply" when their driving
+// input changes, so they are not modeled at all (callers read `name`, and
+// in-house status is derivable from whether a store/external URL is set).
 func computedString(desc string) schema.StringAttribute {
 	return schema.StringAttribute{
 		MarkdownDescription: desc,
 		Computed:            true,
 		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-	}
-}
-
-// computedBool is the bool sibling of computedString (internal_app, which the
-// server flips as a side-effect of the free + host_externally + external_url
-// combo; unchanged by a rename, so UseStateForUnknown is consistent here).
-func computedBool(desc string) schema.BoolAttribute {
-	return schema.BoolAttribute{
-		MarkdownDescription: desc,
-		Computed:            true,
-		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 	}
 }

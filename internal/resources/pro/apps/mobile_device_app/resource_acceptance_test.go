@@ -150,9 +150,9 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 			},
 			{
 				// Rename: guards that an update changing name applies cleanly. The
-				// server-derived echo fields (description / internal_app /
-				// category_name / site_name) do not change on a rename, so their
-				// UseStateForUnknown plan values stay consistent through apply.
+				// server-derived echo fields (description / category_name /
+				// site_name) do not change on a rename, so their UseStateForUnknown
+				// plan values stay consistent through apply.
 				Config: mobileAppGeneralOnlyConfig(name+"-renamed", "2.0", "Install Automatically/Prompt Users to Install"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "general.name", name+"-renamed"),
