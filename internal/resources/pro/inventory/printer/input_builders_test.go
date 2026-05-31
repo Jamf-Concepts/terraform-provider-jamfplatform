@@ -50,8 +50,8 @@ func TestBuildPrinterInput_AllFieldsSet(t *testing.T) {
 	if got.PpdPath == nil || *got.PpdPath != "/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd" {
 		t.Errorf("expected PpdPath, got %v", got.PpdPath)
 	}
-	if got.Shared == nil || *got.Shared != "true" {
-		t.Errorf("expected Shared=\"true\", got %v", got.Shared)
+	if got.Shared == nil || !*got.Shared {
+		t.Errorf("expected Shared=true, got %v", got.Shared)
 	}
 	if got.OsRequirements == nil || *got.OsRequirements != "13.5, 16.0" {
 		t.Errorf("expected OsRequirements, got %v", got.OsRequirements)
@@ -102,7 +102,7 @@ func TestBuildPrinterInput_PPDPathOmittedWhenNull(t *testing.T) {
 }
 
 // TestBuildPrinterInput_SharedFalseEmits verifies that explicit shared=false
-// (as opposed to null) reaches the wire as "false" rather than nil — the user
+// (as opposed to null) reaches the wire as false rather than nil — the user
 // can deliberately disable shared even when the schema default is false.
 func TestBuildPrinterInput_SharedFalseEmits(t *testing.T) {
 	plan := PrinterResourceModel{
@@ -111,8 +111,8 @@ func TestBuildPrinterInput_SharedFalseEmits(t *testing.T) {
 	}
 	got := buildPrinterInput(plan)
 
-	if got.Shared == nil || *got.Shared != "false" {
-		t.Errorf("expected Shared=\"false\", got %v", got.Shared)
+	if got.Shared == nil || *got.Shared {
+		t.Errorf("expected Shared=false, got %v", got.Shared)
 	}
 }
 

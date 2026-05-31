@@ -27,7 +27,7 @@ func TestAssignPrinterResourceModel_FullPayload(t *testing.T) {
 		Ppd:            new("HP DeskJet 2600 series.ppd"),
 		PpdPath:        new("/Library/Printers/PPDs/Contents/Resources/HP DeskJet 2600 series.ppd"),
 		PpdContents:    new("*PPD-Adobe: \"4.3\""),
-		Shared:         new("true"),
+		Shared:         new(true),
 		OsRequirements: new("13.5, 16.0"),
 	}
 
@@ -118,7 +118,7 @@ func TestAssignPrinterResourceModel_SharedFalseDecodes(t *testing.T) {
 	api := &proclassic.Printer{
 		ID:     new(71),
 		Name:   new("X"),
-		Shared: new("false"),
+		Shared: new(false),
 	}
 	diags := assignPrinterResourceModel(&state, api)
 	if diags.HasError() {
@@ -181,7 +181,7 @@ func TestAssignPrinterDataSourceModel_FullPayload(t *testing.T) {
 		ID:       new(70),
 		Name:     new("Lab"),
 		Category: new("Printers"),
-		Shared:   new("true"),
+		Shared:   new(true),
 	}
 
 	diags := assignPrinterDataSourceModel(&state, api)
