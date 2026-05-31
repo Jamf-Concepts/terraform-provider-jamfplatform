@@ -43,7 +43,7 @@ func assignPrinterResourceModel(state *PrinterResourceModel, p *proclassic.Print
 	state.PPD = helpers.StringPointerValueOrNull(p.Ppd)
 	state.PPDPath = helpers.StringPointerValueOrNull(p.PpdPath)
 	state.PPDContents = trimmedStringValueFromPtr(p.PpdContents)
-	state.Shared = boolValueFromStringPtr(p.Shared)
+	state.Shared = helpers.BoolPointerValueOrNull(p.Shared)
 	state.OSRequirements = helpers.StringPointerValueOrNull(p.OsRequirements)
 	return diags
 }
@@ -73,7 +73,7 @@ func assignPrinterDataSourceModel(state *PrinterDataSourceModel, p *proclassic.P
 	state.PPD = helpers.StringPointerValueOrNull(p.Ppd)
 	state.PPDPath = helpers.StringPointerValueOrNull(p.PpdPath)
 	state.PPDContents = trimmedStringValueFromPtr(p.PpdContents)
-	state.Shared = boolValueFromStringPtr(p.Shared)
+	state.Shared = helpers.BoolPointerValueOrNull(p.Shared)
 	state.OSRequirements = helpers.StringPointerValueOrNull(p.OsRequirements)
 	return diags
 }

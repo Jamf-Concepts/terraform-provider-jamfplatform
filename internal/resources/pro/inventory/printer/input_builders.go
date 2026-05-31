@@ -42,7 +42,7 @@ func buildPrinterInput(plan PrinterResourceModel) *proclassic.Printer {
 		Ppd:            helpers.OptionalStringPointer(plan.PPD),
 		PpdPath:        helpers.OptionalStringPointer(plan.PPDPath),
 		PpdContents:    helpers.OptionalStringPointer(plan.PPDContents.StringValue),
-		Shared:         stringPtrFromBool(plan.Shared),
+		Shared:         optionalBoolPointer(plan.Shared),
 		OsRequirements: helpers.OptionalStringPointer(plan.OSRequirements),
 	}
 }

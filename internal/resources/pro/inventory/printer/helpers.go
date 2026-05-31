@@ -22,32 +22,6 @@ func derefString(p *string) string {
 	return *p
 }
 
-// stringPtrFromBool encodes a TF Bool into the wire representation Jamf
-// Classic uses for the printer `shared` attribute: the literal strings
-// "true" / "false". Null or unknown produces nil so the SDK's omitempty tag
-// drops the field from the request.
-func stringPtrFromBool(v types.Bool) *string {
-	if v.IsNull() || v.IsUnknown() {
-		return nil
-	}
-	out := "false"
-	if v.ValueBool() {
-		out = "true"
-	}
-	return &out
-}
-
-// boolValueFromStringPtr decodes the wire `<shared>` value back into a TF
-// Bool. Nil and empty map to null. "true" maps to true; anything else
-// (including "false") maps to false — the only producer of this field is the
-// Jamf Pro server, which is documented to emit "true" or "false" exactly.
-func boolValueFromStringPtr(p *string) types.Bool {
-	if p == nil || *p == "" {
-		return types.BoolNull()
-	}
-	return types.BoolValue(*p == "true")
-}
-
 // stringPtrEmitAlways returns a non-nil *string regardless of whether the TF
 // String is null. Null/unknown produce a pointer to "", which the SDK encodes
 // as `<element></element>`. The classic /printers endpoint distinguishes:
