@@ -60,6 +60,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/policy"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/restricted_software"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
@@ -255,6 +256,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		network_segment.NewNetworkSegmentResource,
 		pkg.NewPackageResource,
 		policy.NewPolicyResource,
+		restricted_software.NewRestrictedSoftwareResource,
 		printer.NewPrinterResource,
 		re_enrollment_settings.NewReEnrollmentSettingsResource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsResource,
@@ -309,6 +311,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		network_segments.NewNetworkSegmentsDataSource,
 		pkg.NewPackageDataSource,
 		policy.NewPolicyDataSource,
+		restricted_software.NewRestrictedSoftwareDataSource,
 		printer.NewPrinterDataSource,
 		re_enrollment_settings.NewReEnrollmentSettingsDataSource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
@@ -352,6 +355,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		network_segment.NewNetworkSegmentListResource,
 		pkg.NewPackageListResource,
 		policy.NewPolicyListResource,
+		restricted_software.NewRestrictedSoftwareListResource,
 		printer.NewPrinterListResource,
 		script.NewScriptListResource,
 		site.NewSiteListResource,
