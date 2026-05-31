@@ -74,6 +74,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/location"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhooks/webhook"
 )
 
 // Constants for environment variable names.
@@ -267,6 +268,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		sso_settings.NewSsoSettingsResource,
 		user_group.NewUserGroupResource,
 		location.NewVolumePurchasingLocationResource,
+		webhook.NewWebhookResource,
 	}
 }
 
@@ -327,6 +329,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		user_group.NewUserGroupDataSource,
 		user_groups.NewUserGroupsDataSource,
 		location.NewVolumePurchasingLocationDataSource,
+		webhook.NewWebhookDataSource,
 	}
 }
 
@@ -361,6 +364,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		site.NewSiteListResource,
 		user_group.NewUserGroupListResource,
 		location.NewVolumePurchasingLocationListResource,
+		webhook.NewWebhookListResource,
 	}
 }
 
