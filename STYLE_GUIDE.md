@@ -155,10 +155,12 @@ The reference implementations for the rewritten tone are `internal/resources/pro
 
 ### Sets vs Lists
 
-- **Sets** for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `criteria`, `raw_component`).
-- **Lists** for computed API results that are read-only. Sets require element hashing which adds overhead with no benefit when the user doesn't control the values.
+- **Sets** for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `raw_component`).
+- **Lists** for (a) user-supplied collections whose **order is semantically meaningful**, and (b) computed API results that are read-only. Sets require element hashing which adds overhead with no benefit when the user doesn't control the values.
 
 Data source attributes returning API data should always use lists.
+
+**Never model ordered data as a Set.** Smart-group `criteria` is the cautionary case: the `order` field, parentheses, and `and_or` joins are all positional, yet it was first modelled as a `SetNestedAttribute`. Two failures resulted: (1) Terraform delivers Set elements to the provider in arbitrary hash order, so an index-derived `order` came out scrambled; (2) Set elements correlate plan↔state by **value**, so a positional reconcile (`prev = current[i]`) paired each server element with an unrelated hash-ordered prior-state element and emitted values matching no planned element — surfacing as `planned set element … does not correlate with any element in actual`. The fix is a `ListNestedAttribute` (the data source already modelled it as a list): lists correlate positionally so `prev[i]` lines up with `server[i]`, and the null-preserving `Reconcile*` helpers keep user-omitted fields null. See `internal/resources/device_group/`. No state upgrader is needed for a Set→List swap — both serialise to a JSON array in state — but an in-place upgrade yields a one-time, self-healing reorder plan.
 
 ### Plaintext secrets — `WriteOnly` with `_wo_version` rotation companion
 
