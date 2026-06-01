@@ -38,6 +38,10 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_role"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_role_privileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_roles"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installer"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installer_title"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installer_titles"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mac_app_store_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mobile_device_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/macos_configuration_profile"
@@ -257,6 +261,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		enrollment_customization.NewEnrollmentCustomizationResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
+		app_installer.NewAppInstallerResource,
 		mac_app_store_app.NewMacAppResource,
 		mobile_device_app.NewMobileAppResource,
 		macos_configuration_profile.NewResource,
@@ -317,6 +322,10 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		dock_item.NewDockItemDataSource,
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		ibeacon.NewIbeaconDataSource,
+		app_installer.NewAppInstallerDataSource,
+		app_installers.NewAppInstallersDataSource,
+		app_installer_title.NewAppInstallerTitleDataSource,
+		app_installer_titles.NewAppInstallerTitlesDataSource,
 		mac_app_store_app.NewMacAppDataSource,
 		mobile_device_app.NewMobileAppDataSource,
 		macos_configuration_profile.NewDataSource,
@@ -365,6 +374,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		dock_item.NewDockItemListResource,
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		ibeacon.NewIbeaconListResource,
+		app_installer.NewAppInstallerListResource,
 		mac_app_store_app.NewMacAppListResource,
 		mobile_device_app.NewMobileAppListResource,
 		macos_configuration_profile.NewListResource,
