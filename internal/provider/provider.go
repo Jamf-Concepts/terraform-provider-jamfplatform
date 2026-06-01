@@ -68,6 +68,9 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/printer"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_external_source"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_policy"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_software_title"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/policy"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/restricted_software"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
@@ -268,6 +271,9 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		mobile_device_configuration_profile.NewResource,
 		network_segment.NewNetworkSegmentResource,
 		pkg.NewPackageResource,
+		patch_external_source.NewPatchExternalSourceResource,
+		patch_policy.NewPatchPolicyResource,
+		patch_software_title.NewPatchSoftwareTitleResource,
 		policy.NewPolicyResource,
 		restricted_software.NewRestrictedSoftwareResource,
 		printer.NewPrinterResource,
@@ -341,6 +347,9 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		script.NewScriptDataSource,
 		scripts.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
+		patch_external_source.NewPatchExternalSourceDataSource,
+		patch_policy.NewPatchPolicyDataSource,
+		patch_software_title.NewPatchSoftwareTitleDataSource,
 		site.NewSiteDataSource,
 		sso_failover_url.NewSsoFailoverURLDataSource,
 		sso_settings.NewSsoDependenciesDataSource,
@@ -385,6 +394,9 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		restricted_software.NewRestrictedSoftwareListResource,
 		printer.NewPrinterListResource,
 		script.NewScriptListResource,
+		patch_external_source.NewPatchExternalSourceListResource,
+		patch_policy.NewPatchPolicyListResource,
+		patch_software_title.NewPatchSoftwareTitleListResource,
 		site.NewSiteListResource,
 		user_group.NewUserGroupListResource,
 		location.NewVolumePurchasingLocationListResource,
