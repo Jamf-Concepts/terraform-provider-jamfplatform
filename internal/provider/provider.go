@@ -33,6 +33,11 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_client"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_clients"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_role"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_role_privileges"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_roles"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mac_app_store_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mobile_device_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/macos_configuration_profile"
@@ -232,6 +237,8 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 
 func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		api_client.NewApiClientResource,
+		api_role.NewApiRoleResource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentResource,
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
@@ -274,6 +281,11 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 
 func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		api_client.NewApiClientDataSource,
+		api_clients.NewApiClientsDataSource,
+		api_role.NewApiRoleDataSource,
+		api_role_privileges.NewApiRolePrivilegesDataSource,
+		api_roles.NewApiRolesDataSource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentDataSource,
 		automated_device_enrollment_public_key.NewAutomatedDeviceEnrollmentPublicKeyDataSource,
 		blueprint.NewBlueprintDataSource,
@@ -335,6 +347,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 
 func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.ListResource {
 	return []func() list.ListResource{
+		api_client.NewApiClientListResource,
+		api_role.NewApiRoleListResource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentListResource,
 		benchmark.NewBenchmarkListResource,
 		blueprint.NewBlueprintListResource,
