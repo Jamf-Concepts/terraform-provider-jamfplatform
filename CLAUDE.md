@@ -110,7 +110,7 @@ Optional split-outs for complex resources:
 
 - Schemas should be inline and as flat as possible.
 - Favor nested attributes (set/single/list) instead of blocks wherever possible.
-- **Sets vs Lists**: Use sets for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `device_groups` scope, `criteria`, `raw_component`, component configuration sets). Use lists for computed API results that are read-only — sets require element hashing which adds CPU overhead with no benefit when the user doesn't control the values. Data source attributes returning API data should always use lists.
+- **Sets vs Lists**: Use sets for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `device_groups` scope, `raw_component`, component configuration sets). Use lists for ordered user-supplied collections whose position is semantically meaningful (e.g. smart-group `criteria`, where evaluation order, parentheses, and `and_or` joins are positional) and for computed API results that are read-only — sets require element hashing which adds CPU overhead with no benefit when the user doesn't control the values. Data source attributes returning API data should always use lists.
 
 ## Environment Variables
 
