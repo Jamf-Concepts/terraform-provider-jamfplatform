@@ -76,7 +76,7 @@ output "smart_computer_group_jamf_pro_id" {
 
 ### Optional
 
-- `criteria` (Attributes Set) Smart-group criteria evaluated by the Jamf inventory service. (see [below for nested schema](#nestedatt--criteria))
+- `criteria` (Attributes List) Smart-group criteria evaluated by the Jamf inventory service. Ordered: criteria are evaluated and rendered in the order listed. (see [below for nested schema](#nestedatt--criteria))
 - `description` (String) Optional Description for the device group.
 - `members` (Set of String) Optional device IDs to manage for static groups. When omitted, the provider leaves membership unchanged. Ignored for smart groups.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))

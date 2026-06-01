@@ -137,8 +137,8 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Total members reported by the API.",
 				Computed:            true,
 			},
-			"criteria": schema.SetNestedAttribute{
-				MarkdownDescription: "Smart-group criteria evaluated by the Jamf inventory service.",
+			"criteria": schema.ListNestedAttribute{
+				MarkdownDescription: "Smart-group criteria evaluated by the Jamf inventory service. Ordered: criteria are evaluated and rendered in the order listed.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
