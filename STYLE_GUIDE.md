@@ -213,6 +213,8 @@ CRUD wiring:
 
 Pro endpoints commonly return **server-derived** values for fields the user did not set — a "no category" sentinel like `categoryId="-1"` / `categoryName="NONE"`, a default `priority="AFTER"`, etc. These show up in three places, each with its own pitfall, and all three must line up or Terraform errors with `Provider produced inconsistent result after apply`.
 
+**Clear sentinels are per-field, not universal — probe each one.** The `-1` "none" sentinel above is a *convention*, not a guarantee. Wire-probe the actual clear value for every nullable reference field, because it can differ **between fields on the same endpoint**. On classic `/patchsoftwaretitles`, `<site>` clears with `id=-1` (the norm) but `<category>` clears with `id=0` — sending `id=-1` to `<category>` is a silent no-op that retains the prior value (and an empty `<category></category>` returns HTTP 500); a never-set category echoes `-1` while a cleared one echoes `0`. When the wire sentinel diverges from the user-facing one, **honor the user-facing contract by translating at the wire layer** rather than leaking the quirk into the schema/docs/tests: map the user's sentinel to the wire clear value in the input builder, and collapse every server "none" echo back to the single user-facing sentinel in the state builder. Reference: `internal/resources/pro/patch/patch_software_title/` (`buildPatchSoftwareTitleUpdateInput` maps category `≤0`→wire `0`; `categoryValues` collapses `-1`/`0`→`"-1"`).
+
 **1. Schema shape.** Any optional attribute the server fills in when omitted must be `Optional+Computed` so the framework knows the value can come from the server.
 
 ```go
