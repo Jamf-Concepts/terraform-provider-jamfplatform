@@ -89,9 +89,9 @@ func TestDeviceGroupResource_SchemaAttributes(t *testing.T) {
 		t.Fatal("missing criteria attribute")
 	}
 
-	nested, ok := criteria.(resourceschema.SetNestedAttribute)
+	nested, ok := criteria.(resourceschema.ListNestedAttribute)
 	if !ok {
-		t.Fatal("criteria should be a SetNestedAttribute")
+		t.Fatal("criteria should be a ListNestedAttribute")
 	}
 
 	expectedCriteriaAttrs := []string{"order", "criteria", "operator", "value", "and_or", "has_opening_parenthesis", "has_closing_parenthesis"}
