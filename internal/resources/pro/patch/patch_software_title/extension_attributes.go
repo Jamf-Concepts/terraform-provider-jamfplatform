@@ -62,7 +62,16 @@ func (r *PatchSoftwareTitleResource) refreshExtensionAttributes(ctx context.Cont
 // call entirely when nothing is pending. The caller invokes it only when the
 // user set accept_extension_attributes=true; a failure is therefore fatal (the
 // user explicitly asked to accept).
-func (r *PatchSoftwareTitleResource) acceptPendingExtensionAttributes(ctx context.Context, id string) error {
+//
+// categoryID is the title's user-facing category id (always "-1" for "no
+// category" or a positive id) and is re-sent in the same merge-patch. This is
+// load-bearing: the classic /patchsoftwaretitles endpoint clears a category with
+// wire id 0, which leaves the shared v2 configuration's categoryId as the literal
+// "0" — a value the v2 endpoint then rejects on ANY write ("id field must be
+// string of positive numeric value or -1"). Re-asserting the user-facing
+// categoryId (which is always v2-valid) on the accept repairs that divergence so
+// the merge-patch is accepted.
+func (r *PatchSoftwareTitleResource) acceptPendingExtensionAttributes(ctx context.Context, id, categoryID string) error {
 	if r.proClient == nil || id == "" {
 		return nil
 	}
@@ -88,7 +97,12 @@ func (r *PatchSoftwareTitleResource) acceptPendingExtensionAttributes(ctx contex
 		return nil
 	}
 
+	cat := categoryID
+	if cat == "" {
+		cat = "-1"
+	}
 	if _, err := r.proClient.UpdatePatchSoftwareTitleConfigurationV2(ctx, id, &pro.PatchSoftwareTitleConfigurationPatch{
+		CategoryID:          &cat,
 		ExtensionAttributes: &pending,
 	}); err != nil {
 		return fmt.Errorf("accepting extension attributes: %w", err)

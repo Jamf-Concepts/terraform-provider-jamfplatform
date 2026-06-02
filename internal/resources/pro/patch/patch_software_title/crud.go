@@ -111,7 +111,7 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 	}
 
 	if plan.AcceptExtensionAttributes.ValueBool() {
-		if err := r.acceptPendingExtensionAttributes(createCtx, id.ValueString()); err != nil {
+		if err := r.acceptPendingExtensionAttributes(createCtx, id.ValueString(), plan.CategoryID.ValueString()); err != nil {
 			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", err.Error())
 			return
 		}
@@ -277,7 +277,7 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 	}
 
 	if plan.AcceptExtensionAttributes.ValueBool() {
-		if err := r.acceptPendingExtensionAttributes(updateCtx, plan.ID.ValueString()); err != nil {
+		if err := r.acceptPendingExtensionAttributes(updateCtx, plan.ID.ValueString(), plan.CategoryID.ValueString()); err != nil {
 			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", err.Error())
 			return
 		}
