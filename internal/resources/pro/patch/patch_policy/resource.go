@@ -3,8 +3,9 @@
 
 // Package patch_policy implements the jamfplatform_pro_patch_policy resource,
 // data source, and list resource backed by the Jamf ProClassic /patchpolicies
-// API. The construct name mirrors the Jamf Pro admin UI ("Patch Policies" under
-// the Computers sidebar). A policy is created against a patch software title
+// API. The construct name mirrors the Jamf Pro admin UI ("Patch Policies", a tab
+// on a software title under Computers → Patch management). A policy is created
+// against a patch software title
 // configuration and targets a single version of that title that has a package
 // assigned. Scope is a LIMITED computer-scope subset (targets + limitations +
 // exclusions, no users) hand-composed from the shared scope primitives.
@@ -89,8 +90,8 @@ func (r *PatchPolicyResource) IdentitySchema(ctx context.Context, req resource.I
 // descriptions.
 func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro patch policy — the \"Patch Policies\" entry under the Computers sidebar in the Jamf Pro admin UI. A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.\n\n" +
-			"Several general fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`.",
+		MarkdownDescription: "Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch management** on a software title's **Patch Policies** tab (the **New Patch Policy** form). A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.\n\n" +
+			"The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`), and **User Interaction** (`user_interaction`). Several **General**-tab fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch policy ID assigned by Jamf Pro.",
@@ -142,23 +143,23 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 			// Computed (no plan modifier): they must go Unknown when
 			// target_version changes so the new definition's values are read.
 			"release_date": schema.Int64Attribute{
-				MarkdownDescription: "Release date of the target version's patch definition, as a Unix epoch in milliseconds. Server-derived; not user-settable.",
+				MarkdownDescription: "Release date of the target version's patch definition (UI \"Release Date\"), as a Unix epoch in milliseconds. Server-derived; not user-settable.",
 				Computed:            true,
 			},
 			"incremental_update": schema.BoolAttribute{
-				MarkdownDescription: "Whether the target version's patch definition is an incremental update. Server-derived; not user-settable.",
+				MarkdownDescription: "Whether the target version's patch definition is an incremental update (UI \"Requires Incremental Update\"). Server-derived; not user-settable.",
 				Computed:            true,
 			},
 			"reboot": schema.BoolAttribute{
-				MarkdownDescription: "Whether installing the target version requires a reboot. Server-derived from the patch definition; not user-settable.",
+				MarkdownDescription: "Whether installing the target version requires a reboot (UI \"Reboot Required\"). Server-derived from the patch definition; not user-settable.",
 				Computed:            true,
 			},
 			"minimum_os": schema.StringAttribute{
-				MarkdownDescription: "Minimum macOS version required by the target version's patch definition. Server-derived; not user-settable.",
+				MarkdownDescription: "Minimum macOS version required by the target version's patch definition (UI \"Minimum OS\"). Server-derived; not user-settable.",
 				Computed:            true,
 			},
 			"kill_apps": schema.ListNestedAttribute{
-				MarkdownDescription: "Applications the patch definition closes before installing the target version. Server-derived from the patch definition; not user-settable.",
+				MarkdownDescription: "Applications the patch definition closes before installing the target version (UI \"Apps That Must Quit\"). Server-derived from the patch definition; not user-settable.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -173,8 +174,13 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 					},
 				},
 			},
+			// The Scope tab's UI renders Users / User Groups buttons under
+			// Targets and Exclusions, but the /patchpolicies endpoint ignores
+			// user-scope entries (LIMITED computer-scope subset). Omitted from
+			// the schema; the user-facing description frames this as "does not
+			// apply to patch policies".
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Patch policies have no user / user-group scope.",
+				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Scope targets, limitations, and exclusions are addressed by computer, computer group, building, department, network segment, and iBeacon.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"all_computers": schema.BoolAttribute{
@@ -236,7 +242,7 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"install_button_text": schema.StringAttribute{
-						MarkdownDescription: "Text on the Self Service install button (UI \"Install Button Text\"). Defaults to `Update`.",
+						MarkdownDescription: "Text on the Self Service install button (UI \"Button Name\", under \"Display in Self Service\"). Defaults to `Update`.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
@@ -258,7 +264,7 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Whether notifications are shown.",
+								MarkdownDescription: "Whether notifications for the patch policy are shown in Notification Center (UI \"Display notifications for the patch policy in Notification Center\", under \"Notifications and Reminders\").",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
@@ -312,13 +318,13 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"enabled": schema.BoolAttribute{
-								MarkdownDescription: "Whether a deadline is enforced (UI default `true`).",
+								MarkdownDescription: "Whether a Self Service update deadline is enforced (UI \"Enable Self Service update deadline\", under \"Deadline and Grace Period\"; UI default `true`).",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 							},
 							"period": schema.Int64Attribute{
-								MarkdownDescription: "Deadline period in days (UI default `7`).",
+								MarkdownDescription: "Deadline period in days (UI \"Update Deadline\"; default `7`).",
 								Optional:            true,
 								Computed:            true,
 								PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseNonNullStateForUnknown()},

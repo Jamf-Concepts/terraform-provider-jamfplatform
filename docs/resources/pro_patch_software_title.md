@@ -3,13 +3,13 @@
 page_title: "jamfplatform_pro_patch_software_title Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro patch software title (the UI "Software Title Settings" tab). A title is defined by its name_id (catalog key) and source_id (patch source); the server populates the full catalog of available_versions. Assign packages to specific versions via version_packages so patch policies can target them.
+  Manages a Jamf Pro patch software title, found in the UI under Computers → Patch management. A configured title spans the tabs of that interface: the Software Title Settings tab (name, category_id, site_id, notifications), the Definition tab (per-version package assignments), and the Extension Attribute tab (extension_attributes / accept_extension_attributes). A title is defined by its name_id (catalog key) and source_id (patch source); the server populates the full catalog of available_versions. Assign packages to specific versions via version_packages (the Definition tab's per-version Package column) so patch policies can target them.
   **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints.
 ---
 
 # jamfplatform_pro_patch_software_title (Resource)
 
-Manages a Jamf Pro patch software title (the UI "Software Title Settings" tab). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` so patch policies can target them.
+Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.
 
 > **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints.
 
@@ -17,22 +17,40 @@ Manages a Jamf Pro patch software title (the UI "Software Title Settings" tab). 
 
 ```terraform
 # A patch software title is defined by its catalog key (name_id) and patch
-# source (source_id). The server populates the full list of available_versions;
-# assign packages to specific versions via version_packages so patch policies
-# can target them.
+# source (source_id). Rather than hard-coding those, discover them from a patch
+# source's available_titles catalog and build the title dynamically.
+
+# Read the built-in "Jamf" source and its published catalog.
+data "jamfplatform_pro_patch_internal_source" "jamf" {
+  name = "Jamf"
+}
+
+locals {
+  # The app we want to manage, matched against the catalog by display name.
+  target_app = "8x8 Work"
+
+  # Resolve the catalog entry (one() errors if it is missing or ambiguous).
+  catalog_entry = one([
+    for t in data.jamfplatform_pro_patch_internal_source.jamf.available_titles : t
+    if t.app_name == local.target_app
+  ])
+}
 
 resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
-  name      = "8x8 Work"
-  name_id   = "285"
-  source_id = 1
+  # name_id and source_id are derived from the catalog lookup above — no magic
+  # numbers. source_id is numeric; the data source id is a string, so convert it.
+  name      = local.catalog_entry.app_name
+  name_id   = local.catalog_entry.name_id
+  source_id = tonumber(data.jamfplatform_pro_patch_internal_source.jamf.id)
 
   category_id        = "-1"
   site_id            = "-1"
   web_notification   = true
   email_notification = false
 
-  # Map software_version -> package ID. Only the versions you list are managed;
-  # removing a key clears that version's package on the next apply.
+  # The server populates available_versions; assign packages to specific
+  # versions via version_packages so patch policies can target them. Only the
+  # versions you list are managed; removing a key clears that version's package.
   version_packages = {
     "8.33.2.2" = jamfplatform_pro_package.work_8_33.id
   }
@@ -41,6 +59,23 @@ resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
 resource "jamfplatform_pro_package" "work_8_33" {
   display_name = "8x8 Work 8.33.2.2"
   file_name    = "8x8-work-8.33.2.2.pkg"
+}
+
+# Some titles (e.g. Adobe AIR) ship a Jamf extension attribute that collects the
+# installed version on managed computers; inventory is not gathered until it is
+# accepted. Set accept_extension_attributes = true to accept any pending ones.
+# Accepting is one-way and cannot be reverted. The read-only extension_attributes
+# list reports each EA and its acceptance status.
+resource "jamfplatform_pro_patch_software_title" "adobe_air" {
+  name      = "Adobe AIR"
+  name_id   = "0AE"
+  source_id = tonumber(data.jamfplatform_pro_patch_internal_source.jamf.id)
+
+  accept_extension_attributes = true
+}
+
+output "adobe_air_extension_attributes" {
+  value = jamfplatform_pro_patch_software_title.adobe_air.extension_attributes
 }
 ```
 
@@ -55,6 +90,7 @@ resource "jamfplatform_pro_package" "work_8_33" {
 
 ### Optional
 
+- `accept_extension_attributes` (Boolean) Accept the extension attribute(s) Jamf attaches to this title (UI "Extension Attribute" tab, **Accept**). For some titles Jamf supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting is one-way** — it cannot be reverted, so setting this back to `false` (or removing it) does not un-accept; it simply stops accepting new ones. Leave unset for titles that have no extension attribute.
 - `category_id` (String) Jamf Pro category ID (UI "Category"). Use `-1` (default) for "No category assigned".
 - `email_notification` (Boolean) Whether an email notification is sent for new versions (UI "Email"). Server-defaulted when omitted.
 - `site_id` (String) Jamf Pro site ID. Use `-1` (default) for "NONE".
@@ -66,6 +102,7 @@ resource "jamfplatform_pro_package" "work_8_33" {
 
 - `available_versions` (List of String) All `software_version` strings the patch source publishes for this title, newest first. Server-derived; use these as keys for `version_packages`.
 - `category_name` (String) Category display name. Returned by Jamf Pro; not user-settable.
+- `extension_attributes` (Attributes List) Extension attributes Jamf has attached to this title, with their acceptance status. Read-only — use `accept_extension_attributes` to accept pending ones. Empty for titles with no extension attribute. (see [below for nested schema](#nestedatt--extension_attributes))
 - `id` (String) Patch software title ID assigned by Jamf Pro.
 - `site_name` (String) Site display name. Returned by Jamf Pro; not user-settable.
 
@@ -78,6 +115,16 @@ Optional:
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
 - `update` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+
+<a id="nestedatt--extension_attributes"></a>
+### Nested Schema for `extension_attributes`
+
+Read-Only:
+
+- `accepted` (Boolean) Whether the extension attribute has been accepted. Once `true`, it cannot return to `false`.
+- `display_name` (String) Display name of the extension attribute (e.g. `Adobe AIR Bundle Version`).
+- `ea_id` (String) Stable identifier of the extension attribute (e.g. `jamf-patch-adobe-air`).
 
 ## Import
 

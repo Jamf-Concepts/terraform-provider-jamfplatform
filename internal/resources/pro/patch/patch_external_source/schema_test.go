@@ -105,10 +105,16 @@ func TestPatchExternalSourceDataSource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	for _, name := range []string{"id", "name", "enabled", "host_name", "port", "ssl_enabled", "certificate_validation_enabled", "timeouts"} {
+	for _, name := range []string{"id", "name", "enabled", "host_name", "port", "ssl_enabled", "certificate_validation_enabled", "available_titles", "timeouts"} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}
+	}
+
+	// available_titles is a Computed-only nested catalog list.
+	titles := s.Attributes["available_titles"]
+	if titles.IsOptional() || titles.IsRequired() || !titles.IsComputed() {
+		t.Errorf("available_titles must be computed-only, got optional=%v required=%v computed=%v", titles.IsOptional(), titles.IsRequired(), titles.IsComputed())
 	}
 
 	// id and name are the Optional+Computed selectors — exactly one is supplied
