@@ -76,6 +76,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/restricted_software"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_computer_search"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_user_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
@@ -281,6 +283,8 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		re_enrollment_settings.NewReEnrollmentSettingsResource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsResource,
 		script.NewScriptResource,
+		advanced_computer_search.NewAdvancedComputerSearchResource,
+		advanced_user_search.NewAdvancedUserSearchResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		site.NewSiteResource,
 		sso_failover_url.NewSsoFailoverURLResource,
@@ -360,6 +364,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		sites.NewSitesDataSource,
 		user_group.NewUserGroupDataSource,
 		user_groups.NewUserGroupsDataSource,
+		advanced_computer_search.NewAdvancedComputerSearchDataSource,
+		advanced_user_search.NewAdvancedUserSearchDataSource,
 		location.NewVolumePurchasingLocationDataSource,
 		webhook.NewWebhookDataSource,
 	}
@@ -401,6 +407,8 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		patch_software_title.NewPatchSoftwareTitleListResource,
 		site.NewSiteListResource,
 		user_group.NewUserGroupListResource,
+		advanced_computer_search.NewAdvancedComputerSearchListResource,
+		advanced_user_search.NewAdvancedUserSearchListResource,
 		location.NewVolumePurchasingLocationListResource,
 		webhook.NewWebhookListResource,
 	}

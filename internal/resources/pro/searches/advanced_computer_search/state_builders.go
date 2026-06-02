@@ -1,0 +1,123 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package advanced_computer_search
+
+import (
+	"context"
+	"strconv"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+)
+
+// assignAdvancedComputerSearchResourceModel populates a resource model from an
+// AdvancedComputerSearch response. Server is authoritative for every field; the
+// matched-computer result set (search.Computers) is intentionally not surfaced.
+func assignAdvancedComputerSearchResourceModel(ctx context.Context, state *AdvancedComputerSearchResourceModel, search *proclassic.AdvancedComputerSearch) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if search == nil {
+		return diags
+	}
+
+	if search.ID != nil {
+		state.ID = helpers.StringValueFromIntPtr(search.ID)
+	}
+	state.Name = helpers.StringPointerValueOrNull(search.Name)
+
+	siteID, siteName := flattenSite(search.Site)
+	state.SiteID = helpers.ReconcileOptionalStringPointer(siteID, state.SiteID)
+	state.SiteName = helpers.StringPointerValueOrNull(siteName)
+
+	state.Criteria = criteria.FlattenCriterionSlice(criterionSlice(search.Criteria))
+
+	displayFields, dfDiags := flattenDisplayFields(ctx, search.DisplayFields)
+	diags.Append(dfDiags...)
+	if diags.HasError() {
+		return diags
+	}
+	state.DisplayFields = displayFields
+
+	return diags
+}
+
+// assignAdvancedComputerSearchDataSourceModel populates a data source model from
+// an AdvancedComputerSearch response. Symmetric with the resource builder.
+func assignAdvancedComputerSearchDataSourceModel(ctx context.Context, state *AdvancedComputerSearchDataSourceModel, search *proclassic.AdvancedComputerSearch) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if search == nil {
+		return diags
+	}
+
+	if search.ID != nil {
+		state.ID = helpers.StringValueFromIntPtr(search.ID)
+	}
+	state.Name = helpers.StringPointerValueOrNull(search.Name)
+
+	siteID, siteName := flattenSite(search.Site)
+	state.SiteID = helpers.StringPointerValueOrNull(siteID)
+	state.SiteName = helpers.StringPointerValueOrNull(siteName)
+
+	state.Criteria = criteria.FlattenCriterionSlice(criterionSlice(search.Criteria))
+
+	displayFields, dfDiags := flattenDisplayFields(ctx, search.DisplayFields)
+	diags.Append(dfDiags...)
+	if diags.HasError() {
+		return diags
+	}
+	state.DisplayFields = displayFields
+
+	return diags
+}
+
+// criterionSlice returns the inner criterion slice pointer from the wrapper, or
+// nil when the wrapper is absent.
+func criterionSlice(wrapper *proclassic.AdvancedComputerSearchCriteria) *[]proclassic.Criterion {
+	if wrapper == nil {
+		return nil
+	}
+	return wrapper.Criterion
+}
+
+// flattenSite returns (id-as-string, name) pointers from a SiteObject. Returns
+// (nil, nil) when site is absent.
+func flattenSite(site *proclassic.SiteObject) (*string, *string) {
+	if site == nil {
+		return nil, nil
+	}
+	var idPtr *string
+	if site.ID != nil {
+		s := strconv.Itoa(*site.ID)
+		idPtr = &s
+	}
+	return idPtr, site.Name
+}
+
+// flattenDisplayFields converts the SDK display-fields wrapper into a Set of
+// column names. Returns a null set for an empty or absent wrapper. Modelled as
+// a Set because Jamf Pro returns the columns in its own canonical order, not the
+// order they were submitted.
+func flattenDisplayFields(ctx context.Context, wrapper *proclassic.AdvancedComputerSearchDisplayFields) (types.Set, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if wrapper == nil || wrapper.DisplayField == nil || len(*wrapper.DisplayField) == 0 {
+		return types.SetNull(types.StringType), diags
+	}
+	src := *wrapper.DisplayField
+	names := make([]string, 0, len(src))
+	for _, f := range src {
+		if f.Name == nil {
+			continue
+		}
+		names = append(names, *f.Name)
+	}
+	if len(names) == 0 {
+		return types.SetNull(types.StringType), diags
+	}
+	set, d := types.SetValueFrom(ctx, types.StringType, names)
+	diags.Append(d...)
+	return set, diags
+}
