@@ -42,3 +42,20 @@ resource "jamfplatform_pro_package" "work_8_33" {
   display_name = "8x8 Work 8.33.2.2"
   file_name    = "8x8-work-8.33.2.2.pkg"
 }
+
+# Some titles (e.g. Adobe AIR) ship a Jamf extension attribute that collects the
+# installed version on managed computers; inventory is not gathered until it is
+# accepted. Set accept_extension_attributes = true to accept any pending ones.
+# Accepting is one-way and cannot be reverted. The read-only extension_attributes
+# list reports each EA and its acceptance status.
+resource "jamfplatform_pro_patch_software_title" "adobe_air" {
+  name      = "Adobe AIR"
+  name_id   = "0AE"
+  source_id = tonumber(data.jamfplatform_pro_patch_internal_source.jamf.id)
+
+  accept_extension_attributes = true
+}
+
+output "adobe_air_extension_attributes" {
+  value = jamfplatform_pro_patch_software_title.adobe_air.extension_attributes
+}

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
@@ -40,9 +41,13 @@ const minJamfProVersion = ""
 var packageIDPattern = regexp.MustCompile(`^[1-9]\d*$`)
 
 // PatchSoftwareTitleResource implements the Terraform resource for Jamf ProClassic
-// patch software titles.
+// patch software titles. CRUD runs over the classic /patchsoftwaretitles endpoint
+// (client); extension-attribute read + accept use the modern v2
+// /patch-software-title-configurations endpoint (proClient), keyed by the same
+// id (the classic title id equals the v2 configuration id — wire-verified).
 type PatchSoftwareTitleResource struct {
-	client *proclassic.Client
+	client    *proclassic.Client
+	proClient *pro.Client
 }
 
 var _ resource.Resource = &PatchSoftwareTitleResource{}
@@ -81,7 +86,7 @@ func (r *PatchSoftwareTitleResource) IdentitySchema(ctx context.Context, req res
 // Schema returns the Terraform schema for the patch software title resource.
 func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications) and the **Definition** tab (per-version package assignments). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.\n\n" +
+		MarkdownDescription: "Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.\n\n" +
 			"> **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -170,6 +175,36 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
+			"accept_extension_attributes": schema.BoolAttribute{
+				MarkdownDescription: "Accept the extension attribute(s) Jamf attaches to this title (UI \"Extension Attribute\" tab, **Accept**). For some titles Jamf supplies a script that runs on managed computers to collect the installed version; inventory is not gathered until it is accepted. Set to `true` to accept any pending extension attributes on the next apply. **Accepting is one-way** — it cannot be reverted, so setting this back to `false` (or removing it) does not un-accept; it simply stops accepting new ones. Leave unset for titles that have no extension attribute.",
+				Optional:            true,
+			},
+			"extension_attributes": schema.ListNestedAttribute{
+				MarkdownDescription: "Extension attributes Jamf has attached to this title, with their acceptance status. Read-only — use `accept_extension_attributes` to accept pending ones. Empty for titles with no extension attribute.",
+				Computed:            true,
+				// Plain Computed (no plan modifier): when accept_extension_attributes
+				// flips a pending EA from accepted=false to true in the same apply,
+				// the list must go Unknown so the post-apply read fills the new
+				// value — UseStateForUnknown would copy the stale false and trip the
+				// "inconsistent result after apply" check. Mirrors the target_version
+				// -derived fields on jamfplatform_pro_patch_policy.
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"ea_id": schema.StringAttribute{
+							MarkdownDescription: "Stable identifier of the extension attribute (e.g. `jamf-patch-adobe-air`).",
+							Computed:            true,
+						},
+						"display_name": schema.StringAttribute{
+							MarkdownDescription: "Display name of the extension attribute (e.g. `Adobe AIR Bundle Version`).",
+							Computed:            true,
+						},
+						"accepted": schema.BoolAttribute{
+							MarkdownDescription: "Whether the extension attribute has been accepted. Once `true`, it cannot return to `false`.",
+							Computed:            true,
+						},
+					},
+				},
+			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
 				Create: true,
 				Read:   true,
@@ -180,8 +215,9 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 	}
 }
 
-// Configure wires the Jamf ProClassic client into the resource via the shared
-// providerdata.ConfigureProClassic helper.
+// Configure wires both Jamf clients into the resource: the ProClassic client
+// (classic /patchsoftwaretitles CRUD) and the Pro client (v2 extension-attribute
+// read + accept). Both are built from the same provider data.
 func (r *PatchSoftwareTitleResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")
 	resp.Diagnostics.Append(diags...)
@@ -189,6 +225,13 @@ func (r *PatchSoftwareTitleResource) Configure(ctx context.Context, req resource
 		return
 	}
 	r.client = client
+
+	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_patch_software_title")
+	resp.Diagnostics.Append(proDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.proClient = proClient
 }
 
 // ImportState handles import by the Jamf Pro patch software title ID.

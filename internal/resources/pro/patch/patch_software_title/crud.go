@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 // SDK endpoints used:
-//   proclassic.CreatePatchSoftwareTitleByID   (POST id="0" mints the title)
+//   proclassic.CreatePatchSoftwareTitleByID                (POST id="0" mints the title)
 //   proclassic.GetPatchSoftwareTitleByID
-//   proclassic.UpdatePatchSoftwareTitleByID   (PUT, returns 201 empty body → GET after)
+//   proclassic.UpdatePatchSoftwareTitleByID                (PUT, returns 201 empty body → GET after)
 //   proclassic.DeletePatchSoftwareTitleByID
-//   proclassic.ListPatchSoftwareTitles        (list resource)
+//   proclassic.ListPatchSoftwareTitles                     (list resource)
+//   pro.ListPatchSoftwareTitleExtensionAttributesV2        (read EAs; v2 config id == classic title id)
+//   pro.UpdatePatchSoftwareTitleConfigurationV2            (accept EAs; merge-patch, accept is one-way)
 //
 // DEPRECATION: the /patchsoftwaretitles classic endpoints are flagged deprecated
 // in the Jamf API spec (the SDK funcs carry `// Deprecated:` pointing at
@@ -92,13 +94,35 @@ func (r *PatchSoftwareTitleResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
+	// Read the title's extension attributes (best-effort warning on failure).
+	resp.Diagnostics.Append(r.refreshExtensionAttributes(createCtx, id.ValueString(), &plan)...)
+
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, patchSoftwareTitleIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	tflog.Trace(ctx, "created Jamf Pro patch software title", map[string]any{"id": plan.ID.ValueString()})
+	// Persist state before attempting the accept side-call: the classic title is
+	// already minted, so a fatal accept failure must still leave it in state
+	// (else it orphans server-side). A later apply then retries via Update.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if plan.AcceptExtensionAttributes.ValueBool() {
+		if err := r.acceptPendingExtensionAttributes(createCtx, id.ValueString()); err != nil {
+			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", err.Error())
+			return
+		}
+		resp.Diagnostics.Append(r.refreshExtensionAttributes(createCtx, id.ValueString(), &plan)...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	tflog.Trace(ctx, "created Jamf Pro patch software title", map[string]any{"id": plan.ID.ValueString()})
 }
 
 // Read refreshes state. version_packages is rebuilt from only the keys recorded
@@ -177,6 +201,8 @@ func (r *PatchSoftwareTitleResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
+	resp.Diagnostics.Append(r.refreshExtensionAttributes(readCtx, state.ID.ValueString(), &state)...)
+
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, patchSoftwareTitleIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -236,11 +262,31 @@ func (r *PatchSoftwareTitleResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
+	resp.Diagnostics.Append(r.refreshExtensionAttributes(updateCtx, plan.ID.ValueString(), &plan)...)
+
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, patchSoftwareTitleIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Persist the classic changes before the accept side-call so a fatal accept
+	// failure does not lose them; a later apply retries the accept.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if plan.AcceptExtensionAttributes.ValueBool() {
+		if err := r.acceptPendingExtensionAttributes(updateCtx, plan.ID.ValueString()); err != nil {
+			resp.Diagnostics.AddError("Error accepting Jamf Pro patch software title extension attributes", err.Error())
+			return
+		}
+		resp.Diagnostics.Append(r.refreshExtensionAttributes(updateCtx, plan.ID.ValueString(), &plan)...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
 }
 
 // Delete removes a Jamf Pro patch software title.
