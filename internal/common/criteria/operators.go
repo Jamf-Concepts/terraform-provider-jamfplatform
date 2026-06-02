@@ -9,13 +9,20 @@
 // resources.
 //
 // The vocabulary is parameterisable per consumer: some operators only make sense
-// for some object types. Device/computer groups and advanced searches use the
-// full set (Operators); user groups use a subset (see Without) that drops the two
-// date-window operators ("in less than x days" / "in more than x days") — the
-// classic /usergroups endpoint returns 409 "Problem with criteria" for them on
-// user extension-attribute criteria (wire-probed during the user_group build).
-// Those operators are meaningful only for device / certificate-expiry date
-// criteria. Field/operator validity beyond that is enforced server-side.
+// for some object types. Device/computer groups and the computer / mobile-device
+// advanced searches use the full set (Operators). Two consumers use a subset via
+// Without:
+//   - jamfplatform_pro_user_group drops the two date-window operators
+//     ("in less than x days" / "in more than x days") — the classic /usergroups
+//     endpoint returns 409 "Problem with criteria" for them on user
+//     extension-attribute criteria (wire-probed during the user_group build).
+//   - jamfplatform_pro_advanced_volume_purchasing_content_search drops the 13
+//     operators absent from the Volume-Purchasing-Content criteria UI (membership,
+//     all date operators, and >=/<=), leaving the 8-operator string+numeric set
+//     the content attributes actually accept (UI-confirmed during the build).
+//
+// Field/operator validity beyond the vocabulary is enforced server-side (the Pro
+// /v1 advanced-search endpoints reject operator/field mismatches per-criterion).
 package criteria
 
 import (
