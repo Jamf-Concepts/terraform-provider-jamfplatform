@@ -33,11 +33,6 @@ func assignAdvancedComputerSearchResourceModel(ctx context.Context, state *Advan
 	state.SiteID = helpers.ReconcileOptionalStringPointer(siteID, state.SiteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
 
-	state.ViewAs = helpers.StringPointerValueOrNull(search.ViewAs)
-	state.Sort1 = flattenSort(search.Sort1)
-	state.Sort2 = flattenSort(search.Sort2)
-	state.Sort3 = flattenSort(search.Sort3)
-
 	state.Criteria = criteria.FlattenCriterionSlice(criterionSlice(search.Criteria))
 
 	displayFields, dfDiags := flattenDisplayFields(ctx, search.DisplayFields)
@@ -66,11 +61,6 @@ func assignAdvancedComputerSearchDataSourceModel(ctx context.Context, state *Adv
 	siteID, siteName := flattenSite(search.Site)
 	state.SiteID = helpers.StringPointerValueOrNull(siteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
-
-	state.ViewAs = helpers.StringPointerValueOrNull(search.ViewAs)
-	state.Sort1 = flattenSort(search.Sort1)
-	state.Sort2 = flattenSort(search.Sort2)
-	state.Sort3 = flattenSort(search.Sort3)
 
 	state.Criteria = criteria.FlattenCriterionSlice(criterionSlice(search.Criteria))
 
@@ -105,16 +95,6 @@ func flattenSite(site *proclassic.SiteObject) (*string, *string) {
 		idPtr = &s
 	}
 	return idPtr, site.Name
-}
-
-// flattenSort maps a sort field to state. The classic API returns an empty
-// element (<sort_1/>) for an unset sort, which decodes to an empty string — we
-// surface that as null so an omitted sort round-trips cleanly.
-func flattenSort(sort *string) types.String {
-	if sort == nil || *sort == "" {
-		return types.StringNull()
-	}
-	return types.StringValue(*sort)
 }
 
 // flattenDisplayFields converts the SDK display-fields wrapper into a Set of

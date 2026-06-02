@@ -12,16 +12,14 @@ import (
 )
 
 // AdvancedComputerSearchResourceModel is the Terraform resource model for a
-// Jamf Pro advanced computer search.
+// Jamf Pro advanced computer search. view_as and sort columns exist on the wire
+// but are intentionally not modelled — they are absent from the current admin UI
+// and the server applies its own defaults (Standard Web Page, no sort) on create.
 type AdvancedComputerSearchResourceModel struct {
 	ID            types.String              `tfsdk:"id"`
 	Name          types.String              `tfsdk:"name"`
 	SiteID        types.String              `tfsdk:"site_id"`
 	SiteName      types.String              `tfsdk:"site_name"`
-	ViewAs        types.String              `tfsdk:"view_as"`
-	Sort1         types.String              `tfsdk:"sort_1"`
-	Sort2         types.String              `tfsdk:"sort_2"`
-	Sort3         types.String              `tfsdk:"sort_3"`
 	Criteria      []criteria.CriterionModel `tfsdk:"criteria"`
 	DisplayFields types.Set                 `tfsdk:"display_fields"`
 	Timeouts      resourceTimeouts.Value    `tfsdk:"timeouts"`
@@ -35,10 +33,6 @@ type AdvancedComputerSearchDataSourceModel struct {
 	Name          types.String              `tfsdk:"name"`
 	SiteID        types.String              `tfsdk:"site_id"`
 	SiteName      types.String              `tfsdk:"site_name"`
-	ViewAs        types.String              `tfsdk:"view_as"`
-	Sort1         types.String              `tfsdk:"sort_1"`
-	Sort2         types.String              `tfsdk:"sort_2"`
-	Sort3         types.String              `tfsdk:"sort_3"`
 	Criteria      []criteria.CriterionModel `tfsdk:"criteria"`
 	DisplayFields types.Set                 `tfsdk:"display_fields"`
 	Timeouts      datasourceTimeouts.Value  `tfsdk:"timeouts"`

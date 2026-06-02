@@ -22,6 +22,3 @@ var advancedComputerSearchTimeoutAttributeTypes = map[string]attr.Type{
 // We always serialise the site so the wire payload is explicit and reads stay
 // stable.
 const noSiteID = "-1"
-
-// defaultViewAs is the value Jamf Pro assigns to view_as when omitted.
-const defaultViewAs = "Standard Web Page"

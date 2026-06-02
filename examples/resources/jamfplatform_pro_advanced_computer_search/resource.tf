@@ -21,9 +21,6 @@ resource "jamfplatform_pro_advanced_computer_search" "lab_macs" {
   # The set of inventory columns shown in the results. Order is not significant
   # — Jamf Pro returns the columns in its own canonical order.
   display_fields = ["Computer Name", "Serial Number", "Last Inventory Update"]
-
-  # Optional: sort the results by up to three display columns.
-  sort_1 = "Computer Name"
 }
 
 # Minimal search scoped to a site, with no display columns.

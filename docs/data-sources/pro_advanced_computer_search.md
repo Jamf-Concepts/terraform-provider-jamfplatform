@@ -39,10 +39,6 @@ data "jamfplatform_pro_advanced_computer_search" "by_name" {
 - `display_fields` (Set of String) Inventory column names shown in the search results.
 - `site_id` (String) Jamf Pro site ID scoping the search. `-1` means no site (`NONE`).
 - `site_name` (String) Jamf Pro site display name.
-- `sort_1` (String) First display column the results are sorted by.
-- `sort_2` (String) Second display column the results are sorted by.
-- `sort_3` (String) Third display column the results are sorted by.
-- `view_as` (String) How Jamf Pro renders the search results.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
