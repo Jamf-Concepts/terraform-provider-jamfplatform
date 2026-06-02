@@ -1,0 +1,101 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package advanced_computer_search
+
+import (
+	"context"
+	"strconv"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+)
+
+// buildAdvancedComputerSearchInput converts a plan model into the SDK payload
+// used for Create and Update. Every field is emitted unconditionally: the
+// classic API merges omitted fields (leaving the server value unchanged), so to
+// make the Terraform config authoritative — and to let users clear criteria,
+// display fields, and sorts — we always send the full representation. An empty
+// <criteria> / <display_fields> wrapper clears the corresponding collection.
+func buildAdvancedComputerSearchInput(ctx context.Context, plan AdvancedComputerSearchResourceModel) (*proclassic.AdvancedComputerSearch, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	name := plan.Name.ValueString()
+	viewAs := plan.ViewAs.ValueString()
+	sort1 := plan.Sort1.ValueString()
+	sort2 := plan.Sort2.ValueString()
+	sort3 := plan.Sort3.ValueString()
+
+	displayFields, dfDiags := buildDisplayFieldsWrapper(ctx, plan.DisplayFields)
+	diags.Append(dfDiags...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	search := &proclassic.AdvancedComputerSearch{
+		Name:          &name,
+		ViewAs:        &viewAs,
+		Sort1:         &sort1,
+		Sort2:         &sort2,
+		Sort3:         &sort3,
+		Site:          buildSiteObject(plan.SiteID),
+		Criteria:      buildCriteriaWrapper(plan.Criteria),
+		DisplayFields: displayFields,
+	}
+
+	return search, diags
+}
+
+// buildSiteObject converts the plan site_id into the SDK SiteObject. site_id is
+// Optional+Computed with a static default of "-1"; we always send a non-nil
+// Site so the wire payload is explicit about the NONE assignment.
+func buildSiteObject(siteID types.String) *proclassic.SiteObject {
+	if siteID.IsNull() || siteID.IsUnknown() {
+		return nil
+	}
+	idStr := siteID.ValueString()
+	if idStr == "" {
+		return nil
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return nil
+	}
+	return &proclassic.SiteObject{ID: &id}
+}
+
+// buildCriteriaWrapper wraps the shared criterion-slice builder in the
+// computer-search wrapper struct. Always returns a non-nil wrapper (empty
+// Criterion slice when there are no criteria) so the <criteria> element is
+// always emitted — an empty element clears all criteria server-side.
+func buildCriteriaWrapper(models []criteria.CriterionModel) *proclassic.AdvancedComputerSearchCriteria {
+	slice := criteria.BuildCriterionSlice(models)
+	return &proclassic.AdvancedComputerSearchCriteria{Criterion: &slice}
+}
+
+// buildDisplayFieldsWrapper converts the plan display_fields set into the SDK
+// wrapper. Always returns a non-nil wrapper (empty when null/unknown) so the
+// <display_fields> element is always emitted; an empty element clears all
+// columns server-side.
+func buildDisplayFieldsWrapper(ctx context.Context, set types.Set) (*proclassic.AdvancedComputerSearchDisplayFields, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	names := []string{}
+	if !set.IsNull() && !set.IsUnknown() {
+		extracted, d := helpers.SetToStringSlice(ctx, set)
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		names = extracted
+	}
+	items := make([]proclassic.AdvancedComputerSearchDisplayFieldsDisplayFieldItem, 0, len(names))
+	for _, n := range names {
+		name := n
+		items = append(items, proclassic.AdvancedComputerSearchDisplayFieldsDisplayFieldItem{Name: &name})
+	}
+	return &proclassic.AdvancedComputerSearchDisplayFields{DisplayField: &items}, diags
+}
