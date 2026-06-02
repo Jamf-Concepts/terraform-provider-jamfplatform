@@ -94,7 +94,7 @@ func TestAccDataSource_ProPatchInternalSource_RequiresOneSelector(t *testing.T) 
 				Config: `
 					data "jamfplatform_pro_patch_internal_source" "none" {}
 				`,
-				ExpectError: regexp.MustCompile("Invalid Attribute Combination"),
+				ExpectError: regexp.MustCompile("Missing Attribute Configuration"),
 			},
 		},
 	})
