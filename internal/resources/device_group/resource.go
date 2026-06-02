@@ -10,6 +10,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -151,10 +152,10 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 							Required:            true,
 						},
 						"operator": schema.StringAttribute{
-							MarkdownDescription: operatorDescription(),
+							MarkdownDescription: criteria.Description(criteria.Operators),
 							Required:            true,
 							Validators: []validator.String{
-								stringvalidator.OneOf(ValidOperators...),
+								stringvalidator.OneOf(criteria.Operators...),
 							},
 						},
 						"value": schema.StringAttribute{

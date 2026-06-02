@@ -4,53 +4,14 @@
 package user_group
 
 import (
-	"strings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 )
 
-// ValidOperators contains the Jamf classic <search_type> values accepted on
-// user-group criteria. The classic OpenAPI spec types <search_type> as a
-// free-form string with only an example, so this list is provider-side
-// guardrail rather than a server-enforced enum.
-//
-// NOTE: this duplicates internal/resources/device_group/mappings.go
-// ValidOperators. The two consumers cover Platform Services + ProClassic
-// inventory criteria — both are inventory-style criteria with the same
-// operator vocabulary in practice. Per STYLE_GUIDE §Shared schemas
-// (deferred abstraction), the abstraction trigger is 3 verified-identical
-// shapes across shipped resources; we will revisit when a third consumer
-// lands (e.g. jamfplatform_pro_computer_group or an advanced search).
-var ValidOperators = []string{
-	"is",
-	"is not",
-	"has",
-	"does not have",
-	"member of",
-	"not member of",
-	"before (yyyy-mm-dd)",
-	"after (yyyy-mm-dd)",
-	// "in less than x days" and "in more than x days" are intentionally
-	// omitted: Jamf classic only honours these for certificate-expiry
-	// criteria, not for user attributes / user extension attributes. They
-	// surface a 409 "Problem with criteria" on /usergroups.
-	"more than x days ago",
-	"less than x days ago",
-	"like",
-	"not like",
-	"greater than",
-	"more than",
-	"less than",
-	"greater than or equal",
-	"less than or equal",
-	"matches regex",
-	"does not match regex",
-}
-
-// operatorDescription returns a formatted MarkdownDescription listing all
-// valid operator strings as inline code.
-func operatorDescription() string {
-	quoted := make([]string, len(ValidOperators))
-	for i, v := range ValidOperators {
-		quoted[i] = "`" + v + "`"
-	}
-	return "Operator to apply. Valid values are " + strings.Join(quoted, ", ") + "."
-}
+// ValidOperators is the criteria operator vocabulary accepted on user-group
+// criteria: the shared canonical set minus the two date-window operators. The
+// classic /usergroups endpoint returns 409 "Problem with criteria" for "in less
+// than x days" / "in more than x days" on user extension-attribute criteria
+// (wire-probed during this resource's build) — they apply only to device /
+// certificate-expiry date criteria. Device/computer groups and advanced searches
+// use the full criteria.Operators set.
+var ValidOperators = criteria.Without("in less than x days", "in more than x days")
