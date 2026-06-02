@@ -8,9 +8,13 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// eaElementType is the object type of one extension_attributes list element.
+var eaElementType = types.ObjectType{AttrTypes: patchSoftwareTitleEAAttrTypes}
 
 // refreshExtensionAttributes reads the title's extension attributes from the v2
 // configuration endpoint (keyed by the same id as the classic title) and writes
@@ -19,7 +23,7 @@ import (
 // matching the available_titles convention on the source data sources.
 func (r *PatchSoftwareTitleResource) refreshExtensionAttributes(ctx context.Context, id string, model *PatchSoftwareTitleResourceModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-	model.ExtensionAttributes = []PatchSoftwareTitleEAModel{}
+	model.ExtensionAttributes = types.ListValueMust(eaElementType, []attr.Value{})
 
 	if r.proClient == nil || id == "" {
 		return diags
@@ -42,7 +46,13 @@ func (r *PatchSoftwareTitleResource) refreshExtensionAttributes(ctx context.Cont
 			Accepted:    types.BoolValue(eas[i].Accepted),
 		})
 	}
-	model.ExtensionAttributes = out
+
+	list, listDiags := types.ListValueFrom(ctx, eaElementType, out)
+	diags.Append(listDiags...)
+	if listDiags.HasError() {
+		return diags
+	}
+	model.ExtensionAttributes = list
 	return diags
 }
 
