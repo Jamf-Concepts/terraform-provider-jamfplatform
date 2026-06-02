@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -148,7 +149,7 @@ func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaReque
 							Required:            true,
 						},
 						"search_type": schema.StringAttribute{
-							MarkdownDescription: operatorDescription(),
+							MarkdownDescription: criteria.Description(ValidOperators),
 							Required:            true,
 							Validators: []validator.String{
 								stringvalidator.OneOf(ValidOperators...),
