@@ -74,7 +74,7 @@ func (r *PatchExternalSourceResource) IdentitySchema(ctx context.Context, req re
 // Schema returns the Terraform schema for the patch external source resource.
 func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro patch external source. External patch sources host third-party software title definitions consumed by patch management.",
+		MarkdownDescription: "Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management** in the **Patch External Source** section (the **New External Patch Source** form). External patch sources host third-party software title definitions consumed by patch management.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch external source ID assigned by Jamf Pro.",
@@ -121,7 +121,7 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"certificate_validation_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether software title definitions are validated against the source certificate (UI \"Validate Software Title Definitions\"). Server-defaulted when omitted.",
+				MarkdownDescription: "Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI \"Validate Software Title Definitions\"); unsigned definitions are not downloaded. Server-defaulted when omitted.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
