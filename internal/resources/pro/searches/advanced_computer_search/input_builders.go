@@ -16,19 +16,19 @@ import (
 )
 
 // buildAdvancedComputerSearchInput converts a plan model into the SDK payload
-// used for Create and Update. Every field is emitted unconditionally: the
-// classic API merges omitted fields (leaving the server value unchanged), so to
-// make the Terraform config authoritative — and to let users clear criteria,
-// display fields, and sorts — we always send the full representation. An empty
+// used for Create and Update. The managed fields are emitted unconditionally:
+// the classic API merges omitted fields (leaving the server value unchanged), so
+// to make the Terraform config authoritative — and to let users clear criteria
+// and display fields — we always send the full representation. An empty
 // <criteria> / <display_fields> wrapper clears the corresponding collection.
+//
+// view_as and sort_1/2/3 are deliberately NOT sent: they are not modelled (absent
+// from the admin UI), and omitting them leaves the server defaults in place
+// (Standard Web Page, no sort) — matching UI-created searches.
 func buildAdvancedComputerSearchInput(ctx context.Context, plan AdvancedComputerSearchResourceModel) (*proclassic.AdvancedComputerSearch, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	name := plan.Name.ValueString()
-	viewAs := plan.ViewAs.ValueString()
-	sort1 := plan.Sort1.ValueString()
-	sort2 := plan.Sort2.ValueString()
-	sort3 := plan.Sort3.ValueString()
 
 	displayFields, dfDiags := buildDisplayFieldsWrapper(ctx, plan.DisplayFields)
 	diags.Append(dfDiags...)
@@ -38,10 +38,6 @@ func buildAdvancedComputerSearchInput(ctx context.Context, plan AdvancedComputer
 
 	search := &proclassic.AdvancedComputerSearch{
 		Name:          &name,
-		ViewAs:        &viewAs,
-		Sort1:         &sort1,
-		Sort2:         &sort2,
-		Sort3:         &sort3,
 		Site:          buildSiteObject(plan.SiteID),
 		Criteria:      buildCriteriaWrapper(plan.Criteria),
 		DisplayFields: displayFields,

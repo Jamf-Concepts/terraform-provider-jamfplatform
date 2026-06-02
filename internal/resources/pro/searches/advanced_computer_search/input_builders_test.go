@@ -19,10 +19,6 @@ func TestBuildInput_AlwaysEmitsCriteriaAndDisplayWrappers(t *testing.T) {
 	plan := AdvancedComputerSearchResourceModel{
 		Name:          types.StringValue("empty search"),
 		SiteID:        types.StringValue("-1"),
-		ViewAs:        types.StringValue(defaultViewAs),
-		Sort1:         types.StringNull(),
-		Sort2:         types.StringNull(),
-		Sort3:         types.StringNull(),
 		Criteria:      nil,
 		DisplayFields: types.SetNull(types.StringType),
 	}
@@ -43,15 +39,13 @@ func TestBuildInput_AlwaysEmitsCriteriaAndDisplayWrappers(t *testing.T) {
 	if len(*out.DisplayFields.DisplayField) != 0 {
 		t.Errorf("expected empty display_field slice, got %d", len(*out.DisplayFields.DisplayField))
 	}
-	// Sorts always emitted (empty string), never nil, so they round-trip and can
-	// be cleared via the classic merge.
-	for _, s := range []*string{out.Sort1, out.Sort2, out.Sort3} {
-		if s == nil {
-			t.Errorf("sort field must be emitted (non-nil) even when unset")
-		}
+	// view_as and sort_1/2/3 are not modelled, so they must not be sent — the
+	// server keeps its defaults.
+	if out.ViewAs != nil {
+		t.Errorf("view_as must not be sent, got %v", *out.ViewAs)
 	}
-	if out.ViewAs == nil || *out.ViewAs != defaultViewAs {
-		t.Errorf("view_as expected %q, got %v", defaultViewAs, out.ViewAs)
+	if out.Sort1 != nil || out.Sort2 != nil || out.Sort3 != nil {
+		t.Errorf("sort fields must not be sent")
 	}
 	if out.Site == nil || out.Site.ID == nil || *out.Site.ID != -1 {
 		t.Errorf("site sentinel -1 expected, got %v", out.Site)
@@ -66,8 +60,6 @@ func TestBuildInput_PopulatedDisplayFieldsAndCriteria(t *testing.T) {
 	plan := AdvancedComputerSearchResourceModel{
 		Name:   types.StringValue("lab macs"),
 		SiteID: types.StringValue("-1"),
-		ViewAs: types.StringValue(defaultViewAs),
-		Sort1:  types.StringValue("Computer Name"),
 		Criteria: []criteria.CriterionModel{
 			{Name: types.StringValue("Computer Name"), SearchType: types.StringValue("like"), Value: types.StringValue("lab")},
 		},
@@ -82,9 +74,6 @@ func TestBuildInput_PopulatedDisplayFieldsAndCriteria(t *testing.T) {
 	}
 	if len(*out.DisplayFields.DisplayField) != 2 {
 		t.Errorf("expected 2 display fields, got %d", len(*out.DisplayFields.DisplayField))
-	}
-	if out.Sort1 == nil || *out.Sort1 != "Computer Name" {
-		t.Errorf("sort_1 expected 'Computer Name', got %v", out.Sort1)
 	}
 }
 

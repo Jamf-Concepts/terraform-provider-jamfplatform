@@ -100,24 +100,6 @@ func (r *AdvancedComputerSearchResource) Schema(ctx context.Context, req resourc
 				MarkdownDescription: "Site name reported by Jamf Pro for the assigned `site_id`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 			},
-			"view_as": schema.StringAttribute{
-				MarkdownDescription: "How Jamf Pro renders the search results (e.g. `Standard Web Page`). Defaults to `Standard Web Page`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString(defaultViewAs),
-			},
-			"sort_1": schema.StringAttribute{
-				MarkdownDescription: "First display column to sort results by. Omit for no sort.",
-				Optional:            true,
-			},
-			"sort_2": schema.StringAttribute{
-				MarkdownDescription: "Second display column to sort results by. Omit for no sort.",
-				Optional:            true,
-			},
-			"sort_3": schema.StringAttribute{
-				MarkdownDescription: "Third display column to sort results by. Omit for no sort.",
-				Optional:            true,
-			},
 			"criteria": schema.ListNestedAttribute{
 				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit (or supply an empty list) for a search with no criteria.",
 				Optional:            true,

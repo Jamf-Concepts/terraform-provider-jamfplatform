@@ -11,18 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestFlattenSort_EmptyOrNilToNull(t *testing.T) {
-	if got := flattenSort(nil); !got.IsNull() {
-		t.Errorf("nil sort should be null")
-	}
-	if got := flattenSort(new("")); !got.IsNull() {
-		t.Errorf("empty-string sort should be null (server emits <sort_1/>)")
-	}
-	if got := flattenSort(new("Computer Name")); got.ValueString() != "Computer Name" {
-		t.Errorf("non-empty sort should round-trip, got %q", got.ValueString())
-	}
-}
-
 func TestFlattenDisplayFields_NilToNullSet(t *testing.T) {
 	got, diags := flattenDisplayFields(context.Background(), nil)
 	if diags.HasError() {
@@ -60,10 +48,9 @@ func TestFlattenDisplayFields_Populated(t *testing.T) {
 
 func TestAssignResourceModel_OmitsMatchedRecords(t *testing.T) {
 	search := &proclassic.AdvancedComputerSearch{
-		ID:     new(461),
-		Name:   new("lab macs"),
-		ViewAs: new("Standard Web Page"),
-		Site:   &proclassic.SiteObject{ID: new(-1), Name: new("NONE")},
+		ID:   new(461),
+		Name: new("lab macs"),
+		Site: &proclassic.SiteObject{ID: new(-1), Name: new("NONE")},
 		Criteria: &proclassic.AdvancedComputerSearchCriteria{
 			Criterion: &[]proclassic.Criterion{
 				{Name: new("Computer Name"), SearchType: new("like"), Value: new("lab"), Priority: new(0)},

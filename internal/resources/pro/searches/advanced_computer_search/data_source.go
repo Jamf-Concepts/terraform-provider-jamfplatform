@@ -59,10 +59,6 @@ func (d *AdvancedComputerSearchDataSource) Schema(ctx context.Context, req datas
 			},
 			"site_id":   schema.StringAttribute{MarkdownDescription: "Jamf Pro site ID scoping the search. `-1` means no site (`NONE`).", Computed: true},
 			"site_name": schema.StringAttribute{MarkdownDescription: "Jamf Pro site display name.", Computed: true},
-			"view_as":   schema.StringAttribute{MarkdownDescription: "How Jamf Pro renders the search results.", Computed: true},
-			"sort_1":    schema.StringAttribute{MarkdownDescription: "First display column the results are sorted by.", Computed: true},
-			"sort_2":    schema.StringAttribute{MarkdownDescription: "Second display column the results are sorted by.", Computed: true},
-			"sort_3":    schema.StringAttribute{MarkdownDescription: "Third display column the results are sorted by.", Computed: true},
 			"criteria": schema.ListNestedAttribute{
 				MarkdownDescription: "Ordered criteria evaluated by Jamf Pro to populate the search.",
 				Computed:            true,

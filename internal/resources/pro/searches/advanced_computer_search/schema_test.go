@@ -31,11 +31,16 @@ func TestResource_Schema(t *testing.T) {
 	s := resp.Schema
 
 	for _, name := range []string{
-		"id", "name", "site_id", "site_name", "view_as",
-		"sort_1", "sort_2", "sort_3", "criteria", "display_fields", "timeouts",
+		"id", "name", "site_id", "site_name", "criteria", "display_fields", "timeouts",
 	} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
+		}
+	}
+	// view_as / sort columns are deliberately NOT modelled (absent from the UI).
+	for _, absent := range []string{"view_as", "sort_1", "sort_2", "sort_3"} {
+		if _, ok := s.Attributes[absent]; ok {
+			t.Errorf("attribute %q must not be exposed", absent)
 		}
 	}
 
@@ -45,12 +50,9 @@ func TestResource_Schema(t *testing.T) {
 	if !s.Attributes["name"].IsRequired() {
 		t.Errorf("name must be required")
 	}
-	// Optional+Computed with defaults.
-	for _, oc := range []string{"site_id", "view_as"} {
-		a := s.Attributes[oc]
-		if !a.IsOptional() || !a.IsComputed() {
-			t.Errorf("%q must be optional+computed", oc)
-		}
+	// site_id is Optional+Computed with a default.
+	if a := s.Attributes["site_id"]; !a.IsOptional() || !a.IsComputed() {
+		t.Errorf("site_id must be optional+computed")
 	}
 	// site_name is computed-only (server-derived from mutable site_id; must NOT
 	// be Optional, and must NOT carry UseStateForUnknown — see the derived-name
@@ -58,8 +60,8 @@ func TestResource_Schema(t *testing.T) {
 	if sn := s.Attributes["site_name"]; sn.IsRequired() || sn.IsOptional() || !sn.IsComputed() {
 		t.Errorf("site_name must be computed-only")
 	}
-	// Managed collections + sorts are optional-only (omit to clear).
-	for _, o := range []string{"criteria", "display_fields", "sort_1", "sort_2", "sort_3"} {
+	// Managed collections are optional-only (omit to clear).
+	for _, o := range []string{"criteria", "display_fields"} {
 		a := s.Attributes[o]
 		if !a.IsOptional() || a.IsComputed() {
 			t.Errorf("%q must be optional-only", o)

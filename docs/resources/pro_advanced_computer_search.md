@@ -36,9 +36,6 @@ resource "jamfplatform_pro_advanced_computer_search" "lab_macs" {
   # The set of inventory columns shown in the results. Order is not significant
   # — Jamf Pro returns the columns in its own canonical order.
   display_fields = ["Computer Name", "Serial Number", "Last Inventory Update"]
-
-  # Optional: sort the results by up to three display columns.
-  sort_1 = "Computer Name"
 }
 
 # Minimal search scoped to a site, with no display columns.
@@ -68,11 +65,7 @@ resource "jamfplatform_pro_advanced_computer_search" "all_in_site" {
 - `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit (or supply an empty list) for a search with no criteria. (see [below for nested schema](#nestedatt--criteria))
 - `display_fields` (Set of String) Set of inventory column names to display in the search results (e.g. `Computer Name`, `Serial Number`, `Username`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit for no display columns.
 - `site_id` (String) Optional Jamf Pro site ID to scope the search. Omit to leave unscoped (server sets the `NONE` site, id `-1`).
-- `sort_1` (String) First display column to sort results by. Omit for no sort.
-- `sort_2` (String) Second display column to sort results by. Omit for no sort.
-- `sort_3` (String) Third display column to sort results by. Omit for no sort.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `view_as` (String) How Jamf Pro renders the search results (e.g. `Standard Web Page`). Defaults to `Standard Web Page`.
 
 ### Read-Only
 

@@ -65,12 +65,11 @@ func testAccCheckACSDestroy(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
-// Step 1: create with 1 criterion + 2 display columns + a sort + site NONE.
+// Step 1: create with 1 criterion + 2 display columns + site NONE.
 func acsConfigCreate(name string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_advanced_computer_search" "test" {
-			name   = %q
-			sort_1 = "Computer Name"
+			name = %q
 
 			criteria = [
 				{
@@ -85,12 +84,11 @@ func acsConfigCreate(name string) string {
 	`, name)
 }
 
-// Step 2: rename + grow criteria (1->2) + grow display (2->3) + change sort.
+// Step 2: rename + grow criteria (1->2) + grow display (2->3).
 func acsConfigGrow(name string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_advanced_computer_search" "test" {
-			name   = %q
-			sort_1 = "Serial Number"
+			name = %q
 
 			criteria = [
 				{
@@ -158,8 +156,6 @@ func TestAccResource_ProAdvancedComputerSearch_Lifecycle(t *testing.T) {
 					resource.TestCheckResourceAttr(acsResource, "name", name),
 					resource.TestCheckResourceAttr(acsResource, "site_id", "-1"),
 					resource.TestCheckResourceAttr(acsResource, "site_name", "NONE"),
-					resource.TestCheckResourceAttr(acsResource, "view_as", "Standard Web Page"),
-					resource.TestCheckResourceAttr(acsResource, "sort_1", "Computer Name"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.#", "1"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.0.name", "Computer Name"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.0.search_type", "like"),
@@ -172,7 +168,6 @@ func TestAccResource_ProAdvancedComputerSearch_Lifecycle(t *testing.T) {
 				Config: acsConfigGrow(renamed),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(acsResource, "name", renamed),
-					resource.TestCheckResourceAttr(acsResource, "sort_1", "Serial Number"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.#", "2"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.1.name", "Operating System Version"),
 					resource.TestCheckResourceAttr(acsResource, "display_fields.#", "3"),
@@ -193,9 +188,6 @@ func TestAccResource_ProAdvancedComputerSearch_Lifecycle(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(acsResource, "criteria.#", "1"),
 					resource.TestCheckResourceAttr(acsResource, "display_fields.#", "1"),
-					// sort_1 omitted in this step: flattenSort maps the server's
-					// empty <sort_1/> to null, so the attribute is absent (not "").
-					resource.TestCheckNoResourceAttr(acsResource, "sort_1"),
 				),
 			},
 			{
