@@ -43,8 +43,13 @@ internal/
 │       └── webhooks/                # webhook
 ├── actions/device/    # erase, restart, shutdown, unmanage
 ├── common/
-│   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version
+│   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
+│   ├── files/         # Shared upload-source plumbing for resources that upload file content
 │   ├── filters/       # RSQL + classic filter schema/expression builder
+│   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version
+│   ├── ldapgroups/    # Directory-service (LDAP / cloud-IdP) group resolution + scope preflight validation
+│   ├── planmodifiers/ # Shared Terraform Plugin Framework plan modifiers
+│   ├── plisthelpers/  # Generic plist (Apple property list) parsing / normalisation helpers
 │   └── scope/         # Classic scope sub-block factories + builders + validators (see STYLE_GUIDE §Scope helper)
 └── testhelpers/       # Acceptance fixtures (provider factories, real client, mock server)
 tools/                 # go:generate entrypoint (copywrite, terraform fmt, tfplugindocs)
