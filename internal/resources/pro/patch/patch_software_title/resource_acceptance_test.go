@@ -365,3 +365,57 @@ func TestAccListResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 		},
 	})
 }
+
+// TestAccResource_ProPatchSoftwareTitle_ExtensionAttributeAccept exercises the
+// v2 extension-attribute side-channel. "Adobe AIR" (name_id 0AE) is a title for
+// which Jamf supplies an extension attribute that must be accepted. Step 1
+// creates the title without accepting (extension_attributes present, accepted =
+// false); step 2 sets accept_extension_attributes = true and asserts the EA
+// flips to accepted = true. Accepting is one-way, so there is no revert step.
+func TestAccResource_ProPatchSoftwareTitle_ExtensionAttributeAccept(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	const (
+		eaTitleNameID   = "0AE" // Adobe AIR
+		eaTitleSourceID = 1
+	)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPatchSoftwareTitleDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// Create without accepting — the EA is present but not accepted.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_patch_software_title" "ea" {
+						name      = "Adobe AIR"
+						name_id   = %q
+						source_id = %d
+					}
+				`, eaTitleNameID, eaTitleSourceID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(patchSoftwareType+".ea", "extension_attributes.#", "1"),
+					resource.TestCheckResourceAttr(patchSoftwareType+".ea", "extension_attributes.0.accepted", "false"),
+					resource.TestCheckResourceAttrSet(patchSoftwareType+".ea", "extension_attributes.0.ea_id"),
+					resource.TestCheckResourceAttrSet(patchSoftwareType+".ea", "extension_attributes.0.display_name"),
+				),
+			},
+			{
+				// Accept — the EA flips to accepted = true.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_patch_software_title" "ea" {
+						name                        = "Adobe AIR"
+						name_id                     = %q
+						source_id                   = %d
+						accept_extension_attributes = true
+					}
+				`, eaTitleNameID, eaTitleSourceID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(patchSoftwareType+".ea", "accept_extension_attributes", "true"),
+					resource.TestCheckResourceAttr(patchSoftwareType+".ea", "extension_attributes.#", "1"),
+					resource.TestCheckResourceAttr(patchSoftwareType+".ea", "extension_attributes.0.accepted", "true"),
+				),
+			},
+		},
+	})
+}

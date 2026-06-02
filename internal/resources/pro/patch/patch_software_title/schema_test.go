@@ -33,7 +33,7 @@ func TestPatchSoftwareTitleResource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	want := []string{"id", "name", "name_id", "source_id", "category_id", "category_name", "site_id", "site_name", "web_notification", "email_notification", "version_packages", "available_versions", "timeouts"}
+	want := []string{"id", "name", "name_id", "source_id", "category_id", "category_name", "site_id", "site_name", "web_notification", "email_notification", "version_packages", "available_versions", "accept_extension_attributes", "extension_attributes", "timeouts"}
 	for _, name := range want {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
@@ -75,6 +75,20 @@ func TestPatchSoftwareTitleResource_Schema(t *testing.T) {
 	}
 	if vp.IsComputed() {
 		t.Errorf("version_packages must NOT be computed (managed-subset map)")
+	}
+
+	// accept_extension_attributes is an Optional-only one-way action flag (never
+	// Computed — it is a user intent input, not coupled to the computed list).
+	accept := s.Attributes["accept_extension_attributes"]
+	if !accept.IsOptional() || accept.IsComputed() || accept.IsRequired() {
+		t.Errorf("accept_extension_attributes must be optional-only, got optional=%v computed=%v required=%v", accept.IsOptional(), accept.IsComputed(), accept.IsRequired())
+	}
+
+	// extension_attributes is Computed-only (no plan modifier) so it goes Unknown
+	// when an accept flips accepted=false→true in the same apply.
+	ea := s.Attributes["extension_attributes"]
+	if ea.IsOptional() || ea.IsRequired() || !ea.IsComputed() {
+		t.Errorf("extension_attributes must be computed-only, got optional=%v required=%v computed=%v", ea.IsOptional(), ea.IsRequired(), ea.IsComputed())
 	}
 }
 

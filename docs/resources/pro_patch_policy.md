@@ -3,15 +3,15 @@
 page_title: "jamfplatform_pro_patch_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro patch policy — the "Patch Policies" entry under the Computers sidebar in the Jamf Pro admin UI. A patch policy is created against a patch software title configuration (software_title_configuration_id, a jamfplatform_pro_patch_software_title ID) and deploys a single target_version of that title. Only versions that have a package assigned on the title can be targeted.
-  Several general fields are server-derived from the selected target_version's patch definition and are read-only: release_date, incremental_update, reboot, minimum_os, and kill_apps.
+  Manages a Jamf Pro patch policy, found in the UI under Computers → Patch management on a software title's Patch Policies tab (the New Patch Policy form). A patch policy is created against a patch software title configuration (software_title_configuration_id, a jamfplatform_pro_patch_software_title ID) and deploys a single target_version of that title. Only versions that have a package assigned on the title can be targeted.
+  The form spans three tabs: General (name, enabled, target_version, distribution_method, allow_downgrade, patch_unknown), Scope (scope), and User Interaction (user_interaction). Several General-tab fields are server-derived from the selected target_version's patch definition and are read-only: release_date, incremental_update, reboot, minimum_os, and kill_apps.
 ---
 
 # jamfplatform_pro_patch_policy (Resource)
 
-Manages a Jamf Pro patch policy — the "Patch Policies" entry under the Computers sidebar in the Jamf Pro admin UI. A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.
+Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch management** on a software title's **Patch Policies** tab (the **New Patch Policy** form). A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.
 
-Several general fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`.
+The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`), and **User Interaction** (`user_interaction`). Several **General**-tab fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`.
 
 ## Example Usage
 
@@ -21,15 +21,30 @@ Several general fields are server-derived from the selected `target_version`'s p
 # (a jamfplatform_pro_patch_software_title ID), and the target_version must be a
 # version that has a package assigned on that title.
 
+# Discover the title's catalog key from a patch source instead of hard-coding it.
+data "jamfplatform_pro_patch_internal_source" "jamf" {
+  name = "Jamf"
+}
+
+locals {
+  target_app = "8x8 Work"
+
+  catalog_entry = one([
+    for t in data.jamfplatform_pro_patch_internal_source.jamf.available_titles : t
+    if t.app_name == local.target_app
+  ])
+}
+
 resource "jamfplatform_pro_package" "work_8_33" {
   display_name = "8x8 Work 8.33.2.2"
   file_name    = "8x8-work-8.33.2.2.pkg"
 }
 
 resource "jamfplatform_pro_patch_software_title" "eight_by_eight" {
-  name      = "8x8 Work"
-  name_id   = "285"
-  source_id = 1
+  # name_id and source_id are derived from the catalog lookup above.
+  name      = local.catalog_entry.app_name
+  name_id   = local.catalog_entry.name_id
+  source_id = tonumber(data.jamfplatform_pro_patch_internal_source.jamf.id)
 
   # The policy can only target a version that has a package assigned here.
   version_packages = {
@@ -114,18 +129,18 @@ output "patch_policy_kill_apps" {
 - `distribution_method` (String) How the patch is delivered. `selfservice` = the admin UI "Make Available in Self Service"; `prompt` = "Install Automatically". Server-defaulted when omitted.
 - `enabled` (Boolean) Whether the patch policy is enabled. A policy can only be enabled when its scope resolves to at least one in-site smart group. Server-defaulted when omitted.
 - `patch_unknown` (Boolean) **"Patch Unknown Version"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Server-defaulted when omitted.
-- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Patch policies have no user / user-group scope. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Scope targets, limitations, and exclusions are addressed by computer, computer group, building, department, network segment, and iBeacon. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `user_interaction` (Attributes) User Interaction — the "User Interaction" tab in the Jamf Pro admin UI. Controls the Self Service description / button text / icon and the deferral notifications, deadlines, and grace period. The server applies full defaults when the block (or a nested field) is omitted; those defaults are not surfaced in state unless you declare the block. (see [below for nested schema](#nestedatt--user_interaction))
 
 ### Read-Only
 
 - `id` (String) Patch policy ID assigned by Jamf Pro.
-- `incremental_update` (Boolean) Whether the target version's patch definition is an incremental update. Server-derived; not user-settable.
-- `kill_apps` (Attributes List) Applications the patch definition closes before installing the target version. Server-derived from the patch definition; not user-settable. (see [below for nested schema](#nestedatt--kill_apps))
-- `minimum_os` (String) Minimum macOS version required by the target version's patch definition. Server-derived; not user-settable.
-- `reboot` (Boolean) Whether installing the target version requires a reboot. Server-derived from the patch definition; not user-settable.
-- `release_date` (Number) Release date of the target version's patch definition, as a Unix epoch in milliseconds. Server-derived; not user-settable.
+- `incremental_update` (Boolean) Whether the target version's patch definition is an incremental update (UI "Requires Incremental Update"). Server-derived; not user-settable.
+- `kill_apps` (Attributes List) Applications the patch definition closes before installing the target version (UI "Apps That Must Quit"). Server-derived from the patch definition; not user-settable. (see [below for nested schema](#nestedatt--kill_apps))
+- `minimum_os` (String) Minimum macOS version required by the target version's patch definition (UI "Minimum OS"). Server-derived; not user-settable.
+- `reboot` (Boolean) Whether installing the target version requires a reboot (UI "Reboot Required"). Server-derived from the patch definition; not user-settable.
+- `release_date` (Number) Release date of the target version's patch definition (UI "Release Date"), as a Unix epoch in milliseconds. Server-derived; not user-settable.
 
 <a id="nestedatt--scope"></a>
 ### Nested Schema for `scope`
@@ -181,7 +196,7 @@ Optional:
 
 - `deadlines` (Attributes) Install deadline after which the patch is enforced. (see [below for nested schema](#nestedatt--user_interaction--deadlines))
 - `grace_period` (Attributes) Grace period granted to a user who is actively running a to-be-killed application at install time. (see [below for nested schema](#nestedatt--user_interaction--grace_period))
-- `install_button_text` (String) Text on the Self Service install button (UI "Install Button Text"). Defaults to `Update`.
+- `install_button_text` (String) Text on the Self Service install button (UI "Button Name", under "Display in Self Service"). Defaults to `Update`.
 - `notifications` (Attributes) Notifications shown to the user before the deadline. (see [below for nested schema](#nestedatt--user_interaction--notifications))
 - `self_service_description` (String) Description shown in Self Service (UI "Description").
 - `self_service_icon_id` (String) Jamf Pro icon ID shown in Self Service (UI "Icon").
@@ -191,8 +206,8 @@ Optional:
 
 Optional:
 
-- `enabled` (Boolean) Whether a deadline is enforced (UI default `true`).
-- `period` (Number) Deadline period in days (UI default `7`).
+- `enabled` (Boolean) Whether a Self Service update deadline is enforced (UI "Enable Self Service update deadline", under "Deadline and Grace Period"; UI default `true`).
+- `period` (Number) Deadline period in days (UI "Update Deadline"; default `7`).
 
 
 <a id="nestedatt--user_interaction--grace_period"></a>
@@ -210,7 +225,7 @@ Optional:
 
 Optional:
 
-- `enabled` (Boolean) Whether notifications are shown.
+- `enabled` (Boolean) Whether notifications for the patch policy are shown in Notification Center (UI "Display notifications for the patch policy in Notification Center", under "Notifications and Reminders").
 - `message` (String) Notification message body. Write-only in practice — the classic API does not return it, so a configured value is preserved in state but not refreshed from the server.
 - `reminders` (Attributes) Reminder cadence for the notifications. (see [below for nested schema](#nestedatt--user_interaction--notifications--reminders))
 - `subject` (String) Notification subject.

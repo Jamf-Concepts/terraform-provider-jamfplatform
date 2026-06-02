@@ -143,19 +143,23 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 			// The list endpoint exposes only id+name_id+source_id; the remaining
 			// attributes are left null (see method doc).
 			state := PatchSoftwareTitleResourceModel{
-				ID:                id,
-				Name:              types.StringNull(),
-				NameID:            helpers.StringPointerValueOrNull(s.NameID),
-				SourceID:          int64PointerValueOrNull(s.SourceID),
-				CategoryID:        types.StringNull(),
-				CategoryName:      types.StringNull(),
-				SiteID:            types.StringNull(),
-				SiteName:          types.StringNull(),
-				WebNotification:   types.BoolNull(),
-				EmailNotification: types.BoolNull(),
-				VersionPackages:   types.MapNull(types.StringType),
-				AvailableVersions: types.ListNull(types.StringType),
-				Timeouts:          helpers.NewResourceTimeoutsNullValue(patchSoftwareTitleTimeoutAttributeTypes),
+				ID:                        id,
+				Name:                      types.StringNull(),
+				NameID:                    helpers.StringPointerValueOrNull(s.NameID),
+				SourceID:                  int64PointerValueOrNull(s.SourceID),
+				CategoryID:                types.StringNull(),
+				CategoryName:              types.StringNull(),
+				SiteID:                    types.StringNull(),
+				SiteName:                  types.StringNull(),
+				WebNotification:           types.BoolNull(),
+				EmailNotification:         types.BoolNull(),
+				VersionPackages:           types.MapNull(types.StringType),
+				AvailableVersions:         types.ListNull(types.StringType),
+				AcceptExtensionAttributes: types.BoolNull(),
+				// Typed null (not the zero-value types.List, which is an
+				// untyped/DynamicPseudoType list and fails the schema type check).
+				ExtensionAttributes: types.ListNull(eaElementType),
+				Timeouts:            helpers.NewResourceTimeoutsNullValue(patchSoftwareTitleTimeoutAttributeTypes),
 			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
