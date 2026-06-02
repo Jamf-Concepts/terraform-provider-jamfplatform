@@ -30,11 +30,17 @@ internal/
 │   ├── device_groups/ # Plural data source                                   (Platform Services)
 │   ├── devices/       # Plural data source                                   (Platform Services)
 │   └── pro/           # Jamf Pro resources — two-tier domain grouping
-│       ├── configuration_profiles/  # macos_configuration_profile (shipped)
-│       ├── inventory/               # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer (shipped)
-│       ├── policies/                # policy, script (shipped)
-│       ├── settings/                # self_service_plus_settings (shipped)
-│       └── users/                   # user_group (shipped)
+│       ├── api/                     # api_role, api_client (+ api_role_privileges data source)
+│       ├── apps/                    # app_installer, mac_app_store_app, mobile_device_app (+ app_installer_title(s) catalog data sources)
+│       ├── configuration_profiles/  # macos_configuration_profile, mobile_device_configuration_profile (payloadhelpers/ shared)
+│       ├── enrollment/              # automated_device_enrollment (+ public_key), computer_prestage_enrollment, mobile_device_prestage_enrollment, enrollment_customization
+│       ├── inventory/               # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer
+│       ├── patch/                   # patch_software_title, patch_policy, patch_external_source, patch_internal_source (data source) (availabletitles/ shared)
+│       ├── policies/                # policy, script, restricted_software
+│       ├── settings/                # self_service_plus_settings, cloud_distribution_point, cloud_identity_provider, ldap_server, re_enrollment_settings, sso_settings, sso_failover_url, user_initiated_enrollment_settings
+│       ├── users/                   # user_group
+│       ├── volume_purchasing/       # location
+│       └── webhooks/                # webhook
 ├── actions/device/    # erase, restart, shutdown, unmanage
 ├── common/
 │   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version
@@ -62,6 +68,7 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 | Scope-bearing classic resource | `internal/resources/pro/policies/policy/` |
 | Classic configuration profile (mobileconfig payload diff suppression) | `internal/resources/pro/configuration_profiles/macos_configuration_profile/` |
 | Plaintext secret with `WriteOnly + _wo_version` | `internal/resources/pro/inventory/directory_binding/` |
+| Classic-CRUD resource with a v2 side-channel (extension-attribute accept) | `internal/resources/pro/patch/patch_software_title/` |
 
 ## Jamf Pro resources — one-paragraph orientation
 
