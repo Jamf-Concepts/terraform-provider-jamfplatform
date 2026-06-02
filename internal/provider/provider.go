@@ -77,7 +77,9 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/script"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_computer_search"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_mobile_device_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_user_search"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_volume_purchasing_content_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
@@ -284,7 +286,9 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsResource,
 		script.NewScriptResource,
 		advanced_computer_search.NewAdvancedComputerSearchResource,
+		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchResource,
 		advanced_user_search.NewAdvancedUserSearchResource,
+		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		site.NewSiteResource,
 		sso_failover_url.NewSsoFailoverURLResource,
@@ -365,7 +369,9 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		user_group.NewUserGroupDataSource,
 		user_groups.NewUserGroupsDataSource,
 		advanced_computer_search.NewAdvancedComputerSearchDataSource,
+		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchDataSource,
 		advanced_user_search.NewAdvancedUserSearchDataSource,
+		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchDataSource,
 		location.NewVolumePurchasingLocationDataSource,
 		webhook.NewWebhookDataSource,
 	}
@@ -408,7 +414,9 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		site.NewSiteListResource,
 		user_group.NewUserGroupListResource,
 		advanced_computer_search.NewAdvancedComputerSearchListResource,
+		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchListResource,
 		advanced_user_search.NewAdvancedUserSearchListResource,
+		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchListResource,
 		location.NewVolumePurchasingLocationListResource,
 		webhook.NewWebhookListResource,
 	}
