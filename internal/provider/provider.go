@@ -69,6 +69,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_external_source"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_internal_source"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_policy"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_software_title"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/policies/policy"
@@ -348,6 +349,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		scripts.NewScriptsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
 		patch_external_source.NewPatchExternalSourceDataSource,
+		patch_internal_source.NewPatchInternalSourceDataSource,
 		patch_policy.NewPatchPolicyDataSource,
 		patch_software_title.NewPatchSoftwareTitleDataSource,
 		site.NewSiteDataSource,
