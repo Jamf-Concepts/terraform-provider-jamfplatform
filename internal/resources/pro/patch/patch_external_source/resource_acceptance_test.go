@@ -166,8 +166,9 @@ func TestAccDataSource_ProPatchExternalSource_ByName(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_patch_external_source" "src" {
-						name      = %q
-						host_name = "definitions.example.com/v2/"
+						name        = %q
+						host_name   = "definitions.datajar.mobi/v2/"
+						ssl_enabled = true
 					}
 
 					data "jamfplatform_pro_patch_external_source" "lookup" {
@@ -176,6 +177,8 @@ func TestAccDataSource_ProPatchExternalSource_ByName(t *testing.T) {
 				`, name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_external_source.lookup", "id", "jamfplatform_pro_patch_external_source.src", "id"),
+					// Real definitions host → populated catalog.
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.0.name_id"),
 				),
 			},
 		},
