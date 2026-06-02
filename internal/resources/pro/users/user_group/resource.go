@@ -138,49 +138,7 @@ func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaReque
 				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to determine smart-group membership. Required when `group_type = \"smart\"`. Forbidden when `group_type = \"static\"`. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"priority": schema.Int64Attribute{
-							MarkdownDescription: "Evaluation order for the criterion. Defaults to the element index (zero-based) if omitted.",
-							Optional:            true,
-							Computed:            true,
-						},
-						"name": schema.StringAttribute{
-							MarkdownDescription: "Inventory attribute to evaluate (e.g. `User Group`, `Username`, `Full Name`, `VPP Invitation Status`).",
-							Required:            true,
-						},
-						"search_type": schema.StringAttribute{
-							MarkdownDescription: criteria.Description(ValidOperators),
-							Required:            true,
-							Validators: []validator.String{
-								stringvalidator.OneOf(ValidOperators...),
-							},
-						},
-						"value": schema.StringAttribute{
-							MarkdownDescription: "Comparison value for the operator.",
-							Required:            true,
-						},
-						"and_or": schema.StringAttribute{
-							MarkdownDescription: "How this criterion joins to the next. Valid values are `and` or `or`. Defaults to `and` if omitted.",
-							Optional:            true,
-							Computed:            true,
-							Default:             stringdefault.StaticString("and"),
-							Validators: []validator.String{
-								stringvalidator.OneOf("and", "or"),
-							},
-						},
-						"has_opening_parenthesis": schema.BoolAttribute{
-							MarkdownDescription: "Whether the criterion begins a parenthetical grouping.",
-							Optional:            true,
-							Computed:            true,
-							Default:             booldefault.StaticBool(false),
-						},
-						"has_closing_parenthesis": schema.BoolAttribute{
-							MarkdownDescription: "Whether the criterion ends a parenthetical grouping.",
-							Optional:            true,
-							Computed:            true,
-							Default:             booldefault.StaticBool(false),
-						},
-					},
+					Attributes: criteria.CriterionAttributes(ValidOperators),
 				},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
