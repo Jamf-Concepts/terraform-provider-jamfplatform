@@ -180,11 +180,22 @@ func TestAccResource_ProAdvancedComputerSearch_Lifecycle(t *testing.T) {
 				),
 			},
 			{
+				// Import the POPULATED resource — the highest-risk round-trip.
+				// Verifies server-assigned criterion priority and the reordered
+				// display_fields Set survive import (Set compares order-independently).
+				ResourceName:            acsResource,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"timeouts"},
+			},
+			{
 				Config: acsConfigShrink(renamed),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(acsResource, "criteria.#", "1"),
 					resource.TestCheckResourceAttr(acsResource, "display_fields.#", "1"),
-					resource.TestCheckResourceAttr(acsResource, "sort_1", ""),
+					// sort_1 omitted in this step: flattenSort maps the server's
+					// empty <sort_1/> to null, so the attribute is absent (not "").
+					resource.TestCheckNoResourceAttr(acsResource, "sort_1"),
 				),
 			},
 			{

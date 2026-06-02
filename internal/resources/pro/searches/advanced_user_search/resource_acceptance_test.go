@@ -167,6 +167,15 @@ func TestAccResource_ProAdvancedUserSearch_Lifecycle(t *testing.T) {
 				),
 			},
 			{
+				// Import the POPULATED resource — the highest-risk round-trip.
+				// Verifies server-assigned criterion priority and the reordered
+				// display_fields Set survive import (Set compares order-independently).
+				ResourceName:            ausResource,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"timeouts"},
+			},
+			{
 				Config: ausConfigShrink(renamed),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(ausResource, "criteria.#", "1"),
