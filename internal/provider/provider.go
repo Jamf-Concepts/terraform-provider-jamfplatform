@@ -55,6 +55,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/category"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/computer_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/department"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/departments"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/directory_binding"
@@ -62,12 +63,14 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/dock_item"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/ibeacon"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/icon"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/mobile_device_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
 	pkg "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/package"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/printer"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/user_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_external_source"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_internal_source"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/patch_policy"
@@ -256,6 +259,9 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		blueprint.NewBlueprintResource,
 		building.NewBuildingResource,
 		category.NewCategoryResource,
+		computer_extension_attribute.NewComputerExtensionAttributeResource,
+		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeResource,
+		user_extension_attribute.NewUserExtensionAttributeResource,
 		cloud_distribution_point.NewCloudDistributionPointResource,
 		cloud_identity_provider.NewCloudIdentityProviderResource,
 		department.NewDepartmentResource,
@@ -320,6 +326,9 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		buildings.NewBuildingsDataSource,
 		categories.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		computer_extension_attribute.NewComputerExtensionAttributeDataSource,
+		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeDataSource,
+		user_extension_attribute.NewUserExtensionAttributeDataSource,
 		cloud_distribution_point.NewCloudDistributionPointDataSource,
 		cloud_identity_provider.NewCloudIdentityProviderDataSource,
 		cloud_identity_provider.NewCloudIdentityProvidersDataSource,
@@ -386,6 +395,9 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		blueprint.NewBlueprintListResource,
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
+		computer_extension_attribute.NewComputerExtensionAttributeListResource,
+		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeListResource,
+		user_extension_attribute.NewUserExtensionAttributeListResource,
 		cloud_identity_provider.NewCloudIdentityProviderListResource,
 		department.NewDepartmentListResource,
 		device_group.NewDeviceGroupListResource,
