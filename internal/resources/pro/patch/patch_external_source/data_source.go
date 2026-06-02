@@ -16,6 +16,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/availabletitles"
 )
 
 // PatchExternalSourceDataSource implements the Terraform data source for Jamf Pro
@@ -75,8 +76,15 @@ func (d *PatchExternalSourceDataSource) Schema(ctx context.Context, req datasour
 				Computed:            true,
 			},
 			"certificate_validation_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Whether software title definitions are validated against the source certificate.",
+				MarkdownDescription: "Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source; unsigned definitions are not downloaded.",
 				Computed:            true,
+			},
+			"available_titles": schema.ListNestedAttribute{
+				MarkdownDescription: "Software titles this source publishes, used to discover the `name_id` for `jamfplatform_pro_patch_software_title`. The full catalog is fetched on every read.",
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: availabletitles.DataSourceAttributes(),
+				},
 			},
 			"timeouts": timeouts.Attributes(ctx),
 		},
@@ -147,6 +155,19 @@ func (d *PatchExternalSourceDataSource) Read(ctx context.Context, req datasource
 	}
 	assignPatchExternalSourceDataSourceModel(&data, got)
 
-	tflog.Trace(ctx, "read Jamf Pro patch external source data source", map[string]any{"id": data.ID.ValueString(), "name": data.Name.ValueString()})
+	// Available titles are a second, source-id-keyed fetch. A failure here is
+	// non-fatal (Warning + empty list): the source metadata resolved fine and a
+	// consumer may only need id/enabled, so a flaky catalog must not break the plan.
+	data.AvailableTitles = []availabletitles.Model{}
+	if !data.ID.IsNull() && data.ID.ValueString() != "" {
+		titles, titlesErr := d.client.ListPatchAvailableTitlesBySourceID(readCtx, data.ID.ValueString())
+		if titlesErr != nil {
+			resp.Diagnostics.AddWarning("Unable to list available patch titles", titlesErr.Error())
+		} else {
+			data.AvailableTitles = availabletitles.MapTitles(titles)
+		}
+	}
+
+	tflog.Trace(ctx, "read Jamf Pro patch external source data source", map[string]any{"id": data.ID.ValueString(), "name": data.Name.ValueString(), "available_titles": len(data.AvailableTitles)})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

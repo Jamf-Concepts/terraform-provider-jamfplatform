@@ -41,7 +41,8 @@ output "patch_external_source_example_by_name" {
 
 ### Read-Only
 
-- `certificate_validation_enabled` (Boolean) Whether software title definitions are validated against the source certificate.
+- `available_titles` (Attributes List) Software titles this source publishes, used to discover the `name_id` for `jamfplatform_pro_patch_software_title`. The full catalog is fetched on every read. (see [below for nested schema](#nestedatt--available_titles))
+- `certificate_validation_enabled` (Boolean) Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source; unsigned definitions are not downloaded.
 - `enabled` (Boolean) Whether the patch external source is enabled.
 - `host_name` (String) Server host name of the external patch source.
 - `port` (Number) TCP port of the external patch source. Null when unset.
@@ -53,3 +54,15 @@ output "patch_external_source_example_by_name" {
 Optional:
 
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+
+<a id="nestedatt--available_titles"></a>
+### Nested Schema for `available_titles`
+
+Read-Only:
+
+- `app_name` (String) Display name of the software title (e.g. `010 Editor`).
+- `current_version` (String) Newest version the source currently publishes for this title.
+- `last_modified` (String) Timestamp (RFC 3339) the title's definition was last updated in the source.
+- `name_id` (String) Catalog key identifying the software title within its source. Use this value as `name_id` on `jamfplatform_pro_patch_software_title`. Free-form (e.g. `518`, `0F5`, or `com.cisco.anyconnect.gui`).
+- `publisher` (String) Publisher of the software title.

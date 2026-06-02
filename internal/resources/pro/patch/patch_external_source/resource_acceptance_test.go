@@ -130,9 +130,9 @@ func TestAccDataSource_ProPatchExternalSource_ByID(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_patch_external_source" "src" {
-						name      = %q
-						host_name = "definitions.example.com/v2/"
-						port      = 8443
+						name        = %q
+						host_name   = "definitions.datajar.mobi/v2/"
+						ssl_enabled = true
 					}
 
 					data "jamfplatform_pro_patch_external_source" "lookup" {
@@ -141,8 +141,13 @@ func TestAccDataSource_ProPatchExternalSource_ByID(t *testing.T) {
 				`, name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_external_source.lookup", "name", "jamfplatform_pro_patch_external_source.src", "name"),
-					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_external_source.lookup", "port", "jamfplatform_pro_patch_external_source.src", "port"),
-					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_external_source.lookup", "host_name", "definitions.example.com/v2/"),
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_external_source.lookup", "host_name", "definitions.datajar.mobi/v2/"),
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_external_source.lookup", "ssl_enabled", "true"),
+					// The datajar definitions host publishes a real catalog, so
+					// available_titles is populated — assert the first entry.
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.#"),
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.0.name_id"),
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.0.app_name"),
 				),
 			},
 		},

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch/availabletitles"
 )
 
 // PatchExternalSourceResourceModel represents the Terraform resource model for a
@@ -35,6 +36,7 @@ type PatchExternalSourceDataSourceModel struct {
 	Port                         types.Int64              `tfsdk:"port"`
 	SslEnabled                   types.Bool               `tfsdk:"ssl_enabled"`
 	CertificateValidationEnabled types.Bool               `tfsdk:"certificate_validation_enabled"`
+	AvailableTitles              []availabletitles.Model  `tfsdk:"available_titles"`
 	Timeouts                     datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
