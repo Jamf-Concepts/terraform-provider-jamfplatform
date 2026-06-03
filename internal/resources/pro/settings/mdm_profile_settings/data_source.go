@@ -1,0 +1,121 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package mdm_profile_settings
+
+import (
+	"context"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+)
+
+// MDMProfileSettingsDataSource implements the Terraform data source for Jamf Pro
+// device communication settings.
+type MDMProfileSettingsDataSource struct {
+	client *pro.Client
+}
+
+var _ datasource.DataSource = &MDMProfileSettingsDataSource{}
+
+// NewMDMProfileSettingsDataSource returns a new instance of MDMProfileSettingsDataSource.
+func NewMDMProfileSettingsDataSource() datasource.DataSource {
+	return &MDMProfileSettingsDataSource{}
+}
+
+// Metadata sets the data source type name for the Terraform provider.
+func (d *MDMProfileSettingsDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_pro_mdm_profile_settings"
+}
+
+// Schema returns the data source schema.
+func (d *MDMProfileSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Read the current Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). Singleton — one record per tenant.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",
+				Computed:            true,
+			},
+			"auto_renew_computer_profile_when_ca_renewed": schema.BoolAttribute{
+				MarkdownDescription: "When the certificate authority is renewed, automatically renew the computer MDM profile.",
+				Computed:            true,
+			},
+			"auto_renew_computer_profile_before_expiry": schema.BoolAttribute{
+				MarkdownDescription: "Automatically renew the computer MDM profile before its device identity certificate expires.",
+				Computed:            true,
+			},
+			"computer_profile_expiration_limit_days": schema.Int64Attribute{
+				MarkdownDescription: "Number of days before the computer device identity certificate expires at which Jamf Pro begins renewing the MDM profile.",
+				Computed:            true,
+			},
+			"auto_renew_mobile_device_profile_when_ca_renewed": schema.BoolAttribute{
+				MarkdownDescription: "When the certificate authority is renewed, automatically renew the mobile device MDM profile.",
+				Computed:            true,
+			},
+			"auto_renew_mobile_device_profile_before_expiry": schema.BoolAttribute{
+				MarkdownDescription: "Automatically renew the mobile device MDM profile before its device identity certificate expires.",
+				Computed:            true,
+			},
+			"mobile_device_profile_expiration_limit_days": schema.Int64Attribute{
+				MarkdownDescription: "Number of days before the mobile device identity certificate expires at which Jamf Pro begins renewing the MDM profile.",
+				Computed:            true,
+			},
+			"timeouts": timeouts.Attributes(ctx),
+		},
+	}
+}
+
+// Configure wires the Jamf Pro client into the data source via the shared
+// providerdata.ConfigurePro helper.
+func (d *MDMProfileSettingsDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_mdm_profile_settings")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	d.client = client
+}
+
+// Read fetches the current device communication settings and populates Terraform state.
+func (d *MDMProfileSettingsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	if d.client == nil {
+		resp.Diagnostics.AddError(
+			"Provider not configured",
+			"The provider client was not configured. Please ensure the provider block is set up correctly.",
+		)
+		return
+	}
+
+	var data MDMProfileSettingsDataSourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
+	got, err := d.client.GetDeviceCommunicationSettingsV1(readCtx)
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to read Jamf Pro device communication settings", err.Error())
+		return
+	}
+	assignMDMProfileSettingsDataSourceModel(&data, got)
+	data.ID = types.StringValue(helpers.SingletonID)
+
+	tflog.Trace(ctx, "read Jamf Pro device communication settings data source")
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
