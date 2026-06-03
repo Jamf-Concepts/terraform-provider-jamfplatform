@@ -394,6 +394,7 @@ The previous section is about a broken *endpoint* (the server misbehaves). This 
 
 - `internal/common/scope/validators.go` — `AllFlagConflictsWith` is a `validator.Bool` that fires only when the bool is `true`; off-the-shelf `ConflictsWith` would incorrectly fire when the bool is `false` too.
 - `internal/resources/pro/settings/sso_settings/validators.go` — value-discriminated validators for `configuration_type ∈ {SAML, OIDC, OIDC_WITH_SAML}`, `metadata_source ∈ {URL, FILE}`, `setup_type = "UPLOADED"`, etc., each requiring different companion sets.
+- `internal/resources/pro/settings/computer_inventory_collection_settings/validators.go` — `requiresAccountCollection` is a `validator.Bool` on two child sub-options that fires only when the sub-option is `true` and its parent toggle (`collect_local_user_accounts`) is `false` — the combination the server coerces (silently forcing the sub-option off). **A plan modifier is the wrong tool here:** the framework rejects a `ModifyPlan` that overrides an explicitly-configured value ("planned value … does not match config value"), and a sub-option left unset already resolves to the server's `false` harmlessly — so config-time validation, attached to the offending sub-option, is the only correct guard.
 
 **Custom validator authoring rules:**
 
@@ -504,6 +505,7 @@ Resources backed by the `pro/` or `proclassic/` packages of `jamfplatform-go-sdk
    - `pro/` is materially less feature-complete (e.g. read-only when classic offers CRUD, missing required fields).
    - When both are wired across multiple resources, document the rationale in the resource's package-level comment.
 6. **Overrides**: where the SDK filename is awkward, outdated, or ambiguous, override the Terraform slug. Record the override in `JAMF_PRO_INVENTORY.md` (gitignored planning file) at the time the batch is approved. There is no upfront override table — decisions happen per batch.
+   - **Prefer the admin-UI label over an API-namespace artifact when they diverge.** The default slug source is the SDK filename (rule 2), but when that name is a wire/namespace artifact absent from the admin UI, name the construct after the UI instead — the same principle as [§Attribute names mirror the Jamf Pro admin UI](#attribute-names-mirror-the-jamf-pro-admin-ui-when-the-wire-name-is-cryptic), applied to the construct. Examples: `jamfplatform_pro_computer_check_in_settings` (pro V3 SDK namespace `client_check_in` — "client" appears nowhere in the UI, which reads *Computers → Check-in*; this also matches the classic `computercheckin` it supersedes); `jamfplatform_pro_mdm_profile_settings` (pro V1 SDK type `DeviceCommunicationSettings` — the UI panel is "MDM profile settings"). When two endpoints (e.g. a pro and a classic face) are the same settings object, pick one UI-aligned slug and mark the other **superseded** in the inventory.
 7. **Inventory tracking**: every Jamf Pro construct (planned, in-design, in-progress, shipped, skipped) is tracked in `JAMF_PRO_INVENTORY.md`. Not committed.
 
 ### Minimum Jamf Pro version check
@@ -704,7 +706,7 @@ During the SDK-comparison gate ([CONTRIBUTING.md §Adding a Jamf Pro Resource](C
 |----------------------|----------------|-------|
 | Create + Read + Update + Delete | `resource` (+ usually a singular `data source` and a plural `list resource`) | Standard CRUD |
 | Read only (single + list, or list only) | `data source` (+ plural `data source` or `list resource`) | No state-managed object |
-| Update only (no Create/Delete) | `resource` flagged as **singleton** — one record per tenant | See [Singleton resources](#singleton-resources) below for the full convention (fixed ID, Create→Update, no-op Delete, import format). E.g., `activation_code`, `client_check_in`, `jamf_pro_server_url`, `self_service_plus_settings`. |
+| Update only (no Create/Delete) | `resource` flagged as **singleton** — one record per tenant | See [Singleton resources](#singleton-resources) below for the full convention (fixed ID, Create→Update, no-op Delete, import format). E.g., `activation_code`, `computer_check_in_settings`, `mdm_profile_settings`, `self_service_plus_settings`. |
 | Fire-and-forget command (Create returns command ID, no Read/Update/Delete) | `action` | E.g., `pro_computer_erase`, `pro_computer_restart` |
 
 Record the classification in `JAMF_PRO_INVENTORY.md` Notes column during the in-design phase.
@@ -713,7 +715,9 @@ Record the classification in `JAMF_PRO_INVENTORY.md` Notes column during the in-
 
 Jamf Pro objects that exist one-per-tenant and are exposed as Update-only on the API are modeled as **singleton** resources. The whole convention below is the load-bearing definition — any new singleton must follow it.
 
-**Domain folder**: `internal/resources/pro/settings/<resource>/`. The `settings/` domain is the canonical home for Pro singletons (`activation_code`, `client_check_in`, `self_service_plus_settings`, `jamf_pro_*`). Reference template: `internal/resources/pro/settings/self_service_plus_settings/`.
+**Domain folder**: `internal/resources/pro/settings/<resource>/`. The `settings/` domain is the canonical home for Pro singletons (`activation_code`, `computer_check_in_settings`, `mdm_profile_settings`, `self_service_plus_settings`, `jamf_pro_*`). Reference template: `internal/resources/pro/settings/self_service_plus_settings/`.
+
+**ProClassic singletons & secrets returned in clear**: a singleton may be ProClassic (e.g. `activation_code` on `/JSSResource/activationcode`) — funnel `Configure` through `providerdata.ConfigureProClassic` and keep the same Create→Update→GET shape. When a singleton field is a secret that the **GET returns in clear** (the classic activation-code GET echoes the license key verbatim, not a masked sentinel), model it as a plain `Required`/`Optional` + `Sensitive` string: normal drift detection applies and the WriteOnly + `_wo_version` machinery in [§Plaintext secrets](#plaintext-secrets--writeonly-with-_wo_version-rotation-companion) is unnecessary (that pattern is for secrets the API will **not** read back). When several fields share one write call, **always send the full set from state** — a partial PUT can wipe the others (a partial activation-code PUT risks wiping the license), so never build a sparse body.
 
 **Leaf folder name**: matches the Terraform slug exactly (rule #4 above), e.g. `self_service_plus_settings/` for `jamfplatform_pro_self_service_plus_settings`.
 
@@ -760,6 +764,24 @@ Full-replace has three consequences:
 **Write-only secrets are the exception to full-replace.** A write-only keystore/identity object (e.g. a signing certificate) may be **preserve-on-omit**: omitting the object keeps the stored secret, while a sibling toggle (not the object) is what deletes it. Wire-probe the lifecycle (set / keep-on-omit / delete) explicitly. In the merge, set such pointers to `nil` so `omitempty` omits them (preserves the secret) — **never** echo the server's `null` back, and only build the object when the user is uploading. See `applyCertToBody` in `user_initiated_enrollment_settings`. This mirrors the WriteOnly + `_wo_version` rotation pattern in [§Plaintext secrets](#plaintext-secrets--writeonly-with-_wo_version-rotation-companion).
 
 **Individually-optional nullable fields inside a full-replace block.** Some full-replace nested blocks accept each field as independently optional **and nullable**: the server echoes `null` for an unset field (never a zero value) and **rejects** a blank string or non-positive number on any field that *is* present. For these (e.g. `jamfplatform_pro_app_installer.notification_settings`), model each field **Optional-only** (not `Optional+Computed` — there is no server default to absorb), **omit** unset fields from the request (send `nil`, never `""`/`0`), and preserve `null` in the flatten so state matches config. Add present-only validators (`LengthAtLeast(1)`, `AtLeast(1)`) so the server's constraint surfaces at plan time. Field-level full-replace still holds — dropping a previously-set field clears it to `null`. Reserve `Optional+Computed` for the sibling fields the server genuinely defaults (a boolean defaulting to `false`); a single block can mix the two principled-ly. **Don't zero-fill** "to send a complete body" — that's the trap that turns an unset field into a `400`.
+
+### Merge-patch (`PATCH` → `204`) settings updates
+
+Some pro settings endpoints update via **JSON merge-patch** (`Content-Type: application/merge-patch+json`) and return **`204 No Content`** — the opposite of the full-replace `PUT`-echoes-body shape above. Wire-probe to confirm (flip one field, omit the rest, `GET` again):
+
+- **Omitting a field preserves its server value** (merge-patch semantics) — so `Optional+Computed` is correct here, and the *opposite* of the full-replace bias toward `Required`. Build the payload by sending **only** the fields the user set: map each `Optional+Computed` attribute to a pointer that is `nil` when the planned value is null/unknown, so `omitempty` drops it and the merge-patch leaves the server value untouched. (Reference: `optBool` in `computer_inventory_collection_settings/input_builders.go`.)
+- **`204` means no echoed body**, so a `GET`-after-write is **mandatory** in both Create and Update to capture authoritative state (computed defaults, server coercions). This is the same GET-after the singleton convention already requires — but here it is load-bearing, not just future-proofing.
+- Probe whether the server **coerces dependent fields** (a parent toggle that disables child sub-options): see [§Cross-field validation](#cross-field-validation) for handling — a config validator, not a plan modifier. Reference: `jamfplatform_pro_computer_inventory_collection_settings`.
+
+### Server-managed child collections via create/delete-only endpoints
+
+Some settings objects carry a **child collection** whose members are managed by **dedicated create/delete endpoints** with **no update endpoint** and which the parent settings write cannot mutate (the inventory-collection custom application paths: the merge-patch settings body rejects new entries — "Id field is required" — because the server mints the id on create). Model these as a flat **`Set[String]`** of the user-meaningful field, not a `SetNestedAttribute`:
+
+- **Diff by value, not by id.** A newly declared member has no id yet (the server assigns it on create), so the diff cannot key on id. Reconcile in Create/Update: value in plan ∉ server → POST (create); value on server ∉ plan → DELETE by id (resolve the id from a `GET` at apply-time). Keep the server id **out of Terraform state** entirely — it is only needed for the delete call. A changed member is naturally remove-old + add-new.
+- This sidesteps both nested-collection traps at once — `Set` + `Computed` id instability, and the `Optional+Computed`-inside-nested plan-modifier rule — because the only user field (`path`) has no computed sibling and no nesting.
+- **Filter server-managed built-ins.** Built-in members the server always returns (the built-in application paths carry the sentinel id `-1`) must be filtered out of state on Read, or they perma-diff against the user's declared set.
+- **Probe value normalization.** If the server canonicalises the value (trailing slash, case), a string-match diff churns forever — wire-probe and either canonicalise or suppress. (Inventory-collection paths are stored verbatim, so no suppression is needed.)
+- **Honour endpoint scope limits.** If the create endpoint's scope enum accepts only a subset (the inventory-collection custom-path scope accepts only `APP`, so the UI's Fonts/Plug-ins custom paths are unreachable via this API), model only what the API supports and **document the coverage gap** in the schema `MarkdownDescription`. Reference: `application_search_paths` in `jamfplatform_pro_computer_inventory_collection_settings`.
 
 ### Classic sub-collections — omit / empty / present clear semantics
 
