@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -45,7 +46,6 @@ type ComputerInventoryCollectionSettingsResource struct {
 var _ resource.Resource = &ComputerInventoryCollectionSettingsResource{}
 var _ resource.ResourceWithImportState = &ComputerInventoryCollectionSettingsResource{}
 var _ resource.ResourceWithIdentity = &ComputerInventoryCollectionSettingsResource{}
-var _ resource.ResourceWithValidateConfig = &ComputerInventoryCollectionSettingsResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -91,6 +91,14 @@ func optionalComputedBool(desc string) schema.BoolAttribute {
 	}
 }
 
+// optionalComputedBoolValidated is optionalComputedBool with attribute-level validators
+// attached (used for the account sub-options gated by collect_local_user_accounts).
+func optionalComputedBoolValidated(desc string, validators ...validator.Bool) schema.BoolAttribute {
+	a := optionalComputedBool(desc)
+	a.Validators = validators
+	return a
+}
+
 // Schema returns the Terraform schema for the computer inventory collection settings resource.
 func (r *ComputerInventoryCollectionSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
@@ -109,8 +117,8 @@ func (r *ComputerInventoryCollectionSettingsResource) Schema(ctx context.Context
 
 			// Inventory Collection (General tab)
 			"collect_local_user_accounts":                      optionalComputedBool("Collect local user accounts."),
-			"include_home_directory_sizes":                     optionalComputedBool("Include home directory sizes when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`."),
-			"include_hidden_accounts":                          optionalComputedBool("Include hidden accounts when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`."),
+			"include_home_directory_sizes":                     optionalComputedBoolValidated("Include home directory sizes when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`.", requiresAccountCollection{}),
+			"include_hidden_accounts":                          optionalComputedBoolValidated("Include hidden accounts when collecting local user accounts. Sub-option of `collect_local_user_accounts`: may only be `true` when `collect_local_user_accounts` is `true`.", requiresAccountCollection{}),
 			"collect_printers":                                 optionalComputedBool("Collect printers."),
 			"collect_active_services":                          optionalComputedBool("Collect active services."),
 			"collect_synced_mobile_device_backup_dates":        optionalComputedBool("Collect last backup date/time for managed mobile devices that are synced to computers."),
@@ -154,36 +162,6 @@ func (r *ComputerInventoryCollectionSettingsResource) Schema(ctx context.Context
 				Delete: true,
 			}),
 		},
-	}
-}
-
-// ValidateConfig rejects the one attribute combination the Jamf Pro admin UI greys out
-// and the server refuses: include_home_directory_sizes and include_hidden_accounts are
-// sub-options nested under collect_local_user_accounts, so they cannot be true while
-// account collection is off. The server silently forces them off in that case, which
-// would otherwise surface as a confusing "inconsistent result after apply" — catching it
-// at config-validation time gives the user an actionable error instead. (A plan
-// modifier cannot fix this: the framework forbids overriding an explicitly-configured
-// value, and a sub-option left unset already resolves to false harmlessly.)
-func (r *ComputerInventoryCollectionSettingsResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var cfg ComputerInventoryCollectionSettingsResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Only enforce when account collection is known to be false; if it is unknown or
-	// unset we cannot (and need not) judge the sub-options.
-	if cfg.CollectLocalUserAccounts.IsNull() || cfg.CollectLocalUserAccounts.IsUnknown() || cfg.CollectLocalUserAccounts.ValueBool() {
-		return
-	}
-
-	const detail = "This sub-option requires collect_local_user_accounts to be true. Set collect_local_user_accounts = true, or remove this attribute (or set it to false)."
-	if !cfg.IncludeHomeDirectorySizes.IsNull() && !cfg.IncludeHomeDirectorySizes.IsUnknown() && cfg.IncludeHomeDirectorySizes.ValueBool() {
-		resp.Diagnostics.AddAttributeError(path.Root("include_home_directory_sizes"), "Invalid Attribute Combination", detail)
-	}
-	if !cfg.IncludeHiddenAccounts.IsNull() && !cfg.IncludeHiddenAccounts.IsUnknown() && cfg.IncludeHiddenAccounts.ValueBool() {
-		resp.Diagnostics.AddAttributeError(path.Root("include_hidden_accounts"), "Invalid Attribute Combination", detail)
 	}
 }
 
