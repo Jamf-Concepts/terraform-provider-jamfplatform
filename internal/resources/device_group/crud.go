@@ -5,10 +5,13 @@ package device_group
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -18,7 +21,25 @@ import (
 
 const (
 	deviceGroupCreateRetryDelay = 10 * time.Second
+	deviceGroupDeleteRetryDelay = 10 * time.Second
 )
+
+// isDeletePropagationConflict reports whether a device-group DELETE error is a
+// transient 406/409 raised while a dependent resource that referenced the group
+// (e.g. a just-deleted blueprint) is still propagating server-side. The group
+// still exists in this case, so re-issuing the DELETE once the reference clears
+// is the correct action. (Distinct from the classic apps' accepted-async
+// deletes, which return a misleading 400 and must NOT be re-issued.) The
+// transport no longer retries 4xx, so this retry is handled here explicitly.
+// The 406/409 set is from observed delete-after-blueprint behaviour; widen it if
+// acceptance testing surfaces another transient status on this path.
+func isDeletePropagationConflict(err error) bool {
+	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
+	if !ok {
+		return false
+	}
+	return apiErr.HasStatus(http.StatusNotAcceptable) || apiErr.HasStatus(http.StatusConflict)
+}
 
 // Create creates a new Jamf Platform device group resource.
 func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -319,14 +340,27 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	err := r.client.DeleteDeviceGroup(deleteCtx, state.ID.ValueString())
-	if err != nil {
-		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "device group already removed", map[string]any{
-				"id": state.ID.ValueString(),
-			})
-			return
+	// Retry the DELETE on a transient 406/409 (a dependent resource that
+	// referenced this group is still propagating its own deletion); a clean
+	// success or a not-found means the group is gone. Any other error is
+	// terminal. Bounded by the delete timeout.
+	id := state.ID.ValueString()
+	pollErr := jamfplatform.PollUntil(deleteCtx, deviceGroupDeleteRetryDelay, func(c context.Context) (bool, error) {
+		err := r.client.DeleteDeviceGroup(c, id)
+		switch {
+		case err == nil:
+			return true, nil
+		case helpers.IsNotFoundError(err):
+			tflog.Info(c, "device group already removed", map[string]any{"id": id})
+			return true, nil
+		case isDeletePropagationConflict(err):
+			tflog.Info(c, "device group delete blocked by a still-propagating dependency; retrying", map[string]any{"id": id})
+			return false, nil
+		default:
+			return false, err
 		}
-		resp.Diagnostics.AddError("Error deleting device group", err.Error())
+	})
+	if pollErr != nil {
+		resp.Diagnostics.AddError("Error deleting device group", pollErr.Error())
 	}
 }

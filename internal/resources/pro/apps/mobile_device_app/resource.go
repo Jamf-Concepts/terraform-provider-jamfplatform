@@ -58,7 +58,15 @@ const (
 	defaultCreateTimeout = 60 * time.Second
 	defaultReadTimeout   = 90 * time.Second
 	defaultUpdateTimeout = 60 * time.Second
-	defaultDeleteTimeout = 60 * time.Second
+	// defaultDeleteTimeout bounds the whole Delete: the classic
+	// /mobiledeviceapplications DELETE returns a misleading HTTP 400 on an
+	// accepted, asynchronous removal, so Delete issues it once then polls
+	// GET-by-id until not-found. 2 minutes is comfortable headroom before a
+	// still-present app is reported as a failure.
+	defaultDeleteTimeout = 2 * time.Minute
+	// deletePollInterval is how often Delete re-checks GET-by-id while confirming
+	// the async removal.
+	deletePollInterval = 10 * time.Second
 )
 
 // NewMobileAppResource returns a new instance of MobileAppResource.

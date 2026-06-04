@@ -227,6 +227,11 @@ func (r *MacAppResource) Delete(ctx context.Context, req resource.DeleteRequest,
 		return
 	}
 
+	// Unlike /ebooks and /mobiledeviceapplications, the classic /macapplications
+	// DELETE is clean and synchronous (wire-probed 2026-06-04: DELETE → 200 OK,
+	// GET-by-id → 404 immediately), so a single delete with a 404-as-success
+	// branch is sufficient. The SDK no longer treats DELETE→404 as success, so
+	// the IsNotFoundError check is required here.
 	if err := r.client.DeleteMacApplicationByID(deleteCtx, state.ID.ValueString()); err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Jamf Pro Mac App Store app already removed", map[string]any{"id": state.ID.ValueString()})
