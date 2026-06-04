@@ -214,6 +214,12 @@ func (r *CloudDistributionPointResource) Delete(ctx context.Context, req resourc
 	defer cancel()
 
 	if err := r.client.DeleteCloudDistributionPointV1(deleteCtx); err != nil {
+		// An already-absent cloud distribution point is the delete's objective.
+		// The transport no longer treats DELETE→404 as success, so handle it here.
+		if helpers.IsNotFoundError(err) {
+			tflog.Info(ctx, "Jamf Pro cloud distribution point already removed")
+			return
+		}
 		resp.Diagnostics.AddError("Error deleting Jamf Pro cloud distribution point", err.Error())
 		return
 	}

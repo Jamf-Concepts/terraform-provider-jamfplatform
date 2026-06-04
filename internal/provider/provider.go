@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -42,6 +44,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installer_title"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installer_titles"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/ebook"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mac_app_store_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mobile_device_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/macos_configuration_profile"
@@ -103,10 +106,11 @@ import (
 
 // Constants for environment variable names.
 const (
-	envBaseURL      = "JAMFPLATFORM_BASE_URL"
-	envClientID     = "JAMFPLATFORM_CLIENT_ID"
-	envClientSecret = "JAMFPLATFORM_CLIENT_SECRET"
-	envTenantID     = "JAMFPLATFORM_TENANT_ID"
+	envBaseURL              = "JAMFPLATFORM_BASE_URL"
+	envClientID             = "JAMFPLATFORM_CLIENT_ID"
+	envClientSecret         = "JAMFPLATFORM_CLIENT_SECRET"
+	envTenantID             = "JAMFPLATFORM_TENANT_ID"
+	envMinRequestIntervalMs = "JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS"
 )
 
 // Ensure JamfPlatformProvider satisfies the various provider interfaces.
@@ -121,10 +125,11 @@ type JamfPlatformProvider struct {
 
 // JamfPlatformProviderModel describes the provider data model.
 type JamfPlatformProviderModel struct {
-	BaseURL      types.String `tfsdk:"base_url"`
-	ClientID     types.String `tfsdk:"client_id"`
-	ClientSecret types.String `tfsdk:"client_secret"`
-	TenantID     types.String `tfsdk:"tenant_id"`
+	BaseURL              types.String `tfsdk:"base_url"`
+	ClientID             types.String `tfsdk:"client_id"`
+	ClientSecret         types.String `tfsdk:"client_secret"`
+	TenantID             types.String `tfsdk:"tenant_id"`
+	MinRequestIntervalMs types.Int64  `tfsdk:"min_request_interval_ms"`
 }
 
 func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -161,6 +166,10 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			"tenant_id": schema.StringAttribute{
 				Optional:    true,
 				Description: "Tenant UUID used to scope all API requests. Can also be set via the JAMFPLATFORM_TENANT_ID environment variable.",
+			},
+			"min_request_interval_ms": schema.Int64Attribute{
+				Optional:    true,
+				Description: "Minimum elapsed time, in milliseconds, between the start of consecutive outbound API requests. Paces all traffic through the shared client (which Terraform fans out across parallel resource operations), giving the server breathing room and reducing rate-limit responses. Defaults to 100. Set to 0 to disable. Raising it slows large parallel applies; lowering it increases the chance of 429s. Can also be set via the JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS environment variable.",
 			},
 		},
 	}
@@ -226,7 +235,32 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	opts := []jamfplatform.Option{
 		jamfplatform.WithUserAgent("terraform-provider-jamfplatform/" + p.version),
 		jamfplatform.WithTenantID(tenantID),
-		jamfplatform.WithRetryOn4xx(true),
+	}
+	// Inter-request pacing. The SDK defaults to 100ms when the option is not
+	// passed; only override when the operator sets it explicitly (including 0 to
+	// disable) via the attribute or the env var, attribute taking precedence.
+	// Eventual-consistency retries are NOT done by the transport — resources that
+	// need them poll explicitly (see the apps and device_group Delete paths).
+	minIntervalSet := false
+	var minIntervalMs int64
+	switch {
+	case !data.MinRequestIntervalMs.IsNull() && !data.MinRequestIntervalMs.IsUnknown():
+		minIntervalSet = true
+		minIntervalMs = data.MinRequestIntervalMs.ValueInt64()
+	case getenv(envMinRequestIntervalMs) != "":
+		parsed, err := strconv.ParseInt(getenv(envMinRequestIntervalMs), 10, 64)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Invalid JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS",
+				fmt.Sprintf("Expected an integer number of milliseconds, got %q: %s", getenv(envMinRequestIntervalMs), err),
+			)
+			return
+		}
+		minIntervalSet = true
+		minIntervalMs = parsed
+	}
+	if minIntervalSet {
+		opts = append(opts, jamfplatform.WithMinRequestInterval(time.Duration(minIntervalMs)*time.Millisecond))
 	}
 	if shouldEnableHTTPLogging() {
 		opts = append(opts, jamfplatform.WithLogger(NewTerraformLogger()))
@@ -280,6 +314,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
 		app_installer.NewAppInstallerResource,
+		ebook.NewEbookResource,
 		mac_app_store_app.NewMacAppResource,
 		mobile_device_app.NewMobileAppResource,
 		macos_configuration_profile.NewResource,
@@ -358,6 +393,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		app_installers.NewAppInstallersDataSource,
 		app_installer_title.NewAppInstallerTitleDataSource,
 		app_installer_titles.NewAppInstallerTitlesDataSource,
+		ebook.NewEbookDataSource,
 		mac_app_store_app.NewMacAppDataSource,
 		mobile_device_app.NewMobileAppDataSource,
 		macos_configuration_profile.NewDataSource,
@@ -422,6 +458,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		ibeacon.NewIbeaconListResource,
 		app_installer.NewAppInstallerListResource,
+		ebook.NewEbookListResource,
 		mac_app_store_app.NewMacAppListResource,
 		mobile_device_app.NewMobileAppListResource,
 		macos_configuration_profile.NewListResource,

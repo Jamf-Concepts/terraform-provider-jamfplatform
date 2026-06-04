@@ -134,6 +134,14 @@ var importStateVerifyIgnore = []string{
 	"recovery_lock_password_wo_version",
 	"account_settings.admin_password",
 	"account_settings.admin_password_wo_version",
+	// profile_uuid is a server-generated MDM profile UUID that Jamf Pro
+	// populates ASYNCHRONOUSLY (the "information out of date" window). A plain
+	// GET can return it empty even on an otherwise-ready prestage, so its value
+	// does not reliably round-trip on import — Step 1's check already documents
+	// it as not-assertable at create time. It is not user-settable, so verifying
+	// it on import adds no coverage; ignore it like the other non-round-tripping
+	// attributes above.
+	"profile_uuid",
 }
 
 // --- §13 #1: Minimal Create + Import + simple Update --------------------------
