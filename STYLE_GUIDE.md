@@ -816,22 +816,32 @@ When a resource references a **server-managed catalog** object — one the user 
 
 Reference: `jamfplatform_pro_app_installer.app_title_name` → Computed `app_title_id`.
 
-### Pro error/retry helpers (planned extension)
+### Delete semantics: not-found, async, and propagation-blocked
 
-Existing `internal/common/helpers/helpers.go` provides `IsNotFoundError` and `IsServerError`. Pro APIs add cases the existing helpers don't cover:
+The SDK transport does **not** retry 4xx and does **not** treat `DELETE→404` as success — both are consumer concerns (an eventual-consistency retry needs context the transport lacks; see [§Pro error/retry helpers](#pro-errorretry-helpers)). So **every `Delete` must branch on `helpers.IsNotFoundError`** to treat an already-absent record as success — never assume the SDK swallows the 404.
 
-- **429 Too Many Requests** — Pro endpoints rate-limit aggressively under load.
-- **423 Locked** — Pro async operations (deploy, sync, redeploy) return `423` while another operation is in flight.
-- **409 Conflict** — Pro PATCH/PUT on stale state.
+Beyond not-found, **wire-probe the delete** during the in-design phase — the response status, whether removal is synchronous, and (for async deletes) whether *polling itself interferes*. Probe: create a throwaway object, issue a single `DELETE` (capture status + body via `jamf-cli ... delete <id> -vvv`), then `GET`-by-id over time. Four patterns, each a distinct handler:
 
-When **3 or more** Pro resources need retry handling for these cases, extract into `internal/common/helpers`:
+| Wire behaviour | Handler | Reference |
+|---|---|---|
+| Clean synchronous (`200`/`204`, `GET`→404 immediately) | Plain delete + `IsNotFoundError` not-found-as-success branch | `mac_app_store_app` (`/macapplications`) |
+| Accepted behind a **misleading** status (e.g. `400` with an `<id>` body), removal prompt and **not** GET-sensitive | Poll `GET`-until-not-found via `helpers.ConfirmAsyncDelete`; error only on timeout | `mobile_device_app` (`/mobiledeviceapplications`) |
+| Accepted behind a misleading status, slow **and GET-sensitive** — polling to confirm *delays* the server-side removal | **Fire-and-trust**: issue `DELETE` once, **never GET**, `helpers.IsClientError`→`AddWarning` (drop from state), surface 5xx/transport as errors. Destroy-time verification is impossible → acc `CheckDestroy` is a documented no-op | `ebook` (`/ebooks`) |
+| Blocked by a still-propagating dependency (`406`/`409` while a dependent resource's own deletion catches up — Platform Services) | **Re-issue** the `DELETE` on `406`/`409` until it clears, the object is gone, or the timeout fires (`jamfplatform.PollUntil`). Re-issuing is *correct* here, unlike the accepted-async case | `device_group` |
 
-- `IsRateLimitError(err error) bool` — 429
-- `IsLockedError(err error) bool` — 423
-- `IsConflictError(err error) bool` — 409
-- `RetryWithBackoff(ctx, op, isRetriable, maxAttempts) error` — generic retry helper that respects context deadlines.
+The two misleading-status patterns look identical on the wire (same `400`) but diverge on GET-sensitivity — **probe it, do not assume** (`/ebooks` and `/mobiledeviceapplications` return the same misleading `400` yet behave oppositely under polling). Likewise never generalise one classic delete's behaviour to a sibling: `/macapplications` is clean-sync while the other two are misleading-async.
 
-Until the trigger fires, retry logic lives in-resource. Same deferred-abstraction discipline as shared schemas.
+### Pro error/retry helpers
+
+Eventual-consistency and retry are **consumer concerns**, not transport concerns — the SDK client cannot tell a permanent `409` ("Problem with site ID") from a transient one, so it does **not** retry 4xx. The transport retries only **`429`/`Retry-After`** (an unambiguous, server-instructed throttle) and applies a configurable **inter-request delay** (`WithMinRequestInterval`, default 100ms; surfaced as the provider `min_request_interval_ms` attribute / `JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS` env var) that paces all outbound calls. Everything else surfaces to the resource, which owns any eventual-consistency handling (poll, re-issue, or fire-and-trust — see [§Delete semantics](#delete-semantics-not-found-async-and-propagation-blocked) and the per-resource `crud.go` annotation blocks).
+
+`internal/common/helpers/helpers.go` provides the classifiers:
+
+- `IsNotFoundError(err)` — `404` (and the classic `400 INVALID_ID`); use in every `Read`/`Delete`.
+- `IsClientError(err)` — any `4xx`; distinguishes an accepted-but-misleading `4xx` (treat as success-with-warning on a fire-and-trust delete) from a `5xx`/transport failure that must surface.
+- `IsServerError(err)` — `5xx`.
+
+For genuinely transient Pro states (`429`, `423 Locked` on in-flight async ops, `409` on stale `PATCH`/`PUT`), keep retry logic in-resource until **3 or more** resources need it, then extract a shared `RetryWithBackoff(ctx, op, isRetriable, maxAttempts)` (same deferred-abstraction discipline as shared schemas). `device_group`'s propagation-delete retry is the current in-resource precedent.
 
 ### Provider overall minimum Jamf Pro version (advisory warning)
 

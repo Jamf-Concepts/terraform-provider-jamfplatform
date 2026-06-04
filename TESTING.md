@@ -179,6 +179,19 @@ Pro resources use the same `*jamfplatform.Client` and the same `JAMFPLATFORM_*` 
 
 **Acceptance test files MUST declare `//go:build acceptance` on line 1** or they leak into the unit run.
 
+### Tenant-prerequisite fixtures (server-state gates)
+
+Some Pro features can only be created when the tenant is in a prerequisite state — e.g. an enrollment-customization **SSO pane** requires SAML configured (`403 [INVALID_STATE] : SAML must be configured`), and a `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING` extension attribute requires LDAP configured (`400 [INVALID_CONTENT] ... if LDAP is not configured`). Stand the prerequisite up as an in-config **fixture resource the subject `depends_on`**, so the apply orders the prerequisite first. Two flavours:
+
+- **Dummy fixture, no gating** — when the prerequisite resource doesn't validate live connectivity, build a placeholder. `jamfplatform_pro_ldap_server` does not verify the LDAP connection, so a dummy (`Open Directory`, fake `ldap.acc-anon.example.com:389`, `authentication_type = none`) configures LDAP with no real server and **needs no env var**. Reference: `ceaDSAM`/`mdeaDSAM`.
+- **Real-credential fixture, env-gated** — when the prerequisite needs real external infra (a SAML IdP metadata URL), gate the test on an env var and **skip** when unset (`t.Skipf`). Reference: the enrollment-customization SSO-pane tests gate on `JAMFPLATFORM_ACC_SSO_IDP_URL`; the `sso_settings` suite owns the same var.
+
+Two cautions: (1) prefer a fixture that **mutates the tenant minimally and reversibly** — e.g. SSO uses `OIDC_WITH_SAML`, not pure SAML, so Jamf ID admin login keeps working. (2) Many prerequisite singletons (`sso_settings`, `computer_inventory_collection_settings`) have **state-only deletes**, so teardown leaves the tenant in the fixture's state — idempotent on re-run, but document it and don't let other suites assume a clean SSO/inventory baseline.
+
+### Do not `ImportStateVerify` async server-computed values
+
+A `Computed` attribute that the server populates **asynchronously** (e.g. `computer_prestage_enrollment.profile_uuid` — the "information out of date" window) can read empty on a plain `GET` even on a settled object, so it does not reliably round-trip on import. Add it to `ImportStateVerifyIgnore` (alongside `timeouts` and WriteOnly secrets). It is server-generated, not user-settable, so verifying it on import adds no coverage. **Do not** try to force it to populate inside `Read` (e.g. a readiness poll) — for a GET-sensitive value that can make refresh worse (a transient empty becomes a hard timeout error).
+
 ### Profile-corpus regression test (opt-in build tag)
 
 `internal/resources/pro/configuration_profiles/macos_configuration_profile/helpers_corpus_test.go` is gated by `//go:build profile_corpus`. It iterates a 200-profile mobileconfig corpus under `testing/profile_roundtrip/` (gitignored, developer-machine-only) and asserts the mask-and-compare diff suppression is stable. Run with:

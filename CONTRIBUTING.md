@@ -101,7 +101,7 @@ Save all bodies under `local-testing/<endpoint>/` (gitignored). Sanitise PII and
 | `update {id}` omitting a field entirely | Omitted-tag preservation. |
 | `create` with a bogus referenced name | Whether the server validates references (409) or silently accepts. |
 | `create` toggling a known interacting field (e.g. `use_generic` for printers, `is_smart` for groups) | Server-side overrides of sibling fields — drift pure GETs won't show. |
-| `delete {id} --yes` | Cleanup. `--yes` required under `--no-input`; or set `JAMF_CLI_ARGS='--yes'`. |
+| `delete {id} --yes -vvv` then `get {id}` over time | **Delete behaviour**, not just cleanup: response status (some classic deletes return a *misleading* `400`/`409` on an accepted delete), whether removal is synchronous, and — for async deletes — whether *polling itself interferes* (re-`GET` every few seconds vs a single quiet `GET`). Picks the delete handler per [STYLE_GUIDE §Delete semantics](STYLE_GUIDE.md#delete-semantics-not-found-async-and-propagation-blocked). `--yes` required under `--no-input` (or set `JAMF_CLI_ARGS='--yes'`). |
 
 Name saved artifacts after the probe that produced them (`get-id-69-minimal.xml`, `put-merge-clear-category.xml`). Delete agent-created throwaway resources before declaring the audit complete; the maintainer-seeded objects stay.
 
