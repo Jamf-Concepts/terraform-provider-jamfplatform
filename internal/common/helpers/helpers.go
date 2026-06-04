@@ -231,6 +231,19 @@ func IsNotFoundError(err error) bool {
 	return false
 }
 
+// IsClientError reports whether err is an *APIResponseError carrying a 4xx
+// status (i.e. the server received and responded to the request with a client
+// error). Used to distinguish an accepted-but-misleading 4xx — e.g. the classic
+// /ebooks DELETE that returns HTTP 400 on an accepted async delete — from a
+// transport error or a 5xx that should surface as a genuine failure.
+func IsClientError(err error) bool {
+	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
+	if !ok {
+		return false
+	}
+	return apiErr.StatusCode >= 400 && apiErr.StatusCode < 500
+}
+
 // IsServerError reports whether an error represents a 500/internal server error from the Jamf API.
 func IsServerError(err error) bool {
 	if apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err); ok {

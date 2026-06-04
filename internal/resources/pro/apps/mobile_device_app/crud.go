@@ -26,9 +26,13 @@
 // block — a known limitation matching ProClassic precedent. To clear a block,
 // null its individual fields rather than deleting the block.
 //
-// Delete semantics: the classic DELETE returns HTTP 400 but still deletes the
-// app (maintainer-confirmed server bug). Delete therefore tolerates the error
-// and verifies via a follow-up GET — a not-found GET means the delete succeeded.
+// Delete semantics: the classic /mobiledeviceapplications DELETE returns a
+// misleading HTTP 400 on an accepted removal (maintainer-confirmed server bug).
+// The SDK no longer retries 4xx, so that 400 surfaces here. Unlike /ebooks
+// (which shares the misleading 400 but is slow AND GET-sensitive), this endpoint
+// clears promptly and is NOT GET-sensitive (wire-probed 2026-06-04: GET-by-id
+// 404'd ~2s after DELETE, even while polling), so Delete confirms via a GET-by-id
+// poll until not-found — see helpers.ConfirmAsyncDelete.
 
 package mobile_device_app
 
@@ -235,13 +239,12 @@ func (r *MobileAppResource) Update(ctx context.Context, req resource.UpdateReque
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// Delete removes a Jamf Pro mobile device app. The classic DELETE returns HTTP
-// 400 even when it removes the app (server bug, maintainer-confirmed), but the
-// SDK absorbs this: its 4xx eventual-consistency retry re-issues the DELETE,
-// hits the now-absent id, and treats the resulting 404 as an idempotent-delete
-// success (returns nil). So the bug needs no provider-side handling — a clean
-// nil and an already-removed (404) app both short-circuit to success, and a
-// persistent error surfaces as a real failure.
+// Delete removes a Jamf Pro mobile device app. The classic DELETE returns a
+// misleading HTTP 400 on an accepted, asynchronous removal (server bug,
+// maintainer-confirmed). The SDK no longer retries 4xx, so that 400 surfaces
+// here; ConfirmAsyncDelete issues the DELETE once then polls GET-by-id until
+// not-found, erroring only if the app is still present when the timeout elapses.
+// A clean delete or already-absent app short-circuits to success.
 func (r *MobileAppResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state MobileAppResourceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -262,11 +265,16 @@ func (r *MobileAppResource) Delete(ctx context.Context, req resource.DeleteReque
 		return
 	}
 
-	if err := r.client.DeleteMobileDeviceApplicationByID(deleteCtx, state.ID.ValueString()); err != nil {
-		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "Jamf Pro mobile device app already removed", map[string]any{"id": state.ID.ValueString()})
-			return
-		}
-		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", fmt.Sprintf("API error: %v", err))
+	id := state.ID.ValueString()
+	if err := helpers.ConfirmAsyncDelete(deleteCtx, deletePollInterval,
+		func(c context.Context) error { return r.client.DeleteMobileDeviceApplicationByID(c, id) },
+		func(c context.Context) error {
+			_, getErr := r.client.GetMobileDeviceApplicationByID(c, id)
+			return getErr
+		},
+	); err != nil {
+		resp.Diagnostics.AddError("Error deleting Jamf Pro mobile device app", fmt.Sprintf("%v", err))
+		return
 	}
+	tflog.Trace(ctx, "Jamf Pro mobile device app deletion confirmed", map[string]any{"id": id})
 }
