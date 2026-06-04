@@ -95,6 +95,7 @@ Save all bodies under `local-testing/<endpoint>/` (gitignored). Sanitise PII and
 | `list -o raw -vv` | List-item shape (`[]IDName` vs full object) — drives N+1 vs full-populate in the TF list resource. |
 | `create` with only required fields | Server-populated defaults (`category` sentinels, default booleans, server-derived paths). |
 | `get {id}` after minimal create | Confirms what the server filled in. |
+| `create` omitting each spec-optional field in turn | **Server-required fields the spec/SDK types as optional** — a classic create can return `500` on a missing field that looks optional (e.g. `computer_invitation` 500s without `ssh_username`, for every invitation type). Model such a field `Required` so the gap surfaces at plan time instead of as a confusing `500` at apply. |
 | `create` with every field populated | Write-shape acceptance + round-trip fidelity. |
 | `update {id}` with a subset of fields | **Partial-merge vs full-replace** PUT semantics — critical for TF state handling. |
 | `update {id}` with an empty `<field/>` | **Clear vs no-op vs server-sentinel** behaviour. |
