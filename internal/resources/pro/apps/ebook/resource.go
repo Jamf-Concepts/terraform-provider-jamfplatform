@@ -1,0 +1,376 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+// Package ebook implements the jamfplatform_pro_ebook resource, data source,
+// and list resource backed by the Jamf ProClassic /ebooks API. The construct
+// name mirrors the Jamf Pro admin UI ("eBooks" under the Users sidebar).
+//
+// Ebook scope is the classic dual-target union — computer targets AND
+// mobile-device targets AND user targets, plus the ebook-specific `class_ids`
+// target — hand-composed from the shared scope sub-block primitives rather than
+// the single-target computer/mobile factories (the union+classes shape is
+// ebook's own). There are NO iBeacon targets anywhere in ebook scope.
+package ebook
+
+import (
+	"context"
+	"time"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+)
+
+// minJamfProVersion is the minimum Jamf Pro tenant version required by this
+// resource. Empty: classic /ebooks predates the provider's overall floor. The
+// provider-level advisory still fires through providerdata.ConfigureProClassic
+// when the tenant is below the floor.
+const minJamfProVersion = ""
+
+// EbookResource implements the Terraform resource for Jamf Pro ebooks.
+type EbookResource struct {
+	client *proclassic.Client
+	// ldapSearcher backs the plan-time directory-service user-group preflight in
+	// ModifyPlan. The LDAP group search is a Pro (v1) endpoint, so it is a
+	// separate client from the ProClassic CRUD client. nil until Configure runs.
+	ldapSearcher ldapgroups.Searcher
+}
+
+var _ resource.Resource = &EbookResource{}
+var _ resource.ResourceWithImportState = &EbookResource{}
+var _ resource.ResourceWithIdentity = &EbookResource{}
+var _ resource.ResourceWithModifyPlan = &EbookResource{}
+
+const (
+	defaultCreateTimeout = 60 * time.Second
+	defaultReadTimeout   = 90 * time.Second
+	defaultUpdateTimeout = 60 * time.Second
+	// defaultDeleteTimeout bounds the whole Delete call: a single DELETE plus the
+	// GET-by-id poll that confirms the async /ebooks removal landed. A single
+	// delete clears in ~16s; 2 minutes is comfortable headroom before Delete
+	// errors out a still-present ebook.
+	defaultDeleteTimeout = 2 * time.Minute
+)
+
+// NewEbookResource returns a new instance of EbookResource.
+func NewEbookResource() resource.Resource {
+	return &EbookResource{}
+}
+
+// Metadata sets the resource type name for the Terraform provider.
+func (r *EbookResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_pro_ebook"
+}
+
+// IdentitySchema defines the identifier used for import and list results.
+func (r *EbookResource) IdentitySchema(ctx context.Context, req resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
+	resp.IdentitySchema = identityschema.Schema{
+		Attributes: map[string]identityschema.Attribute{
+			"id": identityschema.StringAttribute{
+				Description:       "Jamf Pro ebook ID used to uniquely reference the ebook.",
+				RequiredForImport: true,
+			},
+		},
+	}
+}
+
+// Schema returns the Terraform schema for the resource. Attribute names mirror
+// the Jamf Pro admin UI labels; differing wire element names are noted in the
+// attribute descriptions.
+func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "Manages a Jamf Pro ebook (the classic `/ebooks` endpoint — the \"eBooks\" entry under the Users sidebar). Distributes either an in-house file (PDF / EPUB / iBook hosted at `general.url`) or an Apple Books title (an `books.apple.com` URL). For App-Store ebooks the server derives `general.file_type` and `general.version` from the URL, so leave them unset. Scope is the dual-target union (computers + mobile devices + users) plus `class_ids`; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "Ebook ID assigned by Jamf Pro.",
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			},
+			"general": schema.SingleNestedAttribute{
+				MarkdownDescription: "General settings. `name` and `url` are required on create. Read-only fields (`category_name`, `site_name`, `id`) are returned by Jamf Pro.",
+				Required:            true,
+				Attributes: map[string]schema.Attribute{
+					"id": schema.StringAttribute{
+						MarkdownDescription: "Ebook ID under `general`. Matches the top-level `id`. Returned by Jamf Pro.",
+						Computed:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+					},
+					"name": schema.StringAttribute{
+						MarkdownDescription: "Ebook display name. Must be unique within the tenant.",
+						Required:            true,
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+					},
+					"url": schema.StringAttribute{
+						MarkdownDescription: "Ebook URL. For an in-house ebook this is where the file is hosted; for an App-Store ebook this is the Apple Books (`books.apple.com`) page. Required on create.",
+						Required:            true,
+						Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
+					},
+					"author": optComputedString("Ebook author."),
+					"deployment_type": schema.StringAttribute{
+						// Optional+Computed and the server always echoes a value,
+						// so an unset deployment_type must stay Unknown on create
+						// rather than copying the null prior state — otherwise the
+						// server's default trips the post-apply consistency check.
+						MarkdownDescription: "Distribution Method. One of `Make Available in Self Service` or `Install Automatically/Prompt Users to Install`.",
+						Optional:            true,
+						Computed:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+						Validators: []validator.String{
+							stringvalidator.OneOf(deploymentTypeSelfService, deploymentTypeAutomatic),
+						},
+					},
+					"deploy_as_managed": optComputedBool("Make the ebook managed when possible (UI \"Make eBook managed when possible\")."),
+					"free":              optComputedBool("Whether the ebook is free."),
+					"file_type": optComputedString(
+						"File Type. User-set for an in-house ebook (`PDF`, `EPUB`, `IBOOK`); server-derived for an App-Store ebook (leave unset — the server resolves it from the Apple Books URL). No strict value validation is applied because the server canonicalises the casing.",
+					),
+					"version":     optComputedString("Ebook version. User-set for an in-house ebook; server-derived for an App-Store ebook."),
+					"category_id": optComputedString("Jamf Pro category ID. Use `-1` for \"No category\"."),
+					"category_name": schema.StringAttribute{
+						// No UseStateForUnknown: category_name is derived from
+						// category_id, so it must go Unknown (not pin the stale
+						// value) when category_id changes.
+						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
+						Computed:            true,
+					},
+					"site_id": optComputedString("Jamf Pro site ID scoping the ebook. Use `-1` for \"No site\"."),
+					"site_name": schema.StringAttribute{
+						// No UseStateForUnknown: site_name is derived from site_id.
+						MarkdownDescription: "Site display name. Returned by Jamf Pro; not user-settable.",
+						Computed:            true,
+					},
+				},
+			},
+			"scope": schema.SingleNestedAttribute{
+				MarkdownDescription: "Ebook scope — the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets.",
+				Optional:            true,
+				Attributes:          ebookScopeAttributes(),
+			},
+			"self_service": schema.SingleNestedAttribute{
+				MarkdownDescription: "Self Service integration. Relevant when `general.deployment_type` is `Make Available in Self Service`.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"display_name":                    optComputedString("Self Service display name (UI \"Self Service Display Name\", in-house ebooks)."),
+					"install_button_text":             optComputedString("Install-button label (UI \"Button Name\", macOS only)."),
+					"self_service_description":        optComputedString("Self Service description. Markdown supported."),
+					"force_users_to_view_description": optComputedBool("Force users to view the description before installing (macOS only)."),
+					"feature_on_main_page":            optComputedBool("Feature the ebook on the Self Service main page."),
+					"notification_enabled":            optComputedBool("Whether Self Service surfaces a notification when the ebook becomes available (macOS only). Pair with `notification_method`."),
+					"notification_method":             optComputedString("Notification delivery method (e.g. `Self Service`). The server defaults a method when notifications are enabled."),
+					"notification_subject":            optComputedString("Notification subject line."),
+					"notification_message":            optComputedString("Notification body text."),
+					"icon_id":                         optComputedString("Self Service icon ID. Reference an already-uploaded icon (e.g. `jamfplatform_pro_icon.<x>.id`); App-Store ebooks auto-populate it from the store artwork. Uploading icon bytes inline is not supported."),
+					"icon_uri": schema.StringAttribute{
+						// Derived from icon_id; plain Computed (no UseStateForUnknown).
+						MarkdownDescription: "Self Service icon URI. Returned by Jamf Pro; not user-settable.",
+						Computed:            true,
+					},
+					"categories": schema.SetNestedAttribute{
+						MarkdownDescription: "Set of Self Service categories the ebook appears under (macOS and iOS app only). Each item identifies the category by `id`; `name` is returned by Jamf Pro.",
+						Optional:            true,
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"id":         schema.StringAttribute{MarkdownDescription: "Category ID.", Required: true},
+								"name":       optComputedString("Category display name. Returned by Jamf Pro."),
+								"display_in": optComputedBool("Display the ebook in this category."),
+								"feature_in": optComputedBool("Feature the ebook in this category."),
+							},
+						},
+					},
+				},
+			},
+			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+				Create: true,
+				Read:   true,
+				Update: true,
+				Delete: true,
+			}),
+		},
+	}
+}
+
+// ebookScopeAttributes hand-composes the ebook <scope> attribute map from the
+// shared scope sub-block primitives. Ebook's union+classes shape is its own —
+// it deliberately does NOT reuse scope.ComputerScopeAttributes /
+// scope.MobileScopeAttributes (those are single-target sugar). The three
+// all-flags use value-discriminated AllFlagConflictsWith validators with
+// relative paths (so they resolve under the scope parent) and
+// UseNonNullStateForUnknown (the server always echoes the flags; pinning a null
+// prior state on a null→present transition trips the post-apply consistency
+// check — see feedback all_computers_usestate_latent_bug).
+func ebookScopeAttributes() map[string]schema.Attribute {
+	limitations := map[string]schema.Attribute{
+		"network_segment_ids":                   scope.IDSetAttribute("network segment"),
+		"directory_service_or_local_user_names": scope.NameSetAttribute("directory service or local user"),
+		"directory_service_user_group_names":    scope.NameSetAttribute("directory service user group"),
+	}
+	exclusions := map[string]schema.Attribute{
+		"computer_ids":                          scope.IDSetAttribute("computer"),
+		"computer_group_ids":                    scope.IDSetAttribute("computer group"),
+		"mobile_device_ids":                     scope.IDSetAttribute("mobile device"),
+		"mobile_device_group_ids":               scope.IDSetAttribute("mobile device group"),
+		"building_ids":                          scope.IDSetAttribute("building"),
+		"department_ids":                        scope.IDSetAttribute("department"),
+		"user_ids":                              scope.IDSetAttribute("user"),
+		"user_group_ids":                        scope.IDSetAttribute("user group"),
+		"network_segment_ids":                   scope.IDSetAttribute("network segment"),
+		"directory_service_or_local_user_names": scope.NameSetAttribute("directory service or local user"),
+		"directory_service_user_group_names":    scope.NameSetAttribute("directory service user group"),
+	}
+
+	return map[string]schema.Attribute{
+		"all_computers": schema.BoolAttribute{
+			MarkdownDescription: "Scope to every computer in the tenant. Forbids `computer_ids` / `computer_group_ids` when true.",
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
+			Validators: []validator.Bool{
+				scope.AllFlagConflictsWith(
+					path.MatchRelative().AtParent().AtName("computer_ids"),
+					path.MatchRelative().AtParent().AtName("computer_group_ids"),
+				),
+			},
+		},
+		"all_mobile_devices": schema.BoolAttribute{
+			MarkdownDescription: "Scope to every mobile device in the tenant. Forbids `mobile_device_ids` / `mobile_device_group_ids` when true.",
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
+			Validators: []validator.Bool{
+				scope.AllFlagConflictsWith(
+					path.MatchRelative().AtParent().AtName("mobile_device_ids"),
+					path.MatchRelative().AtParent().AtName("mobile_device_group_ids"),
+				),
+			},
+		},
+		"all_jss_users": schema.BoolAttribute{
+			MarkdownDescription: "Scope to every Jamf Pro user in the tenant. Forbids `user_ids` / `user_group_ids` when true.",
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
+			Validators: []validator.Bool{
+				scope.AllFlagConflictsWith(
+					path.MatchRelative().AtParent().AtName("user_ids"),
+					path.MatchRelative().AtParent().AtName("user_group_ids"),
+				),
+			},
+		},
+		"computer_ids":            scope.IDSetAttribute("computer"),
+		"computer_group_ids":      scope.IDSetAttribute("computer group"),
+		"mobile_device_ids":       scope.IDSetAttribute("mobile device"),
+		"mobile_device_group_ids": scope.IDSetAttribute("mobile device group"),
+		"building_ids":            scope.IDSetAttribute("building"),
+		"department_ids":          scope.IDSetAttribute("department"),
+		"user_ids":                scope.IDSetAttribute("user"),
+		"user_group_ids":          scope.IDSetAttribute("user group"),
+		"class_ids":               scope.IDSetAttribute("class"),
+		"limitations": schema.SingleNestedAttribute{
+			MarkdownDescription: "Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects.",
+			Optional:            true,
+			Attributes:          limitations,
+		},
+		"exclusions": schema.SingleNestedAttribute{
+			MarkdownDescription: "Scope exclusions remove items that would otherwise be included by targets or limitations.",
+			Optional:            true,
+			Attributes:          exclusions,
+		},
+	}
+}
+
+// Configure wires the Jamf ProClassic client into the resource via the shared
+// providerdata.ConfigureProClassic helper, plus a Pro (v1) client for the scope
+// directory-service group preflight.
+func (r *EbookResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_ebook")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.client = client
+
+	// Pro (v1) client for the scope directory-service group preflight. Same
+	// provider data and version contract; ConfigurePro returns (nil, nil) during
+	// early lifecycle, leaving the preflight a no-op until the provider is fully
+	// configured.
+	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_ebook")
+	resp.Diagnostics.Append(proDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if proClient != nil {
+		r.ldapSearcher = proClient
+	}
+}
+
+// ImportState handles import by the Jamf Pro ebook ID.
+func (r *EbookResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// ModifyPlan runs the plan-time directory-service user-group preflight on the
+// scope limitations/exclusions: each directory_service_user_group_names entry is
+// matched against the tenant's configured LDAP / cloud-IdP, surfacing an unknown
+// group as a clear plan error instead of the opaque apply-time failure.
+// Best-effort: a search transport error or an unconfigured directory downgrades
+// to a warning. No-op on destroy (null plan) and when no scope groups are declared.
+func (r *EbookResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.ldapSearcher == nil || req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var plan EbookResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() || plan.Scope == nil {
+		return
+	}
+
+	scopeRoot := path.Root("scope")
+	if plan.Scope.Limitations != nil {
+		resp.Diagnostics.Append(scope.ValidateDirectoryServiceUserGroupNames(
+			ctx, r.ldapSearcher, plan.Scope.Limitations.DirectoryServiceUserGroupNames,
+			scopeRoot.AtName("limitations").AtName("directory_service_user_group_names"),
+		)...)
+	}
+	if plan.Scope.Exclusions != nil {
+		resp.Diagnostics.Append(scope.ValidateDirectoryServiceUserGroupNames(
+			ctx, r.ldapSearcher, plan.Scope.Exclusions.DirectoryServiceUserGroupNames,
+			scopeRoot.AtName("exclusions").AtName("directory_service_user_group_names"),
+		)...)
+	}
+}
+
+// optComputedString returns an Optional+Computed StringAttribute with the
+// UseNonNullStateForUnknown plan modifier for server-augmented fields. Used both
+// at top level and inside SetNested list elements — UseNonNullStateForUnknown
+// (not UseStateForUnknown) is required for nested-list growth (see
+// feedback_writeonly_nested_attrs).
+func optComputedString(desc string) schema.StringAttribute {
+	return schema.StringAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+	}
+}
+
+// optComputedBool is the bool sibling of optComputedString.
+func optComputedBool(desc string) schema.BoolAttribute {
+	return schema.BoolAttribute{
+		MarkdownDescription: desc,
+		Optional:            true,
+		Computed:            true,
+		PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
+	}
+}
