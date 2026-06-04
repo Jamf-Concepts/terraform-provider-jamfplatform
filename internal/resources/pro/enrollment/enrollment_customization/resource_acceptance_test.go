@@ -8,6 +8,7 @@ package enrollment_customization_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -19,6 +20,55 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
+
+// envSsoIdpURL gates the enrollment-customization tests that create a real SSO
+// pane. Jamf Pro rejects an SSO panel unless SAML is configured on the tenant
+// ("[INVALID_STATE] : SAML must be configured for the JSS to use the SSO
+// panel"), so those tests stand up an sso_settings SAML fixture from this URL
+// and depend_on it. Set it to a SAML IdP metadata URL (an Okta trial works).
+const envSsoIdpURL = "JAMFPLATFORM_ACC_SSO_IDP_URL"
+
+// requireSsoIdpURL skips an SSO-pane test unless a SAML IdP metadata URL is set.
+func requireSsoIdpURL(t *testing.T) string {
+	t.Helper()
+	v := os.Getenv(envSsoIdpURL)
+	if v == "" {
+		t.Skipf("skipping SSO-pane enrollment-customization test: set %s to a SAML IdP metadata URL so the test can configure an OIDC_WITH_SAML sso_settings fixture (Jamf Pro requires SAML configured before an SSO panel can be created)", envSsoIdpURL)
+	}
+	return v
+}
+
+// ssoSamlFixture returns an sso_settings resource (Terraform name "ec_fixture")
+// in OIDC_WITH_SAML mode: SAML is configured so the SSO panel can be created,
+// while OIDC + Jamf ID login is preserved so admin access keeps working. SSO-pane
+// tests depend_on this so SAML lands before the panel POST. The sso_settings
+// Delete is state-only, so teardown leaves the tenant in OIDC_WITH_SAML — the
+// documented steady state for SSO acceptance tests; re-applying is idempotent.
+func ssoSamlFixture(idpURL string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_sso_settings" "ec_fixture" {
+	sso_enabled                                          = true
+	sso_for_enrollment_enabled                           = true
+	sso_for_macos_self_service_enabled                   = false
+	enrollment_sso_for_account_driven_enrollment_enabled = false
+	group_enrollment_access_enabled                      = false
+	configuration_type                                   = "OIDC_WITH_SAML"
+	oidc_settings = {
+		user_mapping                   = "EMAIL"
+		jamf_id_authentication_enabled = true
+	}
+	saml_settings = {
+		idp_provider_type    = "OKTA"
+		entity_id            = "/saml/metadata"
+		metadata_source      = "URL"
+		idp_url              = %q
+		session_timeout      = 480
+		user_mapping         = "EMAIL"
+		group_attribute_name = "http://schemas.xmlsoap.org/claims/Group"
+	}
+}
+`, idpURL)
+}
 
 // fixtureIconPath returns the absolute path to the committed 100x100 PNG
 // fixture used by icon-related acceptance tests.
@@ -149,10 +199,13 @@ func TestAccResource_ProEnrollmentCustomization_LdapOnly(t *testing.T) {
 // pane with enrollment_access = any_idp_user.
 func TestAccResource_ProEnrollmentCustomization_SsoOnly(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	idpURL := requireSsoIdpURL(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-sso-" + suffix
 	cfg := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
 			display_name = %q
 			description  = "tf acc sso"
 			%s
@@ -164,7 +217,7 @@ func TestAccResource_ProEnrollmentCustomization_SsoOnly(t *testing.T) {
 				account_full_name_attribute = "fullName"
 			}]
 		}
-	`, name, configCommon())
+	`, ssoSamlFixture(idpURL), name, configCommon())
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -227,10 +280,13 @@ func TestAccResource_ProEnrollmentCustomization_TextAndLdap(t *testing.T) {
 // with one SSO pane (specific_group with access_group_name).
 func TestAccResource_ProEnrollmentCustomization_TextAndSso(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	idpURL := requireSsoIdpURL(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-textsso-" + suffix
 	cfg := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
 			display_name = %q
 			description  = "tf acc text+sso"
 			%s
@@ -249,7 +305,7 @@ func TestAccResource_ProEnrollmentCustomization_TextAndSso(t *testing.T) {
 				access_group_name   = "Enrollers"
 			}]
 		}
-	`, name, configCommon())
+	`, ssoSamlFixture(idpURL), name, configCommon())
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -558,11 +614,15 @@ func TestAccResource_ProEnrollmentCustomization_UpdateRoundTrip(t *testing.T) {
 // `project_pro_enrollment_customization_spike` memory.
 func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_LdapToSso(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	idpURL := requireSsoIdpURL(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-xauth-l2s-" + suffix
+	fixture := ssoSamlFixture(idpURL)
 
 	step1 := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
 			display_name = %q
 			description  = "tf acc cross-auth ldap->sso step1"
 			%s
@@ -576,10 +636,12 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_LdapToSso(t *tes
 				login_button_text   = "Login"
 			}]
 		}
-	`, name, configCommon())
+	`, fixture, name, configCommon())
 
 	step2 := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
 			display_name = %q
 			description  = "tf acc cross-auth ldap->sso step2"
 			%s
@@ -589,7 +651,7 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_LdapToSso(t *tes
 				enrollment_access = "any_idp_user"
 			}]
 		}
-	`, name, configCommon())
+	`, fixture, name, configCommon())
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -619,11 +681,15 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_LdapToSso(t *tes
 // rejection-pattern fallback if the server refuses the swap.
 func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_SsoToLdap(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	idpURL := requireSsoIdpURL(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-xauth-s2l-" + suffix
+	fixture := ssoSamlFixture(idpURL)
 
 	step1 := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
 			display_name = %q
 			description  = "tf acc cross-auth sso->ldap step1"
 			%s
@@ -633,10 +699,12 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_SsoToLdap(t *tes
 				enrollment_access = "any_idp_user"
 			}]
 		}
-	`, name, configCommon())
+	`, fixture, name, configCommon())
 
 	step2 := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
 			display_name = %q
 			description  = "tf acc cross-auth sso->ldap step2"
 			%s
@@ -650,7 +718,7 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_SsoToLdap(t *tes
 				login_button_text   = "Login"
 			}]
 		}
-	`, name, configCommon())
+	`, fixture, name, configCommon())
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,

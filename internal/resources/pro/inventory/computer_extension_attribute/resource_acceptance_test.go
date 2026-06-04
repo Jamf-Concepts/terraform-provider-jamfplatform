@@ -99,9 +99,37 @@ func ceaPopup(name string) string {
 }
 
 // Step 6: POPUP→DSAM transition with allow_multiple_values.
+//
+// A DIRECTORY_SERVICE_ATTRIBUTE_MAPPING extension attribute requires LDAP to be
+// configured on the tenant (else Create 400s with "[INVALID_CONTENT] inputType:
+// Input type can not be 'DIRECTORY_SERVICE_ATTRIBUTE_MAPPING' if LDAP is not
+// configured"). It also reads user/location data from the directory service
+// (inventory_display = USER_AND_LOCATION). So the config stands up two ordered
+// fixtures the EA depends_on: a dummy LDAP server (no reachable host needed —
+// the ldap_server resource does not verify connectivity), then the computer
+// inventory collection setting that enables directory-service user/location
+// collection. The inventory-settings Delete is state-only (singleton); the LDAP
+// server is removed on teardown.
 func ceaDSAM(name string) string {
 	return fmt.Sprintf(`
+		resource "jamfplatform_pro_ldap_server" "ea_fixture" {
+			connection_settings = {
+				display_name        = "tf-acc-cea-dsam-ldap"
+				directory_service   = "Open Directory"
+				hostname            = "ldap.acc-anon.example.com"
+				port                = 389
+				use_ssl             = false
+				authentication_type = "none"
+			}
+		}
+
+		resource "jamfplatform_pro_computer_inventory_collection_settings" "ea_fixture" {
+			depends_on                                       = [jamfplatform_pro_ldap_server.ea_fixture]
+			collect_user_and_location_from_directory_service = true
+		}
+
 		resource "jamfplatform_pro_computer_extension_attribute" "test" {
+			depends_on                  = [jamfplatform_pro_computer_inventory_collection_settings.ea_fixture]
 			name                        = %q
 			data_type                   = "STRING"
 			input_type                  = "DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"
