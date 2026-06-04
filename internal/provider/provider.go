@@ -51,8 +51,10 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/configuration_profiles/mobile_device_configuration_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/automated_device_enrollment_public_key"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/computer_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/computer_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/enrollment_customization"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
@@ -307,6 +309,8 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		directory_binding.NewDirectoryBindingResource,
 		ldap_server.NewLdapServerResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationResource,
+		computer_invitation.NewComputerInvitationResource,
+		mobile_device_invitation.NewMobileDeviceInvitationResource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentResource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentResource,
 		dock_item.NewDockItemResource,
@@ -384,6 +388,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		directory_binding.NewDirectoryBindingDataSource,
 		ldap_server.NewLdapServerDataSource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationDataSource,
+		computer_invitation.NewComputerInvitationDataSource,
+		mobile_device_invitation.NewMobileDeviceInvitationDataSource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentDataSource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentDataSource,
 		dock_item.NewDockItemDataSource,
@@ -452,6 +458,8 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		directory_binding.NewDirectoryBindingListResource,
 		ldap_server.NewLdapServerListResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationListResource,
+		computer_invitation.NewComputerInvitationListResource,
+		mobile_device_invitation.NewMobileDeviceInvitationListResource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentListResource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentListResource,
 		dock_item.NewDockItemListResource,
