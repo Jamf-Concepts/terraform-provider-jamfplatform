@@ -55,6 +55,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/computer_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/computer_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/enrollment_customization"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_enrollment_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
@@ -318,6 +319,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentResource,
 		dock_item.NewDockItemResource,
 		enrollment_customization.NewEnrollmentCustomizationResource,
+		mobile_device_enrollment_profile.NewEnrollmentProfileResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
 		licensed_software.NewLicensedSoftwareResource,
@@ -400,6 +402,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentDataSource,
 		dock_item.NewDockItemDataSource,
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
+		mobile_device_enrollment_profile.NewEnrollmentProfileDataSource,
 		ibeacon.NewIbeaconDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
 		app_installer.NewAppInstallerDataSource,
@@ -473,6 +476,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentListResource,
 		dock_item.NewDockItemListResource,
 		enrollment_customization.NewEnrollmentCustomizationListResource,
+		mobile_device_enrollment_profile.NewEnrollmentProfileListResource,
 		ibeacon.NewIbeaconListResource,
 		licensed_software.NewLicensedSoftwareListResource,
 		app_installer.NewAppInstallerListResource,
