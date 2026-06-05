@@ -31,7 +31,7 @@ internal/
 │   ├── devices/       # Plural data source                                   (Platform Services)
 │   └── pro/           # Jamf Pro resources — two-tier domain grouping
 │       ├── api/                     # api_role, api_client (+ api_role_privileges data source)
-│       ├── apps/                    # app_installer, mac_app_store_app, mobile_device_app (+ app_installer_title(s) catalog data sources)
+│       ├── apps/                    # app_installer, mac_app_store_app, mobile_device_app, mobile_device_provisioning_profile (+ app_installer_title(s) catalog data sources)
 │       ├── configuration_profiles/  # macos_configuration_profile, mobile_device_configuration_profile (payloadhelpers/ shared)
 │       ├── enrollment/              # automated_device_enrollment (+ public_key), computer_prestage_enrollment, mobile_device_prestage_enrollment, enrollment_customization
 │       ├── inventory/               # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer, licensed_software
