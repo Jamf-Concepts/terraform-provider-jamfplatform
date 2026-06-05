@@ -25,7 +25,7 @@ The provider groups resources by the Jamf product they target. Some products are
 
 | Product | Resource namespace | Built against API as of | Notes |
 |---------|--------------------|--------------------------|-------|
-| Jamf Pro | `jamfplatform_pro_*` | **11.27.0** (see [`ProviderMinJamfProVersion`](./internal/providerdata/providerdata.go) for the current source-tree value) | Tenants below this version emit an advisory warning at apply time. Individual resources that depend on newer endpoints declare their own `minJamfProVersion` and hard-fail Configure on unsupported tenants. |
+| Jamf Pro | `jamfplatform_pro_*` | **11.28.0** (see [`ProviderMinJamfProVersion`](./internal/providerdata/providerdata.go) for the current source-tree value) | Tenants below this version emit an advisory warning at apply time. Individual resources that depend on newer endpoints declare their own `minJamfProVersion` and hard-fail Configure on unsupported tenants. |
 | Jamf Platform Services (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) | resources without a product-name prefix (e.g. `jamfplatform_blueprints_blueprint`, `jamfplatform_device_group`) | continuously-deployed | No tenant version requirement. No version fetch is performed against tenants that use only these resources. |
 
 Further Jamf products are expected to be added; each will get its own row, namespace, and version constant.
