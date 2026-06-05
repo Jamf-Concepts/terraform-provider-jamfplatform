@@ -75,6 +75,7 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 | Plaintext secret with `WriteOnly + _wo_version` | `internal/resources/pro/inventory/directory_binding/` |
 | Classic-CRUD resource with a v2 side-channel (extension-attribute accept) | `internal/resources/pro/patch/patch_software_title/` |
 | Positional id-less nested lists + opt-out sub-collections (omit=retain/`[]`=clear) + Computed nested collections as `types.List` | `internal/resources/pro/inventory/licensed_software/` |
+| Create-only immutable upload (server rejects every PUT once the blob exists → all attrs RequiresReplace + no-PUT Update) | `internal/resources/pro/apps/mobile_device_provisioning_profile/` |
 
 ## Jamf Pro resources — one-paragraph orientation
 
