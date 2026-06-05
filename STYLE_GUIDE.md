@@ -820,6 +820,23 @@ When a resource references a **server-managed catalog** object — one the user 
 
 Reference: `jamfplatform_pro_app_installer.app_title_name` → Computed `app_title_id`.
 
+### Classic membership: author by username, mirror the resolved ID set as Computed
+
+Some classic objects expose the **same membership in two parallel collections** — a username list and an ID list (e.g. `jamfplatform_pro_class` returns both `<students>`/`<student>` usernames and `<student_ids>`/`<id>`). The server resolves **both directions**: write usernames and it fills the IDs; write IDs and it fills the usernames. Model the **UI-facing identity** (username) as the authored attribute and the sibling ID list as plain `Computed`:
+
+- `students` / `teachers` — `Optional` `Set` of usernames (the admin-UI surface).
+- `student_ids` / `teacher_ids` — plain `Computed` `Set` of resolved IDs (no `UseStateForUnknown`; they recompute when the username set changes — same rule as any [server-derived field](#server-derived-computed-fields--optionalcomputed-attributes)).
+- Do **not** send the ID collections on write — author by username only; the server resolves them.
+
+Two wire behaviours flip the usual rules — **probe them, don't assume**:
+
+- **Unknown usernames are auto-created, not rejected.** A username that matches no existing user returns `201`, and the server *mints a new user record* for it (verified on `/classes`). So — unlike the [server-managed catalog](#referencing-a-server-managed-catalog-by-name) case — **do NOT add a plan-time name-existence validator**: there is nothing to validate against, and a "not found" check would be wrong. Referenced **group IDs**, by contrast, *are* validated (a bogus ID returns `409`) — rely on Jamf Pro's apply-time error for those.
+- **The server canonicalises usernames** (e.g. `Kyle@X` → `kyle@x` when it matches an existing user). A username-keyed `Set` therefore drifts unless the state builder preserves the configured casing: reconcile case-insensitively — when a returned value matches a configured one ignoring case, keep the configured spelling; otherwise take the server value. This both prevents the post-apply "produced inconsistent result" error and suppresses perpetual diffs.
+
+Membership is **authoritative**: emit every collection in full on every write so the config is the source of truth — an empty wrapper element clears it (see [§always-emit clear](#always-emit-clear--omitting-a-managed-collection-must-still-send-an-empty-wrapper) below if present, or the `advanced_computer_search` reference). Preserve the prior null-vs-empty set shape when the server returns nothing.
+
+Reference: `jamfplatform_pro_class` (`students`/`teachers` → Computed `student_ids`/`teacher_ids`).
+
 ### Delete semantics: not-found, async, and propagation-blocked
 
 The SDK transport does **not** retry 4xx and does **not** treat `DELETE→404` as success — both are consumer concerns (an eventual-consistency retry needs context the transport lacks; see [§Pro error/retry helpers](#pro-errorretry-helpers)). So **every `Delete` must branch on `helpers.IsNotFoundError`** to treat an already-absent record as success — never assume the SDK swallows the 404.
