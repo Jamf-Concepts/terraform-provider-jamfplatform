@@ -38,7 +38,7 @@ internal/
 │       ├── patch/                   # patch_software_title, patch_policy, patch_external_source, patch_internal_source (data source) (availabletitles/ shared)
 │       ├── policies/                # policy, script, restricted_software
 │       ├── settings/                # self_service_plus_settings, cloud_distribution_point, cloud_identity_provider, ldap_server, re_enrollment_settings, sso_settings, sso_failover_url, user_initiated_enrollment_settings
-│       ├── users/                   # user_group
+│       ├── users/                   # user_group, class
 │       ├── volume_purchasing/       # location
 │       └── webhooks/                # webhook
 ├── actions/device/    # erase, restart, shutdown, unmanage

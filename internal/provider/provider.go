@@ -101,6 +101,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/user_initiated_enrollment_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/class"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/location"
@@ -348,6 +349,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		site.NewSiteResource,
 		sso_failover_url.NewSsoFailoverURLResource,
 		sso_settings.NewSsoSettingsResource,
+		class.NewClassResource,
 		user_group.NewUserGroupResource,
 		location.NewVolumePurchasingLocationResource,
 		webhook.NewWebhookResource,
@@ -432,6 +434,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		sso_settings.NewSsoSettingsDataSource,
 		sso_settings.NewSsoSpMetadataDataSource,
 		sites.NewSitesDataSource,
+		class.NewClassDataSource,
 		user_group.NewUserGroupDataSource,
 		user_groups.NewUserGroupsDataSource,
 		advanced_computer_search.NewAdvancedComputerSearchDataSource,
@@ -485,6 +488,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		patch_policy.NewPatchPolicyListResource,
 		patch_software_title.NewPatchSoftwareTitleListResource,
 		site.NewSiteListResource,
+		class.NewClassListResource,
 		user_group.NewUserGroupListResource,
 		advanced_computer_search.NewAdvancedComputerSearchListResource,
 		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchListResource,
