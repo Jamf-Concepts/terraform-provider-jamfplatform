@@ -68,6 +68,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/dock_item"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/ibeacon"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/icon"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/licensed_software"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/mobile_device_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
@@ -317,6 +318,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		enrollment_customization.NewEnrollmentCustomizationResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
+		licensed_software.NewLicensedSoftwareResource,
 		app_installer.NewAppInstallerResource,
 		ebook.NewEbookResource,
 		mac_app_store_app.NewMacAppResource,
@@ -395,6 +397,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		dock_item.NewDockItemDataSource,
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		ibeacon.NewIbeaconDataSource,
+		licensed_software.NewLicensedSoftwareDataSource,
 		app_installer.NewAppInstallerDataSource,
 		app_installers.NewAppInstallersDataSource,
 		app_installer_title.NewAppInstallerTitleDataSource,
@@ -465,6 +468,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		dock_item.NewDockItemListResource,
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		ibeacon.NewIbeaconListResource,
+		licensed_software.NewLicensedSoftwareListResource,
 		app_installer.NewAppInstallerListResource,
 		ebook.NewEbookListResource,
 		mac_app_store_app.NewMacAppListResource,
