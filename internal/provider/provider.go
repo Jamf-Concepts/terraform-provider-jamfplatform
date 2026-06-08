@@ -107,6 +107,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/location"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhooks/webhook"
 )
 
@@ -356,6 +357,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		class.NewClassResource,
 		user_group.NewUserGroupResource,
 		location.NewVolumePurchasingLocationResource,
+		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
 	}
 }
@@ -448,6 +450,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		advanced_user_search.NewAdvancedUserSearchDataSource,
 		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchDataSource,
 		location.NewVolumePurchasingLocationDataSource,
+		vpp_invitation.NewVPPInvitationDataSource,
 		webhook.NewWebhookDataSource,
 	}
 }
@@ -503,6 +506,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		advanced_user_search.NewAdvancedUserSearchListResource,
 		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchListResource,
 		location.NewVolumePurchasingLocationListResource,
+		vpp_invitation.NewVPPInvitationListResource,
 		webhook.NewWebhookListResource,
 	}
 }
