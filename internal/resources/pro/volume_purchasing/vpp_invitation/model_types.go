@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // VPPInvitationResourceModel is the Terraform resource model for a Jamf Pro VPP
@@ -38,45 +39,9 @@ type VPPInvitationResourceModel struct {
 	Message            types.String `tfsdk:"message"`
 	RequireLogin       types.Bool   `tfsdk:"require_login"`
 
-	Scope            *VPPInvitationScopeModel `tfsdk:"scope"`
-	InvitationUsages types.List               `tfsdk:"invitation_usages"` // Computed list of VPPInvitationUsageModel
-	Timeouts         resourceTimeouts.Value   `tfsdk:"timeouts"`
-}
-
-// VPPInvitationScopeModel models <scope>. This is the USER-BASED scope subset
-// (a third scope shape distinct from computer/mobile): targets are Jamf users /
-// Jamf user groups plus the all_jss_users flag; limitations and exclusions carry
-// directory-service (LDAP) user groups by NAME.
-//
-// Write semantics (wire-probed): scope is ALWAYS-EMIT — the server merges on PUT
-// (omitting a collection retains it), and within a present collection the write
-// is a full replace. To make scope declarative, the input builder emits the full
-// <scope> skeleton (empty elements to clear) whenever this block is declared. A
-// nil Scope pointer omits <scope> entirely and leaves the server's scope
-// untouched.
-type VPPInvitationScopeModel struct {
-	AllJSSUsers     types.Bool                          `tfsdk:"all_jss_users"`
-	JSSUserIDs      types.Set                           `tfsdk:"jss_user_ids"`
-	JSSUserGroupIDs types.Set                           `tfsdk:"jss_user_group_ids"`
-	Limitations     *VPPInvitationScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions      *VPPInvitationScopeExclusionsModel  `tfsdk:"exclusions"`
-}
-
-// VPPInvitationScopeLimitationsModel models <scope><limitations>. The UI exposes
-// only "Directory Service User Groups". These are NAME-keyed (wire-probed:
-// PUT-by-id → 409, PUT-by-name → 201); the SDK's IDName item type is a superset
-// and only its name is populated.
-type VPPInvitationScopeLimitationsModel struct {
-	DirectoryServiceUserGroupNames types.Set `tfsdk:"directory_service_user_group_names"`
-}
-
-// VPPInvitationScopeExclusionsModel models <scope><exclusions>. The UI exposes
-// Users / User Groups (id-keyed Jamf objects) and Directory Service User Groups
-// (name-keyed, wire-confirmed name-only).
-type VPPInvitationScopeExclusionsModel struct {
-	JSSUserIDs                     types.Set `tfsdk:"jss_user_ids"`
-	JSSUserGroupIDs                types.Set `tfsdk:"jss_user_group_ids"`
-	DirectoryServiceUserGroupNames types.Set `tfsdk:"directory_service_user_group_names"`
+	Scope            *scope.UserScopeModel  `tfsdk:"scope"`
+	InvitationUsages types.List             `tfsdk:"invitation_usages"` // Computed list of VPPInvitationUsageModel
+	Timeouts         resourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // VPPInvitationUsageModel is a read-only invitation_usages element — per-user
@@ -105,7 +70,7 @@ type VPPInvitationDataSourceModel struct {
 	Message                  types.String `tfsdk:"message"`
 	RequireLogin             types.Bool   `tfsdk:"require_login"`
 
-	Scope            *VPPInvitationScopeModel `tfsdk:"scope"`
+	Scope            *scope.UserScopeModel    `tfsdk:"scope"`
 	InvitationUsages types.List               `tfsdk:"invitation_usages"`
 	Timeouts         datasourceTimeouts.Value `tfsdk:"timeouts"`
 }

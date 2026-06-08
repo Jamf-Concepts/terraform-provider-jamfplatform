@@ -55,17 +55,17 @@ func buildVPPInvitationInput(ctx context.Context, plan VPPInvitationResourceMode
 // buildScope emits the full <scope> skeleton (always-emit). Every collection
 // wrapper is present so the server full-replaces it; a nil inner slice marshals
 // as an empty element, which clears that collection.
-func buildScope(ctx context.Context, m *VPPInvitationScopeModel) (*proclassic.VppInvitationScope, diag.Diagnostics) {
+func buildScope(ctx context.Context, m *scope.UserScopeModel) (*proclassic.VppInvitationScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	s := &proclassic.VppInvitationScope{
-		AllJssUsers: helpers.OptionalBoolPointer(m.AllJSSUsers),
+		AllJssUsers: helpers.OptionalBoolPointer(m.AllJssUsers),
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.JSSUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	jssUsers, d := scope.BuildIDSlice(ctx, m.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	s.JssUsers = &proclassic.VppInvitationScopeJssUsers{User: jssUsers}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.JSSUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	jssUserGroups, d := scope.BuildIDSlice(ctx, m.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	s.JssUserGroups = &proclassic.VppInvitationScopeJssUserGroups{UserGroup: jssUserGroups}
 
@@ -87,9 +87,9 @@ func buildScope(ctx context.Context, m *VPPInvitationScopeModel) (*proclassic.Vp
 	var exclJssUsers, exclJssUserGroups *[]proclassic.IDName
 	var exclDSGroups *[]proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem
 	if m.Exclusions != nil {
-		exclJssUsers, d = scope.BuildIDSlice(ctx, m.Exclusions.JSSUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+		exclJssUsers, d = scope.BuildIDSlice(ctx, m.Exclusions.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 		diags.Append(d...)
-		exclJssUserGroups, d = scope.BuildIDSlice(ctx, m.Exclusions.JSSUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+		exclJssUserGroups, d = scope.BuildIDSlice(ctx, m.Exclusions.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 		diags.Append(d...)
 		exclDSGroups, d = scope.BuildNameSlice(ctx, m.Exclusions.DirectoryServiceUserGroupNames, func(name string) proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem {
 			n := name
