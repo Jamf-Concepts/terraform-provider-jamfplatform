@@ -369,6 +369,22 @@ The previous section is about a broken *endpoint* (the server misbehaves). This 
 
 **Workflow:** write a fix-prompt doc at the provider repo root (gitignored), mirroring `SDK_PRESTAGE_SCOPE_ASSIGNMENT_DATE_FIX_PROMPT.md` / `SDK_CLOUD_LDAP_KEYSTORE_DATE_FIX_PROMPT.md`: state the bug, the affected SDK functions, the wire evidence, the spec quote, the exact override entry, and the test gap. Hand it to a session in the SDK repo; land the SDK PR; bump the provider `go.mod`. If a resource is blocked on the fix, record it in that resource's spike/memory and pin the dependency rather than hand-decoding to unblock.
 
+### Field-order-sensitive classic write payloads (rare)
+
+The SDK generator emits struct fields **alphabetically**, so a marshaled classic `PUT`/`POST` body lists child elements in alphabetical order, not the order the OpenAPI spec / admin UI use. **Nearly every classic endpoint tolerates this** — the large majority of shipped classic resources marshal alphabetically and pass acceptance. Do **not** treat field order as a systemic risk or reorder structs pre-emptively.
+
+A **rare** endpoint is order-sensitive on write and rejects the alphabetical body. Known case: ProClassic `/vppinvitations` `<general>` — `auto_register_managed_users` (alphabetically first) marshaled before the core fields returns **HTTP 500**; the same body in the GET wire order (`name`, `vpp_account`, `distribution_method`, …, `auto_register_managed_users` last) returns 201.
+
+**Debugging cue:** a classic create/update that 500s with no obvious payload error (all fields present, names/types correct) — compare the marshaled child order against a live GET. If they differ and reordering to wire order fixes it, it's this.
+
+**Fix in the SDK generator, per-schema — never globally.** A blanket "preserve spec order" switch would reorder every existing struct and risk regressing the resources that work today. Add a targeted per-schema field-order override (mirror the `fieldTypeOverrides` fix-prompt workflow above) so only the order-sensitive schema is reordered to wire order. Reference: `jamfplatform_pro_vpp_invitation` (SDK `a37279c`).
+
+### Form-decoded classic input fields (encode on write)
+
+A few classic text fields are **form-URL-decoded by the server on write** (`%XX` → byte, `+` → space). A literal `%` not followed by two hex digits is then a malformed escape and the write **500s**. Known case: `/vppinvitations` `<message>` (the invitation email body, which legitimately contains the `%@` registration-URL placeholder).
+
+When a classic string field form-decodes input, **`url.QueryEscape` the value on write** in the input builder; the server decodes it back, so it stores and GETs the verbatim original (placeholders, literal `%`, embedded newlines all round-trip). **Read needs no transform** — the GET already returns the decoded value, which matches config. This also sidesteps newline-normalisation diffs for free. Reference: `encodedMessagePointer` in `internal/resources/pro/volume_purchasing/vpp_invitation/input_builders.go`.
+
 ### Cross-field validation
 
 **Required pattern:** every cross-field rule MUST be expressed as an **attribute-level validator** (`Validators: []validator.Bool{...}` on the schema attribute itself), not as a resource-level `resource.ResourceWithConfigValidators`. Errors attach to the offending attribute, the rule is co-located with the schema, the diagnostic is field-named, and the convention matches every resource in the provider.
