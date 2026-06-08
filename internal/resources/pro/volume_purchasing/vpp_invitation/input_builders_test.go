@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func mustStringSet(t *testing.T, vals ...string) types.Set {
@@ -107,7 +109,7 @@ func TestBuildScope_AlwaysEmitsSkeleton(t *testing.T) {
 		Name:               types.StringValue("x"),
 		VPPAccountID:       types.StringValue("3"),
 		DistributionMethod: types.StringValue("Make available in Self Service only"),
-		Scope:              &VPPInvitationScopeModel{}, // empty block, all sets null
+		Scope:              &scope.UserScopeModel{}, // empty block, all sets null
 	}
 	in, _ := buildVPPInvitationInput(context.Background(), plan)
 	if in.Scope == nil {
@@ -133,14 +135,14 @@ func TestBuildScope_PopulatedTargetsAndNameKeyedGroups(t *testing.T) {
 		Name:               types.StringValue("x"),
 		VPPAccountID:       types.StringValue("3"),
 		DistributionMethod: types.StringValue("Make available in Self Service only"),
-		Scope: &VPPInvitationScopeModel{
-			AllJSSUsers:     types.BoolValue(false),
-			JSSUserGroupIDs: mustStringSet(t, "1"),
-			Limitations: &VPPInvitationScopeLimitationsModel{
+		Scope: &scope.UserScopeModel{
+			AllJssUsers:     types.BoolValue(false),
+			JssUserGroupIDs: mustStringSet(t, "1"),
+			Limitations: &scope.UserScopeLimitationsModel{
 				DirectoryServiceUserGroupNames: mustStringSet(t, "LDAP Admins"),
 			},
-			Exclusions: &VPPInvitationScopeExclusionsModel{
-				JSSUserIDs:                     mustStringSet(t, "5"),
+			Exclusions: &scope.UserScopeExclusionsModel{
+				JssUserIDs:                     mustStringSet(t, "5"),
 				DirectoryServiceUserGroupNames: mustStringSet(t, "Excluded LDAP Group"),
 			},
 		},

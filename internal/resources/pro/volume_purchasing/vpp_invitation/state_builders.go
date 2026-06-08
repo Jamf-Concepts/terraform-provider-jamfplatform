@@ -66,9 +66,9 @@ func assignVPPInvitationDataSourceModel(ctx context.Context, state *VPPInvitatio
 	state.Message = helpers.StringPointerValueOrNull(g.Message)
 	state.RequireLogin = helpers.BoolPointerValueOrNull(g.RequireLogin)
 
-	state.Scope = &VPPInvitationScopeModel{
-		Limitations: &VPPInvitationScopeLimitationsModel{},
-		Exclusions:  &VPPInvitationScopeExclusionsModel{},
+	state.Scope = &scope.UserScopeModel{
+		Limitations: &scope.UserScopeLimitationsModel{},
+		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}
 	if api.Scope != nil {
 		flattenScope(ctx, api.Scope, state.Scope)
@@ -76,18 +76,18 @@ func assignVPPInvitationDataSourceModel(ctx context.Context, state *VPPInvitatio
 	state.InvitationUsages = flattenUsages(api.InvitationUsages)
 }
 
-func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *VPPInvitationScopeModel) {
-	state.AllJSSUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
-	state.JSSUserIDs = flattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
-	state.JSSUserGroupIDs = flattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
+func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *scope.UserScopeModel) {
+	state.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
+	state.JssUserIDs = flattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
+	state.JssUserGroupIDs = flattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
 
 	if state.Limitations != nil {
 		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, limitationsUserGroupsSlice(s.Limitations))
 	}
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
-		state.Exclusions.JSSUserIDs = flattenIDNameSet(ctx, exclJssUsersSlice(e.JssUsers))
-		state.Exclusions.JSSUserGroupIDs = flattenIDNameSet(ctx, exclJssUserGroupsSlice(e.JssUserGroups))
+		state.Exclusions.JssUserIDs = flattenIDNameSet(ctx, exclJssUsersSlice(e.JssUsers))
+		state.Exclusions.JssUserGroupIDs = flattenIDNameSet(ctx, exclJssUserGroupsSlice(e.JssUserGroups))
 		state.Exclusions.DirectoryServiceUserGroupNames = flattenExclDSGroupSet(ctx, exclDSGroupsSlice(e.UserGroups))
 	}
 }

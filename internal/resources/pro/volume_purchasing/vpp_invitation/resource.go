@@ -145,38 +145,7 @@ func (r *VPPInvitationResource) Schema(ctx context.Context, req resource.SchemaR
 			"scope": schema.SingleNestedAttribute{
 				MarkdownDescription: "User-based scope. Declaring this block puts the entire scope under management — any user, user group, or directory-service group not listed here is removed from the invitation.",
 				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"all_jss_users": schema.BoolAttribute{
-						MarkdownDescription: "Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Defaults to `false`.",
-						Optional:            true,
-						Computed:            true,
-						Default:             booldefault.StaticBool(false),
-						Validators: []validator.Bool{
-							scope.AllFlagConflictsWith(
-								path.MatchRelative().AtParent().AtName("jss_user_ids"),
-								path.MatchRelative().AtParent().AtName("jss_user_group_ids"),
-							),
-						},
-					},
-					"jss_user_ids":       scope.IDSetAttribute("user"),
-					"jss_user_group_ids": scope.IDSetAttribute("user group"),
-					"limitations": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope limitations.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"directory_service_user_group_names": scope.NameSetAttribute("directory service (LDAP) user group"),
-						},
-					},
-					"exclusions": schema.SingleNestedAttribute{
-						MarkdownDescription: "Scope exclusions.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"jss_user_ids":                       scope.IDSetAttribute("user"),
-							"jss_user_group_ids":                 scope.IDSetAttribute("user group"),
-							"directory_service_user_group_names": scope.NameSetAttribute("directory service (LDAP) user group"),
-						},
-					},
-				},
+				Attributes:          scope.UserScopeAttributes(),
 			},
 			"invitation_usages": schema.ListNestedAttribute{
 				MarkdownDescription: "Read-only per-user registration status the server tracks for this invitation.",
