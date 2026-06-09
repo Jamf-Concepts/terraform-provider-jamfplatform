@@ -84,20 +84,33 @@ func TestReconcileScript_TrailingNewline(t *testing.T) {
 	}
 }
 
-// TestFlattenPopupMenuChoices verifies ordered hydration and empty→null.
+// TestFlattenPopupMenuChoices verifies the isPopup-keyed empty handling: a
+// non-POPUP EA flattens to null (attribute N/A); a POPUP EA flattens an empty
+// slice to an empty (non-null) set so an explicit `[]` clear round-trips.
 func TestFlattenPopupMenuChoices(t *testing.T) {
-	got, diags := flattenPopupMenuChoices(context.Background(), nil)
+	// non-POPUP: always null regardless of the echoed slice.
+	got, diags := flattenPopupMenuChoices(context.Background(), nil, false)
 	if diags.HasError() || !got.IsNull() {
-		t.Errorf("nil slice should flatten to null list")
-	}
-	empty := []string{}
-	got, _ = flattenPopupMenuChoices(context.Background(), &empty)
-	if !got.IsNull() {
-		t.Errorf("empty slice should flatten to null list")
+		t.Errorf("non-popup nil slice should flatten to null")
 	}
 	src := []string{"a", "b", "c"}
-	got, _ = flattenPopupMenuChoices(context.Background(), &src)
+	got, _ = flattenPopupMenuChoices(context.Background(), &src, false)
+	if !got.IsNull() {
+		t.Errorf("non-popup should flatten to null even with a non-empty slice")
+	}
+
+	// POPUP: empty slice (and nil) → empty, non-null set; populated → hydrated.
+	got, _ = flattenPopupMenuChoices(context.Background(), nil, true)
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("popup nil slice should flatten to an empty (non-null) set, got %v", got)
+	}
+	empty := []string{}
+	got, _ = flattenPopupMenuChoices(context.Background(), &empty, true)
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("popup empty slice should flatten to an empty (non-null) set, got %v", got)
+	}
+	got, _ = flattenPopupMenuChoices(context.Background(), &src, true)
 	if got.IsNull() || len(got.Elements()) != 3 {
-		t.Errorf("expected 3 ordered choices, got %v", got)
+		t.Errorf("expected 3 choices, got %v", got)
 	}
 }
