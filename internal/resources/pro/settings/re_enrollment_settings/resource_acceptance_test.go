@@ -44,8 +44,10 @@ func checkReEnrollmentStillExists(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
-// reEnrollmentConfig renders a full six-field config. Every attribute is
-// Required so all six must always be present.
+// reEnrollmentConfig renders a full six-field config. The five clear_* toggles
+// are Optional+Computed (omit=preserve) and clear_management_history is Required;
+// this helper declares all six so the Update/Import/DataSource tests pin every
+// value. Omit=preserve is exercised separately in the split-ownership test.
 func reEnrollmentConfig(clearPolicyLogs, clearLocationInfo, clearLocationHistory, clearExtAttrs, clearSUPlans bool, clearManagementHistory string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_re_enrollment_settings" "test" {
@@ -93,6 +95,113 @@ func TestAccResource_ProReEnrollmentSettings_Update(t *testing.T) {
 					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_extension_attributes", "true"),
 					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_software_update_plans", "false"),
 					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_management_history", "DELETE_NOTHING"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProReEnrollmentSettings_SplitOwnership proves the omit=preserve
+// contract for an Optional+Computed toggle (clear_location_information) on this
+// full-replace singleton, across all three transitions:
+//
+//   - Step 1 (create = adopt): the singleton already has clear_location_information
+//     set true out of band; the config OMITS it. The GET-on-create merge must adopt
+//     the existing true rather than resetting it to the false default. This is the
+//     create-adopt behaviour — a plain USFU-only conversion would clobber it here.
+//   - Step 2 (update = preserve): a UI edit flips it to false out of band while the
+//     config still omits it and changes only the enum; UseStateForUnknown must carry
+//     the live false forward, not revert to step 1's true or reset to default.
+//   - Step 3 (take over): declaring the toggle explicitly lets Terraform own it.
+//
+// true/false are the discriminators — a clobber would surface as the false default.
+func TestAccResource_ProReEnrollmentSettings_SplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	// setLocationInfoOutOfBand simulates a UI edit: read the current settings, flip
+	// clear_location_information, and write the full object back (full-replace).
+	setLocationInfoOutOfBand := func(v bool) func() {
+		return func() {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			ctx := context.Background()
+			got, err := c.GetReenrollmentSettingsV1(ctx)
+			if err != nil {
+				t.Fatalf("out-of-band GET: %v", err)
+			}
+			got.IsFlushLocationInformationEnabled = &v
+			if _, err := c.UpdateReenrollmentSettingsV1(ctx, got); err != nil {
+				t.Fatalf("out-of-band PUT: %v", err)
+			}
+		}
+	}
+
+	checkServerLocationInfo := func(want bool) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetReenrollmentSettingsV1(context.Background())
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			if got.IsFlushLocationInformationEnabled == nil || *got.IsFlushLocationInformationEnabled != want {
+				return fmt.Errorf("isFlushLocationInformationEnabled = %v, want %v", got.IsFlushLocationInformationEnabled, want)
+			}
+			return nil
+		}
+	}
+
+	// Config omits clear_location_information; declares the enum anchor + one other
+	// toggle so the unrelated change in step 2 is the enum.
+	cfg := func(enum string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_pro_re_enrollment_settings" "test" {
+				clear_policy_logs        = true
+				clear_management_history = %q
+			}
+		`, enum)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkReEnrollmentStillExists(t),
+		Steps: []resource.TestStep{
+			{
+				// Pin clear_location_information=true on the singleton BEFORE create,
+				// then create with it omitted. GET-on-create must adopt true, not reset
+				// to the false default — the create-adopt behaviour.
+				PreConfig: setLocationInfoOutOfBand(true),
+				Config:    cfg("DELETE_NOTHING"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_policy_logs", "true"),
+					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_location_information", "true"),
+					checkServerLocationInfo(true),
+				),
+			},
+			{
+				// UI flips clear_location_information to false out of band; config still
+				// omits it and changes only the enum. The live false must survive — not
+				// reverted to step 1's true, not reset to default.
+				PreConfig: setLocationInfoOutOfBand(false),
+				Config:    cfg("DELETE_ERRORS"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_management_history", "DELETE_ERRORS"),
+					// State adopts the out-of-band value (Computed) and preserves it.
+					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_location_information", "false"),
+					checkServerLocationInfo(false),
+				),
+			},
+			{
+				// Declaring the toggle explicitly lets Terraform take it back over —
+				// flip it from the step-2 false to true to prove the override writes.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_re_enrollment_settings" "test" {
+						clear_policy_logs          = true
+						clear_location_information = true
+						clear_management_history   = %q
+					}
+				`, "DELETE_ERRORS"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(reEnrollmentResourceAddr, "clear_location_information", "true"),
+					checkServerLocationInfo(true),
 				),
 			},
 		},

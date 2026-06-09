@@ -58,7 +58,19 @@ func (r *ReEnrollmentSettingsResource) Create(ctx context.Context, req resource.
 		defer r.enrollmentMu.Unlock()
 	}
 
-	if !applyAndRefresh(createCtx, r.client, &plan, &resp.Diagnostics) {
+	// The Re-enrollment settings singleton always exists on the tenant, so "create"
+	// is really adoption. Read the live settings (inside the lock) and pass them as
+	// the merge base: toggles the user did not declare keep their current value
+	// instead of being reset to the server default by the full-replace write. (On
+	// update the merge base is nil — UseStateForUnknown has already carried omitted
+	// toggles into the plan as known prior values.)
+	current, err := r.client.GetReenrollmentSettingsV1(createCtx)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Re-enrollment settings", err.Error())
+		return
+	}
+
+	if !applyAndRefresh(createCtx, r.client, &plan, current, &resp.Diagnostics) {
 		return
 	}
 
@@ -146,7 +158,7 @@ func (r *ReEnrollmentSettingsResource) Update(ctx context.Context, req resource.
 		defer r.enrollmentMu.Unlock()
 	}
 
-	if !applyAndRefresh(updateCtx, r.client, &plan, &resp.Diagnostics) {
+	if !applyAndRefresh(updateCtx, r.client, &plan, nil, &resp.Diagnostics) {
 		return
 	}
 
@@ -170,11 +182,12 @@ func (r *ReEnrollmentSettingsResource) Delete(ctx context.Context, _ resource.De
 	tflog.Trace(ctx, "removing Jamf Pro Re-enrollment settings from Terraform state (no remote delete; settings retained on tenant)")
 }
 
-// applyAndRefresh performs the full-replace PUT built from plan, then reads the
-// stored settings back into plan. Returns false if a diagnostic was emitted.
-// Callers must hold the enrollment write lock around this call.
-func applyAndRefresh(ctx context.Context, client *pro.Client, plan *ReEnrollmentSettingsResourceModel, diags *diag.Diagnostics) bool {
-	body := buildReenrollmentInput(*plan)
+// applyAndRefresh performs the full-replace PUT built from plan (merged over
+// current for any toggle the user did not declare), then reads the stored
+// settings back into plan. current may be nil (update path). Returns false if a
+// diagnostic was emitted. Callers must hold the enrollment write lock.
+func applyAndRefresh(ctx context.Context, client *pro.Client, plan *ReEnrollmentSettingsResourceModel, current *pro.Reenrollment, diags *diag.Diagnostics) bool {
+	body := buildReenrollmentInput(*plan, current)
 	if _, err := client.UpdateReenrollmentSettingsV1(ctx, body); err != nil {
 		diags.AddError("Error updating Jamf Pro Re-enrollment settings", err.Error())
 		return false
