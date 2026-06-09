@@ -7,11 +7,12 @@
 // endpoint.
 //
 // Design notes the acc run verifies (each is load-bearing — see the build spike):
-//   - full-replace PUT: criteria/display_fields are removed by OMITTING the block,
-//     never `= []`. Flatten returns null for an empty server array; a known empty
-//     list ([]) would mismatch null and surface "inconsistent result after apply".
-//     The clear step (step 5) drops both blocks and relies on the framework's
-//     automatic post-apply empty-plan check to prove no perma-diff.
+//   - full-replace PUT, omit=preserve: criteria/display_fields are Optional+Computed
+//     with UseStateForUnknown, so OMITTING the block PRESERVES the current value;
+//     clearing requires an explicit `= []`. Flatten returns a known EMPTY collection
+//     (not null) so an explicit `[]` round-trips with no "inconsistent result after
+//     apply". criteria is a types.List (Computed nested collection cannot be a Go
+//     slice — STYLE_GUIDE §Computed nested collections).
 //   - GET-after-write: every Create/Update step implicitly verifies the GET-after
 //     path (the Pro PUT response body echoes the submitted display fields and
 //     silently drops invalid ones, so state must come from a fresh GET).
@@ -125,13 +126,25 @@ func amdsConfigShrink(name string) string {
 	`, name)
 }
 
-// Step 4: clear by OMITTING criteria + display_fields (not `= []`). The implicit
-// post-apply empty-plan check proves the full-replace clear round-trips with no
-// perma-diff.
-func amdsConfigCleared(name string) string {
+// amdsConfigOmitted omits criteria + display_fields entirely. Under
+// Optional+Computed+UseStateForUnknown this PRESERVES the prior values (omit =
+// preserve) — used to prove the preserve contract, not to clear.
+func amdsConfigOmitted(name string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_advanced_mobile_device_search" "test" {
 			name = %q
+		}
+	`, name)
+}
+
+// amdsConfigCleared clears criteria + display_fields with explicit `= []`. The
+// known-empty collections must round-trip (no "inconsistent result after apply").
+func amdsConfigCleared(name string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_advanced_mobile_device_search" "test" {
+			name           = %q
+			criteria       = []
+			display_fields = []
 		}
 	`, name)
 }
@@ -187,12 +200,23 @@ func TestAccResource_ProAdvancedMobileDeviceSearch_Lifecycle(t *testing.T) {
 				),
 			},
 			{
+				// Omit both collections: omit=preserve carries the prior values forward
+				// (criteria 1, display 1), NOT cleared. The post-apply empty-plan check
+				// proves no perma-diff.
+				Config: amdsConfigOmitted(renamed),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(amdsResource, "criteria.#", "1"),
+					resource.TestCheckResourceAttr(amdsResource, "criteria.0.name", "Managed"),
+					resource.TestCheckResourceAttr(amdsResource, "display_fields.#", "1"),
+				),
+			},
+			{
+				// Explicit `= []` clears both; the known-empty collections round-trip.
 				Config: amdsConfigCleared(renamed),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(amdsResource, "name", renamed),
-					// Cleared: omitted blocks flatten to null. The framework's
-					// automatic post-apply empty-plan check is the real assertion.
-					resource.TestCheckNoResourceAttr(amdsResource, "criteria.0.name"),
+					resource.TestCheckResourceAttr(amdsResource, "criteria.#", "0"),
+					resource.TestCheckResourceAttr(amdsResource, "display_fields.#", "0"),
 				),
 			},
 			{
@@ -200,6 +224,107 @@ func TestAccResource_ProAdvancedMobileDeviceSearch_Lifecycle(t *testing.T) {
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"timeouts"},
+			},
+		},
+	})
+}
+
+// TestAccResource_ProAdvancedMobileDeviceSearch_SplitOwnership proves the
+// omit=preserve contract for criteria/display_fields (Optional+Computed on the
+// full-replace endpoint), plus the two §Computed-collection risk paths:
+//   - create with both collections OMITTED (plan Unknown → resolves to known empty,
+//     no decode error),
+//   - an out-of-band criterion (UI edit) survives an unrelated apply (omit=preserve),
+//   - explicit `= []` clears and round-trips.
+func TestAccResource_ProAdvancedMobileDeviceSearch_SplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-amds-split-" + suffix
+
+	var searchID string
+
+	addCriterionOutOfBand := func() {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		got, err := c.GetAdvancedMobileDeviceSearchV1(ctx, searchID)
+		if err != nil {
+			t.Fatalf("out-of-band GET: %v", err)
+		}
+		pri := 0
+		opening, closing := false, false
+		got.Criteria = &[]pro.SmartSearchCriterion{
+			{Name: "Managed", SearchType: "is", Value: "Unmanaged", AndOr: "and", Priority: &pri, OpeningParen: &opening, ClosingParen: &closing},
+		}
+		if _, err := c.UpdateAdvancedMobileDeviceSearchV1(ctx, searchID, got); err != nil {
+			t.Fatalf("out-of-band PUT: %v", err)
+		}
+	}
+
+	checkServerCriteriaLen := func(want int) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetAdvancedMobileDeviceSearchV1(context.Background(), searchID)
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			n := 0
+			if got.Criteria != nil {
+				n = len(*got.Criteria)
+			}
+			if n != want {
+				return fmt.Errorf("server criteria len = %d, want %d", n, want)
+			}
+			return nil
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAMDSDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// Create with criteria + display_fields OMITTED — the create-omit path.
+				Config: amdsConfigOmitted(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(amdsResource, "id"),
+					resource.TestCheckResourceAttr(amdsResource, "criteria.#", "0"),
+					resource.TestCheckResourceAttr(amdsResource, "display_fields.#", "0"),
+					func(s *terraform.State) error {
+						searchID = s.RootModule().Resources[amdsResource].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				// A criterion is added out of band; config still omits criteria and
+				// changes only display_fields. The out-of-band criterion must survive.
+				PreConfig: addCriterionOutOfBand,
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_advanced_mobile_device_search" "test" {
+						name           = %q
+						display_fields = ["Display Name"]
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(amdsResource, "criteria.#", "1"),
+					resource.TestCheckResourceAttr(amdsResource, "criteria.0.name", "Managed"),
+					resource.TestCheckResourceAttr(amdsResource, "display_fields.#", "1"),
+					checkServerCriteriaLen(1),
+				),
+			},
+			{
+				// Explicit `= []` clears criteria; display_fields kept by declaration.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_advanced_mobile_device_search" "test" {
+						name           = %q
+						criteria       = []
+						display_fields = ["Display Name"]
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(amdsResource, "criteria.#", "0"),
+					checkServerCriteriaLen(0),
+				),
 			},
 		},
 	})

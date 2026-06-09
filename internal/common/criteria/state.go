@@ -5,9 +5,12 @@ package criteria
 
 import (
 	"cmp"
+	"context"
 	"slices"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -25,6 +28,53 @@ type CriterionModel struct {
 	AndOr                 types.String `tfsdk:"and_or"`
 	HasOpeningParenthesis types.Bool   `tfsdk:"has_opening_parenthesis"`
 	HasClosingParenthesis types.Bool   `tfsdk:"has_closing_parenthesis"`
+}
+
+// CriterionAttrTypes is the attr.Type map matching CriterionModel (and the schema
+// returned by CriterionAttributes). Use it to build a types.List of criteria when
+// the criteria collection is Optional+Computed and must therefore be a types.List
+// rather than a Go slice (it can be Unknown at plan; see STYLE_GUIDE §Computed
+// nested collections). Additive — Optional-only consumers keep using []CriterionModel.
+func CriterionAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"priority":                types.Int64Type,
+		"name":                    types.StringType,
+		"search_type":             types.StringType,
+		"value":                   types.StringType,
+		"and_or":                  types.StringType,
+		"has_opening_parenthesis": types.BoolType,
+		"has_closing_parenthesis": types.BoolType,
+	}
+}
+
+// CriterionObjectType is the types.ObjectType element type for a types.List of
+// criteria, derived from CriterionAttrTypes.
+func CriterionObjectType() types.ObjectType {
+	return types.ObjectType{AttrTypes: CriterionAttrTypes()}
+}
+
+// CriteriaListValue converts criterion models into a known types.List for an
+// Optional+Computed `criteria` attribute. A nil/empty slice yields a known EMPTY
+// list (never null), so an explicit `criteria = []` clear round-trips and a
+// create-omit Unknown resolves cleanly.
+func CriteriaListValue(ctx context.Context, models []CriterionModel) (types.List, diag.Diagnostics) {
+	if len(models) == 0 {
+		return types.ListValueMust(CriterionObjectType(), []attr.Value{}), nil
+	}
+	return types.ListValueFrom(ctx, CriterionObjectType(), models)
+}
+
+// CriteriaModelsFromList decodes a types.List `criteria` attribute into criterion
+// models, returning nil when the list is null or unknown (so the input builder
+// emits an empty criteria array — the full-replace clear).
+func CriteriaModelsFromList(ctx context.Context, list types.List) ([]CriterionModel, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	if list.IsNull() || list.IsUnknown() {
+		return nil, diags
+	}
+	out := make([]CriterionModel, 0, len(list.Elements()))
+	diags.Append(list.ElementsAs(ctx, &out, false)...)
+	return out, diags
 }
 
 // BuildCriterionSlice maps plan criterion models to SDK criteria. Priority is

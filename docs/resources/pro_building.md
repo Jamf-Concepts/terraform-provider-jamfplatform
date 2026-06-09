@@ -38,13 +38,13 @@ resource "jamfplatform_pro_building" "branch" {
 
 ### Optional
 
-- `city` (String) City the building is located in.
-- `country` (String) Country the building is located in.
-- `state_province` (String) State, province, or administrative region the building is located in.
-- `street_address_1` (String) Primary street address line.
-- `street_address_2` (String) Secondary street address line (suite, unit, floor).
+- `city` (String) City the building is located in. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `country` (String) Country the building is located in. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `state_province` (String) State, province, or administrative region the building is located in. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `street_address_1` (String) Primary street address line. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `street_address_2` (String) Secondary street address line (suite, unit, floor). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `zip_postal_code` (String) Zip or postal code for the building location.
+- `zip_postal_code` (String) Zip or postal code for the building location. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 
 ### Read-Only
 

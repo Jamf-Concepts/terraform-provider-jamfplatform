@@ -6,6 +6,7 @@ package computer_check_in_settings
 import (
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -24,7 +25,7 @@ func TestBuildComputerCheckInSettingsInput(t *testing.T) {
 		AllowNetworkStateChangeTriggers: types.BoolValue(false),
 	}
 
-	out := buildComputerCheckInSettingsInput(plan)
+	out := buildComputerCheckInSettingsInput(plan, nil)
 
 	if out.CheckInFrequency == nil || *out.CheckInFrequency != 60 {
 		t.Errorf("CheckInFrequency = %v, want 60", out.CheckInFrequency)
@@ -51,6 +52,60 @@ func TestBuildComputerCheckInSettingsInput(t *testing.T) {
 		}
 		if *c.got != c.want {
 			t.Errorf("%s = %v, want %v", c.name, *c.got, c.want)
+		}
+	}
+}
+
+// TestBuildComputerCheckInSettingsInput_OmittedAdoptsCurrent verifies the
+// GET-on-create merge: a toggle omitted from the plan (Unknown, as on first create)
+// takes the value from the live settings `current` rather than defaulting to false,
+// so the singleton is adopted, not reset. A declared toggle still wins over current.
+func TestBuildComputerCheckInSettingsInput_OmittedAdoptsCurrent(t *testing.T) {
+	tr, fa := true, false
+	current := &pro.ClientCheckInV3{
+		CreateStartupScript:              &tr, // omitted in plan -> adopt true
+		StartupLog:                       &tr, // declared false in plan -> plan wins
+		StartupPolicies:                  &tr, // omitted -> adopt true
+		StartupSsh:                       &fa, // omitted -> adopt false
+		CreateHooks:                      &tr, // omitted -> adopt true
+		HookLog:                          &tr, // omitted -> adopt true
+		HookPolicies:                     &tr, // omitted -> adopt true
+		EnableLocalConfigurationProfiles: &tr, // omitted -> adopt true
+	}
+	plan := ComputerCheckInSettingsResourceModel{
+		CheckInFrequency:                types.Int64Value(15),
+		CreateStartupScript:             types.BoolUnknown(),
+		StartupLog:                      types.BoolValue(false), // declared
+		StartupPolicies:                 types.BoolUnknown(),
+		StartupSsh:                      types.BoolNull(),
+		CreateLoginHook:                 types.BoolUnknown(),
+		LoginHookLog:                    types.BoolUnknown(),
+		LoginHookPolicies:               types.BoolUnknown(),
+		AllowNetworkStateChangeTriggers: types.BoolUnknown(),
+	}
+
+	out := buildComputerCheckInSettingsInput(plan, current)
+
+	want := map[string]struct {
+		got  *bool
+		want bool
+	}{
+		"CreateStartupScript":              {out.CreateStartupScript, true},
+		"StartupLog":                       {out.StartupLog, false}, // plan wins
+		"StartupPolicies":                  {out.StartupPolicies, true},
+		"StartupSsh":                       {out.StartupSsh, false},
+		"CreateHooks":                      {out.CreateHooks, true},
+		"HookLog":                          {out.HookLog, true},
+		"HookPolicies":                     {out.HookPolicies, true},
+		"EnableLocalConfigurationProfiles": {out.EnableLocalConfigurationProfiles, true},
+	}
+	for name, c := range want {
+		if c.got == nil {
+			t.Errorf("%s = nil, want %v", name, c.want)
+			continue
+		}
+		if *c.got != c.want {
+			t.Errorf("%s = %v, want %v", name, *c.got, c.want)
 		}
 	}
 }

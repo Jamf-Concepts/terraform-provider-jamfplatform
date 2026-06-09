@@ -54,19 +54,19 @@ resource "jamfplatform_pro_script" "cleanup_temp" {
 ### Optional
 
 - `category_id` (String) ID of the Jamf Pro category this script belongs to. Look it up via the `jamfplatform_pro_category` data source. When omitted, Jamf Pro reports `-1` (no category).
-- `info` (String) Informational text shown to end users (e.g. in Self Service) describing the script.
-- `notes` (String) Administrator-only notes about the script.
-- `os_requirements` (String) Comma-separated macOS versions the script supports (e.g. `13.0.x,14.0.x`). Empty allows all.
-- `parameter_10` (String) Label for script parameter slot 10.
-- `parameter_11` (String) Label for script parameter slot 11.
-- `parameter_4` (String) Label for script parameter slot 4.
-- `parameter_5` (String) Label for script parameter slot 5.
-- `parameter_6` (String) Label for script parameter slot 6.
-- `parameter_7` (String) Label for script parameter slot 7.
-- `parameter_8` (String) Label for script parameter slot 8.
-- `parameter_9` (String) Label for script parameter slot 9.
+- `info` (String) Informational text shown to end users (e.g. in Self Service) describing the script. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `notes` (String) Administrator-only notes about the script. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `os_requirements` (String) Comma-separated macOS versions the script supports (e.g. `13.0.x,14.0.x`). Empty allows all. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_10` (String) Label for script parameter slot 10. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_11` (String) Label for script parameter slot 11. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_4` (String) Label for script parameter slot 4. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_5` (String) Label for script parameter slot 5. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_6` (String) Label for script parameter slot 6. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_7` (String) Label for script parameter slot 7. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_8` (String) Label for script parameter slot 8. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
+- `parameter_9` (String) Label for script parameter slot 9. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `priority` (String) Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`.
-- `script_contents` (String) Script contents as plain text (shell, Python, etc.).
+- `script_contents` (String) Script contents as plain text (shell, Python, etc.). Omit to leave the existing contents untouched — Terraform will not clear them, so the body can be co-managed in the Jamf Pro UI; set to `""` to clear. A declared value is owned by Terraform and reverts out-of-band edits.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

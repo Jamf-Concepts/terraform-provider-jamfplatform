@@ -225,3 +225,111 @@ func TestAccDataSource_ProScripts_FilterByName(t *testing.T) {
 		},
 	})
 }
+
+// TestAccResource_ProScript_SplitOwnership proves the omit=preserve contract for
+// the Optional+Computed `script_contents` on the full-replace /v1/scripts endpoint:
+// when the field is omitted from HCL, an out-of-band edit (simulating the Jamf Pro
+// UI) survives an unrelated Terraform change (a name update) rather than being
+// wiped — and an explicit "" still clears it. Without Optional+Computed +
+// UseStateForUnknown this regresses: the name-change PUT drops the field and
+// full-replace wipes the body.
+func TestAccResource_ProScript_SplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-script-split-" + suffix
+	nameUpdated := "tf-acc-pro-script-split-upd-" + suffix
+	const addr = "jamfplatform_pro_script.test"
+	const tfContents = "#!/bin/sh\necho tf-owned"   // initial TF-declared body
+	const uiContents = "#!/bin/sh\necho ui-managed" // later set out-of-band (UI)
+
+	var scriptID string
+
+	// setContentsOutOfBand simulates a UI edit: GET the script, set scriptContents,
+	// PUT it back (a full-object write, like the admin console does).
+	setContentsOutOfBand := func() {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		got, err := c.GetScriptV1(ctx, scriptID)
+		if err != nil {
+			t.Fatalf("out-of-band GET: %v", err)
+		}
+		v := uiContents
+		got.ScriptContents = &v
+		if _, err := c.UpdateScriptV1(ctx, scriptID, got); err != nil {
+			t.Fatalf("out-of-band PUT: %v", err)
+		}
+	}
+
+	checkServerContents := func(want string) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetScriptV1(context.Background(), scriptID)
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			if helpers.DerefString(got.ScriptContents) != want {
+				return fmt.Errorf("script_contents = %q, want %q", helpers.DerefString(got.ScriptContents), want)
+			}
+			return nil
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckScriptDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// Create with a TF-declared body, so the next step proves the UI value
+				// is preserved AND not reverted to this prior TF-owned value.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_script" "test" {
+						name            = %q
+						priority        = "AFTER"
+						script_contents = %q
+					}
+				`, name, tfContents),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(addr, "id"),
+					resource.TestCheckResourceAttr(addr, "script_contents", tfContents),
+					func(s *terraform.State) error {
+						scriptID = s.RootModule().Resources[addr].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				// Admin overwrites the body in the UI to a DIFFERENT value; config now
+				// REMOVES script_contents and changes only the name. The UI value must
+				// survive — neither wiped by the full-replace PUT nor reverted to the
+				// prior TF-owned value.
+				PreConfig: setContentsOutOfBand,
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_script" "test" {
+						name     = %q
+						priority = "AFTER"
+					}
+				`, nameUpdated),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "name", nameUpdated),
+					// State adopts the out-of-band value (Computed) and preserves it.
+					resource.TestCheckResourceAttr(addr, "script_contents", uiContents),
+					checkServerContents(uiContents),
+				),
+			},
+			{
+				// Explicit "" clears it (full-replace), proving TF can still take over.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_script" "test" {
+						name            = %q
+						priority        = "AFTER"
+						script_contents = ""
+					}
+				`, nameUpdated),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "script_contents", ""),
+					checkServerContents(""),
+				),
+			},
+		},
+	})
+}

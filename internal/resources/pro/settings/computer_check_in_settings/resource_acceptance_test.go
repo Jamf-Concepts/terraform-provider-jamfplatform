@@ -116,6 +116,62 @@ func TestAccResource_ProComputerCheckInSettings_Basic(t *testing.T) {
 	})
 }
 
+// TestAccResource_ProComputerCheckInSettings_CreateAdopt proves the singleton
+// GET-on-create-adopt: when a toggle is omitted from HCL on the FIRST apply, the
+// provider reads the live settings and re-sends the existing value rather than
+// resetting it to false on the full-replace PUT. Without GET-on-create-adopt this
+// regresses — create-omit sends false and clobbers the admin's value.
+func TestAccResource_ProComputerCheckInSettings_CreateAdopt(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	const addr = "jamfplatform_pro_computer_check_in_settings.test"
+
+	// Pin a known state out of band BEFORE Terraform creates the resource:
+	// startup_ssh=true (the discriminator), every other toggle false, frequency 15.
+	setBaselineOutOfBand := func() {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		freq := 15
+		tr, fa := true, false
+		body := &pro.ClientCheckInV3{
+			CheckInFrequency:                 &freq,
+			CreateStartupScript:              &fa,
+			StartupLog:                       &fa,
+			StartupPolicies:                  &fa,
+			StartupSsh:                       &tr,
+			CreateHooks:                      &fa,
+			HookLog:                          &fa,
+			HookPolicies:                     &fa,
+			EnableLocalConfigurationProfiles: &fa,
+		}
+		if _, err := c.UpdateCheckInSettingsV3(context.Background(), body); err != nil {
+			t.Fatalf("out-of-band baseline PUT: %v", err)
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkSingletonRecordStillExists(t),
+		Steps: []resource.TestStep{
+			{
+				// Create declaring ONLY the Required frequency; every toggle omitted.
+				// GET-on-create-adopt must preserve the out-of-band startup_ssh=true.
+				PreConfig: setBaselineOutOfBand,
+				Config: `
+					resource "jamfplatform_pro_computer_check_in_settings" "test" {
+						check_in_frequency = 15
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "check_in_frequency", "15"),
+					// Adopted from the live settings (not reset to false).
+					resource.TestCheckResourceAttr(addr, "startup_ssh", "true"),
+					resource.TestCheckResourceAttr(addr, "create_startup_script", "false"),
+				),
+			},
+		},
+	})
+}
+
 // TestAccResource_ProComputerCheckInSettings_RejectsNonSingletonImport verifies the ImportState
 // guard: any identifier other than "singleton" must fail with a clear error rather
 // than silently normalizing to the singleton ID.
