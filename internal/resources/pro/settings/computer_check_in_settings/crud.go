@@ -54,7 +54,19 @@ func (r *ComputerCheckInSettingsResource) Create(ctx context.Context, req resour
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	if _, err := r.client.UpdateCheckInSettingsV3(createCtx, buildComputerCheckInSettingsInput(plan)); err != nil {
+	// The Client Check-In settings singleton always exists on the tenant, so
+	// "create" is really adoption. Read the live settings and pass them as the
+	// merge base so a toggle the user did not declare keeps its current value
+	// rather than being reset to false by the full-replace write (wire-probed
+	// full-replace 2026-06-09). On update the merge base is nil — UseStateForUnknown
+	// has already carried omitted toggles into the plan as known prior values.
+	current, err := r.client.GetCheckInSettingsV3(createCtx)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Client Check-In settings", err.Error())
+		return
+	}
+
+	if _, err := r.client.UpdateCheckInSettingsV3(createCtx, buildComputerCheckInSettingsInput(plan, current)); err != nil {
 		resp.Diagnostics.AddError("Error setting Jamf Pro Client Check-In settings", err.Error())
 		return
 	}
@@ -141,7 +153,7 @@ func (r *ComputerCheckInSettingsResource) Update(ctx context.Context, req resour
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	if _, err := r.client.UpdateCheckInSettingsV3(updateCtx, buildComputerCheckInSettingsInput(plan)); err != nil {
+	if _, err := r.client.UpdateCheckInSettingsV3(updateCtx, buildComputerCheckInSettingsInput(plan, nil)); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro Client Check-In settings", err.Error())
 		return
 	}
