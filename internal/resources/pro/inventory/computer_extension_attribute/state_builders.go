@@ -38,7 +38,7 @@ func assignComputerExtensionAttributeResourceModel(ctx context.Context, state *C
 	state.DirectoryServiceAttribute = helpers.ReconcileOptionalStringPointer(ea.LdapAttributeMapping, state.DirectoryServiceAttribute)
 	state.AllowMultipleValues = helpers.BoolPointerValueOrNull(ea.LdapExtensionAttributeAllowed)
 
-	choices, choicesDiags := flattenPopupMenuChoices(ctx, ea.PopupMenuChoices)
+	choices, choicesDiags := flattenPopupMenuChoices(ctx, ea.PopupMenuChoices, ea.InputType == inputTypePopup)
 	diags.Append(choicesDiags...)
 	if diags.HasError() {
 		return diags
@@ -66,7 +66,7 @@ func assignComputerExtensionAttributeDataSourceModel(ctx context.Context, state 
 	state.DirectoryServiceAttribute = helpers.StringPointerValueOrNull(ea.LdapAttributeMapping)
 	state.AllowMultipleValues = helpers.BoolPointerValueOrNull(ea.LdapExtensionAttributeAllowed)
 
-	choices, choicesDiags := flattenPopupMenuChoices(ctx, ea.PopupMenuChoices)
+	choices, choicesDiags := flattenPopupMenuChoices(ctx, ea.PopupMenuChoices, ea.InputType == inputTypePopup)
 	diags.Append(choicesDiags...)
 	if diags.HasError() {
 		return diags
@@ -92,16 +92,26 @@ func reconcileScript(server *string, current types.String) types.String {
 }
 
 // flattenPopupMenuChoices converts the SDK popup-choices slice into a Set of
-// strings. Returns a null Set for an empty or absent slice (Jamf Pro echoes `[]`
-// for non-popup input types). Modelled as a Set because Jamf Pro returns the
-// choices sorted alphabetically, not in the submitted order — a List would
-// perpetually diff after apply.
-func flattenPopupMenuChoices(ctx context.Context, src *[]string) (types.Set, diag.Diagnostics) {
+// strings. Modelled as a Set because Jamf Pro returns the choices sorted
+// alphabetically, not in the submitted order — a List would perpetually diff.
+//
+// isPopup keys the empty-slice handling. Jamf Pro echoes `[]` both for a POPUP EA
+// with no choices AND for every non-POPUP input type, but those mean different
+// things: for a non-POPUP EA the attribute is not applicable → null; for a POPUP EA
+// an empty `[]` is a real (configured or cleared) value and must round-trip as an
+// empty set, not null — otherwise an explicit `popup_menu_choices = []` (the clear
+// mechanism) would plan `[]` but read back null and trip "inconsistent result after
+// apply".
+func flattenPopupMenuChoices(ctx context.Context, src *[]string, isPopup bool) (types.Set, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if src == nil || len(*src) == 0 {
+	if !isPopup {
 		return types.SetNull(types.StringType), diags
 	}
-	set, d := types.SetValueFrom(ctx, types.StringType, *src)
+	elems := []string{}
+	if src != nil {
+		elems = *src
+	}
+	set, d := types.SetValueFrom(ctx, types.StringType, elems)
 	diags.Append(d...)
 	return set, diags
 }
