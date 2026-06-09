@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_sso_settings Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Manages Jamf Pro Single Sign-On (SSO) settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO configuration with an embedded signing_certificate sub-block that manages the SAML signing keystore as a single resource.
+  Manage SSO all-or-nothing — this resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.
   Cross-field requirements (enforced at plan time):
   configuration_type = "SAML" requires the saml_settings block.configuration_type = "OIDC" requires the oidc_settings block and forbids saml_settings (Jamf Pro ignores SAML configuration in pure OIDC mode).configuration_type = "OIDC_WITH_SAML" requires both saml_settings and oidc_settings.saml_settings.entity_id and saml_settings.group_attribute_name must be non-empty whenever SAML is part of the configuration.saml_settings.metadata_source = "URL" requires idp_url and forbids federation_metadata_file / metadata_file_name; = "FILE" is the inverse.saml_settings.idp_provider_type = "OTHER" requires other_provider_type_name.saml_settings.user_attribute_enabled = true requires user_attribute_name.group_enrollment_access_enabled = true together with sso_for_enrollment_enabled = true requires group_enrollment_access_name.signing_certificate.setup_type = "UPLOADED" requires type, key, keystore_file, keystore_file_name, keystore_password, and password.
   Account-Driven Enrollment dependency — enrollment_sso_for_account_driven_enrollment_enabled = true requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro will reject the apply with a field-named error if the prerequisite is missing.
@@ -15,6 +16,8 @@ description: |-
 # jamfplatform_pro_sso_settings (Resource)
 
 Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.
+
+**Manage SSO all-or-nothing** — this resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.
 
 **Cross-field requirements** (enforced at plan time):
 - `configuration_type = "SAML"` requires the `saml_settings` block.
