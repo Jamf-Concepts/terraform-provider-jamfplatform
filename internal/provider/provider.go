@@ -96,6 +96,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/computer_check_in_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/computer_inventory_collection_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/gsx_connection"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/impact_alert_notification_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/login_page"
@@ -355,6 +356,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		activation_code.NewActivationCodeResource,
 		computer_check_in_settings.NewComputerCheckInSettingsResource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsResource,
+		gsx_connection.NewGsxConnectionSettingsResource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsResource,
 		login_page.NewLoginPageSettingsResource,
 		mdm_profile_settings.NewMDMProfileSettingsResource,
@@ -441,6 +443,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		activation_code.NewActivationCodeDataSource,
 		computer_check_in_settings.NewComputerCheckInSettingsDataSource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsDataSource,
+		gsx_connection.NewGsxConnectionSettingsDataSource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsDataSource,
 		login_page.NewLoginPageSettingsDataSource,
 		mdm_profile_settings.NewMDMProfileSettingsDataSource,
