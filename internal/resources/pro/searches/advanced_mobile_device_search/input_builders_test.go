@@ -19,7 +19,7 @@ func TestBuildInput_AlwaysEmitsCriteriaAndDisplayFields(t *testing.T) {
 	plan := AdvancedMobileDeviceSearchResourceModel{
 		Name:          types.StringValue("empty search"),
 		SiteID:        types.StringValue("-1"),
-		Criteria:      nil,
+		Criteria:      types.ListNull(criteria.CriterionObjectType()),
 		DisplayFields: types.SetNull(types.StringType),
 	}
 
@@ -52,12 +52,16 @@ func TestBuildInput_PopulatedDisplayFieldsAndCriteria(t *testing.T) {
 	if d.HasError() {
 		t.Fatalf("set value: %v", d)
 	}
+	critList, cd := criteria.CriteriaListValue(context.Background(), []criteria.CriterionModel{
+		{Name: types.StringValue("Managed"), SearchType: types.StringValue("is"), Value: types.StringValue("Unmanaged")},
+	})
+	if cd.HasError() {
+		t.Fatalf("criteria list: %v", cd)
+	}
 	plan := AdvancedMobileDeviceSearchResourceModel{
-		Name:   types.StringValue("unmanaged"),
-		SiteID: types.StringValue("-1"),
-		Criteria: []criteria.CriterionModel{
-			{Name: types.StringValue("Managed"), SearchType: types.StringValue("is"), Value: types.StringValue("Unmanaged")},
-		},
+		Name:          types.StringValue("unmanaged"),
+		SiteID:        types.StringValue("-1"),
+		Criteria:      critList,
 		DisplayFields: df,
 	}
 	out, diags := buildAdvancedMobileDeviceSearchInput(context.Background(), plan)
