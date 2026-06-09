@@ -97,8 +97,12 @@ func (r *MobileDeviceExtensionAttributeResource) Schema(ctx context.Context, req
 				},
 			},
 			"description": schema.StringAttribute{
-				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute.",
+				MarkdownDescription: "**\"Description\"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"data_type": schema.StringAttribute{
 				MarkdownDescription: "**\"Data type\"** in the Jamf Pro admin UI. Type of data collected: `STRING`, `INTEGER`, or `DATE` (date values use the `YYYY-MM-DD hh:mm:ss` format).",
@@ -122,9 +126,13 @@ func (r *MobileDeviceExtensionAttributeResource) Schema(ctx context.Context, req
 				},
 			},
 			"popup_menu_choices": schema.SetAttribute{
-				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP` (optional even then). Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order.",
+				MarkdownDescription: "**\"Pop-up menu choices\"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP` (optional even then). Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order. Omit to leave any existing choices untouched (they are not cleared on an unrelated update); set to `[]` to clear them. Changing `input_type` away from `POPUP` clears the choices.",
 				Optional:            true,
+				Computed:            true,
 				ElementType:         types.StringType,
+				PlanModifiers: []planmodifier.Set{
+					popupChoicesPlanModifier{},
+				},
 			},
 			"directory_service_attribute": schema.StringAttribute{
 				MarkdownDescription: "**\"Directory Service Attribute\"** in the Jamf Pro admin UI. The directory-service attribute name mapped to this EA. Required when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; must be omitted for every other input type.",

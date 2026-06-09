@@ -157,6 +157,210 @@ func TestAccResource_ProMobileDeviceExtensionAttribute_Lifecycle(t *testing.T) {
 	})
 }
 
+// mdeaSplitOwn renders a TEXT EA that OMITS description, varying inventory_display.
+func mdeaSplitOwn(name, inventoryDisplay string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_mobile_device_extension_attribute" "test" {
+			name              = %q
+			data_type         = "STRING"
+			input_type        = "TEXT"
+			inventory_display = %q
+		}
+	`, name, inventoryDisplay)
+}
+
+// mdeaPopupNoChoices renders a POPUP EA that OMITS popup_menu_choices.
+func mdeaPopupNoChoices(name, inventoryDisplay string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_mobile_device_extension_attribute" "test" {
+			name              = %q
+			data_type         = "STRING"
+			input_type        = "POPUP"
+			inventory_display = %q
+		}
+	`, name, inventoryDisplay)
+}
+
+// TestAccResource_ProMobileDeviceExtensionAttribute_SplitOwnership proves the
+// omit=preserve contract for the Optional+Computed `description` on this
+// full-replace endpoint: with description omitted, an out-of-band edit survives an
+// unrelated change (inventory_display) and an explicit "" clears it.
+func TestAccResource_ProMobileDeviceExtensionAttribute_SplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdea-split-" + suffix
+	const uiDesc = "UI edited description"
+
+	var eaID string
+
+	setDescriptionOutOfBand := func() {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		got, err := c.GetMobileDeviceExtensionAttributeV1(ctx, eaID)
+		if err != nil {
+			t.Fatalf("out-of-band GET: %v", err)
+		}
+		v := uiDesc
+		got.Description = &v
+		if _, err := c.UpdateMobileDeviceExtensionAttributeV1(ctx, eaID, got); err != nil {
+			t.Fatalf("out-of-band PUT: %v", err)
+		}
+	}
+
+	checkServerDescription := func(want string) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetMobileDeviceExtensionAttributeV1(context.Background(), eaID)
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			if helpers.DerefString(got.Description) != want {
+				return fmt.Errorf("description = %q, want %q", helpers.DerefString(got.Description), want)
+			}
+			return nil
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckMDEADestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: mdeaSplitOwn(name, "GENERAL"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(mdeaResource, "id"),
+					func(s *terraform.State) error {
+						eaID = s.RootModule().Resources[mdeaResource].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				PreConfig: setDescriptionOutOfBand,
+				Config:    mdeaSplitOwn(name, "HARDWARE"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(mdeaResource, "inventory_display", "HARDWARE"),
+					resource.TestCheckResourceAttr(mdeaResource, "description", uiDesc),
+					checkServerDescription(uiDesc),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_mobile_device_extension_attribute" "test" {
+						name              = %q
+						description       = ""
+						data_type         = "STRING"
+						input_type        = "TEXT"
+						inventory_display = "HARDWARE"
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(mdeaResource, "description", ""),
+					checkServerDescription(""),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProMobileDeviceExtensionAttribute_PopupSplitOwnership proves the
+// omit=preserve contract for popup_menu_choices (Optional+Computed Set, gated by
+// input_type = POPUP): out-of-band choices survive an unrelated change, an explicit
+// [] clears them and round-trips, and a POPUP→TEXT transition clears cleanly (the
+// input_type-aware plan modifier predicts the cleared result, no consistency error).
+func TestAccResource_ProMobileDeviceExtensionAttribute_PopupSplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdea-popup-split-" + suffix
+	uiChoices := []string{"One", "Two"}
+
+	var eaID string
+
+	setChoicesOutOfBand := func() {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		got, err := c.GetMobileDeviceExtensionAttributeV1(ctx, eaID)
+		if err != nil {
+			t.Fatalf("out-of-band GET: %v", err)
+		}
+		cs := append([]string(nil), uiChoices...)
+		got.PopupMenuChoices = &cs
+		if _, err := c.UpdateMobileDeviceExtensionAttributeV1(ctx, eaID, got); err != nil {
+			t.Fatalf("out-of-band PUT: %v", err)
+		}
+	}
+
+	checkServerChoices := func(wantLen int) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetMobileDeviceExtensionAttributeV1(context.Background(), eaID)
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			n := 0
+			if got.PopupMenuChoices != nil {
+				n = len(*got.PopupMenuChoices)
+			}
+			if n != wantLen {
+				return fmt.Errorf("server popup_menu_choices len = %d, want %d", n, wantLen)
+			}
+			return nil
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckMDEADestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: mdeaPopupNoChoices(name, "GENERAL"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(mdeaResource, "id"),
+					func(s *terraform.State) error {
+						eaID = s.RootModule().Resources[mdeaResource].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				PreConfig: setChoicesOutOfBand,
+				Config:    mdeaPopupNoChoices(name, "EXTENSION_ATTRIBUTES"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(mdeaResource, "inventory_display", "EXTENSION_ATTRIBUTES"),
+					resource.TestCheckResourceAttr(mdeaResource, "popup_menu_choices.#", "2"),
+					resource.TestCheckTypeSetElemAttr(mdeaResource, "popup_menu_choices.*", "One"),
+					checkServerChoices(2),
+				),
+			},
+			{
+				// Explicit [] while staying POPUP clears and round-trips as an empty set.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_mobile_device_extension_attribute" "test" {
+						name               = %q
+						data_type          = "STRING"
+						input_type         = "POPUP"
+						inventory_display  = "EXTENSION_ATTRIBUTES"
+						popup_menu_choices = []
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(mdeaResource, "popup_menu_choices.#", "0"),
+					checkServerChoices(0),
+				),
+			},
+			{
+				// POPUP→TEXT clears cleanly (no "inconsistent result after apply").
+				Config: mdeaSplitOwn(name, "EXTENSION_ATTRIBUTES"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(mdeaResource, "input_type", "TEXT"),
+					resource.TestCheckNoResourceAttr(mdeaResource, "popup_menu_choices.0"),
+					checkServerChoices(0),
+				),
+			},
+		},
+	})
+}
+
 func TestAccResource_ProMobileDeviceExtensionAttribute_ValidatorErrors(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	resource.Test(t, resource.TestCase{

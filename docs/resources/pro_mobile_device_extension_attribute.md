@@ -54,9 +54,9 @@ resource "jamfplatform_pro_mobile_device_extension_attribute" "ad_office" {
 ### Optional
 
 - `allow_multiple_values` (Boolean) **"Allow Multiple Values"** in the Jamf Pro admin UI. Collect multiple values for a directory-service-mapped attribute (results in a limited choice of operators when used in smart-group / advanced-search criteria). Meaningful only when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. Defaults to `false`. Jamf Pro does not allow this flag to change after creation, so changing it forces the extension attribute to be replaced.
-- `description` (String) **"Description"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute.
+- `description` (String) **"Description"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `directory_service_attribute` (String) **"Directory Service Attribute"** in the Jamf Pro admin UI. The directory-service attribute name mapped to this EA. Required when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; must be omitted for every other input type.
-- `popup_menu_choices` (Set of String) **"Pop-up menu choices"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP` (optional even then). Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order.
+- `popup_menu_choices` (Set of String) **"Pop-up menu choices"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP` (optional even then). Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order. Omit to leave any existing choices untouched (they are not cleared on an unrelated update); set to `[]` to clear them. Changing `input_type` away from `POPUP` clears the choices.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
