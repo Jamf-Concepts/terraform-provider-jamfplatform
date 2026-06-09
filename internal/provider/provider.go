@@ -100,6 +100,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/mdm_profile_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/smtp_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/user_initiated_enrollment_settings"
@@ -353,6 +354,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		computer_check_in_settings.NewComputerCheckInSettingsResource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsResource,
 		mdm_profile_settings.NewMDMProfileSettingsResource,
+		smtp_server.NewSmtpServerResource,
 		site.NewSiteResource,
 		sso_failover_url.NewSsoFailoverURLResource,
 		sso_settings.NewSsoSettingsResource,
@@ -436,6 +438,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		computer_check_in_settings.NewComputerCheckInSettingsDataSource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsDataSource,
 		mdm_profile_settings.NewMDMProfileSettingsDataSource,
+		smtp_server.NewSmtpServerDataSource,
 		patch_external_source.NewPatchExternalSourceDataSource,
 		patch_internal_source.NewPatchInternalSourceDataSource,
 		patch_policy.NewPatchPolicyDataSource,
