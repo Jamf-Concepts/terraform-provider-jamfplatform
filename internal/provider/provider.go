@@ -101,6 +101,10 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/login_page"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/mdm_profile_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/adcs"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/certificate_authority"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/digicert"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/venafi"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/smtp_server"
@@ -357,6 +361,9 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		computer_check_in_settings.NewComputerCheckInSettingsResource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsResource,
 		gsx_connection.NewGsxConnectionSettingsResource,
+		venafi.NewPkiVenafiResource,
+		digicert.NewDigicertResource,
+		adcs.NewAdcsResource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsResource,
 		login_page.NewLoginPageSettingsResource,
 		mdm_profile_settings.NewMDMProfileSettingsResource,
@@ -444,6 +451,10 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		computer_check_in_settings.NewComputerCheckInSettingsDataSource,
 		computer_inventory_collection_settings.NewComputerInventoryCollectionSettingsDataSource,
 		gsx_connection.NewGsxConnectionSettingsDataSource,
+		certificate_authority.NewCertificateAuthorityDataSource,
+		venafi.NewPkiVenafiDataSource,
+		digicert.NewDigicertDataSource,
+		adcs.NewAdcsDataSource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsDataSource,
 		login_page.NewLoginPageSettingsDataSource,
 		mdm_profile_settings.NewMDMProfileSettingsDataSource,
