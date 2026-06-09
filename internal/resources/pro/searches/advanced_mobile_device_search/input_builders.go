@@ -17,9 +17,12 @@ import (
 // buildAdvancedMobileDeviceSearchInput converts a plan model into the SDK
 // payload used for Create and Update. criteria and displayFields are emitted
 // unconditionally as non-nil slices: the Pro /v1 advanced-search PUT is a full
-// replace (an omitted or empty array clears the corresponding collection), so
-// always sending the full representation makes the Terraform config
-// authoritative and lets users clear criteria and display fields.
+// replace. criteria and display_fields are Optional+Computed with
+// UseStateForUnknown, so when omitted the plan carries the prior value forward
+// (omit = preserve) and the builder re-emits it; an explicit empty list/set is a
+// known-empty plan value and clears the collection. On first create with the
+// field omitted the plan value is Unknown, decoded here to an empty slice, so the
+// server applies its empty default.
 func buildAdvancedMobileDeviceSearchInput(ctx context.Context, plan AdvancedMobileDeviceSearchResourceModel) (*pro.AdvancedSearch, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -29,7 +32,12 @@ func buildAdvancedMobileDeviceSearchInput(ctx context.Context, plan AdvancedMobi
 		return nil, diags
 	}
 
-	criteriaSlice := criteria.BuildSmartSearchCriteria(plan.Criteria)
+	criteriaModels, cDiags := criteria.CriteriaModelsFromList(ctx, plan.Criteria)
+	diags.Append(cDiags...)
+	if diags.HasError() {
+		return nil, diags
+	}
+	criteriaSlice := criteria.BuildSmartSearchCriteria(criteriaModels)
 	siteID := plan.SiteID.ValueString()
 
 	search := &pro.AdvancedSearch{

@@ -17,7 +17,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -99,16 +101,24 @@ func (r *AdvancedVolumePurchasingContentSearchResource) Schema(ctx context.Conte
 				Default:             stringdefault.StaticString(noSiteID),
 			},
 			"criteria": schema.ListNestedAttribute{
-				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit (or supply an empty list) for a search with no criteria.",
+				MarkdownDescription: "Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit to leave any existing criteria untouched (they are not cleared on an unrelated update); set to `[]` to remove all criteria.",
 				Optional:            true,
+				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: criteria.CriterionAttributes(ValidOperators),
 				},
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"display_fields": schema.SetAttribute{
-				MarkdownDescription: "Set of content column names to display in the search results, using Jamf Pro's wire names (e.g. `Name`, `Cost`, `Total`, `Type`). Order is not significant — Jamf Pro returns the columns in its own canonical order, and silently drops names it does not recognise. Omit for no display columns.",
+				MarkdownDescription: "Set of content column names to display in the search results (e.g. `Name`, `Cost`, `Total`, `Type`). Order is not significant — Jamf Pro returns the columns in its own canonical order, and silently drops names it does not recognise. Omit to leave any existing columns untouched (they are not cleared on an unrelated update); set to `[]` to remove all display columns.",
 				Optional:            true,
+				Computed:            true,
 				ElementType:         types.StringType,
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
 				Create: true,

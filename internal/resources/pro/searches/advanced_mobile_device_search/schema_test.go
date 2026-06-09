@@ -50,11 +50,12 @@ func TestResource_Schema(t *testing.T) {
 	if a := s.Attributes["site_id"]; !a.IsOptional() || !a.IsComputed() {
 		t.Errorf("site_id must be optional+computed")
 	}
-	// Managed collections are optional-only (omit / empty to clear on full-replace PUT).
+	// criteria/display_fields are Optional+Computed on the full-replace endpoint so
+	// omitting them preserves the current value (UseStateForUnknown); set [] to clear.
 	for _, o := range []string{"criteria", "display_fields"} {
 		a := s.Attributes[o]
-		if !a.IsOptional() || a.IsComputed() {
-			t.Errorf("%q must be optional-only", o)
+		if !a.IsOptional() || !a.IsComputed() {
+			t.Errorf("%q must be Optional+Computed (omit=preserve), got optional=%v computed=%v", o, a.IsOptional(), a.IsComputed())
 		}
 	}
 }

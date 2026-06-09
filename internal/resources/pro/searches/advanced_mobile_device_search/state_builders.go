@@ -28,7 +28,13 @@ func assignAdvancedMobileDeviceSearchResourceModel(ctx context.Context, state *A
 	state.ID = helpers.StringPointerValueOrNull(search.ID)
 	state.Name = types.StringValue(search.Name)
 	state.SiteID = helpers.StringPointerValueOrNull(search.SiteID)
-	state.Criteria = criteria.FlattenSmartSearchCriteria(search.Criteria)
+
+	criteriaList, critDiags := criteria.CriteriaListValue(ctx, criteria.FlattenSmartSearchCriteria(search.Criteria))
+	diags.Append(critDiags...)
+	if diags.HasError() {
+		return diags
+	}
+	state.Criteria = criteriaList
 
 	displayFields, dfDiags := flattenDisplayFields(ctx, search.DisplayFields)
 	diags.Append(dfDiags...)
@@ -51,7 +57,13 @@ func assignAdvancedMobileDeviceSearchDataSourceModel(ctx context.Context, state 
 	state.ID = helpers.StringPointerValueOrNull(search.ID)
 	state.Name = types.StringValue(search.Name)
 	state.SiteID = helpers.StringPointerValueOrNull(search.SiteID)
-	state.Criteria = criteria.FlattenSmartSearchCriteria(search.Criteria)
+
+	criteriaList, critDiags := criteria.CriteriaListValue(ctx, criteria.FlattenSmartSearchCriteria(search.Criteria))
+	diags.Append(critDiags...)
+	if diags.HasError() {
+		return diags
+	}
+	state.Criteria = criteriaList
 
 	displayFields, dfDiags := flattenDisplayFields(ctx, search.DisplayFields)
 	diags.Append(dfDiags...)
@@ -64,15 +76,18 @@ func assignAdvancedMobileDeviceSearchDataSourceModel(ctx context.Context, state 
 }
 
 // flattenDisplayFields converts the SDK display-fields slice into a Set of column
-// names. Returns a null set for an empty or absent slice. Modelled as a Set
-// because Jamf Pro returns the columns in its own canonical order, not the order
-// they were submitted.
+// names. Returns a known EMPTY set (never null) for an empty/absent slice, so an
+// explicit `display_fields = []` clear round-trips (planned [] vs read-back []) and
+// a create-omit Unknown resolves cleanly. display_fields is Optional+Computed.
+// Modelled as a Set because Jamf Pro returns the columns in its own canonical
+// order, not the order they were submitted.
 func flattenDisplayFields(ctx context.Context, src *[]string) (types.Set, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	if src == nil || len(*src) == 0 {
-		return types.SetNull(types.StringType), diags
+	elems := []string{}
+	if src != nil {
+		elems = *src
 	}
-	set, d := types.SetValueFrom(ctx, types.StringType, *src)
+	set, d := types.SetValueFrom(ctx, types.StringType, elems)
 	diags.Append(d...)
 	return set, diags
 }
