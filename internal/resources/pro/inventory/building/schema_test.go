@@ -13,9 +13,10 @@ import (
 )
 
 // optionalAddressAttributes enumerates every Optional address field on the building
-// resource schema. Plain Optional (no Computed) so clear-on-omit via Pro's lossy PUT
-// works — Optional+Computed+UseStateForUnknown would silently freeze the old value
-// when a user removes the field from config.
+// resource schema. All are Optional+Computed with UseStateForUnknown: the buildings
+// PUT is full-replace (wire-probed), so omitting a field would clear it server-side —
+// Computed + UseStateForUnknown carries the prior value forward on omit so an undeclared
+// field is PRESERVED, not wiped (the omit=preserve standard; set "" to clear).
 var optionalAddressAttributes = []string{
 	"city",
 	"country",
@@ -69,8 +70,8 @@ func TestBuildingResource_Schema(t *testing.T) {
 		if !a.IsOptional() {
 			t.Errorf("%q must be optional", attrName)
 		}
-		if a.IsComputed() {
-			t.Errorf("%q must NOT be computed — Optional+Computed defeats Pro clear-on-omit", attrName)
+		if !a.IsComputed() {
+			t.Errorf("%q must be Optional+Computed so omit=preserve on the full-replace endpoint", attrName)
 		}
 	}
 }

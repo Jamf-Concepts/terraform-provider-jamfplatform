@@ -105,16 +105,28 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"info": schema.StringAttribute{
-				MarkdownDescription: "Informational text shown to end users (e.g. in Self Service) describing the script.",
+				MarkdownDescription: "Informational text shown to end users (e.g. in Self Service) describing the script. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"notes": schema.StringAttribute{
-				MarkdownDescription: "Administrator-only notes about the script.",
+				MarkdownDescription: "Administrator-only notes about the script. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"os_requirements": schema.StringAttribute{
-				MarkdownDescription: "Comma-separated macOS versions the script supports (e.g. `13.0.x,14.0.x`). Empty allows all.",
+				MarkdownDescription: "Comma-separated macOS versions the script supports (e.g. `13.0.x,14.0.x`). Empty allows all. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"priority": schema.StringAttribute{
 				MarkdownDescription: "Execution order relative to other policy actions. Valid values: `BEFORE`, `AFTER`, `AT_REBOOT`. Defaults to `AFTER`.",
@@ -136,8 +148,12 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 			"parameter_10": optionalParameterAttribute(10),
 			"parameter_11": optionalParameterAttribute(11),
 			"script_contents": schema.StringAttribute{
-				MarkdownDescription: "Script contents as plain text (shell, Python, etc.).",
+				MarkdownDescription: "Script contents as plain text (shell, Python, etc.). Omit to leave the existing contents untouched — Terraform will not clear them, so the body can be co-managed in the Jamf Pro UI; set to `\"\"` to clear. A declared value is owned by Terraform and reverts out-of-band edits.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
 				Create: true,
@@ -154,8 +170,12 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 // user-managed slots run 4–11.
 func optionalParameterAttribute(slot int) schema.StringAttribute {
 	return schema.StringAttribute{
-		MarkdownDescription: fmt.Sprintf("Label for script parameter slot %d.", slot),
+		MarkdownDescription: fmt.Sprintf("Label for script parameter slot %d. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.", slot),
 		Optional:            true,
+		Computed:            true,
+		PlanModifiers: []planmodifier.String{
+			stringplanmodifier.UseStateForUnknown(),
+		},
 	}
 }
 

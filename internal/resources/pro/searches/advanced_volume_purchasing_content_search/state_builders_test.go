@@ -11,19 +11,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestFlattenDisplayFields_NilAndEmptyToNullSet(t *testing.T) {
+func TestFlattenDisplayFields_NilAndEmptyToEmptySet(t *testing.T) {
+	// display_fields is Optional+Computed: an empty/absent server value must flatten
+	// to a known EMPTY set (not null) so an explicit `display_fields = []` clear
+	// round-trips and a create-omit Unknown resolves cleanly.
 	got, diags := flattenDisplayFields(context.Background(), nil)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
-	if !got.IsNull() {
-		t.Errorf("nil slice should flatten to null set")
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("nil slice should flatten to a known empty set, got %v", got)
 	}
 
 	empty := []string{}
 	got, _ = flattenDisplayFields(context.Background(), &empty)
-	if !got.IsNull() {
-		t.Errorf("empty slice should flatten to null set")
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("empty slice should flatten to a known empty set, got %v", got)
 	}
 }
 
@@ -69,8 +72,8 @@ func TestAssignResourceModel_CopiesFieldsNoSiteName(t *testing.T) {
 	if state.SiteID.ValueString() != "-1" {
 		t.Errorf("site_id mismatch: %q", state.SiteID.ValueString())
 	}
-	if len(state.Criteria) != 1 {
-		t.Errorf("expected 1 criterion, got %d", len(state.Criteria))
+	if state.Criteria.IsNull() || len(state.Criteria.Elements()) != 1 {
+		t.Errorf("expected 1 criterion, got %v", state.Criteria)
 	}
 	if state.DisplayFields.IsNull() || len(state.DisplayFields.Elements()) != 1 {
 		t.Errorf("expected 1 display field, got %v", state.DisplayFields)

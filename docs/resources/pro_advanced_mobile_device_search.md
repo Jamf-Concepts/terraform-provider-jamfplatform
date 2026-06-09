@@ -62,8 +62,8 @@ resource "jamfplatform_pro_advanced_mobile_device_search" "all_in_site" {
 
 ### Optional
 
-- `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit (or supply an empty list) for a search with no criteria. (see [below for nested schema](#nestedatt--criteria))
-- `display_fields` (Set of String) Set of inventory column names to display in the search results (e.g. `Display Name`, `Serial Number`, `Last Inventory Update`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit for no display columns.
+- `criteria` (Attributes List) Ordered list of criteria evaluated by Jamf Pro to populate the search. Order is significant — Jamf evaluates left-to-right with the supplied `and_or` joins and parentheses. Omit to leave any existing criteria untouched (they are not cleared on an unrelated update); set to `[]` to remove all criteria. (see [below for nested schema](#nestedatt--criteria))
+- `display_fields` (Set of String) Set of inventory column names to display in the search results (e.g. `Display Name`, `Serial Number`, `Last Inventory Update`). Order is not significant — Jamf Pro returns the columns in its own canonical order. Omit to leave any existing columns untouched (they are not cleared on an unrelated update); set to `[]` to remove all display columns.
 - `site_id` (String) Optional Jamf Pro site ID to scope the search. Omit to leave unscoped (Jamf Pro reports the `NONE` site, id `-1`).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

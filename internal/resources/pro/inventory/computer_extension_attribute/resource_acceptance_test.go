@@ -219,6 +219,226 @@ func TestAccResource_ProComputerExtensionAttribute_Lifecycle(t *testing.T) {
 	})
 }
 
+// ceaSplitOwn renders a TEXT EA that OMITS description, varying only
+// inventory_display so the split-ownership test can change an unrelated field.
+func ceaSplitOwn(name, inventoryDisplay string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_computer_extension_attribute" "test" {
+			name              = %q
+			data_type         = "STRING"
+			input_type        = "TEXT"
+			inventory_display = %q
+		}
+	`, name, inventoryDisplay)
+}
+
+// TestAccResource_ProComputerExtensionAttribute_SplitOwnership proves the
+// omit=preserve contract for the Optional+Computed `description` on this
+// full-replace endpoint: with description omitted from HCL, an out-of-band edit
+// (simulating the Jamf Pro UI) survives an unrelated Terraform change
+// (inventory_display) rather than being wiped — and an explicit "" still clears it.
+// (The discriminator-gated companion fields are intentionally NOT Optional+Computed
+// — they must drop on omit to clear on an input_type transition — so description is
+// the representative co-managed field here.)
+func TestAccResource_ProComputerExtensionAttribute_SplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-cea-split-" + suffix
+	const uiDesc = "UI edited description"
+
+	var eaID string
+
+	setDescriptionOutOfBand := func() {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		got, err := c.GetComputerExtensionAttributeV1(ctx, eaID)
+		if err != nil {
+			t.Fatalf("out-of-band GET: %v", err)
+		}
+		v := uiDesc
+		got.Description = &v
+		if _, err := c.UpdateComputerExtensionAttributeV1(ctx, eaID, got); err != nil {
+			t.Fatalf("out-of-band PUT: %v", err)
+		}
+	}
+
+	checkServerDescription := func(want string) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetComputerExtensionAttributeV1(context.Background(), eaID)
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			if helpers.DerefString(got.Description) != want {
+				return fmt.Errorf("description = %q, want %q", helpers.DerefString(got.Description), want)
+			}
+			return nil
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckCEADestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// Create with description omitted.
+				Config: ceaSplitOwn(name, "GENERAL"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(ceaResource, "id"),
+					func(s *terraform.State) error {
+						eaID = s.RootModule().Resources[ceaResource].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				// UI sets description out of band; config still omits it and changes
+				// only inventory_display. The out-of-band value must survive.
+				PreConfig: setDescriptionOutOfBand,
+				Config:    ceaSplitOwn(name, "HARDWARE"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "inventory_display", "HARDWARE"),
+					resource.TestCheckResourceAttr(ceaResource, "description", uiDesc),
+					checkServerDescription(uiDesc),
+				),
+			},
+			{
+				// Explicit "" clears it (full-replace), proving Terraform can take over.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_computer_extension_attribute" "test" {
+						name              = %q
+						description       = ""
+						data_type         = "STRING"
+						input_type        = "TEXT"
+						inventory_display = "HARDWARE"
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "description", ""),
+					checkServerDescription(""),
+				),
+			},
+		},
+	})
+}
+
+// ceaPopupNoChoices renders a POPUP EA that OMITS popup_menu_choices, varying
+// inventory_display so an unrelated change can be applied.
+func ceaPopupNoChoices(name, inventoryDisplay string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_computer_extension_attribute" "test" {
+			name              = %q
+			data_type         = "STRING"
+			input_type        = "POPUP"
+			inventory_display = %q
+		}
+	`, name, inventoryDisplay)
+}
+
+// TestAccResource_ProComputerExtensionAttribute_PopupSplitOwnership proves the
+// omit=preserve contract for popup_menu_choices (Optional+Computed Set, gated by
+// input_type = POPUP): with the choices omitted from HCL, out-of-band choices
+// (simulating the Jamf Pro UI) survive an unrelated change (inventory_display),
+// and a transition away from POPUP cleanly clears them without a consistency error
+// (the input_type-aware plan modifier predicts the cleared result).
+func TestAccResource_ProComputerExtensionAttribute_PopupSplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-cea-popup-split-" + suffix
+	uiChoices := []string{"Red", "Green", "Blue"}
+
+	var eaID string
+
+	setChoicesOutOfBand := func() {
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		got, err := c.GetComputerExtensionAttributeV1(ctx, eaID)
+		if err != nil {
+			t.Fatalf("out-of-band GET: %v", err)
+		}
+		cs := append([]string(nil), uiChoices...)
+		got.PopupMenuChoices = &cs
+		if _, err := c.UpdateComputerExtensionAttributeV1(ctx, eaID, got); err != nil {
+			t.Fatalf("out-of-band PUT: %v", err)
+		}
+	}
+
+	checkServerChoices := func(wantLen int) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := pro.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetComputerExtensionAttributeV1(context.Background(), eaID)
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			n := 0
+			if got.PopupMenuChoices != nil {
+				n = len(*got.PopupMenuChoices)
+			}
+			if n != wantLen {
+				return fmt.Errorf("server popup_menu_choices len = %d, want %d", n, wantLen)
+			}
+			return nil
+		}
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckCEADestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// Create a POPUP EA with no choices declared.
+				Config: ceaPopupNoChoices(name, "GENERAL"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(ceaResource, "id"),
+					func(s *terraform.State) error {
+						eaID = s.RootModule().Resources[ceaResource].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				// UI adds choices out of band; config still omits them and changes only
+				// inventory_display. The out-of-band choices must survive.
+				PreConfig: setChoicesOutOfBand,
+				Config:    ceaPopupNoChoices(name, "HARDWARE"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "inventory_display", "HARDWARE"),
+					resource.TestCheckResourceAttr(ceaResource, "popup_menu_choices.#", "3"),
+					resource.TestCheckTypeSetElemAttr(ceaResource, "popup_menu_choices.*", "Red"),
+					checkServerChoices(3),
+				),
+			},
+			{
+				// Explicit [] while staying POPUP clears the choices and round-trips as
+				// an empty set (no "inconsistent result after apply").
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_computer_extension_attribute" "test" {
+						name               = %q
+						data_type          = "STRING"
+						input_type         = "POPUP"
+						inventory_display  = "HARDWARE"
+						popup_menu_choices = []
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "popup_menu_choices.#", "0"),
+					checkServerChoices(0),
+				),
+			},
+			{
+				// Transition POPUP→TEXT: the choices clear with no "inconsistent result
+				// after apply" (the plan modifier predicts the cleared SetNull).
+				Config: ceaSplitOwn(name, "HARDWARE"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "input_type", "TEXT"),
+					resource.TestCheckNoResourceAttr(ceaResource, "popup_menu_choices.0"),
+					checkServerChoices(0),
+				),
+			},
+		},
+	})
+}
+
 // Validator matrix: each ExpectError matches a single no-space token to dodge
 // Terraform's ~80-col diagnostic wrap.
 func TestAccResource_ProComputerExtensionAttribute_ValidatorErrors(t *testing.T) {

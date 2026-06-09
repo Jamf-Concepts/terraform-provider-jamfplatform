@@ -81,6 +81,7 @@ func (r *SsoSettingsResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → Single Sign-On). Singleton — one record per tenant. Combines the SSO configuration with an embedded `signing_certificate` sub-block that manages the SAML signing keystore as a single resource.\n\n" +
+			"**Manage SSO all-or-nothing** — this resource owns the entire SSO configuration as one unit. An optional field you leave out is reset to its Jamf Pro default rather than preserved, so declare every option you want to keep and manage SSO entirely through Terraform (not partly here and partly in the admin console). This differs from resources where omitting a field leaves its current value untouched.\n\n" +
 			"**Cross-field requirements** (enforced at plan time):\n" +
 			"- `configuration_type = \"SAML\"` requires the `saml_settings` block.\n" +
 			"- `configuration_type = \"OIDC\"` requires the `oidc_settings` block and forbids `saml_settings` (Jamf Pro ignores SAML configuration in pure OIDC mode).\n" +

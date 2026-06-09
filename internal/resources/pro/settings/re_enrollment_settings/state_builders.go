@@ -11,8 +11,13 @@ import (
 )
 
 // assignReEnrollmentSettingsResourceModel populates resource state from a
-// Re-enrollment settings GET response. The server always returns a concrete
-// value for every field, so each attribute lands as a known value.
+// Re-enrollment settings response. The five clear_* toggles are Optional+Computed
+// and the server always returns a concrete value, so the state adopts it directly
+// with BoolPointerValueOrNull — the Computed half of the attribute, so an omitted
+// toggle shows (and preserves) the live value. NOT ReconcileOptionalBoolPointer:
+// that helper returns null when prior state is unset, which would blank an omitted
+// toggle instead of adopting the server value. The enum is Required and always
+// present, taken directly.
 func assignReEnrollmentSettingsResourceModel(state *ReEnrollmentSettingsResourceModel, s *pro.Reenrollment) {
 	if s == nil {
 		return

@@ -78,6 +78,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). " +
 			"Singleton — one record per tenant. " +
+			"**Omit = preserve** — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. `check_in_frequency` is required. " +
 			"Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -95,7 +96,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"create_startup_script": schema.BoolAttribute{
-				MarkdownDescription: "Create a startup script.",
+				MarkdownDescription: "Create a startup script. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -103,7 +104,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"startup_log": schema.BoolAttribute{
-				MarkdownDescription: "Log Computer Usage Information at startup.",
+				MarkdownDescription: "Log Computer Usage Information at startup. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -111,7 +112,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"startup_policies": schema.BoolAttribute{
-				MarkdownDescription: "Check for policies triggered by startup.",
+				MarkdownDescription: "Check for policies triggered by startup. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -119,7 +120,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"startup_ssh": schema.BoolAttribute{
-				MarkdownDescription: "Ensure SSH is enabled.",
+				MarkdownDescription: "Ensure SSH is enabled. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -127,7 +128,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"create_login_hook": schema.BoolAttribute{
-				MarkdownDescription: "Create a login event.",
+				MarkdownDescription: "Create a login event. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -135,7 +136,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"login_hook_log": schema.BoolAttribute{
-				MarkdownDescription: "Log Computer Usage Information at login.",
+				MarkdownDescription: "Log Computer Usage Information at login. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -143,7 +144,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"login_hook_policies": schema.BoolAttribute{
-				MarkdownDescription: "Check for policies triggered by login.",
+				MarkdownDescription: "Check for policies triggered by login. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -151,7 +152,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 				},
 			},
 			"allow_network_state_change_triggers": schema.BoolAttribute{
-				MarkdownDescription: "Allow Network State Change Triggers.",
+				MarkdownDescription: "Allow Network State Change Triggers. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

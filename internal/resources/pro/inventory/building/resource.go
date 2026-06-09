@@ -86,29 +86,62 @@ func (r *BuildingResource) Schema(ctx context.Context, req resource.SchemaReques
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
+			// The buildings PUT is full-replace (wire-probed 2026-06-09): a request
+			// omitting an address field resets it to null server-side. All six
+			// address scalars are therefore Optional+Computed with UseStateForUnknown
+			// so an omitted field is PRESERVED, not wiped — the omit-then-unrelated-
+			// -apply footgun documented in STYLE_GUIDE.md §Full-replace endpoints.
+			// Set a field to "" to clear it (round-trips as empty string); omitting
+			// it carries the prior state value forward via the plan modifier.
+			// Caveat: a UI edit landing between refresh and apply is clobbered by the
+			// re-PUT (the inherent refresh→apply race on full-replace endpoints).
 			"city": schema.StringAttribute{
-				MarkdownDescription: "City the building is located in.",
+				MarkdownDescription: "City the building is located in. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"country": schema.StringAttribute{
-				MarkdownDescription: "Country the building is located in.",
+				MarkdownDescription: "Country the building is located in. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"state_province": schema.StringAttribute{
-				MarkdownDescription: "State, province, or administrative region the building is located in.",
+				MarkdownDescription: "State, province, or administrative region the building is located in. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"street_address_1": schema.StringAttribute{
-				MarkdownDescription: "Primary street address line.",
+				MarkdownDescription: "Primary street address line. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"street_address_2": schema.StringAttribute{
-				MarkdownDescription: "Secondary street address line (suite, unit, floor).",
+				MarkdownDescription: "Secondary street address line (suite, unit, floor). Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"zip_postal_code": schema.StringAttribute{
-				MarkdownDescription: "Zip or postal code for the building location.",
+				MarkdownDescription: "Zip or postal code for the building location. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
 				Create: true,

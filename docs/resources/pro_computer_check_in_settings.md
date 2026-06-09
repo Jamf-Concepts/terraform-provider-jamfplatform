@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_computer_check_in_settings Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. Import with terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton.
+  Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. Omit = preserve — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set true/false to change it. check_in_frequency is required. Import with terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton.
 ---
 
 # jamfplatform_pro_computer_check_in_settings (Resource)
 
-Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`.
+Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. **Omit = preserve** — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set `true`/`false` to change it. `check_in_frequency` is required. Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`.
 
 ## Example Usage
 
@@ -35,14 +35,14 @@ resource "jamfplatform_pro_computer_check_in_settings" "this" {
 
 ### Optional
 
-- `allow_network_state_change_triggers` (Boolean) Allow Network State Change Triggers.
-- `create_login_hook` (Boolean) Create a login event.
-- `create_startup_script` (Boolean) Create a startup script.
-- `login_hook_log` (Boolean) Log Computer Usage Information at login.
-- `login_hook_policies` (Boolean) Check for policies triggered by login.
-- `startup_log` (Boolean) Log Computer Usage Information at startup.
-- `startup_policies` (Boolean) Check for policies triggered by startup.
-- `startup_ssh` (Boolean) Ensure SSH is enabled.
+- `allow_network_state_change_triggers` (Boolean) Allow Network State Change Triggers. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
+- `create_login_hook` (Boolean) Create a login event. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
+- `create_startup_script` (Boolean) Create a startup script. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
+- `login_hook_log` (Boolean) Log Computer Usage Information at login. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
+- `login_hook_policies` (Boolean) Check for policies triggered by login. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
+- `startup_log` (Boolean) Log Computer Usage Information at startup. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
+- `startup_policies` (Boolean) Check for policies triggered by startup. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
+- `startup_ssh` (Boolean) Ensure SSH is enabled. Omit to leave the current value untouched (it is not changed on an unrelated apply); set `true`/`false` to change it.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

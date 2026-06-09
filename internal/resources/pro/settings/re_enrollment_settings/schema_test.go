@@ -23,9 +23,9 @@ func TestReEnrollmentSettingsResource_Metadata(t *testing.T) {
 	}
 }
 
-// TestReEnrollmentSettingsResource_Schema asserts every settings attribute is
-// Required (the resource is full-replace, so the configuration is the single
-// source of truth — no preserve-on-omit), and the id is Computed.
+// TestReEnrollmentSettingsResource_Schema asserts the five clear_* toggles are
+// Optional+Computed (full-replace endpoint, omit=preserve via UseStateForUnknown),
+// the API-required clear_management_history enum is Required, and id is Computed.
 func TestReEnrollmentSettingsResource_Schema(t *testing.T) {
 	r := NewReEnrollmentSettingsResource()
 	var resp resource.SchemaResponse
@@ -34,28 +34,33 @@ func TestReEnrollmentSettingsResource_Schema(t *testing.T) {
 		t.Fatalf("schema diagnostics: %v", resp.Diagnostics)
 	}
 
-	// All six settings attributes are Required — full-replace means an omitted
-	// field would silently reset to a default, so the config must set every one.
-	required := []string{
+	// The five flush toggles are Optional+Computed so omitting one preserves its
+	// current value rather than resetting it on the full-replace write.
+	optionalComputed := []string{
 		"clear_policy_logs",
 		"clear_location_information",
 		"clear_location_information_history",
 		"clear_extension_attributes",
 		"clear_software_update_plans",
-		"clear_management_history",
 	}
-	for _, name := range required {
+	for _, name := range optionalComputed {
 		attr, ok := resp.Schema.Attributes[name]
 		if !ok {
 			t.Errorf("missing attribute %q", name)
 			continue
 		}
-		if !attr.IsRequired() {
-			t.Errorf("attribute %q must be Required", name)
+		if !attr.IsOptional() || !attr.IsComputed() {
+			t.Errorf("attribute %q must be Optional+Computed (omit=preserve), got optional=%v computed=%v", name, attr.IsOptional(), attr.IsComputed())
 		}
-		if attr.IsOptional() || attr.IsComputed() {
-			t.Errorf("attribute %q must not be Optional or Computed", name)
+		if attr.IsRequired() {
+			t.Errorf("attribute %q must not be Required", name)
 		}
+	}
+
+	// clear_management_history is required by the API (rejects an omitted or empty
+	// value), so it is the Required carve-out — not Optional+Computed.
+	if enum, ok := resp.Schema.Attributes["clear_management_history"]; !ok || !enum.IsRequired() {
+		t.Errorf("clear_management_history must be Required")
 	}
 
 	if id, ok := resp.Schema.Attributes["id"]; !ok || !id.IsComputed() {
