@@ -104,6 +104,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/adcs"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/certificate_authority"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/digicert"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/json_web_token_configuration"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/venafi"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
@@ -364,6 +365,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		venafi.NewPkiVenafiResource,
 		digicert.NewDigicertResource,
 		adcs.NewAdcsResource,
+		json_web_token_configuration.NewJSONWebTokenConfigurationResource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsResource,
 		login_page.NewLoginPageSettingsResource,
 		mdm_profile_settings.NewMDMProfileSettingsResource,
@@ -455,6 +457,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		venafi.NewPkiVenafiDataSource,
 		digicert.NewDigicertDataSource,
 		adcs.NewAdcsDataSource,
+		json_web_token_configuration.NewJSONWebTokenConfigurationDataSource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsDataSource,
 		login_page.NewLoginPageSettingsDataSource,
 		mdm_profile_settings.NewMDMProfileSettingsDataSource,
@@ -510,6 +513,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileListResource,
 		ibeacon.NewIbeaconListResource,
+		json_web_token_configuration.NewJSONWebTokenConfigurationListResource,
 		licensed_software.NewLicensedSoftwareListResource,
 		app_installer.NewAppInstallerListResource,
 		ebook.NewEbookListResource,
