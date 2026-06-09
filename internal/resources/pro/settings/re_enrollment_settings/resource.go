@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -91,7 +92,7 @@ func (r *ReEnrollmentSettingsResource) IdentitySchema(ctx context.Context, req r
 func (r *ReEnrollmentSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Pro **Re-enrollment** settings page (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.\n\n" +
-			"**Full replace** — this resource overwrites all six options on every apply, so all six are required. There is no preserve-on-omit; the configuration is the single source of truth for the Re-enrollment settings.\n\n" +
+			"**Omit = preserve** — each `clear_*` toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. `clear_management_history` must always be set (the dropdown always has a selection).\n\n" +
 			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.\n\n" +
 			"Import with `terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton`.",
 		Attributes: map[string]schema.Attribute{
@@ -101,25 +102,44 @@ func (r *ReEnrollmentSettingsResource) Schema(ctx context.Context, req resource.
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 
+			// The five clear_* toggles are Optional+Computed with
+			// UseStateForUnknown: the /v1/reenrollment PUT is full-replace, but
+			// omitting a toggle carries its prior value forward (plan Unknown ->
+			// USFU -> prior state -> re-emitted -> preserved), so it is not
+			// flipped on an unrelated change. On first create there is no prior
+			// state, so Create reads the live settings and merges them in (see
+			// crud.go) — the singleton is adopted, not reset. No blank exists for a
+			// bool — omit to preserve, set true/false to change. (Full-replace +
+			// omit->false reset wire-probed 2026-06-09.)
 			"clear_policy_logs": schema.BoolAttribute{
-				MarkdownDescription: "Clear policy logs on computers when a device re-enrolls. Matches the \"Clear policy logs on computers\" checkbox.",
-				Required:            true,
+				MarkdownDescription: "Clear policy logs on computers when a device re-enrolls. Matches the \"Clear policy logs on computers\" checkbox. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"clear_location_information": schema.BoolAttribute{
-				MarkdownDescription: "Clear user and location information on mobile devices and computers when a device re-enrolls. Matches the \"Clear user and location information on mobile devices and computers\" checkbox.",
-				Required:            true,
+				MarkdownDescription: "Clear user and location information on mobile devices and computers when a device re-enrolls. Matches the \"Clear user and location information on mobile devices and computers\" checkbox. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"clear_location_information_history": schema.BoolAttribute{
-				MarkdownDescription: "Clear user and location information history on mobile devices and computers when a device re-enrolls. Matches the \"Clear user and location information history on mobile devices and computers\" checkbox.",
-				Required:            true,
+				MarkdownDescription: "Clear user and location information history on mobile devices and computers when a device re-enrolls. Matches the \"Clear user and location information history on mobile devices and computers\" checkbox. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"clear_extension_attributes": schema.BoolAttribute{
-				MarkdownDescription: "Clear extension attribute values on computers and mobile devices when a device re-enrolls. Matches the \"Clear extension attribute values on computers and mobile devices\" checkbox.",
-				Required:            true,
+				MarkdownDescription: "Clear extension attribute values on computers and mobile devices when a device re-enrolls. Matches the \"Clear extension attribute values on computers and mobile devices\" checkbox. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"clear_software_update_plans": schema.BoolAttribute{
-				MarkdownDescription: "Clear software update plans on mobile devices and computers when a device re-enrolls. Matches the \"Clear software update plans on mobile devices and computers\" checkbox.",
-				Required:            true,
+				MarkdownDescription: "Clear software update plans on mobile devices and computers when a device re-enrolls. Matches the \"Clear software update plans on mobile devices and computers\" checkbox. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"clear_management_history": schema.StringAttribute{
 				MarkdownDescription: "How much of a device's management command history is cleared when it re-enrolls. Matches the \"Clear Management History\" dropdown. Required — the dropdown always has a selection, and this resource overwrites it on every apply, so the value must be set explicitly. One of:\n" +

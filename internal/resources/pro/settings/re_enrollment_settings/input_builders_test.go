@@ -6,6 +6,7 @@ package re_enrollment_settings
 import (
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -22,7 +23,7 @@ func TestBuildReenrollmentInput_FullRoundTrip(t *testing.T) {
 		ClearManagementHistory:          types.StringValue("DELETE_EVERYTHING"),
 	}
 
-	out := buildReenrollmentInput(plan)
+	out := buildReenrollmentInput(plan, nil)
 
 	if out.IsFlushPolicyHistoryEnabled == nil || *out.IsFlushPolicyHistoryEnabled != true {
 		t.Errorf("IsFlushPolicyHistoryEnabled = %v, want true", out.IsFlushPolicyHistoryEnabled)
@@ -44,20 +45,22 @@ func TestBuildReenrollmentInput_FullRoundTrip(t *testing.T) {
 	}
 }
 
-// TestBuildReenrollmentInput_AllBoolsPopulated confirms that even when the
-// flush bools are null/unknown they are sent as concrete (false) pointers —
-// the wire write is full-replace, so a nil pointer (omit) is never produced.
-func TestBuildReenrollmentInput_AllBoolsPopulated(t *testing.T) {
+// TestBuildReenrollmentInput_OmittedBoolsDroppedWhenNoCurrent confirms that with
+// no merge base (current nil) a null/unknown toggle produces a nil pointer so
+// omitempty drops it. This is the update path: UseStateForUnknown has already made
+// omitted toggles known prior values (FullRoundTrip), so a still-null/unknown plan
+// value genuinely has nothing to send.
+func TestBuildReenrollmentInput_OmittedBoolsDroppedWhenNoCurrent(t *testing.T) {
 	plan := ReEnrollmentSettingsResourceModel{
 		ClearPolicyLogs:                 types.BoolNull(),
 		ClearLocationInformation:        types.BoolUnknown(),
 		ClearLocationInformationHistory: types.BoolNull(),
 		ClearExtensionAttributes:        types.BoolNull(),
-		ClearSoftwareUpdatePlans:        types.BoolNull(),
+		ClearSoftwareUpdatePlans:        types.BoolUnknown(),
 		ClearManagementHistory:          types.StringValue("DELETE_NOTHING"),
 	}
 
-	out := buildReenrollmentInput(plan)
+	out := buildReenrollmentInput(plan, nil)
 
 	for name, p := range map[string]*bool{
 		"IsFlushPolicyHistoryEnabled":              out.IsFlushPolicyHistoryEnabled,
@@ -66,12 +69,54 @@ func TestBuildReenrollmentInput_AllBoolsPopulated(t *testing.T) {
 		"IsFlushExtensionAttributesEnabled":        out.IsFlushExtensionAttributesEnabled,
 		"IsFlushSoftwareUpdatePlansEnabled":        out.IsFlushSoftwareUpdatePlansEnabled,
 	} {
-		if p == nil {
-			t.Errorf("%s must be a non-nil pointer (full-replace write)", name)
+		if p != nil {
+			t.Errorf("%s = %v, want nil pointer (dropped) for null/unknown plan input", name, *p)
+		}
+	}
+}
+
+// TestBuildReenrollmentInput_OmittedBoolsAdoptCurrent confirms the GET-on-create
+// merge: when a toggle is omitted (null/unknown plan) but a current settings read
+// is supplied, the payload carries the current value forward rather than dropping
+// it — so the full-replace write preserves undeclared toggles on first create.
+// A declared toggle still wins over current.
+func TestBuildReenrollmentInput_OmittedBoolsAdoptCurrent(t *testing.T) {
+	tr, fa := true, false
+	current := &pro.Reenrollment{
+		IsFlushPolicyHistoryEnabled:              &tr, // omitted in plan -> adopt true
+		IsFlushLocationInformationEnabled:        &tr, // declared false in plan -> plan wins
+		IsFlushLocationInformationHistoryEnabled: &fa, // omitted -> adopt false
+		IsFlushExtensionAttributesEnabled:        &tr, // omitted -> adopt true
+		IsFlushSoftwareUpdatePlansEnabled:        &tr, // omitted -> adopt true
+	}
+	plan := ReEnrollmentSettingsResourceModel{
+		ClearPolicyLogs:                 types.BoolNull(),
+		ClearLocationInformation:        types.BoolValue(false),
+		ClearLocationInformationHistory: types.BoolUnknown(),
+		ClearExtensionAttributes:        types.BoolNull(),
+		ClearSoftwareUpdatePlans:        types.BoolNull(),
+		ClearManagementHistory:          types.StringValue("DELETE_NOTHING"),
+	}
+
+	out := buildReenrollmentInput(plan, current)
+
+	want := map[string]struct {
+		got  *bool
+		want bool
+	}{
+		"IsFlushPolicyHistoryEnabled":              {out.IsFlushPolicyHistoryEnabled, true},
+		"IsFlushLocationInformationEnabled":        {out.IsFlushLocationInformationEnabled, false}, // plan wins
+		"IsFlushLocationInformationHistoryEnabled": {out.IsFlushLocationInformationHistoryEnabled, false},
+		"IsFlushExtensionAttributesEnabled":        {out.IsFlushExtensionAttributesEnabled, true},
+		"IsFlushSoftwareUpdatePlansEnabled":        {out.IsFlushSoftwareUpdatePlansEnabled, true},
+	}
+	for name, c := range want {
+		if c.got == nil {
+			t.Errorf("%s = nil, want %v (adopt current / plan)", name, c.want)
 			continue
 		}
-		if *p != false {
-			t.Errorf("%s = %v, want false for null/unknown plan input", name, *p)
+		if *c.got != c.want {
+			t.Errorf("%s = %v, want %v", name, *c.got, c.want)
 		}
 	}
 }
@@ -83,7 +128,7 @@ func TestBuildReenrollmentInput_EnumPassthrough(t *testing.T) {
 	for _, v := range validClearManagementHistory {
 		t.Run(v, func(t *testing.T) {
 			plan := ReEnrollmentSettingsResourceModel{ClearManagementHistory: types.StringValue(v)}
-			out := buildReenrollmentInput(plan)
+			out := buildReenrollmentInput(plan, nil)
 			if out.FlushMDMQueue != v {
 				t.Errorf("FlushMDMQueue = %q, want %q", out.FlushMDMQueue, v)
 			}
