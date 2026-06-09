@@ -438,6 +438,17 @@ func namesSchema() schema.SingleNestedAttribute {
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
+			// Deliberately plain Optional, NOT Optional+Computed — an explicit
+			// carve-out from the provider-wide "full-replace ⇒ omit=preserve"
+			// standard (STYLE_GUIDE §Full-replace endpoints). prestage_device_names
+			// is authoritative, mode-gated content (only valid when
+			// assign_names_using = "List of Names"): Terraform owns the list when it
+			// is declared, and an empty/omitted list in another naming mode is the
+			// correct state, so drift-revert (not omit=preserve) is the desired
+			// behaviour. Converting it would also entangle the server-assigned
+			// id/used + positional reconcile + the PUT-500 serializer workaround
+			// (diffPlanAgainstGet) with a discriminator-aware plan modifier for no
+			// real co-management benefit. Audited 2026-06-09; keep as-is.
 			"prestage_device_names": schema.ListNestedAttribute{
 				MarkdownDescription: "Ordered list of device names (used in `\"List of Names\"` mode). Jamf Pro assigns each entry an `id` and consumes them in order as devices enrol. The framework reconciles entries by list position; append new names to the end to avoid churn.",
 				Optional:            true,
