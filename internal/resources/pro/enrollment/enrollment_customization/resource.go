@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -175,8 +176,10 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 			"text_panes": schema.ListNestedAttribute{
 				MarkdownDescription: "Ordered list of text panes shown during enrollment. Each pane is identified server-side by `id` after creation; the framework reconciles panes by list position, so reordering elements in the middle of the list will trigger a churn of create + delete operations. Append new panes to the end of the list to avoid churn.",
 				Optional:            true,
+				// Jamf Pro tolerates duplicate display names server-side, but
+				// duplicates make admin-UI navigation ambiguous.
 				Validators: []validator.List{
-					UniqueDisplayNameValidator(),
+					validators.UniqueStringFieldList("display_name"),
 				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
