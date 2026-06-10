@@ -99,6 +99,8 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/computer_inventory_collection_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/gsx_connection"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/impact_alert_notification_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_parent_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_teacher_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/login_page"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/mdm_profile_settings"
@@ -369,6 +371,8 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		adcs.NewAdcsResource,
 		json_web_token_configuration.NewJSONWebTokenConfigurationResource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsResource,
+		jamf_parent_settings.NewJamfParentSettingsResource,
+		jamf_teacher_settings.NewJamfTeacherSettingsResource,
 		login_page.NewLoginPageSettingsResource,
 		mdm_profile_settings.NewMDMProfileSettingsResource,
 		smtp_server.NewSmtpServerResource,
