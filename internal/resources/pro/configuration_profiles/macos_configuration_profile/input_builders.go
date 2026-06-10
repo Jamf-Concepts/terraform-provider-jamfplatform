@@ -91,10 +91,12 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.OsXConfigur
 	//   The Classic API uses the same lowercase UUID for both fields on
 	//   Jamf-minted profiles (verified across the 200-profile roundtrip
 	//   corpus).
-	// - On Create, existingUUID is empty; the helper is a no-op.
+	// - On Create, existingUUID is empty; the identifier injection is a no-op.
+	// - Either way, structural whitespace is compacted before send (Classic
+	//   API plist-parser phantom-<array/> bug — see PrepareWirePayload).
 	if v := m.Payloads.ValueString(); !m.Payloads.IsNull() && !m.Payloads.IsUnknown() && v != "" {
 		raw := []byte(v)
-		prepared, err := payloadhelpers.InjectTopLevelIdentifierValues(raw, existingUUID, existingUUID)
+		prepared, err := payloadhelpers.PrepareWirePayload(raw, existingUUID, existingUUID)
 		if err != nil {
 			diags.AddError("Failed to inject server-canonical PayloadUUID/PayloadIdentifier into update payload", err.Error())
 			return nil, nil, diags
