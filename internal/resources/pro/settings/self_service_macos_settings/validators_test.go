@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -161,5 +162,102 @@ func TestValidator_BothViolateBothReport(t *testing.T) {
 	paths := runValidators(c)
 	if !paths["install_location"] || !paths["default_home_category_id"] {
 		t.Errorf("both validators must report independently; got %v", paths)
+	}
+}
+
+// --- samlRequiresLoginValidator (reads login_method + authentication_type only) ---
+
+var loginObjType = tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+	"login_method":        tftypes.String,
+	"authentication_type": tftypes.String,
+}}
+
+func loginCfg(loginMethod, authType tftypes.Value) tfsdk.Config {
+	return tfsdk.Config{
+		Schema: schema.Schema{Attributes: map[string]schema.Attribute{
+			"login_method":        schema.StringAttribute{Optional: true, Computed: true},
+			"authentication_type": schema.StringAttribute{Optional: true, Computed: true},
+		}},
+		Raw: tftypes.NewValue(loginObjType, map[string]tftypes.Value{
+			"login_method":        loginMethod,
+			"authentication_type": authType,
+		}),
+	}
+}
+
+func runSamlValidator(c tfsdk.Config) bool {
+	var resp resource.ValidateConfigResponse
+	samlRequiresLoginValidator{}.ValidateResource(
+		context.Background(),
+		resource.ValidateConfigRequest{Config: c},
+		&resp,
+	)
+	return resp.Diagnostics.HasError()
+}
+
+func TestValidator_SamlWithNotRequiredErrors(t *testing.T) {
+	if !runSamlValidator(loginCfg(stringOf("NotRequired"), stringOf("Saml"))) {
+		t.Error("Saml with NotRequired (both declared) must error")
+	}
+}
+
+func TestValidator_SamlWithRequiredValid(t *testing.T) {
+	if runSamlValidator(loginCfg(stringOf("Required"), stringOf("Saml"))) {
+		t.Error("Saml with Required must pass")
+	}
+}
+
+func TestValidator_BasicWithNotRequiredValid(t *testing.T) {
+	if runSamlValidator(loginCfg(stringOf("NotRequired"), stringOf("Basic"))) {
+		t.Error("Basic with NotRequired must pass")
+	}
+}
+
+// defer-on-null: Saml declared, login_method omitted (server value may be login-enabled).
+func TestValidator_SamlLoginMethodNull_Defers(t *testing.T) {
+	if runSamlValidator(loginCfg(stringNull(), stringOf("Saml"))) {
+		t.Error("Saml with login_method null (preserve) must defer, not error")
+	}
+}
+
+func TestValidator_SamlLoginMethodUnknown_Defers(t *testing.T) {
+	if runSamlValidator(loginCfg(stringUnknown(), stringOf("Saml"))) {
+		t.Error("Saml with login_method unknown must defer, not error")
+	}
+}
+
+// --- predictAuthTypeUnknown (ModifyPlan decision) ---
+
+func TestPredictAuthTypeUnknown_TransitionWithCarriedSaml(t *testing.T) {
+	if !predictAuthTypeUnknown(types.StringValue("NotRequired"), types.StringValue("Saml"), types.StringNull()) {
+		t.Error("NotRequired + carried Saml (config null) must predict Unknown")
+	}
+}
+
+func TestPredictAuthTypeUnknown_DeclaredSamlNotPredicted(t *testing.T) {
+	// User-declared Saml is the ConfigValidator's job; ModifyPlan must not mask it.
+	if predictAuthTypeUnknown(types.StringValue("NotRequired"), types.StringValue("Saml"), types.StringValue("Saml")) {
+		t.Error("declared Saml must not be re-marked Unknown")
+	}
+}
+
+func TestPredictAuthTypeUnknown_BasicNotPredicted(t *testing.T) {
+	if predictAuthTypeUnknown(types.StringValue("NotRequired"), types.StringValue("Basic"), types.StringNull()) {
+		t.Error("carried Basic survives NotRequired — no prediction")
+	}
+}
+
+func TestPredictAuthTypeUnknown_LoginEnabledNotPredicted(t *testing.T) {
+	if predictAuthTypeUnknown(types.StringValue("Required"), types.StringValue("Saml"), types.StringNull()) {
+		t.Error("Saml under Required is valid — no prediction")
+	}
+}
+
+func TestPredictAuthTypeUnknown_UnknownsNotPredicted(t *testing.T) {
+	if predictAuthTypeUnknown(types.StringUnknown(), types.StringValue("Saml"), types.StringNull()) {
+		t.Error("unknown login_method must not predict")
+	}
+	if predictAuthTypeUnknown(types.StringValue("NotRequired"), types.StringUnknown(), types.StringNull()) {
+		t.Error("already-unknown authentication_type must not predict")
 	}
 }

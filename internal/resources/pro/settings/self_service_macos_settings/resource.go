@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -78,13 +79,50 @@ func (r *SelfServiceMacosSettingsResource) IdentitySchema(ctx context.Context, r
 }
 
 // ConfigValidators returns the cross-field validators evaluated at plan time: the
-// server-enforced install-location requirement and the silent-coercion guard on the
-// default home category. Both defer when either side is null or unknown.
+// server-enforced install-location requirement, the silent-coercion guard on the default
+// home category, and the Saml-requires-login rule. All defer when either side is null or
+// unknown.
 func (r *SelfServiceMacosSettingsResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		installLocationRequiredValidator{},
 		categoryRequiresBrowseValidator{},
+		samlRequiresLoginValidator{},
 	}
+}
+
+// ModifyPlan absorbs the server-side coercion on a login_method → "NotRequired" transition:
+// disabling Self Service user login makes Jamf Pro revert a stored "Saml" authentication
+// type to "Basic" (wire-probed 2026-06-10 — the PUT succeeds and the echo/GET carry Basic).
+// When the plan carries "Saml" only via UseStateForUnknown (the user did not declare
+// authentication_type) while login_method is planned "NotRequired", the carried value can
+// never survive the apply — mark it Unknown so the post-write GET supplies the server's
+// resolved value instead of tripping "inconsistent result after apply". A user-declared
+// Saml + NotRequired pair is rejected at plan time by samlRequiresLoginValidator.
+func (r *SelfServiceMacosSettingsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return // destroy plan — nothing to modify
+	}
+
+	var loginMethod, plannedAuthType, configAuthType types.String
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("login_method"), &loginMethod)...)
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("authentication_type"), &plannedAuthType)...)
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("authentication_type"), &configAuthType)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if predictAuthTypeUnknown(loginMethod, plannedAuthType, configAuthType) {
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("authentication_type"), types.StringUnknown())...)
+	}
+}
+
+// predictAuthTypeUnknown reports whether the planned authentication_type is a carried (not
+// user-declared) "Saml" that the server will coerce away because login_method is planned
+// "NotRequired".
+func predictAuthTypeUnknown(loginMethod, plannedAuthType, configAuthType types.String) bool {
+	return !loginMethod.IsNull() && !loginMethod.IsUnknown() && loginMethod.ValueString() == "NotRequired" &&
+		!plannedAuthType.IsNull() && !plannedAuthType.IsUnknown() && plannedAuthType.ValueString() == "Saml" &&
+		configAuthType.IsNull()
 }
 
 // Schema returns the Terraform schema for the Self Service macOS settings resource.
@@ -132,6 +170,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 					"\"Login method\" dropdown map to this single value. " +
 					"`NotRequired` — user login is disabled; `Anonymous` — users may log in to view items available to them " +
 					"(login optional); `Required` — users must log in. " +
+					"Setting `NotRequired` makes Jamf Pro revert a stored `Saml` authentication type to `Basic`. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,
@@ -145,6 +184,12 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 			"authentication_type": schema.StringAttribute{
 				MarkdownDescription: "Login type used when asking users to log in (\"Authentication type\"). " +
 					"`Basic` — Directory Service account or Jamf Pro user account; `Saml` — Single Sign-On. " +
+					"**Setting this via the API writes through to Single Sign-On settings**: `Saml` enables " +
+					"\"Single Sign-On for Self Service for macOS\" (`jamfplatform_pro_sso_settings` attribute " +
+					"`sso_for_macos_self_service_enabled`) and `Basic` disables it — keep one Terraform owner for that " +
+					"toggle to avoid the two resources fighting. Switching to `Saml` requires SAML to be available for " +
+					"macOS on the tenant; Jamf Pro otherwise rejects the write (PREREQUISITE_NOT_MET). " +
+					"Requires `login_method` `Anonymous` or `Required` — with login disabled the server reverts to `Basic`. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,

@@ -63,6 +63,54 @@ func (installLocationRequiredValidator) ValidateResource(ctx context.Context, re
 	}
 }
 
+// samlRequiresLoginValidator rejects, at plan time, declaring authentication_type = "Saml"
+// together with login_method = "NotRequired". Wire-probed 2026-06-10 (post-spike follow-up):
+// with user login disabled the server never keeps Saml — it either rejects the write (HTTP
+// 400 PREREQUISITE_NOT_MET "SAML is not enabled for MacOS" when changing Basic→Saml) or
+// accepts it and silently coerces the stored value back to Basic (when Saml was already
+// stored), which would fail the apply with "inconsistent result". Either way a declared
+// Saml + NotRequired pair cannot converge.
+//
+// Same PARTIAL-coverage contract as the other validators: fires only when BOTH fields are
+// explicitly declared; defers when either is null or unknown. The carried-not-declared case
+// (login_method transitions to NotRequired while Saml rides in via UseStateForUnknown) is
+// handled by ModifyPlan instead, which marks authentication_type Unknown so apply adopts
+// the server's coercion.
+type samlRequiresLoginValidator struct{}
+
+// Description returns a plain-text description of the validator.
+func (samlRequiresLoginValidator) Description(context.Context) string {
+	return `authentication_type = "Saml" requires login_method to be "Anonymous" or "Required".`
+}
+
+// MarkdownDescription returns the markdown description.
+func (v samlRequiresLoginValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+// ValidateResource implements the plan-time cross-field check.
+func (samlRequiresLoginValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var loginMethod, authType types.String
+	diags := req.Config.GetAttribute(ctx, path.Root("login_method"), &loginMethod)
+	diags.Append(req.Config.GetAttribute(ctx, path.Root("authentication_type"), &authType)...)
+	resp.Diagnostics.Append(diags...)
+	if diags.HasError() {
+		return
+	}
+
+	if loginMethod.IsNull() || loginMethod.IsUnknown() || authType.IsNull() || authType.IsUnknown() {
+		return
+	}
+
+	if authType.ValueString() == "Saml" && loginMethod.ValueString() == "NotRequired" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("authentication_type"),
+			"Single Sign-On requires user login",
+			`"authentication_type" cannot be "Saml" while "login_method" is "NotRequired". Jamf Pro does not keep Single Sign-On while Self Service user login is disabled — it rejects the write or silently reverts to "Basic".`,
+		)
+	}
+}
+
 // categoryRequiresBrowseValidator defuses, at plan time, a silent server-side coercion:
 // default_home_category_id only applies when default_landing_page = "BROWSE". Wire-probed
 // 2026-06-10 — under any other landing page Jamf Pro silently resets ANY submitted category

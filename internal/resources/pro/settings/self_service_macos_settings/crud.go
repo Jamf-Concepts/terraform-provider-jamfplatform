@@ -135,10 +135,12 @@ func (r *SelfServiceMacosSettingsResource) Read(ctx context.Context, req resourc
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update writes the new settings to the Jamf Pro API. Same SDK call as Create. The merge base
-// is nil — UseStateForUnknown has already carried omitted fields into the plan as known prior
-// values, so the full-replace PUT body is complete from the plan alone. Authoritative state
-// comes from a follow-up GET per the singleton convention.
+// Update writes the new settings to the Jamf Pro API. Same SDK call as Create, including the
+// live GET merge base: UseStateForUnknown carries most omitted fields into the plan as known
+// prior values, but ModifyPlan re-marks authentication_type Unknown on a login_method →
+// NotRequired transition, and an Unknown must round-trip the live server value (re-sending a
+// stored "Saml" is accepted; only a Basic→Saml *change* trips the server's prerequisite
+// check). Authoritative state comes from a follow-up GET per the singleton convention.
 func (r *SelfServiceMacosSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(providerNotConfiguredError())
@@ -159,7 +161,13 @@ func (r *SelfServiceMacosSettingsResource) Update(ctx context.Context, req resou
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	if _, err := r.client.UpdateSelfServiceSettingsV1(updateCtx, buildSelfServiceMacosSettingsInput(plan, nil)); err != nil {
+	current, err := r.client.GetSelfServiceSettingsV1(updateCtx)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading existing Jamf Pro Self Service macOS settings", err.Error())
+		return
+	}
+
+	if _, err := r.client.UpdateSelfServiceSettingsV1(updateCtx, buildSelfServiceMacosSettingsInput(plan, current)); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro Self Service macOS settings", err.Error())
 		return
 	}

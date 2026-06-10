@@ -83,8 +83,8 @@ func TestSelfServiceMacosSettingsResource_IdentitySchema(t *testing.T) {
 func TestSelfServiceMacosSettingsResource_ConfigValidatorsWired(t *testing.T) {
 	r := NewSelfServiceMacosSettingsResource()
 	validators := r.(*SelfServiceMacosSettingsResource).ConfigValidators(context.Background())
-	if len(validators) != 2 {
-		t.Errorf("expected 2 ConfigValidators (install-location requirement + category-requires-Browse), got %d", len(validators))
+	if len(validators) != 3 {
+		t.Errorf("expected 3 ConfigValidators (install-location requirement + category-requires-Browse + Saml-requires-login), got %d", len(validators))
 	}
 }
 
