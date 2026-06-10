@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -168,14 +169,15 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 				// field (the SDK serialises it with no omitempty) and rejects an
 				// empty string with `[INVALID_CONTENT] timezone: Not a valid
 				// timezone`. Required blocks null; LengthAtLeast(1) blocks "".
-				// We do not validate IANA validity client-side — the server is
-				// Java TimeZone, whose accepted zone set need not match Go's
-				// tzdata, so we let the server adjudicate and surface its error.
+				// IANA validity is checked plan-time by the shared
+				// validators.IANATimeZone() (Go's embedded tzdata — see its doc
+				// comment for the wire-probe evidence on why tzdata, not the
+				// curated /v1/time-zones list, is the gate).
 				MarkdownDescription: "**\"Time Zone\"** in the Jamf Pro admin UI (e.g. `\"America/Chicago\"`). Required by the Jamf Pro API — must be a valid IANA time-zone identifier and may not be empty.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
-					validTimezone(),
+					validators.IANATimeZone(),
 				},
 			},
 			"language": optString("Default Setup Assistant language (ISO-639 code, e.g. `\"en\"`). Invalid values are silently coerced to empty by Jamf Pro."),

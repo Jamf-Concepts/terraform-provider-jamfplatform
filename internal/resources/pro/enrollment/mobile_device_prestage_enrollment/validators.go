@@ -5,13 +5,6 @@ package mobile_device_prestage_enrollment
 
 import (
 	"context"
-	"fmt"
-	"time"
-	// Embed the IANA tz database so timezone validation is deterministic
-	// regardless of whether the host (or Terraform Cloud runner) ships system
-	// zoneinfo. Without this, a host missing zoneinfo would make
-	// time.LoadLocation fail for EVERY zone and false-reject valid configs.
-	_ "time/tzdata"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -23,59 +16,10 @@ import (
 // silently nulls the value (§F11); the validator surfaces it at plan time.
 const minEnforcedTemporarySessionTimeout = 30
 
-// validTimezone checks that timezone is a real IANA identifier, validating
-// against Go's embedded IANA tz database (time.LoadLocation).
-//
-// Why this source: the Jamf Pro create/update endpoints accept IANA
-// identifiers. We verified "UTC" is accepted even though it is ABSENT from the
-// `/api/pro/v1/time-zones` UI-dropdown list — that endpoint is a curated
-// subset, not the create-validation set, so it can't serve as the authoritative
-// gate. Go's tz database is the canonical IANA source and the closest
-// freely-available proxy to the server's Java TimeZone set.
-//
-// Caveat: Java accepts a handful of legacy aliases the IANA database omits
-// (e.g. "PST"); those would be rejected here. The Jamf UI steers users to
-// region IDs ("America/Los_Angeles"), so this is a narrow edge. LoadLocation
-// also falsely accepts "" (→ UTC) and "Local" (→ host local zone); both are
-// rejected explicitly (empty is left to LengthAtLeast(1) for a clearer error).
-func validTimezone() validator.String {
-	return validTimezoneValidator{}
-}
-
-type validTimezoneValidator struct{}
-
-func (validTimezoneValidator) Description(_ context.Context) string {
-	return `timezone must be a valid IANA time-zone identifier (e.g. "America/Chicago", "UTC").`
-}
-
-func (v validTimezoneValidator) MarkdownDescription(ctx context.Context) string {
-	return v.Description(ctx)
-}
-
-func (validTimezoneValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-	zone := req.ConfigValue.ValueString()
-	if zone == "" {
-		return // LengthAtLeast(1) reports empty with a clearer message.
-	}
-	if zone == "Local" {
-		resp.Diagnostics.AddAttributeError(
-			req.Path,
-			"Invalid time zone",
-			`"Local" is a Go-specific alias for the host's zone, not a valid Jamf Pro time zone; supply a specific IANA identifier such as "America/Chicago" or "UTC".`,
-		)
-		return
-	}
-	if _, err := time.LoadLocation(zone); err != nil {
-		resp.Diagnostics.AddAttributeError(
-			req.Path,
-			"Invalid time zone",
-			fmt.Sprintf("%q is not a valid IANA time-zone identifier. Use a value such as \"America/Chicago\" or \"UTC\".", zone),
-		)
-	}
-}
+// The IANA timezone validator formerly defined here was promoted to the shared
+// package as validators.IANATimeZone() (internal/common/validators/timezone.go)
+// when the Jamf Teacher settings resource became its second consumer; the probe
+// evidence travelled with it.
 
 // singleNameRequiresSingleDeviceName fires when names.assign_names_using is
 // "Single Name" but names.single_device_name is empty. Provider-side courtesy
