@@ -70,6 +70,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/dock_item"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/ibeacon"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/icon"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/inventory_preload_record"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/licensed_software"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/mobile_device_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segment"
@@ -334,6 +335,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		mobile_device_enrollment_profile.NewEnrollmentProfileResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
+		inventory_preload_record.NewInventoryPreloadRecordResource,
 		licensed_software.NewLicensedSoftwareResource,
 		app_installer.NewAppInstallerResource,
 		ebook.NewEbookResource,
@@ -427,6 +429,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileDataSource,
 		ibeacon.NewIbeaconDataSource,
+		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
 		app_installer.NewAppInstallerDataSource,
 		app_installers.NewAppInstallersDataSource,
@@ -513,6 +516,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileListResource,
 		ibeacon.NewIbeaconListResource,
+		inventory_preload_record.NewInventoryPreloadRecordListResource,
 		json_web_token_configuration.NewJSONWebTokenConfigurationListResource,
 		licensed_software.NewLicensedSoftwareListResource,
 		app_installer.NewAppInstallerListResource,
