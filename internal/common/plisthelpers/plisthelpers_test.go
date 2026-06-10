@@ -124,3 +124,130 @@ func TestSemanticallyEqual(t *testing.T) {
 		t.Error("non-plist input should report ok=false")
 	}
 }
+
+func TestCompactStructuralWhitespace_PrettyPrintedArraysCollapsed(t *testing.T) {
+	// com.apple.homescreenlayout shape: Pages is an array of arrays, plus a
+	// Folder holding its own Pages array-of-arrays — nested arrays at two
+	// depths, all pretty-printed. Every structural gap must vanish; the
+	// double space inside the <string> value must survive.
+	in := `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Pages</key>
+	<array>
+		<array>
+			<dict>
+				<key>displayName</key>
+				<string>App  Name</string>
+				<key>Pages</key>
+				<array>
+					<array/>
+					<array></array>
+				</array>
+			</dict>
+		</array>
+		<array/>
+	</array>
+</dict>
+</plist>
+`
+	want := `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Pages</key><array><array><dict><key>displayName</key><string>App  Name</string><key>Pages</key><array><array/><array></array></array></dict></array><array/></array></dict></plist>`
+	got, err := CompactStructuralWhitespace([]byte(in))
+	if err != nil {
+		t.Fatalf("compact: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("compact mismatch:\ngot:  %s\nwant: %s", got, want)
+	}
+	// Compaction must be semantics-preserving.
+	if eq, ok := SemanticallyEqual([]byte(in), got); !ok || !eq {
+		t.Errorf("compacted output not semantically equal to input (eq=%v ok=%v)", eq, ok)
+	}
+}
+
+func TestCompactStructuralWhitespace_AlreadyCompactNoOp(t *testing.T) {
+	in := `<plist version="1.0"><dict><key>K</key><array><array/></array></dict></plist>`
+	got, err := CompactStructuralWhitespace([]byte(in))
+	if err != nil {
+		t.Fatalf("compact: %v", err)
+	}
+	if string(got) != in {
+		t.Errorf("already-compact input changed:\ngot:  %s\nwant: %s", got, in)
+	}
+}
+
+func TestCompactStructuralWhitespace_EmptyInputNoOp(t *testing.T) {
+	got, err := CompactStructuralWhitespace(nil)
+	if err != nil {
+		t.Fatalf("compact: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("empty input: got %q", got)
+	}
+}
+
+func TestCompactStructuralWhitespace_LeafContentUntouched(t *testing.T) {
+	// Whitespace, newlines, base64 line-wraps, and unicode inside leaf value
+	// elements are content, not formatting — byte-for-byte preservation.
+	leaves := []string{
+		"<string>   </string>",                                  // whitespace-only string value
+		"<string>line one\n\tline two</string>",                 // embedded newline + tab
+		"<key>a b</key>",                                        // key with a space
+		"<string>TUlJQ2x6Q0NBWA==\nTUlJQ2x6Q0NBWA==\n</string>", // line-wrapped base64
+		"<data>\n\tTUlJQ2x6Q0NBWA==\n</data>",                   // wrapped <data> blob
+		"<string>émoji 🎉 — ünïcode</string>",                    // unicode
+	}
+	for _, leaf := range leaves {
+		in := "<plist version=\"1.0\">\n<dict>\n\t<key>K</key>\n\t" + leaf + "\n</dict>\n</plist>"
+		want := `<plist version="1.0"><dict><key>K</key>` + leaf + `</dict></plist>`
+		// <key>a b</key> is the dict key itself, not a value — adjust shape.
+		if leaf == "<key>a b</key>" {
+			in = "<plist version=\"1.0\">\n<dict>\n\t" + leaf + "\n\t<string>v</string>\n</dict>\n</plist>"
+			want = `<plist version="1.0"><dict>` + leaf + `<string>v</string></dict></plist>`
+		}
+		got, err := CompactStructuralWhitespace([]byte(in))
+		if err != nil {
+			t.Fatalf("%s: compact: %v", leaf, err)
+		}
+		if string(got) != want {
+			t.Errorf("%s:\ngot:  %s\nwant: %s", leaf, got, want)
+		}
+	}
+}
+
+func TestCompactStructuralWhitespace_CommentsAndCDATAPreserved(t *testing.T) {
+	in := "<plist version=\"1.0\">\n<dict>\n\t<!-- keep </array> me -->\n\t<key>K</key>\n\t<string><![CDATA[  raw <array> bytes  ]]></string>\n\t<key>W</key>\n\t<array><![CDATA[  ]]></array>\n</dict>\n</plist>"
+	want := `<plist version="1.0"><dict><!-- keep </array> me --><key>K</key><string><![CDATA[  raw <array> bytes  ]]></string><key>W</key><array><![CDATA[  ]]></array></dict></plist>`
+	got, err := CompactStructuralWhitespace([]byte(in))
+	if err != nil {
+		t.Fatalf("compact: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("comment/CDATA handling:\ngot:  %s\nwant: %s", got, want)
+	}
+}
+
+func TestCompactStructuralWhitespace_CharacterReferenceWhitespacePreserved(t *testing.T) {
+	// &#x20; decodes to a space (whitespace CharData token) but the raw bytes
+	// are not whitespace — must survive verbatim.
+	in := `<plist version="1.0"><dict><key>K</key><array>&#x20;</array></dict></plist>`
+	got, err := CompactStructuralWhitespace([]byte(in))
+	if err != nil {
+		t.Fatalf("compact: %v", err)
+	}
+	if string(got) != in {
+		t.Errorf("character reference stripped:\ngot:  %s\nwant: %s", got, in)
+	}
+}
+
+func TestCompactStructuralWhitespace_MalformedReturnsInputAndError(t *testing.T) {
+	in := `<plist><dict><key>K</key></dict>` // unclosed <plist>
+	got, err := CompactStructuralWhitespace([]byte(in))
+	if err == nil {
+		t.Fatal("expected error on malformed XML")
+	}
+	if string(got) != in {
+		t.Errorf("malformed input must be returned unchanged, got %q", got)
+	}
+}

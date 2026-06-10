@@ -4,6 +4,7 @@
 package payloadhelpers
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -470,5 +471,53 @@ func TestNormalizeBase64InString_NewlineNotBase64Unchanged(t *testing.T) {
 	in := "This is a multi-line description\nthat continues onto a second line\nand even a third for good measure."
 	if got := normalizeBase64InString(in); got != in {
 		t.Errorf("multi-line non-base64 text mutated: got %q want %q", got, in)
+	}
+}
+
+func TestPrepareWirePayload_CreatePathCompactsOnly(t *testing.T) {
+	// Create path: empty identifiers skip injection, but structural
+	// whitespace still gets compacted before send.
+	in := "<plist version=\"1.0\">\n<dict>\n\t<key>Pages</key>\n\t<array>\n\t\t<array/>\n\t</array>\n</dict>\n</plist>\n"
+	want := `<plist version="1.0"><dict><key>Pages</key><array><array/></array></dict></plist>`
+	got, err := PrepareWirePayload([]byte(in), "", "")
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if string(got) != want {
+		t.Errorf("create-path compaction:\ngot:  %s\nwant: %s", got, want)
+	}
+}
+
+func TestPrepareWirePayload_UpdatePathInjectsAndCompacts(t *testing.T) {
+	in := "<dict>\n\t<key>PayloadUUID</key>\n\t<string>OLD</string>\n\t<key>A</key>\n\t<array>\n\t\t<array/>\n\t</array>\n</dict>\n"
+	got, err := PrepareWirePayload([]byte(in), "server-uuid", "server-id")
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	parsed, _, err := plisthelpers.ParsePlist(got)
+	if err != nil {
+		t.Fatalf("reparse: %v", err)
+	}
+	if parsed["PayloadUUID"] != "server-uuid" || parsed["PayloadIdentifier"] != "server-id" {
+		t.Errorf("identifiers not injected: %v / %v", parsed["PayloadUUID"], parsed["PayloadIdentifier"])
+	}
+	// Injection re-serialises pretty-printed; compaction must have removed
+	// every structural gap the re-serialise introduced.
+	if bytes.Contains(got, []byte(">\n")) || bytes.Contains(got, []byte("\t<")) {
+		t.Errorf("structural whitespace survived: %s", got)
+	}
+}
+
+func TestPrepareWirePayload_MalformedCreatePassesThrough(t *testing.T) {
+	// Create path with non-XML content: injection is skipped (empty ids) and
+	// compaction falls back to the original bytes — server reports the
+	// malformation.
+	in := []byte("<dict><key>unclosed")
+	got, err := PrepareWirePayload(in, "", "")
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if !bytes.Equal(got, in) {
+		t.Errorf("malformed create payload mutated: got %q", got)
 	}
 }

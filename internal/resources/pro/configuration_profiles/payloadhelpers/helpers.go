@@ -372,6 +372,32 @@ func InjectTopLevelIdentifierValues(newPayload []byte, uuid, identifier string) 
 	return buf.Bytes(), nil
 }
 
+// PrepareWirePayload produces the payload bytes a configuration-profile
+// resource actually sends to the Classic API: server-canonical identifier
+// injection (InjectTopLevelIdentifierValues) followed by structural-whitespace
+// compaction (plisthelpers.CompactStructuralWhitespace).
+//
+// Compaction exists because the Classic API's server-side plist parser
+// materialises whitespace text nodes between sibling <array> tags as phantom
+// empty <array/> entries in the stored plist (wire-probed against
+// JSSResource/mobiledeviceconfigurationprofiles, 2026-06-10). It must run
+// after identifier injection — that step re-serialises the plist
+// pretty-printed, reintroducing the whitespace.
+//
+// Compaction is best-effort: when the payload is not well-formed XML the
+// uncompacted bytes are returned so the server reports the malformation with
+// its own error.
+func PrepareWirePayload(newPayload []byte, uuid, identifier string) ([]byte, error) {
+	prepared, err := InjectTopLevelIdentifierValues(newPayload, uuid, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if compacted, cErr := plisthelpers.CompactStructuralWhitespace(prepared); cErr == nil {
+		prepared = compacted
+	}
+	return prepared, nil
+}
+
 // InjectTopLevelIdentifiers is the existingPayload-based wrapper used by
 // unit tests. CRUD callers use InjectTopLevelIdentifierValues directly so
 // they can pass server-canonical identifiers sourced from state.General.UUID.
