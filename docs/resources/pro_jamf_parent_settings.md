@@ -78,15 +78,15 @@ resource "jamfplatform_pro_jamf_parent_settings" "example" {
 
 ### Required
 
-- `device_group_id` (Number) **"Student Device Group"** — id of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. The server rejects unknown or non-mobile group ids with a 400. Required — the Jamf Pro API rejects every write that omits it.
-- `restricted_times` (Attributes Map) **"Jamf Parent App Restrictions"** — per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are sent and stored — the server keeps exactly the present keys (no zero-fill). An empty map (`{}`) means no restrictions. Required — the Jamf Pro API rejects every write that omits it. (see [below for nested schema](#nestedatt--restricted_times))
-- `timezone` (String) **"Time Zone"** the restricted times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `"Europe/London"`). Required — the Jamf Pro API rejects every write that omits it.
+- `device_group_id` (Number) **"Student Device Group"** — id of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. Jamf Pro rejects ids that do not belong to an existing mobile device group.
+- `restricted_times` (Attributes Map) **"Jamf Parent App Restrictions"** — per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are stored — Jamf Pro keeps exactly the days present in the map. An empty map (`{}`) means no restrictions. (see [below for nested schema](#nestedatt--restricted_times))
+- `timezone` (String) **"Time Zone"** the restricted times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `"Europe/London"`).
 
 ### Optional
 
 - `allow_clear_passcode` (Boolean) **"Allow Jamf Parent to Clear Student Device Passcode"**. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.
 - `enabled` (Boolean) Allow limited management of students' devices by parents or guardians using Jamf Parent. Matches the page's enable checkbox. Disabling does not clear the other settings. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.
-- `revoke_on_wipe_and_re_enroll` (Boolean) **"Revoke Jamf Parent management capabilities when wiping or re-enrolling"** (wire field `disassociateOnWipeAndReEnroll` — renamed to match the UI). Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.
+- `revoke_on_wipe_and_re_enroll` (Boolean) **"Revoke Jamf Parent management capabilities when wiping or re-enrolling"**. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.
 - `safelisted_apps` (Attributes Set) Apps students can always use, even while restricted (**Safelisted Apps** tab). Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them. (see [below for nested schema](#nestedatt--safelisted_apps))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

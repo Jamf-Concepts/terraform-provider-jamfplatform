@@ -125,7 +125,7 @@ func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.Sc
 				// validators.IANATimeZone() (Go's embedded tzdata; see its doc
 				// comment for why tzdata, not the curated /v1/time-zones list,
 				// is the gate).
-				MarkdownDescription: "**\"Time Zone\"** the restricted times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `\"Europe/London\"`). Required — the Jamf Pro API rejects every write that omits it.",
+				MarkdownDescription: "**\"Time Zone\"** the restricted times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `\"Europe/London\"`).",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -139,7 +139,7 @@ func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.Sc
 				// carve-out. The server validates the id against existing
 				// MOBILE device groups (a computer-group id gets the same 400),
 				// so no provider preflight is added: the 4xx is the contract.
-				MarkdownDescription: "**\"Student Device Group\"** — id of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. The server rejects unknown or non-mobile group ids with a 400. Required — the Jamf Pro API rejects every write that omits it.",
+				MarkdownDescription: "**\"Student Device Group\"** — id of the mobile device group (smart or static) whose members Jamf Parent can manage; the group also drives QR-code distribution in Self Service. Jamf Pro rejects ids that do not belong to an existing mobile device group.",
 				Required:            true,
 			},
 			"restricted_times": schema.MapNestedAttribute{
@@ -149,7 +149,7 @@ func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.Sc
 				// restrictions. Map keys are server-enforced strict-UPPERCASE
 				// java.time.DayOfWeek names (lowercase/unknown → 400), pinned
 				// plan-time by the KeysAre validator below.
-				MarkdownDescription: "**\"Jamf Parent App Restrictions\"** — per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are sent and stored — the server keeps exactly the present keys (no zero-fill). An empty map (`{}`) means no restrictions. Required — the Jamf Pro API rejects every write that omits it.",
+				MarkdownDescription: "**\"Jamf Parent App Restrictions\"** — per-day Start/End times during which parents can restrict student devices, keyed by uppercase day name (`MONDAY` … `SUNDAY`). Only the days you declare are stored — Jamf Pro keeps exactly the days present in the map. An empty map (`{}`) means no restrictions.",
 				Required:            true,
 				Validators: []validator.Map{
 					mapvalidator.KeysAre(stringvalidator.OneOf(restrictedTimesDayKeys...)),
@@ -185,7 +185,10 @@ func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.Sc
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"revoke_on_wipe_and_re_enroll": schema.BoolAttribute{
-				MarkdownDescription: "**\"Revoke Jamf Parent management capabilities when wiping or re-enrolling\"** (wire field `disassociateOnWipeAndReEnroll` — renamed to match the UI). Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.",
+				// UI-aligned rename of the wire field
+				// disassociateOnWipeAndReEnroll (STYLE_GUIDE §Attribute names
+				// mirror the Jamf Pro admin UI).
+				MarkdownDescription: "**\"Revoke Jamf Parent management capabilities when wiping or re-enrolling\"**. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},

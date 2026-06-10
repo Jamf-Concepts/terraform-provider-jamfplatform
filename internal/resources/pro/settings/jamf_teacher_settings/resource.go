@@ -116,7 +116,7 @@ func (r *JamfTeacherSettingsResource) Schema(ctx context.Context, req resource.S
 				// validators.IANATimeZone() (Go's embedded tzdata; see its doc
 				// comment for why tzdata, not the curated /v1/time-zones list,
 				// is the gate).
-				MarkdownDescription: "**\"Time Zone\"** the restriction times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `\"Europe/London\"`). Required — the Jamf Pro API rejects every write that omits it.",
+				MarkdownDescription: "**\"Time Zone\"** the restriction times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `\"Europe/London\"`).",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -136,7 +136,7 @@ func (r *JamfTeacherSettingsResource) Schema(ctx context.Context, req resource.S
 				// No bounds validator: the server enforces none (accepts -1, 0
 				// and values beyond the UI maximum — wire-probed 2026-06-10),
 				// so the UI range is documentation only.
-				MarkdownDescription: "**\"Maximum Restriction Time\"** — the longest a teacher can restrict student devices for, in seconds (the UI captures hours and minutes; the wire unit is seconds). The UI exposes 0 to 28740 (7 h 59 min), but the API accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear — set a concrete value to change it.",
+				MarkdownDescription: "**\"Maximum Restriction Time\"** — the longest a teacher can restrict student devices for (the page captures hours and minutes; this attribute takes the total in seconds). The page exposes 0 to 28740 (7 h 59 min), but Jamf Pro accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear — set a concrete value to change it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
