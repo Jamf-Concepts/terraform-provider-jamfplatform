@@ -65,12 +65,12 @@ resource "jamfplatform_pro_jamf_teacher_settings" "example" {
 
 ### Required
 
-- `timezone` (String) **"Time Zone"** the restriction times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `"Europe/London"`). Required — the Jamf Pro API rejects every write that omits it.
+- `timezone` (String) **"Time Zone"** the restriction times are evaluated in (the UI offers a Region + Time Zone picker; this attribute takes the single IANA identifier, e.g. `"Europe/London"`).
 
 ### Optional
 
 - `enabled` (Boolean) Allow limited management of students' devices by Jamf Teacher. Matches the page's enable checkbox. Disabling does not clear the other settings. Omit to leave the current value untouched (it is not flipped on update); set `true`/`false` to change it.
-- `maximum_restriction_time_seconds` (Number) **"Maximum Restriction Time"** — the longest a teacher can restrict student devices for, in seconds (the UI captures hours and minutes; the wire unit is seconds). The UI exposes 0 to 28740 (7 h 59 min), but the API accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear — set a concrete value to change it.
+- `maximum_restriction_time_seconds` (Number) **"Maximum Restriction Time"** — the longest a teacher can restrict student devices for (the page captures hours and minutes; this attribute takes the total in seconds). The page exposes 0 to 28740 (7 h 59 min), but Jamf Pro accepts any integer, so no bounds are enforced here. Omit to leave the current value untouched; an integer has no blank-clear — set a concrete value to change it.
 - `restrictions_end_time` (String) **"Restrictions End Time"** — time at which all restrictions set by Jamf Teacher are cleared from student devices, as a 24-hour `HH:MM:SS` time (e.g. `"17:30:00"`). Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `safelisted_apps` (Attributes Set) Apps students can always use, even while restricted (**Safelisted Apps** tab). Safelisting more than one app prevents teachers from enabling Single App Mode; safelisting exactly one app lets teachers lock student devices to it. Omit to leave any existing entries untouched (they are not cleared on update); set to `[]` to clear them. (see [below for nested schema](#nestedatt--safelisted_apps))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
