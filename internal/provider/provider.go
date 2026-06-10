@@ -111,6 +111,9 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/json_web_token_configuration"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/venafi"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/re_enrollment_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_branding_image"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_branding_ios"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_branding_macos"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_macos_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/smtp_server"
@@ -378,6 +381,9 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		jamf_teacher_settings.NewJamfTeacherSettingsResource,
 		login_page.NewLoginPageSettingsResource,
 		mdm_profile_settings.NewMDMProfileSettingsResource,
+		self_service_branding_image.NewSelfServiceBrandingImageResource,
+		self_service_branding_ios.NewSelfServiceBrandingIosResource,
+		self_service_branding_macos.NewSelfServiceBrandingMacosResource,
 		self_service_macos_settings.NewSelfServiceMacosSettingsResource,
 		smtp_server.NewSmtpServerResource,
 		site.NewSiteResource,
@@ -473,6 +479,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		jamf_protect.NewJamfProtectPlansDataSource,
 		login_page.NewLoginPageSettingsDataSource,
 		mdm_profile_settings.NewMDMProfileSettingsDataSource,
+		self_service_branding_ios.NewSelfServiceBrandingIosDataSource,
+		self_service_branding_macos.NewSelfServiceBrandingMacosDataSource,
 		self_service_macos_settings.NewSelfServiceMacosSettingsDataSource,
 		smtp_server.NewSmtpServerDataSource,
 		patch_external_source.NewPatchExternalSourceDataSource,
