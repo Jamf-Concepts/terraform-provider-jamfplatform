@@ -8,6 +8,7 @@ package self_service_macos_settings_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -17,6 +18,12 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
+
+// samlEnvVar gates the Saml acceptance test: authentication_type = "Saml" writes through to
+// the tenant's Single Sign-On settings ("Single Sign-On for Self Service for macOS") and is
+// rejected with PREREQUISITE_NOT_MET unless SAML is available for macOS on the tenant. Set
+// to any non-empty value to opt in on a tenant where that is true.
+const samlEnvVar = "JAMFPLATFORM_ACC_SELF_SERVICE_SAML"
 
 // snapshotAndRestoreSettings captures the tenant's live Self Service settings before the
 // test mutates them and restores the snapshot when the test finishes (pass or fail), so
@@ -55,10 +62,13 @@ func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
 }
 
 // TestAccResource_ProSelfServiceMacosSettings_Basic drives every attribute across two Update
-// steps against a real tenant, covering both values of each enum that needs no fixture
-// (BROWSE + category id has its own test). Singleton resources have no remote Delete, so
-// CheckDestroy verifies the record PERSISTS after Terraform stops managing it; the snapshot
-// helper then restores the tenant's original settings.
+// steps against a real tenant, covering each enum value that needs no fixture or tenant
+// prerequisite (BROWSE + category id has its own test; "Saml" is gated behind samlEnvVar —
+// it writes through to the tenant's SSO settings and 400s when SAML is unavailable for
+// macOS). fido2_enabled is exercised under Basic (wire-probed: accepted and retained inert).
+// Singleton resources have no remote Delete, so CheckDestroy verifies the record PERSISTS
+// after Terraform stops managing it; the snapshot helper then restores the tenant's
+// original settings.
 func TestAccResource_ProSelfServiceMacosSettings_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	snapshotAndRestoreSettings(t)
@@ -106,7 +116,7 @@ func TestAccResource_ProSelfServiceMacosSettings_Basic(t *testing.T) {
 						install_automatically               = false
 						install_location                    = "/Applications"
 						login_method                        = "Required"
-						authentication_type                 = "Saml"
+						authentication_type                 = "Basic"
 						keychain_credential_storage_enabled = false
 						fido2_enabled                       = true
 						notifications_enabled               = false
@@ -119,7 +129,6 @@ func TestAccResource_ProSelfServiceMacosSettings_Basic(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(addr, "install_automatically", "false"),
 					resource.TestCheckResourceAttr(addr, "login_method", "Required"),
-					resource.TestCheckResourceAttr(addr, "authentication_type", "Saml"),
 					resource.TestCheckResourceAttr(addr, "keychain_credential_storage_enabled", "false"),
 					resource.TestCheckResourceAttr(addr, "fido2_enabled", "true"),
 					resource.TestCheckResourceAttr(addr, "notifications_enabled", "false"),
@@ -141,7 +150,7 @@ func TestAccResource_ProSelfServiceMacosSettings_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(addr, "default_landing_page", "NOTIFICATIONS"),
 					// Omitted fields preserved from the previous step (omit = preserve).
 					resource.TestCheckResourceAttr(addr, "bookmarks_display_name", "Websites"),
-					resource.TestCheckResourceAttr(addr, "authentication_type", "Saml"),
+					resource.TestCheckResourceAttr(addr, "authentication_type", "Basic"),
 				),
 			},
 			{
@@ -152,6 +161,80 @@ func TestAccResource_ProSelfServiceMacosSettings_Basic(t *testing.T) {
 				ImportStateVerifyIgnore: []string{
 					"timeouts",
 				},
+			},
+		},
+	})
+}
+
+// TestAccResource_ProSelfServiceMacosSettings_Saml exercises the SSO authentication type and
+// the login_method → NotRequired coercion. Gated behind samlEnvVar: setting "Saml" WRITES
+// THROUGH to the tenant's Single Sign-On settings (enables "Single Sign-On for Self Service
+// for macOS"; "Basic" disables it) and is rejected with 400 PREREQUISITE_NOT_MET on tenants
+// where SAML is not available for macOS. The snapshot restore puts the original
+// authentication type back, which also restores the SSO toggle.
+func TestAccResource_ProSelfServiceMacosSettings_Saml(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	if os.Getenv(samlEnvVar) == "" {
+		t.Skipf("%s not set; skipping Saml acceptance test (writes through to tenant SSO settings and requires SAML available for macOS)", samlEnvVar)
+	}
+	snapshotAndRestoreSettings(t)
+
+	const addr = "jamfplatform_pro_self_service_macos_settings.test"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkSingletonRecordStillExists(t),
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_self_service_macos_settings" "test" {
+						login_method        = "Required"
+						authentication_type = "Saml"
+						fido2_enabled       = true
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "login_method", "Required"),
+					resource.TestCheckResourceAttr(addr, "authentication_type", "Saml"),
+					resource.TestCheckResourceAttr(addr, "fido2_enabled", "true"),
+				),
+			},
+			{
+				// Disable user login while "Saml" rides in via UseStateForUnknown: the server
+				// keeps the write but coerces the stored authentication type back to Basic.
+				// ModifyPlan must predict this (plan Unknown) or the apply fails with
+				// "inconsistent result after apply" — the regression behind this test.
+				Config: `
+					resource "jamfplatform_pro_self_service_macos_settings" "test" {
+						login_method = "NotRequired"
+					}
+				`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "login_method", "NotRequired"),
+					resource.TestCheckResourceAttr(addr, "authentication_type", "Basic"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProSelfServiceMacosSettings_RejectsSamlWithoutLogin verifies the plan-time
+// ConfigValidator rejects authentication_type = "Saml" declared together with login_method =
+// "NotRequired" (both fields explicitly declared). Plan-time only — no tenant writes.
+func TestAccResource_ProSelfServiceMacosSettings_RejectsSamlWithoutLogin(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+					resource "jamfplatform_pro_self_service_macos_settings" "test" {
+						login_method        = "NotRequired"
+						authentication_type = "Saml"
+					}
+				`,
+				ExpectError: regexp.MustCompile(`Single Sign-On requires user login`),
 			},
 		},
 	})

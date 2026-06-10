@@ -16,11 +16,12 @@ import (
 // returns HTTP 500. So the payload always carries all three groups with every field set.
 //
 // Every attribute is Optional+Computed with UseStateForUnknown. For each, a known plan value
-// (declared, or USFU-carried on update) is sent; an unknown/null plan value (a field omitted
-// on first create, where there is no prior state) falls back to the value read from the live
-// settings (current) — adopting the existing singleton rather than resetting it. On update
-// current is nil — UseStateForUnknown has already made every omitted field a known prior
-// value, so the fallbacks are never consulted.
+// (declared, or USFU-carried on update) is sent; an unknown/null plan value falls back to
+// the value read from the live settings (current) — adopting the existing singleton rather
+// than resetting it. Both Create and Update supply a live merge base: on create every
+// undeclared field is null (no prior state); on update the only unknown is the one ModifyPlan
+// introduces (authentication_type on a login_method → NotRequired transition), which must
+// round-trip the live server value.
 func buildSelfServiceMacosSettingsInput(plan SelfServiceMacosSettingsResourceModel, current *pro.SelfServiceSettings) *pro.SelfServiceSettings {
 	var curInstall pro.SelfServiceInstallSettings
 	var curLogin pro.SelfServiceLoginSettings
