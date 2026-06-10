@@ -245,51 +245,8 @@ func TestTemporarySessionTimeoutMinimum_DefersWhenEnforceUnknown(t *testing.T) {
 	}
 }
 
-// runValidTimezone invokes validTimezone() against a single ConfigValue and
-// returns the diagnostics. validTimezone reads only req.ConfigValue (no
-// companion lookups), so no synthesised config is needed.
-func runValidTimezone(v types.String) []string {
-	resp := &validator.StringResponse{}
-	validTimezone().ValidateString(context.Background(), validator.StringRequest{
-		Path:        path.Root("timezone"),
-		ConfigValue: v,
-	}, resp)
-	out := []string{}
-	for _, d := range resp.Diagnostics {
-		out = append(out, d.Summary())
-	}
-	return out
-}
-
-func TestValidTimezone(t *testing.T) {
-	tests := []struct {
-		name    string
-		value   types.String
-		wantErr bool
-	}{
-		{"UTC accepted (absent from /v1/time-zones but create-valid)", types.StringValue("UTC"), false},
-		{"region id", types.StringValue("America/Chicago"), false},
-		{"Etc/UTC", types.StringValue("Etc/UTC"), false},
-		{"GMT", types.StringValue("GMT"), false},
-		{"typo rejected", types.StringValue("America/Chicagoo"), true},
-		{"garbage rejected", types.StringValue("garbage"), true},
-		{"Go-only Local alias rejected", types.StringValue("Local"), true},
-		{"empty deferred to LengthAtLeast", types.StringValue(""), false},
-		{"null skipped", types.StringNull(), false},
-		{"unknown skipped", types.StringUnknown(), false},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := runValidTimezone(tc.value)
-			if tc.wantErr && len(got) == 0 {
-				t.Fatalf("expected a validation error, got none")
-			}
-			if !tc.wantErr && len(got) != 0 {
-				t.Fatalf("expected no error, got %v", got)
-			}
-		})
-	}
-}
+// The timezone validator tests moved to internal/common/validators/timezone_test.go
+// alongside the promoted validators.IANATimeZone().
 
 // --- multiUserRequiresPreventActivationLock --------------------------------
 
