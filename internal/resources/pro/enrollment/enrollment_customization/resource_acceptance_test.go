@@ -744,7 +744,7 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_SsoToLdap(t *tes
 }
 
 // TestAccResource_ProEnrollmentCustomization_DuplicateDisplayName_Rejection
-// asserts UniqueDisplayNameValidator rejects two text panes that share a
+// asserts the shared unique-display_name validator rejects two text panes that share a
 // display_name at plan time.
 func TestAccResource_ProEnrollmentCustomization_DuplicateDisplayName_Rejection(t *testing.T) {
 	testhelpers.AccPreCheck(t)

@@ -50,7 +50,8 @@ internal/
 │   ├── ldapgroups/    # Directory-service (LDAP / cloud-IdP) group resolution + scope preflight validation
 │   ├── planmodifiers/ # Shared Terraform Plugin Framework plan modifiers
 │   ├── plisthelpers/  # Generic plist (Apple property list) parsing / normalisation helpers
-│   └── scope/         # Classic scope sub-block factories + builders + validators (see STYLE_GUIDE §Scope helper)
+│   ├── scope/         # Classic scope sub-block factories + builders + validators (see STYLE_GUIDE §Scope helper)
+│   └── validators/    # Shared Terraform Plugin Framework validators (unique-string-field across collections)
 └── testhelpers/       # Acceptance fixtures (provider factories, real client, mock server)
 tools/                 # go:generate entrypoint (copywrite, terraform fmt, tfplugindocs)
 testing/               # Terraform-native integration tests (.tftest.hcl, .tfquery.hcl)
