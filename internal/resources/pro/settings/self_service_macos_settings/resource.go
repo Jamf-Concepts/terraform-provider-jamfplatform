@@ -170,7 +170,10 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 					"\"Login method\" dropdown map to this single value. " +
 					"`NotRequired` — user login is disabled; `Anonymous` — users may log in to view items available to them " +
 					"(login optional); `Required` — users must log in. " +
-					"Setting `NotRequired` makes Jamf Pro revert a stored `Saml` authentication type to `Basic`. " +
+					"Setting `NotRequired` while the authentication type is `Saml` makes Jamf Pro revert it to `Basic` " +
+					"and disable \"Single Sign-On for Self Service for macOS\" in the tenant's Single Sign-On settings " +
+					"(`jamfplatform_pro_sso_settings.sso_for_macos_self_service_enabled`) — the one write on this page " +
+					"that reaches outside it. " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,
@@ -184,12 +187,11 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 			"authentication_type": schema.StringAttribute{
 				MarkdownDescription: "Login type used when asking users to log in (\"Authentication type\"). " +
 					"`Basic` — Directory Service account or Jamf Pro user account; `Saml` — Single Sign-On. " +
-					"**Setting this via the API writes through to Single Sign-On settings**: `Saml` enables " +
-					"\"Single Sign-On for Self Service for macOS\" (`jamfplatform_pro_sso_settings` attribute " +
-					"`sso_for_macos_self_service_enabled`) and `Basic` disables it — keep one Terraform owner for that " +
-					"toggle to avoid the two resources fighting. Switching to `Saml` requires SAML to be available for " +
-					"macOS on the tenant; Jamf Pro otherwise rejects the write (PREREQUISITE_NOT_MET). " +
-					"Requires `login_method` `Anonymous` or `Required` — with login disabled the server reverts to `Basic`. " +
+					"Setting `Saml` requires \"Single Sign-On for Self Service for macOS\" to be enabled in the tenant's " +
+					"Single Sign-On settings (`jamfplatform_pro_sso_settings` attribute `sso_for_macos_self_service_enabled`); " +
+					"Jamf Pro otherwise rejects the write (PREREQUISITE_NOT_MET). " +
+					"Requires `login_method` `Anonymous` or `Required` — disabling user login makes the server revert this " +
+					"to `Basic` **and switch that Single Sign-On toggle off** (wire-probed; see `login_method`). " +
 					"Omit to leave the current value untouched.",
 				Optional: true,
 				Computed: true,

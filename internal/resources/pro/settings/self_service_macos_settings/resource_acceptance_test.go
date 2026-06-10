@@ -19,11 +19,29 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
-// samlEnvVar gates the Saml acceptance test: authentication_type = "Saml" writes through to
-// the tenant's Single Sign-On settings ("Single Sign-On for Self Service for macOS") and is
-// rejected with PREREQUISITE_NOT_MET unless SAML is available for macOS on the tenant. Set
-// to any non-empty value to opt in on a tenant where that is true.
+// samlEnvVar gates the Saml acceptance test: authentication_type = "Saml" requires
+// "Single Sign-On for Self Service for macOS" to be enabled in the tenant's SSO settings
+// (rejected with PREREQUISITE_NOT_MET otherwise). Set to any non-empty value to opt in.
 const samlEnvVar = "JAMFPLATFORM_ACC_SELF_SERVICE_SAML"
+
+// requireSsoForMacosSelfService skips the test unless the tenant currently has
+// ssoForMacOsSelfServiceEnabled = true. The toggle cannot be enabled programmatically here:
+// a GET→flip→PUT round-trip of the SSO settings object fails server-side validation
+// ("SAML settings validation failed" — the GET echo is not re-PUT-able), so each gated run
+// needs the toggle re-enabled in the UI first. It needs re-enabling every run because the
+// test's NotRequired step makes Jamf Pro switch the toggle off (wire-probed 2026-06-10:
+// that transition is the only Self Service write that touches SSO settings).
+func requireSsoForMacosSelfService(t *testing.T) {
+	t.Helper()
+	c := pro.New(testhelpers.NewAcceptanceClient(t))
+	sso, err := c.GetSsoSettingsV3(context.Background())
+	if err != nil {
+		t.Fatalf("reading SSO settings to check the Saml prerequisite: %v", err)
+	}
+	if !sso.SsoForMacOsSelfServiceEnabled {
+		t.Skip(`"Single Sign-On for Self Service for macOS" is disabled on the tenant; enable it in Settings > Single Sign-On and re-run (the NotRequired step switches it off again, so this is per-run)`)
+	}
+}
 
 // snapshotAndRestoreSettings captures the tenant's live Self Service settings before the
 // test mutates them and restores the snapshot when the test finishes (pass or fail), so
@@ -167,16 +185,19 @@ func TestAccResource_ProSelfServiceMacosSettings_Basic(t *testing.T) {
 }
 
 // TestAccResource_ProSelfServiceMacosSettings_Saml exercises the SSO authentication type and
-// the login_method → NotRequired coercion. Gated behind samlEnvVar: setting "Saml" WRITES
-// THROUGH to the tenant's Single Sign-On settings (enables "Single Sign-On for Self Service
-// for macOS"; "Basic" disables it) and is rejected with 400 PREREQUISITE_NOT_MET on tenants
-// where SAML is not available for macOS. The snapshot restore puts the original
-// authentication type back, which also restores the SSO toggle.
+// the login_method → NotRequired coercion. Gated behind samlEnvVar plus a live prerequisite
+// check: "Saml" requires the tenant's "Single Sign-On for Self Service for macOS" toggle
+// (400 PREREQUISITE_NOT_MET otherwise). Wire-probed 2026-06-10: authType writes never touch
+// that toggle, but the NotRequired step in this test makes Jamf Pro switch it OFF alongside
+// coercing authType to Basic — the snapshot restore puts the Self Service settings back but
+// CANNOT re-enable the toggle (see requireSsoForMacosSelfService), so re-enable it in the UI
+// before each gated run.
 func TestAccResource_ProSelfServiceMacosSettings_Saml(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	if os.Getenv(samlEnvVar) == "" {
-		t.Skipf("%s not set; skipping Saml acceptance test (writes through to tenant SSO settings and requires SAML available for macOS)", samlEnvVar)
+		t.Skipf("%s not set; skipping Saml acceptance test (requires SSO for Self Service enabled on the tenant)", samlEnvVar)
 	}
+	requireSsoForMacosSelfService(t)
 	snapshotAndRestoreSettings(t)
 
 	const addr = "jamfplatform_pro_self_service_macos_settings.test"
