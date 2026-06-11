@@ -180,6 +180,12 @@ func Equal(a, b any) bool {
 			}
 		}
 		return true
+	case []uint8:
+		bv, ok := b.([]uint8)
+		if !ok {
+			return false
+		}
+		return bytes.Equal(av, bv)
 	case uint64:
 		return NumericEqual(int64(av), b)
 	case int64:

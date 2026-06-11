@@ -4,6 +4,7 @@
 package payloadhelpers
 
 import (
+	"bytes"
 	"fmt"
 	"maps"
 	"slices"
@@ -141,6 +142,12 @@ func structuralEqual(a, b any) bool {
 			return false
 		}
 		return slices.EqualFunc(av, bv, structuralEqual)
+	case []uint8:
+		bv, ok := b.([]uint8)
+		if !ok {
+			return false
+		}
+		return bytes.Equal(av, bv)
 	case uint64:
 		return plisthelpers.NumericEqual(int64(av), b)
 	case int64:
