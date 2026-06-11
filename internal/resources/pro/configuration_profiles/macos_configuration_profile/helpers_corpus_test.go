@@ -62,7 +62,17 @@ func TestMaskPayload_FullCorpus(t *testing.T) {
 			t.Logf("skip %s: extract failed: %v", stem, err)
 			continue
 		}
-		ok, err := payloadhelpers.PayloadsSemanticallyEqual(mc, srv)
+		// Route the local payload through the same wire-prep transform the
+		// resource applies before send (identifier injection is a no-op here
+		// with empty ids; structural-whitespace compaction is the part under
+		// test). This guards that un-pretty-printing the payload never breaks
+		// the semantic match against the server echo.
+		wire, err := payloadhelpers.PrepareWirePayload(mc, "", "")
+		if err != nil {
+			t.Logf("skip %s: wire-prep failed: %v", stem, err)
+			continue
+		}
+		ok, err := payloadhelpers.PayloadsSemanticallyEqual(wire, srv)
 		if err != nil {
 			t.Logf("skip %s: compare error: %v", stem, err)
 			continue
