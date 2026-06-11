@@ -153,6 +153,15 @@ The rename rule applies to all current and future Jamf Pro resources. Where an e
 
 The reference implementations for the rewritten tone are `internal/resources/pro/configuration_profiles/macos_configuration_profile/resource.go` and `internal/resources/pro/configuration_profiles/mobile_device_configuration_profile/resource.go` — copy that voice for new resources.
 
+#### Translating UI labels/presets to wire values
+
+When the UI exposes a control as a fixed dropdown of presets but the wire stores a raw value (e.g. LAPS `rotation_interval` "30 days" ↔ `2592000` seconds), model the attribute as a `OneOf` enum of the **UI labels** and own the label↔value translation in the input/state builders (a `map[label]value` + its programmatic inverse). Reference: `internal/resources/pro/settings/local_admin_password_settings/`.
+
+Two rules for these tables:
+
+- **Derive the documented value list from the same slice the `OneOf` validator uses** (a small `markdownValueList`-style helper), so the `MarkdownDescription` and the validator cannot drift apart — single source of truth, mirroring the version-const interpolation policy.
+- **Acceptance cannot verify the table.** Writing through the map and reading through its inverse round-trips *by construction*, so a wrong-but-consistent entry (`"30 days"` mapped to the wrong number) passes every unit and acceptance test silently. Anchor at least one entry to the live wire during the build, and **wire-probe the table by driving the actual admin UI** (set each preset in Jamf, GET the stored value) — the round-trip test is not a substitute. Flag any unverified entries in the PR.
+
 ### Sets vs Lists
 
 - **Sets** for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `raw_component`).
