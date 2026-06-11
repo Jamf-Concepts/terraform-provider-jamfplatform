@@ -125,8 +125,10 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/user_initiated_enrollment_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/class"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/user_groups"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users/users"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/location"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/volume_purchasing_notification"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing/vpp_assignment"
@@ -509,6 +511,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		class.NewClassDataSource,
 		user_group.NewUserGroupDataSource,
 		user_groups.NewUserGroupsDataSource,
+		user.NewUserDataSource,
+		users.NewUsersDataSource,
 		advanced_computer_search.NewAdvancedComputerSearchDataSource,
 		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchDataSource,
 		advanced_user_search.NewAdvancedUserSearchDataSource,
