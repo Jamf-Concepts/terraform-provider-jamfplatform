@@ -77,6 +77,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/network_segments"
 	pkg "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/package"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/printer"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/removable_mac_address"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/site"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/sites"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/user_extension_attribute"
@@ -364,6 +365,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		policy.NewPolicyResource,
 		restricted_software.NewRestrictedSoftwareResource,
 		printer.NewPrinterResource,
+		removable_mac_address.NewRemovableMacAddressResource,
 		re_enrollment_settings.NewReEnrollmentSettingsResource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsResource,
 		script.NewScriptResource,
@@ -469,6 +471,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		policy.NewPolicyDataSource,
 		restricted_software.NewRestrictedSoftwareDataSource,
 		printer.NewPrinterDataSource,
+		removable_mac_address.NewRemovableMacAddressDataSource,
 		re_enrollment_settings.NewReEnrollmentSettingsDataSource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
 		script.NewScriptDataSource,
@@ -560,6 +563,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		policy.NewPolicyListResource,
 		restricted_software.NewRestrictedSoftwareListResource,
 		printer.NewPrinterListResource,
+		removable_mac_address.NewRemovableMacAddressListResource,
 		script.NewScriptListResource,
 		patch_external_source.NewPatchExternalSourceListResource,
 		patch_policy.NewPatchPolicyListResource,
