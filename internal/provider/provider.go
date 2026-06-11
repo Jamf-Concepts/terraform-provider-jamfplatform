@@ -97,6 +97,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/computer_check_in_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/computer_inventory_collection_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/file_share_distribution_point"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/gsx_connection"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/impact_alert_notification_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_parent_settings"
@@ -328,6 +329,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeResource,
 		user_extension_attribute.NewUserExtensionAttributeResource,
 		cloud_distribution_point.NewCloudDistributionPointResource,
+		file_share_distribution_point.NewFileShareDistributionPointResource,
 		cloud_identity_provider.NewCloudIdentityProviderResource,
 		department.NewDepartmentResource,
 		device_group.NewDeviceGroupResource,
@@ -426,6 +428,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeDataSource,
 		user_extension_attribute.NewUserExtensionAttributeDataSource,
 		cloud_distribution_point.NewCloudDistributionPointDataSource,
+		file_share_distribution_point.NewFileShareDistributionPointDataSource,
 		cloud_identity_provider.NewCloudIdentityProviderDataSource,
 		cloud_identity_provider.NewCloudIdentityProvidersDataSource,
 		department.NewDepartmentDataSource,
@@ -521,6 +524,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		blueprint.NewBlueprintListResource,
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
+		file_share_distribution_point.NewFileShareDistributionPointListResource,
 		computer_extension_attribute.NewComputerExtensionAttributeListResource,
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeListResource,
 		user_extension_attribute.NewUserExtensionAttributeListResource,
