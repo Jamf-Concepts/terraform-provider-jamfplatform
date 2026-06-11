@@ -104,6 +104,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_teacher_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/login_page"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/macos_onboarding"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/mdm_profile_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/adcs"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/certificate_authority"
@@ -380,6 +381,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		jamf_protect.NewJamfProtectResource,
 		jamf_teacher_settings.NewJamfTeacherSettingsResource,
 		login_page.NewLoginPageSettingsResource,
+		macos_onboarding.NewOnboardingResource,
 		mdm_profile_settings.NewMDMProfileSettingsResource,
 		self_service_branding_image.NewSelfServiceBrandingImageResource,
 		self_service_branding_ios.NewSelfServiceBrandingIosResource,
@@ -478,6 +480,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsDataSource,
 		jamf_protect.NewJamfProtectPlansDataSource,
 		login_page.NewLoginPageSettingsDataSource,
+		macos_onboarding.NewOnboardingDataSource,
+		macos_onboarding.NewOnboardingEligibleItemsDataSource,
 		mdm_profile_settings.NewMDMProfileSettingsDataSource,
 		self_service_branding_ios.NewSelfServiceBrandingIosDataSource,
 		self_service_branding_macos.NewSelfServiceBrandingMacosDataSource,
