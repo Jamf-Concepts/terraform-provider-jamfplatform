@@ -104,6 +104,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_protect"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_teacher_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/local_admin_password_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/login_page"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/macos_onboarding"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/mdm_profile_settings"
@@ -335,6 +336,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		device_group.NewDeviceGroupResource,
 		directory_binding.NewDirectoryBindingResource,
 		ldap_server.NewLdapServerResource,
+		local_admin_password_settings.NewLocalAdminPasswordSettingsResource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationResource,
 		computer_invitation.NewComputerInvitationResource,
 		mobile_device_invitation.NewMobileDeviceInvitationResource,
@@ -439,6 +441,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		devices.NewDevicesDataSource,
 		directory_binding.NewDirectoryBindingDataSource,
 		ldap_server.NewLdapServerDataSource,
+		local_admin_password_settings.NewLocalAdminPasswordSettingsDataSource,
 		disk_encryption_configuration.NewDiskEncryptionConfigurationDataSource,
 		computer_invitation.NewComputerInvitationDataSource,
 		mobile_device_invitation.NewMobileDeviceInvitationDataSource,
