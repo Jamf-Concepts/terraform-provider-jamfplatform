@@ -111,7 +111,9 @@ func scopeTargetedConfig(name, processName, excludedUsers string) string {
 				process_name = %q
 			}
 			scope = {
-				department_ids = [jamfplatform_pro_department.test.id]
+				targets = {
+					department_ids = [jamfplatform_pro_department.test.id]
+				}
 				exclusions = {
 					directory_service_or_local_user_names = [%s]
 				}
@@ -190,7 +192,9 @@ func scopeAllComputersConfig(name, processName, excludedUsers string) string {
 				process_name = %q
 			}
 			scope = {
-				all_computers = true
+				targets = {
+					all_computers = true
+				}
 				exclusions = {
 					directory_service_or_local_user_names = [%s]
 				}
@@ -214,7 +218,7 @@ func TestAccResource_ProRestrictedSoftware_ScopeUpdate(t *testing.T) {
 			{
 				Config: scopeTargetedConfig(name, "Solitaire.app", `"alice", "bob"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.department_ids.#", "1"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.targets.department_ids.#", "1"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "2"),
 					resource.TestCheckTypeSetElemAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.*", "alice"),
 					resource.TestCheckTypeSetElemAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.*", "bob"),
@@ -224,7 +228,7 @@ func TestAccResource_ProRestrictedSoftware_ScopeUpdate(t *testing.T) {
 				// Nested-set churn: remove "alice", add "carol" (target unchanged).
 				Config: scopeTargetedConfig(name, "Solitaire.app", `"bob", "carol"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.department_ids.#", "1"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.targets.department_ids.#", "1"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "2"),
 					resource.TestCheckTypeSetElemAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.*", "bob"),
 					resource.TestCheckTypeSetElemAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.*", "carol"),
@@ -237,8 +241,8 @@ func TestAccResource_ProRestrictedSoftware_ScopeUpdate(t *testing.T) {
 				// post-apply consistency check on department_ids).
 				Config: scopeAllComputersConfig(name, "Solitaire.app", `"bob", "carol"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.all_computers", "true"),
-					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.department_ids.#", "0"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.targets.all_computers", "true"),
+					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.targets.department_ids.#", "0"),
 				),
 			},
 		},
@@ -258,8 +262,10 @@ func TestAccResource_ProRestrictedSoftware_AllComputersConflict(t *testing.T) {
 				process_name = "Chess.app"
 			}
 			scope = {
-				all_computers      = true
-				computer_group_ids = ["1"]
+				targets = {
+					all_computers      = true
+					computer_group_ids = ["1"]
+				}
 			}
 		}
 	`, name)

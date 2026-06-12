@@ -81,6 +81,33 @@ func (r *RestrictedSoftwareResource) IdentitySchema(ctx context.Context, req res
 // the Jamf Pro admin UI labels (STYLE_GUIDE §Attribute names mirror the admin
 // UI); the differing wire element names are noted in the attribute descriptions.
 func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	// Scope > Targets sub-block: the all_computers flag plus the per-category
+	// ID sets. UseNonNullStateForUnknown (not UseStateForUnknown) is mandatory:
+	// the `targets` block can transition null→present, and carrying a null prior
+	// state forward trips a "was null, but now …" consistency error at apply.
+	// The AllFlagConflictsWith relative paths are unchanged — they resolve
+	// against their siblings inside `targets`.
+	targets := map[string]schema.Attribute{
+		"all_computers": schema.BoolAttribute{
+			MarkdownDescription: "Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
+			Optional:            true,
+			Computed:            true,
+			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
+			Validators: []validator.Bool{
+				scope.AllFlagConflictsWith(
+					path.MatchRelative().AtParent().AtName("computer_ids"),
+					path.MatchRelative().AtParent().AtName("computer_group_ids"),
+					path.MatchRelative().AtParent().AtName("building_ids"),
+					path.MatchRelative().AtParent().AtName("department_ids"),
+				),
+			},
+		},
+		"computer_ids":       scope.IDSetAttribute("computer"),
+		"computer_group_ids": scope.IDSetAttribute("computer group"),
+		"building_ids":       scope.IDSetAttribute("building"),
+		"department_ids":     scope.IDSetAttribute("department"),
+	}
+
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro restricted software record — the \"Restricted software\" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations.",
 		Attributes: map[string]schema.Attribute{
@@ -158,27 +185,14 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, and `department_ids`. Scope limitations are not supported for restricted software.",
+				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"all_computers": schema.BoolAttribute{
-						MarkdownDescription: "Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
+					"targets": schema.SingleNestedAttribute{
+						MarkdownDescription: "Scope targets — the audience the record applies to. Mirrors the admin UI's Scope > Targets tab: set `all_computers = true` for tenant-wide scope, or list specific IDs.",
 						Optional:            true,
-						Computed:            true,
-						PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-						Validators: []validator.Bool{
-							scope.AllFlagConflictsWith(
-								path.MatchRelative().AtParent().AtName("computer_ids"),
-								path.MatchRelative().AtParent().AtName("computer_group_ids"),
-								path.MatchRelative().AtParent().AtName("building_ids"),
-								path.MatchRelative().AtParent().AtName("department_ids"),
-							),
-						},
+						Attributes:          targets,
 					},
-					"computer_ids":       scope.IDSetAttribute("computer"),
-					"computer_group_ids": scope.IDSetAttribute("computer group"),
-					"building_ids":       scope.IDSetAttribute("building"),
-					"department_ids":     scope.IDSetAttribute("department"),
 					"exclusions": schema.SingleNestedAttribute{
 						MarkdownDescription: "Scope exclusions remove items that would otherwise be included by the targets. `directory_service_or_local_user_names` carries free-text local usernames (the admin UI \"Directory Service/Local Users\" exclusion), not Jamf Pro object IDs.",
 						Optional:            true,

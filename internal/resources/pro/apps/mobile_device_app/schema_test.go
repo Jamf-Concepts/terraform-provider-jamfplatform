@@ -87,14 +87,18 @@ func TestMobileAppResource_Schema(t *testing.T) {
 	if !ok {
 		t.Fatalf("scope must be a SingleNestedAttribute")
 	}
+	targetsAttr, ok := scopeAttr.Attributes["targets"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("scope.targets must be a SingleNestedAttribute")
+	}
 	for _, name := range []string{"all_mobile_devices", "all_jss_users", "mobile_device_ids", "mobile_device_group_ids"} {
-		if _, ok := scopeAttr.Attributes[name]; !ok {
-			t.Errorf("scope missing %q", name)
+		if _, ok := targetsAttr.Attributes[name]; !ok {
+			t.Errorf("scope.targets missing %q", name)
 		}
 	}
 	for _, absent := range []string{"all_computers", "computer_ids", "computer_group_ids"} {
-		if _, ok := scopeAttr.Attributes[absent]; ok {
-			t.Errorf("scope.%s must not exist on mobile apps", absent)
+		if _, ok := targetsAttr.Attributes[absent]; ok {
+			t.Errorf("scope.targets.%s must not exist on mobile apps", absent)
 		}
 	}
 	// No iBeacon scope on the mobiledeviceapplications endpoint.

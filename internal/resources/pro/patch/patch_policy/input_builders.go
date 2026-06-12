@@ -62,11 +62,12 @@ func buildGeneral(plan PatchPolicyResourceModel) *proclassic.PatchPolicyGeneral 
 
 func buildScope(ctx context.Context, m *PatchPolicyScopeModel) (*proclassic.PatchPolicyScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.PatchPolicyScope{
-		AllComputers: helpers.OptionalBoolPointer(m.AllComputers),
+		AllComputers: helpers.OptionalBoolPointer(t.AllComputers),
 	}
 
-	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.PatchPolicyScopeComputersComputerItem {
+	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.PatchPolicyScopeComputersComputerItem {
 		return proclassic.PatchPolicyScopeComputersComputerItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -74,19 +75,19 @@ func buildScope(ctx context.Context, m *PatchPolicyScopeModel) (*proclassic.Patc
 		s.Computers = &proclassic.PatchPolicyScopeComputers{Computer: computers}
 	}
 
-	computerGroups, d := scope.BuildIDSlice(ctx, m.ComputerGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	computerGroups, d := scope.BuildIDSlice(ctx, t.ComputerGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	if computerGroups != nil {
 		s.ComputerGroups = &proclassic.PatchPolicyScopeComputerGroups{ComputerGroup: computerGroups}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	if buildings != nil {
 		s.Buildings = &proclassic.PatchPolicyScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	if departments != nil {
 		s.Departments = &proclassic.PatchPolicyScopeDepartments{Department: departments}

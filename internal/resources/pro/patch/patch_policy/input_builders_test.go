@@ -95,10 +95,12 @@ func TestBuildScope_EntityByID(t *testing.T) {
 		Name:                         types.StringValue("p"),
 		TargetVersion:                types.StringValue("1.0"),
 		Scope: &PatchPolicyScopeModel{
-			ComputerIDs:      idSet(t, "10"),
-			ComputerGroupIDs: idSet(t, "20", "21"),
-			BuildingIDs:      idSet(t, "30"),
-			DepartmentIDs:    idSet(t, "40"),
+			Targets: &PatchPolicyScopeTargetsModel{
+				ComputerIDs:      idSet(t, "10"),
+				ComputerGroupIDs: idSet(t, "20", "21"),
+				BuildingIDs:      idSet(t, "30"),
+				DepartmentIDs:    idSet(t, "40"),
+			},
 			Limitations: &PatchPolicyScopeLimitationsModel{
 				NetworkSegmentIDs: idSet(t, "50"),
 				IbeaconIDs:        idSet(t, "60"),

@@ -21,7 +21,9 @@ resource "jamfplatform_pro_restricted_software" "block_chess" {
   }
 
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
 
     exclusions = {
       # Free-text local usernames — not Jamf Pro object IDs.
@@ -39,9 +41,11 @@ resource "jamfplatform_pro_restricted_software" "scoped" {
   }
 
   scope = {
-    computer_group_ids = [
-      jamfplatform_device_group.engineering.jamf_pro_id,
-    ]
+    targets = {
+      computer_group_ids = [
+        jamfplatform_device_group.engineering.jamf_pro_id,
+      ]
+    }
 
     exclusions = {
       department_ids = [jamfplatform_pro_department.it.id]

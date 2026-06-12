@@ -182,7 +182,9 @@ resource "jamfplatform_pro_policy" "test" {
     name = %q
   }
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
   }
 }
 `, name)
@@ -292,7 +294,7 @@ func TestAccPolicyResource_AllComputers(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("all_computers"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_computers"),
 						knownvalue.Bool(true),
 					),
 				},
@@ -1416,8 +1418,10 @@ resource "jamfplatform_pro_policy" "test" {
     name = %q
   }
   scope = {
-    all_computers = true
-    all_jss_users = %t
+    targets = {
+      all_computers = true
+      all_jss_users = %t
+    }
   }
 }
 `, name, allJssUsers)
@@ -1442,12 +1446,12 @@ func TestAccPolicyResource_ScopeAllJssUsersFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("all_jss_users"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_jss_users"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("all_computers"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_computers"),
 						knownvalue.Bool(true),
 					),
 				},
@@ -1457,7 +1461,7 @@ func TestAccPolicyResource_ScopeAllJssUsersFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("all_jss_users"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_jss_users"),
 						knownvalue.Bool(false),
 					),
 				},
@@ -1493,12 +1497,14 @@ resource "jamfplatform_pro_policy" "test" {
     name = %q
   }
   scope = {
-    computer_ids       = [%q]
-    computer_group_ids = [jamfplatform_device_group.fixture.jamf_pro_id]
-    building_ids       = [jamfplatform_pro_building.fixture.id]
-    department_ids     = [jamfplatform_pro_department.fixture.id]
-    user_ids       = [%q]
-    user_group_ids = [jamfplatform_pro_user_group.fixture.id]
+    targets = {
+      computer_ids       = [%q]
+      computer_group_ids = [jamfplatform_device_group.fixture.jamf_pro_id]
+      building_ids       = [jamfplatform_pro_building.fixture.id]
+      department_ids     = [jamfplatform_pro_department.fixture.id]
+      user_ids       = [%q]
+      user_group_ids = [jamfplatform_pro_user_group.fixture.id]
+    }
   }
 }
 `, buildingName, departmentName, deviceGroupName, userGroupName, policyName, computerID, userID)
@@ -1539,32 +1545,32 @@ func TestAccPolicyResource_ScopeTargetsFixtureCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("computer_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("computer_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("computer_group_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("computer_group_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("building_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("building_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("department_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("department_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("user_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("user_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scope").AtMapKey("user_group_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("user_group_ids"),
 						knownvalue.SetSizeExact(1),
 					),
 				},
@@ -1593,7 +1599,9 @@ resource "jamfplatform_pro_policy" "test" {
     name = %q
   }
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
     limitations = {
       network_segment_ids = [jamfplatform_pro_network_segment.fixture.id]
       ibeacon_ids         = [jamfplatform_pro_ibeacon.fixture.id]
@@ -1681,7 +1689,9 @@ resource "jamfplatform_pro_policy" "test" {
     name = %q
   }
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
     exclusions = {
       computer_ids                          = [%q]
       computer_group_ids                    = [jamfplatform_device_group.fixture.jamf_pro_id]

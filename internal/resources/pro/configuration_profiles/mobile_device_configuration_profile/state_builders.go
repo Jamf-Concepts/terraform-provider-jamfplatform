@@ -103,52 +103,58 @@ func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationPr
 		return diags
 	}
 
-	state.AllMobileDevices = helpers.ReconcileOptionalBoolPointer(s.AllMobileDevices, state.AllMobileDevices)
-	state.AllJssUsers = helpers.ReconcileOptionalBoolPointer(s.AllJssUsers, state.AllJssUsers)
+	// Targets are gated on caller management, mirroring the limitations /
+	// exclusions sub-blocks below: populating a targets block the user did not
+	// declare would violate the framework's "produced inconsistent result after
+	// apply" check (plan said null, we would return a populated object).
+	if state.Targets != nil {
+		state.Targets.AllMobileDevices = helpers.ReconcileOptionalBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices)
+		state.Targets.AllJssUsers = helpers.ReconcileOptionalBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
-	if s.MobileDevices != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.MobileDevices.MobileDevice, func(c proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem) *int {
-			return c.ID
-		})
-		diags.Append(d...)
-		state.MobileDeviceIDs = v
-	} else {
-		state.MobileDeviceIDs = types.SetNull(types.StringType)
-	}
-	if s.MobileDeviceGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.MobileDeviceGroups.MobileDeviceGroup, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.MobileDeviceGroupIDs = v
-	} else {
-		state.MobileDeviceGroupIDs = types.SetNull(types.StringType)
-	}
-	if s.Buildings != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.BuildingIDs = v
-	} else {
-		state.BuildingIDs = types.SetNull(types.StringType)
-	}
-	if s.Departments != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.DepartmentIDs = v
-	} else {
-		state.DepartmentIDs = types.SetNull(types.StringType)
-	}
-	if s.JssUsers != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.UserIDs = v
-	} else {
-		state.UserIDs = types.SetNull(types.StringType)
-	}
-	if s.JssUserGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.UserGroup, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.UserGroupIDs = v
-	} else {
-		state.UserGroupIDs = types.SetNull(types.StringType)
+		if s.MobileDevices != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.MobileDevices.MobileDevice, func(c proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem) *int {
+				return c.ID
+			})
+			diags.Append(d...)
+			state.Targets.MobileDeviceIDs = v
+		} else {
+			state.Targets.MobileDeviceIDs = types.SetNull(types.StringType)
+		}
+		if s.MobileDeviceGroups != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.MobileDeviceGroups.MobileDeviceGroup, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.MobileDeviceGroupIDs = v
+		} else {
+			state.Targets.MobileDeviceGroupIDs = types.SetNull(types.StringType)
+		}
+		if s.Buildings != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.BuildingIDs = v
+		} else {
+			state.Targets.BuildingIDs = types.SetNull(types.StringType)
+		}
+		if s.Departments != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.DepartmentIDs = v
+		} else {
+			state.Targets.DepartmentIDs = types.SetNull(types.StringType)
+		}
+		if s.JssUsers != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.UserIDs = v
+		} else {
+			state.Targets.UserIDs = types.SetNull(types.StringType)
+		}
+		if s.JssUserGroups != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.UserGroup, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.UserGroupIDs = v
+		} else {
+			state.Targets.UserGroupIDs = types.SetNull(types.StringType)
+		}
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {

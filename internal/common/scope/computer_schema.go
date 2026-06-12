@@ -25,10 +25,12 @@ type ComputerScopeOptions struct {
 }
 
 // ComputerScopeAttributes returns the attribute map for a computer-scoped
-// classic resource's <scope> block (targets + limitations + exclusions).
-// Every target category is a flat Set<String> of numeric Jamf Pro IDs;
-// directory-service categories carry names. The caller wraps the map in its
-// own schema.SingleNestedAttribute with a resource-specific description:
+// classic resource's <scope> block (targets + limitations + exclusions),
+// mirroring the Jamf Pro admin UI's Targets / Limitations / Exclusions tabs.
+// The all-flags and every target category live inside the `targets`
+// sub-block; each target category is a flat Set<String> of numeric Jamf Pro
+// IDs and directory-service categories carry names. The caller wraps the map
+// in its own schema.SingleNestedAttribute with a resource-specific description:
 //
 //	"scope": schema.SingleNestedAttribute{
 //	    MarkdownDescription: "...",
@@ -36,9 +38,13 @@ type ComputerScopeOptions struct {
 //	    Attributes:          scope.ComputerScopeAttributes(scope.ComputerScopeOptions{IncludeIbeacons: true}),
 //	}
 //
-// all_computers / all_jss_users are Optional+Computed with UseStateForUnknown
-// and the value-discriminated AllFlagConflictsWith validators (relative paths,
-// so they resolve under whatever parent the caller mounts the block at).
+// all_computers / all_jss_users are Optional+Computed with
+// UseNonNullStateForUnknown and the value-discriminated AllFlagConflictsWith
+// validators (relative paths, so they resolve against their siblings inside
+// `targets`). UseNonNullStateForUnknown (not UseStateForUnknown) is mandatory:
+// the `targets` block can transition null→present, and the pre-1.15.1 behaviour
+// of carrying a null prior state forward trips a "was null, but now …"
+// consistency error at apply. See STYLE_GUIDE.md §Scope helper.
 func ComputerScopeAttributes(opts ComputerScopeOptions) map[string]schema.Attribute {
 	limitations := map[string]schema.Attribute{
 		"network_segment_ids":                   IDSetAttribute("network segment"),
@@ -61,12 +67,12 @@ func ComputerScopeAttributes(opts ComputerScopeOptions) map[string]schema.Attrib
 		exclusions["ibeacon_ids"] = IDSetAttribute("iBeacon")
 	}
 
-	return map[string]schema.Attribute{
+	targets := map[string]schema.Attribute{
 		"all_computers": schema.BoolAttribute{
 			MarkdownDescription: "Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
 			Optional:            true,
 			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("computer_ids"),
@@ -80,7 +86,7 @@ func ComputerScopeAttributes(opts ComputerScopeOptions) map[string]schema.Attrib
 			MarkdownDescription: "Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's \"All Users\" toggle. Forbids per-user / per-user-group targets when true.",
 			Optional:            true,
 			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("user_ids"),
@@ -94,6 +100,14 @@ func ComputerScopeAttributes(opts ComputerScopeOptions) map[string]schema.Attrib
 		"department_ids":     IDSetAttribute("department"),
 		"user_ids":           IDSetAttribute("user"),
 		"user_group_ids":     IDSetAttribute("user group"),
+	}
+
+	return map[string]schema.Attribute{
+		"targets": schema.SingleNestedAttribute{
+			MarkdownDescription: "Scope targets — the audience the resource applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_jss_users` for tenant-wide scope, or list specific IDs.",
+			Optional:            true,
+			Attributes:          targets,
+		},
 		"limitations": schema.SingleNestedAttribute{
 			MarkdownDescription: "Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects.",
 			Optional:            true,

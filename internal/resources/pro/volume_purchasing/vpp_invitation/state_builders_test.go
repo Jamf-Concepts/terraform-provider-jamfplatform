@@ -82,12 +82,13 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 
 	// Managed scope (state.Scope non-nil) → refreshed, name-keyed groups by name.
 	managed := &VPPInvitationResourceModel{Scope: &scope.UserScopeModel{
+		Targets:     &scope.UserScopeTargetsModel{},
 		Limitations: &scope.UserScopeLimitationsModel{},
 		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}}
 	assignVPPInvitationResourceModel(context.Background(), managed, sampleAPI())
-	if managed.Scope.JssUserGroupIDs.IsNull() || len(managed.Scope.JssUserGroupIDs.Elements()) != 1 {
-		t.Errorf("jss_user_group_ids = %v", managed.Scope.JssUserGroupIDs)
+	if managed.Scope.Targets.JssUserGroupIDs.IsNull() || len(managed.Scope.Targets.JssUserGroupIDs.Elements()) != 1 {
+		t.Errorf("jss_user_group_ids = %v", managed.Scope.Targets.JssUserGroupIDs)
 	}
 	if managed.Scope.Limitations.DirectoryServiceUserGroupNames.IsNull() {
 		t.Error("limitations DS names should be populated by name")
@@ -113,7 +114,7 @@ func TestAssignDataSourceModel_PopulatesScopeAndUsages(t *testing.T) {
 	if state.Scope == nil {
 		t.Fatal("DS must always populate scope")
 	}
-	if state.Scope.JssUserGroupIDs.IsNull() {
+	if state.Scope.Targets.JssUserGroupIDs.IsNull() {
 		t.Error("DS scope jss_user_group_ids should be populated")
 	}
 	if len(state.InvitationUsages.Elements()) != 1 {

@@ -127,7 +127,9 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
   auto_register_managed_users = %[3]t
 
   scope = {
-    jss_user_group_ids = [%[4]s]
+    targets = {
+      jss_user_group_ids = [%[4]s]
+    }
 
     exclusions = {
       jss_user_group_ids = [jamfplatform_pro_user_group.b.id]
@@ -156,7 +158,7 @@ func TestAccResource_ProVPPInvitation(t *testing.T) {
 					resource.TestCheckResourceAttrPair(resAddr, "vpp_account_id", "jamfplatform_pro_volume_purchasing_location.vpp", "id"),
 					resource.TestCheckResourceAttr(resAddr, "distribution_method", "Make available in Self Service only"),
 					resource.TestCheckResourceAttr(resAddr, "auto_register_managed_users", "true"),
-					resource.TestCheckResourceAttr(resAddr, "scope.jss_user_group_ids.#", "1"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
 					resource.TestCheckResourceAttr(resAddr, "scope.exclusions.jss_user_group_ids.#", "1"),
 				),
 			},
@@ -168,14 +170,14 @@ func TestAccResource_ProVPPInvitation(t *testing.T) {
 					resource.TestCheckResourceAttr(resAddr, "name", renamed),
 					resource.TestCheckResourceAttr(resAddr, "distribution_method", "Prompt users to accept/make available in Self Service"),
 					resource.TestCheckResourceAttr(resAddr, "auto_register_managed_users", "false"),
-					resource.TestCheckResourceAttr(resAddr, "scope.jss_user_group_ids.#", "2"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "2"),
 				),
 			},
 			{
 				// Shrink the target set back to one (nested-set removal → always-emit clears).
 				Config: lifecycleConfig(token, suffix, renamed, "Prompt users to accept/make available in Self Service", false, 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resAddr, "scope.jss_user_group_ids.#", "1"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
 				),
 			},
 			{
@@ -202,7 +204,9 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
   distribution_method = "Make available in Self Service only"
 
   scope = {
-    all_jss_users = true
+    targets = {
+      all_jss_users = true
+    }
   }
 }
 `, name)
@@ -219,7 +223,9 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
   require_login        = true
 
   scope = {
-    all_jss_users = true
+    targets = {
+      all_jss_users = true
+    }
   }
 }
 `, name, message)
@@ -444,8 +450,10 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
   distribution_method = "Make available in Self Service only"
 
   scope = {
-    all_jss_users      = true
-    jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    targets = {
+      all_jss_users      = true
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    }
   }
 }
 `, litAccount),

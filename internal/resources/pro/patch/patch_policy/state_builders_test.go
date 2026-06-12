@@ -132,9 +132,10 @@ func TestFlattenScope_EntityByID(t *testing.T) {
 		},
 	}
 
-	// Caller manages scope (including the limitations + exclusions sub-blocks).
+	// Caller manages scope (including the targets + limitations + exclusions sub-blocks).
 	state := &PatchPolicyResourceModel{
 		Scope: &PatchPolicyScopeModel{
+			Targets:     &PatchPolicyScopeTargetsModel{},
 			Limitations: &PatchPolicyScopeLimitationsModel{},
 			Exclusions:  &PatchPolicyScopeExclusionsModel{},
 		},
@@ -144,11 +145,11 @@ func TestFlattenScope_EntityByID(t *testing.T) {
 		t.Fatalf("assign diags: %v", diags)
 	}
 
-	if got := setStrings(t, state.Scope.ComputerIDs); len(got) != 1 || got[0] != "10" {
-		t.Errorf("computer_ids: got %v", got)
+	if got := setStrings(t, state.Scope.Targets.ComputerIDs); len(got) != 1 || got[0] != "10" {
+		t.Errorf("targets.computer_ids: got %v", got)
 	}
-	if got := setStrings(t, state.Scope.ComputerGroupIDs); len(got) != 1 || got[0] != "20" {
-		t.Errorf("computer_group_ids: got %v", got)
+	if got := setStrings(t, state.Scope.Targets.ComputerGroupIDs); len(got) != 1 || got[0] != "20" {
+		t.Errorf("targets.computer_group_ids: got %v", got)
 	}
 	if got := setStrings(t, state.Scope.Limitations.NetworkSegmentIDs); len(got) != 1 || got[0] != "50" {
 		t.Errorf("limitations.network_segment_ids: got %v", got)

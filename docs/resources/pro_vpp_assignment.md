@@ -27,7 +27,9 @@ resource "jamfplatform_pro_vpp_assignment" "apps" {
   mac_app_adam_ids = [409203825]
 
   scope = {
-    jss_user_group_ids = ["1"]
+    targets = {
+      jss_user_group_ids = ["1"]
+    }
 
     exclusions = {
       # Directory-service (LDAP) groups are matched by name.
@@ -47,7 +49,9 @@ resource "jamfplatform_pro_vpp_assignment" "books" {
   ebook_adam_ids = [1234567890]
 
   scope = {
-    all_jss_users = true
+    targets = {
+      all_jss_users = true
+    }
   }
 }
 ```
@@ -80,11 +84,9 @@ Note: un-assigning a book removes it from the assignment on the wire, but Apple 
 
 Optional:
 
-- `all_jss_users` (Boolean) Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Defaults to `false`.
 - `exclusions` (Attributes) Scope exclusions. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs.
 - `limitations` (Attributes) Scope limitations. (see [below for nested schema](#nestedatt--scope--limitations))
+- `targets` (Attributes) Scope targets — the Jamf Pro users and user groups the assignment applies to. Mirrors the admin UI's Targets tab. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -102,6 +104,16 @@ Optional:
 Optional:
 
 - `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names.
+
+
+<a id="nestedatt--scope--targets"></a>
+### Nested Schema for `scope.targets`
+
+Optional:
+
+- `all_jss_users` (Boolean) Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Defaults to `false`.
+- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
+- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs.
 
 
 

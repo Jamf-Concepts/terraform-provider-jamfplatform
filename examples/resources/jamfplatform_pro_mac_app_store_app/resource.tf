@@ -22,7 +22,9 @@ resource "jamfplatform_pro_mac_app_store_app" "self_service" {
   }
 
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
   }
 
   self_service = {
@@ -53,9 +55,11 @@ resource "jamfplatform_pro_mac_app_store_app" "automatic" {
   }
 
   scope = {
-    computer_group_ids = [
-      jamfplatform_device_group.engineering.jamf_pro_id,
-    ]
+    targets = {
+      computer_group_ids = [
+        jamfplatform_device_group.engineering.jamf_pro_id,
+      ]
+    }
 
     exclusions = {
       department_ids = [jamfplatform_pro_department.it.id]

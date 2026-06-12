@@ -111,17 +111,23 @@ func lifecycleConfig(token, suffix, name string, groupCount int, allUsers bool) 
 	case allUsers:
 		scopeBlock = `
   scope = {
-    all_jss_users = true
+    targets = {
+      all_jss_users = true
+    }
   }`
 	case groupCount == 2:
 		scopeBlock = `
   scope = {
-    jss_user_group_ids = [jamfplatform_pro_user_group.a.id, jamfplatform_pro_user_group.b.id]
+    targets = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id, jamfplatform_pro_user_group.b.id]
+    }
   }`
 	default:
 		scopeBlock = `
   scope = {
-    jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    targets = {
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    }
   }`
 	}
 	return vppLocationFixture(token, suffix) + fmt.Sprintf(`
@@ -161,7 +167,7 @@ func TestAccResource_ProVPPAssignment(t *testing.T) {
 					resource.TestCheckResourceAttr(resAddr, "name", name),
 					resource.TestCheckResourceAttrPair(resAddr, "vpp_admin_account_id", "jamfplatform_pro_volume_purchasing_location.vpp", "id"),
 					resource.TestCheckResourceAttrSet(resAddr, "vpp_admin_account_name"),
-					resource.TestCheckResourceAttr(resAddr, "scope.jss_user_group_ids.#", "1"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
 				),
 			},
 			{
@@ -169,14 +175,14 @@ func TestAccResource_ProVPPAssignment(t *testing.T) {
 				Config: lifecycleConfig(token, suffix, renamed, 2, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resAddr, "name", renamed),
-					resource.TestCheckResourceAttr(resAddr, "scope.jss_user_group_ids.#", "2"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "2"),
 				),
 			},
 			{
 				// Shrink the target set back to one (nested-set removal → always-emit clears).
 				Config: lifecycleConfig(token, suffix, renamed, 1, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resAddr, "scope.jss_user_group_ids.#", "1"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
 				),
 			},
 			{
@@ -187,7 +193,7 @@ func TestAccResource_ProVPPAssignment(t *testing.T) {
 				// Set, whose "#" key is unreliable; mirrors vpp_invitation).
 				Config: lifecycleConfig(token, suffix, renamed, 0, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(resAddr, "scope.all_jss_users", "true"),
+					resource.TestCheckResourceAttr(resAddr, "scope.targets.all_jss_users", "true"),
 				),
 			},
 			{
@@ -216,7 +222,9 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
   ios_app_adam_ids     = %[2]s
 
   scope = {
-    all_jss_users = true
+    targets = {
+      all_jss_users = true
+    }
   }
 }
 `, name, ios)
@@ -390,8 +398,10 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
   vpp_admin_account_id = %q
 
   scope = {
-    all_jss_users      = true
-    jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    targets = {
+      all_jss_users      = true
+      jss_user_group_ids = [jamfplatform_pro_user_group.a.id]
+    }
   }
 }
 `, litAccount),

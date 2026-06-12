@@ -51,9 +51,18 @@ func TestResource_ScopeAttributes(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected scope to be SingleNestedAttribute")
 	}
-	for _, child := range []string{"all_computers", "all_jss_users", "computer_ids", "computer_group_ids", "building_ids", "department_ids", "user_ids", "user_group_ids", "limitations", "exclusions"} {
+	for _, child := range []string{"targets", "limitations", "exclusions"} {
 		if _, ok := s.Attributes[child]; !ok {
 			t.Fatalf("expected scope.%s", child)
+		}
+	}
+	targets, ok := s.Attributes["targets"].(rschema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("expected scope.targets to be SingleNestedAttribute")
+	}
+	for _, child := range []string{"all_computers", "all_jss_users", "computer_ids", "computer_group_ids", "building_ids", "department_ids", "user_ids", "user_group_ids"} {
+		if _, ok := targets.Attributes[child]; !ok {
+			t.Fatalf("expected scope.targets.%s", child)
 		}
 	}
 }

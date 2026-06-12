@@ -96,7 +96,9 @@ func mobileAppFullConfig(name, version, buttonText string) string {
 				deployment_type = "Make Available in Self Service"
 			}
 			scope = {
-				all_mobile_devices = true
+				targets = {
+					all_mobile_devices = true
+				}
 			}
 			self_service = {
 				install_button_text        = %q
@@ -178,7 +180,7 @@ func TestAccResource_ProMobileApp_ScopeAndSelfService(t *testing.T) {
 				Config: mobileAppFullConfig(name, "1.0", "Install"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(mobileAppResourceAddr, "id"),
-					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.all_mobile_devices", "true"),
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.targets.all_mobile_devices", "true"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "self_service.install_button_text", "Install"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "self_service.after_install_button_text", "Open"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "self_service.feature_on_main_page", "true"),
@@ -304,8 +306,10 @@ func TestAccResource_ProMobileApp_AllMobileDevicesConflict(t *testing.T) {
 				os_type   = "iOS"
 			}
 			scope = {
-				all_mobile_devices = true
-				mobile_device_ids  = ["1"]
+				targets = {
+					all_mobile_devices = true
+					mobile_device_ids  = ["1"]
+				}
 			}
 		}
 	`, name)
@@ -337,8 +341,10 @@ func TestAccResource_ProMobileApp_AllJssUsersConflict(t *testing.T) {
 				os_type   = "iOS"
 			}
 			scope = {
-				all_jss_users = true
-				user_ids      = ["1"]
+				targets = {
+					all_jss_users = true
+					user_ids      = ["1"]
+				}
 			}
 		}
 	`, name)
@@ -419,8 +425,10 @@ func mobileAppScopeTargetsConfig(suffix string, limitationUserNames string) stri
 			}
 
 			scope = {
-				building_ids   = [jamfplatform_pro_building.b1.id]
-				department_ids = [jamfplatform_pro_department.d1.id]
+				targets = {
+					building_ids   = [jamfplatform_pro_building.b1.id]
+					department_ids = [jamfplatform_pro_department.d1.id]
+				}
 
 				limitations = {
 					network_segment_ids                    = [jamfplatform_pro_network_segment.n1.id]
@@ -451,9 +459,9 @@ func TestAccResource_ProMobileApp_ScopeTargets(t *testing.T) {
 				Config: mobileAppScopeTargetsConfig(suffix, `["alice", "bob"]`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(mobileAppResourceAddr, "id"),
-					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.building_ids.#", "1"),
-					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.department_ids.#", "1"),
-					resource.TestCheckResourceAttrPair(mobileAppResourceAddr, "scope.building_ids.0", "jamfplatform_pro_building.b1", "id"),
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.targets.building_ids.#", "1"),
+					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.targets.department_ids.#", "1"),
+					resource.TestCheckResourceAttrPair(mobileAppResourceAddr, "scope.targets.building_ids.0", "jamfplatform_pro_building.b1", "id"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.limitations.network_segment_ids.#", "1"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.limitations.directory_service_or_local_user_names.#", "2"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.exclusions.network_segment_ids.#", "1"),
@@ -593,7 +601,9 @@ func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
 			}
 
 			scope = {
-				all_mobile_devices = true
+				targets = {
+					all_mobile_devices = true
+				}
 
 				limitations = {
 					directory_service_user_group_names = [%q]

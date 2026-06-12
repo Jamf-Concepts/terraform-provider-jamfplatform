@@ -70,8 +70,10 @@ resource "jamfplatform_pro_patch_policy" "work_latest" {
   # scope resolves to at least one in-site smart group. "1" is the default
   # "All Managed Clients" smart group.
   scope = {
-    computer_group_ids = ["1"]
-    building_ids       = [jamfplatform_pro_building.hq.id]
+    targets = {
+      computer_group_ids = ["1"]
+      building_ids       = [jamfplatform_pro_building.hq.id]
+    }
 
     limitations = {
       network_segment_ids = []
@@ -147,13 +149,9 @@ output "patch_policy_kill_apps" {
 
 Optional:
 
-- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by the targets. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations restrict the targets to computers that also match these network segments / iBeacon ranges. (see [below for nested schema](#nestedatt--scope--limitations))
+- `targets` (Attributes) Scope targets — the audience the policy applies to. Mirrors the admin UI's Targets tab: set `all_computers` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -175,6 +173,18 @@ Optional:
 
 - `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
 - `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
+
+
+<a id="nestedatt--scope--targets"></a>
+### Nested Schema for `scope.targets`
+
+Optional:
+
+- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 
 
 
