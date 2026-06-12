@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -48,7 +49,7 @@ func TestGroupPrivilegesRoundTrip(t *testing.T) {
 		sort.Strings(want)
 		gv := got[k]
 		sort.Strings(gv)
-		if !reflect.DeepEqual(want, gv) && !(len(want) == 0 && len(gv) == 0) {
+		if !reflect.DeepEqual(want, gv) && (len(want) != 0 || len(gv) != 0) {
 			t.Errorf("category %s: want %v, got %v", k, want, gv)
 		}
 	}
@@ -173,8 +174,7 @@ func (f fakeDiscoverer) ListAccounts(_ context.Context) (*proclassic.Accounts, e
 }
 
 func (f fakeDiscoverer) GetAccountGroupByID(_ context.Context, id string) (*proclassic.Group, error) {
-	var n int
-	fmt.Sscanf(id, "%d", &n)
+	n, _ := strconv.Atoi(id)
 	if g, ok := f.groups[n]; ok {
 		return g, nil
 	}
@@ -182,8 +182,7 @@ func (f fakeDiscoverer) GetAccountGroupByID(_ context.Context, id string) (*proc
 }
 
 func (f fakeDiscoverer) GetAccountByUserID(_ context.Context, id string) (*proclassic.Account, error) {
-	var n int
-	fmt.Sscanf(id, "%d", &n)
+	n, _ := strconv.Atoi(id)
 	if u, ok := f.users[n]; ok {
 		return u, nil
 	}
