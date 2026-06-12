@@ -25,27 +25,62 @@ func optTranslatedString(m map[string]string, v types.String) *string {
 	return &out
 }
 
-// buildProUserAccount projects the plan into a Pro v1 UserAccount payload for
-// create/update of the base fields. UI enum values are translated to Pro wire
-// spellings. password is supplied separately (WriteOnly, read from config) and
-// is sent only when non-nil.
+// buildProUserAccount projects the plan into a COMPLETE Pro v1 UserAccount
+// payload. The Pro /accounts endpoint NPEs (HTTP 500 with an empty error list)
+// when fields are omitted, so every field is always populated — Optional+
+// Computed fields that are null/unknown on create fall back to the same defaults
+// the Jamf Pro UI uses (Enabled / DEFAULT / no site / no LDAP / no forced
+// change). UI enum values are translated to Pro wire spellings. password is
+// supplied separately (WriteOnly, from config) and sent only when non-empty.
 func buildProUserAccount(plan AccountResourceModel, password *string) *pro.UserAccount {
+	empty := ""
 	acct := &pro.UserAccount{
 		Username:                  helpers.OptionalStringPointer(plan.Username),
-		Realname:                  helpers.OptionalStringPointer(plan.FullName),
-		Email:                     helpers.OptionalStringPointer(plan.EmailAddress),
+		Realname:                  strOrDefault(plan.FullName, ""),
+		Email:                     strOrDefault(plan.EmailAddress, ""),
 		AccessLevel:               optTranslatedString(accessLevelToWire, plan.AccessLevel),
 		PrivilegeLevel:            optTranslatedString(privilegeSetToWire, plan.PrivilegeSet),
-		AccountStatus:             helpers.OptionalStringPointer(plan.AccessStatus),
-		AccountType:               helpers.OptionalStringPointer(plan.AccountType),
-		LdapServerID:              helpers.OptionalInt64Pointer(plan.LdapServerID),
-		SiteID:                    helpers.OptionalInt64Pointer(plan.SiteID),
-		ChangePasswordOnNextLogin: helpers.OptionalBoolPointer(plan.ForcePasswordChange),
+		AccountStatus:             strOrDefault(plan.AccessStatus, "Enabled"),
+		AccountType:               strOrDefault(plan.AccountType, "DEFAULT"),
+		LdapServerID:              intOrDefault(plan.LdapServerID, -1),
+		SiteID:                    intOrDefault(plan.SiteID, -1),
+		ChangePasswordOnNextLogin: boolOrDefault(plan.ForcePasswordChange, false),
+		// Not modelled as attributes, but the endpoint requires their presence.
+		DistinguishedName: &empty,
+		Phone:             &empty,
 	}
 	if password != nil && *password != "" {
 		acct.PlainPassword = password
 	}
 	return acct
+}
+
+// strOrDefault returns a pointer to the string value, or to def when the value
+// is null/unknown (so the full payload shape is always sent).
+func strOrDefault(v types.String, def string) *string {
+	if v.IsNull() || v.IsUnknown() {
+		return &def
+	}
+	s := v.ValueString()
+	return &s
+}
+
+// intOrDefault returns a pointer to the int value, or to def when null/unknown.
+func intOrDefault(v types.Int64, def int) *int {
+	if v.IsNull() || v.IsUnknown() {
+		return &def
+	}
+	n := int(v.ValueInt64())
+	return &n
+}
+
+// boolOrDefault returns a pointer to the bool value, or to def when null/unknown.
+func boolOrDefault(v types.Bool, def bool) *bool {
+	if v.IsNull() || v.IsUnknown() {
+		return &def
+	}
+	b := v.ValueBool()
+	return &b
 }
 
 // buildClassicPrivileges projects the Custom privilege grid into a ProClassic

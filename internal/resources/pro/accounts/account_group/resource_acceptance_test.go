@@ -140,9 +140,9 @@ data "jamfplatform_pro_account_group" "by_name" {
 				Config: config,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_pro_account_group.auditor", "privilege_set", "Auditor"),
-					// DS surfaces Pro spellings.
-					resource.TestCheckResourceAttr("data.jamfplatform_pro_account_group.by_name", "privilege_level", "AUDITOR"),
-					resource.TestCheckResourceAttr("data.jamfplatform_pro_account_group.by_name", "access_level", "FullAccess"),
+					// DS is classic-sourced (same spellings as the resource).
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_account_group.by_name", "privilege_set", "Auditor"),
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_account_group.by_name", "access_level", "Full Access"),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_account_group.by_name", "id", "jamfplatform_pro_account_group.auditor", "id"),
 				),
 			},
