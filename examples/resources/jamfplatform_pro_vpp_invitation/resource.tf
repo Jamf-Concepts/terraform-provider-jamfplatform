@@ -8,7 +8,9 @@ resource "jamfplatform_pro_vpp_invitation" "self_service" {
   auto_register_managed_users = true
 
   scope = {
-    jss_user_group_ids = ["1"]
+    targets = {
+      jss_user_group_ids = ["1"]
+    }
 
     exclusions = {
       # Directory-service (LDAP) groups are matched by name.
@@ -31,7 +33,9 @@ resource "jamfplatform_pro_vpp_invitation" "email" {
   require_login = true
 
   scope = {
-    all_jss_users = true
+    targets = {
+      all_jss_users = true
+    }
   }
 }
 

@@ -6,6 +6,13 @@
 // mac applications, mobile device applications, OS X configuration profiles,
 // mobile device configuration profiles, patch policies, restricted software).
 //
+// Each scope block mirrors the Jamf Pro admin UI's three Scope tabs:
+// the all-flags and every per-category target set live inside a `targets`
+// sub-block, with `limitations` and `exclusions` as its siblings. `targets`
+// is Optional-only; the all-flags inside are Optional+Computed and use
+// UseNonNullStateForUnknown so the null→present transition on `targets` does
+// not trip a post-apply consistency error.
+//
 // Sub-block items are modelled as flat Set<String> of IDs (or names for the
 // directory-service categories), not nested objects. Server-augmented <name>
 // and <udid> wire fields are discarded on read; only IDs round-trip through

@@ -136,8 +136,10 @@ func TestBuildScope_PopulatedTargetsAndNameKeyedGroups(t *testing.T) {
 		VPPAccountID:       types.StringValue("3"),
 		DistributionMethod: types.StringValue("Make available in Self Service only"),
 		Scope: &scope.UserScopeModel{
-			AllJssUsers:     types.BoolValue(false),
-			JssUserGroupIDs: mustStringSet(t, "1"),
+			Targets: &scope.UserScopeTargetsModel{
+				AllJssUsers:     types.BoolValue(false),
+				JssUserGroupIDs: mustStringSet(t, "1"),
+			},
 			Limitations: &scope.UserScopeLimitationsModel{
 				DirectoryServiceUserGroupNames: mustStringSet(t, "LDAP Admins"),
 			},

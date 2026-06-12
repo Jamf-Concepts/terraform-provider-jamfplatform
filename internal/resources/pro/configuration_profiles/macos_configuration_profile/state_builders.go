@@ -120,52 +120,58 @@ func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScop
 		return diags
 	}
 
-	state.AllComputers = helpers.ReconcileOptionalBoolPointer(s.AllComputers, state.AllComputers)
-	state.AllJssUsers = helpers.ReconcileOptionalBoolPointer(s.AllJssUsers, state.AllJssUsers)
+	// Targets are gated on caller management, mirroring the limitations /
+	// exclusions sub-blocks below: populating a targets block the user did not
+	// declare would violate the framework's "produced inconsistent result after
+	// apply" check (plan said null, we would return a populated object).
+	if state.Targets != nil {
+		state.Targets.AllComputers = helpers.ReconcileOptionalBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.AllJssUsers = helpers.ReconcileOptionalBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
-	if s.Computers != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.Computers.Computer, func(c proclassic.OsXConfigurationProfileScopeComputersComputerItem) *int {
-			return c.ID
-		})
-		diags.Append(d...)
-		state.ComputerIDs = v
-	} else {
-		state.ComputerIDs = types.SetNull(types.StringType)
-	}
-	if s.ComputerGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.ComputerGroups.ComputerGroup, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.ComputerGroupIDs = v
-	} else {
-		state.ComputerGroupIDs = types.SetNull(types.StringType)
-	}
-	if s.Buildings != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.BuildingIDs = v
-	} else {
-		state.BuildingIDs = types.SetNull(types.StringType)
-	}
-	if s.Departments != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.DepartmentIDs = v
-	} else {
-		state.DepartmentIDs = types.SetNull(types.StringType)
-	}
-	if s.JssUsers != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.UserIDs = v
-	} else {
-		state.UserIDs = types.SetNull(types.StringType)
-	}
-	if s.JssUserGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.JssUserGroup, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.UserGroupIDs = v
-	} else {
-		state.UserGroupIDs = types.SetNull(types.StringType)
+		if s.Computers != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.Computers.Computer, func(c proclassic.OsXConfigurationProfileScopeComputersComputerItem) *int {
+				return c.ID
+			})
+			diags.Append(d...)
+			state.Targets.ComputerIDs = v
+		} else {
+			state.Targets.ComputerIDs = types.SetNull(types.StringType)
+		}
+		if s.ComputerGroups != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.ComputerGroups.ComputerGroup, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.ComputerGroupIDs = v
+		} else {
+			state.Targets.ComputerGroupIDs = types.SetNull(types.StringType)
+		}
+		if s.Buildings != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.BuildingIDs = v
+		} else {
+			state.Targets.BuildingIDs = types.SetNull(types.StringType)
+		}
+		if s.Departments != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.DepartmentIDs = v
+		} else {
+			state.Targets.DepartmentIDs = types.SetNull(types.StringType)
+		}
+		if s.JssUsers != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.UserIDs = v
+		} else {
+			state.Targets.UserIDs = types.SetNull(types.StringType)
+		}
+		if s.JssUserGroups != nil {
+			v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.JssUserGroup, func(c proclassic.IDName) *int { return c.ID })
+			diags.Append(d...)
+			state.Targets.UserGroupIDs = v
+		} else {
+			state.Targets.UserGroupIDs = types.SetNull(types.StringType)
+		}
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {

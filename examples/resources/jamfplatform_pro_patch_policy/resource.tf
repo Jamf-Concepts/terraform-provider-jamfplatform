@@ -52,8 +52,10 @@ resource "jamfplatform_pro_patch_policy" "work_latest" {
   # scope resolves to at least one in-site smart group. "1" is the default
   # "All Managed Clients" smart group.
   scope = {
-    computer_group_ids = ["1"]
-    building_ids       = [jamfplatform_pro_building.hq.id]
+    targets = {
+      computer_group_ids = ["1"]
+      building_ids       = [jamfplatform_pro_building.hq.id]
+    }
 
     limitations = {
       network_segment_ids = []

@@ -78,19 +78,22 @@ func flattenEbookGeneral(g *proclassic.EbookGeneral, state *EbookGeneralModel) {
 }
 
 func flattenEbookScope(ctx context.Context, s *proclassic.EbookScope, state *EbookScopeModel) {
-	state.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.AllComputers)
-	state.AllMobileDevices = preferCurrentBoolPointer(s.AllMobileDevices, state.AllMobileDevices)
-	state.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.AllJssUsers)
+	if state.Targets != nil {
+		t := state.Targets
+		t.AllComputers = preferCurrentBoolPointer(s.AllComputers, t.AllComputers)
+		t.AllMobileDevices = preferCurrentBoolPointer(s.AllMobileDevices, t.AllMobileDevices)
+		t.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, t.AllJssUsers)
 
-	state.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-	state.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-	state.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
-	state.MobileDeviceGroupIDs = flattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
-	state.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-	state.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
-	state.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
-	state.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
-	state.ClassIDs = flattenIDNameSet(ctx, classSlice(s.Classes))
+		t.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
+		t.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		t.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
+		t.MobileDeviceGroupIDs = flattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
+		t.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		t.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+		t.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
+		t.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+		t.ClassIDs = flattenIDNameSet(ctx, classSlice(s.Classes))
+	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations

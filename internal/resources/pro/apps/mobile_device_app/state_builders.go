@@ -114,15 +114,17 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 }
 
 func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplicationScope, state *scope.MobileScopeModelNoIbeacons) {
-	state.AllMobileDevices = preferCurrentBoolPointer(s.AllMobileDevices, state.AllMobileDevices)
-	state.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.AllJssUsers)
+	if state.Targets != nil {
+		state.Targets.AllMobileDevices = preferCurrentBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices)
+		state.Targets.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
-	state.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
-	state.MobileDeviceGroupIDs = flattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
-	state.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-	state.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
-	state.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
-	state.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+		state.Targets.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
+		state.Targets.MobileDeviceGroupIDs = flattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
+		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+		state.Targets.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
+		state.Targets.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations

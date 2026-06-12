@@ -73,13 +73,14 @@ func buildEbookGeneral(m *EbookGeneralModel) *proclassic.EbookPostGeneral {
 
 func buildEbookScope(ctx context.Context, m *EbookScopeModel) (*proclassic.EbookPostScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.EbookPostScope{
-		AllComputers:     optionalBoolPointer(m.AllComputers),
-		AllMobileDevices: optionalBoolPointer(m.AllMobileDevices),
-		AllJssUsers:      optionalBoolPointer(m.AllJssUsers),
+		AllComputers:     optionalBoolPointer(t.AllComputers),
+		AllMobileDevices: optionalBoolPointer(t.AllMobileDevices),
+		AllJssUsers:      optionalBoolPointer(t.AllJssUsers),
 	}
 
-	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.EbookScopeComputersComputerItem {
+	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.EbookScopeComputersComputerItem {
 		return proclassic.EbookScopeComputersComputerItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -87,13 +88,13 @@ func buildEbookScope(ctx context.Context, m *EbookScopeModel) (*proclassic.Ebook
 		s.Computers = &proclassic.EbookScopeComputers{Computer: computers}
 	}
 
-	computerGroups, d := scope.BuildIDSlice(ctx, m.ComputerGroupIDs, idNameFromInt)
+	computerGroups, d := scope.BuildIDSlice(ctx, t.ComputerGroupIDs, idNameFromInt)
 	diags.Append(d...)
 	if computerGroups != nil {
 		s.ComputerGroups = &proclassic.EbookScopeComputerGroups{ComputerGroup: computerGroups}
 	}
 
-	mobileDevices, d := scope.BuildIDSlice(ctx, m.MobileDeviceIDs, func(id int) proclassic.EbookScopeMobileDevicesMobileDeviceItem {
+	mobileDevices, d := scope.BuildIDSlice(ctx, t.MobileDeviceIDs, func(id int) proclassic.EbookScopeMobileDevicesMobileDeviceItem {
 		return proclassic.EbookScopeMobileDevicesMobileDeviceItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -101,37 +102,37 @@ func buildEbookScope(ctx context.Context, m *EbookScopeModel) (*proclassic.Ebook
 		s.MobileDevices = &proclassic.EbookScopeMobileDevices{MobileDevice: mobileDevices}
 	}
 
-	mobileDeviceGroups, d := scope.BuildIDSlice(ctx, m.MobileDeviceGroupIDs, idNameFromInt)
+	mobileDeviceGroups, d := scope.BuildIDSlice(ctx, t.MobileDeviceGroupIDs, idNameFromInt)
 	diags.Append(d...)
 	if mobileDeviceGroups != nil {
 		s.MobileDeviceGroups = &proclassic.EbookScopeMobileDeviceGroups{MobileDeviceGroup: mobileDeviceGroups}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, idNameFromInt)
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, idNameFromInt)
 	diags.Append(d...)
 	if buildings != nil {
 		s.Buildings = &proclassic.EbookScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, idNameFromInt)
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, idNameFromInt)
 	diags.Append(d...)
 	if departments != nil {
 		s.Departments = &proclassic.EbookScopeDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, idNameFromInt)
+	jssUsers, d := scope.BuildIDSlice(ctx, t.UserIDs, idNameFromInt)
 	diags.Append(d...)
 	if jssUsers != nil {
 		s.JssUsers = &proclassic.EbookScopeJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, idNameFromInt)
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.UserGroupIDs, idNameFromInt)
 	diags.Append(d...)
 	if jssUserGroups != nil {
 		s.JssUserGroups = &proclassic.EbookScopeJssUserGroups{UserGroup: jssUserGroups}
 	}
 
-	classes, d := scope.BuildIDSlice(ctx, m.ClassIDs, idNameFromInt)
+	classes, d := scope.BuildIDSlice(ctx, t.ClassIDs, idNameFromInt)
 	diags.Append(d...)
 	if classes != nil {
 		s.Classes = &proclassic.EbookScopeClasses{Class: classes}

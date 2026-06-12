@@ -147,13 +147,14 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 		MacAppAdamIDs: types.SetNull(types.Int64Type),
 		EbookAdamIDs:  types.SetNull(types.Int64Type),
 		Scope: &scope.UserScopeModel{
+			Targets:     &scope.UserScopeTargetsModel{},
 			Limitations: &scope.UserScopeLimitationsModel{},
 			Exclusions:  &scope.UserScopeExclusionsModel{},
 		},
 	}
 	assignVPPAssignmentResourceModel(context.Background(), managed, sampleAPI())
-	if managed.Scope.JssUserGroupIDs.IsNull() || len(managed.Scope.JssUserGroupIDs.Elements()) != 1 {
-		t.Errorf("jss_user_group_ids = %v", managed.Scope.JssUserGroupIDs)
+	if managed.Scope.Targets.JssUserGroupIDs.IsNull() || len(managed.Scope.Targets.JssUserGroupIDs.Elements()) != 1 {
+		t.Errorf("jss_user_group_ids = %v", managed.Scope.Targets.JssUserGroupIDs)
 	}
 	if managed.Scope.Limitations.DirectoryServiceUserGroupNames.IsNull() {
 		t.Error("limitations DS names should be populated by name")
@@ -169,7 +170,7 @@ func TestAssignDataSourceModel_PopulatesContentAndScope(t *testing.T) {
 	if state.Scope == nil {
 		t.Fatal("DS must always populate scope")
 	}
-	if state.Scope.JssUserGroupIDs.IsNull() {
+	if state.Scope.Targets.JssUserGroupIDs.IsNull() {
 		t.Error("DS scope jss_user_group_ids should be populated")
 	}
 	// DS content lists always known (read-only).

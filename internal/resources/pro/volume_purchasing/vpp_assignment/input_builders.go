@@ -83,15 +83,16 @@ func buildVPPAssignmentInput(ctx context.Context, plan VPPAssignmentResourceMode
 // types.
 func buildScope(ctx context.Context, m *scope.UserScopeModel) (*proclassic.VppAssignmentPostScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.VppAssignmentPostScope{
-		AllJssUsers: helpers.OptionalBoolPointer(m.AllJssUsers),
+		AllJssUsers: helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	jssUsers, d := scope.BuildIDSlice(ctx, t.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	s.JssUsers = &proclassic.VppAssignmentScopeJssUsers{User: jssUsers}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	s.JssUserGroups = &proclassic.VppAssignmentScopeJssUserGroups{UserGroup: jssUserGroups}
 

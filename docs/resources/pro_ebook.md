@@ -27,8 +27,10 @@ resource "jamfplatform_pro_ebook" "field_guide" {
   }
 
   scope = {
-    all_computers      = true
-    all_mobile_devices = true
+    targets = {
+      all_computers      = true
+      all_mobile_devices = true
+    }
   }
 
   self_service = {
@@ -48,7 +50,9 @@ resource "jamfplatform_pro_ebook" "swift_intro" {
   }
 
   scope = {
-    class_ids = ["12"]
+    targets = {
+      class_ids = ["12"]
+    }
   }
 }
 ```
@@ -101,20 +105,9 @@ Read-Only:
 
 Optional:
 
-- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids `computer_ids` / `computer_group_ids` when true.
-- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Forbids `user_ids` / `user_group_ids` when true.
-- `all_mobile_devices` (Boolean) Scope to every mobile device in the tenant. Forbids `mobile_device_ids` / `mobile_device_group_ids` when true.
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `class_ids` (Set of String) Set of Jamf Pro class IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by targets or limitations. (see [below for nested schema](#nestedatt--scope--exclusions))
 - `limitations` (Attributes) Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects. (see [below for nested schema](#nestedatt--scope--limitations))
-- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs.
-- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs.
-- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `user_ids` (Set of String) Set of Jamf Pro user IDs.
+- `targets` (Attributes) Scope targets — the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes). (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -142,6 +135,25 @@ Optional:
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names.
 - `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
+
+
+<a id="nestedatt--scope--targets"></a>
+### Nested Schema for `scope.targets`
+
+Optional:
+
+- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids `computer_ids` / `computer_group_ids` when true.
+- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Forbids `user_ids` / `user_group_ids` when true.
+- `all_mobile_devices` (Boolean) Scope to every mobile device in the tenant. Forbids `mobile_device_ids` / `mobile_device_group_ids` when true.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs.
+- `class_ids` (Set of String) Set of Jamf Pro class IDs.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs.
+- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs.
+- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs.
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs.
 
 
 

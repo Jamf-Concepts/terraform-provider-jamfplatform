@@ -138,8 +138,10 @@ func TestBuildScope_PopulatedTargetsAndNameKeyedGroups(t *testing.T) {
 		Name:              types.StringValue("x"),
 		VPPAdminAccountID: types.StringValue("3"),
 		Scope: &scope.UserScopeModel{
-			AllJssUsers:     types.BoolValue(false),
-			JssUserGroupIDs: mustStringSet(t, "1"),
+			Targets: &scope.UserScopeTargetsModel{
+				AllJssUsers:     types.BoolValue(false),
+				JssUserGroupIDs: mustStringSet(t, "1"),
+			},
 			Limitations: &scope.UserScopeLimitationsModel{
 				DirectoryServiceUserGroupNames: mustStringSet(t, "LDAP Admins"),
 			},

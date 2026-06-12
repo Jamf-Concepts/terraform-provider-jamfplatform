@@ -60,9 +60,15 @@ func (d *VPPInvitationDataSource) Schema(ctx context.Context, req datasource.Sch
 				MarkdownDescription: "User-based scope.",
 				Computed:            true,
 				Attributes: map[string]dsschema.Attribute{
-					"all_jss_users":      dsschema.BoolAttribute{MarkdownDescription: "Target all Jamf Pro users.", Computed: true},
-					"jss_user_ids":       dsComputedStringSet("Jamf Pro user IDs."),
-					"jss_user_group_ids": dsComputedStringSet("Jamf Pro user group IDs."),
+					"targets": dsschema.SingleNestedAttribute{
+						MarkdownDescription: "Scope targets.",
+						Computed:            true,
+						Attributes: map[string]dsschema.Attribute{
+							"all_jss_users":      dsschema.BoolAttribute{MarkdownDescription: "Target all Jamf Pro users.", Computed: true},
+							"jss_user_ids":       dsComputedStringSet("Jamf Pro user IDs."),
+							"jss_user_group_ids": dsComputedStringSet("Jamf Pro user group IDs."),
+						},
+					},
 					"limitations": dsschema.SingleNestedAttribute{
 						MarkdownDescription: "Scope limitations.",
 						Computed:            true,

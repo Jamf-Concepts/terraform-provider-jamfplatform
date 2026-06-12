@@ -202,14 +202,17 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 }
 
 // ebookScopeAttributes hand-composes the ebook <scope> attribute map from the
-// shared scope sub-block primitives. Ebook's union+classes shape is its own —
-// it deliberately does NOT reuse scope.ComputerScopeAttributes /
+// shared scope sub-block primitives, splitting into targets / limitations /
+// exclusions to mirror the admin UI tabs. The all-flags and per-category target
+// ID sets nest under `targets`. Ebook's union+classes shape is its own — it
+// deliberately does NOT reuse scope.ComputerScopeAttributes /
 // scope.MobileScopeAttributes (those are single-target sugar). The three
 // all-flags use value-discriminated AllFlagConflictsWith validators with
-// relative paths (so they resolve under the scope parent) and
-// UseNonNullStateForUnknown (the server always echoes the flags; pinning a null
-// prior state on a null→present transition trips the post-apply consistency
-// check — see feedback all_computers_usestate_latent_bug).
+// relative paths (so they resolve against their sibling sets inside `targets`)
+// and UseNonNullStateForUnknown (the server always echoes the flags; the
+// `targets` block can transition null→present, and pinning a null prior state
+// forward trips the post-apply consistency check — see feedback
+// all_computers_usestate_latent_bug).
 func ebookScopeAttributes() map[string]schema.Attribute {
 	limitations := map[string]schema.Attribute{
 		"network_segment_ids":                   scope.IDSetAttribute("network segment"),
@@ -230,7 +233,7 @@ func ebookScopeAttributes() map[string]schema.Attribute {
 		"directory_service_user_group_names":    scope.NameSetAttribute("directory service user group"),
 	}
 
-	return map[string]schema.Attribute{
+	targets := map[string]schema.Attribute{
 		"all_computers": schema.BoolAttribute{
 			MarkdownDescription: "Scope to every computer in the tenant. Forbids `computer_ids` / `computer_group_ids` when true.",
 			Optional:            true,
@@ -276,6 +279,14 @@ func ebookScopeAttributes() map[string]schema.Attribute {
 		"user_ids":                scope.IDSetAttribute("user"),
 		"user_group_ids":          scope.IDSetAttribute("user group"),
 		"class_ids":               scope.IDSetAttribute("class"),
+	}
+
+	return map[string]schema.Attribute{
+		"targets": schema.SingleNestedAttribute{
+			MarkdownDescription: "Scope targets — the audience the ebook applies to. Mirrors the admin UI's Targets tab: set `all_computers` / `all_mobile_devices` / `all_jss_users` for tenant-wide scope, or list specific IDs (the dual-target union of computers, mobile devices, users, and classes).",
+			Optional:            true,
+			Attributes:          targets,
+		},
 		"limitations": schema.SingleNestedAttribute{
 			MarkdownDescription: "Scope limitations narrow the audience after the targets resolve. `directory_service_or_local_user_names` and `directory_service_user_group_names` carry names (not IDs) because that is how Jamf Pro identifies these directory-service objects.",
 			Optional:            true,

@@ -103,7 +103,9 @@ func macAppFullConfig(name, version, buttonText string) string {
 				deployment_type = "Make Available in Self Service"
 			}
 			scope = {
-				all_computers = true
+				targets = {
+					all_computers = true
+				}
 			}
 			self_service = {
 				install_button_text            = %q
@@ -171,7 +173,7 @@ func TestAccResource_ProMacApp_ScopeAndSelfService(t *testing.T) {
 				Config: macAppFullConfig(name, "1.0", "Install"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "id"),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.all_computers", "true"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.all_computers", "true"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.install_button_text", "Install"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.feature_on_main_page", "true"),
 				),
@@ -220,8 +222,10 @@ func TestAccResource_ProMacApp_AllComputersConflict(t *testing.T) {
 				url       = "https://apps.apple.com/app/id000000001"
 			}
 			scope = {
-				all_computers = true
-				computer_ids  = ["1"]
+				targets = {
+					all_computers = true
+					computer_ids  = ["1"]
+				}
 			}
 		}
 	`, name)
@@ -253,8 +257,10 @@ func TestAccResource_ProMacApp_AllJssUsersConflict(t *testing.T) {
 				url       = "https://apps.apple.com/app/id000000001"
 			}
 			scope = {
-				all_jss_users = true
-				user_ids      = ["1"]
+				targets = {
+					all_jss_users = true
+					user_ids      = ["1"]
+				}
 			}
 		}
 	`, name)
@@ -391,7 +397,9 @@ func macAppVPPFullMetadataConfig(token, suffix, buttonText string) string {
 			}
 
 			scope = {
-				all_computers = true
+				targets = {
+					all_computers = true
+				}
 			}
 
 			self_service = {
@@ -462,7 +470,7 @@ func TestAccResource_ProMacApp_VPPFullMetadata(t *testing.T) {
 					resource.TestCheckResourceAttr(macAppResourceAddr, "general.url", jamfParentURL),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "general.is_free", "true"),
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "general.category_id"),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.all_computers", "true"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.all_computers", "true"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.install_button_text", "Get"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.self_service_description", jamfParentDesc),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.notification_enabled", "true"),
@@ -522,8 +530,10 @@ func macAppScopeTargetsConfig(suffix string, limitationUserNames string) string 
 			}
 
 			scope = {
-				building_ids   = [jamfplatform_pro_building.b1.id]
-				department_ids = [jamfplatform_pro_department.d1.id]
+				targets = {
+					building_ids   = [jamfplatform_pro_building.b1.id]
+					department_ids = [jamfplatform_pro_department.d1.id]
+				}
 
 				limitations = {
 					network_segment_ids                   = [jamfplatform_pro_network_segment.n1.id]
@@ -558,9 +568,9 @@ func TestAccResource_ProMacApp_ScopeTargets(t *testing.T) {
 				Config: macAppScopeTargetsConfig(suffix, `["alice", "bob"]`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "id"),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.building_ids.#", "1"),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.department_ids.#", "1"),
-					resource.TestCheckResourceAttrPair(macAppResourceAddr, "scope.building_ids.0", "jamfplatform_pro_building.b1", "id"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.building_ids.#", "1"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.department_ids.#", "1"),
+					resource.TestCheckResourceAttrPair(macAppResourceAddr, "scope.targets.building_ids.0", "jamfplatform_pro_building.b1", "id"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.limitations.network_segment_ids.#", "1"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.limitations.directory_service_or_local_user_names.#", "2"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.exclusions.network_segment_ids.#", "1"),
@@ -702,7 +712,9 @@ func TestAccResource_ProMacApp_ScopeLdapGroup(t *testing.T) {
 			}
 
 			scope = {
-				all_computers = true
+				targets = {
+					all_computers = true
+				}
 
 				limitations = {
 					directory_service_user_group_names = [%q]

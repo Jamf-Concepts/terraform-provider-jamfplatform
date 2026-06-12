@@ -21,7 +21,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "pppc_all_computers" {
   }
 
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
     exclusions = {
       computer_ids = ["28"]
     }
@@ -38,7 +40,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "self_service" {
   }
 
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
   }
 
   self_service = {

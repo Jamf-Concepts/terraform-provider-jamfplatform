@@ -92,7 +92,20 @@ func TestEbookResource_ScopeIsDualTargetUnion(t *testing.T) {
 		t.Fatalf("scope must be a SingleNestedAttribute")
 	}
 
-	// The dual-target union: computer + mobile + user targets, plus classes.
+	// scope splits into targets / limitations / exclusions, mirroring the UI.
+	for _, name := range []string{"targets", "limitations", "exclusions"} {
+		if _, ok := scopeAttr.Attributes[name]; !ok {
+			t.Errorf("scope missing %q", name)
+		}
+	}
+
+	targetsAttr, ok := scopeAttr.Attributes["targets"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("scope.targets must be a SingleNestedAttribute")
+	}
+
+	// The dual-target union nests under targets: computer + mobile + user
+	// targets, plus classes.
 	wantTargets := []string{
 		"all_computers", "all_mobile_devices", "all_jss_users",
 		"computer_ids", "computer_group_ids",
@@ -100,17 +113,16 @@ func TestEbookResource_ScopeIsDualTargetUnion(t *testing.T) {
 		"building_ids", "department_ids",
 		"user_ids", "user_group_ids",
 		"class_ids",
-		"limitations", "exclusions",
 	}
 	for _, name := range wantTargets {
-		if _, ok := scopeAttr.Attributes[name]; !ok {
-			t.Errorf("scope missing %q", name)
+		if _, ok := targetsAttr.Attributes[name]; !ok {
+			t.Errorf("scope.targets missing %q", name)
 		}
 	}
 
 	// No iBeacon targets anywhere in ebook scope.
-	if _, ok := scopeAttr.Attributes["ibeacon_ids"]; ok {
-		t.Errorf("scope must NOT expose ibeacon_ids")
+	if _, ok := targetsAttr.Attributes["ibeacon_ids"]; ok {
+		t.Errorf("scope.targets must NOT expose ibeacon_ids")
 	}
 	excl, ok := scopeAttr.Attributes["exclusions"].(schema.SingleNestedAttribute)
 	if !ok {
@@ -128,13 +140,13 @@ func TestEbookResource_ScopeIsDualTargetUnion(t *testing.T) {
 
 	// All three all-flags must carry a validator (the AllFlagConflictsWith guard).
 	for _, name := range []string{"all_computers", "all_mobile_devices", "all_jss_users"} {
-		ba, ok := scopeAttr.Attributes[name].(schema.BoolAttribute)
+		ba, ok := targetsAttr.Attributes[name].(schema.BoolAttribute)
 		if !ok {
-			t.Errorf("scope.%s must be a BoolAttribute", name)
+			t.Errorf("scope.targets.%s must be a BoolAttribute", name)
 			continue
 		}
 		if len(ba.Validators) == 0 {
-			t.Errorf("scope.%s must declare an all-flag conflict validator", name)
+			t.Errorf("scope.targets.%s must declare an all-flag conflict validator", name)
 		}
 	}
 }

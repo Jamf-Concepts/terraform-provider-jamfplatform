@@ -57,15 +57,16 @@ func buildVPPInvitationInput(ctx context.Context, plan VPPInvitationResourceMode
 // as an empty element, which clears that collection.
 func buildScope(ctx context.Context, m *scope.UserScopeModel) (*proclassic.VppInvitationScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.VppInvitationScope{
-		AllJssUsers: helpers.OptionalBoolPointer(m.AllJssUsers),
+		AllJssUsers: helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	jssUsers, d := scope.BuildIDSlice(ctx, t.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	s.JssUsers = &proclassic.VppInvitationScopeJssUsers{User: jssUsers}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	s.JssUserGroups = &proclassic.VppInvitationScopeJssUserGroups{UserGroup: jssUserGroups}
 

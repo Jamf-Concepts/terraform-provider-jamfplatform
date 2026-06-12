@@ -48,7 +48,7 @@ func TestAssignPolicyResourceModel_FlattensScopeIDs(t *testing.T) {
 	t.Parallel()
 	state := &PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
-		Scope:   &scope.ComputerScopeModel{},
+		Scope:   &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{}},
 	}
 	src := &proclassic.Policy{
 		ID:      new(7),
@@ -72,13 +72,13 @@ func TestAssignPolicyResourceModel_FlattensScopeIDs(t *testing.T) {
 	if state.Scope == nil {
 		t.Fatalf("expected scope populated")
 	}
-	if state.Scope.ComputerGroupIDs.IsNull() {
+	if state.Scope.Targets == nil || state.Scope.Targets.ComputerGroupIDs.IsNull() {
 		t.Fatalf("expected computer_group_ids populated")
 	}
-	if got := len(state.Scope.ComputerGroupIDs.Elements()); got != 2 {
+	if got := len(state.Scope.Targets.ComputerGroupIDs.Elements()); got != 2 {
 		t.Fatalf("expected 2 computer_group_ids, got %d", got)
 	}
-	if got := len(state.Scope.BuildingIDs.Elements()); got != 1 {
+	if got := len(state.Scope.Targets.BuildingIDs.Elements()); got != 1 {
 		t.Fatalf("expected 1 building id, got %d", got)
 	}
 }

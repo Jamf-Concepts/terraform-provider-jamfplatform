@@ -154,7 +154,9 @@ func TestBuildScope_NullCollapsesToNil(t *testing.T) {
 func TestBuildScope_AllMobileDevicesOnly(t *testing.T) {
 	t.Parallel()
 	s, _ := buildScope(context.Background(), &scope.MobileScopeModel{
-		AllMobileDevices: types.BoolValue(true),
+		Targets: &scope.MobileScopeTargetsModel{
+			AllMobileDevices: types.BoolValue(true),
+		},
 	})
 	if s == nil || s.AllMobileDevices == nil || !*s.AllMobileDevices {
 		t.Fatalf("expected all_mobile_devices=true, got %+v", s)
@@ -167,7 +169,9 @@ func TestBuildScope_AllMobileDevicesOnly(t *testing.T) {
 func TestBuildScope_MobileDeviceIDsPopulated(t *testing.T) {
 	t.Parallel()
 	s, _ := buildScope(context.Background(), &scope.MobileScopeModel{
-		MobileDeviceIDs: stringSet(t, "11", "22"),
+		Targets: &scope.MobileScopeTargetsModel{
+			MobileDeviceIDs: stringSet(t, "11", "22"),
+		},
 	})
 	if s == nil || s.MobileDevices == nil || len(*s.MobileDevices.MobileDevice) != 2 {
 		t.Fatalf("expected 2 mobile devices, got %+v", s)
@@ -196,7 +200,9 @@ func TestBuildScope_LimitationsPopulated(t *testing.T) {
 func TestBuildScope_ExclusionsPopulated(t *testing.T) {
 	t.Parallel()
 	s, _ := buildScope(context.Background(), &scope.MobileScopeModel{
-		AllMobileDevices: types.BoolValue(true),
+		Targets: &scope.MobileScopeTargetsModel{
+			AllMobileDevices: types.BoolValue(true),
+		},
 		Exclusions: &scope.MobileScopeExclusionsModel{
 			MobileDeviceIDs:                stringSet(t, "99"),
 			DirectoryServiceUserGroupNames: stringSet(t, "DS-Group"),
@@ -281,7 +287,9 @@ func TestBuildInput_EndToEndCreatePath(t *testing.T) {
 			DistributionMethod: types.StringValue(distributionMethodInstallAutomatically),
 		},
 		Scope: &scope.MobileScopeModel{
-			AllMobileDevices: types.BoolValue(true),
+			Targets: &scope.MobileScopeTargetsModel{
+				AllMobileDevices: types.BoolValue(true),
+			},
 		},
 	}
 	out, diags := buildInput(context.Background(), plan, "")

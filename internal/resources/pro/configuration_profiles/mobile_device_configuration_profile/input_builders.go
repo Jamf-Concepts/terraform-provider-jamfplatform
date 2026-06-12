@@ -82,12 +82,13 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.MobileDevic
 
 func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.MobileDeviceConfigurationProfileScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.MobileDeviceConfigurationProfileScope{
-		AllMobileDevices: optionalBoolPointer(m.AllMobileDevices),
-		AllJssUsers:      optionalBoolPointer(m.AllJssUsers),
+		AllMobileDevices: optionalBoolPointer(t.AllMobileDevices),
+		AllJssUsers:      optionalBoolPointer(t.AllJssUsers),
 	}
 
-	mds, d := scope.BuildIDSlice(ctx, m.MobileDeviceIDs, func(id int) proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem {
+	mds, d := scope.BuildIDSlice(ctx, t.MobileDeviceIDs, func(id int) proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem {
 		return proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -95,7 +96,7 @@ func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.Mob
 		s.MobileDevices = &proclassic.MobileDeviceConfigurationProfileScopeMobileDevices{MobileDevice: mds}
 	}
 
-	mdgs, d := scope.BuildIDSlice(ctx, m.MobileDeviceGroupIDs, func(id int) proclassic.IDName {
+	mdgs, d := scope.BuildIDSlice(ctx, t.MobileDeviceGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -103,7 +104,7 @@ func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.Mob
 		s.MobileDeviceGroups = &proclassic.MobileDeviceConfigurationProfileScopeMobileDeviceGroups{MobileDeviceGroup: mdgs}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, func(id int) proclassic.IDName {
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -111,7 +112,7 @@ func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.Mob
 		s.Buildings = &proclassic.MobileDeviceConfigurationProfileScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, func(id int) proclassic.IDName {
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -119,7 +120,7 @@ func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.Mob
 		s.Departments = &proclassic.MobileDeviceConfigurationProfileScopeDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, func(id int) proclassic.IDName {
+	jssUsers, d := scope.BuildIDSlice(ctx, t.UserIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -127,7 +128,7 @@ func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.Mob
 		s.JssUsers = &proclassic.MobileDeviceConfigurationProfileScopeJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, func(id int) proclassic.IDName {
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.UserGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)

@@ -76,22 +76,23 @@ func TestFlattenEbookScope_DualTargetRoundTrip(t *testing.T) {
 	}
 
 	state := &EbookScopeModel{
+		Targets:     &EbookScopeTargetsModel{},
 		Limitations: &EbookScopeLimitationsModel{},
 		Exclusions:  &EbookScopeExclusionsModel{},
 	}
 	flattenEbookScope(ctx, s, state)
 
-	if setLen(state.ComputerIDs) != 2 {
-		t.Errorf("computer_ids: want 2, got %d", setLen(state.ComputerIDs))
+	if setLen(state.Targets.ComputerIDs) != 2 {
+		t.Errorf("computer_ids: want 2, got %d", setLen(state.Targets.ComputerIDs))
 	}
-	if setLen(state.MobileDeviceIDs) != 1 {
-		t.Errorf("mobile_device_ids: want 1, got %d", setLen(state.MobileDeviceIDs))
+	if setLen(state.Targets.MobileDeviceIDs) != 1 {
+		t.Errorf("mobile_device_ids: want 1, got %d", setLen(state.Targets.MobileDeviceIDs))
 	}
-	if setLen(state.MobileDeviceGroupIDs) != 1 {
-		t.Errorf("mobile_device_group_ids: want 1, got %d", setLen(state.MobileDeviceGroupIDs))
+	if setLen(state.Targets.MobileDeviceGroupIDs) != 1 {
+		t.Errorf("mobile_device_group_ids: want 1, got %d", setLen(state.Targets.MobileDeviceGroupIDs))
 	}
-	if setLen(state.ClassIDs) != 2 {
-		t.Errorf("class_ids: want 2, got %d", setLen(state.ClassIDs))
+	if setLen(state.Targets.ClassIDs) != 2 {
+		t.Errorf("class_ids: want 2, got %d", setLen(state.Targets.ClassIDs))
 	}
 	if setLen(state.Limitations.DirectoryServiceOrLocalUserNames) != 1 {
 		t.Errorf("limitations user names: want 1, got %d", setLen(state.Limitations.DirectoryServiceOrLocalUserNames))
@@ -102,8 +103,8 @@ func TestFlattenEbookScope_DualTargetRoundTrip(t *testing.T) {
 	if setLen(state.Exclusions.DirectoryServiceUserGroupNames) != 1 {
 		t.Errorf("exclusions user_group names: want 1, got %d", setLen(state.Exclusions.DirectoryServiceUserGroupNames))
 	}
-	if state.AllComputers.IsNull() || state.AllComputers.ValueBool() {
-		t.Errorf("all_computers should be false, got %v", state.AllComputers)
+	if state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
+		t.Errorf("all_computers should be false, got %v", state.Targets.AllComputers)
 	}
 }
 

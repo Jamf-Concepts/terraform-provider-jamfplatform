@@ -102,11 +102,13 @@ func flattenKillApps(ctx context.Context, ka *proclassic.PatchPolicyGeneralKillA
 }
 
 func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *PatchPolicyScopeModel) {
-	state.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.AllComputers)
-	state.ComputerIDs = flattenComputerSet(ctx, computerSlice(s.Computers))
-	state.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-	state.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-	state.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+	if state.Targets != nil {
+		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.ComputerIDs = flattenComputerSet(ctx, computerSlice(s.Computers))
+		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations

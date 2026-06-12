@@ -66,11 +66,13 @@ func flattenGeneral(g *proclassic.RestrictedSoftwareGeneral, state *RestrictedSo
 }
 
 func flattenScope(ctx context.Context, s *proclassic.RestrictedSoftwareScope, state *RestrictedSoftwareScopeModel) {
-	state.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.AllComputers)
-	state.ComputerIDs = flattenIDNameSet(ctx, computerSlice(s.Computers))
-	state.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-	state.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-	state.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+	if state.Targets != nil {
+		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.ComputerIDs = flattenIDNameSet(ctx, computerSlice(s.Computers))
+		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions

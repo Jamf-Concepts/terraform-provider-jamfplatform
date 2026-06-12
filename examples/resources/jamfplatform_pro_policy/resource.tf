@@ -19,15 +19,17 @@ resource "jamfplatform_pro_policy" "scoped" {
   }
 
   scope = {
-    computer_group_ids = [
-      jamfplatform_device_group.engineering.jamf_pro_id,
-    ]
-    building_ids = [
-      jamfplatform_pro_building.hq.id,
-    ]
-    department_ids = [
-      jamfplatform_pro_department.it.id,
-    ]
+    targets = {
+      computer_group_ids = [
+        jamfplatform_device_group.engineering.jamf_pro_id,
+      ]
+      building_ids = [
+        jamfplatform_pro_building.hq.id,
+      ]
+      department_ids = [
+        jamfplatform_pro_department.it.id,
+      ]
+    }
 
     limitations = {
       directory_service_user_group_names = ["wheel"]
@@ -55,6 +57,8 @@ resource "jamfplatform_pro_policy" "universal" {
     name = "tf-acc-universal-policy"
   }
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
   }
 }
