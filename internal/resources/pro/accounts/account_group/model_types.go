@@ -31,17 +31,21 @@ type AccountGroupResourceModel struct {
 	Timeouts       resourceTimeouts.Value   `tfsdk:"timeouts"`
 }
 
-// AccountGroupDataSourceModel is the Terraform model for the Pro v1 account-group
-// data source. It surfaces the Pro JSON shape (flat privileges, Pro enum
-// spellings) as read; lookup is by id or display_name.
+// AccountGroupDataSourceModel is the Terraform model for the account-group data
+// source. It is sourced from the ProClassic /accounts/groupid endpoint (the Pro
+// v1 /account-groups read endpoint is gateway-blocked today), so it uses the
+// classic enum spellings — matching the resource — and surfaces the categorised
+// privilege grid flattened into a single set. Lookup is by id or display_name.
 type AccountGroupDataSourceModel struct {
 	ID             types.String             `tfsdk:"id"`
 	DisplayName    types.String             `tfsdk:"display_name"`
 	AccessLevel    types.String             `tfsdk:"access_level"`
-	PrivilegeLevel types.String             `tfsdk:"privilege_level"`
-	SiteID         types.String             `tfsdk:"site_id"`
-	LdapServerID   types.String             `tfsdk:"ldap_server_id"`
-	Members        types.List               `tfsdk:"members"`
+	PrivilegeSet   types.String             `tfsdk:"privilege_set"`
+	SiteID         types.Int64              `tfsdk:"site_id"`
+	SiteName       types.String             `tfsdk:"site_name"`
+	LdapServerID   types.Int64              `tfsdk:"ldap_server_id"`
+	LdapServerName types.String             `tfsdk:"ldap_server_name"`
+	Members        types.Set                `tfsdk:"members"`
 	Privileges     types.Set                `tfsdk:"privileges"`
 	Timeouts       datasourceTimeouts.Value `tfsdk:"timeouts"`
 }

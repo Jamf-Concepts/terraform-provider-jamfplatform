@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_account_group Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro administrator account group by id or display_name via the Pro v1 /account-groups API. Values use the Pro JSON spellings (e.g. FullAccess, ADMINISTRATOR) and a flat privilege list, unlike the jamfplatform_pro_account_group resource (classic spellings, categorised privileges).
+  Look up a Jamf Pro administrator account group by id or display_name. Sourced from the ProClassic API (the same enum spellings as the jamfplatform_pro_account_group resource); the privileges attribute is the flattened union of the group's privilege grid.
 ---
 
 # jamfplatform_pro_account_group (Data Source)
 
-Look up a Jamf Pro administrator account group by `id` or `display_name` via the Pro v1 `/account-groups` API. Values use the Pro JSON spellings (e.g. `FullAccess`, `ADMINISTRATOR`) and a flat privilege list, unlike the `jamfplatform_pro_account_group` resource (classic spellings, categorised privileges).
+Look up a Jamf Pro administrator account group by `id` or `display_name`. Sourced from the ProClassic API (the same enum spellings as the `jamfplatform_pro_account_group` resource); the `privileges` attribute is the flattened union of the group's privilege grid.
 
 ## Example Usage
 
@@ -35,18 +35,20 @@ output "account_group_by_name" {
 
 ### Optional
 
-- `display_name` (String) Account group display name. Provide this or `id`.
+- `display_name` (String) Group display name. Provide this or `id`.
 - `id` (String) Account group ID. Provide this or `display_name`.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
-- `access_level` (String) Access level (Pro spelling, e.g. `FullAccess`).
-- `ldap_server_id` (String) Backing LDAP / cloud-identity-provider server ID.
-- `members` (Attributes List) Account members of the group. (see [below for nested schema](#nestedatt--members))
-- `privilege_level` (String) Privilege set (Pro spelling, e.g. `ADMINISTRATOR`).
-- `privileges` (Set of String) Flat list of privilege strings granted to the group.
-- `site_id` (String) Scoped site ID (`-1` for none).
+- `access_level` (String) Access level (`Full Access` or `Site Access`).
+- `ldap_server_id` (Number) Backing LDAP / cloud-identity-provider server ID (null for a local group).
+- `ldap_server_name` (String) Backing directory server name.
+- `members` (Set of Number) Account IDs that are explicit members of the group.
+- `privilege_set` (String) Privilege set (`Administrator`, `Auditor`, `Enrollment Only`, or `Custom`).
+- `privileges` (Set of String) Flattened union of all privilege strings granted to the group across every category.
+- `site_id` (Number) Scoped site ID (`-1` for none).
+- `site_name` (String) Scoped site name.
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
@@ -54,14 +56,3 @@ output "account_group_by_name" {
 Optional:
 
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
-
-
-<a id="nestedatt--members"></a>
-### Nested Schema for `members`
-
-Read-Only:
-
-- `email` (String) Account email address.
-- `id` (String) Account ID.
-- `realname` (String) Account full name.
-- `username` (String) Account username.

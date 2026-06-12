@@ -6,32 +6,26 @@ package account_group
 import (
 	"context"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	datasourcevalidator "github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/accountprivileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
-// memberObjectAttrTypes is the shape of a data-source member entry (Pro v1).
-var memberObjectAttrTypes = map[string]attr.Type{
-	"id":       types.StringType,
-	"username": types.StringType,
-	"realname": types.StringType,
-	"email":    types.StringType,
-}
-
-// AccountGroupDataSource implements the Pro v1 account-group data source.
+// AccountGroupDataSource implements the account-group data source, sourced from
+// the ProClassic API (the Pro v1 /account-groups read endpoint is currently
+// gateway-blocked).
 type AccountGroupDataSource struct {
-	client *pro.Client
+	client *proclassic.Client
 }
 
 var _ datasource.DataSource = &AccountGroupDataSource{}
@@ -50,71 +44,33 @@ func (d *AccountGroupDataSource) Metadata(ctx context.Context, req datasource.Me
 // ConfigValidators enforces exactly one of id / display_name.
 func (d *AccountGroupDataSource) ConfigValidators(ctx context.Context) []datasource.ConfigValidator {
 	return []datasource.ConfigValidator{
-		datasourcevalidator.ExactlyOneOf(
-			path.MatchRoot("id"),
-			path.MatchRoot("display_name"),
-		),
+		datasourcevalidator.ExactlyOneOf(path.MatchRoot("id"), path.MatchRoot("display_name")),
 	}
 }
 
-// Schema returns the data source schema. Values reflect the Pro v1 JSON shape
-// (flat privileges, Pro enum spellings such as `FullAccess`/`ADMINISTRATOR`),
-// which differ from the resource's classic spellings.
+// Schema returns the data source schema.
 func (d *AccountGroupDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro administrator account group by `id` or `display_name` via the Pro v1 `/account-groups` API. Values use the Pro JSON spellings (e.g. `FullAccess`, `ADMINISTRATOR`) and a flat privilege list, unlike the `jamfplatform_pro_account_group` resource (classic spellings, categorised privileges).",
+		MarkdownDescription: "Look up a Jamf Pro administrator account group by `id` or `display_name`. Sourced from the ProClassic API (the same enum spellings as the `jamfplatform_pro_account_group` resource); the `privileges` attribute is the flattened union of the group's privilege grid.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "Account group ID. Provide this or `display_name`.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"display_name": schema.StringAttribute{
-				MarkdownDescription: "Account group display name. Provide this or `id`.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"access_level": schema.StringAttribute{
-				MarkdownDescription: "Access level (Pro spelling, e.g. `FullAccess`).",
-				Computed:            true,
-			},
-			"privilege_level": schema.StringAttribute{
-				MarkdownDescription: "Privilege set (Pro spelling, e.g. `ADMINISTRATOR`).",
-				Computed:            true,
-			},
-			"site_id": schema.StringAttribute{
-				MarkdownDescription: "Scoped site ID (`-1` for none).",
-				Computed:            true,
-			},
-			"ldap_server_id": schema.StringAttribute{
-				MarkdownDescription: "Backing LDAP / cloud-identity-provider server ID.",
-				Computed:            true,
-			},
-			"members": schema.ListNestedAttribute{
-				MarkdownDescription: "Account members of the group.",
-				Computed:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id":       schema.StringAttribute{Computed: true, MarkdownDescription: "Account ID."},
-						"username": schema.StringAttribute{Computed: true, MarkdownDescription: "Account username."},
-						"realname": schema.StringAttribute{Computed: true, MarkdownDescription: "Account full name."},
-						"email":    schema.StringAttribute{Computed: true, MarkdownDescription: "Account email address."},
-					},
-				},
-			},
-			"privileges": schema.SetAttribute{
-				MarkdownDescription: "Flat list of privilege strings granted to the group.",
-				Computed:            true,
-				ElementType:         types.StringType,
-			},
-			"timeouts": timeouts.Attributes(ctx),
+			"id":               schema.StringAttribute{MarkdownDescription: "Account group ID. Provide this or `display_name`.", Optional: true, Computed: true},
+			"display_name":     schema.StringAttribute{MarkdownDescription: "Group display name. Provide this or `id`.", Optional: true, Computed: true},
+			"access_level":     schema.StringAttribute{MarkdownDescription: "Access level (`Full Access` or `Site Access`).", Computed: true},
+			"privilege_set":    schema.StringAttribute{MarkdownDescription: "Privilege set (`Administrator`, `Auditor`, `Enrollment Only`, or `Custom`).", Computed: true},
+			"site_id":          schema.Int64Attribute{MarkdownDescription: "Scoped site ID (`-1` for none).", Computed: true},
+			"site_name":        schema.StringAttribute{MarkdownDescription: "Scoped site name.", Computed: true},
+			"ldap_server_id":   schema.Int64Attribute{MarkdownDescription: "Backing LDAP / cloud-identity-provider server ID (null for a local group).", Computed: true},
+			"ldap_server_name": schema.StringAttribute{MarkdownDescription: "Backing directory server name.", Computed: true},
+			"members":          schema.SetAttribute{MarkdownDescription: "Account IDs that are explicit members of the group.", Computed: true, ElementType: types.Int64Type},
+			"privileges":       schema.SetAttribute{MarkdownDescription: "Flattened union of all privilege strings granted to the group across every category.", Computed: true, ElementType: types.StringType},
+			"timeouts":         timeouts.Attributes(ctx),
 		},
 	}
 }
 
-// Configure wires the Jamf Pro client into the data source.
+// Configure wires the Jamf ProClassic client into the data source.
 func (d *AccountGroupDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
-	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_account_group")
+	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_account_group")
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -143,60 +99,54 @@ func (d *AccountGroupDataSource) Read(ctx context.Context, req datasource.ReadRe
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
-	var got *pro.AccountGroupV1
+	var got *proclassic.Group
 	var err error
 	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		got, err = d.client.GetAccountGroupV1(readCtx, data.ID.ValueString())
+		got, err = d.client.GetAccountGroupByID(readCtx, data.ID.ValueString())
 	} else {
-		got, err = d.client.ResolveAccountGroupV1ByName(readCtx, data.DisplayName.ValueString())
+		got, err = d.client.GetAccountGroupByName(readCtx, data.DisplayName.ValueString())
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to find Jamf Pro account group", err.Error())
 		return
 	}
 
-	resp.Diagnostics.Append(assignAccountGroupDataSourceModel(ctx, &data, got)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
+	assignAccountGroupDataSourceModel(&data, got)
 	tflog.Trace(ctx, "read Jamf Pro account group data source", map[string]any{"id": data.ID.ValueString()})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func assignAccountGroupDataSourceModel(ctx context.Context, data *AccountGroupDataSourceModel, g *pro.AccountGroupV1) diag.Diagnostics {
-	var diags diag.Diagnostics
+func assignAccountGroupDataSourceModel(data *AccountGroupDataSourceModel, g *proclassic.Group) {
 	if g == nil {
-		return diags
+		return
 	}
-	data.ID = types.StringValue(g.ID)
-	data.DisplayName = types.StringValue(g.Name)
-	data.AccessLevel = types.StringValue(g.AccessLevel)
-	data.PrivilegeLevel = types.StringValue(g.PrivilegeLevel)
-	data.SiteID = types.StringValue(g.SiteID)
-	data.LdapServerID = types.StringValue(g.LdapServerID)
+	data.ID = helpers.StringValueFromIntPtr(g.ID)
+	data.DisplayName = helpers.StringPointerValueOrNull(g.Name)
+	data.AccessLevel = helpers.StringPointerValueOrNull(g.AccessLevel)
+	data.PrivilegeSet = helpers.StringPointerValueOrNull(g.PrivilegeSet)
 
-	privElems := make([]attr.Value, 0, len(g.Privileges))
-	for _, p := range g.Privileges {
-		privElems = append(privElems, types.StringValue(p))
+	if g.Site != nil && g.Site.ID != nil {
+		data.SiteID = types.Int64Value(int64(*g.Site.ID))
+		data.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
+	} else {
+		data.SiteID = types.Int64Value(-1)
+		data.SiteName = types.StringNull()
 	}
-	privSet, d := types.SetValue(types.StringType, privElems)
-	diags.Append(d...)
-	data.Privileges = privSet
+	if g.LdapServer != nil && g.LdapServer.ID != nil && *g.LdapServer.ID > 0 {
+		data.LdapServerID = types.Int64Value(int64(*g.LdapServer.ID))
+		data.LdapServerName = helpers.StringPointerValueOrNull(g.LdapServer.Name)
+	} else {
+		data.LdapServerID = types.Int64Null()
+		data.LdapServerName = types.StringNull()
+	}
 
-	memberElems := make([]attr.Value, 0, len(g.Members))
-	for _, m := range g.Members {
-		obj, d := types.ObjectValue(memberObjectAttrTypes, map[string]attr.Value{
-			"id":       types.StringValue(m.ID),
-			"username": helpers.StringPointerValueOrNull(m.Username),
-			"realname": helpers.StringPointerValueOrNull(m.Realname),
-			"email":    helpers.StringPointerValueOrNull(m.Email),
-		})
-		diags.Append(d...)
-		memberElems = append(memberElems, obj)
+	data.Members = memberSet(g.Members)
+
+	var privElems []attr.Value
+	for _, privs := range accountprivileges.FromGroupPrivileges(g.Privileges) {
+		for _, p := range privs {
+			privElems = append(privElems, types.StringValue(p))
+		}
 	}
-	memberList, d := types.ListValue(types.ObjectType{AttrTypes: memberObjectAttrTypes}, memberElems)
-	diags.Append(d...)
-	data.Members = memberList
-	return diags
+	data.Privileges, _ = types.SetValue(types.StringType, privElems)
 }
