@@ -37,6 +37,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/accounts/account"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/accounts/account_group"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/accounts/account_privileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_clients"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_role"
@@ -419,6 +420,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 	return []func() datasource.DataSource{
 		account.NewAccountDataSource,
 		account_group.NewAccountGroupDataSource,
+		account_privileges.NewAccountPrivilegesDataSource,
 		api_client.NewApiClientDataSource,
 		api_clients.NewApiClientsDataSource,
 		api_role.NewApiRoleDataSource,

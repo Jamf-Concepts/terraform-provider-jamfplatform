@@ -73,6 +73,55 @@ func catalogFromMap(m map[string][]string) *Catalog {
 	return cat
 }
 
+// DiscoverCategorized returns the tenant privilege catalog as the categorised
+// 7-bucket map (wire keys), sourced from an Administrator group (preferred) or
+// account. Unlike Discover (which flattens to a membership set for validation),
+// this preserves category placement for the account_privileges data source.
+func DiscoverCategorized(ctx context.Context, d Discoverer) (map[string][]string, error) {
+	if d == nil {
+		return nil, fmt.Errorf("no classic client available")
+	}
+	accounts, err := d.ListAccounts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing accounts and groups: %w", err)
+	}
+	if accounts != nil && accounts.Groups != nil && accounts.Groups.Group != nil {
+		for _, g := range *accounts.Groups.Group {
+			if g.ID == nil {
+				continue
+			}
+			group, err := d.GetAccountGroupByID(ctx, fmt.Sprint(*g.ID))
+			if err != nil || group == nil {
+				continue
+			}
+			if group.PrivilegeSet != nil && *group.PrivilegeSet == administratorPrivilegeSet {
+				m := FromGroupPrivileges(group.Privileges)
+				if len(m) > 0 {
+					return m, nil
+				}
+			}
+		}
+	}
+	if accounts != nil && accounts.Users != nil && accounts.Users.User != nil {
+		for _, u := range *accounts.Users.User {
+			if u.ID == nil {
+				continue
+			}
+			acct, err := d.GetAccountByUserID(ctx, fmt.Sprint(*u.ID))
+			if err != nil || acct == nil {
+				continue
+			}
+			if acct.PrivilegeSet != nil && *acct.PrivilegeSet == administratorPrivilegeSet {
+				m := FromAccountPrivileges(acct.Privileges)
+				if len(m) > 0 {
+					return m, nil
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("no Administrator account or group found to source the privilege catalog")
+}
+
 // Discover builds the tenant privilege catalog by reading an Administrator
 // account group (preferred — few groups, full categorised grid) or, failing
 // that, an Administrator account. Returns an error if no Administrator
