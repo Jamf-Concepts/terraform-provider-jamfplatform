@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_account_group Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro administrator account group by id or display_name. Sourced from the ProClassic API (the same enum spellings as the jamfplatform_pro_account_group resource); the privileges attribute is the flattened union of the group's privilege grid.
+  Look up a Jamf Pro administrator account group by id or display_name. Values use the same spellings as the jamfplatform_pro_account_group resource; the privileges attribute is the flattened union of the group's privilege grid.
 ---
 
 # jamfplatform_pro_account_group (Data Source)
 
-Look up a Jamf Pro administrator account group by `id` or `display_name`. Sourced from the ProClassic API (the same enum spellings as the `jamfplatform_pro_account_group` resource); the `privileges` attribute is the flattened union of the group's privilege grid.
+Look up a Jamf Pro administrator account group by `id` or `display_name`. Values use the same spellings as the `jamfplatform_pro_account_group` resource; the `privileges` attribute is the flattened union of the group's privilege grid.
 
 ## Example Usage
 

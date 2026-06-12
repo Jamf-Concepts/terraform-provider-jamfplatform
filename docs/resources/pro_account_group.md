@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_account_group Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro administrator account group — a permission group whose members can sign in to Jamf Pro. This is NOT the jamfplatform_pro_user_group inventory construct (which groups end-user/device records). Backed by the ProClassic /accounts/groupid endpoint (the Pro v1 /account-groups endpoint is read-only and powers the data source).
+  Manages a Jamf Pro administrator account group — a permission group whose members can sign in to Jamf Pro. This is NOT the jamfplatform_pro_user_group inventory construct (which groups end-user/device records).
 ---
 
 # jamfplatform_pro_account_group (Resource)
 
-Manages a Jamf Pro **administrator account group** — a permission group whose members can sign in to Jamf Pro. This is NOT the `jamfplatform_pro_user_group` inventory construct (which groups end-user/device records). Backed by the ProClassic `/accounts/groupid` endpoint (the Pro v1 `/account-groups` endpoint is read-only and powers the data source).
+Manages a Jamf Pro **administrator account group** — a permission group whose members can sign in to Jamf Pro. This is NOT the `jamfplatform_pro_user_group` inventory construct (which groups end-user/device records).
 
 ## Example Usage
 
@@ -83,8 +83,8 @@ resource "jamfplatform_pro_account_group" "managed_members" {
 ### Read-Only
 
 - `id` (String) Account group ID assigned by Jamf Pro.
-- `ldap_server_name` (String) Display name of the backing directory server (server-derived).
-- `site_name` (String) Display name of the scoped site (server-derived).
+- `ldap_server_name` (String) Display name of the backing directory server. Read-only.
+- `site_name` (String) Display name of the scoped site. Read-only.
 
 <a id="nestedatt--privileges"></a>
 ### Nested Schema for `privileges`

@@ -80,7 +80,7 @@ func (d *AccountPrivilegesDataSource) Schema(ctx context.Context, req datasource
 	catAttrs["timeouts"] = timeouts.Attributes(ctx)
 
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Discovers the privilege strings grantable on this Jamf Pro tenant, categorised into the seven privilege buckets, by reading a `privilege_set = Administrator` account group or account (there is no dedicated privilege-catalog API). Use it to look up exact privilege strings for the `privileges` block of `jamfplatform_pro_account` and `jamfplatform_pro_account_group`.",
+		MarkdownDescription: "Lists the privilege strings grantable on this Jamf Pro tenant, categorised into the seven privilege buckets. The catalog is read from an existing account group or account whose privilege set is `Administrator` (which holds every grantable privilege). Use it to look up exact privilege strings for the `privileges` block of `jamfplatform_pro_account` and `jamfplatform_pro_account_group`.",
 		Attributes:          catAttrs,
 	}
 }

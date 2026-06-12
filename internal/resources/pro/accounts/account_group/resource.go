@@ -77,7 +77,7 @@ func (r *AccountGroupResource) IdentitySchema(ctx context.Context, req resource.
 // Schema returns the Terraform schema for the account group resource.
 func (r *AccountGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro **administrator account group** — a permission group whose members can sign in to Jamf Pro. This is NOT the `jamfplatform_pro_user_group` inventory construct (which groups end-user/device records). Backed by the ProClassic `/accounts/groupid` endpoint (the Pro v1 `/account-groups` endpoint is read-only and powers the data source).",
+		MarkdownDescription: "Manages a Jamf Pro **administrator account group** — a permission group whose members can sign in to Jamf Pro. This is NOT the `jamfplatform_pro_user_group` inventory construct (which groups end-user/device records).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Account group ID assigned by Jamf Pro.",
@@ -114,7 +114,7 @@ func (r *AccountGroupResource) Schema(ctx context.Context, req resource.SchemaRe
 				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"site_name": schema.StringAttribute{
-				MarkdownDescription: "Display name of the scoped site (server-derived).",
+				MarkdownDescription: "Display name of the scoped site. Read-only.",
 				Computed:            true,
 			},
 			"ldap_server_id": schema.Int64Attribute{
@@ -122,7 +122,7 @@ func (r *AccountGroupResource) Schema(ctx context.Context, req resource.SchemaRe
 				Optional:            true,
 			},
 			"ldap_server_name": schema.StringAttribute{
-				MarkdownDescription: "Display name of the backing directory server (server-derived).",
+				MarkdownDescription: "Display name of the backing directory server. Read-only.",
 				Computed:            true,
 			},
 			"members": schema.SetAttribute{

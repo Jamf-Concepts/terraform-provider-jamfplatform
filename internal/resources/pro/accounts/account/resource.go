@@ -87,7 +87,7 @@ func (r *AccountResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the account resource.
 func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). The resource is a hybrid: it is created via the Pro `/accounts` API (the only path that can set `account_type`, including `FEDERATED`) and carries its Custom privilege grid via the ProClassic API. **Base-field updates currently fail with a gateway permission error (403)** until the Pro update permission is granted to the platform gateway; privilege and membership edits work today.",
+		MarkdownDescription: "Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. **In-place updates to base account fields (username, full name, email, access level, etc.) are not currently accepted by Jamf Pro and will return an error; only privilege changes can be applied to an existing account.** Changing `account_type` forces the account to be replaced.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Account ID assigned by Jamf Pro.",
@@ -129,7 +129,7 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"account_type": schema.StringAttribute{
-				MarkdownDescription: "Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable — changing it forces replacement (the classic API cannot change it; only Pro create sets it).",
+				MarkdownDescription: "Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable — changing it forces the account to be replaced.",
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(accountTypeValues...)},
