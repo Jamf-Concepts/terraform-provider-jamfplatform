@@ -62,3 +62,66 @@ resource "jamfplatform_pro_policy" "universal" {
     }
   }
 }
+
+# The Options sidebar payloads map to top-level blocks that mirror the admin
+# UI section names. `account_maintenance` is flattened into four peer blocks:
+# `local_accounts`, `management_account`, `directory_bindings`, `efi_password`.
+resource "jamfplatform_pro_policy" "options" {
+  general = {
+    name      = "tf-acc-options-policy"
+    enabled   = true
+    frequency = "Once per computer"
+  }
+
+  packages = {
+    distribution_point = "Cloud Distribution Point"
+    packages = [
+      { id = "100", action = "Install" },
+    ]
+  }
+
+  # Options ▸ Local Accounts. `password` is WriteOnly — rotate it by bumping
+  # `password_wo_version`.
+  local_accounts = [
+    {
+      action              = "Create"
+      username            = "tf-admin"
+      realname            = "TF Admin"
+      password            = "Sup3rS3cret!"
+      password_wo_version = 1
+      admin               = true
+    },
+  ]
+
+  # Options ▸ Management Accounts.
+  management_account = {
+    action                      = "rotate"
+    managed_password_length     = 16
+    managed_password_wo_version = 1
+  }
+
+  # Options ▸ Directory Bindings.
+  directory_bindings = [
+    { id = "1" },
+  ]
+
+  # Options ▸ EFI Password.
+  efi_password = {
+    of_mode                = "command"
+    of_password            = "EFI-pw-1!"
+    of_password_wo_version = 1
+  }
+
+  # Options ▸ Restart Options.
+  restart_options = {
+    no_user_logged_in = "Restart immediately"
+    user_logged_in    = "Restart if a package or update requires it"
+  }
+
+  # Options ▸ Files and Processes.
+  files_and_processes = {
+    search_by_path       = "/tmp/sentinel"
+    delete_file_if_found = true
+    execute_command      = "/usr/local/bin/post-flight.sh"
+  }
+}

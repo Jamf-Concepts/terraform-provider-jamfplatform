@@ -19,8 +19,8 @@ import (
 //   - self_service.display_notifications / notification_location are two TF
 //     attributes that round-trip through a single proclassic.NotificationValue
 //     (the wire emits two <notification> elements per policy).
-//   - Plaintext secrets (accounts[].password, management_account.managed_password,
-//     open_firmware_efi_password.of_password) are `WriteOnly` attributes: sent
+//   - Plaintext secrets (local_accounts[].password, management_account.managed_password,
+//     efi_password.of_password) are `WriteOnly` attributes: sent
 //     on writes from req.Config, never persisted in state. Each carries a
 //     `*_wo_version` Int64 Optional companion as rotation trigger. The
 //     SHA-256 response twins (password_sha256, of_password_sha256) are no
@@ -34,21 +34,29 @@ import (
 //     underlying wrapper-shape defect on the SDK type for any future
 //     non-policy consumer.
 type PolicyResourceModel struct {
-	ID                   types.String                     `tfsdk:"id"`
-	General              *PolicyGeneralModel              `tfsdk:"general"`
-	Scope                *scope.ComputerScopeModel        `tfsdk:"scope"`
-	SelfService          *PolicySelfServiceModel          `tfsdk:"self_service"`
-	PackageConfiguration *PolicyPackageConfigurationModel `tfsdk:"package_configuration"`
-	Scripts              *PolicyScriptsModel              `tfsdk:"scripts"`
-	Printers             *PolicyPrintersModel             `tfsdk:"printers"`
-	DockItems            *PolicyDockItemsModel            `tfsdk:"dock_items"`
-	AccountMaintenance   *PolicyAccountMaintenanceModel   `tfsdk:"account_maintenance"`
-	Reboot               *PolicyRebootModel               `tfsdk:"reboot"`
-	Maintenance          *PolicyMaintenanceModel          `tfsdk:"maintenance"`
-	FilesProcesses       *PolicyFilesProcessesModel       `tfsdk:"files_processes"`
-	UserInteraction      *PolicyUserInteractionModel      `tfsdk:"user_interaction"`
-	DiskEncryption       *PolicyDiskEncryptionModel       `tfsdk:"disk_encryption"`
-	Timeouts             resourceTimeouts.Value           `tfsdk:"timeouts"`
+	ID          types.String              `tfsdk:"id"`
+	General     *PolicyGeneralModel       `tfsdk:"general"`
+	Scope       *scope.ComputerScopeModel `tfsdk:"scope"`
+	SelfService *PolicySelfServiceModel   `tfsdk:"self_service"`
+	Packages    *PolicyPackagesModel      `tfsdk:"packages"`
+	Scripts     *PolicyScriptsModel       `tfsdk:"scripts"`
+	Printers    *PolicyPrintersModel      `tfsdk:"printers"`
+	DockItems   *PolicyDockItemsModel     `tfsdk:"dock_items"`
+	// account_maintenance is flattened into four UI-aligned peer blocks
+	// (Local Accounts / Management Accounts / Directory Bindings / EFI
+	// Password in the admin UI). The classic wire still carries them under a
+	// single <account_maintenance> object — the input/state builders join and
+	// split across these four fields.
+	LocalAccounts     []PolicyAccountItemModel            `tfsdk:"local_accounts"`
+	DirectoryBindings []PolicyDirectoryBindingItemModel   `tfsdk:"directory_bindings"`
+	ManagementAccount *PolicyManagementAccountModel       `tfsdk:"management_account"`
+	EfiPassword       *PolicyOpenFirmwareEfiPasswordModel `tfsdk:"efi_password"`
+	RestartOptions    *PolicyRestartOptionsModel          `tfsdk:"restart_options"`
+	Maintenance       *PolicyMaintenanceModel             `tfsdk:"maintenance"`
+	FilesAndProcesses *PolicyFilesAndProcessesModel       `tfsdk:"files_and_processes"`
+	UserInteraction   *PolicyUserInteractionModel         `tfsdk:"user_interaction"`
+	DiskEncryption    *PolicyDiskEncryptionModel          `tfsdk:"disk_encryption"`
+	Timeouts          resourceTimeouts.Value              `tfsdk:"timeouts"`
 }
 
 // PolicyGeneralModel models <policy><general>.
@@ -139,8 +147,9 @@ type PolicySelfServiceCategoryModel struct {
 	FeatureIn types.Bool   `tfsdk:"feature_in"`
 }
 
-// PolicyPackageConfigurationModel models <policy><package_configuration>.
-type PolicyPackageConfigurationModel struct {
+// PolicyPackagesModel models <policy><package_configuration> (admin UI:
+// Options ▸ Packages).
+type PolicyPackagesModel struct {
 	DistributionPoint types.String             `tfsdk:"distribution_point"`
 	Packages          []PolicyPackageItemModel `tfsdk:"packages"`
 }
@@ -203,14 +212,6 @@ type PolicyDockItemModel struct {
 	Action types.String `tfsdk:"action"`
 }
 
-// PolicyAccountMaintenanceModel models <policy><account_maintenance>.
-type PolicyAccountMaintenanceModel struct {
-	Accounts                []PolicyAccountItemModel            `tfsdk:"accounts"`
-	DirectoryBindings       []PolicyDirectoryBindingItemModel   `tfsdk:"directory_bindings"`
-	ManagementAccount       *PolicyManagementAccountModel       `tfsdk:"management_account"`
-	OpenFirmwareEfiPassword *PolicyOpenFirmwareEfiPasswordModel `tfsdk:"open_firmware_efi_password"`
-}
-
 // PolicyAccountItemModel models a single <account>. `Password` is
 // `WriteOnly` (never persisted in state); `PasswordWoVersion` is the
 // rotation trigger companion.
@@ -253,8 +254,9 @@ type PolicyOpenFirmwareEfiPasswordModel struct {
 	OfPasswordWoVersion types.Int64  `tfsdk:"of_password_wo_version"`
 }
 
-// PolicyRebootModel models <policy><reboot>.
-type PolicyRebootModel struct {
+// PolicyRestartOptionsModel models <policy><reboot> (admin UI: Options ▸
+// Restart Options).
+type PolicyRestartOptionsModel struct {
 	Message                     types.String `tfsdk:"message"`
 	StartupDisk                 types.String `tfsdk:"startup_disk"`
 	SpecifyStartup              types.String `tfsdk:"specify_startup"`
@@ -278,9 +280,10 @@ type PolicyMaintenanceModel struct {
 	VerifyStartupDisk     types.Bool `tfsdk:"verify_startup_disk"`     // wire: <verify>
 }
 
-// PolicyFilesProcessesModel models <policy><files_processes>. Attribute names
-// mirror the Jamf Pro admin UI labels; wire element names are noted below.
-type PolicyFilesProcessesModel struct {
+// PolicyFilesAndProcessesModel models <policy><files_processes> (admin UI:
+// Options ▸ Files and Processes). Attribute names mirror the Jamf Pro admin
+// UI labels; wire element names are noted below.
+type PolicyFilesAndProcessesModel struct {
 	SearchByPath         types.String `tfsdk:"search_by_path"`
 	DeleteFileIfFound    types.Bool   `tfsdk:"delete_file_if_found"` // wire: <delete_file>
 	SearchByFilename     types.String `tfsdk:"search_by_filename"`   // wire: <locate_file>

@@ -46,8 +46,8 @@ func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, 
 	if state.SelfService != nil && p.SelfService != nil {
 		flattenPolicySelfService(p.SelfService, state.SelfService)
 	}
-	if state.PackageConfiguration != nil && p.PackageConfiguration != nil {
-		flattenPolicyPackageConfiguration(p.PackageConfiguration, state.PackageConfiguration)
+	if state.Packages != nil && p.PackageConfiguration != nil {
+		flattenPolicyPackageConfiguration(p.PackageConfiguration, state.Packages)
 	}
 	if state.Scripts != nil && p.Scripts != nil {
 		flattenPolicyScripts(p.Scripts, state.Scripts)
@@ -58,17 +58,21 @@ func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, 
 	if state.DockItems != nil && p.DockItems != nil {
 		flattenPolicyDockItems(p.DockItems, state.DockItems)
 	}
-	if state.AccountMaintenance != nil && p.AccountMaintenance != nil {
-		flattenPolicyAccountMaintenance(p.AccountMaintenance, state.AccountMaintenance)
+	// The four flattened account-maintenance blocks all read from the single
+	// wire <account_maintenance> object. Each is refreshed only when the
+	// caller already manages it (per-section gate), mirroring the optional
+	// section discipline above.
+	if p.AccountMaintenance != nil {
+		flattenPolicyAccountMaintenance(p.AccountMaintenance, state)
 	}
-	if state.Reboot != nil && p.Reboot != nil {
-		flattenPolicyReboot(p.Reboot, state.Reboot)
+	if state.RestartOptions != nil && p.Reboot != nil {
+		flattenPolicyReboot(p.Reboot, state.RestartOptions)
 	}
 	if state.Maintenance != nil && p.Maintenance != nil {
 		flattenPolicyMaintenance(p.Maintenance, state.Maintenance)
 	}
-	if state.FilesProcesses != nil && p.FilesProcesses != nil {
-		flattenPolicyFilesProcesses(p.FilesProcesses, state.FilesProcesses)
+	if state.FilesAndProcesses != nil && p.FilesProcesses != nil {
+		flattenPolicyFilesProcesses(p.FilesProcesses, state.FilesAndProcesses)
 	}
 	if state.UserInteraction != nil && p.UserInteraction != nil {
 		flattenPolicyUserInteraction(p.UserInteraction, state.UserInteraction)
@@ -398,7 +402,7 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 	}
 }
 
-func flattenPolicyPackageConfiguration(pc *proclassic.PolicyPackageConfiguration, state *PolicyPackageConfigurationModel) {
+func flattenPolicyPackageConfiguration(pc *proclassic.PolicyPackageConfiguration, state *PolicyPackagesModel) {
 	state.DistributionPoint = preferCurrentStringPointer(pc.DistributionPoint, state.DistributionPoint)
 
 	if pc.Packages == nil || pc.Packages.Package == nil {
@@ -501,8 +505,14 @@ func flattenPolicyDockItems(d *proclassic.PolicyDockItems, state *PolicyDockItem
 	state.DockItems = out
 }
 
-func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, state *PolicyAccountMaintenanceModel) {
-	if am.Accounts != nil && am.Accounts.Account != nil {
+// flattenPolicyAccountMaintenance splits the single wire <account_maintenance>
+// object across the four flattened top-level state blocks. Each block is
+// refreshed only when the caller already manages it (state.LocalAccounts /
+// DirectoryBindings non-nil, ManagementAccount / EfiPassword non-nil) —
+// populating an unmanaged section would violate the framework's "produced
+// inconsistent result after apply" check.
+func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, state *PolicyResourceModel) {
+	if state.LocalAccounts != nil && am.Accounts != nil && am.Accounts.Account != nil {
 		// Reorder wire accounts to match the plan's declared username
 		// order. The Jamf classic /policies endpoint does not preserve
 		// account order on round-trip — entries can come back in
@@ -512,7 +522,7 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 		// index than the plan's accounts[i].password).
 		//
 		// `state` here is actually the plan model (CRUD passes &plan to
-		// assignPolicyResourceModel), so state.Accounts holds the plan
+		// assignPolicyResourceModel), so state.LocalAccounts holds the plan
 		// order at this point. We build a wire-keyed-by-username map and
 		// emit in plan order. Any wire-only entries (server echoed a
 		// username not in plan) append at the end so they remain visible.
@@ -532,8 +542,8 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 			wireByUsername[*a.Username] = a
 			wireUsernameOrder = append(wireUsernameOrder, *a.Username)
 		}
-		woByUsername := make(map[string]types.Int64, len(state.Accounts))
-		for _, prev := range state.Accounts {
+		woByUsername := make(map[string]types.Int64, len(state.LocalAccounts))
+		for _, prev := range state.LocalAccounts {
 			if !prev.Username.IsNull() && !prev.Username.IsUnknown() {
 				woByUsername[prev.Username.ValueString()] = prev.PasswordWoVersion
 			}
@@ -563,7 +573,7 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 		}
 		consumed := make(map[string]bool, len(wireItems))
 		out := make([]PolicyAccountItemModel, 0, len(wireItems))
-		for _, prev := range state.Accounts {
+		for _, prev := range state.LocalAccounts {
 			if prev.Username.IsNull() || prev.Username.IsUnknown() {
 				continue
 			}
@@ -581,12 +591,12 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 			out = append(out, emit(wireByUsername[u]))
 			consumed[u] = true
 		}
-		state.Accounts = out
+		state.LocalAccounts = out
 	} else {
-		state.Accounts = nil
+		state.LocalAccounts = nil
 	}
 
-	if am.DirectoryBindings != nil && am.DirectoryBindings.Binding != nil {
+	if state.DirectoryBindings != nil && am.DirectoryBindings != nil && am.DirectoryBindings.Binding != nil {
 		items := *am.DirectoryBindings.Binding
 		out := make([]PolicyDirectoryBindingItemModel, 0, len(items))
 		for _, b := range items {
@@ -616,8 +626,8 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 		state.ManagementAccount.ManagedPasswordLength = preferCurrentInt(am.ManagementAccount.ManagedPasswordLength, state.ManagementAccount.ManagedPasswordLength)
 	}
 
-	if state.OpenFirmwareEfiPassword != nil && am.OpenFirmwareEfiPassword != nil {
-		state.OpenFirmwareEfiPassword.OfMode = preferCurrentStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.OpenFirmwareEfiPassword.OfMode)
+	if state.EfiPassword != nil && am.OpenFirmwareEfiPassword != nil {
+		state.EfiPassword.OfMode = preferCurrentStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.EfiPassword.OfMode)
 		// of_password is WriteOnly — framework strips from state.
 		// of_password_wo_version round-trips as a regular Optional Int64;
 		// the API never echoes it, so the prior state value passes through
@@ -625,7 +635,7 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 	}
 }
 
-func flattenPolicyReboot(r *proclassic.PolicyReboot, state *PolicyRebootModel) {
+func flattenPolicyReboot(r *proclassic.PolicyReboot, state *PolicyRestartOptionsModel) {
 	state.Message = preferCurrentStringPointer(r.Message, state.Message)
 	state.StartupDisk = preferCurrentStringPointer(r.StartupDisk, state.StartupDisk)
 	state.SpecifyStartup = preferCurrentStringPointer(r.SpecifyStartup, state.SpecifyStartup)
@@ -647,7 +657,7 @@ func flattenPolicyMaintenance(m *proclassic.PolicyMaintenance, state *PolicyMain
 	state.VerifyStartupDisk = preferCurrentBoolPointer(m.Verify, state.VerifyStartupDisk)
 }
 
-func flattenPolicyFilesProcesses(fp *proclassic.PolicyFilesProcesses, state *PolicyFilesProcessesModel) {
+func flattenPolicyFilesProcesses(fp *proclassic.PolicyFilesProcesses, state *PolicyFilesAndProcessesModel) {
 	state.SearchByPath = preferCurrentStringPointer(fp.SearchByPath, state.SearchByPath)
 	state.DeleteFileIfFound = preferCurrentBoolPointer(fp.DeleteFile, state.DeleteFileIfFound)
 	state.SearchByFilename = preferCurrentStringPointer(fp.LocateFile, state.SearchByFilename)
