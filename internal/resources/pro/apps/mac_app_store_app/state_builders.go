@@ -80,15 +80,21 @@ func flattenMacAppGeneral(g *proclassic.MacApplicationGeneral, state *MacAppGene
 }
 
 func flattenMacAppScope(ctx context.Context, s *proclassic.MacApplicationScope, state *scope.ComputerScopeModelNoIbeacons) {
-	state.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.AllComputers)
-	state.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.AllJssUsers)
+	// Targets are gated on caller management, mirroring the limitations /
+	// exclusions sub-blocks below: populating a targets block the user did not
+	// declare would violate the framework's "produced inconsistent result after
+	// apply" check (plan said null, we would return a populated object).
+	if state.Targets != nil {
+		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
-	state.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-	state.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-	state.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-	state.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
-	state.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
-	state.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+		state.Targets.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
+		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+		state.Targets.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
+		state.Targets.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations

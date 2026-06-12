@@ -20,7 +20,9 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "restrictions_al
   }
 
   scope = {
-    all_mobile_devices = true
+    targets = {
+      all_mobile_devices = true
+    }
     exclusions = {
       mobile_device_ids = ["12"]
     }
@@ -37,7 +39,9 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "self_service" {
   }
 
   scope = {
-    mobile_device_group_ids = ["5", "6"]
+    targets = {
+      mobile_device_group_ids = ["5", "6"]
+    }
   }
 
   self_service = {

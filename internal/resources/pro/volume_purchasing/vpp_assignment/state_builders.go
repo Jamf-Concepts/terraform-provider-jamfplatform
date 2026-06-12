@@ -71,6 +71,7 @@ func assignVPPAssignmentDataSourceModel(ctx context.Context, state *VPPAssignmen
 	state.Ebooks = flattenContentList(ebookItems(api.Ebooks))
 
 	state.Scope = &scope.UserScopeModel{
+		Targets:     &scope.UserScopeTargetsModel{},
 		Limitations: &scope.UserScopeLimitationsModel{},
 		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}
@@ -80,9 +81,11 @@ func assignVPPAssignmentDataSourceModel(ctx context.Context, state *VPPAssignmen
 }
 
 func flattenScope(ctx context.Context, s *proclassic.VppAssignmentScope, state *scope.UserScopeModel) {
-	state.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
-	state.JssUserIDs = flattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
-	state.JssUserGroupIDs = flattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
+	if state.Targets != nil {
+		state.Targets.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
+		state.Targets.JssUserIDs = flattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
+		state.Targets.JssUserGroupIDs = flattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
+	}
 
 	if state.Limitations != nil {
 		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, limitationsUserGroupsSlice(s.Limitations))

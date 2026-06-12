@@ -79,23 +79,23 @@ func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 	// not author it, even if the server reports a value (Optional+Computed
 	// contract). Pre-populate to BoolValue(false) so reconcile substitutes
 	// the server value.
-	state := &scope.ComputerScopeModel{AllComputers: types.BoolValue(false)}
+	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{AllComputers: types.BoolValue(false)}}
 	diags := flattenScope(context.Background(), &proclassic.OsXConfigurationProfileScope{
 		AllComputers: new(true),
 	}, state)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
-	if !state.AllComputers.ValueBool() {
+	if !state.Targets.AllComputers.ValueBool() {
 		t.Fatal("all_computers not propagated")
 	}
 	for label, s := range map[string]types.Set{
-		"ComputerIDs":      state.ComputerIDs,
-		"ComputerGroupIDs": state.ComputerGroupIDs,
-		"BuildingIDs":      state.BuildingIDs,
-		"DepartmentIDs":    state.DepartmentIDs,
-		"UserIDs":          state.UserIDs,
-		"UserGroupIDs":     state.UserGroupIDs,
+		"ComputerIDs":      state.Targets.ComputerIDs,
+		"ComputerGroupIDs": state.Targets.ComputerGroupIDs,
+		"BuildingIDs":      state.Targets.BuildingIDs,
+		"DepartmentIDs":    state.Targets.DepartmentIDs,
+		"UserIDs":          state.Targets.UserIDs,
+		"UserGroupIDs":     state.Targets.UserGroupIDs,
 	} {
 		if !s.IsNull() {
 			t.Fatalf("%s expected null when SDK sub-block absent, got %v", label, s)
@@ -108,18 +108,18 @@ func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 // stays at null in state even when the server reports a value.
 func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 	t.Parallel()
-	state := &scope.ComputerScopeModel{}
+	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{}}
 	flattenScope(context.Background(), &proclassic.OsXConfigurationProfileScope{
 		AllComputers: new(true),
 	}, state)
-	if !state.AllComputers.IsNull() {
-		t.Fatalf("expected AllComputers to stay null for unconfigured state, got %v", state.AllComputers)
+	if !state.Targets.AllComputers.IsNull() {
+		t.Fatalf("expected AllComputers to stay null for unconfigured state, got %v", state.Targets.AllComputers)
 	}
 }
 
 func TestFlattenScope_ComputerIDsPopulated(t *testing.T) {
 	t.Parallel()
-	state := &scope.ComputerScopeModel{}
+	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{}}
 	src := &proclassic.OsXConfigurationProfileScope{
 		Computers: &proclassic.OsXConfigurationProfileScopeComputers{
 			Computer: &[]proclassic.OsXConfigurationProfileScopeComputersComputerItem{
@@ -132,11 +132,11 @@ func TestFlattenScope_ComputerIDsPopulated(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
-	if state.ComputerIDs.IsNull() {
+	if state.Targets.ComputerIDs.IsNull() {
 		t.Fatal("expected ComputerIDs populated")
 	}
 	var ids []string
-	dd := state.ComputerIDs.ElementsAs(context.Background(), &ids, false)
+	dd := state.Targets.ComputerIDs.ElementsAs(context.Background(), &ids, false)
 	if dd.HasError() {
 		t.Fatalf("ElementsAs: %v", dd)
 	}
@@ -341,7 +341,7 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	// Pre-populate with configured values so the reconcile helpers
 	// substitute server-returned values.
 	state := &ResourceModel{
-		Scope:       &scope.ComputerScopeModel{AllComputers: types.BoolValue(false)},
+		Scope:       &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{AllComputers: types.BoolValue(false)}},
 		SelfService: &SelfServiceModel{InstallButtonText: types.StringValue("")},
 	}
 	diags := assignResourceModel(context.Background(), state, &proclassic.OsXConfigurationProfile{
@@ -355,7 +355,7 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
-	if !state.Scope.AllComputers.ValueBool() {
+	if !state.Scope.Targets.AllComputers.ValueBool() {
 		t.Fatal("Scope.AllComputers not refreshed")
 	}
 	if state.SelfService.InstallButtonText.ValueString() != "Install" {

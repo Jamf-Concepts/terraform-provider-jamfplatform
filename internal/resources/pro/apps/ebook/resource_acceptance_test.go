@@ -96,8 +96,10 @@ func ebookFullConfig(name, buttonText string, featureOnMain bool) string {
 				deployment_type = "Make Available in Self Service"
 			}
 			scope = {
-				all_computers      = true
-				all_mobile_devices = true
+				targets = {
+					all_computers      = true
+					all_mobile_devices = true
+				}
 			}
 			self_service = {
 				display_name                    = %[1]q
@@ -167,8 +169,8 @@ func TestAccResource_ProEbook_ScopeAndSelfService(t *testing.T) {
 				Config: ebookFullConfig(name, "Install", true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(ebookResourceAddr, "id"),
-					resource.TestCheckResourceAttr(ebookResourceAddr, "scope.all_computers", "true"),
-					resource.TestCheckResourceAttr(ebookResourceAddr, "scope.all_mobile_devices", "true"),
+					resource.TestCheckResourceAttr(ebookResourceAddr, "scope.targets.all_computers", "true"),
+					resource.TestCheckResourceAttr(ebookResourceAddr, "scope.targets.all_mobile_devices", "true"),
 					resource.TestCheckResourceAttr(ebookResourceAddr, "self_service.install_button_text", "Install"),
 					resource.TestCheckResourceAttr(ebookResourceAddr, "self_service.feature_on_main_page", "true"),
 				),
@@ -247,7 +249,9 @@ func allFlagConflictConfig(name, scopeBody string) string {
 				url  = "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf"
 			}
 			scope = {
-				%s
+				targets = {
+					%s
+				}
 			}
 		}
 	`, name, scopeBody)

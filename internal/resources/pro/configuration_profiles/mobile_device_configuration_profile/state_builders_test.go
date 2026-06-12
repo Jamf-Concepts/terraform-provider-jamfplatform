@@ -96,23 +96,23 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 
 func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 	t.Parallel()
-	state := &scope.MobileScopeModel{AllMobileDevices: types.BoolValue(false)}
+	state := &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{AllMobileDevices: types.BoolValue(false)}}
 	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: new(true),
 	}, state)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
-	if !state.AllMobileDevices.ValueBool() {
+	if !state.Targets.AllMobileDevices.ValueBool() {
 		t.Fatal("all_mobile_devices not propagated")
 	}
 	for label, s := range map[string]types.Set{
-		"MobileDeviceIDs":      state.MobileDeviceIDs,
-		"MobileDeviceGroupIDs": state.MobileDeviceGroupIDs,
-		"BuildingIDs":          state.BuildingIDs,
-		"DepartmentIDs":        state.DepartmentIDs,
-		"UserIDs":              state.UserIDs,
-		"UserGroupIDs":         state.UserGroupIDs,
+		"MobileDeviceIDs":      state.Targets.MobileDeviceIDs,
+		"MobileDeviceGroupIDs": state.Targets.MobileDeviceGroupIDs,
+		"BuildingIDs":          state.Targets.BuildingIDs,
+		"DepartmentIDs":        state.Targets.DepartmentIDs,
+		"UserIDs":              state.Targets.UserIDs,
+		"UserGroupIDs":         state.Targets.UserGroupIDs,
 	} {
 		if !s.IsNull() {
 			t.Fatalf("%s expected null when SDK sub-block absent, got %v", label, s)
@@ -126,14 +126,14 @@ func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 	flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: new(true),
 	}, state)
-	if !state.AllMobileDevices.IsNull() {
-		t.Fatalf("expected AllMobileDevices to stay null for unconfigured state, got %v", state.AllMobileDevices)
+	if state.Targets != nil {
+		t.Fatalf("expected Targets to stay nil for unconfigured state, got %v", state.Targets)
 	}
 }
 
 func TestFlattenScope_MobileDeviceIDsPopulated(t *testing.T) {
 	t.Parallel()
-	state := &scope.MobileScopeModel{}
+	state := &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{}}
 	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		MobileDevices: &proclassic.MobileDeviceConfigurationProfileScopeMobileDevices{
 			MobileDevice: &[]proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem{
@@ -145,11 +145,11 @@ func TestFlattenScope_MobileDeviceIDsPopulated(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
-	if state.MobileDeviceIDs.IsNull() {
+	if state.Targets.MobileDeviceIDs.IsNull() {
 		t.Fatal("expected MobileDeviceIDs populated")
 	}
 	var ids []string
-	if dd := state.MobileDeviceIDs.ElementsAs(context.Background(), &ids, false); dd.HasError() {
+	if dd := state.Targets.MobileDeviceIDs.ElementsAs(context.Background(), &ids, false); dd.HasError() {
 		t.Fatalf("ElementsAs: %v", dd)
 	}
 	if len(ids) != 2 {
@@ -302,7 +302,7 @@ func TestAssignResourceModel_OptionalSubBlocksSkippedWhenStateNil(t *testing.T) 
 func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	t.Parallel()
 	state := &ResourceModel{
-		Scope:       &scope.MobileScopeModel{AllMobileDevices: types.BoolValue(false)},
+		Scope:       &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{AllMobileDevices: types.BoolValue(false)}},
 		SelfService: &SelfServiceModel{RemovalDisallowed: types.StringValue("")},
 	}
 	diags := assignResourceModel(context.Background(), state, &proclassic.MobileDeviceConfigurationProfile{
@@ -318,8 +318,8 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
-	if !state.Scope.AllMobileDevices.ValueBool() {
-		t.Fatal("Scope.AllMobileDevices not refreshed")
+	if !state.Scope.Targets.AllMobileDevices.ValueBool() {
+		t.Fatal("Scope.Targets.AllMobileDevices not refreshed")
 	}
 	if state.SelfService.RemovalDisallowed.ValueString() != removalDisallowedNever {
 		t.Fatalf("SelfService.RemovalDisallowed: got %q", state.SelfService.RemovalDisallowed.ValueString())

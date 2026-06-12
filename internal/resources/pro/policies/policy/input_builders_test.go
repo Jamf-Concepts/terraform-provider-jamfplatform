@@ -57,8 +57,10 @@ func TestBuildPolicyInput_ScopeWithComputerGroupAndBuilding(t *testing.T) {
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-scoped")},
 		Scope: &scope.ComputerScopeModel{
-			ComputerGroupIDs: stringSet(t, "11", "22"),
-			BuildingIDs:      stringSet(t, "7"),
+			Targets: &scope.ComputerScopeTargetsModel{
+				ComputerGroupIDs: stringSet(t, "11", "22"),
+				BuildingIDs:      stringSet(t, "7"),
+			},
 		},
 	}
 	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())
@@ -105,7 +107,9 @@ func TestBuildPolicyInput_AllComputersFlag(t *testing.T) {
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-universal")},
 		Scope: &scope.ComputerScopeModel{
-			AllComputers: types.BoolValue(true),
+			Targets: &scope.ComputerScopeTargetsModel{
+				AllComputers: types.BoolValue(true),
+			},
 		},
 	}
 	got, diags := buildPolicyInput(context.Background(), plan, noSecrets())

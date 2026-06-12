@@ -17,16 +17,33 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 // struct — the framework matches model fields to schema attributes exactly, so
 // a no-iBeacon schema needs its own model. See STYLE_GUIDE.md §Scope helper.
 type MobileScopeModel struct {
-	AllMobileDevices     types.Bool                   `tfsdk:"all_mobile_devices"`
-	AllJssUsers          types.Bool                   `tfsdk:"all_jss_users"`
-	MobileDeviceIDs      types.Set                    `tfsdk:"mobile_device_ids"`
-	MobileDeviceGroupIDs types.Set                    `tfsdk:"mobile_device_group_ids"`
-	BuildingIDs          types.Set                    `tfsdk:"building_ids"`
-	DepartmentIDs        types.Set                    `tfsdk:"department_ids"`
-	UserIDs              types.Set                    `tfsdk:"user_ids"`
-	UserGroupIDs         types.Set                    `tfsdk:"user_group_ids"`
-	Limitations          *MobileScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions           *MobileScopeExclusionsModel  `tfsdk:"exclusions"`
+	Targets     *MobileScopeTargetsModel     `tfsdk:"targets"`
+	Limitations *MobileScopeLimitationsModel `tfsdk:"limitations"`
+	Exclusions  *MobileScopeExclusionsModel  `tfsdk:"exclusions"`
+}
+
+// MobileScopeTargetsModel models <scope> targets — the all-flags plus the
+// per-category ID sets, mirroring the admin UI's Targets tab. Shared by both
+// iBeacon variants (targets do not carry iBeacons).
+type MobileScopeTargetsModel struct {
+	AllMobileDevices     types.Bool `tfsdk:"all_mobile_devices"`
+	AllJssUsers          types.Bool `tfsdk:"all_jss_users"`
+	MobileDeviceIDs      types.Set  `tfsdk:"mobile_device_ids"`
+	MobileDeviceGroupIDs types.Set  `tfsdk:"mobile_device_group_ids"`
+	BuildingIDs          types.Set  `tfsdk:"building_ids"`
+	DepartmentIDs        types.Set  `tfsdk:"department_ids"`
+	UserIDs              types.Set  `tfsdk:"user_ids"`
+	UserGroupIDs         types.Set  `tfsdk:"user_group_ids"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null sets
+// when the block was omitted, so input-builders can read target fields without
+// a nil-guard.
+func (m MobileScopeModel) TargetsOrZero() MobileScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return zeroMobileTargets()
 }
 
 // MobileScopeLimitationsModel models <scope><limitations> for an
@@ -63,16 +80,33 @@ type MobileScopeExclusionsModel struct {
 // Consumed by mobile_device_app, whose /mobiledeviceapplications endpoint omits
 // iBeacon limitations/exclusions (wire-probed). See STYLE_GUIDE.md §Scope helper.
 type MobileScopeModelNoIbeacons struct {
-	AllMobileDevices     types.Bool                             `tfsdk:"all_mobile_devices"`
-	AllJssUsers          types.Bool                             `tfsdk:"all_jss_users"`
-	MobileDeviceIDs      types.Set                              `tfsdk:"mobile_device_ids"`
-	MobileDeviceGroupIDs types.Set                              `tfsdk:"mobile_device_group_ids"`
-	BuildingIDs          types.Set                              `tfsdk:"building_ids"`
-	DepartmentIDs        types.Set                              `tfsdk:"department_ids"`
-	UserIDs              types.Set                              `tfsdk:"user_ids"`
-	UserGroupIDs         types.Set                              `tfsdk:"user_group_ids"`
-	Limitations          *MobileScopeLimitationsModelNoIbeacons `tfsdk:"limitations"`
-	Exclusions           *MobileScopeExclusionsModelNoIbeacons  `tfsdk:"exclusions"`
+	Targets     *MobileScopeTargetsModel               `tfsdk:"targets"`
+	Limitations *MobileScopeLimitationsModelNoIbeacons `tfsdk:"limitations"`
+	Exclusions  *MobileScopeExclusionsModelNoIbeacons  `tfsdk:"exclusions"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null sets
+// when the block was omitted. See MobileScopeModel.TargetsOrZero.
+func (m MobileScopeModelNoIbeacons) TargetsOrZero() MobileScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return zeroMobileTargets()
+}
+
+// zeroMobileTargets builds an all-null MobileScopeTargetsModel for the
+// TargetsOrZero accessors.
+func zeroMobileTargets() MobileScopeTargetsModel {
+	return MobileScopeTargetsModel{
+		AllMobileDevices:     types.BoolNull(),
+		AllJssUsers:          types.BoolNull(),
+		MobileDeviceIDs:      types.SetNull(types.StringType),
+		MobileDeviceGroupIDs: types.SetNull(types.StringType),
+		BuildingIDs:          types.SetNull(types.StringType),
+		DepartmentIDs:        types.SetNull(types.StringType),
+		UserIDs:              types.SetNull(types.StringType),
+		UserGroupIDs:         types.SetNull(types.StringType),
+	}
 }
 
 // MobileScopeLimitationsModelNoIbeacons models <scope><limitations> for a

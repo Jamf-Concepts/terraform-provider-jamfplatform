@@ -46,14 +46,39 @@ type PatchPolicyResourceModel struct {
 // + iBeacons), and exclusions. NO target users or user groups — the classic GET
 // never returns user-based patch-policy scope even when set, so they are not
 // modelled. Hand-composed from the shared scope primitives.
+//
+// The all-flag and per-category target ID sets live inside the `targets`
+// sub-block, mirroring the admin UI's Targets / Limitations / Exclusions tabs.
 type PatchPolicyScopeModel struct {
-	AllComputers     types.Bool                        `tfsdk:"all_computers"`
-	ComputerIDs      types.Set                         `tfsdk:"computer_ids"`
-	ComputerGroupIDs types.Set                         `tfsdk:"computer_group_ids"`
-	BuildingIDs      types.Set                         `tfsdk:"building_ids"`
-	DepartmentIDs    types.Set                         `tfsdk:"department_ids"`
-	Limitations      *PatchPolicyScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions       *PatchPolicyScopeExclusionsModel  `tfsdk:"exclusions"`
+	Targets     *PatchPolicyScopeTargetsModel     `tfsdk:"targets"`
+	Limitations *PatchPolicyScopeLimitationsModel `tfsdk:"limitations"`
+	Exclusions  *PatchPolicyScopeExclusionsModel  `tfsdk:"exclusions"`
+}
+
+// PatchPolicyScopeTargetsModel models <scope> targets — the all_computers flag
+// plus the per-category target ID sets, mirroring the admin UI's Targets tab.
+type PatchPolicyScopeTargetsModel struct {
+	AllComputers     types.Bool `tfsdk:"all_computers"`
+	ComputerIDs      types.Set  `tfsdk:"computer_ids"`
+	ComputerGroupIDs types.Set  `tfsdk:"computer_group_ids"`
+	BuildingIDs      types.Set  `tfsdk:"building_ids"`
+	DepartmentIDs    types.Set  `tfsdk:"department_ids"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null
+// flag/sets when the block was omitted, so input-builders can read target
+// fields without a nil-guard.
+func (m PatchPolicyScopeModel) TargetsOrZero() PatchPolicyScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return PatchPolicyScopeTargetsModel{
+		AllComputers:     types.BoolNull(),
+		ComputerIDs:      types.SetNull(types.StringType),
+		ComputerGroupIDs: types.SetNull(types.StringType),
+		BuildingIDs:      types.SetNull(types.StringType),
+		DepartmentIDs:    types.SetNull(types.StringType),
+	}
 }
 
 // PatchPolicyScopeLimitationsModel models <scope><limitations>: network segments

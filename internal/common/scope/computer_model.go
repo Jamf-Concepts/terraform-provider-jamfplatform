@@ -18,16 +18,42 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 // exactly, so a no-iBeacon schema needs its own model. See STYLE_GUIDE.md
 // §Scope helper.
 type ComputerScopeModel struct {
-	AllComputers     types.Bool                     `tfsdk:"all_computers"`
-	AllJssUsers      types.Bool                     `tfsdk:"all_jss_users"`
-	ComputerIDs      types.Set                      `tfsdk:"computer_ids"`
-	ComputerGroupIDs types.Set                      `tfsdk:"computer_group_ids"`
-	BuildingIDs      types.Set                      `tfsdk:"building_ids"`
-	DepartmentIDs    types.Set                      `tfsdk:"department_ids"`
-	UserIDs          types.Set                      `tfsdk:"user_ids"`
-	UserGroupIDs     types.Set                      `tfsdk:"user_group_ids"`
-	Limitations      *ComputerScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions       *ComputerScopeExclusionsModel  `tfsdk:"exclusions"`
+	Targets     *ComputerScopeTargetsModel     `tfsdk:"targets"`
+	Limitations *ComputerScopeLimitationsModel `tfsdk:"limitations"`
+	Exclusions  *ComputerScopeExclusionsModel  `tfsdk:"exclusions"`
+}
+
+// ComputerScopeTargetsModel models <scope> targets — the all-flags plus the
+// per-category ID sets, mirroring the admin UI's Targets tab. Shared by both
+// iBeacon variants (targets do not carry iBeacons).
+type ComputerScopeTargetsModel struct {
+	AllComputers     types.Bool `tfsdk:"all_computers"`
+	AllJssUsers      types.Bool `tfsdk:"all_jss_users"`
+	ComputerIDs      types.Set  `tfsdk:"computer_ids"`
+	ComputerGroupIDs types.Set  `tfsdk:"computer_group_ids"`
+	BuildingIDs      types.Set  `tfsdk:"building_ids"`
+	DepartmentIDs    types.Set  `tfsdk:"department_ids"`
+	UserIDs          types.Set  `tfsdk:"user_ids"`
+	UserGroupIDs     types.Set  `tfsdk:"user_group_ids"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null sets
+// when the block was omitted, so input-builders can read target fields without
+// a nil-guard. The omission semantics in BuildIDSlice treat null sets as absent.
+func (m ComputerScopeModel) TargetsOrZero() ComputerScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return ComputerScopeTargetsModel{
+		AllComputers:     types.BoolNull(),
+		AllJssUsers:      types.BoolNull(),
+		ComputerIDs:      types.SetNull(types.StringType),
+		ComputerGroupIDs: types.SetNull(types.StringType),
+		BuildingIDs:      types.SetNull(types.StringType),
+		DepartmentIDs:    types.SetNull(types.StringType),
+		UserIDs:          types.SetNull(types.StringType),
+		UserGroupIDs:     types.SetNull(types.StringType),
+	}
 }
 
 // ComputerScopeLimitationsModel models <scope><limitations> for an
@@ -65,16 +91,27 @@ type ComputerScopeExclusionsModel struct {
 // drops iBeacon limitations/exclusions (wire-probed). See STYLE_GUIDE.md
 // §Scope helper.
 type ComputerScopeModelNoIbeacons struct {
-	AllComputers     types.Bool                               `tfsdk:"all_computers"`
-	AllJssUsers      types.Bool                               `tfsdk:"all_jss_users"`
-	ComputerIDs      types.Set                                `tfsdk:"computer_ids"`
-	ComputerGroupIDs types.Set                                `tfsdk:"computer_group_ids"`
-	BuildingIDs      types.Set                                `tfsdk:"building_ids"`
-	DepartmentIDs    types.Set                                `tfsdk:"department_ids"`
-	UserIDs          types.Set                                `tfsdk:"user_ids"`
-	UserGroupIDs     types.Set                                `tfsdk:"user_group_ids"`
-	Limitations      *ComputerScopeLimitationsModelNoIbeacons `tfsdk:"limitations"`
-	Exclusions       *ComputerScopeExclusionsModelNoIbeacons  `tfsdk:"exclusions"`
+	Targets     *ComputerScopeTargetsModel               `tfsdk:"targets"`
+	Limitations *ComputerScopeLimitationsModelNoIbeacons `tfsdk:"limitations"`
+	Exclusions  *ComputerScopeExclusionsModelNoIbeacons  `tfsdk:"exclusions"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null sets
+// when the block was omitted. See ComputerScopeModel.TargetsOrZero.
+func (m ComputerScopeModelNoIbeacons) TargetsOrZero() ComputerScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return ComputerScopeTargetsModel{
+		AllComputers:     types.BoolNull(),
+		AllJssUsers:      types.BoolNull(),
+		ComputerIDs:      types.SetNull(types.StringType),
+		ComputerGroupIDs: types.SetNull(types.StringType),
+		BuildingIDs:      types.SetNull(types.StringType),
+		DepartmentIDs:    types.SetNull(types.StringType),
+		UserIDs:          types.SetNull(types.StringType),
+		UserGroupIDs:     types.SetNull(types.StringType),
+	}
 }
 
 // ComputerScopeLimitationsModelNoIbeacons models <scope><limitations> for a

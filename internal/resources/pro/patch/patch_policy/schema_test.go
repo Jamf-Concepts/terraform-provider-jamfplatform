@@ -117,19 +117,30 @@ func TestPatchPolicyResource_Schema(t *testing.T) {
 		}
 	}
 
-	// scope exposes the limited target/limitations/exclusions set; no users.
+	// scope exposes the limited targets/limitations/exclusions set; no users.
 	sc, ok := s.Attributes["scope"].(rschema.SingleNestedAttribute)
 	if !ok {
 		t.Fatalf("scope is not a SingleNestedAttribute")
 	}
-	for _, n := range []string{"all_computers", "computer_ids", "computer_group_ids", "building_ids", "department_ids", "limitations", "exclusions"} {
+	for _, n := range []string{"targets", "limitations", "exclusions"} {
 		if _, ok := sc.Attributes[n]; !ok {
 			t.Errorf("scope missing nested attribute %q", n)
 		}
 	}
+
+	// targets holds the all-flag + per-category target ID sets (admin UI Targets tab).
+	tgt, ok := sc.Attributes["targets"].(rschema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("scope.targets is not a SingleNestedAttribute")
+	}
+	for _, n := range []string{"all_computers", "computer_ids", "computer_group_ids", "building_ids", "department_ids"} {
+		if _, ok := tgt.Attributes[n]; !ok {
+			t.Errorf("scope.targets missing nested attribute %q", n)
+		}
+	}
 	for _, forbidden := range []string{"users", "user_ids", "user_group_ids", "directory_service_user_group_names"} {
-		if _, ok := sc.Attributes[forbidden]; ok {
-			t.Errorf("scope must NOT model user-based attribute %q", forbidden)
+		if _, ok := tgt.Attributes[forbidden]; ok {
+			t.Errorf("scope.targets must NOT model user-based attribute %q", forbidden)
 		}
 	}
 

@@ -51,22 +51,55 @@ type EbookGeneralModel struct {
 // the single-target computer/mobile factories, because the union+classes shape
 // is ebook's own (see STYLE_GUIDE.md §Scope helper and the
 // project_scope_ebook_dual_target design note). There are NO iBeacon targets
-// anywhere in ebook scope.
+// anywhere in ebook scope. The all-flags and per-category target ID sets nest
+// under `targets`, mirroring the admin UI's Targets / Limitations / Exclusions
+// tabs.
 type EbookScopeModel struct {
-	AllComputers         types.Bool                  `tfsdk:"all_computers"`
-	AllMobileDevices     types.Bool                  `tfsdk:"all_mobile_devices"`
-	AllJssUsers          types.Bool                  `tfsdk:"all_jss_users"`
-	ComputerIDs          types.Set                   `tfsdk:"computer_ids"`
-	ComputerGroupIDs     types.Set                   `tfsdk:"computer_group_ids"`
-	MobileDeviceIDs      types.Set                   `tfsdk:"mobile_device_ids"`
-	MobileDeviceGroupIDs types.Set                   `tfsdk:"mobile_device_group_ids"`
-	BuildingIDs          types.Set                   `tfsdk:"building_ids"`
-	DepartmentIDs        types.Set                   `tfsdk:"department_ids"`
-	UserIDs              types.Set                   `tfsdk:"user_ids"`
-	UserGroupIDs         types.Set                   `tfsdk:"user_group_ids"`
-	ClassIDs             types.Set                   `tfsdk:"class_ids"`
-	Limitations          *EbookScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions           *EbookScopeExclusionsModel  `tfsdk:"exclusions"`
+	Targets     *EbookScopeTargetsModel     `tfsdk:"targets"`
+	Limitations *EbookScopeLimitationsModel `tfsdk:"limitations"`
+	Exclusions  *EbookScopeExclusionsModel  `tfsdk:"exclusions"`
+}
+
+// EbookScopeTargetsModel models <scope> targets — the three all-flags plus the
+// per-category ID sets (computer + mobile + user targets and the ebook-specific
+// `class_ids`). Mirrors the admin UI's Targets tab.
+type EbookScopeTargetsModel struct {
+	AllComputers         types.Bool `tfsdk:"all_computers"`
+	AllMobileDevices     types.Bool `tfsdk:"all_mobile_devices"`
+	AllJssUsers          types.Bool `tfsdk:"all_jss_users"`
+	ComputerIDs          types.Set  `tfsdk:"computer_ids"`
+	ComputerGroupIDs     types.Set  `tfsdk:"computer_group_ids"`
+	MobileDeviceIDs      types.Set  `tfsdk:"mobile_device_ids"`
+	MobileDeviceGroupIDs types.Set  `tfsdk:"mobile_device_group_ids"`
+	BuildingIDs          types.Set  `tfsdk:"building_ids"`
+	DepartmentIDs        types.Set  `tfsdk:"department_ids"`
+	UserIDs              types.Set  `tfsdk:"user_ids"`
+	UserGroupIDs         types.Set  `tfsdk:"user_group_ids"`
+	ClassIDs             types.Set  `tfsdk:"class_ids"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null flags
+// and null sets when the block was omitted, so input-builders can read target
+// fields without a nil-guard. The omission semantics in BuildIDSlice treat null
+// sets as absent.
+func (m EbookScopeModel) TargetsOrZero() EbookScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return EbookScopeTargetsModel{
+		AllComputers:         types.BoolNull(),
+		AllMobileDevices:     types.BoolNull(),
+		AllJssUsers:          types.BoolNull(),
+		ComputerIDs:          types.SetNull(types.StringType),
+		ComputerGroupIDs:     types.SetNull(types.StringType),
+		MobileDeviceIDs:      types.SetNull(types.StringType),
+		MobileDeviceGroupIDs: types.SetNull(types.StringType),
+		BuildingIDs:          types.SetNull(types.StringType),
+		DepartmentIDs:        types.SetNull(types.StringType),
+		UserIDs:              types.SetNull(types.StringType),
+		UserGroupIDs:         types.SetNull(types.StringType),
+		ClassIDs:             types.SetNull(types.StringType),
+	}
 }
 
 // EbookScopeLimitationsModel models <scope><limitations>. The directory-service

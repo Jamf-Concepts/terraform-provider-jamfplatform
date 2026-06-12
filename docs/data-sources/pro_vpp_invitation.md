@@ -75,11 +75,9 @@ Read-Only:
 
 Read-Only:
 
-- `all_jss_users` (Boolean) Target all Jamf Pro users.
 - `exclusions` (Attributes) Scope exclusions. (see [below for nested schema](#nestedatt--scope--exclusions))
-- `jss_user_group_ids` (Set of String) Jamf Pro user group IDs.
-- `jss_user_ids` (Set of String) Jamf Pro user IDs.
 - `limitations` (Attributes) Scope limitations. (see [below for nested schema](#nestedatt--scope--limitations))
+- `targets` (Attributes) Scope targets. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -97,3 +95,13 @@ Read-Only:
 Read-Only:
 
 - `directory_service_user_group_names` (Set of String) Directory-service user group names.
+
+
+<a id="nestedatt--scope--targets"></a>
+### Nested Schema for `scope.targets`
+
+Read-Only:
+
+- `all_jss_users` (Boolean) Target all Jamf Pro users.
+- `jss_user_group_ids` (Set of String) Jamf Pro user group IDs.
+- `jss_user_ids` (Set of String) Jamf Pro user IDs.

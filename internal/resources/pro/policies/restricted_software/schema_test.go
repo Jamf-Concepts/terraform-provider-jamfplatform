@@ -88,19 +88,33 @@ func TestRestrictedSoftwareResource_Schema(t *testing.T) {
 	if !ok {
 		t.Fatalf("scope must be a SingleNestedAttribute")
 	}
-	for _, name := range []string{"all_computers", "computer_ids", "computer_group_ids", "building_ids", "department_ids", "exclusions"} {
+	// Targets and exclusions are siblings under scope; no limitations tab.
+	for _, name := range []string{"targets", "exclusions"} {
 		if _, ok := scopeAttr.Attributes[name]; !ok {
 			t.Errorf("scope missing %q", name)
 		}
 	}
-	// LIMITED subset: no limitations block, no target users / all_jss_users.
-	for _, name := range []string{"limitations", "all_jss_users", "user_ids", "user_group_ids"} {
-		if _, ok := scopeAttr.Attributes[name]; ok {
-			t.Errorf("scope must NOT expose %q (restricted software is a limited subset)", name)
+	if _, ok := scopeAttr.Attributes["limitations"]; ok {
+		t.Errorf("scope must NOT expose \"limitations\" (restricted software is a limited subset)")
+	}
+
+	targetsAttr, ok := scopeAttr.Attributes["targets"].(schema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("scope.targets must be a SingleNestedAttribute")
+	}
+	for _, name := range []string{"all_computers", "computer_ids", "computer_group_ids", "building_ids", "department_ids"} {
+		if _, ok := targetsAttr.Attributes[name]; !ok {
+			t.Errorf("scope.targets missing %q", name)
 		}
 	}
-	if ac := scopeAttr.Attributes["all_computers"]; len(ac.(schema.BoolAttribute).Validators) == 0 {
-		t.Errorf("scope.all_computers must carry the conflict validator")
+	// LIMITED subset: no target users / all_jss_users.
+	for _, name := range []string{"all_jss_users", "user_ids", "user_group_ids"} {
+		if _, ok := targetsAttr.Attributes[name]; ok {
+			t.Errorf("scope.targets must NOT expose %q (restricted software is a limited subset)", name)
+		}
+	}
+	if ac := targetsAttr.Attributes["all_computers"]; len(ac.(schema.BoolAttribute).Validators) == 0 {
+		t.Errorf("scope.targets.all_computers must carry the conflict validator")
 	}
 
 	excl, ok := scopeAttr.Attributes["exclusions"].(schema.SingleNestedAttribute)

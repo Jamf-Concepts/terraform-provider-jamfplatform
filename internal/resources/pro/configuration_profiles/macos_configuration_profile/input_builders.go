@@ -110,12 +110,13 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.OsXConfigur
 
 func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.OsXConfigurationProfileScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.OsXConfigurationProfileScope{
-		AllComputers: optionalBoolPointer(m.AllComputers),
-		AllJssUsers:  optionalBoolPointer(m.AllJssUsers),
+		AllComputers: optionalBoolPointer(t.AllComputers),
+		AllJssUsers:  optionalBoolPointer(t.AllJssUsers),
 	}
 
-	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.OsXConfigurationProfileScopeComputersComputerItem {
+	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.OsXConfigurationProfileScopeComputersComputerItem {
 		return proclassic.OsXConfigurationProfileScopeComputersComputerItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -123,7 +124,7 @@ func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.O
 		s.Computers = &proclassic.OsXConfigurationProfileScopeComputers{Computer: computers}
 	}
 
-	cgs, d := scope.BuildIDSlice(ctx, m.ComputerGroupIDs, func(id int) proclassic.IDName {
+	cgs, d := scope.BuildIDSlice(ctx, t.ComputerGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -131,7 +132,7 @@ func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.O
 		s.ComputerGroups = &proclassic.OsXConfigurationProfileScopeComputerGroups{ComputerGroup: cgs}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, func(id int) proclassic.IDName {
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -139,7 +140,7 @@ func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.O
 		s.Buildings = &proclassic.OsXConfigurationProfileScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, func(id int) proclassic.IDName {
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -147,7 +148,7 @@ func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.O
 		s.Departments = &proclassic.OsXConfigurationProfileScopeDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, func(id int) proclassic.IDName {
+	jssUsers, d := scope.BuildIDSlice(ctx, t.UserIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -155,7 +156,7 @@ func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.O
 		s.JssUsers = &proclassic.OsXConfigurationProfileScopeJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, func(id int) proclassic.IDName {
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.UserGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)

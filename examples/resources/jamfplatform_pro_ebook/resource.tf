@@ -12,8 +12,10 @@ resource "jamfplatform_pro_ebook" "field_guide" {
   }
 
   scope = {
-    all_computers      = true
-    all_mobile_devices = true
+    targets = {
+      all_computers      = true
+      all_mobile_devices = true
+    }
   }
 
   self_service = {
@@ -33,6 +35,8 @@ resource "jamfplatform_pro_ebook" "swift_intro" {
   }
 
   scope = {
-    class_ids = ["12"]
+    targets = {
+      class_ids = ["12"]
+    }
   }
 }

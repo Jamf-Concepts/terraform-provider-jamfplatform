@@ -57,29 +57,30 @@ func buildGeneral(m *RestrictedSoftwareGeneralModel) *proclassic.RestrictedSoftw
 
 func buildScope(ctx context.Context, m *RestrictedSoftwareScopeModel) (*proclassic.RestrictedSoftwareScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.RestrictedSoftwareScope{
-		AllComputers: helpers.OptionalBoolPointer(m.AllComputers),
+		AllComputers: helpers.OptionalBoolPointer(t.AllComputers),
 	}
 
-	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	if computers != nil {
 		s.Computers = &proclassic.RestrictedSoftwareScopeComputers{Computer: computers}
 	}
 
-	computerGroups, d := scope.BuildIDSlice(ctx, m.ComputerGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	computerGroups, d := scope.BuildIDSlice(ctx, t.ComputerGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	if computerGroups != nil {
 		s.ComputerGroups = &proclassic.RestrictedSoftwareScopeComputerGroups{ComputerGroup: computerGroups}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	if buildings != nil {
 		s.Buildings = &proclassic.RestrictedSoftwareScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
 	if departments != nil {
 		s.Departments = &proclassic.RestrictedSoftwareScopeDepartments{Department: departments}

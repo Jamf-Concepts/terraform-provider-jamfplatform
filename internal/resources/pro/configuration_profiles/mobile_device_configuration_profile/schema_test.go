@@ -55,15 +55,24 @@ func TestResource_ScopeAttributes(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected scope to be SingleNestedAttribute")
 	}
-	for _, child := range []string{"all_mobile_devices", "all_jss_users", "mobile_device_ids", "mobile_device_group_ids", "building_ids", "department_ids", "user_ids", "user_group_ids", "limitations", "exclusions"} {
+	for _, child := range []string{"targets", "limitations", "exclusions"} {
 		if _, ok := s.Attributes[child]; !ok {
 			t.Fatalf("expected scope.%s", child)
 		}
 	}
+	targets, ok := s.Attributes["targets"].(rschema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("expected scope.targets to be SingleNestedAttribute")
+	}
+	for _, child := range []string{"all_mobile_devices", "all_jss_users", "mobile_device_ids", "mobile_device_group_ids", "building_ids", "department_ids", "user_ids", "user_group_ids"} {
+		if _, ok := targets.Attributes[child]; !ok {
+			t.Fatalf("expected scope.targets.%s", child)
+		}
+	}
 	// mobile does NOT have computer scope attrs
 	for _, absent := range []string{"all_computers", "computer_ids", "computer_group_ids"} {
-		if _, ok := s.Attributes[absent]; ok {
-			t.Fatalf("scope.%s must not exist on mobile profiles", absent)
+		if _, ok := targets.Attributes[absent]; ok {
+			t.Fatalf("scope.targets.%s must not exist on mobile profiles", absent)
 		}
 	}
 }

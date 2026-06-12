@@ -151,7 +151,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
   }
 }
 `, name, payload)
@@ -166,7 +168,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    computer_ids = [%q]
+    targets = {
+      computer_ids = [%q]
+    }
   }
 }
 `, name, payload, computerID)
@@ -181,7 +185,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
     exclusions = {
       computer_ids = [%q]
     }
@@ -199,7 +205,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    user_ids = [%q]
+    targets = {
+      user_ids = [%q]
+    }
   }
 }
 `, name, payload, jssUserID)
@@ -423,7 +431,7 @@ func TestAccResource_MacOSConfigurationProfile_AllComputersScope(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_macos_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("all_computers"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_computers"),
 						knownvalue.Bool(true),
 					),
 				},
@@ -515,7 +523,7 @@ func TestAccResource_MacOSConfigurationProfile_ScopeWithComputerIDs(t *testing.T
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_macos_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("computer_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("computer_ids"),
 						knownvalue.SetExact([]knownvalue.Check{knownvalue.StringExact(computerID)}),
 					),
 				},
@@ -543,7 +551,7 @@ func TestAccResource_MacOSConfigurationProfile_ScopeWithExclusions(t *testing.T)
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_macos_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("all_computers"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_computers"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
@@ -576,7 +584,7 @@ func TestAccResource_MacOSConfigurationProfile_ScopeJSSUserAddRemove(t *testing.
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_macos_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("user_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("user_ids"),
 						knownvalue.SetExact([]knownvalue.Check{knownvalue.StringExact(jssUserID)}),
 					),
 				},

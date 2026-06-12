@@ -82,12 +82,13 @@ func buildMobileAppGeneral(m *MobileAppGeneralModel) *proclassic.MobileDeviceApp
 
 func buildMobileAppScope(ctx context.Context, m *scope.MobileScopeModelNoIbeacons) (*proclassic.MobileDeviceApplicationScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.MobileDeviceApplicationScope{
-		AllMobileDevices: optionalBoolPointer(m.AllMobileDevices),
-		AllJssUsers:      optionalBoolPointer(m.AllJssUsers),
+		AllMobileDevices: optionalBoolPointer(t.AllMobileDevices),
+		AllJssUsers:      optionalBoolPointer(t.AllJssUsers),
 	}
 
-	mds, d := scope.BuildIDSlice(ctx, m.MobileDeviceIDs, func(id int) proclassic.MobileDeviceApplicationScopeMobileDevicesMobileDeviceItem {
+	mds, d := scope.BuildIDSlice(ctx, t.MobileDeviceIDs, func(id int) proclassic.MobileDeviceApplicationScopeMobileDevicesMobileDeviceItem {
 		return proclassic.MobileDeviceApplicationScopeMobileDevicesMobileDeviceItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -95,7 +96,7 @@ func buildMobileAppScope(ctx context.Context, m *scope.MobileScopeModelNoIbeacon
 		s.MobileDevices = &proclassic.MobileDeviceApplicationScopeMobileDevices{MobileDevice: mds}
 	}
 
-	mdgs, d := scope.BuildIDSlice(ctx, m.MobileDeviceGroupIDs, func(id int) proclassic.IDName {
+	mdgs, d := scope.BuildIDSlice(ctx, t.MobileDeviceGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -103,7 +104,7 @@ func buildMobileAppScope(ctx context.Context, m *scope.MobileScopeModelNoIbeacon
 		s.MobileDeviceGroups = &proclassic.MobileDeviceApplicationScopeMobileDeviceGroups{MobileDeviceGroup: mdgs}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, func(id int) proclassic.IDName {
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -111,7 +112,7 @@ func buildMobileAppScope(ctx context.Context, m *scope.MobileScopeModelNoIbeacon
 		s.Buildings = &proclassic.MobileDeviceApplicationScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, func(id int) proclassic.IDName {
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -119,7 +120,7 @@ func buildMobileAppScope(ctx context.Context, m *scope.MobileScopeModelNoIbeacon
 		s.Departments = &proclassic.MobileDeviceApplicationScopeDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, func(id int) proclassic.IDName {
+	jssUsers, d := scope.BuildIDSlice(ctx, t.UserIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -127,7 +128,7 @@ func buildMobileAppScope(ctx context.Context, m *scope.MobileScopeModelNoIbeacon
 		s.JssUsers = &proclassic.MobileDeviceApplicationScopeJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, func(id int) proclassic.IDName {
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.UserGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)

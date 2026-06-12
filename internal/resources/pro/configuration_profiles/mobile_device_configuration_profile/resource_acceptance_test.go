@@ -206,7 +206,9 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    all_mobile_devices = true
+    targets = {
+      all_mobile_devices = true
+    }
   }
 }
 `, name, payload)
@@ -221,7 +223,9 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    all_mobile_devices = true
+    targets = {
+      all_mobile_devices = true
+    }
     exclusions = {
       directory_service_or_local_user_names = ["nonexistent-acc-test-user"]
     }
@@ -239,7 +243,9 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    mobile_device_group_ids = [%q]
+    targets = {
+      mobile_device_group_ids = [%q]
+    }
   }
 }
 `, name, payload, groupID)
@@ -254,7 +260,9 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 %sEOF
   }
   scope = {
-    user_ids = [%q]
+    targets = {
+      user_ids = [%q]
+    }
   }
 }
 `, name, payload, userID)
@@ -462,7 +470,7 @@ func TestAccResource_MobileDeviceConfigurationProfile_AllMobileDevicesScope(t *t
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_mobile_device_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("all_mobile_devices"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_mobile_devices"),
 						knownvalue.Bool(true),
 					),
 				},
@@ -489,7 +497,7 @@ func TestAccResource_MobileDeviceConfigurationProfile_ScopeWithExclusions(t *tes
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_mobile_device_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("all_mobile_devices"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_mobile_devices"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
@@ -522,7 +530,7 @@ func TestAccResource_MobileDeviceConfigurationProfile_ScopeWithMobileDeviceGroup
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_mobile_device_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("mobile_device_group_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("mobile_device_group_ids"),
 						knownvalue.SetExact([]knownvalue.Check{knownvalue.StringExact(groupID)}),
 					),
 				},
@@ -550,7 +558,7 @@ func TestAccResource_MobileDeviceConfigurationProfile_ScopeJSSUserAddRemove(t *t
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_mobile_device_configuration_profile.test",
-						tfjsonpath.New("scope").AtMapKey("user_ids"),
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("user_ids"),
 						knownvalue.SetExact([]knownvalue.Check{knownvalue.StringExact(jssUserID)}),
 					),
 				},

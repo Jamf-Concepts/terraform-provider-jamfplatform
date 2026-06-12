@@ -63,12 +63,13 @@ func buildMacAppGeneral(m *MacAppGeneralModel) *proclassic.MacApplicationGeneral
 
 func buildMacAppScope(ctx context.Context, m *scope.ComputerScopeModelNoIbeacons) (*proclassic.MacApplicationScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.MacApplicationScope{
-		AllComputers: optionalBoolPointer(m.AllComputers),
-		AllJssUsers:  optionalBoolPointer(m.AllJssUsers),
+		AllComputers: optionalBoolPointer(t.AllComputers),
+		AllJssUsers:  optionalBoolPointer(t.AllJssUsers),
 	}
 
-	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.MacApplicationScopeComputersComputerItem {
+	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.MacApplicationScopeComputersComputerItem {
 		return proclassic.MacApplicationScopeComputersComputerItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -76,7 +77,7 @@ func buildMacAppScope(ctx context.Context, m *scope.ComputerScopeModelNoIbeacons
 		s.Computers = &proclassic.MacApplicationScopeComputers{Computer: computers}
 	}
 
-	computerGroups, d := scope.BuildIDSlice(ctx, m.ComputerGroupIDs, func(id int) proclassic.IDName {
+	computerGroups, d := scope.BuildIDSlice(ctx, t.ComputerGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -84,7 +85,7 @@ func buildMacAppScope(ctx context.Context, m *scope.ComputerScopeModelNoIbeacons
 		s.ComputerGroups = &proclassic.MacApplicationScopeComputerGroups{ComputerGroup: computerGroups}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, func(id int) proclassic.IDName {
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -92,7 +93,7 @@ func buildMacAppScope(ctx context.Context, m *scope.ComputerScopeModelNoIbeacons
 		s.Buildings = &proclassic.MacApplicationScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, func(id int) proclassic.IDName {
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -100,7 +101,7 @@ func buildMacAppScope(ctx context.Context, m *scope.ComputerScopeModelNoIbeacons
 		s.Departments = &proclassic.MacApplicationScopeDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, func(id int) proclassic.IDName {
+	jssUsers, d := scope.BuildIDSlice(ctx, t.UserIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -108,7 +109,7 @@ func buildMacAppScope(ctx context.Context, m *scope.ComputerScopeModelNoIbeacons
 		s.JssUsers = &proclassic.MacApplicationScopeJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, func(id int) proclassic.IDName {
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.UserGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)

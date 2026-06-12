@@ -83,18 +83,19 @@ func TestFlattenScope_TargetsAndNameKeyedExclusions(t *testing.T) {
 		},
 	}
 	state := &RestrictedSoftwareScopeModel{
+		Targets:    &RestrictedSoftwareScopeTargetsModel{},
 		Exclusions: &RestrictedSoftwareScopeExclusionsModel{},
 	}
 	flattenScope(ctx, s, state)
 
-	if state.AllComputers.ValueBool() {
+	if state.Targets.AllComputers.ValueBool() {
 		t.Errorf("all_computers should be false")
 	}
-	if l := len(state.ComputerGroupIDs.Elements()); l != 1 {
+	if l := len(state.Targets.ComputerGroupIDs.Elements()); l != 1 {
 		t.Errorf("expected 1 computer group ID, got %d", l)
 	}
 	// Empty target categories must flatten to null (server returns empty elements).
-	if !state.BuildingIDs.IsNull() || !state.DepartmentIDs.IsNull() || !state.ComputerIDs.IsNull() {
+	if !state.Targets.BuildingIDs.IsNull() || !state.Targets.DepartmentIDs.IsNull() || !state.Targets.ComputerIDs.IsNull() {
 		t.Errorf("empty targets must be null")
 	}
 	if l := len(state.Exclusions.DirectoryServiceOrLocalUserNames.Elements()); l != 2 {

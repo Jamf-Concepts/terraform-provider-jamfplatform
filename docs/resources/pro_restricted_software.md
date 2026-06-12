@@ -36,7 +36,9 @@ resource "jamfplatform_pro_restricted_software" "block_chess" {
   }
 
   scope = {
-    all_computers = true
+    targets = {
+      all_computers = true
+    }
 
     exclusions = {
       # Free-text local usernames — not Jamf Pro object IDs.
@@ -54,9 +56,11 @@ resource "jamfplatform_pro_restricted_software" "scoped" {
   }
 
   scope = {
-    computer_group_ids = [
-      jamfplatform_device_group.engineering.jamf_pro_id,
-    ]
+    targets = {
+      computer_group_ids = [
+        jamfplatform_device_group.engineering.jamf_pro_id,
+      ]
+    }
 
     exclusions = {
       department_ids = [jamfplatform_pro_department.it.id]
@@ -74,7 +78,7 @@ resource "jamfplatform_pro_restricted_software" "scoped" {
 
 ### Optional
 
-- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, and `department_ids`. Scope limitations are not supported for restricted software. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -109,12 +113,8 @@ Read-Only:
 
 Optional:
 
-- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `exclusions` (Attributes) Scope exclusions remove items that would otherwise be included by the targets. `directory_service_or_local_user_names` carries free-text local usernames (the admin UI "Directory Service/Local Users" exclusion), not Jamf Pro object IDs. (see [below for nested schema](#nestedatt--scope--exclusions))
+- `targets` (Attributes) Scope targets — the audience the record applies to. Mirrors the admin UI's Scope > Targets tab: set `all_computers = true` for tenant-wide scope, or list specific IDs. (see [below for nested schema](#nestedatt--scope--targets))
 
 <a id="nestedatt--scope--exclusions"></a>
 ### Nested Schema for `scope.exclusions`
@@ -126,6 +126,18 @@ Optional:
 - `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
 - `department_ids` (Set of String) Set of Jamf Pro department IDs.
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
+
+
+<a id="nestedatt--scope--targets"></a>
+### Nested Schema for `scope.targets`
+
+Optional:
+
+- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs.
 
 
 

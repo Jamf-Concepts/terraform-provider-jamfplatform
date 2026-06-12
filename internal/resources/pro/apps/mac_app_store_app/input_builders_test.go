@@ -73,14 +73,16 @@ func TestBuildMacAppScope_TargetsAndCollapse(t *testing.T) {
 
 	// Empty model collapses to nil so <scope> is omitted entirely.
 	empty := &scope.ComputerScopeModelNoIbeacons{
-		AllComputers:     types.BoolNull(),
-		AllJssUsers:      types.BoolNull(),
-		ComputerIDs:      types.SetNull(types.StringType),
-		ComputerGroupIDs: types.SetNull(types.StringType),
-		BuildingIDs:      types.SetNull(types.StringType),
-		DepartmentIDs:    types.SetNull(types.StringType),
-		UserIDs:          types.SetNull(types.StringType),
-		UserGroupIDs:     types.SetNull(types.StringType),
+		Targets: &scope.ComputerScopeTargetsModel{
+			AllComputers:     types.BoolNull(),
+			AllJssUsers:      types.BoolNull(),
+			ComputerIDs:      types.SetNull(types.StringType),
+			ComputerGroupIDs: types.SetNull(types.StringType),
+			BuildingIDs:      types.SetNull(types.StringType),
+			DepartmentIDs:    types.SetNull(types.StringType),
+			UserIDs:          types.SetNull(types.StringType),
+			UserGroupIDs:     types.SetNull(types.StringType),
+		},
 	}
 	s, diags := buildMacAppScope(ctx, empty)
 	if diags.HasError() {
@@ -92,14 +94,16 @@ func TestBuildMacAppScope_TargetsAndCollapse(t *testing.T) {
 
 	// Targets map into the SDK sub-blocks.
 	m := &scope.ComputerScopeModelNoIbeacons{
-		AllComputers:     types.BoolValue(false),
-		AllJssUsers:      types.BoolNull(),
-		ComputerIDs:      idSet("11", "12"),
-		ComputerGroupIDs: idSet("5"),
-		BuildingIDs:      types.SetNull(types.StringType),
-		DepartmentIDs:    types.SetNull(types.StringType),
-		UserIDs:          types.SetNull(types.StringType),
-		UserGroupIDs:     types.SetNull(types.StringType),
+		Targets: &scope.ComputerScopeTargetsModel{
+			AllComputers:     types.BoolValue(false),
+			AllJssUsers:      types.BoolNull(),
+			ComputerIDs:      idSet("11", "12"),
+			ComputerGroupIDs: idSet("5"),
+			BuildingIDs:      types.SetNull(types.StringType),
+			DepartmentIDs:    types.SetNull(types.StringType),
+			UserIDs:          types.SetNull(types.StringType),
+			UserGroupIDs:     types.SetNull(types.StringType),
+		},
 		Limitations: &scope.ComputerScopeLimitationsModelNoIbeacons{
 			NetworkSegmentIDs:                idSet("2"),
 			DirectoryServiceOrLocalUserNames: types.SetNull(types.StringType),

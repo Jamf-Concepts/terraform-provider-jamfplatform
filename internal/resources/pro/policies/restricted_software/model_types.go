@@ -48,14 +48,38 @@ type RestrictedSoftwareGeneralModel struct {
 // NO limitations block and NO target users. It is hand-composed from the shared
 // scope primitives (scope.IDSetAttribute / scope.BuildIDSlice / …) rather than
 // the full scope.ComputerScopeAttributes factory because the category set
-// genuinely differs — see RESTRICTED_SOFTWARE_SPIKE.md §4.
+// genuinely differs — see RESTRICTED_SOFTWARE_SPIKE.md §4. The all-flag and
+// per-category target ID sets nest under `targets`, mirroring the admin UI's
+// Scope > Targets tab; `exclusions` is a sibling (no limitations tab here).
 type RestrictedSoftwareScopeModel struct {
-	AllComputers     types.Bool                              `tfsdk:"all_computers"`
-	ComputerIDs      types.Set                               `tfsdk:"computer_ids"`
-	ComputerGroupIDs types.Set                               `tfsdk:"computer_group_ids"`
-	BuildingIDs      types.Set                               `tfsdk:"building_ids"`
-	DepartmentIDs    types.Set                               `tfsdk:"department_ids"`
-	Exclusions       *RestrictedSoftwareScopeExclusionsModel `tfsdk:"exclusions"`
+	Targets    *RestrictedSoftwareScopeTargetsModel    `tfsdk:"targets"`
+	Exclusions *RestrictedSoftwareScopeExclusionsModel `tfsdk:"exclusions"`
+}
+
+// RestrictedSoftwareScopeTargetsModel models <scope> targets — the all_computers
+// flag plus the per-category ID sets, mirroring the admin UI's Targets tab.
+type RestrictedSoftwareScopeTargetsModel struct {
+	AllComputers     types.Bool `tfsdk:"all_computers"`
+	ComputerIDs      types.Set  `tfsdk:"computer_ids"`
+	ComputerGroupIDs types.Set  `tfsdk:"computer_group_ids"`
+	BuildingIDs      types.Set  `tfsdk:"building_ids"`
+	DepartmentIDs    types.Set  `tfsdk:"department_ids"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null fields
+// when the block was omitted, so input-builders can read target fields without
+// a nil-guard. The omission semantics in BuildIDSlice treat null sets as absent.
+func (m RestrictedSoftwareScopeModel) TargetsOrZero() RestrictedSoftwareScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return RestrictedSoftwareScopeTargetsModel{
+		AllComputers:     types.BoolNull(),
+		ComputerIDs:      types.SetNull(types.StringType),
+		ComputerGroupIDs: types.SetNull(types.StringType),
+		BuildingIDs:      types.SetNull(types.StringType),
+		DepartmentIDs:    types.SetNull(types.StringType),
+	}
 }
 
 // RestrictedSoftwareScopeExclusionsModel models <scope><exclusions>. The

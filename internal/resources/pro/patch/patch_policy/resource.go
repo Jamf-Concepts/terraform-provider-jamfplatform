@@ -183,32 +183,38 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Scope targets, limitations, and exclusions are addressed by computer, computer group, building, department, network segment, and iBeacon.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
-					"all_computers": schema.BoolAttribute{
-						MarkdownDescription: "Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
+					"targets": schema.SingleNestedAttribute{
+						MarkdownDescription: "Scope targets — the audience the policy applies to. Mirrors the admin UI's Targets tab: set `all_computers` for tenant-wide scope, or list specific IDs.",
 						Optional:            true,
-						Computed:            true,
-						// UseNonNullStateForUnknown (not UseStateForUnknown): the
-						// scope block transitions null→present on Update (the acc
-						// suite creates without scope, then adds it). UseStateForUnknown
-						// copies the Null prior state into the plan, so the post-apply
-						// api echo (false) trips "was null, but now cty.False". The
-						// non-null variant leaves the plan Unknown so the echo is
-						// accepted — matching every other Optional+Computed leaf in
-						// this schema (STYLE_GUIDE §230 1a).
-						PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
-						Validators: []validator.Bool{
-							scope.AllFlagConflictsWith(
-								path.MatchRelative().AtParent().AtName("computer_ids"),
-								path.MatchRelative().AtParent().AtName("computer_group_ids"),
-								path.MatchRelative().AtParent().AtName("building_ids"),
-								path.MatchRelative().AtParent().AtName("department_ids"),
-							),
+						Attributes: map[string]schema.Attribute{
+							"all_computers": schema.BoolAttribute{
+								MarkdownDescription: "Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
+								Optional:            true,
+								Computed:            true,
+								// UseNonNullStateForUnknown (not UseStateForUnknown): the
+								// targets block transitions null→present on Update (the acc
+								// suite creates without scope, then adds it). UseStateForUnknown
+								// copies the Null prior state into the plan, so the post-apply
+								// api echo (false) trips "was null, but now cty.False". The
+								// non-null variant leaves the plan Unknown so the echo is
+								// accepted — matching every other Optional+Computed leaf in
+								// this schema (STYLE_GUIDE §230 1a).
+								PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
+								Validators: []validator.Bool{
+									scope.AllFlagConflictsWith(
+										path.MatchRelative().AtParent().AtName("computer_ids"),
+										path.MatchRelative().AtParent().AtName("computer_group_ids"),
+										path.MatchRelative().AtParent().AtName("building_ids"),
+										path.MatchRelative().AtParent().AtName("department_ids"),
+									),
+								},
+							},
+							"computer_ids":       scope.IDSetAttribute("computer"),
+							"computer_group_ids": scope.IDSetAttribute("computer group"),
+							"building_ids":       scope.IDSetAttribute("building"),
+							"department_ids":     scope.IDSetAttribute("department"),
 						},
 					},
-					"computer_ids":       scope.IDSetAttribute("computer"),
-					"computer_group_ids": scope.IDSetAttribute("computer group"),
-					"building_ids":       scope.IDSetAttribute("building"),
-					"department_ids":     scope.IDSetAttribute("department"),
 					"limitations": schema.SingleNestedAttribute{
 						MarkdownDescription: "Scope limitations restrict the targets to computers that also match these network segments / iBeacon ranges.",
 						Optional:            true,

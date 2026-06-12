@@ -23,7 +23,9 @@ resource "jamfplatform_pro_mobile_device_app" "self_service" {
   }
 
   scope = {
-    all_mobile_devices = true
+    targets = {
+      all_mobile_devices = true
+    }
   }
 
   self_service = {
@@ -55,9 +57,11 @@ resource "jamfplatform_pro_mobile_device_app" "automatic" {
   }
 
   scope = {
-    mobile_device_group_ids = [
-      jamfplatform_device_group.field_ipads.jamf_pro_id,
-    ]
+    targets = {
+      mobile_device_group_ids = [
+        jamfplatform_device_group.field_ipads.jamf_pro_id,
+      ]
+    }
 
     exclusions = {
       department_ids = [jamfplatform_pro_department.it.id]
