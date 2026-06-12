@@ -87,10 +87,7 @@ func closestMatch(s string, candidates []string) string {
 	if best == "" {
 		return ""
 	}
-	limit := len(s)
-	if len(best) > limit {
-		limit = len(best)
-	}
+	limit := max(len(best), len(s))
 	if bestDist*3 > limit {
 		return ""
 	}
@@ -128,13 +125,7 @@ func levenshtein(a, b string) int {
 }
 
 func min3(a, b, c int) int {
-	m := a
-	if b < m {
-		m = b
-	}
-	if c < m {
-		m = c
-	}
+	m := min(c, min(b, a))
 	return m
 }
 
