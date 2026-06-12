@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_account Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro administrator login account — a person who signs in to Jamf Pro. This is NOT the jamfplatform_pro_user inventory construct (end-user/device records). The resource is a hybrid: it is created via the Pro /accounts API (the only path that can set account_type, including FEDERATED) and carries its Custom privilege grid via the ProClassic API. Base-field updates currently fail with a gateway permission error (403) until the Pro update permission is granted to the platform gateway; privilege and membership edits work today.
+  Manages a Jamf Pro administrator login account — a person who signs in to Jamf Pro. This is NOT the jamfplatform_pro_user inventory construct (end-user/device records). A Custom privilege grid can be assigned via the privileges block. In-place updates to base account fields (username, full name, email, access level, etc.) are not currently accepted by Jamf Pro and will return an error; only privilege changes can be applied to an existing account. Changing account_type forces the account to be replaced.
 ---
 
 # jamfplatform_pro_account (Resource)
 
-Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). The resource is a hybrid: it is created via the Pro `/accounts` API (the only path that can set `account_type`, including `FEDERATED`) and carries its Custom privilege grid via the ProClassic API. **Base-field updates currently fail with a gateway permission error (403)** until the Pro update permission is granted to the platform gateway; privilege and membership edits work today.
+Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. **In-place updates to base account fields (username, full name, email, access level, etc.) are not currently accepted by Jamf Pro and will return an error; only privilege changes can be applied to an existing account.** Changing `account_type` forces the account to be replaced.
 
 ## Example Usage
 
@@ -86,7 +86,7 @@ variable "sam_password" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `access_status` (String) Account status (UI "Access Status"). One of `Enabled` or `Disabled`.
-- `account_type` (String) Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable — changing it forces replacement (the classic API cannot change it; only Pro create sets it).
+- `account_type` (String) Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable — changing it forces the account to be replaced.
 - `email_address` (String) Email address (UI "Email Address"). Must be unique across accounts — Jamf Pro rejects a duplicate on create.
 - `force_password_change` (Boolean) Whether the user must change their password at next login (UI "Force change at next login").
 - `full_name` (String) Full name (UI "Full Name").
