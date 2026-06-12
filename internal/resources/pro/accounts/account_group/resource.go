@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -110,6 +111,7 @@ func (r *AccountGroupResource) Schema(ctx context.Context, req resource.SchemaRe
 				MarkdownDescription: "ID of the site this group is scoped to. `-1` means no site (the default). Only meaningful when `access_level` is `Site Access`.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"site_name": schema.StringAttribute{
 				MarkdownDescription: "Display name of the scoped site (server-derived).",
