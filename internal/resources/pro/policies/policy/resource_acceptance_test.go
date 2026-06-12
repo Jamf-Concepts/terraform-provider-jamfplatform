@@ -190,6 +190,92 @@ resource "jamfplatform_pro_policy" "test" {
 `, name)
 }
 
+// TestAccPolicyResource_ScopeTargetsNullToPresentTransition is the load-bearing
+// regression test for the `targets` nesting: it exercises why the all-flags use
+// boolplanmodifier.UseNonNullStateForUnknown rather than UseStateForUnknown.
+//
+// Step 1 declares `scope` with only `exclusions`, so the `targets` block is
+// absent and the Computed all-flags have a NULL prior state. Step 2 adds
+// `targets { all_jss_users = true }` while leaving `all_computers` Computed
+// (omitted from config) — so `all_computers` undergoes the null→present block
+// transition as an unknown-at-plan value. Under the old UseStateForUnknown the
+// modifier would carry the null prior state into the plan and trip a
+// "produced an inconsistent result after apply … was null, but now <bool>"
+// error once the server echoes a concrete value; UseNonNullStateForUnknown
+// leaves it unknown so apply fills it cleanly. A green step 2 IS the assertion.
+func TestAccPolicyResource_ScopeTargetsNullToPresentTransition(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-targets-transition-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// scope present, targets ABSENT → null prior state.
+				Config: policyConfigScopeExclusionsOnly(name),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("targets"),
+						knownvalue.Null(),
+					),
+				},
+			},
+			{
+				// targets goes null→present; all_computers stays Computed.
+				Config: policyConfigScopeExclusionsPlusTargets(name),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_jss_users"),
+						knownvalue.Bool(true),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_computers"),
+						knownvalue.Bool(false),
+					),
+				},
+			},
+		},
+	})
+}
+
+func policyConfigScopeExclusionsOnly(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scope = {
+    exclusions = {
+      directory_service_or_local_user_names = ["tf-acc-excluded-user"]
+    }
+  }
+}
+`, name)
+}
+
+func policyConfigScopeExclusionsPlusTargets(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scope = {
+    targets = {
+      all_jss_users = true
+    }
+    exclusions = {
+      directory_service_or_local_user_names = ["tf-acc-excluded-user"]
+    }
+  }
+}
+`, name)
+}
+
 // TestAccPolicyResource_Minimal covers the smallest viable policy: name only.
 // Verifies Create/Read/Update/Delete + import.
 func TestAccPolicyResource_Minimal(t *testing.T) {
