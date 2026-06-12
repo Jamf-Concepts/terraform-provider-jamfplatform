@@ -114,8 +114,8 @@ func TestAssignPolicyResourceModel_RoundTripNotification(t *testing.T) {
 func TestAssignPolicyResourceModel_PackageConfigurationDistributionPoint(t *testing.T) {
 	t.Parallel()
 	state := &PolicyResourceModel{
-		General:              &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
-		PackageConfiguration: &PolicyPackageConfigurationModel{},
+		General:  &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
+		Packages: &PolicyPackagesModel{},
 	}
 	src := &proclassic.Policy{
 		General: &proclassic.PolicyGeneral{Name: new("tf-acc")},
@@ -127,11 +127,11 @@ func TestAssignPolicyResourceModel_PackageConfigurationDistributionPoint(t *test
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	if state.PackageConfiguration.DistributionPoint.ValueString() != "Dummy DP" {
-		t.Fatalf("expected distribution_point=Dummy DP, got %q", state.PackageConfiguration.DistributionPoint.ValueString())
+	if state.Packages.DistributionPoint.ValueString() != "Dummy DP" {
+		t.Fatalf("expected distribution_point=Dummy DP, got %q", state.Packages.DistributionPoint.ValueString())
 	}
-	if state.PackageConfiguration.Packages != nil {
-		t.Fatalf("expected packages nil when server returned none, got %+v", state.PackageConfiguration.Packages)
+	if state.Packages.Packages != nil {
+		t.Fatalf("expected packages nil when server returned none, got %+v", state.Packages.Packages)
 	}
 }
 
@@ -139,7 +139,7 @@ func TestAssignPolicyResourceModel_PackageConfigurationConfiguredWins(t *testing
 	t.Parallel()
 	state := &PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
-		PackageConfiguration: &PolicyPackageConfigurationModel{
+		Packages: &PolicyPackagesModel{
 			DistributionPoint: types.StringValue("Configured DP"),
 		},
 	}
@@ -153,7 +153,7 @@ func TestAssignPolicyResourceModel_PackageConfigurationConfiguredWins(t *testing
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	if got := state.PackageConfiguration.DistributionPoint.ValueString(); got != "Configured DP" {
+	if got := state.Packages.DistributionPoint.ValueString(); got != "Configured DP" {
 		t.Fatalf("preferCurrentStringPointer should keep configured value, got %q", got)
 	}
 }
