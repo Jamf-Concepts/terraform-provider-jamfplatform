@@ -30,6 +30,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -101,11 +103,13 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Full name (UI \"Full Name\").",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"email_address": schema.StringAttribute{
 				MarkdownDescription: "Email address (UI \"Email Address\"). Must be unique across accounts — Jamf Pro rejects a duplicate on create.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"access_level": schema.StringAttribute{
 				MarkdownDescription: "Access level (UI \"Access Level\"). One of `Full Access`, `Site Access`, or `Group Access`. Account-level `privileges` only apply when this is `Full Access` and `privilege_set` is `Custom`.",
@@ -122,28 +126,32 @@ func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(accessStatusValues...)},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"account_type": schema.StringAttribute{
 				MarkdownDescription: "Account type. `DEFAULT` for a local or directory account; `FEDERATED` for an SSO/identity-provider account. Immutable — changing it forces replacement (the classic API cannot change it; only Pro create sets it).",
 				Optional:            true,
 				Computed:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(accountTypeValues...)},
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown(), stringplanmodifier.RequiresReplace()},
 			},
 			"ldap_server_id": schema.Int64Attribute{
 				MarkdownDescription: "ID of the backing LDAP / cloud-identity-provider server for a directory account. `-1` (the default) means a Jamf-Pro-local account.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"site_id": schema.Int64Attribute{
 				MarkdownDescription: "Scoped site ID. `-1` means no site. Only meaningful for `Site Access` / `Group Access`.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 			},
 			"force_password_change": schema.BoolAttribute{
 				MarkdownDescription: "Whether the user must change their password at next login (UI \"Force change at next login\").",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"password": schema.StringAttribute{
 				MarkdownDescription: "Plaintext account password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state, and never returned by Jamf Pro. Required when creating a local (non-directory, non-federated) account. To rotate, change the value AND bump `password_wo_version`.",
