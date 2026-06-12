@@ -142,9 +142,17 @@ func assignAccountGroupDataSourceModel(data *AccountGroupDataSourceModel, g *pro
 
 	data.Members = memberSet(g.Members)
 
+	// Flatten the categorised grid into a deduplicated union — the same
+	// privilege string can appear in more than one category, and a Set must
+	// not contain duplicates.
+	seen := map[string]struct{}{}
 	var privElems []attr.Value
 	for _, privs := range accountprivileges.FromGroupPrivileges(g.Privileges) {
 		for _, p := range privs {
+			if _, dup := seen[p]; dup {
+				continue
+			}
+			seen[p] = struct{}{}
 			privElems = append(privElems, types.StringValue(p))
 		}
 	}
