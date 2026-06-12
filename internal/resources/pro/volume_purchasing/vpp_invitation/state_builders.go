@@ -67,6 +67,7 @@ func assignVPPInvitationDataSourceModel(ctx context.Context, state *VPPInvitatio
 	state.RequireLogin = helpers.BoolPointerValueOrNull(g.RequireLogin)
 
 	state.Scope = &scope.UserScopeModel{
+		Targets:     &scope.UserScopeTargetsModel{},
 		Limitations: &scope.UserScopeLimitationsModel{},
 		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}
@@ -77,9 +78,11 @@ func assignVPPInvitationDataSourceModel(ctx context.Context, state *VPPInvitatio
 }
 
 func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *scope.UserScopeModel) {
-	state.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
-	state.JssUserIDs = flattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
-	state.JssUserGroupIDs = flattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
+	if state.Targets != nil {
+		state.Targets.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
+		state.Targets.JssUserIDs = flattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
+		state.Targets.JssUserGroupIDs = flattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
+	}
 
 	if state.Limitations != nil {
 		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, limitationsUserGroupsSlice(s.Limitations))

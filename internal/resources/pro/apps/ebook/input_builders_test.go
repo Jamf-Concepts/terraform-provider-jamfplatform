@@ -70,18 +70,20 @@ func TestBuildEbookNotification(t *testing.T) {
 
 func emptyEbookScope() *EbookScopeModel {
 	return &EbookScopeModel{
-		AllComputers:         types.BoolNull(),
-		AllMobileDevices:     types.BoolNull(),
-		AllJssUsers:          types.BoolNull(),
-		ComputerIDs:          nullSet(),
-		ComputerGroupIDs:     nullSet(),
-		MobileDeviceIDs:      nullSet(),
-		MobileDeviceGroupIDs: nullSet(),
-		BuildingIDs:          nullSet(),
-		DepartmentIDs:        nullSet(),
-		UserIDs:              nullSet(),
-		UserGroupIDs:         nullSet(),
-		ClassIDs:             nullSet(),
+		Targets: &EbookScopeTargetsModel{
+			AllComputers:         types.BoolNull(),
+			AllMobileDevices:     types.BoolNull(),
+			AllJssUsers:          types.BoolNull(),
+			ComputerIDs:          nullSet(),
+			ComputerGroupIDs:     nullSet(),
+			MobileDeviceIDs:      nullSet(),
+			MobileDeviceGroupIDs: nullSet(),
+			BuildingIDs:          nullSet(),
+			DepartmentIDs:        nullSet(),
+			UserIDs:              nullSet(),
+			UserGroupIDs:         nullSet(),
+			ClassIDs:             nullSet(),
+		},
 	}
 }
 
@@ -99,14 +101,14 @@ func TestBuildEbookScope_Collapse(t *testing.T) {
 func TestBuildEbookScope_DualTargetUnionAndClasses(t *testing.T) {
 	ctx := context.Background()
 	m := emptyEbookScope()
-	m.AllComputers = types.BoolValue(false)
-	m.ComputerIDs = idSet("11", "12")
-	m.ComputerGroupIDs = idSet("5")
-	m.MobileDeviceIDs = idSet("21")
-	m.MobileDeviceGroupIDs = idSet("6", "7")
-	m.BuildingIDs = idSet("3")
-	m.UserIDs = idSet("31")
-	m.ClassIDs = idSet("41", "42")
+	m.Targets.AllComputers = types.BoolValue(false)
+	m.Targets.ComputerIDs = idSet("11", "12")
+	m.Targets.ComputerGroupIDs = idSet("5")
+	m.Targets.MobileDeviceIDs = idSet("21")
+	m.Targets.MobileDeviceGroupIDs = idSet("6", "7")
+	m.Targets.BuildingIDs = idSet("3")
+	m.Targets.UserIDs = idSet("31")
+	m.Targets.ClassIDs = idSet("41", "42")
 	m.Limitations = &EbookScopeLimitationsModel{
 		NetworkSegmentIDs:                idSet("2"),
 		DirectoryServiceOrLocalUserNames: idSetNames("alice"),

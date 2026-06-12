@@ -9,7 +9,9 @@ resource "jamfplatform_pro_vpp_assignment" "apps" {
   mac_app_adam_ids = [409203825]
 
   scope = {
-    jss_user_group_ids = ["1"]
+    targets = {
+      jss_user_group_ids = ["1"]
+    }
 
     exclusions = {
       # Directory-service (LDAP) groups are matched by name.
@@ -29,6 +31,8 @@ resource "jamfplatform_pro_vpp_assignment" "books" {
   ebook_adam_ids = [1234567890]
 
   scope = {
-    all_jss_users = true
+    targets = {
+      all_jss_users = true
+    }
   }
 }

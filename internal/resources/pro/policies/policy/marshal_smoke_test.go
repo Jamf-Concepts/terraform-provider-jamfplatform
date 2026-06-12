@@ -30,8 +30,10 @@ func TestMarshal_RepresentativePolicy(t *testing.T) {
 			Frequency:      types.StringValue("Once per computer"),
 		},
 		Scope: &scope.ComputerScopeModel{
-			ComputerGroupIDs: stringSet(t, "11", "22"),
-			BuildingIDs:      stringSet(t, "7"),
+			Targets: &scope.ComputerScopeTargetsModel{
+				ComputerGroupIDs: stringSet(t, "11", "22"),
+				BuildingIDs:      stringSet(t, "7"),
+			},
 		},
 		SelfService: &PolicySelfServiceModel{
 			UseForSelfService:    types.BoolValue(true),

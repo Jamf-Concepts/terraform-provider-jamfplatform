@@ -23,11 +23,31 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 // per-resource because VppInvitation* and VppAssignment* are distinct generated
 // SDK structs with no shared interface. See STYLE_GUIDE.md §Scope helper.
 type UserScopeModel struct {
-	AllJssUsers     types.Bool                 `tfsdk:"all_jss_users"`
-	JssUserIDs      types.Set                  `tfsdk:"jss_user_ids"`
-	JssUserGroupIDs types.Set                  `tfsdk:"jss_user_group_ids"`
-	Limitations     *UserScopeLimitationsModel `tfsdk:"limitations"`
-	Exclusions      *UserScopeExclusionsModel  `tfsdk:"exclusions"`
+	Targets     *UserScopeTargetsModel     `tfsdk:"targets"`
+	Limitations *UserScopeLimitationsModel `tfsdk:"limitations"`
+	Exclusions  *UserScopeExclusionsModel  `tfsdk:"exclusions"`
+}
+
+// UserScopeTargetsModel models <scope> targets — the all_jss_users flag plus
+// the Jamf Pro user / user-group ID sets, mirroring the admin UI's Targets tab.
+type UserScopeTargetsModel struct {
+	AllJssUsers     types.Bool `tfsdk:"all_jss_users"`
+	JssUserIDs      types.Set  `tfsdk:"jss_user_ids"`
+	JssUserGroupIDs types.Set  `tfsdk:"jss_user_group_ids"`
+}
+
+// TargetsOrZero returns the targets sub-model, or a zero value with null
+// fields when the block was omitted, so input-builders can read target fields
+// without a nil-guard.
+func (m UserScopeModel) TargetsOrZero() UserScopeTargetsModel {
+	if m.Targets != nil {
+		return *m.Targets
+	}
+	return UserScopeTargetsModel{
+		AllJssUsers:     types.BoolNull(),
+		JssUserIDs:      types.SetNull(types.StringType),
+		JssUserGroupIDs: types.SetNull(types.StringType),
+	}
 }
 
 // UserScopeLimitationsModel models <scope><limitations>. The UI exposes only

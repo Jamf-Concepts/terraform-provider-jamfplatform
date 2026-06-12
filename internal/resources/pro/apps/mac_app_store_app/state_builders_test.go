@@ -84,6 +84,7 @@ func TestAssignMacApp_GuardedBlocks(t *testing.T) {
 func TestFlattenMacAppScope_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 	state := &scope.ComputerScopeModelNoIbeacons{
+		Targets:     &scope.ComputerScopeTargetsModel{},
 		Limitations: &scope.ComputerScopeLimitationsModelNoIbeacons{},
 		Exclusions:  &scope.ComputerScopeExclusionsModelNoIbeacons{},
 	}
@@ -109,7 +110,7 @@ func TestFlattenMacAppScope_RoundTrip(t *testing.T) {
 	flattenMacAppScope(ctx, s, state)
 
 	var computerIDs []string
-	state.ComputerIDs.ElementsAs(ctx, &computerIDs, false)
+	state.Targets.ComputerIDs.ElementsAs(ctx, &computerIDs, false)
 	if len(computerIDs) != 2 {
 		t.Errorf("computer_ids: got %v", computerIDs)
 	}

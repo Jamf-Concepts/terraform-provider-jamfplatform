@@ -87,16 +87,7 @@ func TestBuildMobileNotification(t *testing.T) {
 func TestBuildMobileAppScope_TargetsAndCollapse(t *testing.T) {
 	ctx := context.Background()
 
-	empty := &scope.MobileScopeModelNoIbeacons{
-		AllMobileDevices:     types.BoolNull(),
-		AllJssUsers:          types.BoolNull(),
-		MobileDeviceIDs:      types.SetNull(types.StringType),
-		MobileDeviceGroupIDs: types.SetNull(types.StringType),
-		BuildingIDs:          types.SetNull(types.StringType),
-		DepartmentIDs:        types.SetNull(types.StringType),
-		UserIDs:              types.SetNull(types.StringType),
-		UserGroupIDs:         types.SetNull(types.StringType),
-	}
+	empty := &scope.MobileScopeModelNoIbeacons{}
 	s, diags := buildMobileAppScope(ctx, empty)
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
@@ -106,14 +97,16 @@ func TestBuildMobileAppScope_TargetsAndCollapse(t *testing.T) {
 	}
 
 	m := &scope.MobileScopeModelNoIbeacons{
-		AllMobileDevices:     types.BoolValue(false),
-		AllJssUsers:          types.BoolNull(),
-		MobileDeviceIDs:      idSet("11", "12"),
-		MobileDeviceGroupIDs: idSet("5"),
-		BuildingIDs:          types.SetNull(types.StringType),
-		DepartmentIDs:        types.SetNull(types.StringType),
-		UserIDs:              types.SetNull(types.StringType),
-		UserGroupIDs:         types.SetNull(types.StringType),
+		Targets: &scope.MobileScopeTargetsModel{
+			AllMobileDevices:     types.BoolValue(false),
+			AllJssUsers:          types.BoolNull(),
+			MobileDeviceIDs:      idSet("11", "12"),
+			MobileDeviceGroupIDs: idSet("5"),
+			BuildingIDs:          types.SetNull(types.StringType),
+			DepartmentIDs:        types.SetNull(types.StringType),
+			UserIDs:              types.SetNull(types.StringType),
+			UserGroupIDs:         types.SetNull(types.StringType),
+		},
 		Limitations: &scope.MobileScopeLimitationsModelNoIbeacons{
 			NetworkSegmentIDs:                idSet("2"),
 			DirectoryServiceOrLocalUserNames: types.SetNull(types.StringType),

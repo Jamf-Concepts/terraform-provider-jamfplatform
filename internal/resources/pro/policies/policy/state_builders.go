@@ -168,15 +168,22 @@ func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyG
 
 func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *scope.ComputerScopeModel) diag.Diagnostics {
 	var diags diag.Diagnostics
-	state.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.AllComputers)
-	state.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.AllJssUsers)
 
-	state.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-	state.ComputerGroupIDs = flattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups))
-	state.BuildingIDs = flattenIDNameSet(ctx, idNameSliceFromBuildings(s.Buildings))
-	state.DepartmentIDs = flattenIDNameSet(ctx, idNameSliceFromDepartments(s.Departments))
-	state.UserIDs = flattenIDNameSet(ctx, idNameSliceFromJssUsers(s.JssUsers))
-	state.UserGroupIDs = flattenIDNameSet(ctx, idNameSliceFromJssUserGroups(s.JssUserGroups))
+	// Targets are gated on caller management, mirroring the limitations /
+	// exclusions sub-blocks below: populating a targets block the user did not
+	// declare would violate the framework's "produced inconsistent result after
+	// apply" check (plan said null, we would return a populated object).
+	if state.Targets != nil {
+		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+
+		state.Targets.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
+		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups))
+		state.Targets.BuildingIDs = flattenIDNameSet(ctx, idNameSliceFromBuildings(s.Buildings))
+		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, idNameSliceFromDepartments(s.Departments))
+		state.Targets.UserIDs = flattenIDNameSet(ctx, idNameSliceFromJssUsers(s.JssUsers))
+		state.Targets.UserGroupIDs = flattenIDNameSet(ctx, idNameSliceFromJssUserGroups(s.JssUserGroups))
+	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations

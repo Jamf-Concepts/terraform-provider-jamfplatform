@@ -161,8 +161,10 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 			patch_unknown                   = true
 
 			scope = {
-				computer_group_ids = [jamfplatform_device_group.grp.jamf_pro_id]
-				building_ids       = [jamfplatform_pro_building.bld.id]
+				targets = {
+					computer_group_ids = [jamfplatform_device_group.grp.jamf_pro_id]
+					building_ids       = [jamfplatform_pro_building.bld.id]
+				}
 			}
 
 			user_interaction = {
@@ -218,7 +220,9 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 			patch_unknown                   = true
 
 			scope = {
-				computer_group_ids = [jamfplatform_device_group.grp.jamf_pro_id]
+				targets = {
+					computer_group_ids = [jamfplatform_device_group.grp.jamf_pro_id]
+				}
 			}
 
 			user_interaction = {
@@ -257,12 +261,12 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 				Config: stepUpdate,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "enabled", "true"),
-					resource.TestCheckResourceAttrPair(patchPolicyType+".test", "scope.computer_group_ids.0", "jamfplatform_device_group.grp", "jamf_pro_id"),
+					resource.TestCheckResourceAttrPair(patchPolicyType+".test", "scope.targets.computer_group_ids.0", "jamfplatform_device_group.grp", "jamf_pro_id"),
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "distribution_method", "prompt"),
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "allow_downgrade", "true"),
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "patch_unknown", "true"),
-					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.computer_group_ids.#", "1"),
-					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.building_ids.#", "1"),
+					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.targets.computer_group_ids.#", "1"),
+					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.targets.building_ids.#", "1"),
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "user_interaction.install_button_text", "Install Now"),
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "user_interaction.notifications.reminders.frequency", "12"),
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "user_interaction.deadlines.period", "3"),
@@ -274,8 +278,8 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 			{
 				Config: stepScopeShrink,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.computer_group_ids.#", "1"),
-					resource.TestCheckNoResourceAttr(patchPolicyType+".test", "scope.building_ids.#"),
+					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.targets.computer_group_ids.#", "1"),
+					resource.TestCheckNoResourceAttr(patchPolicyType+".test", "scope.targets.building_ids.#"),
 				),
 			},
 			{

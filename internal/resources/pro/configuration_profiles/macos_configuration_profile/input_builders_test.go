@@ -132,7 +132,9 @@ func TestBuildScope_NullCollapsesToNil(t *testing.T) {
 func TestBuildScope_AllComputersOnly(t *testing.T) {
 	t.Parallel()
 	s, _ := buildScope(context.Background(), &scope.ComputerScopeModel{
-		AllComputers: types.BoolValue(true),
+		Targets: &scope.ComputerScopeTargetsModel{
+			AllComputers: types.BoolValue(true),
+		},
 	})
 	if s == nil || s.AllComputers == nil || !*s.AllComputers {
 		t.Fatalf("expected all_computers=true, got %+v", s)
@@ -145,7 +147,9 @@ func TestBuildScope_AllComputersOnly(t *testing.T) {
 func TestBuildScope_ComputerIDsPopulated(t *testing.T) {
 	t.Parallel()
 	s, _ := buildScope(context.Background(), &scope.ComputerScopeModel{
-		ComputerIDs: stringSet(t, "11", "22"),
+		Targets: &scope.ComputerScopeTargetsModel{
+			ComputerIDs: stringSet(t, "11", "22"),
+		},
 	})
 	if s == nil || s.Computers == nil || s.Computers.Computer == nil || len(*s.Computers.Computer) != 2 {
 		t.Fatalf("expected 2 computers, got %+v", s)
@@ -174,7 +178,9 @@ func TestBuildScope_LimitationsPopulated(t *testing.T) {
 func TestBuildScope_ExclusionsPopulated(t *testing.T) {
 	t.Parallel()
 	s, _ := buildScope(context.Background(), &scope.ComputerScopeModel{
-		AllComputers: types.BoolValue(true),
+		Targets: &scope.ComputerScopeTargetsModel{
+			AllComputers: types.BoolValue(true),
+		},
 		Exclusions: &scope.ComputerScopeExclusionsModel{
 			ComputerIDs:                    stringSet(t, "99"),
 			DirectoryServiceUserGroupNames: stringSet(t, "DS-Group"),
@@ -257,7 +263,9 @@ func TestBuildInput_EndToEndCreatePath(t *testing.T) {
 			UserRemovable:      types.BoolValue(false),
 		},
 		Scope: &scope.ComputerScopeModel{
-			AllComputers: types.BoolValue(true),
+			Targets: &scope.ComputerScopeTargetsModel{
+				AllComputers: types.BoolValue(true),
+			},
 		},
 	}
 	out, diags := buildInput(context.Background(), plan, "")

@@ -89,11 +89,13 @@ func TestBuildScope_TargetsAndCollapse(t *testing.T) {
 
 	// Empty model collapses to nil so <scope> is omitted entirely.
 	empty := &RestrictedSoftwareScopeModel{
-		AllComputers:     types.BoolNull(),
-		ComputerIDs:      types.SetNull(types.StringType),
-		ComputerGroupIDs: types.SetNull(types.StringType),
-		BuildingIDs:      types.SetNull(types.StringType),
-		DepartmentIDs:    types.SetNull(types.StringType),
+		Targets: &RestrictedSoftwareScopeTargetsModel{
+			AllComputers:     types.BoolNull(),
+			ComputerIDs:      types.SetNull(types.StringType),
+			ComputerGroupIDs: types.SetNull(types.StringType),
+			BuildingIDs:      types.SetNull(types.StringType),
+			DepartmentIDs:    types.SetNull(types.StringType),
+		},
 	}
 	s, d := buildScope(ctx, empty)
 	if d.HasError() {
@@ -105,11 +107,13 @@ func TestBuildScope_TargetsAndCollapse(t *testing.T) {
 
 	// Populated targets project into the wire struct.
 	full := &RestrictedSoftwareScopeModel{
-		AllComputers:     types.BoolValue(false),
-		ComputerIDs:      idSet("1", "2"),
-		ComputerGroupIDs: idSet("11"),
-		BuildingIDs:      idSet("5"),
-		DepartmentIDs:    idSet("7"),
+		Targets: &RestrictedSoftwareScopeTargetsModel{
+			AllComputers:     types.BoolValue(false),
+			ComputerIDs:      idSet("1", "2"),
+			ComputerGroupIDs: idSet("11"),
+			BuildingIDs:      idSet("5"),
+			DepartmentIDs:    idSet("7"),
+		},
 	}
 	s, d = buildScope(ctx, full)
 	if d.HasError() {

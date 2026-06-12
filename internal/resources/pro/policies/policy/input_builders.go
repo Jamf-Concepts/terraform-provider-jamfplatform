@@ -208,12 +208,13 @@ func buildPolicyNetworkLimitations(ctx context.Context, m *PolicyGeneralNetworkL
 
 func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.PolicyPostScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
+	t := m.TargetsOrZero()
 	s := &proclassic.PolicyPostScope{
-		AllComputers: optionalBoolPointer(m.AllComputers),
-		AllJssUsers:  optionalBoolPointer(m.AllJssUsers),
+		AllComputers: optionalBoolPointer(t.AllComputers),
+		AllJssUsers:  optionalBoolPointer(t.AllJssUsers),
 	}
 
-	computers, d := scope.BuildIDSlice(ctx, m.ComputerIDs, func(id int) proclassic.PolicyScopeComputersComputerItem {
+	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.PolicyScopeComputersComputerItem {
 		return proclassic.PolicyScopeComputersComputerItem{ID: &id}
 	})
 	diags.Append(d...)
@@ -221,7 +222,7 @@ func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*procla
 		s.Computers = &proclassic.PolicyScopeComputers{Computer: computers}
 	}
 
-	computerGroups, d := scope.BuildIDSlice(ctx, m.ComputerGroupIDs, func(id int) proclassic.IDName {
+	computerGroups, d := scope.BuildIDSlice(ctx, t.ComputerGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -229,7 +230,7 @@ func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*procla
 		s.ComputerGroups = &proclassic.PolicyScopeComputerGroups{ComputerGroup: computerGroups}
 	}
 
-	buildings, d := scope.BuildIDSlice(ctx, m.BuildingIDs, func(id int) proclassic.IDName {
+	buildings, d := scope.BuildIDSlice(ctx, t.BuildingIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -237,7 +238,7 @@ func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*procla
 		s.Buildings = &proclassic.PolicyScopeBuildings{Building: buildings}
 	}
 
-	departments, d := scope.BuildIDSlice(ctx, m.DepartmentIDs, func(id int) proclassic.IDName {
+	departments, d := scope.BuildIDSlice(ctx, t.DepartmentIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -245,7 +246,7 @@ func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*procla
 		s.Departments = &proclassic.PolicyScopeDepartments{Department: departments}
 	}
 
-	jssUsers, d := scope.BuildIDSlice(ctx, m.UserIDs, func(id int) proclassic.IDName {
+	jssUsers, d := scope.BuildIDSlice(ctx, t.UserIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)
@@ -253,7 +254,7 @@ func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*procla
 		s.JssUsers = &proclassic.PolicyScopeJssUsers{User: jssUsers}
 	}
 
-	jssUserGroups, d := scope.BuildIDSlice(ctx, m.UserGroupIDs, func(id int) proclassic.IDName {
+	jssUserGroups, d := scope.BuildIDSlice(ctx, t.UserGroupIDs, func(id int) proclassic.IDName {
 		return proclassic.IDName{ID: &id}
 	})
 	diags.Append(d...)

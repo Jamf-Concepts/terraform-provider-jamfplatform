@@ -106,6 +106,7 @@ func TestAssignMobileApp_GuardedBlocks(t *testing.T) {
 func TestFlattenMobileAppScope_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 	state := &scope.MobileScopeModelNoIbeacons{
+		Targets:     &scope.MobileScopeTargetsModel{},
 		Limitations: &scope.MobileScopeLimitationsModelNoIbeacons{},
 		Exclusions:  &scope.MobileScopeExclusionsModelNoIbeacons{},
 	}
@@ -131,7 +132,7 @@ func TestFlattenMobileAppScope_RoundTrip(t *testing.T) {
 	flattenMobileAppScope(ctx, s, state)
 
 	var mdIDs []string
-	state.MobileDeviceIDs.ElementsAs(ctx, &mdIDs, false)
+	state.Targets.MobileDeviceIDs.ElementsAs(ctx, &mdIDs, false)
 	if len(mdIDs) != 2 {
 		t.Errorf("mobile_device_ids: got %v", mdIDs)
 	}
