@@ -22,9 +22,11 @@ func TestPolicyResource_Schema(t *testing.T) {
 		t.Fatalf("schema returned diagnostics: %v", resp.Diagnostics)
 	}
 	must := []string{
-		"id", "general", "scope", "self_service", "package_configuration",
-		"scripts", "printers", "dock_items", "account_maintenance", "reboot",
-		"maintenance", "files_processes", "user_interaction", "disk_encryption",
+		"id", "general", "scope", "self_service", "packages",
+		"scripts", "printers", "dock_items",
+		"local_accounts", "management_account", "directory_bindings", "efi_password",
+		"restart_options",
+		"maintenance", "files_and_processes", "user_interaction", "disk_encryption",
 		"timeouts",
 	}
 	for _, name := range must {

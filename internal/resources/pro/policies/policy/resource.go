@@ -86,7 +86,7 @@ func (r *PolicyResource) IdentitySchema(ctx context.Context, req resource.Identi
 // element names are noted in attribute descriptions where they differ.
 func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels. The legacy software-update policy block is **intentionally not modelled**: driving software updates via policy is an obsolete delivery path superseded by MDM-driven app installs / OS update scheduling and the Jamf Pro patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.",
+		MarkdownDescription: "Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; on the classic wire they share a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled** — both are obsolete in Jamf Pro, superseded by MDM-driven app installs / OS update scheduling and the patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Policy ID assigned by Jamf Pro.",
@@ -277,8 +277,8 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					},
 				},
 			},
-			"package_configuration": schema.SingleNestedAttribute{
-				MarkdownDescription: "Packages to install / cache / remove.",
+			"packages": schema.SingleNestedAttribute{
+				MarkdownDescription: "Packages to install / cache / remove. Mirrors the admin UI's Options ▸ Packages section.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"distribution_point": schema.StringAttribute{
@@ -374,96 +374,96 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					},
 				},
 			},
-			"account_maintenance": schema.SingleNestedAttribute{
-				MarkdownDescription: "Account maintenance actions. Account secrets (`accounts[].password`, `management_account.managed_password`, `open_firmware_efi_password.of_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro on writes but never persisted in Terraform state. Each carries a `*_wo_version` Int64 companion: bump the integer to force the current plaintext to be re-sent on the next apply.",
+			// account_maintenance is flattened into four UI-aligned peer blocks
+			// to mirror the admin UI's Options sidebar (Local Accounts /
+			// Management Accounts / Directory Bindings / EFI Password). The
+			// classic wire still nests all four under a single
+			// <account_maintenance> object — the input/state builders join
+			// these four fields on write and split them on read.
+			"local_accounts": schema.ListNestedAttribute{
+				MarkdownDescription: "Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in state; pair it with `password_wo_version` to rotate. Modelled as a List (rather than a Set) so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username` server-side and the order has no semantic effect.",
 				Optional:            true,
-				Attributes: map[string]schema.Attribute{
-					"accounts": schema.ListNestedAttribute{
-						MarkdownDescription: "Ordered list of local account operations. Modelled as a List (rather than a Set) so the `password` `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username` server-side and the order has no semantic effect.",
-						Optional:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"action": schema.StringAttribute{
-									MarkdownDescription: "Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action \"Disable FileVault\" — supply `DisableFileVault` here, with no trailing `2`).",
-									Optional:            true,
-									Computed:            true,
-									PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
-									Validators: []validator.String{
-										stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault"),
-									},
-								},
-								"username": optComputedString("Account username."),
-								"realname": optComputedString("Account real (full) name."),
-								"password": schema.StringAttribute{
-									MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index (Jamf matches accounts by `username` server-side).",
-									Optional:            true,
-									Sensitive:           true,
-									WriteOnly:           true,
-								},
-								"password_wo_version": schema.Int64Attribute{
-									MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new apply that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
-									Optional:            true,
-								},
-								"permanently_delete_home_directory": optComputedBool("Permanently delete the home directory when `action = \"Delete\"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. Mirrors the admin UI checkbox \"Permanently delete home directory\"."),
-								"archive_home_directory_to":         optComputedString("Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`."),
-								"home":                              optComputedString("Home directory path."),
-								"hint":                              optComputedString("Password hint."),
-								"picture":                           optComputedString("Account picture path."),
-								"admin":                             optComputedBool("Whether the account is an admin."),
-								"filevault_enabled":                 optComputedBool("Whether FileVault 2 is enabled for the account."),
-								"secure_token_allowed":              optComputedBool("Whether the account is allowed to hold a Secure Token."),
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"action": schema.StringAttribute{
+							MarkdownDescription: "Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action \"Disable FileVault\" — supply `DisableFileVault` here, with no trailing `2`).",
+							Optional:            true,
+							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
+							Validators: []validator.String{
+								stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault"),
 							},
 						},
-					},
-					"directory_bindings": schema.SetNestedAttribute{
-						MarkdownDescription: "Set of directory binding assignments.",
-						Optional:            true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"id":   schema.StringAttribute{MarkdownDescription: "Directory binding ID.", Required: true},
-								"name": optComputedString("Directory binding display name. Returned by Jamf Pro."),
-							},
+						"username": optComputedString("Account username."),
+						"realname": optComputedString("Account real (full) name."),
+						"password": schema.StringAttribute{
+							MarkdownDescription: "Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `local_accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index (Jamf matches accounts by `username` server-side).",
+							Optional:            true,
+							Sensitive:           true,
+							WriteOnly:           true,
 						},
-					},
-					"management_account": schema.SingleNestedAttribute{
-						MarkdownDescription: "Management account configuration.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`)."),
-							"managed_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.",
-								Optional:            true,
-								Sensitive:           true,
-								WriteOnly:           true,
-							},
-							"managed_password_wo_version": schema.Int64Attribute{
-								MarkdownDescription: "Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
-								Optional:            true,
-							},
-							"managed_password_length": optComputedInt("Length used when randomly generating the managed password."),
+						"password_wo_version": schema.Int64Attribute{
+							MarkdownDescription: "Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new apply that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+							Optional:            true,
 						},
-					},
-					"open_firmware_efi_password": schema.SingleNestedAttribute{
-						MarkdownDescription: "Open Firmware / EFI password configuration.",
-						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"of_mode": optComputedString("Open Firmware mode (`command` or `full`)."),
-							"of_password": schema.StringAttribute{
-								MarkdownDescription: "Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.",
-								Optional:            true,
-								Sensitive:           true,
-								WriteOnly:           true,
-							},
-							"of_password_wo_version": schema.Int64Attribute{
-								MarkdownDescription: "Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
-								Optional:            true,
-							},
-						},
+						"permanently_delete_home_directory": optComputedBool("Permanently delete the home directory when `action = \"Delete\"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. Mirrors the admin UI checkbox \"Permanently delete home directory\"."),
+						"archive_home_directory_to":         optComputedString("Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`."),
+						"home":                              optComputedString("Home directory path."),
+						"hint":                              optComputedString("Password hint."),
+						"picture":                           optComputedString("Account picture path."),
+						"admin":                             optComputedBool("Whether the account is an admin."),
+						"filevault_enabled":                 optComputedBool("Whether FileVault 2 is enabled for the account."),
+						"secure_token_allowed":              optComputedBool("Whether the account is allowed to hold a Secure Token."),
 					},
 				},
 			},
-			"reboot": schema.SingleNestedAttribute{
-				MarkdownDescription: "Reboot configuration after the policy completes.",
+			"management_account": schema.SingleNestedAttribute{
+				MarkdownDescription: "Management account configuration (admin UI: Options ▸ Management Accounts).",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"action": optComputedString("Management account action (e.g. `doNotChange`, `rotate`)."),
+					"managed_password": schema.StringAttribute{
+						MarkdownDescription: "Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.",
+						Optional:            true,
+						Sensitive:           true,
+						WriteOnly:           true,
+					},
+					"managed_password_wo_version": schema.Int64Attribute{
+						MarkdownDescription: "Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+						Optional:            true,
+					},
+					"managed_password_length": optComputedInt("Length used when randomly generating the managed password."),
+				},
+			},
+			"directory_bindings": schema.SetNestedAttribute{
+				MarkdownDescription: "Directory binding assignments (admin UI: Options ▸ Directory Bindings).",
+				Optional:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id":   schema.StringAttribute{MarkdownDescription: "Directory binding ID.", Required: true},
+						"name": optComputedString("Directory binding display name. Returned by Jamf Pro."),
+					},
+				},
+			},
+			"efi_password": schema.SingleNestedAttribute{
+				MarkdownDescription: "Open Firmware / EFI password configuration (admin UI: Options ▸ EFI Password).",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"of_mode": optComputedString("Open Firmware mode (`command` or `full`)."),
+					"of_password": schema.StringAttribute{
+						MarkdownDescription: "Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.",
+						Optional:            true,
+						Sensitive:           true,
+						WriteOnly:           true,
+					},
+					"of_password_wo_version": schema.Int64Attribute{
+						MarkdownDescription: "Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals \"leave the stored password alone\" — the provider omits the password from the next update so Jamf Pro retains the existing value.",
+						Optional:            true,
+					},
+				},
+			},
+			"restart_options": schema.SingleNestedAttribute{
+				MarkdownDescription: "Reboot configuration after the policy completes. Mirrors the admin UI's Options ▸ Restart Options section.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"message":      optComputedString("Reboot prompt message."),
@@ -498,8 +498,8 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					"verify_startup_disk":     optComputedBool("Verify startup disk."),
 				},
 			},
-			"files_processes": schema.SingleNestedAttribute{
-				MarkdownDescription: "File and process operations. Attribute names mirror the Jamf Pro admin UI labels.",
+			"files_and_processes": schema.SingleNestedAttribute{
+				MarkdownDescription: "File and process operations (admin UI: Options ▸ Files and Processes). Attribute names mirror the Jamf Pro admin UI labels.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"search_by_path":         optComputedString("Path to search for. Mirrors the admin UI \"Search for File by Path\" input."),

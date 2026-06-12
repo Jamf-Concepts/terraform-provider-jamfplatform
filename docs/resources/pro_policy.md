@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of Jamf Pro IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels. The legacy software-update policy block is intentionally not modelled: driving software updates via policy is an obsolete delivery path superseded by MDM-driven app installs / OS update scheduling and the Jamf Pro patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+  Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: general, scope, self_service, user_interaction, and the Options payloads packages, scripts, printers, disk_encryption, dock_items, local_accounts, management_account, directory_bindings, efi_password, restart_options, maintenance, files_and_processes. Scope targets are flat sets of Jamf Pro IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The four account-maintenance payloads (local_accounts, management_account, directory_bindings, efi_password) are flattened peers of the UI sections; on the classic wire they share a single account_maintenance object. The legacy Software Update and Conditional Access policy sections are intentionally not modelled — both are obsolete in Jamf Pro, superseded by MDM-driven app installs / OS update scheduling and the patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 ---
 
 # jamfplatform_pro_policy (Resource)
 
-Manages a Jamf Pro policy. Supports the full 13-section policy payload (general, scope, self_service, package_configuration, scripts, printers, dock_items, account_maintenance, reboot, maintenance, files_processes, user_interaction, disk_encryption). Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. Attribute names mirror the Jamf Pro admin UI labels. The legacy software-update policy block is **intentionally not modelled**: driving software updates via policy is an obsolete delivery path superseded by MDM-driven app installs / OS update scheduling and the Jamf Pro patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
+Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; on the classic wire they share a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled** — both are obsolete in Jamf Pro, superseded by MDM-driven app installs / OS update scheduling and the patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 
 ## Example Usage
 
@@ -77,6 +77,69 @@ resource "jamfplatform_pro_policy" "universal" {
     }
   }
 }
+
+# The Options sidebar payloads map to top-level blocks that mirror the admin
+# UI section names. `account_maintenance` is flattened into four peer blocks:
+# `local_accounts`, `management_account`, `directory_bindings`, `efi_password`.
+resource "jamfplatform_pro_policy" "options" {
+  general = {
+    name      = "tf-acc-options-policy"
+    enabled   = true
+    frequency = "Once per computer"
+  }
+
+  packages = {
+    distribution_point = "Cloud Distribution Point"
+    packages = [
+      { id = "100", action = "Install" },
+    ]
+  }
+
+  # Options ▸ Local Accounts. `password` is WriteOnly — rotate it by bumping
+  # `password_wo_version`.
+  local_accounts = [
+    {
+      action              = "Create"
+      username            = "tf-admin"
+      realname            = "TF Admin"
+      password            = "Sup3rS3cret!"
+      password_wo_version = 1
+      admin               = true
+    },
+  ]
+
+  # Options ▸ Management Accounts.
+  management_account = {
+    action                      = "rotate"
+    managed_password_length     = 16
+    managed_password_wo_version = 1
+  }
+
+  # Options ▸ Directory Bindings.
+  directory_bindings = [
+    { id = "1" },
+  ]
+
+  # Options ▸ EFI Password.
+  efi_password = {
+    of_mode                = "command"
+    of_password            = "EFI-pw-1!"
+    of_password_wo_version = 1
+  }
+
+  # Options ▸ Restart Options.
+  restart_options = {
+    no_user_logged_in = "Restart immediately"
+    user_logged_in    = "Restart if a package or update requires it"
+  }
+
+  # Options ▸ Files and Processes.
+  files_and_processes = {
+    search_by_path       = "/tmp/sentinel"
+    delete_file_if_found = true
+    execute_command      = "/usr/local/bin/post-flight.sh"
+  }
+}
 ```
 
 <!-- schema generated by tfplugindocs -->
@@ -88,14 +151,17 @@ resource "jamfplatform_pro_policy" "universal" {
 
 ### Optional
 
-- `account_maintenance` (Attributes) Account maintenance actions. Account secrets (`accounts[].password`, `management_account.managed_password`, `open_firmware_efi_password.of_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro on writes but never persisted in Terraform state. Each carries a `*_wo_version` Int64 companion: bump the integer to force the current plaintext to be re-sent on the next apply. (see [below for nested schema](#nestedatt--account_maintenance))
+- `directory_bindings` (Attributes Set) Directory binding assignments (admin UI: Options ▸ Directory Bindings). (see [below for nested schema](#nestedatt--directory_bindings))
 - `disk_encryption` (Attributes) Disk encryption configuration to apply. (see [below for nested schema](#nestedatt--disk_encryption))
 - `dock_items` (Attributes) Dock items to add or remove. (see [below for nested schema](#nestedatt--dock_items))
-- `files_processes` (Attributes) File and process operations. Attribute names mirror the Jamf Pro admin UI labels. (see [below for nested schema](#nestedatt--files_processes))
+- `efi_password` (Attributes) Open Firmware / EFI password configuration (admin UI: Options ▸ EFI Password). (see [below for nested schema](#nestedatt--efi_password))
+- `files_and_processes` (Attributes) File and process operations (admin UI: Options ▸ Files and Processes). Attribute names mirror the Jamf Pro admin UI labels. (see [below for nested schema](#nestedatt--files_and_processes))
+- `local_accounts` (Attributes List) Local account operations (admin UI: Options ▸ Local Accounts). Each `password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in state; pair it with `password_wo_version` to rotate. Modelled as a List (rather than a Set) so the `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username` server-side and the order has no semantic effect. (see [below for nested schema](#nestedatt--local_accounts))
 - `maintenance` (Attributes) Maintenance tasks to run as part of the policy. Attribute names mirror the Jamf Pro admin UI checkbox labels. (see [below for nested schema](#nestedatt--maintenance))
-- `package_configuration` (Attributes) Packages to install / cache / remove. (see [below for nested schema](#nestedatt--package_configuration))
+- `management_account` (Attributes) Management account configuration (admin UI: Options ▸ Management Accounts). (see [below for nested schema](#nestedatt--management_account))
+- `packages` (Attributes) Packages to install / cache / remove. Mirrors the admin UI's Options ▸ Packages section. (see [below for nested schema](#nestedatt--packages))
 - `printers` (Attributes) Printers to install or remove. (see [below for nested schema](#nestedatt--printers))
-- `reboot` (Attributes) Reboot configuration after the policy completes. (see [below for nested schema](#nestedatt--reboot))
+- `restart_options` (Attributes) Reboot configuration after the policy completes. Mirrors the admin UI's Options ▸ Restart Options section. (see [below for nested schema](#nestedatt--restart_options))
 - `scope` (Attributes) Policy scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services UUIDs. Setting `all_computers = true` forbids `computer_ids`, `computer_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. `user_ids` / `user_group_ids` map to the admin UI's "Users" / "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
 - `scripts` (Attributes) Scripts to run as part of the policy. (see [below for nested schema](#nestedatt--scripts))
 - `self_service` (Attributes) Self Service integration. Pair `display_notifications` with `notification_location` to control whether and where Self Service surfaces a notification when the policy becomes available. (see [below for nested schema](#nestedatt--self_service))
@@ -177,38 +243,8 @@ Optional:
 
 
 
-<a id="nestedatt--account_maintenance"></a>
-### Nested Schema for `account_maintenance`
-
-Optional:
-
-- `accounts` (Attributes List) Ordered list of local account operations. Modelled as a List (rather than a Set) so the `password` `WriteOnly` attribute is permitted inside each element; Jamf Pro matches accounts by `username` server-side and the order has no semantic effect. (see [below for nested schema](#nestedatt--account_maintenance--accounts))
-- `directory_bindings` (Attributes Set) Set of directory binding assignments. (see [below for nested schema](#nestedatt--account_maintenance--directory_bindings))
-- `management_account` (Attributes) Management account configuration. (see [below for nested schema](#nestedatt--account_maintenance--management_account))
-- `open_firmware_efi_password` (Attributes) Open Firmware / EFI password configuration. (see [below for nested schema](#nestedatt--account_maintenance--open_firmware_efi_password))
-
-<a id="nestedatt--account_maintenance--accounts"></a>
-### Nested Schema for `account_maintenance.accounts`
-
-Optional:
-
-- `action` (String) Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action "Disable FileVault" — supply `DisableFileVault` here, with no trailing `2`).
-- `admin` (Boolean) Whether the account is an admin.
-- `archive_home_directory_to` (String) Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`.
-- `filevault_enabled` (Boolean) Whether FileVault 2 is enabled for the account.
-- `hint` (String) Password hint.
-- `home` (String) Home directory path.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index (Jamf matches accounts by `username` server-side).
-- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new apply that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
-- `permanently_delete_home_directory` (Boolean) Permanently delete the home directory when `action = "Delete"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. Mirrors the admin UI checkbox "Permanently delete home directory".
-- `picture` (String) Account picture path.
-- `realname` (String) Account real (full) name.
-- `secure_token_allowed` (Boolean) Whether the account is allowed to hold a Secure Token.
-- `username` (String) Account username.
-
-
-<a id="nestedatt--account_maintenance--directory_bindings"></a>
-### Nested Schema for `account_maintenance.directory_bindings`
+<a id="nestedatt--directory_bindings"></a>
+### Nested Schema for `directory_bindings`
 
 Required:
 
@@ -217,28 +253,6 @@ Required:
 Optional:
 
 - `name` (String) Directory binding display name. Returned by Jamf Pro.
-
-
-<a id="nestedatt--account_maintenance--management_account"></a>
-### Nested Schema for `account_maintenance.management_account`
-
-Optional:
-
-- `action` (String) Management account action (e.g. `doNotChange`, `rotate`).
-- `managed_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.
-- `managed_password_length` (Number) Length used when randomly generating the managed password.
-- `managed_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
-
-
-<a id="nestedatt--account_maintenance--open_firmware_efi_password"></a>
-### Nested Schema for `account_maintenance.open_firmware_efi_password`
-
-Optional:
-
-- `of_mode` (String) Open Firmware mode (`command` or `full`).
-- `of_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.
-- `of_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
-
 
 
 <a id="nestedatt--disk_encryption"></a>
@@ -274,8 +288,18 @@ Optional:
 
 
 
-<a id="nestedatt--files_processes"></a>
-### Nested Schema for `files_processes`
+<a id="nestedatt--efi_password"></a>
+### Nested Schema for `efi_password`
+
+Optional:
+
+- `of_mode` (String) Open Firmware mode (`command` or `full`).
+- `of_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext Open Firmware / EFI password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `of_password_wo_version` to rotate the stored password.
+- `of_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `of_password`. Bump this integer (any change) to force a new apply that re-sends `of_password` to Jamf Pro. Initial Create should set `of_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
+
+
+<a id="nestedatt--files_and_processes"></a>
+### Nested Schema for `files_and_processes`
 
 Optional:
 
@@ -287,6 +311,26 @@ Optional:
 - `search_by_spotlight` (String) Spotlight query. Mirrors the admin UI "Search for File Using Spotlight" input.
 - `search_for_process` (String) Process name to search for.
 - `update_locate_database` (Boolean) Update the locate database before searching.
+
+
+<a id="nestedatt--local_accounts"></a>
+### Nested Schema for `local_accounts`
+
+Optional:
+
+- `action` (String) Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action "Disable FileVault" — supply `DisableFileVault` here, with no trailing `2`).
+- `admin` (Boolean) Whether the account is an admin.
+- `archive_home_directory_to` (String) Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`.
+- `filevault_enabled` (Boolean) Whether FileVault 2 is enabled for the account.
+- `hint` (String) Password hint.
+- `home` (String) Home directory path.
+- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext password used by `Create` and `Reset` actions. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `password_wo_version` to rotate the stored password. `local_accounts` is a List, so bumping `password_wo_version` surfaces in `terraform plan` as an in-place change to the list element at the matching index (Jamf matches accounts by `username` server-side).
+- `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer (any change) to force a new apply that re-sends `password` to Jamf Pro for this account. Initial Create should set `password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
+- `permanently_delete_home_directory` (Boolean) Permanently delete the home directory when `action = "Delete"`. When true, the home is removed; when false (or unset), the home is archived to `archive_home_directory_to`. Mirrors the admin UI checkbox "Permanently delete home directory".
+- `picture` (String) Account picture path.
+- `realname` (String) Account real (full) name.
+- `secure_token_allowed` (Boolean) Whether the account is allowed to hold a Secure Token.
+- `username` (String) Account username.
 
 
 <a id="nestedatt--maintenance"></a>
@@ -304,16 +348,27 @@ Optional:
 - `verify_startup_disk` (Boolean) Verify startup disk.
 
 
-<a id="nestedatt--package_configuration"></a>
-### Nested Schema for `package_configuration`
+<a id="nestedatt--management_account"></a>
+### Nested Schema for `management_account`
+
+Optional:
+
+- `action` (String) Management account action (e.g. `doNotChange`, `rotate`).
+- `managed_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Plaintext managed password. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state**. Pair with `managed_password_wo_version` to rotate the stored password.
+- `managed_password_length` (Number) Length used when randomly generating the managed password.
+- `managed_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `managed_password`. Bump this integer (any change) to force a new apply that re-sends `managed_password` to Jamf Pro. Initial Create should set `managed_password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored password alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
+
+
+<a id="nestedatt--packages"></a>
+### Nested Schema for `packages`
 
 Optional:
 
 - `distribution_point` (String) Name of the file share distribution point used for the policy. Omit to inherit the tenant default.
-- `packages` (Attributes Set) Set of package assignments. Each item identifies the package by ID; `name` is returned by Jamf Pro. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. (see [below for nested schema](#nestedatt--package_configuration--packages))
+- `packages` (Attributes Set) Set of package assignments. Each item identifies the package by ID; `name` is returned by Jamf Pro. `action` is one of `Install`, `Cache`, `Install Cached`, `Uninstall`. (see [below for nested schema](#nestedatt--packages--packages))
 
-<a id="nestedatt--package_configuration--packages"></a>
-### Nested Schema for `package_configuration.packages`
+<a id="nestedatt--packages--packages"></a>
+### Nested Schema for `packages.packages`
 
 Required:
 
@@ -352,8 +407,8 @@ Optional:
 
 
 
-<a id="nestedatt--reboot"></a>
-### Nested Schema for `reboot`
+<a id="nestedatt--restart_options"></a>
+### Nested Schema for `restart_options`
 
 Optional:
 

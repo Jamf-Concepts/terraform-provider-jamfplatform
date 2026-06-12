@@ -161,20 +161,20 @@ func stringIDPtr(value types.String) *int {
 // the corresponding XML element.
 func accountMaintenanceSecretsForCreate(cfg *PolicyResourceModel) *policyAccountMaintenanceSecrets {
 	out := &policyAccountMaintenanceSecrets{accountPasswords: map[string]*string{}}
-	if cfg == nil || cfg.AccountMaintenance == nil {
+	if cfg == nil {
 		return out
 	}
-	for _, a := range cfg.AccountMaintenance.Accounts {
+	for _, a := range cfg.LocalAccounts {
 		if a.Username.IsNull() || a.Username.IsUnknown() {
 			continue
 		}
 		out.accountPasswords[a.Username.ValueString()] = helpers.OptionalStringPointer(a.Password)
 	}
-	if cfg.AccountMaintenance.ManagementAccount != nil {
-		out.managedPassword = helpers.OptionalStringPointer(cfg.AccountMaintenance.ManagementAccount.ManagedPassword)
+	if cfg.ManagementAccount != nil {
+		out.managedPassword = helpers.OptionalStringPointer(cfg.ManagementAccount.ManagedPassword)
 	}
-	if cfg.AccountMaintenance.OpenFirmwareEfiPassword != nil {
-		out.ofPassword = helpers.OptionalStringPointer(cfg.AccountMaintenance.OpenFirmwareEfiPassword.OfPassword)
+	if cfg.EfiPassword != nil {
+		out.ofPassword = helpers.OptionalStringPointer(cfg.EfiPassword.OfPassword)
 	}
 	return out
 }
