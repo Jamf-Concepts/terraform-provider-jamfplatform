@@ -35,6 +35,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/devices"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/accounts/account"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/accounts/account_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api/api_clients"
@@ -324,6 +325,7 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 
 func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		account.NewAccountResource,
 		account_group.NewAccountGroupResource,
 		api_client.NewApiClientResource,
 		api_role.NewApiRoleResource,
@@ -415,6 +417,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 
 func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		account.NewAccountDataSource,
 		account_group.NewAccountGroupDataSource,
 		api_client.NewApiClientDataSource,
 		api_clients.NewApiClientsDataSource,
@@ -533,6 +536,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 
 func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.ListResource {
 	return []func() list.ListResource{
+		account.NewAccountListResource,
 		account_group.NewAccountGroupListResource,
 		api_client.NewApiClientListResource,
 		api_role.NewApiRoleListResource,
