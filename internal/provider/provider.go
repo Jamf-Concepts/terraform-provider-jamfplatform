@@ -58,6 +58,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_enrollment_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_prestage_enrollment"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/supervision_identity"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
@@ -348,6 +349,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		dock_item.NewDockItemResource,
 		enrollment_customization.NewEnrollmentCustomizationResource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileResource,
+		supervision_identity.NewSupervisionIdentityResource,
 		ibeacon.NewIbeaconResource,
 		icon.NewIconResource,
 		inventory_preload_record.NewInventoryPreloadRecordResource,
@@ -454,6 +456,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		dock_item.NewDockItemDataSource,
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileDataSource,
+		supervision_identity.NewSupervisionIdentityDataSource,
 		ibeacon.NewIbeaconDataSource,
 		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
@@ -551,6 +554,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		dock_item.NewDockItemListResource,
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileListResource,
+		supervision_identity.NewSupervisionIdentityListResource,
 		ibeacon.NewIbeaconListResource,
 		inventory_preload_record.NewInventoryPreloadRecordListResource,
 		json_web_token_configuration.NewJSONWebTokenConfigurationListResource,
