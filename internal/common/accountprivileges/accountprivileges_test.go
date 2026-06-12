@@ -159,12 +159,10 @@ type fakeDiscoverer struct {
 func (f fakeDiscoverer) ListAccounts(_ context.Context) (*proclassic.Accounts, error) {
 	var gs []proclassic.AccountsGroupsGroupItem
 	for id := range f.groups {
-		id := id
 		gs = append(gs, proclassic.AccountsGroupsGroupItem{ID: &id})
 	}
 	var us []proclassic.AccountsUsersUserItem
 	for id := range f.users {
-		id := id
 		us = append(us, proclassic.AccountsUsersUserItem{ID: &id})
 	}
 	return &proclassic.Accounts{
@@ -204,7 +202,7 @@ func TestDiscover_PrefersAdminGroup(t *testing.T) {
 	custom := "Custom"
 	f := fakeDiscoverer{
 		groups: map[int]*proclassic.Group{
-			1: {ID: intPtr(1), PrivilegeSet: &custom},
+			1: {ID: new(1), PrivilegeSet: &custom},
 			8: adminGroup(8),
 		},
 	}
@@ -222,7 +220,7 @@ func TestDiscover_PrefersAdminGroup(t *testing.T) {
 
 func TestDiscover_NoAdminErrors(t *testing.T) {
 	custom := "Custom"
-	f := fakeDiscoverer{groups: map[int]*proclassic.Group{1: {ID: intPtr(1), PrivilegeSet: &custom}}}
+	f := fakeDiscoverer{groups: map[int]*proclassic.Group{1: {ID: new(1), PrivilegeSet: &custom}}}
 	if _, err := Discover(context.Background(), f); err == nil {
 		t.Error("expected error when no Administrator exists")
 	}
@@ -256,8 +254,6 @@ func TestLevenshtein(t *testing.T) {
 		t.Errorf("want 1, got %d", d)
 	}
 }
-
-func intPtr(i int) *int { return &i }
 
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
