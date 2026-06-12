@@ -585,7 +585,7 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  reboot = {
+  restart_options = {
     message                        = "tf-acc reboot message"
     startup_disk                   = "Current Startup Disk"
     specify_startup                = %q
@@ -613,7 +613,7 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  package_configuration = {
+  packages = {
     distribution_point = %q
   }
 }
@@ -643,7 +643,7 @@ func TestAccPolicyResource_PackageConfigurationDistributionPoint(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("package_configuration").AtMapKey("distribution_point"),
+						tfjsonpath.New("packages").AtMapKey("distribution_point"),
 						knownvalue.StringExact("Dummy DP"),
 					),
 				},
@@ -665,7 +665,7 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  package_configuration = {
+  packages = {
     distribution_point = "Dummy DP"
     packages = [
       {
@@ -679,7 +679,7 @@ resource "jamfplatform_pro_policy" "test" {
 }
 
 // TestAccPolicyResource_PackageConfigurationPackages exercises the
-// `package_configuration.packages` set together with the top-level
+// `packages.packages` set together with the top-level
 // distribution_point. A jamfplatform_pro_package resource uploads the
 // committed jamf-cli .pkg fixture (shared with the inventory/package acc
 // suite) so the policy can reference a real package ID. Step 2 swaps the
@@ -705,17 +705,17 @@ func TestAccPolicyResource_PackageConfigurationPackages(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("package_configuration").AtMapKey("distribution_point"),
+						tfjsonpath.New("packages").AtMapKey("distribution_point"),
 						knownvalue.StringExact("Dummy DP"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("package_configuration").AtMapKey("packages"),
+						tfjsonpath.New("packages").AtMapKey("packages"),
 						knownvalue.SetSizeExact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("package_configuration").AtMapKey("packages").AtSliceIndex(0).AtMapKey("action"),
+						tfjsonpath.New("packages").AtMapKey("packages").AtSliceIndex(0).AtMapKey("action"),
 						knownvalue.StringExact("Install"),
 					),
 				},
@@ -725,7 +725,7 @@ func TestAccPolicyResource_PackageConfigurationPackages(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("package_configuration").AtMapKey("packages").AtSliceIndex(0).AtMapKey("action"),
+						tfjsonpath.New("packages").AtMapKey("packages").AtSliceIndex(0).AtMapKey("action"),
 						knownvalue.StringExact("Cache"),
 					),
 				},
@@ -748,27 +748,27 @@ func TestAccPolicyResource_RebootFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("specify_startup"),
+						tfjsonpath.New("restart_options").AtMapKey("specify_startup"),
 						knownvalue.StringExact(""),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("message"),
+						tfjsonpath.New("restart_options").AtMapKey("message"),
 						knownvalue.StringExact("tf-acc reboot message"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("delay_minutes"),
+						tfjsonpath.New("restart_options").AtMapKey("delay_minutes"),
 						knownvalue.Int64Exact(10),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("start_reboot_timer_immediately"),
+						tfjsonpath.New("restart_options").AtMapKey("start_reboot_timer_immediately"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("no_user_logged_in"),
+						tfjsonpath.New("restart_options").AtMapKey("no_user_logged_in"),
 						knownvalue.StringExact("Restart immediately"),
 					),
 				},
@@ -778,7 +778,7 @@ func TestAccPolicyResource_RebootFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("specify_startup"),
+						tfjsonpath.New("restart_options").AtMapKey("specify_startup"),
 						knownvalue.StringExact("Standard Restart"),
 					),
 				},
@@ -788,7 +788,7 @@ func TestAccPolicyResource_RebootFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("reboot").AtMapKey("specify_startup"),
+						tfjsonpath.New("restart_options").AtMapKey("specify_startup"),
 						knownvalue.StringExact("MDM Restart with Kernel Cache Rebuild"),
 					),
 				},
@@ -1107,7 +1107,7 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  files_processes = {
+  files_and_processes = {
     search_by_path         = %q
     delete_file_if_found   = true
     search_by_filename     = "tf-acc-search-filename"
@@ -1122,7 +1122,7 @@ resource "jamfplatform_pro_policy" "test" {
 }
 
 // TestAccPolicyResource_FilesProcessesFullCoverage exercises every
-// files_processes attribute. Step 2 perturbs two scalar string fields to
+// files_and_processes attribute. Step 2 perturbs two scalar string fields to
 // exercise the Update path.
 func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
@@ -1138,27 +1138,27 @@ func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("search_by_path"),
+						tfjsonpath.New("files_and_processes").AtMapKey("search_by_path"),
 						knownvalue.StringExact("/tmp/tf-acc-search"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("delete_file_if_found"),
+						tfjsonpath.New("files_and_processes").AtMapKey("delete_file_if_found"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("search_by_filename"),
+						tfjsonpath.New("files_and_processes").AtMapKey("search_by_filename"),
 						knownvalue.StringExact("tf-acc-search-filename"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("kill_process_if_found"),
+						tfjsonpath.New("files_and_processes").AtMapKey("kill_process_if_found"),
 						knownvalue.Bool(true),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("execute_command"),
+						tfjsonpath.New("files_and_processes").AtMapKey("execute_command"),
 						knownvalue.StringExact("echo tf-acc-initial"),
 					),
 				},
@@ -1168,12 +1168,12 @@ func TestAccPolicyResource_FilesProcessesFullCoverage(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("search_by_path"),
+						tfjsonpath.New("files_and_processes").AtMapKey("search_by_path"),
 						knownvalue.StringExact("/tmp/tf-acc-search-updated"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("files_processes").AtMapKey("execute_command"),
+						tfjsonpath.New("files_and_processes").AtMapKey("execute_command"),
 						knownvalue.StringExact("echo tf-acc-updated"),
 					),
 				},
@@ -1881,33 +1881,31 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  account_maintenance = {
-    accounts = [
-      {
-        action               = "Create"
-        username             = "tf-acc-create"
-        realname             = "tf-acc create"
-        password             = "Sup3rS3cret!"
-        password_wo_version  = 1
-        home                 = "/Users/tf-acc-create"
-        hint                 = "tf-acc hint"
-        admin                = true
-        filevault_enabled    = false
-        secure_token_allowed = true
-      },
-      {
-        action              = "Reset"
-        username            = "tf-acc-reset"
-        password            = "Resetting123!"
-        password_wo_version = 1
-      },
-      {
-        action                            = "Delete"
-        username                          = "tf-acc-delete"
-        permanently_delete_home_directory = true
-      },
-    ]
-  }
+  local_accounts = [
+    {
+      action               = "Create"
+      username             = "tf-acc-create"
+      realname             = "tf-acc create"
+      password             = "Sup3rS3cret!"
+      password_wo_version  = 1
+      home                 = "/Users/tf-acc-create"
+      hint                 = "tf-acc hint"
+      admin                = true
+      filevault_enabled    = false
+      secure_token_allowed = true
+    },
+    {
+      action              = "Reset"
+      username            = "tf-acc-reset"
+      password            = "Resetting123!"
+      password_wo_version = 1
+    },
+    {
+      action                            = "Delete"
+      username                          = "tf-acc-delete"
+      permanently_delete_home_directory = true
+    },
+  ]
 }
 `, name)
 }
@@ -1922,38 +1920,36 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  account_maintenance = {
-    accounts = [
-      {
-        action               = "Create"
-        username             = "tf-acc-create"
-        realname             = "tf-acc create"
-        password             = "Rotated-pw-1!"
-        password_wo_version  = 2
-        home                 = "/Users/tf-acc-create"
-        hint                 = "tf-acc hint"
-        admin                = true
-        filevault_enabled    = false
-        secure_token_allowed = true
-      },
-      {
-        action              = "Reset"
-        username            = "tf-acc-reset"
-        password            = "Resetting123!"
-        password_wo_version = 1
-      },
-      {
-        action                            = "Delete"
-        username                          = "tf-acc-delete"
-        permanently_delete_home_directory = true
-      },
-      {
-        action                            = "Delete"
-        username                          = "tf-acc-fourth-delete"
-        permanently_delete_home_directory = true
-      },
-    ]
-  }
+  local_accounts = [
+    {
+      action               = "Create"
+      username             = "tf-acc-create"
+      realname             = "tf-acc create"
+      password             = "Rotated-pw-1!"
+      password_wo_version  = 2
+      home                 = "/Users/tf-acc-create"
+      hint                 = "tf-acc hint"
+      admin                = true
+      filevault_enabled    = false
+      secure_token_allowed = true
+    },
+    {
+      action              = "Reset"
+      username            = "tf-acc-reset"
+      password            = "Resetting123!"
+      password_wo_version = 1
+    },
+    {
+      action                            = "Delete"
+      username                          = "tf-acc-delete"
+      permanently_delete_home_directory = true
+    },
+    {
+      action                            = "Delete"
+      username                          = "tf-acc-fourth-delete"
+      permanently_delete_home_directory = true
+    },
+  ]
 }
 `, name)
 }
@@ -1969,33 +1965,31 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  account_maintenance = {
-    accounts = [
-      {
-        action               = "Create"
-        username             = "tf-acc-create"
-        realname             = "tf-acc create"
-        password             = "Rotated-pw-1!"
-        password_wo_version  = 2
-        home                 = "/Users/tf-acc-create"
-        hint                 = "tf-acc hint"
-        admin                = true
-        filevault_enabled    = false
-        secure_token_allowed = true
-      },
-      {
-        action              = "Reset"
-        username            = "tf-acc-reset"
-        password            = "Resetting123!"
-        password_wo_version = 1
-      },
-      {
-        action                            = "Delete"
-        username                          = "tf-acc-delete"
-        permanently_delete_home_directory = true
-      },
-    ]
-  }
+  local_accounts = [
+    {
+      action               = "Create"
+      username             = "tf-acc-create"
+      realname             = "tf-acc create"
+      password             = "Rotated-pw-1!"
+      password_wo_version  = 2
+      home                 = "/Users/tf-acc-create"
+      hint                 = "tf-acc hint"
+      admin                = true
+      filevault_enabled    = false
+      secure_token_allowed = true
+    },
+    {
+      action              = "Reset"
+      username            = "tf-acc-reset"
+      password            = "Resetting123!"
+      password_wo_version = 1
+    },
+    {
+      action                            = "Delete"
+      username                          = "tf-acc-delete"
+      permanently_delete_home_directory = true
+    },
+  ]
 }
 `, name)
 }
@@ -2042,28 +2036,28 @@ func TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage(t *testing.T) 
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts"),
+						tfjsonpath.New("local_accounts"),
 						knownvalue.ListSizeExact(3),
 					),
 					// Positional identity: List indices map to the HCL order.
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(0).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-create"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(1).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-reset"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(2).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(2).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-delete"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
 						knownvalue.Int64Exact(1),
 					),
 				},
@@ -2076,22 +2070,22 @@ func TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage(t *testing.T) 
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts"),
+						tfjsonpath.New("local_accounts"),
 						knownvalue.ListSizeExact(3),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
 						knownvalue.Int64Exact(2),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("password_wo_version"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(1).AtMapKey("password_wo_version"),
 						knownvalue.Int64Exact(1),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(0).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-create"),
 					),
 				},
@@ -2104,37 +2098,37 @@ func TestAccPolicyResource_AccountMaintenanceAccountsFullCoverage(t *testing.T) 
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts"),
+						tfjsonpath.New("local_accounts"),
 						knownvalue.ListSizeExact(4),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(0).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-create"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(1).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-reset"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(2).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(2).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-delete"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(3).AtMapKey("username"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(3).AtMapKey("username"),
 						knownvalue.StringExact("tf-acc-fourth-delete"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(0).AtMapKey("password_wo_version"),
 						knownvalue.Int64Exact(2),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("accounts").AtSliceIndex(1).AtMapKey("password_wo_version"),
+						tfjsonpath.New("local_accounts").AtSliceIndex(1).AtMapKey("password_wo_version"),
 						knownvalue.Int64Exact(1),
 					),
 				},
@@ -2165,20 +2159,18 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  account_maintenance = {
-    directory_bindings = [
-      {
-        id = jamfplatform_pro_directory_binding.fixture.id
-      },
-    ]
-  }
+  directory_bindings = [
+    {
+      id = jamfplatform_pro_directory_binding.fixture.id
+    },
+  ]
 }
 `, dbName, dbUsername, dbPassword, policyName)
 }
 
 // TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage
 // creates a jamfplatform_pro_directory_binding fixture and references it
-// from policy.account_maintenance.directory_bindings, asserting the set
+// from policy.directory_bindings, asserting the set
 // round-trips through the policy resource. The fixture uses the Open
 // Directory binding type which has the minimal required-field footprint.
 func TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage(t *testing.T) {
@@ -2196,7 +2188,7 @@ func TestAccPolicyResource_AccountMaintenanceDirectoryBindingsFullCoverage(t *te
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("directory_bindings"),
+						tfjsonpath.New("directory_bindings"),
 						knownvalue.SetSizeExact(1),
 					),
 				},
@@ -2211,13 +2203,11 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  account_maintenance = {
-    management_account = {
-      action                      = %q
-      managed_password            = %q
-      managed_password_wo_version = %d
-      managed_password_length     = %d
-    }
+  management_account = {
+    action                      = %q
+    managed_password            = %q
+    managed_password_wo_version = %d
+    managed_password_length     = %d
   }
 }
 `, name, action, managedPassword, woVersion, length)
@@ -2242,7 +2232,7 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("management_account").AtMapKey("action"),
+						tfjsonpath.New("management_account").AtMapKey("action"),
 						knownvalue.StringExact("rotate"),
 					),
 				},
@@ -2252,7 +2242,7 @@ func TestAccPolicyResource_AccountMaintenanceManagementAccountFullCoverage(t *te
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("management_account").AtMapKey("managed_password_length"),
+						tfjsonpath.New("management_account").AtMapKey("managed_password_length"),
 						knownvalue.Int64Exact(16),
 					),
 				},
@@ -2267,19 +2257,17 @@ resource "jamfplatform_pro_policy" "test" {
   general = {
     name = %q
   }
-  account_maintenance = {
-    open_firmware_efi_password = {
-      of_mode                = %q
-      of_password            = %q
-      of_password_wo_version = %d
-    }
+  efi_password = {
+    of_mode                = %q
+    of_password            = %q
+    of_password_wo_version = %d
   }
 }
 `, name, ofMode, ofPassword, woVersion)
 }
 
 // TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
-// exercises the open_firmware_efi_password block. The plaintext of_password
+// exercises the efi_password block. The plaintext of_password
 // is `WriteOnly` (sent on writes, never persisted in state); rotation is
 // triggered via `of_password_wo_version`. Step 2 switches of_mode
 // `command` → `full` AND bumps `of_password_wo_version` 1 → 2 to exercise
@@ -2298,7 +2286,7 @@ func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("open_firmware_efi_password").AtMapKey("of_mode"),
+						tfjsonpath.New("efi_password").AtMapKey("of_mode"),
 						knownvalue.StringExact("command"),
 					),
 				},
@@ -2308,7 +2296,7 @@ func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("account_maintenance").AtMapKey("open_firmware_efi_password").AtMapKey("of_mode"),
+						tfjsonpath.New("efi_password").AtMapKey("of_mode"),
 						knownvalue.StringExact("full"),
 					),
 				},

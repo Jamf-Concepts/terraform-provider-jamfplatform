@@ -161,7 +161,7 @@ func TestBuildPolicyInput_PackagesAndScripts(t *testing.T) {
 	t.Parallel()
 	plan := PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc-pkg")},
-		PackageConfiguration: &PolicyPackageConfigurationModel{
+		Packages: &PolicyPackagesModel{
 			DistributionPoint: types.StringValue("Dummy DP"),
 			Packages: []PolicyPackageItemModel{
 				{ID: types.StringValue("100"), Action: types.StringValue("Install")},
@@ -190,7 +190,7 @@ func TestBuildPolicyInput_PackagesAndScripts(t *testing.T) {
 
 func TestBuildPolicyPackageConfiguration_DistributionPointOnly(t *testing.T) {
 	t.Parallel()
-	m := &PolicyPackageConfigurationModel{
+	m := &PolicyPackagesModel{
 		DistributionPoint: types.StringValue("Dummy DP"),
 	}
 	got := buildPolicyPackageConfiguration(m)
@@ -207,7 +207,7 @@ func TestBuildPolicyPackageConfiguration_DistributionPointOnly(t *testing.T) {
 
 func TestBuildPolicyPackageConfiguration_EmptyReturnsNil(t *testing.T) {
 	t.Parallel()
-	m := &PolicyPackageConfigurationModel{}
+	m := &PolicyPackagesModel{}
 	if got := buildPolicyPackageConfiguration(m); got != nil {
 		t.Fatalf("expected nil for empty package_configuration, got %+v", got)
 	}

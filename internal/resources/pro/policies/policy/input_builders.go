@@ -68,8 +68,8 @@ func buildPolicyInput(ctx context.Context, plan PolicyResourceModel, secrets *po
 		out.SelfService = buildPolicySelfService(plan.SelfService)
 	}
 
-	if plan.PackageConfiguration != nil {
-		out.PackageConfiguration = buildPolicyPackageConfiguration(plan.PackageConfiguration)
+	if plan.Packages != nil {
+		out.PackageConfiguration = buildPolicyPackageConfiguration(plan.Packages)
 	}
 
 	if plan.Scripts != nil {
@@ -84,20 +84,22 @@ func buildPolicyInput(ctx context.Context, plan PolicyResourceModel, secrets *po
 		out.DockItems = buildPolicyDockItems(plan.DockItems)
 	}
 
-	if plan.AccountMaintenance != nil {
-		out.AccountMaintenance = buildPolicyAccountMaintenance(plan.AccountMaintenance, secrets)
-	}
+	// The four flattened account-maintenance blocks join back into a single
+	// wire <account_maintenance> object. buildPolicyAccountMaintenance
+	// self-guards: it returns nil when all four are absent, preserving the
+	// "omit the wire object entirely" behaviour.
+	out.AccountMaintenance = buildPolicyAccountMaintenance(plan, secrets)
 
-	if plan.Reboot != nil {
-		out.Reboot = buildPolicyReboot(plan.Reboot)
+	if plan.RestartOptions != nil {
+		out.Reboot = buildPolicyReboot(plan.RestartOptions)
 	}
 
 	if plan.Maintenance != nil {
 		out.Maintenance = buildPolicyMaintenance(plan.Maintenance)
 	}
 
-	if plan.FilesProcesses != nil {
-		out.FilesProcesses = buildPolicyFilesProcesses(plan.FilesProcesses)
+	if plan.FilesAndProcesses != nil {
+		out.FilesProcesses = buildPolicyFilesProcesses(plan.FilesAndProcesses)
 	}
 
 	if plan.UserInteraction != nil {
@@ -467,7 +469,7 @@ func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSel
 	return ss
 }
 
-func buildPolicyPackageConfiguration(m *PolicyPackageConfigurationModel) *proclassic.PolicyPostPackageConfiguration {
+func buildPolicyPackageConfiguration(m *PolicyPackagesModel) *proclassic.PolicyPostPackageConfiguration {
 	dp := helpers.OptionalStringPointer(m.DistributionPoint)
 	if len(m.Packages) == 0 && dp == nil {
 		return nil
@@ -576,12 +578,17 @@ func buildPolicyDockItems(m *PolicyDockItemsModel) *proclassic.PolicyPostDockIte
 	return &proclassic.PolicyPostDockItems{DockItem: &items}
 }
 
-func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel, secrets *policyAccountMaintenanceSecrets) *proclassic.PolicyPostAccountMaintenance {
+// buildPolicyAccountMaintenance joins the four flattened account-maintenance
+// blocks (local_accounts, management_account, directory_bindings,
+// efi_password) back into the single classic wire <account_maintenance>
+// object. It self-guards: when all four blocks are absent it returns nil so
+// the wire omits the object entirely.
+func buildPolicyAccountMaintenance(plan PolicyResourceModel, secrets *policyAccountMaintenanceSecrets) *proclassic.PolicyPostAccountMaintenance {
 	am := &proclassic.PolicyPostAccountMaintenance{}
 
-	if len(m.Accounts) > 0 {
-		items := make([]proclassic.PolicyAccountMaintenanceAccountsAccountItem, 0, len(m.Accounts))
-		for _, a := range m.Accounts {
+	if len(plan.LocalAccounts) > 0 {
+		items := make([]proclassic.PolicyAccountMaintenanceAccountsAccountItem, 0, len(plan.LocalAccounts))
+		for _, a := range plan.LocalAccounts {
 			var password *string
 			if !a.Username.IsNull() && !a.Username.IsUnknown() {
 				if p, ok := secrets.accountPasswords[a.Username.ValueString()]; ok {
@@ -606,9 +613,9 @@ func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel, secrets *po
 		am.Accounts = &proclassic.PolicyAccountMaintenanceAccounts{Account: &items}
 	}
 
-	if len(m.DirectoryBindings) > 0 {
-		items := make([]proclassic.IDName, 0, len(m.DirectoryBindings))
-		for _, b := range m.DirectoryBindings {
+	if len(plan.DirectoryBindings) > 0 {
+		items := make([]proclassic.IDName, 0, len(plan.DirectoryBindings))
+		for _, b := range plan.DirectoryBindings {
 			items = append(items, proclassic.IDName{
 				ID:   stringIDPtr(b.ID),
 				Name: helpers.OptionalStringPointer(b.Name),
@@ -617,17 +624,17 @@ func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel, secrets *po
 		am.DirectoryBindings = &proclassic.PolicyAccountMaintenanceDirectoryBindings{Binding: &items}
 	}
 
-	if m.ManagementAccount != nil {
+	if plan.ManagementAccount != nil {
 		am.ManagementAccount = &proclassic.PolicyAccountMaintenanceManagementAccount{
-			Action:                helpers.OptionalStringPointer(m.ManagementAccount.Action),
+			Action:                helpers.OptionalStringPointer(plan.ManagementAccount.Action),
 			ManagedPassword:       secrets.managedPassword,
-			ManagedPasswordLength: optionalInt64ToInt(m.ManagementAccount.ManagedPasswordLength),
+			ManagedPasswordLength: optionalInt64ToInt(plan.ManagementAccount.ManagedPasswordLength),
 		}
 	}
 
-	if m.OpenFirmwareEfiPassword != nil {
+	if plan.EfiPassword != nil {
 		am.OpenFirmwareEfiPassword = &proclassic.PolicyAccountMaintenanceOpenFirmwareEfiPassword{
-			OfMode:     helpers.OptionalStringPointer(m.OpenFirmwareEfiPassword.OfMode),
+			OfMode:     helpers.OptionalStringPointer(plan.EfiPassword.OfMode),
 			OfPassword: secrets.ofPassword,
 		}
 	}
@@ -638,7 +645,7 @@ func buildPolicyAccountMaintenance(m *PolicyAccountMaintenanceModel, secrets *po
 	return am
 }
 
-func buildPolicyReboot(m *PolicyRebootModel) *proclassic.PolicyPostReboot {
+func buildPolicyReboot(m *PolicyRestartOptionsModel) *proclassic.PolicyPostReboot {
 	return &proclassic.PolicyPostReboot{
 		Message:                     helpers.OptionalStringPointer(m.Message),
 		StartupDisk:                 helpers.OptionalStringPointer(m.StartupDisk),
@@ -664,7 +671,7 @@ func buildPolicyMaintenance(m *PolicyMaintenanceModel) *proclassic.PolicyPostMai
 	}
 }
 
-func buildPolicyFilesProcesses(m *PolicyFilesProcessesModel) *proclassic.PolicyPostFilesProcesses {
+func buildPolicyFilesProcesses(m *PolicyFilesAndProcessesModel) *proclassic.PolicyPostFilesProcesses {
 	return &proclassic.PolicyPostFilesProcesses{
 		SearchByPath:         helpers.OptionalStringPointer(m.SearchByPath),
 		DeleteFile:           optionalBoolPointer(m.DeleteFileIfFound),
