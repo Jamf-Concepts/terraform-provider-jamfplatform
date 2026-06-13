@@ -265,14 +265,23 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							"filename": optComputedString("Icon filename. Returned by Jamf Pro."),
 						},
 					},
-					"category": schema.SingleNestedAttribute{
-						MarkdownDescription: "Self Service category under which the policy appears. Only one category may be set.",
+					"categories": schema.SetNestedAttribute{
+						MarkdownDescription: "Self Service categories under which the policy appears. Each entry carries its own `display_in` / `feature_in` flags, mirroring the admin UI's parallel \"Display in\" / \"Feature in\" columns. A policy may appear in multiple categories.",
 						Optional:            true,
-						Attributes: map[string]schema.Attribute{
-							"id":         optComputedString("Category ID."),
-							"name":       optComputedString("Category display name."),
-							"display_in": optComputedBool("Display the policy in this category."),
-							"feature_in": optComputedBool("Feature the policy in this category."),
+						NestedObject: schema.NestedAttributeObject{
+							Attributes: map[string]schema.Attribute{
+								"id": schema.StringAttribute{MarkdownDescription: "Category ID.", Required: true},
+								// `name` is server-derived from the (mutable) `id`. It MUST be
+								// plain Computed — NOT Optional+Computed+UseNonNullStateForUnknown.
+								// In a Set, flipping a sibling element's flag changes that
+								// element's hash, so the framework can't pair it to prior state;
+								// a USFU-carried known `name` then mis-correlates and trips
+								// "produced an inconsistent result after apply … does not correlate".
+								// Leaving `name` Unknown at plan defers Set correlation cleanly.
+								"name":       schema.StringAttribute{MarkdownDescription: "Category display name. Returned by Jamf Pro.", Computed: true},
+								"display_in": optComputedBool("Display the policy in this category."),
+								"feature_in": optComputedBool("Feature the policy in this category."),
+							},
 						},
 					},
 				},
@@ -386,7 +395,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"action": schema.StringAttribute{
-							MarkdownDescription: "Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action \"Disable FileVault\" — supply `DisableFileVault` here, with no trailing `2`).",
+							MarkdownDescription: "Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action \"Disable FileVault\" — supply `DisableFileVault` here, with no trailing `2`). **Note:** the Jamf Pro classic `/policies` API silently strips `DisableFileVault` account entries on both create and update — they do not round-trip and the policy will report no such account afterwards (confirmed against the live API regardless of username existence, sibling accounts, or extra fields). Only the Jamf Pro web UI can persist this action. Avoid `DisableFileVault` in Terraform-managed policies; it will produce a perpetual diff.",
 							Optional:            true,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},

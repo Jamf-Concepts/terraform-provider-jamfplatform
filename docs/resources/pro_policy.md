@@ -62,6 +62,21 @@ resource "jamfplatform_pro_policy" "scoped" {
     notification_location     = "Self Service"
     notification_subject      = "tf-acc"
     notification_message      = "Demo policy now available."
+
+    # A policy can appear in multiple Self Service categories, each with its
+    # own "Display in" / "Feature in" flags.
+    categories = [
+      {
+        id         = "1"
+        display_in = true
+        feature_in = true
+      },
+      {
+        id         = "2"
+        display_in = true
+        feature_in = false
+      },
+    ]
   }
 }
 
@@ -318,7 +333,7 @@ Optional:
 
 Optional:
 
-- `action` (String) Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action "Disable FileVault" — supply `DisableFileVault` here, with no trailing `2`).
+- `action` (String) Account action. Valid values: `Create`, `Reset`, `Delete`, `DisableFileVault` (the admin UI labels the last action "Disable FileVault" — supply `DisableFileVault` here, with no trailing `2`). **Note:** the Jamf Pro classic `/policies` API silently strips `DisableFileVault` account entries on both create and update — they do not round-trip and the policy will report no such account afterwards (confirmed against the live API regardless of username existence, sibling accounts, or extra fields). Only the Jamf Pro web UI can persist this action. Avoid `DisableFileVault` in Terraform-managed policies; it will produce a perpetual diff.
 - `admin` (Boolean) Whether the account is an admin.
 - `archive_home_directory_to` (String) Destination for the archived home directory. Only meaningful when `permanently_delete_home_directory = false`.
 - `filevault_enabled` (Boolean) Whether FileVault 2 is enabled for the account.
@@ -509,7 +524,7 @@ Optional:
 
 Optional:
 
-- `category` (Attributes) Self Service category under which the policy appears. Only one category may be set. (see [below for nested schema](#nestedatt--self_service--category))
+- `categories` (Attributes Set) Self Service categories under which the policy appears. Each entry carries its own `display_in` / `feature_in` flags, mirroring the admin UI's parallel "Display in" / "Feature in" columns. A policy may appear in multiple categories. (see [below for nested schema](#nestedatt--self_service--categories))
 - `display_notifications` (Boolean) Whether Self Service surfaces a notification when the policy becomes available. Pair with `notification_location` to set the delivery target.
 - `ensure_users_view_description` (Boolean) Force users to view the description before installing.
 - `include_in_featured_category` (Boolean) Feature the policy on the Self Service main page.
@@ -523,15 +538,21 @@ Optional:
 - `self_service_icon` (Attributes) Self Service icon. The icon binary is uploaded out-of-band; the provider surfaces the resolved id, URI, and filename. Uploading the icon bytes inline is not currently supported — open an issue if you need it. (see [below for nested schema](#nestedatt--self_service--self_service_icon))
 - `use_for_self_service` (Boolean) Expose the policy in Self Service.
 
-<a id="nestedatt--self_service--category"></a>
-### Nested Schema for `self_service.category`
+<a id="nestedatt--self_service--categories"></a>
+### Nested Schema for `self_service.categories`
+
+Required:
+
+- `id` (String) Category ID.
 
 Optional:
 
 - `display_in` (Boolean) Display the policy in this category.
 - `feature_in` (Boolean) Feature the policy in this category.
-- `id` (String) Category ID.
-- `name` (String) Category display name.
+
+Read-Only:
+
+- `name` (String) Category display name. Returned by Jamf Pro.
 
 
 <a id="nestedatt--self_service--self_service_icon"></a>
