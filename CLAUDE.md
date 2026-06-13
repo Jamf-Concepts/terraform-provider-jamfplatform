@@ -37,11 +37,13 @@ internal/
 │       ├── inventory/               # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer, licensed_software
 │       ├── patch/                   # patch_software_title, patch_policy, patch_external_source, patch_internal_source (data source) (availabletitles/ shared)
 │       ├── policies/                # policy, script, restricted_software
-│       ├── settings/                # self_service_plus_settings, cloud_distribution_point, cloud_identity_provider, ldap_server, re_enrollment_settings, sso_settings, sso_failover_url, user_initiated_enrollment_settings
+│       ├── settings/                # self_service_plus_settings, cloud_distribution_point, cloud_identity_provider, ldap_server, re_enrollment_settings, sso_settings, sso_failover_url, user_initiated_enrollment_settings, managed_software_updates (feature enable)
 │       ├── users/                   # user_group, class
 │       ├── volume_purchasing/       # location
 │       └── webhooks/                # webhook
-├── actions/device/    # erase, restart, shutdown, unmanage
+├── actions/
+│   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
+│   └── pro/           # managed_software_updates (group update plan + break-glass abandon)   (Jamf Pro)
 ├── common/
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
 │   ├── files/         # Shared upload-source plumbing for resources that upload file content
