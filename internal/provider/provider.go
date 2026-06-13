@@ -62,6 +62,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/supervision_identity"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/allowed_file_extension"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/buildings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/categories"
@@ -334,6 +335,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentResource,
 		benchmark.NewBenchmarkResource,
 		blueprint.NewBlueprintResource,
+		allowed_file_extension.NewAllowedFileExtensionResource,
 		building.NewBuildingResource,
 		category.NewCategoryResource,
 		computer_extension_attribute.NewComputerExtensionAttributeResource,
@@ -438,6 +440,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		rules.NewRulesDataSource,
 		benchmark.NewBenchmarkDataSource,
 		benchmarks.NewBenchmarksDataSource,
+		allowed_file_extension.NewAllowedFileExtensionDataSource,
 		building.NewBuildingDataSource,
 		buildings.NewBuildingsDataSource,
 		categories.NewCategoriesDataSource,
@@ -548,6 +551,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentListResource,
 		benchmark.NewBenchmarkListResource,
 		blueprint.NewBlueprintListResource,
+		allowed_file_extension.NewAllowedFileExtensionListResource,
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
 		file_share_distribution_point.NewFileShareDistributionPointListResource,
