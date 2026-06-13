@@ -65,6 +65,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_enrollment_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/mobile_device_prestage_enrollment"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/return_to_service"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/enrollment/supervision_identity"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/allowed_file_extension"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/inventory/building"
@@ -361,6 +362,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		mobile_device_invitation.NewMobileDeviceInvitationResource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentResource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentResource,
+		return_to_service.NewReturnToServiceResource,
 		dock_item.NewDockItemResource,
 		enrollment_customization.NewEnrollmentCustomizationResource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileResource,
@@ -478,6 +480,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		mobile_device_invitation.NewMobileDeviceInvitationDataSource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentDataSource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentDataSource,
+		return_to_service.NewReturnToServiceDataSource,
 		dock_item.NewDockItemDataSource,
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileDataSource,
@@ -584,6 +587,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		mobile_device_invitation.NewMobileDeviceInvitationListResource,
 		computer_prestage_enrollment.NewComputerPrestageEnrollmentListResource,
 		mobile_device_prestage_enrollment.NewMobileDevicePrestageEnrollmentListResource,
+		return_to_service.NewReturnToServiceListResource,
 		dock_item.NewDockItemListResource,
 		enrollment_customization.NewEnrollmentCustomizationListResource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileListResource,
