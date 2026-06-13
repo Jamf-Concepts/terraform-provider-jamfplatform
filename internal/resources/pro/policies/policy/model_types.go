@@ -116,19 +116,19 @@ type PolicyGeneralOverrideDefaultsModel struct {
 // and NotificationLocation project into a single proclassic.NotificationValue
 // — see helpers.go for the split/join logic.
 type PolicySelfServiceModel struct {
-	UseForSelfService          types.Bool                      `tfsdk:"use_for_self_service"`
-	SelfServiceDisplayName     types.String                    `tfsdk:"self_service_display_name"`
-	InstallButtonText          types.String                    `tfsdk:"install_button_text"`
-	ReinstallButtonText        types.String                    `tfsdk:"reinstall_button_text"`
-	SelfServiceDescription     types.String                    `tfsdk:"self_service_description"`
-	EnsureUsersViewDescription types.Bool                      `tfsdk:"ensure_users_view_description"`
-	IncludeInFeaturedCategory  types.Bool                      `tfsdk:"include_in_featured_category"`
-	DisplayNotifications       types.Bool                      `tfsdk:"display_notifications"`
-	NotificationLocation       types.String                    `tfsdk:"notification_location"`
-	NotificationSubject        types.String                    `tfsdk:"notification_subject"`
-	NotificationMessage        types.String                    `tfsdk:"notification_message"`
-	SelfServiceIcon            *PolicySelfServiceIconModel     `tfsdk:"self_service_icon"`
-	Category                   *PolicySelfServiceCategoryModel `tfsdk:"category"`
+	UseForSelfService          types.Bool                           `tfsdk:"use_for_self_service"`
+	SelfServiceDisplayName     types.String                         `tfsdk:"self_service_display_name"`
+	InstallButtonText          types.String                         `tfsdk:"install_button_text"`
+	ReinstallButtonText        types.String                         `tfsdk:"reinstall_button_text"`
+	SelfServiceDescription     types.String                         `tfsdk:"self_service_description"`
+	EnsureUsersViewDescription types.Bool                           `tfsdk:"ensure_users_view_description"`
+	IncludeInFeaturedCategory  types.Bool                           `tfsdk:"include_in_featured_category"`
+	DisplayNotifications       types.Bool                           `tfsdk:"display_notifications"`
+	NotificationLocation       types.String                         `tfsdk:"notification_location"`
+	NotificationSubject        types.String                         `tfsdk:"notification_subject"`
+	NotificationMessage        types.String                         `tfsdk:"notification_message"`
+	SelfServiceIcon            *PolicySelfServiceIconModel          `tfsdk:"self_service_icon"`
+	Categories                 []PolicySelfServiceCategoryItemModel `tfsdk:"categories"`
 }
 
 // PolicySelfServiceIconModel models <self_service><self_service_icon>.
@@ -138,9 +138,11 @@ type PolicySelfServiceIconModel struct {
 	Filename types.String `tfsdk:"filename"`
 }
 
-// PolicySelfServiceCategoryModel models <self_service><self_service_categories><category>.
-// SDK collapses the wrapper into a single child — schema follows.
-type PolicySelfServiceCategoryModel struct {
+// PolicySelfServiceCategoryItemModel models a single
+// <self_service><self_service_categories><category>. The wire carries a
+// repeating <category> element — each entry has its own display/feature
+// flags (admin UI: the parallel "Display in" / "Feature in" columns).
+type PolicySelfServiceCategoryItemModel struct {
 	ID        types.String `tfsdk:"id"`
 	Name      types.String `tfsdk:"name"`
 	DisplayIn types.Bool   `tfsdk:"display_in"`
