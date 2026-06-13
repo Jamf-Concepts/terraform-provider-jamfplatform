@@ -48,6 +48,9 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installer_title"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installer_titles"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_installers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_request_form_field"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_request_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/app_store_country_codes"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/ebook"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mac_app_store_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/apps/mobile_device_app"
@@ -366,6 +369,8 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		inventory_preload_record.NewInventoryPreloadRecordResource,
 		licensed_software.NewLicensedSoftwareResource,
 		app_installer.NewAppInstallerResource,
+		app_request_form_field.NewAppRequestFormFieldResource,
+		app_request_settings.NewAppRequestSettingsResource,
 		ebook.NewEbookResource,
 		mac_app_store_app.NewMacAppResource,
 		mobile_device_app.NewMobileAppResource,
@@ -482,6 +487,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		app_installers.NewAppInstallersDataSource,
 		app_installer_title.NewAppInstallerTitleDataSource,
 		app_installer_titles.NewAppInstallerTitlesDataSource,
+		app_request_form_field.NewAppRequestFormFieldDataSource,
+		app_store_country_codes.NewAppStoreCountryCodesDataSource,
 		ebook.NewEbookDataSource,
 		mac_app_store_app.NewMacAppDataSource,
 		mobile_device_app.NewMobileAppDataSource,
@@ -583,6 +590,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		json_web_token_configuration.NewJSONWebTokenConfigurationListResource,
 		licensed_software.NewLicensedSoftwareListResource,
 		app_installer.NewAppInstallerListResource,
+		app_request_form_field.NewAppRequestFormFieldListResource,
 		ebook.NewEbookListResource,
 		mac_app_store_app.NewMacAppListResource,
 		mobile_device_app.NewMobileAppListResource,
