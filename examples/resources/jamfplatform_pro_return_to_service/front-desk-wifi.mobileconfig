@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>com.apple.wifi.managed</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>PayloadIdentifier</key>
+      <string>com.example.wifi.frontdesk</string>
+      <key>PayloadUUID</key>
+      <string>9F8B1C2D-3E4F-5A6B-7C8D-9E0F1A2B3C4D</string>
+      <key>PayloadDisplayName</key>
+      <string>Front Desk Wi-Fi</string>
+      <key>SSID_STR</key>
+      <string>FrontDesk</string>
+      <key>EncryptionType</key>
+      <string>None</string>
+      <key>AutoJoin</key>
+      <true/>
+    </dict>
+  </array>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+  <key>PayloadIdentifier</key>
+  <string>com.example.rts.frontdesk</string>
+  <key>PayloadUUID</key>
+  <string>1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D</string>
+  <key>PayloadDisplayName</key>
+  <string>Front Desk Wi-Fi</string>
+</dict>
+</plist>
