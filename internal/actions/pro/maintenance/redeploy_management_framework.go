@@ -1,0 +1,75 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package maintenanceactions
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework/action"
+	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+var _ action.Action = (*RedeployManagementFrameworkAction)(nil)
+var _ action.ActionWithConfigure = (*RedeployManagementFrameworkAction)(nil)
+
+// RedeployManagementFrameworkAction redeploys the Jamf management framework to a computer.
+type RedeployManagementFrameworkAction struct {
+	maintenanceAction
+}
+
+type RedeployManagementFrameworkActionModel struct {
+	ManagementID types.String `tfsdk:"management_id"`
+	SerialNumber types.String `tfsdk:"serial_number"`
+}
+
+func NewRedeployManagementFrameworkAction() action.Action {
+	return &RedeployManagementFrameworkAction{}
+}
+
+func (a *RedeployManagementFrameworkAction) Metadata(ctx context.Context, req action.MetadataRequest, resp *action.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_pro_redeploy_management_framework"
+}
+
+func (a *RedeployManagementFrameworkAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
+	resp.Schema = actionschema.Schema{
+		MarkdownDescription: "Redeploys the Jamf management framework (binary and MDM management profile) to a computer.",
+		Attributes:          computerTargetAttributes(),
+	}
+}
+
+func (a *RedeployManagementFrameworkAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
+	a.configure(ctx, req, resp)
+}
+
+func (a *RedeployManagementFrameworkAction) Invoke(ctx context.Context, req action.InvokeRequest, resp *action.InvokeResponse) {
+	if !a.ensureClient(resp) {
+		return
+	}
+
+	var data RedeployManagementFrameworkActionModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	computerID, ok := a.resolveComputerID(ctx, resp, data.ManagementID, data.SerialNumber)
+	if !ok {
+		return
+	}
+
+	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Requesting management framework redeploy for computer %s", computerID)})
+
+	out, err := a.client.RedeployJamfManagementFrameworkV1(ctx, computerID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Redeploy Management Framework Failed",
+			fmt.Sprintf("Unable to redeploy the management framework to computer %s: %s", computerID, err),
+		)
+		return
+	}
+
+	resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Redeploy requested for computer %s (command %s)", computerID, out.CommandUUID)})
+}
