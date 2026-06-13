@@ -47,6 +47,21 @@ resource "jamfplatform_pro_policy" "scoped" {
     notification_location     = "Self Service"
     notification_subject      = "tf-acc"
     notification_message      = "Demo policy now available."
+
+    # A policy can appear in multiple Self Service categories, each with its
+    # own "Display in" / "Feature in" flags.
+    categories = [
+      {
+        id         = "1"
+        display_in = true
+        feature_in = true
+      },
+      {
+        id         = "2"
+        display_in = true
+        feature_in = false
+      },
+    ]
   }
 }
 

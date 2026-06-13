@@ -175,6 +175,48 @@ resource "jamfplatform_pro_policy" "test" {
 `, name, name)
 }
 
+// policyConfigSelfServiceCategories builds a policy in TWO Self Service
+// categories with distinct per-entry flags (firstFeatureIn controls the
+// first category's feature_in; the second is always feature_in=false). Two
+// category fixtures supply the referenced IDs. This is the lossy case the
+// pre-migration [0]-only read silently collapsed to a single category.
+func policyConfigSelfServiceCategories(name string, firstFeatureIn bool) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_category" "a" {
+  name     = %q
+  priority = 9
+}
+
+resource "jamfplatform_pro_category" "b" {
+  name     = %q
+  priority = 9
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name    = %q
+    enabled = true
+  }
+  self_service = {
+    use_for_self_service      = true
+    self_service_display_name = %q
+    categories = [
+      {
+        id         = jamfplatform_pro_category.a.id
+        display_in = true
+        feature_in = %t
+      },
+      {
+        id         = jamfplatform_pro_category.b.id
+        display_in = true
+        feature_in = false
+      },
+    ]
+  }
+}
+`, name+"-a", name+"-b", name, name, firstFeatureIn)
+}
+
 func policyConfigAllComputers(name string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_policy" "test" {
@@ -357,6 +399,73 @@ func TestAccPolicyResource_SelfServiceNotificationSplit(t *testing.T) {
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("self_service").AtMapKey("notification_location"),
 						knownvalue.StringExact("Self Service"),
+					),
+				},
+			},
+		},
+	})
+}
+
+// TestAccPolicyResource_SelfServiceMultiCategory is the regression test for the
+// self_service.categories migration (SingleNested → SetNested). The classic
+// /policies wire carries a repeating <category> element; the pre-migration
+// model read only index [0], silently dropping every category after the first
+// along with its independent display_in/feature_in flags. Step 1 declares two
+// categories with distinct feature_in values — a green size-2 set, with one
+// element feature_in=true and one feature_in=false, IS the assertion that both
+// survive the round-trip. Step 2 flips the first category's feature_in in place
+// to exercise per-element flag mutation idempotency.
+func TestAccPolicyResource_SelfServiceMultiCategory(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-sscat-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: policyConfigSelfServiceCategories(name, true),
+				ConfigStateChecks: []statecheck.StateCheck{
+					// Both categories survive the round-trip — the
+					// pre-migration [0]-only read would collapse this to 1.
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("self_service").AtMapKey("categories"),
+						knownvalue.SetSizeExact(2),
+					),
+					// …and the two entries carry DISTINCT feature_in flags
+					// (SetPartial consumes each match, so this requires two
+					// separate elements). ObjectPartial matches only
+					// feature_in, sidestepping the Computed name/id.
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("self_service").AtMapKey("categories"),
+						knownvalue.SetPartial([]knownvalue.Check{
+							knownvalue.ObjectPartial(map[string]knownvalue.Check{"feature_in": knownvalue.Bool(true)}),
+							knownvalue.ObjectPartial(map[string]knownvalue.Check{"feature_in": knownvalue.Bool(false)}),
+						}),
+					),
+				},
+			},
+			{
+				// Flip the first category's feature_in true→false in place;
+				// both categories must still round-trip, both now feature_in
+				// =false, and the apply must converge cleanly.
+				Config: policyConfigSelfServiceCategories(name, false),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("self_service").AtMapKey("categories"),
+						knownvalue.SetSizeExact(2),
+					),
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_policy.test",
+						tfjsonpath.New("self_service").AtMapKey("categories"),
+						knownvalue.SetPartial([]knownvalue.Check{
+							knownvalue.ObjectPartial(map[string]knownvalue.Check{"feature_in": knownvalue.Bool(false)}),
+							knownvalue.ObjectPartial(map[string]knownvalue.Check{"feature_in": knownvalue.Bool(false)}),
+						}),
 					),
 				},
 			},

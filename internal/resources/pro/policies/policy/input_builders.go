@@ -453,17 +453,17 @@ func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSel
 		}
 	}
 
-	if m.Category != nil {
-		cat := proclassic.PolicySelfServiceSelfServiceCategoriesCategoryItem{
-			ID:        stringIDPtr(m.Category.ID),
-			Name:      helpers.OptionalStringPointer(m.Category.Name),
-			DisplayIn: optionalBoolPointer(m.Category.DisplayIn),
-			FeatureIn: optionalBoolPointer(m.Category.FeatureIn),
+	if len(m.Categories) > 0 {
+		cats := make([]proclassic.PolicySelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.Categories))
+		for _, c := range m.Categories {
+			cats = append(cats, proclassic.PolicySelfServiceSelfServiceCategoriesCategoryItem{
+				ID:        stringIDPtr(c.ID),
+				Name:      helpers.OptionalStringPointer(c.Name),
+				DisplayIn: optionalBoolPointer(c.DisplayIn),
+				FeatureIn: optionalBoolPointer(c.FeatureIn),
+			})
 		}
-		if cat.ID != nil || cat.Name != nil || cat.DisplayIn != nil || cat.FeatureIn != nil {
-			cats := []proclassic.PolicySelfServiceSelfServiceCategoriesCategoryItem{cat}
-			ss.SelfServiceCategories = &proclassic.PolicySelfServiceSelfServiceCategories{Category: &cats}
-		}
+		ss.SelfServiceCategories = &proclassic.PolicySelfServiceSelfServiceCategories{Category: &cats}
 	}
 
 	return ss
