@@ -22,6 +22,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
+	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
@@ -114,6 +115,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/local_admin_password_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/login_page"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/macos_onboarding"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/managed_software_updates"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/mdm_profile_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/adcs"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/pki/certificate_authority"
@@ -396,6 +398,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		adcs.NewAdcsResource,
 		json_web_token_configuration.NewJSONWebTokenConfigurationResource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsResource,
+		managed_software_updates.NewManagedSoftwareUpdateResource,
 		jamf_parent_settings.NewJamfParentSettingsResource,
 		jamf_protect.NewJamfProtectResource,
 		jamf_teacher_settings.NewJamfTeacherSettingsResource,
@@ -614,6 +617,8 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		deviceactions.NewRestartAction,
 		deviceactions.NewShutdownAction,
 		deviceactions.NewUnmanageAction,
+		msuactions.NewPlanAction,
+		msuactions.NewAbandonFeatureToggleAction,
 	}
 }
 
