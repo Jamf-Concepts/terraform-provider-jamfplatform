@@ -22,7 +22,10 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
+	maintenanceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/maintenance"
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
+	mdmactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/mdm"
+	patchactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/patch"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
@@ -639,6 +642,24 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		deviceactions.NewUnmanageAction,
 		msuactions.NewPlanAction,
 		msuactions.NewAbandonFeatureToggleAction,
+		mdmactions.NewDeviceLockAction,
+		mdmactions.NewEnableLostModeAction,
+		mdmactions.NewDisableLostModeAction,
+		mdmactions.NewPlayLostModeSoundAction,
+		mdmactions.NewEnableRemoteDesktopAction,
+		mdmactions.NewDisableRemoteDesktopAction,
+		mdmactions.NewClearRestrictionsPasswordAction,
+		mdmactions.NewClearPasscodeAction,
+		mdmactions.NewDeleteUserAction,
+		mdmactions.NewLogOutUserAction,
+		mdmactions.NewUnlockUserAccountAction,
+		mdmactions.NewSetAutoAdminPasswordAction,
+		mdmactions.NewSendBlankPushAction,
+		mdmactions.NewRenewMdmProfileAction,
+		mdmactions.NewFlushMdmCommandsAction,
+		maintenanceactions.NewRedeployManagementFrameworkAction,
+		maintenanceactions.NewFlushPolicyLogsAction,
+		patchactions.NewRetryPatchPolicyLogsAction,
 	}
 }
 
