@@ -114,6 +114,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/impact_alert_notification_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_connect"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_parent_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_pro_server_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_protect"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/jamf_teacher_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/ldap_server"
@@ -524,6 +525,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		json_web_token_configuration.NewJSONWebTokenConfigurationDataSource,
 		impact_alert_notification_settings.NewImpactAlertNotificationSettingsDataSource,
 		jamf_connect.NewJamfConnectDataSource,
+		jamf_pro_server_url.NewJamfProServerURLDataSource,
 		jamf_protect.NewJamfProtectPlansDataSource,
 		login_page.NewLoginPageSettingsDataSource,
 		macos_onboarding.NewOnboardingDataSource,
