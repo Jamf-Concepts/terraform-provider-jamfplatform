@@ -97,6 +97,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_mobile_device_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_user_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_volume_purchasing_content_search"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/access_management_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/activation_code"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
@@ -376,6 +377,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		printer.NewPrinterResource,
 		removable_mac_address.NewRemovableMacAddressResource,
 		re_enrollment_settings.NewReEnrollmentSettingsResource,
+		access_management_settings.NewAccessManagementSettingsResource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsResource,
 		script.NewScriptResource,
 		advanced_computer_search.NewAdvancedComputerSearchResource,
@@ -486,6 +488,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		printer.NewPrinterDataSource,
 		removable_mac_address.NewRemovableMacAddressDataSource,
 		re_enrollment_settings.NewReEnrollmentSettingsDataSource,
+		access_management_settings.NewAccessManagementSettingsDataSource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
 		script.NewScriptDataSource,
 		scripts.NewScriptsDataSource,
