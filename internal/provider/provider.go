@@ -128,6 +128,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_branding_macos"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_macos_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/self_service_plus_settings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/service_discovery_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/smtp_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/sso_settings"
@@ -409,6 +410,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		self_service_branding_ios.NewSelfServiceBrandingIosResource,
 		self_service_branding_macos.NewSelfServiceBrandingMacosResource,
 		self_service_macos_settings.NewSelfServiceMacosSettingsResource,
+		service_discovery_enrollment.NewServiceDiscoveryEnrollmentResource,
 		smtp_server.NewSmtpServerResource,
 		site.NewSiteResource,
 		sso_failover_url.NewSsoFailoverURLResource,
@@ -517,6 +519,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		self_service_branding_ios.NewSelfServiceBrandingIosDataSource,
 		self_service_branding_macos.NewSelfServiceBrandingMacosDataSource,
 		self_service_macos_settings.NewSelfServiceMacosSettingsDataSource,
+		service_discovery_enrollment.NewServiceDiscoveryEnrollmentDataSource,
 		smtp_server.NewSmtpServerDataSource,
 		patch_external_source.NewPatchExternalSourceDataSource,
 		patch_internal_source.NewPatchInternalSourceDataSource,
