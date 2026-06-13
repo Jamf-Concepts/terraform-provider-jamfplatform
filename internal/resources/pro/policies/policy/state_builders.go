@@ -393,12 +393,27 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 		state.SelfServiceIcon.Filename = preferCurrentStringPointer(ss.SelfServiceIcon.Filename, state.SelfServiceIcon.Filename)
 	}
 
-	if state.Category != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil && len(*ss.SelfServiceCategories.Category) > 0 {
-		c := (*ss.SelfServiceCategories.Category)[0]
-		state.Category.ID = preferCurrentStringPointer(stringFromIntPtr(c.ID), state.Category.ID)
-		state.Category.Name = preferCurrentStringPointer(c.Name, state.Category.Name)
-		state.Category.DisplayIn = preferCurrentBoolPointer(c.DisplayIn, state.Category.DisplayIn)
-		state.Category.FeatureIn = preferCurrentBoolPointer(c.FeatureIn, state.Category.FeatureIn)
+	// Self Service categories are an unordered Set; rebuild the slice
+	// directly from the wire. The classic /policies endpoint always echoes
+	// id/name/display_in/feature_in for each surviving category, so the
+	// Optional+Computed flags never come back null (no preferCurrent
+	// needed). Refresh only when the caller manages the block.
+	if state.Categories != nil {
+		if ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
+			items := *ss.SelfServiceCategories.Category
+			out := make([]PolicySelfServiceCategoryItemModel, 0, len(items))
+			for _, c := range items {
+				out = append(out, PolicySelfServiceCategoryItemModel{
+					ID:        helpers.StringValueFromIntPtr(c.ID),
+					Name:      helpers.StringPointerValueOrNull(c.Name),
+					DisplayIn: helpers.BoolPointerValueOrNull(c.DisplayIn),
+					FeatureIn: helpers.BoolPointerValueOrNull(c.FeatureIn),
+				})
+			}
+			state.Categories = out
+		} else {
+			state.Categories = []PolicySelfServiceCategoryItemModel{}
+		}
 	}
 }
 
