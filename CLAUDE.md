@@ -14,7 +14,8 @@ The Jamf Platform API client is the external Go SDK `github.com/Jamf-Concepts/ja
 - `TESTING.md` — test categories, commands, build tags, CI.
 - `CONTRIBUTING.md` — contribution workflow, Pro-resource workflow (incl. ProClassic SDK payload audit), release-versioning policy.
 - `README.md` — user-facing provider usage.
-- `JAMF_PRO_INVENTORY.md` — gitignored Pro SDK namespace adoption tracker.
+- `spike/JAMF_PRO_INVENTORY.md` — gitignored Pro SDK namespace adoption tracker.
+- `spike/PRO_ROLLOUT_PLAN.md` — gitignored Pro rollout planning doc.
 
 ## Project Structure
 
@@ -30,20 +31,22 @@ internal/
 │   ├── device_groups/ # Plural data source                                   (Platform Services)
 │   ├── devices/       # Plural data source                                   (Platform Services)
 │   └── pro/           # Jamf Pro resources — two-tier domain grouping
+│       ├── accounts/                # account, account_group (+ account_privileges data source)
 │       ├── api/                     # api_role, api_client (+ api_role_privileges data source)
-│       ├── apps/                    # app_installer, mac_app_store_app, mobile_device_app, mobile_device_provisioning_profile (+ app_installer_title(s) catalog data sources)
+│       ├── apps/                    # app_installer, mac_app_store_app, mobile_device_app, mobile_device_provisioning_profile, app_request_settings, app_request_form_field, ebook (+ app_installer_title(s), app_store_country_codes data sources)
 │       ├── configuration_profiles/  # macos_configuration_profile, mobile_device_configuration_profile (payloadhelpers/ shared)
-│       ├── enrollment/              # automated_device_enrollment (+ public_key), computer_prestage_enrollment, mobile_device_prestage_enrollment, enrollment_customization, mobile_device_enrollment_profile
-│       ├── inventory/               # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer, licensed_software
+│       ├── enrollment/              # automated_device_enrollment (+ public_key), computer_prestage_enrollment, mobile_device_prestage_enrollment, enrollment_customization, mobile_device_enrollment_profile, computer_invitation, mobile_device_invitation, return_to_service, supervision_identity
+│       ├── inventory/               # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer, licensed_software, allowed_file_extension, computer/mobile_device/user_extension_attribute, inventory_preload_record, removable_mac_address (+ plural data sources)
 │       ├── patch/                   # patch_software_title, patch_policy, patch_external_source, patch_internal_source (data source) (availabletitles/ shared)
 │       ├── policies/                # policy, script, restricted_software
-│       ├── settings/                # self_service_plus_settings, cloud_distribution_point, cloud_identity_provider, ldap_server, re_enrollment_settings, sso_settings, sso_failover_url, user_initiated_enrollment_settings, managed_software_updates (feature enable)
-│       ├── users/                   # user_group, class
-│       ├── volume_purchasing/       # location
+│       ├── searches/                # advanced_computer_search, advanced_mobile_device_search, advanced_user_search, advanced_volume_purchasing_content_search
+│       ├── settings/                # 30+ singleton settings resources (self_service_plus_settings, cloud_distribution_point, ldap_server, sso_settings, jamf_connect, jamf_protect, …)
+│       ├── users/                   # user, user_group (+ user_groups, users plural data sources), class
+│       ├── volume_purchasing/       # location, vpp_assignment, vpp_invitation, volume_purchasing_notification
 │       └── webhooks/                # webhook
 ├── actions/
 │   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
-│   └── pro/           # managed_software_updates (group update plan + break-glass abandon)   (Jamf Pro)
+│   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (13 MDM commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
 ├── common/
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
 │   ├── files/         # Shared upload-source plumbing for resources that upload file content
