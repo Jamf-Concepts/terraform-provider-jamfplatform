@@ -108,6 +108,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/searches/advanced_volume_purchasing_content_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/access_management_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/activation_code"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/app_installer_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_distribution_point"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/cloud_identity_provider"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/settings/computer_check_in_settings"
@@ -401,6 +402,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchResource,
 		advanced_user_search.NewAdvancedUserSearchResource,
 		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchResource,
+		app_installer_settings.NewAppInstallerSettingsResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		activation_code.NewActivationCodeResource,
 		computer_check_in_settings.NewComputerCheckInSettingsResource,
@@ -516,6 +518,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
 		script.NewScriptDataSource,
 		scripts.NewScriptsDataSource,
+		app_installer_settings.NewAppInstallerSettingsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
 		activation_code.NewActivationCodeDataSource,
 		computer_check_in_settings.NewComputerCheckInSettingsDataSource,
