@@ -1,7 +1,7 @@
 dario.cat/mergo v1.0.0 h1:AGCNq9Evsj31mOgNPcLyXc+4PNABt905YmuqPYYpBWk=
 dario.cat/mergo v1.0.0/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.8.1-0.20260613231240-d258580d8d5f h1:cn2q58XRPc7yZs2HeWJRIlhfQh7rAHx1pyeklfbNXIU=
-github.com/Jamf-Concepts/jamfplatform-go-sdk v0.8.1-0.20260613231240-d258580d8d5f/go.mod h1:TfrY97HRFxuKCU+/B83wV/+Yq1uhqr6sDlB96cGweRc=
+github.com/Jamf-Concepts/jamfplatform-go-sdk v0.8.1-0.20260614071127-afb6ee98850a h1:1SdP43YRIof1f8cQqYAuDcEX7LHTvNn/2X/H0lIRmao=
+github.com/Jamf-Concepts/jamfplatform-go-sdk v0.8.1-0.20260614071127-afb6ee98850a/go.mod h1:TfrY97HRFxuKCU+/B83wV/+Yq1uhqr6sDlB96cGweRc=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ProtonMail/go-crypto v1.4.1 h1:9RfcZHqEQUvP8RzecWEUafnZVtEvrBVL9BiF67IQOfM=
