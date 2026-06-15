@@ -289,4 +289,3 @@ func ComputeContentSHA256(b []byte) string {
 	sum := sha256.Sum256(b)
 	return ContentSHA256Prefix + hex.EncodeToString(sum[:])
 }
-
