@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 )
 
 // DefaultMaxBytes caps the size of a URL-sourced download. 8 GiB lifts the
@@ -244,31 +243,35 @@ func OpenUploadSource(ctx context.Context, src string, maxBytes int64) (*os.File
 	if err != nil {
 		return nil, "", noop, err
 	}
-	// Ensure no leftover from a previous run shares the path.
-	tempPath = uniqueTempPath(tempPath)
 
-	tmp, err := os.OpenFile(tempPath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+	// Use os.CreateTemp for an atomic unique path — avoids the TOCTOU race
+	// when multiple resources download the same URL in parallel during plan.
+	dir := filepath.Dir(tempPath)
+	base := filepath.Base(tempPath)
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+	tmp, err := os.CreateTemp(dir, stem+"-*"+ext)
 	if err != nil {
-		return nil, "", noop, fmt.Errorf("files: creating tempfile %q: %w", tempPath, err)
+		return nil, "", noop, fmt.Errorf("files: creating tempfile: %w", err)
 	}
 
 	filename, _, err := DownloadCapped(ctx, src, tmp, maxBytes)
 	if err != nil {
 		_ = tmp.Close()
-		_ = os.Remove(tempPath)
+		_ = os.Remove(tmp.Name())
 		return nil, "", noop, err
 	}
 
 	// Rewind so the SDK reads from the start of the file.
 	if _, seekErr := tmp.Seek(0, io.SeekStart); seekErr != nil {
 		_ = tmp.Close()
-		_ = os.Remove(tempPath)
+		_ = os.Remove(tmp.Name())
 		return nil, "", noop, fmt.Errorf("files: rewinding tempfile: %w", seekErr)
 	}
 
 	cleanup := func() {
 		_ = tmp.Close()
-		_ = os.Remove(tempPath)
+		_ = os.Remove(tmp.Name())
 	}
 	return tmp, filename, cleanup, nil
 }
@@ -287,14 +290,3 @@ func ComputeContentSHA256(b []byte) string {
 	return ContentSHA256Prefix + hex.EncodeToString(sum[:])
 }
 
-// uniqueTempPath appends a nanosecond suffix when the requested temp path is
-// already occupied. Defends against parallel test runs and stale residue.
-func uniqueTempPath(p string) string {
-	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		return p
-	}
-	dir := filepath.Dir(p)
-	base := filepath.Base(p)
-	stamp := time.Now().UnixNano()
-	return filepath.Join(dir, fmt.Sprintf("%d-%s", stamp, base))
-}

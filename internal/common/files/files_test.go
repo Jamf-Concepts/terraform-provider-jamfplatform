@@ -13,7 +13,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func TestURLSource(t *testing.T) {
@@ -222,6 +225,59 @@ func TestOpenUploadSource_URLCapExceeded(t *testing.T) {
 	_, _, _, err := OpenUploadSource(context.Background(), srv.URL+"/big.pkg", 10)
 	if !errors.Is(err, ErrDownloadCapExceeded) {
 		t.Fatalf("expected ErrDownloadCapExceeded, got %v", err)
+	}
+}
+
+func TestOpenUploadSource_URLConcurrentSameName(t *testing.T) {
+	// Reproduces the parallel-plan race: N icon resources all download the same
+	// URL (e.g. Apple's "512x512bb.png") concurrently; each must get a unique
+	// tempfile. The start-gate releases all goroutines simultaneously to maximise
+	// overlap, mirroring Terraform's default -parallelism=10 walk.
+	const n = 20
+	body := []byte("icon-bytes")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+
+	url := srv.URL + "/512x512bb.png"
+
+	var (
+		mu    sync.Mutex
+		paths []string
+	)
+	gate := make(chan struct{})
+
+	var eg errgroup.Group
+	for range n {
+		eg.Go(func() error {
+			<-gate
+			file, _, cleanup, err := OpenUploadSource(context.Background(), url, DefaultMaxBytes)
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+			mu.Lock()
+			paths = append(paths, file.Name())
+			mu.Unlock()
+			return nil
+		})
+	}
+
+	close(gate)
+	if err := eg.Wait(); err != nil {
+		t.Fatalf("concurrent OpenUploadSource: %v", err)
+	}
+
+	if len(paths) != n {
+		t.Fatalf("got %d paths, want %d", len(paths), n)
+	}
+	seen := make(map[string]bool, n)
+	for _, p := range paths {
+		if seen[p] {
+			t.Errorf("duplicate temp path: %q", p)
+		}
+		seen[p] = true
 	}
 }
 
