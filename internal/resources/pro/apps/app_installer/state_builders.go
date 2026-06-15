@@ -41,7 +41,7 @@ func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.Ap
 		state.NotificationSettings = flattenNotificationSettings(d.NotificationSettings)
 	}
 	if state.SelfServiceSettings != nil && d.SelfServiceSettings != nil {
-		state.SelfServiceSettings = flattenSelfServiceSettings(d.SelfServiceSettings)
+		state.SelfServiceSettings = flattenSelfServiceSettings(state.SelfServiceSettings, d.SelfServiceSettings)
 	}
 }
 
@@ -63,14 +63,30 @@ func flattenNotificationSettings(n *pro.AppInstallerNotificationSettings) *Notif
 }
 
 // flattenSelfServiceSettings maps the full Self Service block. The server echoes
-// every field including per-category featured, so plain value assignment is
-// safe; categories is keyed by id (an unordered Set membership).
-func flattenSelfServiceSettings(s *pro.AppInstallerSelfServiceSettings) *SelfServiceSettingsModel {
+// every field including per-category featured, so plain value assignment is safe
+// for the scalars.
+//
+// categories is Optional-only (not Computed), so its post-apply value must match
+// config exactly. The input builder always sends categories as a slice (empty =
+// clear), so the server echoes the same membership we sent — but a GET cannot
+// distinguish "user omitted categories" from "user sent []" (both wire as no
+// categories). We therefore take the null-vs-empty membership decision from the
+// prior model: a nil prior (omitted in config) stays nil/null; a non-nil prior
+// (config-supplied, possibly empty) is refreshed from the server echo so the
+// Optional+Computed per-entry featured resolves from its Unknown plan value.
+// Synthesising an empty slice for a nil prior would turn an omitted (null) set
+// into an empty set and trip the "produced inconsistent result after apply"
+// check. See feedback_optional_computed_nested_object.
+func flattenSelfServiceSettings(prior *SelfServiceSettingsModel, s *pro.AppInstallerSelfServiceSettings) *SelfServiceSettingsModel {
 	out := &SelfServiceSettingsModel{
 		Description:                 stringPtrValueOrNull(s.Description),
 		ForceViewDescription:        boolPtrValueOrFalse(s.ForceViewDescription),
 		IncludeInComplianceCategory: boolPtrValueOrFalse(s.IncludeInComplianceCategory),
 		IncludeInFeaturedCategory:   boolPtrValueOrFalse(s.IncludeInFeaturedCategory),
+	}
+
+	if prior == nil || prior.Categories == nil {
+		return out
 	}
 
 	out.Categories = []SelfServiceCategoryModel{}

@@ -85,7 +85,13 @@ func TestAssignAppInstallerResourceModel_NestedBlocksManaged(t *testing.T) {
 
 	state := AppInstallerResourceModel{
 		NotificationSettings: &NotificationSettingsModel{}, // managed
-		SelfServiceSettings:  &SelfServiceSettingsModel{},  // managed
+		SelfServiceSettings: &SelfServiceSettingsModel{ // managed, categories supplied
+			// featured Unknown mirrors the create-time plan (Optional+Computed);
+			// the flatten resolves it from the server echo.
+			Categories: []SelfServiceCategoryModel{
+				{CategoryID: types.StringValue("58"), Featured: types.BoolUnknown()},
+			},
+		},
 	}
 	assignAppInstallerResourceModel(&state, d)
 
@@ -114,13 +120,29 @@ func TestAssignAppInstallerResourceModel_NestedBlocksManaged(t *testing.T) {
 	}
 }
 
-func TestAssignAppInstallerResourceModel_CategoriesEmptyNotNil(t *testing.T) {
+func TestAssignAppInstallerResourceModel_CategoriesOmittedStaysNil(t *testing.T) {
+	// categories is Optional-only: when the user omitted it (prior nil), the
+	// post-apply value must stay nil/null even though the server echoes no
+	// categories. Synthesising an empty slice would trip the framework's
+	// "produced inconsistent result after apply" (plan null → apply empty set).
 	d := sampleDeployment()
 	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Categories: nil}
-	state := AppInstallerResourceModel{SelfServiceSettings: &SelfServiceSettingsModel{}}
+	state := AppInstallerResourceModel{SelfServiceSettings: &SelfServiceSettingsModel{}} // Categories nil
+	assignAppInstallerResourceModel(&state, d)
+	if state.SelfServiceSettings.Categories != nil {
+		t.Errorf("omitted categories must stay nil, got %v", state.SelfServiceSettings.Categories)
+	}
+}
+
+func TestAssignAppInstallerResourceModel_CategoriesEmptyConfigStaysEmpty(t *testing.T) {
+	// When the user supplied categories = [] (non-nil empty prior), the value
+	// round-trips as an empty (non-nil) slice — clearing is honoured.
+	d := sampleDeployment()
+	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Categories: nil}
+	state := AppInstallerResourceModel{SelfServiceSettings: &SelfServiceSettingsModel{Categories: []SelfServiceCategoryModel{}}}
 	assignAppInstallerResourceModel(&state, d)
 	if state.SelfServiceSettings.Categories == nil {
-		t.Errorf("categories must be empty slice, not nil")
+		t.Errorf("config-supplied empty categories must stay non-nil empty")
 	}
 	if len(state.SelfServiceSettings.Categories) != 0 {
 		t.Errorf("expected 0 categories, got %d", len(state.SelfServiceSettings.Categories))
