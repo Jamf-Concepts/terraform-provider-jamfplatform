@@ -36,12 +36,8 @@ func TestValidateDeviceGroupPlan_SmartGroupNoCriteria(t *testing.T) {
 		Members:   types.SetNull(types.StringType),
 	}
 
-	err := validateDeviceGroupPlan(plan)
-	if err == nil {
-		t.Fatal("expected error when smart group has no criteria")
-	}
-	if err.Error() != "criteria must be supplied for smart groups" {
-		t.Errorf("unexpected error: %v", err)
+	if err := validateDeviceGroupPlan(plan); err != nil {
+		t.Errorf("expected nil error for smart group with no criteria, got: %v", err)
 	}
 }
 

@@ -59,9 +59,6 @@ func validateDeviceGroupPlan(plan *DeviceGroupResourceModel) error {
 
 	switch groupType {
 	case "smart":
-		if len(plan.Criteria) == 0 {
-			return fmt.Errorf("criteria must be supplied for smart groups")
-		}
 		if helpers.IsConfiguredValue(plan.Members) {
 			return fmt.Errorf("members cannot be set for smart groups")
 		}

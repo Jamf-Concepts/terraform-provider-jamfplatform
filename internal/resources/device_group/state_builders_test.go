@@ -209,9 +209,19 @@ func TestFlattenDeviceGroupCriteria(t *testing.T) {
 }
 
 func TestFlattenDeviceGroupCriteria_Empty(t *testing.T) {
+	// nil current → nil (null in state, user never set criteria)
 	result := flattenDeviceGroupCriteria(nil, nil)
 	if result != nil {
-		t.Errorf("expected nil for empty criteria, got %v", result)
+		t.Errorf("expected nil for nil current, got %v", result)
+	}
+
+	// empty-slice current → empty slice (user set criteria = [], smart match-all)
+	result = flattenDeviceGroupCriteria([]devicegroups.DeviceGroupCriteriaRepresentationV1{}, []DeviceGroupCriteriaModel{})
+	if result == nil {
+		t.Errorf("expected empty slice for empty-slice current, got nil")
+	}
+	if len(result) != 0 {
+		t.Errorf("expected len 0, got %d", len(result))
 	}
 }
 
