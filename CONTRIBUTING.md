@@ -42,6 +42,84 @@ make test
 4. Open a pull request against `main`. CI runs build, lint, docs-generation check, and unit tests automatically.
 5. CI also runs the Go acceptance test suite against a real tenant via the GitHub `acceptance` environment after a reviewer approves the run. See [TESTING.md](TESTING.md) for details.
 
+## Running a Local Build Against a Real Tenant (Dev Override)
+
+To drive your locally-built provider against a real Jamf tenant — i.e. write ordinary `.tf` files and run `terraform plan`/`apply` with your source changes — use a Terraform [development override](https://developer.hashicorp.com/terraform/cli/config/config-file#development-overrides-for-provider-developers). A dev override points Terraform at a directory containing your freshly-built binary and **bypasses the registry entirely**, so there is no `terraform init` / version pinning to fight with.
+
+### 1. Build and install the provider
+
+```bash
+make install
+```
+
+`make install` runs `go install ./...`, which compiles the provider and writes the `terraform-provider-jamfplatform` binary to your Go install directory (`$(go env GOPATH)/bin`, e.g. `~/go/bin`). Re-run it after every source change you want to test.
+
+Find the directory the binary landed in:
+
+```bash
+echo "$(go env GOPATH)/bin"
+```
+
+### 2. Create a Terraform CLI config with a dev override
+
+Create (or edit) `~/.terraform.d/terraform.tfrc` and point the provider's source address at the directory from step 1. Use an **absolute path** — `~` and `$GOPATH` are **not** expanded here:
+
+```hcl
+provider_installation {
+  dev_overrides {
+    # Replace with the absolute output of: echo "$(go env GOPATH)/bin"
+    "Jamf-Concepts/jamfplatform" = "/Users/you/go/bin"
+  }
+
+  # For all other providers, install from the registry as normal.
+  direct {}
+}
+```
+
+Tell Terraform to use this file (only needed if it is not at the default `~/.terraform.d/terraform.tfrc` location):
+
+```bash
+export TF_CLI_CONFIG_FILE="$HOME/.terraform.d/terraform.tfrc"
+```
+
+> The dev-override directory must contain a binary named exactly `terraform-provider-jamfplatform`. Pointing at `$(go env GOPATH)/bin` (where `make install` puts it) satisfies this. Avoid pointing at the repository root — `go build ./...` does not reliably emit the binary there.
+
+### 3. Write config and run Terraform
+
+In a scratch directory (outside the repo, or under the gitignored `local-testing/`), create the usual config. With a dev override active you **omit `version`** and **do not run `terraform init`** for this provider:
+
+```hcl
+terraform {
+  required_providers {
+    jamfplatform = {
+      source = "Jamf-Concepts/jamfplatform"
+    }
+  }
+}
+
+provider "jamfplatform" {
+  # Or supply via JAMFPLATFORM_* environment variables (see below).
+  base_url      = "https://us.apigw.jamf.com"
+  client_id     = "..."
+  client_secret = "..."
+}
+
+# ... resources / data sources to exercise ...
+```
+
+Export your tenant credentials and run Terraform directly — skip `init`:
+
+```bash
+export JAMFPLATFORM_BASE_URL="https://us.apigw.jamf.com"
+export JAMFPLATFORM_CLIENT_ID="..."
+export JAMFPLATFORM_CLIENT_SECRET="..."
+
+terraform plan
+terraform apply
+```
+
+Terraform prints a yellow **"Provider development overrides are in effect"** warning on every command — that is expected and confirms the override is live. After changing provider source, re-run `make install` and just re-run `terraform plan` (no `init` needed); Terraform picks up the new binary on the next invocation.
+
 ## Adding a New Resource
 
 1. Obtain the OpenAPI specification or request/response examples for the Jamf Platform endpoint.
