@@ -78,7 +78,7 @@ func fromCriterionModels(in []criteria.CriterionModel) []UserGroupCriterionModel
 // Skips create (no prior state) and destroy (no plan); soft — any resolve
 // failure leaves the diff intact.
 func (r *UserGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || r.ldap == nil {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || (r.ldap == nil && r.groupRef == nil) {
 		return
 	}
 	var plan, state UserGroupResourceModel
@@ -88,7 +88,15 @@ func (r *UserGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 		return
 	}
 	planModels := toCriterionModels(plan.Criteria)
-	suppressed := criteria.SuppressEquivalentDSGroupValues(ctx, r.ldap, planModels, toCriterionModels(state.Criteria))
+	stateModels := toCriterionModels(state.Criteria)
+	// Suppress no-op representation swaps for both criterion families: a
+	// directory-service group base64<->name swap, and a Jamf-group name<->id swap
+	// (11.29 reads a member-of value back as the group id). Disjoint criterion
+	// names, so the two passes never touch the same element.
+	suppressed := criteria.SuppressEquivalentDSGroupValues(ctx, r.ldap, planModels, stateModels)
+	if r.groupRef != nil {
+		suppressed = criteria.SuppressEquivalentGroupRefValues(ctx, r.groupRef, dsGroupObjectType, suppressed, stateModels)
+	}
 	changed := false
 	for i := range suppressed {
 		if !suppressed[i].Value.Equal(planModels[i].Value) {
@@ -149,6 +157,11 @@ func (r *UserGroupResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 	plan.Criteria = fromCriterionModels(resolved)
+	// Resolve Jamf-group "member of" criterion names to the ids the 11.29+ server
+	// will echo on read, so the post-write flatten can restore the authored name
+	// (reorder-safe; see RestoreAuthoredGroupRefCriteria). Built from the authored
+	// (pre-write) criteria; the write itself still sends the name (pass-through).
+	groupRefAuthored := criteria.ResolveAuthoredGroupRefMap(createCtx, r.groupRef, dsGroupObjectType, resolved)
 
 	input, inputDiags := buildUserGroupInput(createCtx, plan)
 	resp.Diagnostics.Append(inputDiags...)
@@ -179,7 +192,9 @@ func (r *UserGroupResource) Create(ctx context.Context, req resource.CreateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.Criteria = fromCriterionModels(criteria.RestoreAuthoredDSGroupCriteria(toCriterionModels(plan.Criteria), authored))
+	restored := criteria.RestoreAuthoredDSGroupCriteria(toCriterionModels(plan.Criteria), authored)
+	restored = criteria.RestoreAuthoredGroupRefCriteria(restored, groupRefAuthored, dsGroupObjectType)
+	plan.Criteria = fromCriterionModels(restored)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, userGroupIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -258,7 +273,9 @@ func (r *UserGroupResource) Read(ctx context.Context, req resource.ReadRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	state.Criteria = fromCriterionModels(criteria.ReadbackDSGroupCriteria(readCtx, r.ldap, dsGroupObjectType, toCriterionModels(state.Criteria), priorCriteria))
+	readback := criteria.ReadbackDSGroupCriteria(readCtx, r.ldap, dsGroupObjectType, toCriterionModels(state.Criteria), priorCriteria)
+	readback = criteria.ReadbackGroupRefCriteria(readCtx, r.groupRef, dsGroupObjectType, readback, priorCriteria)
+	state.Criteria = fromCriterionModels(readback)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, userGroupIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -302,6 +319,7 @@ func (r *UserGroupResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 	plan.Criteria = fromCriterionModels(resolved)
+	groupRefAuthored := criteria.ResolveAuthoredGroupRefMap(updateCtx, r.groupRef, dsGroupObjectType, resolved)
 
 	input, inputDiags := buildUserGroupInput(updateCtx, plan)
 	resp.Diagnostics.Append(inputDiags...)
@@ -323,7 +341,9 @@ func (r *UserGroupResource) Update(ctx context.Context, req resource.UpdateReque
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	plan.Criteria = fromCriterionModels(criteria.RestoreAuthoredDSGroupCriteria(toCriterionModels(plan.Criteria), authored))
+	restored := criteria.RestoreAuthoredDSGroupCriteria(toCriterionModels(plan.Criteria), authored)
+	restored = criteria.RestoreAuthoredGroupRefCriteria(restored, groupRefAuthored, dsGroupObjectType)
+	plan.Criteria = fromCriterionModels(restored)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, userGroupIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

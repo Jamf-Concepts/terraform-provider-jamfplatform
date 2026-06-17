@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
@@ -21,7 +22,8 @@ import (
 // UserGroupDataSource implements the Terraform data source for Jamf Pro user
 // groups. Lookup is by ID or by exact name — exactly one must be supplied.
 type UserGroupDataSource struct {
-	client *proclassic.Client
+	client   *proclassic.Client
+	groupRef criteria.GroupResolver
 }
 
 var (
@@ -111,6 +113,7 @@ func (d *UserGroupDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 	d.client = client
+	d.groupRef = criteria.NewProGroupResolver(client)
 }
 
 // Read fetches a user group by ID or by name.
@@ -155,6 +158,10 @@ func (d *UserGroupDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 	assignUserGroupDataSourceModel(&data, got)
+	// No prior config in a data-source read → reverse-resolve any Jamf-group
+	// "member of" criterion id back to the group name (11.29 read regression) so a
+	// consumer (and `-generate-config-out`) sees the name, not the numeric id.
+	data.Criteria = fromCriterionModels(criteria.ReadbackGroupRefCriteria(readCtx, d.groupRef, dsGroupObjectType, toCriterionModels(data.Criteria), nil))
 
 	tflog.Trace(ctx, "read Jamf Pro user group data source", map[string]any{"id": data.ID.ValueString(), "name": data.Name.ValueString()})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

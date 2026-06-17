@@ -10,6 +10,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -39,6 +40,12 @@ type DeviceGroupResource struct {
 	client    *devicegroups.Client
 	proClient *pro.Client
 	pd        *providerdata.Data
+	// groupRef maps a Jamf-group "member of" criterion value between its group
+	// name and the numeric id Jamf Pro 11.29 echoes on read (COMPUTER device type
+	// regresses; MOBILE is clean). Backed by the classic group endpoints —
+	// device_group COMPUTER membership stores CLASSIC computer-group ids, so this
+	// resolves via proclassic, not Pro /v2/groups.
+	groupRef criteria.GroupResolver
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -212,6 +219,7 @@ func (r *DeviceGroupResource) Configure(ctx context.Context, req resource.Config
 
 	r.client = devicegroups.New(pd.Client)
 	r.proClient = pro.New(pd.Client)
+	r.groupRef = criteria.NewProGroupResolver(proclassic.New(pd.Client))
 	r.pd = pd
 }
 
