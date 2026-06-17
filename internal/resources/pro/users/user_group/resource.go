@@ -41,6 +41,10 @@ type UserGroupResource struct {
 	// {uuid,serverId} wire value. Built from the shared Pro client because the
 	// classic API has no LDAP-group search of its own.
 	ldap ldapgroups.Searcher
+	// groupRef maps a Jamf-group "member of" criterion value between its group
+	// name and the numeric id Jamf Pro 11.29 echoes on read. Backed by the same
+	// classic client.
+	groupRef criteria.GroupResolver
 }
 
 var _ resource.Resource = &UserGroupResource{}
@@ -167,6 +171,7 @@ func (r *UserGroupResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 	r.client = client
+	r.groupRef = criteria.NewProGroupResolver(client)
 	if pd, ok := req.ProviderData.(*providerdata.Data); ok {
 		r.ldap = pro.New(pd.Client)
 	}

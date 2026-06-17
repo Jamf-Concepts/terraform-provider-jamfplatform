@@ -10,6 +10,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
@@ -24,6 +26,7 @@ type DeviceGroupDataSource struct {
 	client    *devicegroups.Client
 	proClient *pro.Client
 	pd        *providerdata.Data
+	groupRef  criteria.GroupResolver
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -136,6 +139,7 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 
 	d.client = devicegroups.New(pd.Client)
 	d.proClient = pro.New(pd.Client)
+	d.groupRef = criteria.NewProGroupResolver(proclassic.New(pd.Client))
 	d.pd = pd
 }
 
@@ -218,6 +222,9 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		MemberCount: types.Int64Value(int64(grp.MemberCount)),
 		Timeouts:    timeoutsConfig,
 	}
+	// No prior state in a data-source read → reverse-resolve any Jamf-group
+	// "member of" criterion id back to the group name (11.29 read regression).
+	data.Criteria = readbackGroupRefCriteria(readCtx, d.groupRef, dsObjectType(deviceType.ValueString()), data.Criteria, nil)
 
 	tflog.Trace(ctx, "read device group data source", map[string]any{
 		"id": grp.ID,

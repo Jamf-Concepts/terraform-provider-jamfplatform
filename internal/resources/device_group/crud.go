@@ -56,7 +56,12 @@ func (r *DeviceGroupResource) ModifyPlan(ctx context.Context, req resource.Modif
 	if resp.Diagnostics.HasError() || len(plan.Criteria) == 0 {
 		return
 	}
+	// Suppress no-op representation swaps for both criterion families: a
+	// directory-service group base64<->name swap, and a Jamf-group name<->id swap
+	// (11.29 reads a member-of value back as the group id). Disjoint criterion
+	// names, so the two passes never touch the same element.
 	suppressed := suppressEquivalentDSGroupCriteria(ctx, r.proClient, plan.Criteria, state.Criteria)
+	suppressed = suppressEquivalentGroupRefCriteria(ctx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), suppressed, state.Criteria)
 	changed := false
 	for i := range suppressed {
 		if !suppressed[i].AttributeValue.Equal(plan.Criteria[i].AttributeValue) {
@@ -143,6 +148,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	var authoredDSGroups map[string]string
+	var authoredGroupRefs map[string]string
 	switch strings.ToLower(plan.GroupType.ValueString()) {
 	case "smart":
 		resolved, authored, dsDiags := resolveDSGroupCriteria(createCtx, r.proClient, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
@@ -152,7 +158,12 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		}
 		plan.Criteria = resolved
 		authoredDSGroups = authored
-		criteria := expandDeviceGroupCriteria(plan.Criteria)
+		// device_group's wire value must be the group ID (its PATCH endpoint rejects
+		// names — wire-probed); resolve name->id for the request, keep the id->name
+		// map to restore the authored name after the flatten.
+		var wireCriteria []DeviceGroupCriteriaModel
+		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(createCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		criteria := expandDeviceGroupCriteria(wireCriteria)
 		reqBody.Criteria = &criteria
 	case "static":
 		if manageMembers {
@@ -180,6 +191,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 	plan.Criteria = restoreAuthoredDSGroupCriteria(plan.Criteria, authoredDSGroups)
+	plan.Criteria = restoreAuthoredGroupRefCriteria(plan.Criteria, authoredGroupRefs, dsObjectType(plan.DeviceType.ValueString()))
 
 	// resolveJamfProID degrades all Pro bridging failures to warnings so the
 	// Platform Create result is never discarded. Append diagnostics without a
@@ -288,6 +300,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 	state.Criteria = readbackDSGroupCriteria(readCtx, r.proClient, state.Criteria, priorCriteria)
+	state.Criteria = readbackGroupRefCriteria(readCtx, r.groupRef, dsObjectType(state.DeviceType.ValueString()), state.Criteria, priorCriteria)
 
 	jamfProID, jamfProDiags := resolveJamfProID(readCtx, r.proClient, r.pd, state.ID.ValueString())
 	resp.Diagnostics.Append(jamfProDiags...)
@@ -333,6 +346,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	var authoredDSGroups map[string]string
+	var authoredGroupRefs map[string]string
 	if strings.ToLower(plan.GroupType.ValueString()) == "smart" {
 		resolved, authored, dsDiags := resolveDSGroupCriteria(updateCtx, r.proClient, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
 		resp.Diagnostics.Append(dsDiags...)
@@ -341,7 +355,12 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		}
 		plan.Criteria = resolved
 		authoredDSGroups = authored
-		criteria := expandDeviceGroupCriteria(plan.Criteria)
+		// device_group's UPDATE (PATCH) requires the group ID, not the name
+		// (wire-probed: PATCH with a name 400s). Resolve name->id for the request and
+		// keep the id->name map to restore the authored name after the flatten.
+		var wireCriteria []DeviceGroupCriteriaModel
+		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(updateCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		criteria := expandDeviceGroupCriteria(wireCriteria)
 		updateReq.Criteria = &criteria
 	}
 
@@ -386,6 +405,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 	plan.Criteria = restoreAuthoredDSGroupCriteria(plan.Criteria, authoredDSGroups)
+	plan.Criteria = restoreAuthoredGroupRefCriteria(plan.Criteria, authoredGroupRefs, dsObjectType(plan.DeviceType.ValueString()))
 
 	jamfProID, jamfProDiags := resolveJamfProID(updateCtx, r.proClient, r.pd, plan.ID.ValueString())
 	resp.Diagnostics.Append(jamfProDiags...)
