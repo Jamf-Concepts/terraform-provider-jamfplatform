@@ -46,13 +46,24 @@ make test
 
 To drive your locally-built provider against a real Jamf tenant — i.e. write ordinary `.tf` files and run `terraform plan`/`apply` with your source changes — use a Terraform [development override](https://developer.hashicorp.com/terraform/cli/config/config-file#development-overrides-for-provider-developers). A dev override points Terraform at a directory containing your freshly-built binary and **bypasses the registry entirely**, so there is no `terraform init` / version pinning to fight with.
 
-### 1. Build and install the provider
+This requires the Go toolchain and Terraform (or OpenTofu) from [Prerequisites](#prerequisites) to be installed and on your `PATH`. Confirm before starting:
 
 ```bash
+go version          # >= 1.26
+terraform version   # >= 1.13.0  (or: tofu version, >= 1.6.0)
+```
+
+### 1. Build and install the provider
+
+From the repository root, with the branch you want to test checked out:
+
+```bash
+cd terraform-provider-jamfplatform   # the repo root, if you aren't already there
+git checkout feat/my-branch          # the branch whose changes you want to exercise
 make install
 ```
 
-`make install` runs `go install ./...`, which compiles the provider and writes the `terraform-provider-jamfplatform` binary to your Go install directory (`$(go env GOPATH)/bin`, e.g. `~/go/bin`). Re-run it after every source change you want to test.
+`make install` runs `go install ./...`, which compiles **the currently checked-out code** and writes the `terraform-provider-jamfplatform` binary to your Go install directory (`$(go env GOPATH)/bin`, e.g. `~/go/bin`). The binary is not branch-aware — whatever is checked out when you run `make install` is what Terraform will use. Re-run it after every branch switch or source change you want to test.
 
 Find the directory the binary landed in:
 
