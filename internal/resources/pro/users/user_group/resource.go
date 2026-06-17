@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -25,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -35,12 +37,17 @@ const minJamfProVersion = ""
 // UserGroupResource implements the Terraform resource for Jamf Pro user groups.
 type UserGroupResource struct {
 	client *proclassic.Client
+	// ldap resolves directory-service group criterion names to/from the base64
+	// {uuid,serverId} wire value. Built from the shared Pro client because the
+	// classic API has no LDAP-group search of its own.
+	ldap ldapgroups.Searcher
 }
 
 var _ resource.Resource = &UserGroupResource{}
 var _ resource.ResourceWithImportState = &UserGroupResource{}
 var _ resource.ResourceWithIdentity = &UserGroupResource{}
 var _ resource.ResourceWithConfigValidators = &UserGroupResource{}
+var _ resource.ResourceWithModifyPlan = &UserGroupResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -160,6 +167,9 @@ func (r *UserGroupResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 	r.client = client
+	if pd, ok := req.ProviderData.(*providerdata.Data); ok {
+		r.ldap = pro.New(pd.Client)
+	}
 }
 
 // ImportState handles import by the Jamf Pro user group ID.

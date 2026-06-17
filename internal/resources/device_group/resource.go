@@ -45,6 +45,7 @@ type DeviceGroupResource struct {
 var _ resource.Resource = &DeviceGroupResource{}
 var _ resource.ResourceWithImportState = &DeviceGroupResource{}
 var _ resource.ResourceWithIdentity = &DeviceGroupResource{}
+var _ resource.ResourceWithModifyPlan = &DeviceGroupResource{}
 
 const (
 	defaultCreateTimeout = 120 * time.Second

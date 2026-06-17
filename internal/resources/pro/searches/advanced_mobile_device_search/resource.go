@@ -44,6 +44,7 @@ type AdvancedMobileDeviceSearchResource struct {
 var _ resource.Resource = &AdvancedMobileDeviceSearchResource{}
 var _ resource.ResourceWithImportState = &AdvancedMobileDeviceSearchResource{}
 var _ resource.ResourceWithIdentity = &AdvancedMobileDeviceSearchResource{}
+var _ resource.ResourceWithModifyPlan = &AdvancedMobileDeviceSearchResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second

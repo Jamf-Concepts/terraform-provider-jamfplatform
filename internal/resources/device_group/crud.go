@@ -41,6 +41,68 @@ func isDeletePropagationConflict(err error) bool {
 	return apiErr.HasStatus(http.StatusNotAcceptable) || apiErr.HasStatus(http.StatusConflict)
 }
 
+// ModifyPlan suppresses a no-op diff when a directory-service group criterion's
+// planned value is a different REPRESENTATION of the same group already in state
+// (a raw base64 value swapped for the equivalent group name, or vice versa).
+// Skips create (no prior state) and destroy (no plan); soft — any resolve
+// failure leaves the diff intact.
+func (r *DeviceGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || r.proClient == nil {
+		return
+	}
+	var plan, state DeviceGroupResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() || len(plan.Criteria) == 0 {
+		return
+	}
+	suppressed := suppressEquivalentDSGroupCriteria(ctx, r.proClient, plan.Criteria, state.Criteria)
+	changed := false
+	for i := range suppressed {
+		if !suppressed[i].AttributeValue.Equal(plan.Criteria[i].AttributeValue) {
+			changed = true
+			break
+		}
+	}
+	if !changed {
+		return // additive: only touch the plan when a representation actually collapsed
+	}
+	plan.Criteria = suppressed
+	// If suppression reconciled the criteria back to state, the swap is a pure
+	// representation change with no membership impact. member_count is Computed
+	// WITHOUT UseStateForUnknown, so core has already flipped it to unknown for the
+	// (now-reverted) update — leaving a phantom "member_count -> known after apply"
+	// diff. Restore it from state so a representation-only swap yields an empty
+	// plan. Safe: member_count depends only on membership, which is unchanged when
+	// the criteria are equal. (id / jamf_pro_id / members already use
+	// UseStateForUnknown and need no such restore.)
+	if deviceGroupCriteriaEqual(plan.Criteria, state.Criteria) {
+		plan.MemberCount = state.MemberCount
+	}
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
+// deviceGroupCriteriaEqual reports whether two criteria slices are identical
+// across every modelled field — used to confirm a directory-service group
+// suppression left no real criteria change before restoring Computed siblings.
+func deviceGroupCriteriaEqual(a, b []DeviceGroupCriteriaModel) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Order.Equal(b[i].Order) ||
+			!a[i].AttributeName.Equal(b[i].AttributeName) ||
+			!a[i].Operator.Equal(b[i].Operator) ||
+			!a[i].AttributeValue.Equal(b[i].AttributeValue) ||
+			!a[i].JoinType.Equal(b[i].JoinType) ||
+			!a[i].HasOpeningParenthesis.Equal(b[i].HasOpeningParenthesis) ||
+			!a[i].HasClosingParenthesis.Equal(b[i].HasClosingParenthesis) {
+			return false
+		}
+	}
+	return true
+}
+
 // Create creates a new Jamf Platform device group resource.
 func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan DeviceGroupResourceModel
@@ -80,8 +142,16 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		GroupType:   strings.ToUpper(plan.GroupType.ValueString()),
 	}
 
+	var authoredDSGroups map[string]string
 	switch strings.ToLower(plan.GroupType.ValueString()) {
 	case "smart":
+		resolved, authored, dsDiags := resolveDSGroupCriteria(createCtx, r.proClient, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		resp.Diagnostics.Append(dsDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.Criteria = resolved
+		authoredDSGroups = authored
 		criteria := expandDeviceGroupCriteria(plan.Criteria)
 		reqBody.Criteria = &criteria
 	case "static":
@@ -109,6 +179,7 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	if !r.refreshDeviceGroupState(createCtx, created.ID, &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
+	plan.Criteria = restoreAuthoredDSGroupCriteria(plan.Criteria, authoredDSGroups)
 
 	// resolveJamfProID degrades all Pro bridging failures to warnings so the
 	// Platform Create result is never discarded. Append diagnostics without a
@@ -211,10 +282,12 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		}
 	}
 
+	priorCriteria := state.Criteria
 	resp.Diagnostics.Append(assignDeviceGroupModel(readCtx, &state, grp, members, manageMembers, manageDescription)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	state.Criteria = readbackDSGroupCriteria(readCtx, r.proClient, state.Criteria, priorCriteria)
 
 	jamfProID, jamfProDiags := resolveJamfProID(readCtx, r.proClient, r.pd, state.ID.ValueString())
 	resp.Diagnostics.Append(jamfProDiags...)
@@ -259,7 +332,15 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		Description: plan.Description.ValueStringPointer(),
 	}
 
+	var authoredDSGroups map[string]string
 	if strings.ToLower(plan.GroupType.ValueString()) == "smart" {
+		resolved, authored, dsDiags := resolveDSGroupCriteria(updateCtx, r.proClient, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		resp.Diagnostics.Append(dsDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.Criteria = resolved
+		authoredDSGroups = authored
 		criteria := expandDeviceGroupCriteria(plan.Criteria)
 		updateReq.Criteria = &criteria
 	}
@@ -304,6 +385,7 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	if !r.refreshDeviceGroupState(updateCtx, plan.ID.ValueString(), &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
+	plan.Criteria = restoreAuthoredDSGroupCriteria(plan.Criteria, authoredDSGroups)
 
 	jamfProID, jamfProDiags := resolveJamfProID(updateCtx, r.proClient, r.pd, plan.ID.ValueString())
 	resp.Diagnostics.Append(jamfProDiags...)

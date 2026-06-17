@@ -10,6 +10,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -24,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -36,11 +38,16 @@ const minJamfProVersion = ""
 // advanced user searches.
 type AdvancedUserSearchResource struct {
 	client *proclassic.Client
+	// ldap resolves directory-service group criterion names to/from the base64
+	// {uuid,serverId} wire value. Built from the shared Pro client because the
+	// classic API has no LDAP-group search of its own.
+	ldap ldapgroups.Searcher
 }
 
 var _ resource.Resource = &AdvancedUserSearchResource{}
 var _ resource.ResourceWithImportState = &AdvancedUserSearchResource{}
 var _ resource.ResourceWithIdentity = &AdvancedUserSearchResource{}
+var _ resource.ResourceWithModifyPlan = &AdvancedUserSearchResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -131,6 +138,9 @@ func (r *AdvancedUserSearchResource) Configure(ctx context.Context, req resource
 		return
 	}
 	r.client = client
+	if pd, ok := req.ProviderData.(*providerdata.Data); ok {
+		r.ldap = pro.New(pd.Client)
+	}
 }
 
 // ImportState imports an advanced user search by ID.

@@ -8,11 +8,16 @@ package device_group_test
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
@@ -364,6 +369,127 @@ func TestAccResource_DeviceGroup_DescriptionNullVsEmpty(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(rn, "description", "restored"),
 				),
+			},
+		},
+	})
+}
+
+// Directory-service group criteria acceptance coverage.
+//
+// Gated behind JAMFPLATFORM_ACC_CRITERIA_DS_GROUP=1 because it requires a tenant
+// with a directory service configured and a real resolvable group. Supply:
+//
+//	JAMFPLATFORM_ACC_CRITERIA_DS_GROUP=1
+//	JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME   — the exact LDAP/cloud-IdP group name
+//
+// By default the equivalent base64 value is NOT required — the test resolves the
+// name via the same LDAP search the provider uses and encodes it itself, so the
+// swap value always matches what the provider produces (this isolates the
+// ModifyPlan suppression from operator data-entry). Optionally supply
+// JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_VALUE with the real wire base64 for that
+// group: the test then asserts the provider's resolution equals it (an
+// INDEPENDENT encoding oracle against the live wire) and drives the swap with it.
+// Real group names are never committed — see memory: no real LDAP names in public
+// files.
+const (
+	envDSGroupGate  = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP"
+	envDSGroupName  = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME"
+	envDSGroupValue = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_VALUE" // optional independent oracle
+)
+
+// TestAccResource_DeviceGroup_DSGroupCriteria exercises a directory-service group
+// smart-group criterion authored by NAME, asserts the provider stores the name
+// (not the base64) in state, and — the crux — that swapping the config to the
+// EQUIVALENT raw base64 value produces an EMPTY plan (the ModifyPlan semantic
+// equality suppression).
+func TestAccResource_DeviceGroup_DSGroupCriteria(t *testing.T) {
+	if os.Getenv(envDSGroupGate) == "" {
+		t.Skipf("set %s=1 (plus %s) to run directory-service group criteria acceptance", envDSGroupGate, envDSGroupName)
+	}
+	groupName := os.Getenv(envDSGroupName)
+	if groupName == "" {
+		t.Skipf("%s must be set", envDSGroupName)
+	}
+	testhelpers.AccPreCheck(t)
+
+	// Resolve the group exactly as the provider does, then encode it ourselves so
+	// the step-2 base64 is byte-identical to what the provider resolves the name
+	// to. Fail loudly (not skip) if the supplied name does not resolve uniquely —
+	// a misconfigured fixture should surface, not silently pass.
+	groups, err := ldapgroups.ResolveByName(context.Background(), pro.New(testhelpers.NewAcceptanceClient(t)), groupName)
+	if err != nil {
+		t.Fatalf("resolving %q: %v", groupName, err)
+	}
+	if len(groups) != 1 {
+		t.Fatalf("group %q must resolve to exactly one directory group (got %d) — pick an unambiguous name", groupName, len(groups))
+	}
+	if groups[0].UUID == "" {
+		t.Fatalf("group %q resolved with no uuid mapping; cannot build a directory-service group value", groupName)
+	}
+	groupValue := criteria.EncodeDSGroupValue(groups[0].UUID, strconv.Itoa(groups[0].LdapServerID))
+
+	// Optional independent oracle: if the operator supplied the real wire value,
+	// assert the provider's resolution reproduces it byte-for-byte (catches a
+	// shared-encoder bug the self-computed value cannot), then drive the swap with
+	// the operator-verified value rather than our own output.
+	if want := os.Getenv(envDSGroupValue); want != "" {
+		if groupValue != want {
+			t.Fatalf("provider resolved %q to %q, but %s=%q — name/value mismatch or an encoding bug", groupName, groupValue, envDSGroupValue, want)
+		}
+		groupValue = want
+	}
+
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-dsgroup-" + suffix
+
+	const criterion = "Username directory service group" // accepted on the computer surface
+
+	cfg := func(value string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_device_group" "dsgroup" {
+				name        = %q
+				description = "Acceptance test — safe to delete"
+				group_type  = "smart"
+				device_type = "computer"
+				criteria = [{
+					criteria = %q
+					operator = "member of"
+					value    = %q
+				}]
+			}
+		`, name, criterion, value)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// Author by NAME. State must round-trip back to the NAME (not base64).
+				Config: cfg(groupName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_device_group.dsgroup", "id"),
+					resource.TestCheckResourceAttr("jamfplatform_device_group.dsgroup", "criteria.0.criteria", criterion),
+					resource.TestCheckResourceAttr("jamfplatform_device_group.dsgroup", "criteria.0.value", groupName),
+				),
+			},
+			{
+				// Swap the config to the equivalent raw base64. Same group → no diff.
+				Config: cfg(groupValue),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+			{
+				// And back to the NAME again — also a no-op.
+				Config: cfg(groupName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 			},
 		},
 	})
