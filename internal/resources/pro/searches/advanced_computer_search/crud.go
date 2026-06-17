@@ -20,8 +20,54 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
+
+// dsGroupObjectType is the object class this resource targets, used to dispatch
+// the per-class directory-service group criterion allowlist.
+const dsGroupObjectType = criteria.ObjectTypeComputer
+
+// ModifyPlan suppresses a no-op diff when a directory-service group criterion's
+// planned value is a different REPRESENTATION of the same group already in state
+// (a raw base64 value swapped for the equivalent group name, or vice versa). It
+// resets such a criterion's planned value to the prior state value so
+// `terraform plan` shows nothing to change. Skips create (no prior state) and
+// destroy (no plan); soft — any resolve failure leaves the diff intact.
+func (r *AdvancedComputerSearchResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || r.ldap == nil {
+		return
+	}
+	var plan, state AdvancedComputerSearchResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() || len(plan.Criteria) == 0 {
+		return
+	}
+	suppressed := criteria.SuppressEquivalentDSGroupValues(ctx, r.ldap, plan.Criteria, state.Criteria)
+	if !dsGroupCriteriaChanged(suppressed, plan.Criteria) {
+		return // additive: only touch the plan when a representation actually collapsed
+	}
+	plan.Criteria = suppressed
+	// site_name is Computed without UseStateForUnknown, so core flipped it to
+	// unknown for the (now-reverted) update. When suppression reconciled the
+	// criteria back to state, restore it so a representation-only swap is an empty
+	// plan. Safe: site_name derives from the unchanged site_id.
+	if criteria.CriteriaModelsEqual(plan.Criteria, state.Criteria) {
+		plan.SiteName = state.SiteName
+	}
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
+// dsGroupCriteriaChanged reports whether suppression rewrote any criterion value.
+func dsGroupCriteriaChanged(suppressed, planned []criteria.CriterionModel) bool {
+	for i := range suppressed {
+		if !suppressed[i].Value.Equal(planned[i].Value) {
+			return true
+		}
+	}
+	return false
+}
 
 // Create creates a new advanced computer search. Classic POSTs to id="0"; the
 // server allocates the real integer ID and returns it in the response body
@@ -40,6 +86,13 @@ func (r *AdvancedComputerSearchResource) Create(ctx context.Context, req resourc
 	}
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
+
+	resolved, authored, dsDiags := criteria.ResolveDSGroupCriteria(createCtx, r.ldap, dsGroupObjectType, plan.Criteria)
+	resp.Diagnostics.Append(dsDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Criteria = resolved
 
 	input, inputDiags := buildAdvancedComputerSearchInput(createCtx, plan)
 	resp.Diagnostics.Append(inputDiags...)
@@ -70,6 +123,7 @@ func (r *AdvancedComputerSearchResource) Create(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plan.Criteria = criteria.RestoreAuthoredDSGroupCriteria(plan.Criteria, authored)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, advancedComputerSearchIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -142,10 +196,12 @@ func (r *AdvancedComputerSearchResource) Read(ctx context.Context, req resource.
 		return
 	}
 
+	priorCriteria := state.Criteria
 	resp.Diagnostics.Append(assignAdvancedComputerSearchResourceModel(readCtx, &state, got)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	state.Criteria = criteria.ReadbackDSGroupCriteria(readCtx, r.ldap, dsGroupObjectType, state.Criteria, priorCriteria)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, advancedComputerSearchIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -171,6 +227,13 @@ func (r *AdvancedComputerSearchResource) Update(ctx context.Context, req resourc
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
+	resolved, authored, dsDiags := criteria.ResolveDSGroupCriteria(updateCtx, r.ldap, dsGroupObjectType, plan.Criteria)
+	resp.Diagnostics.Append(dsDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	plan.Criteria = resolved
+
 	input, inputDiags := buildAdvancedComputerSearchInput(updateCtx, plan)
 	resp.Diagnostics.Append(inputDiags...)
 	if resp.Diagnostics.HasError() {
@@ -191,6 +254,7 @@ func (r *AdvancedComputerSearchResource) Update(ctx context.Context, req resourc
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plan.Criteria = criteria.RestoreAuthoredDSGroupCriteria(plan.Criteria, authored)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, advancedComputerSearchIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
