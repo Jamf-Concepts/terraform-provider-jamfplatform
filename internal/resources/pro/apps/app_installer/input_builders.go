@@ -34,8 +34,7 @@ func buildAppInstallerInput(plan AppInstallerResourceModel, appTitleID string) *
 		TriggerAdminNotifications:       optionalBoolPointer(plan.TriggerAdminNotifications),
 	}
 
-	updateBehavior := plan.UpdateBehavior.ValueString()
-	out.UpdateBehavior = &updateBehavior
+	out.UpdateBehavior = plan.UpdateBehavior.ValueString()
 
 	if plan.NotificationSettings != nil {
 		out.NotificationSettings = buildNotificationSettings(plan.NotificationSettings)

@@ -37,11 +37,8 @@ func TestBuildAppInstallerInput_UpdateBehaviorAlwaysSet(t *testing.T) {
 	// update_behavior is server-required; it must always be emitted from the
 	// known plan value (not routed through the Optional helper).
 	out := buildAppInstallerInput(baseModel(), "027")
-	if out.UpdateBehavior == nil {
-		t.Fatalf("update_behavior must always be set")
-	}
-	if *out.UpdateBehavior != updateBehaviorManual {
-		t.Errorf("update_behavior: got %q", *out.UpdateBehavior)
+	if out.UpdateBehavior != updateBehaviorManual {
+		t.Errorf("update_behavior: got %q", out.UpdateBehavior)
 	}
 }
 

@@ -4,6 +4,8 @@ github.com/Jamf-Concepts/jamfplatform-go-sdk v0.9.0 h1:CJ+kfoYVQlH6s8VtPEZOyIeoD
 github.com/Jamf-Concepts/jamfplatform-go-sdk v0.9.0/go.mod h1:Y0ZlFaMZhu1HIPML3+o+AUtZ7SC9aJ3zMC7kdMYcqnI=
 github.com/Jamf-Concepts/jamfplatform-go-sdk v0.9.1-0.20260618090315-54d3840d1399 h1:T5TTAy5txLIBSntbFjuHlaybgSfezT7AE4YsY9xjviA=
 github.com/Jamf-Concepts/jamfplatform-go-sdk v0.9.1-0.20260618090315-54d3840d1399/go.mod h1:Y0ZlFaMZhu1HIPML3+o+AUtZ7SC9aJ3zMC7kdMYcqnI=
+github.com/Jamf-Concepts/jamfplatform-go-sdk v0.9.1-0.20260618102343-db35004f532f h1:D/Wc3pKV8qqL05/esq3lQBXqzmTJg30EBq6c8j3dk94=
+github.com/Jamf-Concepts/jamfplatform-go-sdk v0.9.1-0.20260618102343-db35004f532f/go.mod h1:Y0ZlFaMZhu1HIPML3+o+AUtZ7SC9aJ3zMC7kdMYcqnI=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ProtonMail/go-crypto v1.4.1 h1:9RfcZHqEQUvP8RzecWEUafnZVtEvrBVL9BiF67IQOfM=
