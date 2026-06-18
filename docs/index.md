@@ -8,6 +8,7 @@ description: |-
   |---------|--------------------|--------------------------|
   | Jamf Pro | `jamfplatform_pro_*` | 11.29.0 |
   Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.
+  This provider builds on the work of Deployment Theory https://github.com/deploymenttheory's terraform-provider-jamfpro https://github.com/deploymenttheory/terraform-provider-jamfpro — first released in early 2024, the most widely adopted community Terraform provider for Jamf.
 ---
 
 # jamfplatform Provider
@@ -21,6 +22,8 @@ Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-ap
 | Jamf Pro | `jamfplatform_pro_*` | 11.29.0 |
 
 Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.
+
+This provider builds on the work of [Deployment Theory](https://github.com/deploymenttheory)'s [terraform-provider-jamfpro](https://github.com/deploymenttheory/terraform-provider-jamfpro) — first released in early 2024, the most widely adopted community Terraform provider for Jamf.
 
 ## Example Usage
 

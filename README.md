@@ -15,6 +15,10 @@ It additionally provides resources and data sources for [Jamf Pro](https://devel
 
 Note that some of these APIs are only available in private beta. Provider stability, functionality and schemas are subject to change without notice.
 
+## Acknowledgements
+
+This provider builds on a path charted by [Deployment Theory](https://github.com/deploymenttheory) and their [`terraform-provider-jamfpro`](https://github.com/deploymenttheory/terraform-provider-jamfpro) — first released in early 2024, it grew into the most comprehensive community Terraform provider for Jamf and the one the community rallied behind. It proved the depth of demand for managing Jamf as code and set the bar for what a Jamf provider could be; this provider would not exist in its current form without that groundwork. `terraform-provider-jamfpro` remains an independent, actively maintained project, and we're grateful to its maintainers for the foundation they laid.
+
 ## Requirements
 
 * Terraform >= 1.13.0, or OpenTofu >= 1.6.0
