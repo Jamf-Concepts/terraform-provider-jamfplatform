@@ -59,7 +59,6 @@ internal/
 │   └── validators/    # Shared Terraform Plugin Framework validators (unique-string-field across collections)
 └── testhelpers/       # Acceptance fixtures (provider factories, real client, mock server)
 tools/                 # go:generate entrypoint (copywrite, terraform fmt, tfplugindocs)
-testing/               # Terraform-native integration tests (.tftest.hcl, .tfquery.hcl)
 local-testing/         # Manual API request workflows for development (gitignored)
 examples/{provider,resources,data-sources,list-resources,actions}/
 docs/                  # Auto-generated provider documentation — do not hand-edit

@@ -26,11 +26,12 @@
 
 ## Testing
 
-### Integration Tests
+### Automated Tests
 
-- [ ] Added integration tests for new resources/data sources in `testing/`
-- [ ] All integration tests pass locally (`terraform test -verbose -parallelism=1`)
-- [ ] Verified symlinks are created correctly in test directories
+- [ ] Added Go unit tests (`schema_test.go`, `input_builders_test.go`, `state_builders_test.go`, and helpers/upgrader tests where relevant)
+- [ ] Added Go acceptance tests (`resource_acceptance_test.go` / `datasource_acceptance_test.go`, with `//go:build acceptance`) using `internal/testhelpers` factories
+- [ ] `make fix fmt lint test` passes locally
+- [ ] `make generate` run and regenerated `docs/` committed alongside the source
 
 ### Manual Testing
 
@@ -57,7 +58,7 @@
 - [ ] I have made corresponding changes to the documentation
 - [ ] My changes generate no new warnings or errors
 - [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing integration tests pass locally with my changes
+- [ ] New and existing Go unit and acceptance tests pass locally with my changes
 - [ ] Any dependent changes have been merged and published
 
 ## Additional Context
@@ -82,6 +83,6 @@ Relates to #
 - [ ] Code quality and style
 - [ ] Test coverage is adequate
 - [ ] Documentation is clear and complete
-- [ ] Integration tests pass in CI
+- [ ] Unit tests (and acceptance, where the `acceptance` gate is approved) pass in CI
 - [ ] Screenshots show expected behavior in Jamf Pro UI
 - [ ] No breaking changes (or properly documented)

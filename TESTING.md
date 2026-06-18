@@ -234,7 +234,3 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_CLIENT_ID`     | OAuth client ID                                               |
 | `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret                                           |
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — required provider credential; scopes all API requests          |
-
-## Terraform-Native Tests (Legacy / Supplementary)
-
-The `testing/` directory contains Terraform-native integration tests (`.tftest.hcl`, `.tfquery.hcl`) that use `terraform test` and `terraform query`. These have been superseded by the Go acceptance suite (now the gating CI suite) and are kept as a supplementary check only. They are **not** part of the CI pipeline. See [testing/README.md](testing/README.md) for usage.

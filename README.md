@@ -56,8 +56,6 @@ Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [TESTING
 4. **Run `make generate`** — regenerates `docs/` from schema descriptions and applies copyright headers.
 5. **CI** — `.github/workflows/integration-tests.yml` runs build, lint, docs-generation check, and the Go unit suite on every PR. The Go acceptance suite runs against a real tenant after a reviewer approves the `acceptance` environment gate.
 
-The Terraform-native tests under [testing/](./testing/) are supplementary and **not part of the CI pipeline** — the Go acceptance tests are now the gating suite.
-
 For bug reports, feature requests, or general discussion, please use [GitHub Issues](https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues).
 
 ---
