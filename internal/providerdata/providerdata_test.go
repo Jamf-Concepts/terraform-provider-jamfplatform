@@ -58,7 +58,7 @@ func TestConfigurePro_WrongType(t *testing.T) {
 func TestConfigurePro_HappyPath_NoMinVer(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
-			return "11.28.0", nil
+			return "11.29.0", nil
 		},
 	}
 	client, diags := ConfigurePro(context.Background(), pd, "", "jamfplatform_pro_test")
@@ -76,7 +76,7 @@ func TestConfigurePro_HappyPath_NoMinVer(t *testing.T) {
 func TestConfigurePro_MinVerGate_Satisfied(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
-			return "11.28.0", nil
+			return "11.29.0", nil
 		},
 	}
 	_, diags := ConfigurePro(context.Background(), pd, "11.5.0", "jamfplatform_pro_test")
@@ -128,7 +128,7 @@ func TestConfigurePro_FetchError_NotCached(t *testing.T) {
 			if calls == 1 {
 				return "", errors.New("transient network error")
 			}
-			return "11.28.0", nil
+			return "11.29.0", nil
 		},
 	}
 	// First call: empty minVer → fetch error is swallowed, client returned.
@@ -179,7 +179,7 @@ func TestConfigurePro_ShortCircuit_EmptyMinVerAfterFloorHandled(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
 			calls++
-			return "11.28.0", nil
+			return "11.29.0", nil
 		},
 	}
 	// First Configure: fetches and considers floor (no warning at floor).
@@ -243,7 +243,7 @@ func TestConfigureProClassic_WrongType(t *testing.T) {
 func TestConfigureProClassic_HappyPath_NoMinVer(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
-			return "11.28.0", nil
+			return "11.29.0", nil
 		},
 	}
 	client, diags := ConfigureProClassic(context.Background(), pd, "", "jamfplatform_pro_test")
@@ -315,7 +315,7 @@ func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
 			calls++
-			return "11.28.0", nil
+			return "11.29.0", nil
 		},
 	}
 	for i := range 3 {
@@ -323,8 +323,8 @@ func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 		if err != nil {
 			t.Fatalf("call %d: unexpected error %v", i, err)
 		}
-		if v != "11.28.0" {
-			t.Errorf("call %d: got %q, want %q", i, v, "11.28.0")
+		if v != "11.29.0" {
+			t.Errorf("call %d: got %q, want %q", i, v, "11.29.0")
 		}
 	}
 	if calls != 1 {

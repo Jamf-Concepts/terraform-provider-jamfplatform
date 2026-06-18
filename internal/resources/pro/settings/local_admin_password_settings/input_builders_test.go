@@ -11,8 +11,8 @@ import (
 )
 
 // current is a representative live-settings read used as the merge base.
-func current() *pro.LocalAdminPasswordSettings {
-	return &pro.LocalAdminPasswordSettings{
+func current() *pro.LapsSettingsResponseV2 {
+	return &pro.LapsSettingsResponseV2{
 		AutoDeployEnabled:        true,
 		PasswordRotationTime:     86400, // 1 day
 		AutoRotateEnabled:        true,
@@ -97,7 +97,7 @@ func TestBuildInput_NeverDefaultsWhenCurrentZero(t *testing.T) {
 // TestBuildInput_NeverZeroGuardsBothDurations proves neither duration is ever 0
 // (both server-rejected) even if the merge base carries zeros.
 func TestBuildInput_NeverZeroGuardsBothDurations(t *testing.T) {
-	base := &pro.LocalAdminPasswordSettings{} // all zero
+	base := &pro.LapsSettingsResponseV2{} // all zero
 	plan := LocalAdminPasswordSettingsResourceModel{
 		RotationInterval: types.StringValue(rotationIntervalNever),
 	}

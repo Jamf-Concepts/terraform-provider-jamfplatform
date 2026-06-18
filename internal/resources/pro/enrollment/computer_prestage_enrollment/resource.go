@@ -369,13 +369,6 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"auth_url": schema.StringAttribute{
-				MarkdownDescription: "Returned by Jamf Pro for the Platform SSO 403 workflow; not user-settable.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
 			"profile_uuid": schema.StringAttribute{
 				MarkdownDescription: "MDM profile UUID assigned by Jamf Pro; not user-settable.",
 				Computed:            true,

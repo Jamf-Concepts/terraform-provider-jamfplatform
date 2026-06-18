@@ -38,10 +38,22 @@ func snapshotAndRestoreLAPS(t *testing.T) {
 		t.Fatalf("snapshot LAPS settings: %v", err)
 	}
 	t.Cleanup(func() {
-		if _, err := c.UpdateLocalAdminPasswordSettingsV2(context.Background(), baseline); err != nil {
+		if _, err := c.UpdateLocalAdminPasswordSettingsV2(context.Background(), lapsResponseToRequest(baseline)); err != nil {
 			t.Errorf("restore LAPS settings: %v", err)
 		}
 	})
+}
+
+// lapsResponseToRequest mirrors a settings response into the request shape the
+// SDK Update call expects. The two types carry identical fields; the SDK split
+// them so a read result cannot be passed straight back to a write.
+func lapsResponseToRequest(r *pro.LapsSettingsResponseV2) *pro.LapsSettingsRequestV2 {
+	return &pro.LapsSettingsRequestV2{
+		AutoDeployEnabled:        r.AutoDeployEnabled,
+		AutoRotateEnabled:        r.AutoRotateEnabled,
+		AutoRotateExpirationTime: r.AutoRotateExpirationTime,
+		PasswordRotationTime:     r.PasswordRotationTime,
+	}
 }
 
 // checkLAPSStillExists verifies Delete did not remove the record.
@@ -117,7 +129,7 @@ func TestAccResource_ProLocalAdminPasswordSettings_NeverPreservesDormantExpirati
 	testhelpers.AccPreCheck(t)
 	snapshotAndRestoreLAPS(t)
 
-	setDormantExpiration := func(seconds int64) func() {
+	setDormantExpiration := func(seconds int) func() {
 		return func() {
 			c := pro.New(testhelpers.NewAcceptanceClient(t))
 			ctx := context.Background()
@@ -125,9 +137,10 @@ func TestAccResource_ProLocalAdminPasswordSettings_NeverPreservesDormantExpirati
 			if err != nil {
 				t.Fatalf("out-of-band GET: %v", err)
 			}
-			got.AutoRotateEnabled = false
-			got.AutoRotateExpirationTime = seconds
-			if _, err := c.UpdateLocalAdminPasswordSettingsV2(ctx, got); err != nil {
+			req := lapsResponseToRequest(got)
+			req.AutoRotateEnabled = false
+			req.AutoRotateExpirationTime = seconds
+			if _, err := c.UpdateLocalAdminPasswordSettingsV2(ctx, req); err != nil {
 				t.Fatalf("out-of-band PUT: %v", err)
 			}
 		}
@@ -179,8 +192,9 @@ func TestAccResource_ProLocalAdminPasswordSettings_SplitOwnership(t *testing.T) 
 			if err != nil {
 				t.Fatalf("out-of-band GET: %v", err)
 			}
-			got.AutoDeployEnabled = v
-			if _, err := c.UpdateLocalAdminPasswordSettingsV2(ctx, got); err != nil {
+			req := lapsResponseToRequest(got)
+			req.AutoDeployEnabled = v
+			if _, err := c.UpdateLocalAdminPasswordSettingsV2(ctx, req); err != nil {
 				t.Fatalf("out-of-band PUT: %v", err)
 			}
 		}

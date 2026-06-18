@@ -24,7 +24,7 @@ import (
 // version. Surfaces as a warning (not an error) when the tenant version is below it.
 // Bump at release time by grepping all minJamfProVersion constants under
 // internal/resources/pro/ and taking the max.
-const ProviderMinJamfProVersion = "11.28.0"
+const ProviderMinJamfProVersion = "11.29.0"
 
 // Data is the value passed via ResourceData/DataSourceData/ListResourceData/ActionData.
 // It bundles the authenticated SDK client with lazy Jamf Pro version state shared

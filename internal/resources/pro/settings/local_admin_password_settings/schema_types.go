@@ -28,7 +28,7 @@ const rotationIntervalNever = "Never"
 // UI dropdown exactly (Settings → Computer Management → Security). The server
 // stores arbitrary durations and does not enforce these presets, so the
 // provider's OneOf validator is the sole guard on the configured value.
-var rotationAfterViewingToDuration = map[string]int64{
+var rotationAfterViewingToDuration = map[string]int{
 	"1 hour":   3600,
 	"3 hours":  10800,
 	"12 hours": 43200,
@@ -45,7 +45,7 @@ var validRotationAfterViewingInterval = []string{
 
 // rotationIntervalDurationToValue maps each non-"Never" "Rotation interval"
 // dropdown preset to the duration the server stores for it.
-var rotationIntervalDurationToValue = map[string]int64{
+var rotationIntervalDurationToValue = map[string]int{
 	"7 days":   604800,
 	"30 days":  2592000,
 	"60 days":  5184000,
@@ -92,8 +92,8 @@ func markdownValueList(vals []string) string {
 }
 
 // invertDurationMap builds the duration -> label reverse of a label -> duration map.
-func invertDurationMap(m map[string]int64) map[int64]string {
-	out := make(map[int64]string, len(m))
+func invertDurationMap(m map[string]int) map[int]string {
+	out := make(map[int]string, len(m))
 	for label, dur := range m {
 		out[dur] = label
 	}

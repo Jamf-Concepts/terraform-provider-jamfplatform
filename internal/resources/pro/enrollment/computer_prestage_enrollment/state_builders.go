@@ -59,7 +59,6 @@ func assignGetToResource(_ context.Context, plan *ComputerPrestageEnrollmentReso
 	plan.PssoConfigProfileID = helpers.ReconcileOptionalStringPointer(got.PssoConfigProfileID, state.PssoConfigProfileID)
 	plan.ProfileURL = helpers.StringPointerValueOrNull(got.ProfileURL)
 	plan.ManifestURL = helpers.StringPointerValueOrNull(got.ManifestURL)
-	plan.AuthURL = helpers.StringPointerValueOrNull(got.AuthURL)
 	plan.ProfileUUID = types.StringValue(got.ProfileUUID)
 
 	prestageIDs := stringSliceToSet(got.PrestageInstalledProfileIds)

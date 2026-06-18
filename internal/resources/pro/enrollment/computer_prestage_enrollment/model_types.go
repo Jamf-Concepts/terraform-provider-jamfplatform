@@ -58,7 +58,6 @@ type ComputerPrestageEnrollmentResourceModel struct {
 	PssoConfigProfileID    types.String `tfsdk:"psso_config_profile_id"`
 	ProfileURL             types.String `tfsdk:"profile_url"`
 	ManifestURL            types.String `tfsdk:"manifest_url"`
-	AuthURL                types.String `tfsdk:"auth_url"`
 	ProfileUUID            types.String `tfsdk:"profile_uuid"`
 
 	SkipSetupItems        *SkipSetupItemsModel        `tfsdk:"skip_setup_items"`

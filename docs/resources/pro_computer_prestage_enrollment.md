@@ -107,7 +107,6 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "example" {
 
 ### Read-Only
 
-- `auth_url` (String) Returned by Jamf Pro for the Platform SSO 403 workflow; not user-settable.
 - `id` (String) Computer PreStage enrollment ID assigned by Jamf Pro.
 - `manifest_url` (String) Returned by Jamf Pro for the Platform SSO 403 workflow; not user-settable.
 - `profile_url` (String) Returned by Jamf Pro for the Platform SSO 403 workflow; not user-settable.

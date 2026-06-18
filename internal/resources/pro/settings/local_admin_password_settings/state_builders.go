@@ -25,7 +25,7 @@ import (
 // remedy. (rotation_after_viewing_interval has no "off" state, so an unsupported
 // value there always surfaces; rotation_interval only surfaces one while
 // automatic rotation is on.)
-func assignLocalAdminPasswordSettingsResourceModel(state *LocalAdminPasswordSettingsResourceModel, s *pro.LocalAdminPasswordSettings, diags *diag.Diagnostics) {
+func assignLocalAdminPasswordSettingsResourceModel(state *LocalAdminPasswordSettingsResourceModel, s *pro.LapsSettingsResponseV2, diags *diag.Diagnostics) {
 	if s == nil {
 		return
 	}
@@ -65,7 +65,7 @@ func assignLocalAdminPasswordSettingsResourceModel(state *LocalAdminPasswordSett
 // assignLocalAdminPasswordSettingsDataSourceModel populates data source state
 // from a LAPS settings response, reusing the resource mapping so the data source
 // presents the same UI-aligned values.
-func assignLocalAdminPasswordSettingsDataSourceModel(state *LocalAdminPasswordSettingsDataSourceModel, s *pro.LocalAdminPasswordSettings, diags *diag.Diagnostics) {
+func assignLocalAdminPasswordSettingsDataSourceModel(state *LocalAdminPasswordSettingsDataSourceModel, s *pro.LapsSettingsResponseV2, diags *diag.Diagnostics) {
 	if s == nil {
 		return
 	}

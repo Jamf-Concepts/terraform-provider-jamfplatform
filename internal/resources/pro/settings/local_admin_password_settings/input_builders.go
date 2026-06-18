@@ -22,8 +22,8 @@ import (
 // zero, even while automatic rotation is off. So when rotation_interval is
 // "Never" the builder turns automatic rotation off but keeps the existing
 // (non-zero) expiration duration as a dormant value rather than zeroing it.
-func buildLocalAdminPasswordSettingsInput(plan LocalAdminPasswordSettingsResourceModel, current *pro.LocalAdminPasswordSettings) *pro.LocalAdminPasswordSettings {
-	out := &pro.LocalAdminPasswordSettings{
+func buildLocalAdminPasswordSettingsInput(plan LocalAdminPasswordSettingsResourceModel, current *pro.LapsSettingsResponseV2) *pro.LapsSettingsRequestV2 {
+	out := &pro.LapsSettingsRequestV2{
 		AutoDeployEnabled:        current.AutoDeployEnabled,
 		PasswordRotationTime:     current.PasswordRotationTime,
 		AutoRotateEnabled:        current.AutoRotateEnabled,
@@ -67,7 +67,7 @@ func buildLocalAdminPasswordSettingsInput(plan LocalAdminPasswordSettingsResourc
 
 // nonZeroOrDefault returns dur when it is greater than zero, else the non-zero
 // default expiration duration.
-func nonZeroOrDefault(dur int64) int64 {
+func nonZeroOrDefault(dur int) int {
 	if dur > 0 {
 		return dur
 	}

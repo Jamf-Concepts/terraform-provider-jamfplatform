@@ -15,7 +15,7 @@ import (
 func TestAssignModel_MapsPresets(t *testing.T) {
 	var state LocalAdminPasswordSettingsResourceModel
 	var diags diag.Diagnostics
-	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LocalAdminPasswordSettings{
+	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LapsSettingsResponseV2{
 		AutoDeployEnabled:        true,
 		PasswordRotationTime:     604800, // 7 days
 		AutoRotateEnabled:        true,
@@ -42,7 +42,7 @@ func TestAssignModel_MapsPresets(t *testing.T) {
 func TestAssignModel_DisabledIsNever(t *testing.T) {
 	var state LocalAdminPasswordSettingsResourceModel
 	var diags diag.Diagnostics
-	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LocalAdminPasswordSettings{
+	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LapsSettingsResponseV2{
 		AutoDeployEnabled:        false,
 		PasswordRotationTime:     3600, // 1 hour
 		AutoRotateEnabled:        false,
@@ -63,7 +63,7 @@ func TestAssignModel_DisabledIsNever(t *testing.T) {
 func TestAssignModel_NonPresetAfterViewingErrors(t *testing.T) {
 	var state LocalAdminPasswordSettingsResourceModel
 	var diags diag.Diagnostics
-	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LocalAdminPasswordSettings{
+	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LapsSettingsResponseV2{
 		PasswordRotationTime:     12345, // custom, unsupported
 		AutoRotateEnabled:        false,
 		AutoRotateExpirationTime: 604800,
@@ -79,7 +79,7 @@ func TestAssignModel_NonPresetAfterViewingErrors(t *testing.T) {
 func TestAssignModel_NonPresetIntervalWhileEnabledErrors(t *testing.T) {
 	var state LocalAdminPasswordSettingsResourceModel
 	var diags diag.Diagnostics
-	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LocalAdminPasswordSettings{
+	assignLocalAdminPasswordSettingsResourceModel(&state, &pro.LapsSettingsResponseV2{
 		PasswordRotationTime:     604800,
 		AutoRotateEnabled:        true,
 		AutoRotateExpirationTime: 99999, // custom, unsupported, while enabled

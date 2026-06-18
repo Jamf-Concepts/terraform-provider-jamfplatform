@@ -6,7 +6,7 @@ description: |-
   Supported Jamf products and tenant version targets
   | Product | Resource namespace | Built against API as of |
   |---------|--------------------|--------------------------|
-  | Jamf Pro | `jamfplatform_pro_*` | 11.28.0 |
+  | Jamf Pro | `jamfplatform_pro_*` | 11.29.0 |
   Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.
 ---
 
@@ -18,7 +18,7 @@ Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-ap
 
 | Product | Resource namespace | Built against API as of |
 |---------|--------------------|--------------------------|
-| Jamf Pro | `jamfplatform_pro_*` | 11.28.0 |
+| Jamf Pro | `jamfplatform_pro_*` | 11.29.0 |
 
 Tenants below the listed version emit an advisory warning at apply time; individual resources that depend on newer endpoints declare their own per-resource floor and will error out explicitly on unsupported tenants. Resources outside the listed namespaces (Blueprints, Device Groups, Devices, Device Actions, Compliance Benchmarks) target continuously-deployed Jamf Platform microservices and have no tenant version requirement.
 
