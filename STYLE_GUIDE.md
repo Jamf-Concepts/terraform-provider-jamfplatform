@@ -448,7 +448,7 @@ Avoid `resource.ResourceWithConfigValidators` even for multi-attribute rules unl
 
 Jamf classic configuration-profile endpoints (`osxconfigurationprofiles`, `mobiledeviceconfigurationprofiles`) re-serialise the user-supplied `.mobileconfig` plist server-side: whitespace stripping, version normalisation (`1.0` → `1`), server-stamped defaults, top-level UUID/Identifier rewrites, per-payload display-name defaults keyed on `PayloadType`. Trying to *predict* every mutation produces a brittle map of `PayloadType` → server-default lookups that drifts the moment Jamf changes a default. The provider uses **mask-and-compare** instead.
 
-**Strategy.** The plan modifier parses both sides (user input + server-canonical state) and runs the same `maskServerControlledKeys(p)` function across both before comparing. The mask is symmetric and content-blind — the provider never needs to know that `com.apple.notificationsettings` defaults to `"Notifications Payload"`; both sides drop the key, both sides agree.
+**Strategy.** The plan modifier parses both sides (user input + server-canonical state) and runs the same `payloadhelpers.MaskPayload` mask across both before comparing. The mask is symmetric and content-blind — the provider never needs to know that `com.apple.notificationsettings` defaults to `"Notifications Payload"`; both sides drop the key, both sides agree.
 
 Mask drops (or empty-normalises) from **both** sides:
 
@@ -466,7 +466,7 @@ If `inp_masked == srv_masked` the modifier suppresses the diff by setting `plan.
 
 **Asymmetric envelope `<level>` normalisation.** Classic accepts `<level>Computer</level>` on write but echoes `<level>System</level>` on read; `<level>Computer Level</level>` is silently rejected and defaults to `User`. Use the input-boundary translation pattern from §"Asymmetric server normalisation on type-style discriminator fields" — translate user-facing `Computer Level` / `User Level` to wire `Computer` / `User` on write, map wire `System` / `User` back on read.
 
-Reference implementation: `internal/resources/pro/configuration_profiles/macos_configuration_profile/` (`helpers.go` mask logic, `plan_modifiers.go` plan-time integration, `crud.go` Update path injection, `resource.go` MarkdownDescription disclosing the masked key set to users).
+Reference implementation: the shared mask / compare / identifier-injection logic lives in `internal/resources/pro/configuration_profiles/payloadhelpers/` (`MaskPayload`, `PayloadsSemanticallyEqual`, `ThreeWayCompare`, `InjectTopLevelIdentifiers`); the per-resource glue is in `internal/resources/pro/configuration_profiles/macos_configuration_profile/` (`plan_modifiers.go` plan-time integration, `input_builders.go` / `crud.go` Update-path injection, `resource.go` MarkdownDescription disclosing the masked key set to users).
 
 ## Error Handling
 
@@ -904,7 +904,7 @@ Two wire behaviours flip the usual rules — **probe them, don't assume**:
 - **Unknown usernames are auto-created, not rejected.** A username that matches no existing user returns `201`, and the server *mints a new user record* for it (verified on `/classes`). So — unlike the [server-managed catalog](#referencing-a-server-managed-catalog-by-name) case — **do NOT add a plan-time name-existence validator**: there is nothing to validate against, and a "not found" check would be wrong. Referenced **group IDs**, by contrast, *are* validated (a bogus ID returns `409`) — rely on Jamf Pro's apply-time error for those.
 - **The server canonicalises usernames** (e.g. `Kyle@X` → `kyle@x` when it matches an existing user). A username-keyed `Set` therefore drifts unless the state builder preserves the configured casing: reconcile case-insensitively — when a returned value matches a configured one ignoring case, keep the configured spelling; otherwise take the server value. This both prevents the post-apply "produced inconsistent result" error and suppresses perpetual diffs.
 
-Membership is **authoritative**: emit every collection in full on every write so the config is the source of truth — an empty wrapper element clears it (see [§always-emit clear](#always-emit-clear--omitting-a-managed-collection-must-still-send-an-empty-wrapper) below if present, or the `advanced_computer_search` reference). Preserve the prior null-vs-empty set shape when the server returns nothing.
+Membership is **authoritative**: emit every collection in full on every write so the config is the source of truth — an empty wrapper element clears it (see [§Classic sub-collections — omit / empty / present clear semantics](#classic-sub-collections--omit--empty--present-clear-semantics), or the `advanced_computer_search` reference). Preserve the prior null-vs-empty set shape when the server returns nothing.
 
 Reference: `jamfplatform_pro_class` (`students`/`teachers` → Computed `student_ids`/`teacher_ids`).
 
@@ -966,7 +966,7 @@ Two extraction triggers apply, one for schemas and one for code helpers. They di
 
 **Code helpers — 2-consumer rule when logic is non-trivial.** Parsers, normalisation/diff-suppression functions, identifier injectors, and similar non-trivial code with no per-resource branching extract at the **second** consumer, not the third. Two copies of a 200-LOC plist mask or a `WriteOnly` rotation comparator means two places to chase the next server-side mutation; a duplicated bug now lives twice. The schema 3-consumer rule was written for cases where premature abstraction produces ugly branching — that risk does not apply to code helpers that compose without branching.
 
-Canonical example: when `jamfplatform_pro_mobile_device_configuration_profile` lands, lift the mobileconfig `maskServerControlledKeys` + `InjectIdentifiers` helpers from `internal/resources/pro/configuration_profiles/macos_configuration_profile/helpers.go` into `internal/common/profileconvert/` **before** duplicating them into the mobile package. Don't wait for the third.
+Canonical example: when `jamfplatform_pro_mobile_device_configuration_profile` landed as the second consumer of the mobileconfig mask / compare / identifier-injection helpers, they were lifted out of `macos_configuration_profile` into the shared `internal/resources/pro/configuration_profiles/payloadhelpers/` package (`MaskPayload`, `PayloadsSemanticallyEqual`, `ThreeWayCompare`, `InjectTopLevelIdentifiers`) at the second consumer — not duplicated, not deferred to a third. Both consumers live in the `configuration_profiles/` domain, so the shared package sits under that domain rather than `internal/common/`; reach for `internal/common/<topic>/` only when the consumers span domains.
 
 Trigger summary:
 
