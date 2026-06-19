@@ -5,7 +5,6 @@ package advanced_computer_search
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // buildAdvancedComputerSearchInput converts a plan model into the SDK payload
@@ -38,30 +38,12 @@ func buildAdvancedComputerSearchInput(ctx context.Context, plan AdvancedComputer
 
 	search := &proclassic.AdvancedComputerSearch{
 		Name:          &name,
-		Site:          buildSiteObject(plan.SiteID),
+		Site:          scope.BuildSiteObject(plan.SiteID),
 		Criteria:      buildCriteriaWrapper(plan.Criteria),
 		DisplayFields: displayFields,
 	}
 
 	return search, diags
-}
-
-// buildSiteObject converts the plan site_id into the SDK SiteObject. site_id is
-// Optional+Computed with a static default of "-1"; we always send a non-nil
-// Site so the wire payload is explicit about the NONE assignment.
-func buildSiteObject(siteID types.String) *proclassic.SiteObject {
-	if siteID.IsNull() || siteID.IsUnknown() {
-		return nil
-	}
-	idStr := siteID.ValueString()
-	if idStr == "" {
-		return nil
-	}
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return nil
-	}
-	return &proclassic.SiteObject{ID: &id}
 }
 
 // buildCriteriaWrapper wraps the shared criterion-slice builder in the

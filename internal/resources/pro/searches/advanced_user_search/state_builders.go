@@ -5,7 +5,6 @@ package advanced_user_search
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // assignAdvancedUserSearchResourceModel populates a resource model from an
@@ -29,7 +29,7 @@ func assignAdvancedUserSearchResourceModel(ctx context.Context, state *AdvancedU
 	}
 	state.Name = helpers.StringPointerValueOrNull(search.Name)
 
-	siteID, siteName := flattenSite(search.Site)
+	siteID, siteName := scope.FlattenSiteObject(search.Site)
 	state.SiteID = helpers.ReconcileOptionalStringPointer(siteID, state.SiteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
 
@@ -58,7 +58,7 @@ func assignAdvancedUserSearchDataSourceModel(ctx context.Context, state *Advance
 	}
 	state.Name = helpers.StringPointerValueOrNull(search.Name)
 
-	siteID, siteName := flattenSite(search.Site)
+	siteID, siteName := scope.FlattenSiteObject(search.Site)
 	state.SiteID = helpers.StringPointerValueOrNull(siteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
 
@@ -81,20 +81,6 @@ func criterionSlice(wrapper *proclassic.AdvancedUserSearchCriteria) *[]proclassi
 		return nil
 	}
 	return wrapper.Criterion
-}
-
-// flattenSite returns (id-as-string, name) pointers from a SiteObject. Returns
-// (nil, nil) when site is absent.
-func flattenSite(site *proclassic.SiteObject) (*string, *string) {
-	if site == nil {
-		return nil, nil
-	}
-	var idPtr *string
-	if site.ID != nil {
-		s := strconv.Itoa(*site.ID)
-		idPtr = &s
-	}
-	return idPtr, site.Name
 }
 
 // flattenDisplayFields converts the SDK display-fields wrapper into a Set of

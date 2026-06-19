@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -132,11 +133,11 @@ func TestGroupTypeFromIsSmart(t *testing.T) {
 }
 
 func TestFlattenSite(t *testing.T) {
-	id, name := flattenSite(&proclassic.SiteObject{ID: new(5), Name: new("Site5")})
+	id, name := scope.FlattenSiteObject(&proclassic.SiteObject{ID: new(5), Name: new("Site5")})
 	if id == nil || *id != "5" || name == nil || *name != "Site5" {
 		t.Errorf("unexpected: id=%v name=%v", id, name)
 	}
-	id, name = flattenSite(nil)
+	id, name = scope.FlattenSiteObject(nil)
 	if id != nil || name != nil {
 		t.Errorf("nil site must yield (nil, nil)")
 	}

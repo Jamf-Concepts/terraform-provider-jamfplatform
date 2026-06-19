@@ -85,36 +85,36 @@ func flattenEbookScope(ctx context.Context, s *proclassic.EbookScope, state *Ebo
 		t.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, t.AllJssUsers)
 
 		t.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-		t.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		t.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
 		t.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
-		t.MobileDeviceGroupIDs = flattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
-		t.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		t.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
-		t.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
-		t.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
-		t.ClassIDs = flattenIDNameSet(ctx, classSlice(s.Classes))
+		t.MobileDeviceGroupIDs = scope.FlattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
+		t.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		t.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
+		t.UserIDs = scope.FlattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
+		t.UserGroupIDs = scope.FlattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+		t.ClassIDs = scope.FlattenIDNameSet(ctx, classSlice(s.Classes))
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = flattenIDNameSet(ctx, limitationsSegmentSlice(l.NetworkSegments))
-		state.Limitations.DirectoryServiceOrLocalUserNames = flattenNameSet(ctx, limitationsUserSlice(l.Users))
-		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, limitationsUserGroupSlice(l.UserGroups))
+		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, limitationsSegmentSlice(l.NetworkSegments))
+		state.Limitations.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, limitationsUserSlice(l.Users))
+		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, limitationsUserGroupSlice(l.UserGroups))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
 		state.Exclusions.ComputerIDs = flattenExclComputerItemSet(ctx, e.Computers)
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
 		state.Exclusions.MobileDeviceIDs = flattenExclMobileDeviceItemSet(ctx, e.MobileDevices)
-		state.Exclusions.MobileDeviceGroupIDs = flattenIDNameSet(ctx, exclMobileDeviceGroupSlice(e.MobileDeviceGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.UserIDs = flattenIDNameSet(ctx, exclJssUserSlice(e.JssUsers))
-		state.Exclusions.UserGroupIDs = flattenIDNameSet(ctx, exclJssUserGroupSlice(e.JssUserGroups))
+		state.Exclusions.MobileDeviceGroupIDs = scope.FlattenIDNameSet(ctx, exclMobileDeviceGroupSlice(e.MobileDeviceGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
+		state.Exclusions.UserIDs = scope.FlattenIDNameSet(ctx, exclJssUserSlice(e.JssUsers))
+		state.Exclusions.UserGroupIDs = scope.FlattenIDNameSet(ctx, exclJssUserGroupSlice(e.JssUserGroups))
 		state.Exclusions.NetworkSegmentIDs = flattenExclNetworkSegmentSet(ctx, e.NetworkSegments)
 		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenExclUsersNameSet(ctx, e.Users)
-		state.Exclusions.DirectoryServiceUserGroupNames = flattenNameSet(ctx, exclUserGroupSlice(e.UserGroups))
+		state.Exclusions.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, exclUserGroupSlice(e.UserGroups))
 	}
 }
 
@@ -343,15 +343,5 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.EbookScopeExclus
 		return types.SetNull(types.StringType)
 	}
 	out, _ := scope.FlattenNameSlice(ctx, u.User, func(i proclassic.EbookScopeExclusionsUsersUserItem) *string { return i.Name })
-	return out
-}
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
-
-func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.IDName) *string { return i.Name })
 	return out
 }

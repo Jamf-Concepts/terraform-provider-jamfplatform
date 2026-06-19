@@ -68,19 +68,19 @@ func flattenGeneral(g *proclassic.RestrictedSoftwareGeneral, state *RestrictedSo
 func flattenScope(ctx context.Context, s *proclassic.RestrictedSoftwareScope, state *RestrictedSoftwareScopeModel) {
 	if state.Targets != nil {
 		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.ComputerIDs = flattenIDNameSet(ctx, computerSlice(s.Computers))
-		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+		state.Targets.ComputerIDs = scope.FlattenIDNameSet(ctx, computerSlice(s.Computers))
+		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
-		state.Exclusions.ComputerIDs = flattenIDNameSet(ctx, exclComputerSlice(e.Computers))
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenNameSet(ctx, exclUsersSlice(e.Users))
+		state.Exclusions.ComputerIDs = scope.FlattenIDNameSet(ctx, exclComputerSlice(e.Computers))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
+		state.Exclusions.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, exclUsersSlice(e.Users))
 	}
 }
 
@@ -150,13 +150,3 @@ func exclUsersSlice(u *proclassic.RestrictedSoftwareScopeExclusionsUsers) *[]pro
 }
 
 // ---- set flatteners ------------------------------------------------------------
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
-
-func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.IDName) *string { return i.Name })
-	return out
-}
