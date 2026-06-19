@@ -79,7 +79,11 @@ jobs:
         # sourced from a GitHub secret; when a secret is unset the value is empty
         # and the corresponding suite self-skips (t.Skip) rather than failing.
         # Source of truth: Getenv/LookupEnv sweep of internal/** (re-run before edits).
-      - run: go test -v -cover -count=1 -tags=acceptance -p=1 ./...
+      - name: Acceptance tests
+        id: acc
+        run: |
+          set -o pipefail
+          go test -v -cover -count=1 -tags=acceptance -p=1 ./... 2>&1 | tee test-output.log
         env:
           TF_ACC: "1"
 
@@ -148,3 +152,31 @@ jobs:
 
           # --- Tuning ---
           JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS: ${{ secrets.JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS }}
+
+      # Surface which acceptance suites actually ran vs. self-skipped, so an
+      # env-gated suite that never executes (missing secret) is visible instead
+      # of vanishing into a green check. Counts top-level TestAcc* results only.
+      - name: Gated suite summary
+        if: always()
+        run: |
+          log=test-output.log
+          {
+            echo "## Acceptance suite summary"
+            echo
+            if [ ! -s "$log" ]; then
+              echo "_No test output captured (job failed before tests ran)._"
+              exit 0
+            fi
+            pass=$(grep -cE '^--- PASS: TestAcc[^/]+\(' "$log" || true)
+            fail=$(grep -cE '^--- FAIL: TestAcc[^/]+\(' "$log" || true)
+            skip=$(grep -cE '^--- SKIP: TestAcc[^/]+\(' "$log" || true)
+            echo "**Ran:** ${pass:-0} passed, ${fail:-0} failed · **Skipped:** ${skip:-0}"
+            echo
+            echo "<details><summary>Skipped suites (gate unset)</summary>"
+            echo
+            echo '```'
+            grep -E '^--- SKIP: TestAcc[^/]+\(' "$log" | sed -E 's/^--- SKIP: //' | sort -u || true
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
