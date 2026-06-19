@@ -47,7 +47,7 @@ func RequireSingletonStillExists(t *testing.T, label string, get func(context.Co
 		if got == nil {
 			return fmt.Errorf("expected non-nil %s record post-destroy", label)
 		}
-		if rv := reflect.ValueOf(got); rv.Kind() == reflect.Ptr && rv.IsNil() {
+		if rv := reflect.ValueOf(got); rv.Kind() == reflect.Pointer && rv.IsNil() {
 			return fmt.Errorf("expected non-nil %s record post-destroy", label)
 		}
 		return nil
