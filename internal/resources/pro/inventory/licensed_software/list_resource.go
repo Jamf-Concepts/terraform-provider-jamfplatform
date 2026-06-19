@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -127,6 +128,33 @@ func (r *LicensedSoftwareListResource) List(ctx context.Context, req list.ListRe
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			// The classic /licensedsoftware list response carries id and name
+			// only. Every other Optional/Computed attribute is null on list
+			// results; full detail requires a per-record read.
+			state := LicensedSoftwareResourceModel{
+				ID:                                 id,
+				Name:                               helpers.StringPointerValueOrNull(item.Name),
+				Publisher:                          types.StringNull(),
+				Platform:                           types.StringNull(),
+				Notes:                              types.StringNull(),
+				SendEmailOnViolation:               types.BoolNull(),
+				RemoveTitlesFromInventoryReports:   types.BoolNull(),
+				ExcludeTitlesPurchasedFromAppStore: types.BoolNull(),
+				SiteID:                             types.StringNull(),
+				SiteName:                           types.StringNull(),
+				SoftwareDefinitions:                nil,
+				Licenses:                           nil,
+				Computers:                          types.ListNull(computerObjectType),
+				Timeouts:                           helpers.NewResourceTimeoutsNullValue(licensedSoftwareTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)
