@@ -181,33 +181,33 @@ func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *s
 		state.Targets.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
 		state.Targets.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups))
-		state.Targets.BuildingIDs = flattenIDNameSet(ctx, idNameSliceFromBuildings(s.Buildings))
-		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, idNameSliceFromDepartments(s.Departments))
-		state.Targets.UserIDs = flattenIDNameSet(ctx, idNameSliceFromJssUsers(s.JssUsers))
-		state.Targets.UserGroupIDs = flattenIDNameSet(ctx, idNameSliceFromJssUserGroups(s.JssUserGroups))
+		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups))
+		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromBuildings(s.Buildings))
+		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromDepartments(s.Departments))
+		state.Targets.UserIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromJssUsers(s.JssUsers))
+		state.Targets.UserGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromJssUserGroups(s.JssUserGroups))
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = flattenIDNameSet(ctx, idNameSliceFromLimitationsSegments(l.NetworkSegments))
-		state.Limitations.IbeaconIDs = flattenIDNameSet(ctx, idNameSliceFromLimitationsIbeacons(l.Ibeacons))
-		state.Limitations.DirectoryServiceOrLocalUserNames = flattenNameSet(ctx, idNameSliceFromLimitationsUsers(l.Users))
-		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, idNameSliceFromLimitationsUserGroups(l.UserGroups))
+		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromLimitationsSegments(l.NetworkSegments))
+		state.Limitations.IbeaconIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromLimitationsIbeacons(l.Ibeacons))
+		state.Limitations.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, idNameSliceFromLimitationsUsers(l.Users))
+		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, idNameSliceFromLimitationsUserGroups(l.UserGroups))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
 		state.Exclusions.ComputerIDs = flattenExclComputerItemSet(ctx, e.Computers)
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, idNameSliceFromExclComputerGroups(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, idNameSliceFromExclBuildings(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, idNameSliceFromExclDepartments(e.Departments))
-		state.Exclusions.UserIDs = flattenIDNameSet(ctx, idNameSliceFromExclJssUsers(e.JssUsers))
-		state.Exclusions.UserGroupIDs = flattenIDNameSet(ctx, idNameSliceFromExclJssUserGroups(e.JssUserGroups))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclComputerGroups(e.ComputerGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclBuildings(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclDepartments(e.Departments))
+		state.Exclusions.UserIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUsers(e.JssUsers))
+		state.Exclusions.UserGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUserGroups(e.JssUserGroups))
 		state.Exclusions.NetworkSegmentIDs = flattenExclNetworkSegmentSet(ctx, e.NetworkSegments)
-		state.Exclusions.IbeaconIDs = flattenIDNameSet(ctx, idNameSliceFromExclIbeacons(e.Ibeacons))
+		state.Exclusions.IbeaconIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclIbeacons(e.Ibeacons))
 		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenExclUsersNameSet(ctx, e.Users)
-		state.Exclusions.DirectoryServiceUserGroupNames = flattenNameSet(ctx, idNameSliceFromExclUserGroups(e.UserGroups))
+		state.Exclusions.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, idNameSliceFromExclUserGroups(e.UserGroups))
 	}
 
 	return diags
@@ -358,16 +358,6 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.PolicyScopeExclu
 		return types.SetNull(types.StringType)
 	}
 	out, _ := scope.FlattenNameSlice(ctx, u.User, func(i proclassic.PolicyScopeExclusionsUsersUserItem) *string { return i.Name })
-	return out
-}
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
-
-func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.IDName) *string { return i.Name })
 	return out
 }
 

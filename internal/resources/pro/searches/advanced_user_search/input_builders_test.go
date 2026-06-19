@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func TestBuildInput_AlwaysEmitsCriteriaAndDisplayWrappers(t *testing.T) {
@@ -60,10 +61,10 @@ func TestBuildInput_PopulatedCriteriaAndDisplay(t *testing.T) {
 }
 
 func TestBuildSiteObject_NoneSentinel(t *testing.T) {
-	if got := buildSiteObject(types.StringValue("-1")); got == nil || got.ID == nil || *got.ID != -1 {
+	if got := scope.BuildSiteObject(types.StringValue("-1")); got == nil || got.ID == nil || *got.ID != -1 {
 		t.Errorf("expected site id -1, got %v", got)
 	}
-	if got := buildSiteObject(types.StringNull()); got != nil {
+	if got := scope.BuildSiteObject(types.StringNull()); got != nil {
 		t.Errorf("null site_id should produce nil SiteObject, got %v", got)
 	}
 }

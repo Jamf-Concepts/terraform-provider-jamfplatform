@@ -105,25 +105,25 @@ func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *Pa
 	if state.Targets != nil {
 		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
 		state.Targets.ComputerIDs = flattenComputerSet(ctx, computerSlice(s.Computers))
-		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = flattenIDNameSet(ctx, limitationsNetworkSegmentSlice(l.NetworkSegments))
-		state.Limitations.IbeaconIDs = flattenIDNameSet(ctx, limitationsIbeaconSlice(l.Ibeacons))
+		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, limitationsNetworkSegmentSlice(l.NetworkSegments))
+		state.Limitations.IbeaconIDs = scope.FlattenIDNameSet(ctx, limitationsIbeaconSlice(l.Ibeacons))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
 		state.Exclusions.ComputerIDs = flattenExclComputerSet(ctx, exclComputerSlice(e.Computers))
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.NetworkSegmentIDs = flattenIDNameSet(ctx, exclNetworkSegmentSlice(e.NetworkSegments))
-		state.Exclusions.IbeaconIDs = flattenIDNameSet(ctx, exclIbeaconSlice(e.Ibeacons))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
+		state.Exclusions.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, exclNetworkSegmentSlice(e.NetworkSegments))
+		state.Exclusions.IbeaconIDs = scope.FlattenIDNameSet(ctx, exclIbeaconSlice(e.Ibeacons))
 	}
 }
 
@@ -283,11 +283,6 @@ func exclIbeaconSlice(i *proclassic.PatchPolicyScopeExclusionsIbeacons) *[]procl
 }
 
 // ---- set flatteners ------------------------------------------------------------
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
 
 func flattenComputerSet(ctx context.Context, items *[]proclassic.PatchPolicyScopeComputersComputerItem) types.Set {
 	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.PatchPolicyScopeComputersComputerItem) *int { return i.ID })

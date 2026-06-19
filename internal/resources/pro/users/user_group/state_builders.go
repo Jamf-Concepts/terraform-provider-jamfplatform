@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // assignUserGroupResourceModel populates a resource model from a UserGroup
@@ -45,7 +46,7 @@ func assignUserGroupResourceModel(
 	// returned the value.
 	state.NotifyOnMembershipChange = helpers.BoolPointerValueOrNull(ug.IsNotifyOnChange)
 
-	siteID, siteName := flattenSite(ug.Site)
+	siteID, siteName := scope.FlattenSiteObject(ug.Site)
 	state.SiteID = helpers.ReconcileOptionalStringPointer(siteID, state.SiteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
 
@@ -95,7 +96,7 @@ func assignUserGroupDataSourceModel(state *UserGroupDataSourceModel, ug *proclas
 	state.GroupType = groupTypeFromIsSmart(ug.IsSmart)
 	state.NotifyOnMembershipChange = helpers.BoolPointerValueOrNull(ug.IsNotifyOnChange)
 
-	siteID, siteName := flattenSite(ug.Site)
+	siteID, siteName := scope.FlattenSiteObject(ug.Site)
 	state.SiteID = helpers.StringPointerValueOrNull(siteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
 
@@ -115,20 +116,6 @@ func groupTypeFromIsSmart(isSmart *bool) types.String {
 		return types.StringValue("smart")
 	}
 	return types.StringValue("static")
-}
-
-// flattenSite returns (id-as-string, name) pointers from a SiteObject.
-// Returns (nil, nil) when site is absent.
-func flattenSite(site *proclassic.SiteObject) (*string, *string) {
-	if site == nil {
-		return nil, nil
-	}
-	var idPtr *string
-	if site.ID != nil {
-		s := strconv.Itoa(*site.ID)
-		idPtr = &s
-	}
-	return idPtr, site.Name
 }
 
 // flattenCriteria converts the SDK criteria wrapper into the Terraform model

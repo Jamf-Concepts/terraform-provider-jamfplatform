@@ -24,7 +24,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -49,17 +48,9 @@ func currentActivationCode(t *testing.T) (org, code string) {
 // checkSingletonRecordStillExists verifies the activation code record persists on the
 // tenant after Terraform destroys the resource from state (the remote Delete is a no-op).
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := proclassic.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetActivationCode(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected activation code record to persist on tenant after destroy, got error: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil activation code record post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "activation code", func(ctx context.Context) (any, error) {
+		return proclassic.New(testhelpers.NewAcceptanceClient(t)).GetActivationCode(ctx)
+	})
 }
 
 func configFor(org, code string) string {

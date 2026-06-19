@@ -7,13 +7,11 @@ package self_service_plus_settings_test
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -23,17 +21,9 @@ import (
 // Canonical singleton acceptance check: the remote Delete is a no-op, so the API
 // must still return the record (with whatever value was last applied) post-destroy.
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := pro.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetSelfServicePlusSettingsV1(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected Self Service Plus settings record to persist on tenant after destroy, got error: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil Self Service Plus settings record post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "Self Service Plus settings", func(ctx context.Context) (any, error) {
+		return pro.New(testhelpers.NewAcceptanceClient(t)).GetSelfServicePlusSettingsV1(ctx)
+	})
 }
 
 // TestAccResource_ProSelfServicePlusSettings_Basic toggles Self Service Plus on, then

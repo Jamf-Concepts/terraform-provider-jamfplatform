@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // buildUserGroupInput converts a plan model into the SDK UserGroup payload used
@@ -30,7 +31,7 @@ func buildUserGroupInput(ctx context.Context, plan UserGroupResourceModel) (*pro
 		Name:             helpers.OptionalStringPointer(plan.Name),
 		IsSmart:          &isSmart,
 		IsNotifyOnChange: plan.NotifyOnMembershipChange.ValueBoolPointer(),
-		Site:             buildSiteObject(plan.SiteID),
+		Site:             scope.BuildSiteObject(plan.SiteID),
 	}
 
 	if isSmart {
@@ -45,26 +46,6 @@ func buildUserGroupInput(ctx context.Context, plan UserGroupResourceModel) (*pro
 	}
 
 	return ug, diags
-}
-
-// buildSiteObject converts the plan site_id into the SDK SiteObject. site_id
-// is Optional+Computed with a static default of "-1"; we always send a
-// non-nil Site so the wire payload is explicit about NONE assignment unless
-// the value is Unknown (during initial Create with no default applied yet,
-// which the framework default avoids in practice).
-func buildSiteObject(siteID types.String) *proclassic.SiteObject {
-	if siteID.IsNull() || siteID.IsUnknown() {
-		return nil
-	}
-	idStr := siteID.ValueString()
-	if idStr == "" {
-		return nil
-	}
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return nil
-	}
-	return &proclassic.SiteObject{ID: &id}
 }
 
 // buildCriteriaWrapper expands the plan criteria slice into the SDK's wrapper
