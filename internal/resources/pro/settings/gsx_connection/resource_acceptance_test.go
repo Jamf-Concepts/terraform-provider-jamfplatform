@@ -14,7 +14,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -64,17 +63,9 @@ func requireGsxCreds(t *testing.T) gsxCreds {
 // checkSingletonRecordStillExists verifies the GSX Connection record persists on the tenant
 // after Terraform destroys the resource from state (Delete is a no-op for singletons).
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := pro.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetGSXConnectionV1(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected GSX Connection record to persist on tenant after destroy: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil GSX Connection record post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "GSX Connection", func(ctx context.Context) (any, error) {
+		return pro.New(testhelpers.NewAcceptanceClient(t)).GetGSXConnectionV1(ctx)
+	})
 }
 
 func gsxConfig(c gsxCreds, enabled bool) string {

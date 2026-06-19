@@ -6,18 +6,13 @@
 package advanced_mobile_device_search_test
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"testing"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
@@ -27,29 +22,9 @@ import (
 // readback / suppress paths bridge types.List <-> []CriterionModel — exercise
 // that round-trip end to end. See the computer-search counterpart for rationale.
 const (
-	envDSGroupGate  = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP"
-	envDSGroupName  = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME"
-	envDSGroupValue = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_VALUE" // optional independent oracle
+	envDSGroupGate = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP"
+	envDSGroupName = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME"
 )
-
-func resolveDSGroupWireValue(t *testing.T, name string) string {
-	t.Helper()
-	groups, err := ldapgroups.ResolveByName(context.Background(), pro.New(testhelpers.NewAcceptanceClient(t)), name)
-	if err != nil {
-		t.Fatalf("resolving %q: %v", name, err)
-	}
-	if len(groups) != 1 {
-		t.Fatalf("group %q must resolve to exactly one directory group (got %d) — pick an unambiguous name", name, len(groups))
-	}
-	if groups[0].UUID == "" {
-		t.Fatalf("group %q resolved with no uuid mapping", name)
-	}
-	wire := criteria.EncodeDSGroupValue(groups[0].UUID, strconv.Itoa(groups[0].LdapServerID))
-	if want := os.Getenv(envDSGroupValue); want != "" && wire != want {
-		t.Fatalf("provider resolved %q to %q, but %s=%q — name/value mismatch or an encoding bug", name, wire, envDSGroupValue, want)
-	}
-	return wire
-}
 
 // TestAccResource_AMDS_DSGroupCriteria mirrors the computer-search test on the
 // mobile (Pro v1, types.List) surface.
@@ -62,7 +37,7 @@ func TestAccResource_AMDS_DSGroupCriteria(t *testing.T) {
 		t.Skipf("%s must be set", envDSGroupName)
 	}
 	testhelpers.AccPreCheck(t)
-	groupValue := resolveDSGroupWireValue(t, groupName)
+	groupValue := testhelpers.ResolveDSGroupWireValue(t, groupName)
 
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-amds-dsgroup-" + suffix

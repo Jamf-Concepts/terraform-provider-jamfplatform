@@ -213,17 +213,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 `, name, payload, jssUserID)
 }
 
-// newSDKClient returns a ProClassic SDK client wired to the acceptance-test
-// credentials. Used for setting up + tearing down fixture computers/users
-// the scope tests reference by classic ID.
-func newSDKClient(t *testing.T) *proclassic.Client {
-	t.Helper()
-	return proclassic.New(testhelpers.NewAcceptanceClient(t))
-}
-
 func createDummyComputer(t *testing.T, name string) string {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 	if err := c.CreateComputerByID(ctx, "0", &proclassic.ComputerPost{
 		General: &proclassic.ComputerPostGeneral{Name: &name},
@@ -245,7 +237,7 @@ func createDummyComputer(t *testing.T, name string) string {
 
 func createDummyUser(t *testing.T, name string) string {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 	got, err := c.CreateUserByID(ctx, "0", &proclassic.UserPost{Name: &name})
 	if err != nil || got == nil || got.ID == nil {
@@ -632,7 +624,7 @@ func TestAccResource_MacOSConfigurationProfile_ImportState(t *testing.T) {
 // survive the round-trip and surface as drift on the next plan.
 func mutatePPPCProfileChangeIdentifier(t *testing.T, profileID, newIdentifierValue string) {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 
 	got, err := c.GetOSXConfigurationProfileByID(ctx, profileID)
@@ -785,7 +777,7 @@ func TestAccResource_MacOSConfigurationProfile_AdminUIEdit_SurfacesAsDrift(t *te
 // trip when the entry dict is well-formed.
 func mutatePPPCProfileAddValidService(t *testing.T, profileID, serviceKey string) {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 
 	got, err := c.GetOSXConfigurationProfileByID(ctx, profileID)
@@ -827,7 +819,7 @@ func mutatePPPCProfileAddValidService(t *testing.T, profileID, serviceKey string
 // from PayloadContent[0].Services.
 func mutatePPPCProfileRemoveFirstService(t *testing.T, profileID string) {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 
 	got, err := c.GetOSXConfigurationProfileByID(ctx, profileID)

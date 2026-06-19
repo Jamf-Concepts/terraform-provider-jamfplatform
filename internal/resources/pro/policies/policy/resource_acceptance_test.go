@@ -30,16 +30,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
-// newSDKClient returns a real ProClassic SDK client wired to the same
-// acceptance-test credentials the provider factory uses. Used for setup +
-// teardown of fixture records (computer, user) that the project does not yet
-// expose as Terraform resources but the policy resource's scope sub-blocks
-// reference by classic ID.
-func newSDKClient(t *testing.T) *proclassic.Client {
-	t.Helper()
-	return proclassic.New(testhelpers.NewAcceptanceClient(t))
-}
-
 // createDummyComputer creates a minimal classic computer record via the SDK
 // and returns its server-assigned ID as a string. Cleanup runs at test end
 // via t.Cleanup.
@@ -49,7 +39,7 @@ func newSDKClient(t *testing.T) *proclassic.Client {
 // by name to discover the assigned ID.
 func createDummyComputer(t *testing.T, name string) string {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 	if err := c.CreateComputerByID(ctx, "0", &proclassic.ComputerPost{
 		General: &proclassic.ComputerPostGeneral{Name: &name},
@@ -74,7 +64,7 @@ func createDummyComputer(t *testing.T, name string) string {
 // t.Cleanup.
 func createDummyUser(t *testing.T, name string) string {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 	got, err := c.CreateUserByID(ctx, "0", &proclassic.UserPost{Name: &name})
 	if err != nil || got == nil || got.ID == nil {
