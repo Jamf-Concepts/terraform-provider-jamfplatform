@@ -19,16 +19,6 @@ const (
 	updateBehaviorManual    = "MANUAL"
 )
 
-// optionalBoolPointer collapses null/unknown TF Bool to nil so an omitted field
-// is dropped from the wire payload.
-func optionalBoolPointer(value types.Bool) *bool {
-	if !helpers.IsConfiguredValue(value) {
-		return nil
-	}
-	v := value.ValueBool()
-	return &v
-}
-
 // boolPointerOrFalse returns the bool value, treating null/unknown as false.
 // Used for the Self Service booleans, which the server defaults to false and so
 // are always emitted.

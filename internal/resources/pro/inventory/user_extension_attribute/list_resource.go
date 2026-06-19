@@ -125,7 +125,7 @@ func (r *UserExtensionAttributeListResource) List(ctx context.Context, req list.
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(item.Name)
+		result.DisplayName = helpers.DerefString(item.Name)
 
 		id := helpers.StringValueFromIntPtr(item.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, userExtensionAttributeIdentityModel{ID: id})...)
@@ -179,13 +179,5 @@ func (r *UserExtensionAttributeListResource) List(ctx context.Context, req list.
 // userExtensionAttributeListItemName is the name accessor passed to
 // filters.ApplyClassicFilter.
 func userExtensionAttributeListItemName(s proclassic.IDName) string {
-	return derefString(s.Name)
-}
-
-// derefString returns the value of a *string or "" when nil.
-func derefString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
+	return helpers.DerefString(s.Name)
 }

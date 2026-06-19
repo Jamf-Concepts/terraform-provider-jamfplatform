@@ -115,7 +115,7 @@ func (r *AccountGroupListResource) List(ctx context.Context, req list.ListReques
 
 		id := helpers.StringValueFromIntPtr(g.ID)
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(g.Name)
+		result.DisplayName = helpers.DerefString(g.Name)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, accountGroupIdentityModel{ID: id})...)
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
@@ -165,12 +165,4 @@ func (r *AccountGroupListResource) List(ctx context.Context, req list.ListReques
 }
 
 // groupItemName is the name accessor for the classic group list filter.
-func groupItemName(g proclassic.AccountsGroupsGroupItem) string { return derefString(g.Name) }
-
-// derefString returns the underlying string for a non-nil *string, or "".
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
+func groupItemName(g proclassic.AccountsGroupsGroupItem) string { return helpers.DerefString(g.Name) }

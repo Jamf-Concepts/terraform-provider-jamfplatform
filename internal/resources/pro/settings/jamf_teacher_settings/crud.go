@@ -35,16 +35,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler
-// fires before Configure has populated r.client. Defense-in-depth: in normal
-// operation the framework gates CRUD on a successful Configure, but a
-// misconfigured provider block or a future framework change could route to CRUD
-// with a nil client and panic the SDK call site.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the singleton. The Jamf Teacher settings object always
 // exists on the tenant, so Create is really adoption: read the live settings
 // and pass them as the merge base so fields the user did not declare keep their
@@ -53,7 +43,7 @@ func providerNotConfiguredError() (string, string) {
 // into the plan as known prior values.)
 func (r *JamfTeacherSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -81,7 +71,7 @@ func (r *JamfTeacherSettingsResource) Create(ctx context.Context, req resource.C
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, jamfTeacherSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -95,7 +85,7 @@ func (r *JamfTeacherSettingsResource) Create(ctx context.Context, req resource.C
 // Read refreshes Terraform state with the latest Jamf Teacher settings.
 func (r *JamfTeacherSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -103,7 +93,7 @@ func (r *JamfTeacherSettingsResource) Read(ctx context.Context, req resource.Rea
 	isImport := req.State.Raw.IsNull()
 
 	if isImport {
-		state.ID = initialID()
+		state.ID = helpers.InitialSingletonID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(jamfTeacherSettingsTimeoutAttributeTypes)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -130,7 +120,7 @@ func (r *JamfTeacherSettingsResource) Read(ctx context.Context, req resource.Rea
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	state.ID = initialID()
+	state.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, jamfTeacherSettingsIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -144,7 +134,7 @@ func (r *JamfTeacherSettingsResource) Read(ctx context.Context, req resource.Rea
 // plan as known prior values.
 func (r *JamfTeacherSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -166,7 +156,7 @@ func (r *JamfTeacherSettingsResource) Update(ctx context.Context, req resource.U
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, jamfTeacherSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

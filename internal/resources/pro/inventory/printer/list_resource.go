@@ -125,7 +125,7 @@ func (r *PrinterListResource) List(ctx context.Context, req list.ListRequest, st
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(pr.Name)
+		result.DisplayName = helpers.DerefString(pr.Name)
 
 		id := helpers.StringValueFromIntPtr(pr.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, printerIdentityModel{ID: id})...)
@@ -189,5 +189,5 @@ func (r *PrinterListResource) List(ctx context.Context, req list.ListRequest, st
 
 // printerListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func printerListItemName(pr proclassic.IDName) string {
-	return derefString(pr.Name)
+	return helpers.DerefString(pr.Name)
 }

@@ -452,6 +452,3 @@ func (r *SsoSettingsResource) ImportState(ctx context.Context, req resource.Impo
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
-
-// initialID returns the canonical singleton id for use in CRUD handlers.
-func initialID() types.String { return types.StringValue(helpers.SingletonID) }

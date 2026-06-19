@@ -156,7 +156,7 @@ func matchJamfConnectProfile(data JamfConnectDataSourceModel, profiles []pro.Lin
 	case !data.ConfigProfileUUID.IsNull() && data.ConfigProfileUUID.ValueString() != "":
 		want := data.ConfigProfileUUID.ValueString()
 		for i := range profiles {
-			if derefString(profiles[i].UUID) == want {
+			if helpers.DerefString(profiles[i].UUID) == want {
 				return &profiles[i], fmt.Sprintf("config_profile_uuid %q", want)
 			}
 		}
@@ -172,7 +172,7 @@ func matchJamfConnectProfile(data JamfConnectDataSourceModel, profiles []pro.Lin
 	default:
 		want := data.ProfileName.ValueString()
 		for i := range profiles {
-			if derefString(profiles[i].ProfileName) == want {
+			if helpers.DerefString(profiles[i].ProfileName) == want {
 				return &profiles[i], fmt.Sprintf("profile_name %q", want)
 			}
 		}

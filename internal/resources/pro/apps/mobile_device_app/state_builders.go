@@ -78,45 +78,45 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	state.Description = helpers.StringPointerValueOrNull(g.Description)
 
 	// Optional+Computed echoes.
-	state.IsFree = preferCurrentBoolPointer(g.Free, state.IsFree)
-	state.DeploymentType = preferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
-	state.ExternalURL = preferCurrentStringPointer(g.ExternalURL, state.ExternalURL)
-	state.ItunesStoreURL = preferCurrentStringPointer(g.ItunesStoreURL, state.ItunesStoreURL)
-	state.ItunesCountryRegion = preferCurrentStringPointer(g.ItunesCountryRegion, state.ItunesCountryRegion)
+	state.IsFree = helpers.PreferCurrentBoolPointer(g.Free, state.IsFree)
+	state.DeploymentType = helpers.PreferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
+	state.ExternalURL = helpers.PreferCurrentStringPointer(g.ExternalURL, state.ExternalURL)
+	state.ItunesStoreURL = helpers.PreferCurrentStringPointer(g.ItunesStoreURL, state.ItunesStoreURL)
+	state.ItunesCountryRegion = helpers.PreferCurrentStringPointer(g.ItunesCountryRegion, state.ItunesCountryRegion)
 	state.ItunesSyncTime = preferCurrentInt64Pointer(g.ItunesSyncTime, state.ItunesSyncTime)
-	state.MakeAvailableAfterInstall = preferCurrentBoolPointer(g.MakeAvailableAfterInstall, state.MakeAvailableAfterInstall)
-	state.KeepDescriptionAndIconUpToDate = preferCurrentBoolPointer(g.KeepDescriptionAndIconUpToDate, state.KeepDescriptionAndIconUpToDate)
-	state.KeepAppUpdatedOnDevices = preferCurrentBoolPointer(g.KeepAppUpdatedOnDevices, state.KeepAppUpdatedOnDevices)
-	state.DeployAsManagedApp = preferCurrentBoolPointer(g.DeployAsManagedApp, state.DeployAsManagedApp)
-	state.TakeOverManagement = preferCurrentBoolPointer(g.TakeOverManagement, state.TakeOverManagement)
-	state.DeployAutomatically = preferCurrentBoolPointer(g.DeployAutomatically, state.DeployAutomatically)
-	state.RemoveAppWhenMDMProfileIsRemoved = preferCurrentBoolPointer(g.RemoveAppWhenMDMProfileIsRemoved, state.RemoveAppWhenMDMProfileIsRemoved)
-	state.PreventBackupOfAppData = preferCurrentBoolPointer(g.PreventBackupOfAppData, state.PreventBackupOfAppData)
-	state.AllowUserToDelete = preferCurrentBoolPointer(g.AllowUserToDelete, state.AllowUserToDelete)
-	state.RequireNetworkTethered = preferCurrentBoolPointer(g.RequireNetworkTethered, state.RequireNetworkTethered)
-	state.HostExternally = preferCurrentBoolPointer(g.HostExternally, state.HostExternally)
+	state.MakeAvailableAfterInstall = helpers.PreferCurrentBoolPointer(g.MakeAvailableAfterInstall, state.MakeAvailableAfterInstall)
+	state.KeepDescriptionAndIconUpToDate = helpers.PreferCurrentBoolPointer(g.KeepDescriptionAndIconUpToDate, state.KeepDescriptionAndIconUpToDate)
+	state.KeepAppUpdatedOnDevices = helpers.PreferCurrentBoolPointer(g.KeepAppUpdatedOnDevices, state.KeepAppUpdatedOnDevices)
+	state.DeployAsManagedApp = helpers.PreferCurrentBoolPointer(g.DeployAsManagedApp, state.DeployAsManagedApp)
+	state.TakeOverManagement = helpers.PreferCurrentBoolPointer(g.TakeOverManagement, state.TakeOverManagement)
+	state.DeployAutomatically = helpers.PreferCurrentBoolPointer(g.DeployAutomatically, state.DeployAutomatically)
+	state.RemoveAppWhenMDMProfileIsRemoved = helpers.PreferCurrentBoolPointer(g.RemoveAppWhenMDMProfileIsRemoved, state.RemoveAppWhenMDMProfileIsRemoved)
+	state.PreventBackupOfAppData = helpers.PreferCurrentBoolPointer(g.PreventBackupOfAppData, state.PreventBackupOfAppData)
+	state.AllowUserToDelete = helpers.PreferCurrentBoolPointer(g.AllowUserToDelete, state.AllowUserToDelete)
+	state.RequireNetworkTethered = helpers.PreferCurrentBoolPointer(g.RequireNetworkTethered, state.RequireNetworkTethered)
+	state.HostExternally = helpers.PreferCurrentBoolPointer(g.HostExternally, state.HostExternally)
 
 	if g.Category != nil {
-		state.CategoryID = preferCurrentStringPointer(stringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.StringPointerValueOrNull(g.Category.Name)
 	} else {
-		state.CategoryID = preferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(stringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
 	} else {
-		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
 
 func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplicationScope, state *scope.MobileScopeModelNoIbeacons) {
 	if state.Targets != nil {
-		state.Targets.AllMobileDevices = preferCurrentBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices)
-		state.Targets.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+		state.Targets.AllMobileDevices = helpers.PreferCurrentBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices)
+		state.Targets.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
 		state.Targets.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
 		state.Targets.MobileDeviceGroupIDs = flattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
@@ -148,22 +148,22 @@ func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplic
 }
 
 func flattenMobileAppSelfService(ss *proclassic.MobileDeviceApplicationSelfService, state *MobileAppSelfServiceModel) {
-	state.InstallButtonText = preferCurrentStringPointer(ss.SelfServiceInstallButtonText, state.InstallButtonText)
-	state.AfterInstallButtonText = preferCurrentStringPointer(ss.SelfServiceAfterInstallButtonText, state.AfterInstallButtonText)
-	state.SelfServiceDescription = preferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.FeatureOnMainPage = preferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
+	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.SelfServiceInstallButtonText, state.InstallButtonText)
+	state.AfterInstallButtonText = helpers.PreferCurrentStringPointer(ss.SelfServiceAfterInstallButtonText, state.AfterInstallButtonText)
+	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.FeatureOnMainPage = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
 
 	var apiEnabled *bool
 	if ss.Notification != nil {
 		apiEnabled = ss.Notification.Enabled
 	}
-	state.NotificationEnabled = preferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
-	state.NotificationSubject = preferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = preferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.PreferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
+	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
-		state.SelfServiceIcon.ID = preferCurrentStringPointer(stringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
-		state.SelfServiceIcon.URI = preferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
+		state.SelfServiceIcon.ID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
+		state.SelfServiceIcon.URI = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
 	}
 
 	if state.SelfServiceCategories != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
@@ -184,22 +184,22 @@ func flattenMobileAppSelfServiceCategories(api []proclassic.MobileDeviceApplicat
 	out := make([]MobileAppSelfServiceCategoryModel, 0, len(api))
 	for _, c := range api {
 		idStr := ""
-		if s := stringFromIntPtr(c.ID); s != nil {
+		if s := helpers.StringFromIntPtr(c.ID); s != nil {
 			idStr = *s
 		}
 		current := byID[idStr]
 		out = append(out, MobileAppSelfServiceCategoryModel{
 			ID:        types.StringValue(idStr),
-			Name:      preferCurrentStringPointer(c.Name, current.Name),
-			DisplayIn: preferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
+			Name:      helpers.PreferCurrentStringPointer(c.Name, current.Name),
+			DisplayIn: helpers.PreferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
 		})
 	}
 	state.SelfServiceCategories = out
 }
 
 func flattenMobileAppVpp(v *proclassic.MobileDeviceApplicationVpp, state *MobileAppVppModel) {
-	state.AssignVppDeviceBasedLicenses = preferCurrentBoolPointer(v.AssignVppDeviceBasedLicenses, state.AssignVppDeviceBasedLicenses)
-	state.VppAdminAccountID = preferCurrentStringPointer(stringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
+	state.AssignVppDeviceBasedLicenses = helpers.PreferCurrentBoolPointer(v.AssignVppDeviceBasedLicenses, state.AssignVppDeviceBasedLicenses)
+	state.VppAdminAccountID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
 }
 
 // ---- scope sub-slice accessors -------------------------------------------------

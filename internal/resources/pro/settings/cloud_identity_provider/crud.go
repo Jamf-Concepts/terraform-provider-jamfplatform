@@ -29,13 +29,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler
-// fires before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // missingProviderBlockError is the diagnostic emitted when CRUD dispatches to a
 // provider branch whose nested block is absent. The plan-time
 // providerBlockConfigValidator normally prevents this, but the branch builders
@@ -49,7 +42,7 @@ func missingProviderBlockError(providerName, blockName string) (string, string) 
 // Create dispatches to the Google or Entra ID branch based on provider_name.
 func (r *CloudIdentityProviderResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -86,7 +79,7 @@ func (r *CloudIdentityProviderResource) Create(ctx context.Context, req resource
 // discovered via the Cloud Identity Provider registry before dispatch.
 func (r *CloudIdentityProviderResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -146,7 +139,7 @@ func (r *CloudIdentityProviderResource) Read(ctx context.Context, req resource.R
 // RequiresReplace, so plan and state always agree on the provider here.
 func (r *CloudIdentityProviderResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -183,7 +176,7 @@ func (r *CloudIdentityProviderResource) Update(ctx context.Context, req resource
 // scoping.
 func (r *CloudIdentityProviderResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

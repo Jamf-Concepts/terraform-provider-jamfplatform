@@ -37,27 +37,12 @@ func buildPrinterInput(plan PrinterResourceModel) *proclassic.Printer {
 		Model:          helpers.OptionalStringPointer(plan.Model),
 		Info:           helpers.OptionalStringPointer(plan.Info),
 		Notes:          helpers.OptionalStringPointer(plan.Notes),
-		MakeDefault:    optionalBoolPointer(plan.MakeDefault),
-		UseGeneric:     optionalBoolPointer(plan.UseGeneric),
+		MakeDefault:    helpers.OptionalBoolPointer(plan.MakeDefault),
+		UseGeneric:     helpers.OptionalBoolPointer(plan.UseGeneric),
 		Ppd:            helpers.OptionalStringPointer(plan.PPD),
 		PpdPath:        helpers.OptionalStringPointer(plan.PPDPath),
 		PpdContents:    helpers.OptionalStringPointer(plan.PPDContents.StringValue),
-		Shared:         optionalBoolPointer(plan.Shared),
+		Shared:         helpers.OptionalBoolPointer(plan.Shared),
 		OsRequirements: helpers.OptionalStringPointer(plan.OSRequirements),
 	}
-}
-
-// optionalBoolPointer returns a *bool for a TF Bool, or nil when null/unknown.
-// Mirrors helpers.OptionalStringPointer's contract for booleans — the SDK
-// omitempty tag drops the field from the wire when the pointer is nil.
-func optionalBoolPointer(v interface {
-	IsNull() bool
-	IsUnknown() bool
-	ValueBool() bool
-}) *bool {
-	if v.IsNull() || v.IsUnknown() {
-		return nil
-	}
-	out := v.ValueBool()
-	return &out
 }

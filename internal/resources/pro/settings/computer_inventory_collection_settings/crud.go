@@ -30,13 +30,6 @@ import (
 // reachable through the V2 API).
 const applicationPathScope = "APP"
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
-// before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // reconcileApplicationPaths brings the tenant's user-created application search paths in
 // line with the planned set. It is a no-op when the attribute is unmanaged (null/unknown),
 // leaving the tenant's paths untouched. The collection has no update endpoint, so changes
@@ -114,7 +107,7 @@ func (r *ComputerInventoryCollectionSettingsResource) applySettings(ctx context.
 // Create endpoint for this object, so this funnels into the shared apply sequence.
 func (r *ComputerInventoryCollectionSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -155,7 +148,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Create(ctx context.Context
 // Read refreshes Terraform state with the latest settings from the Jamf Pro API.
 func (r *ComputerInventoryCollectionSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -202,7 +195,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Read(ctx context.Context, 
 // Update writes the new settings to the Jamf Pro API. Same apply sequence as Create.
 func (r *ComputerInventoryCollectionSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

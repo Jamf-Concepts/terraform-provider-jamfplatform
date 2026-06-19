@@ -19,19 +19,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler
-// fires before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the failover URL. The Jamf Pro API exposes no Create
 // endpoint — one failover record exists per tenant — so we call POST
 // /generate to mint the URL and persist the response into state.
 func (r *SsoFailoverURLResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -69,7 +62,7 @@ func (r *SsoFailoverURLResource) Create(ctx context.Context, req resource.Create
 // Read refreshes state from /v1/sso/failover.
 func (r *SsoFailoverURLResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -116,7 +109,7 @@ func (r *SsoFailoverURLResource) Read(ctx context.Context, req resource.ReadRequ
 // to mint a fresh URL.
 func (r *SsoFailoverURLResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

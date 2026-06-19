@@ -19,19 +19,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
-// before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf ProClassic client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create handles initial provisioning of the activation code singleton. The ProClassic
 // API has no Create endpoint for this object, so this funnels into Update against the
 // plan, then reads back to capture authoritative state.
 func (r *ActivationCodeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -74,7 +67,7 @@ func (r *ActivationCodeResource) Create(ctx context.Context, req resource.Create
 // Read refreshes Terraform state with the latest activation code from the ProClassic API.
 func (r *ActivationCodeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -119,7 +112,7 @@ func (r *ActivationCodeResource) Read(ctx context.Context, req resource.ReadRequ
 // Both fields are always written together (see buildActivationCodeInput).
 func (r *ActivationCodeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

@@ -30,11 +30,3 @@ func intMillisStringOrNull(p *int) types.String {
 	}
 	return types.StringValue(strconv.Itoa(*p))
 }
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}

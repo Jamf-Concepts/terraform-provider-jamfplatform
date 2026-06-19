@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
@@ -209,6 +208,3 @@ func (r *JamfTeacherSettingsResource) ImportState(ctx context.Context, req resou
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
-
-// initialID returns the canonical singleton id for use in CRUD handlers.
-func initialID() types.String { return types.StringValue(helpers.SingletonID) }

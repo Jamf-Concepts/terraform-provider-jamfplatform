@@ -120,7 +120,7 @@ func (r *LicensedSoftwareListResource) List(ctx context.Context, req list.ListRe
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(item.Name)
+		result.DisplayName = helpers.DerefString(item.Name)
 
 		id := helpers.StringValueFromIntPtr(item.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, licensedSoftwareIdentityModel{ID: id})...)

@@ -19,17 +19,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create adopts the App Installer global settings singleton. The API has no separate
 // Create — PUT updates the existing record. GET-merge preserves any block the user
 // did not declare so that adoption does not clobber out-of-band configuration.
 func (r *AppInstallerSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -78,7 +73,7 @@ func (r *AppInstallerSettingsResource) Create(ctx context.Context, req resource.
 // Read refreshes Terraform state with the latest settings from the Jamf Pro API.
 func (r *AppInstallerSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -123,7 +118,7 @@ func (r *AppInstallerSettingsResource) Read(ctx context.Context, req resource.Re
 // the user did not declare in their config.
 func (r *AppInstallerSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

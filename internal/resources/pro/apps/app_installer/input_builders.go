@@ -26,12 +26,12 @@ func buildAppInstallerInput(plan AppInstallerResourceModel, appTitleID string) *
 		Name:                            plan.Name.ValueString(),
 		AppTitleID:                      appTitleID,
 		DeploymentType:                  plan.DeploymentType.ValueString(),
-		Enabled:                         optionalBoolPointer(plan.Enabled),
+		Enabled:                         helpers.OptionalBoolPointer(plan.Enabled),
 		CategoryID:                      helpers.OptionalStringPointer(plan.CategoryID),
 		SiteID:                          helpers.OptionalStringPointer(plan.SiteID),
 		SmartGroupID:                    helpers.OptionalStringPointer(plan.SmartGroupID),
-		InstallPredefinedConfigProfiles: optionalBoolPointer(plan.InstallPredefinedConfigProfiles),
-		TriggerAdminNotifications:       optionalBoolPointer(plan.TriggerAdminNotifications),
+		InstallPredefinedConfigProfiles: helpers.OptionalBoolPointer(plan.InstallPredefinedConfigProfiles),
+		TriggerAdminNotifications:       helpers.OptionalBoolPointer(plan.TriggerAdminNotifications),
 	}
 
 	out.UpdateBehavior = plan.UpdateBehavior.ValueString()
@@ -60,8 +60,8 @@ func buildNotificationSettings(m *NotificationSettingsModel) *pro.AppInstallerNo
 		Deadline:             optionalIntPointer(m.Deadline),
 		QuitDelay:            optionalIntPointer(m.QuitDelay),
 		CompleteMessage:      helpers.OptionalStringPointer(m.CompleteMessage),
-		Relaunch:             optionalBoolPointer(m.Relaunch),
-		Suppress:             optionalBoolPointer(m.Suppress),
+		Relaunch:             helpers.OptionalBoolPointer(m.Relaunch),
+		Suppress:             helpers.OptionalBoolPointer(m.Suppress),
 	}
 }
 

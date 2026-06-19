@@ -53,28 +53,28 @@ func buildMobileAppGeneral(m *MobileAppGeneralModel) *proclassic.MobileDeviceApp
 		Version:                          helpers.OptionalStringPointer(m.Version),
 		BundleID:                         helpers.OptionalStringPointer(m.BundleID),
 		OsType:                           helpers.OptionalStringPointer(m.OsType),
-		Free:                             optionalBoolPointer(m.IsFree),
+		Free:                             helpers.OptionalBoolPointer(m.IsFree),
 		DeploymentType:                   helpers.OptionalStringPointer(m.DeploymentType),
 		ExternalURL:                      helpers.OptionalStringPointer(m.ExternalURL),
 		ItunesStoreURL:                   helpers.OptionalStringPointer(m.ItunesStoreURL),
 		ItunesCountryRegion:              helpers.OptionalStringPointer(m.ItunesCountryRegion),
 		ItunesSyncTime:                   optionalIntPointer(m.ItunesSyncTime),
-		MakeAvailableAfterInstall:        optionalBoolPointer(m.MakeAvailableAfterInstall),
-		KeepDescriptionAndIconUpToDate:   optionalBoolPointer(m.KeepDescriptionAndIconUpToDate),
-		KeepAppUpdatedOnDevices:          optionalBoolPointer(m.KeepAppUpdatedOnDevices),
-		DeployAsManagedApp:               optionalBoolPointer(m.DeployAsManagedApp),
-		TakeOverManagement:               optionalBoolPointer(m.TakeOverManagement),
-		DeployAutomatically:              optionalBoolPointer(m.DeployAutomatically),
-		RemoveAppWhenMDMProfileIsRemoved: optionalBoolPointer(m.RemoveAppWhenMDMProfileIsRemoved),
-		PreventBackupOfAppData:           optionalBoolPointer(m.PreventBackupOfAppData),
-		AllowUserToDelete:                optionalBoolPointer(m.AllowUserToDelete),
-		RequireNetworkTethered:           optionalBoolPointer(m.RequireNetworkTethered),
-		HostExternally:                   optionalBoolPointer(m.HostExternally),
+		MakeAvailableAfterInstall:        helpers.OptionalBoolPointer(m.MakeAvailableAfterInstall),
+		KeepDescriptionAndIconUpToDate:   helpers.OptionalBoolPointer(m.KeepDescriptionAndIconUpToDate),
+		KeepAppUpdatedOnDevices:          helpers.OptionalBoolPointer(m.KeepAppUpdatedOnDevices),
+		DeployAsManagedApp:               helpers.OptionalBoolPointer(m.DeployAsManagedApp),
+		TakeOverManagement:               helpers.OptionalBoolPointer(m.TakeOverManagement),
+		DeployAutomatically:              helpers.OptionalBoolPointer(m.DeployAutomatically),
+		RemoveAppWhenMDMProfileIsRemoved: helpers.OptionalBoolPointer(m.RemoveAppWhenMDMProfileIsRemoved),
+		PreventBackupOfAppData:           helpers.OptionalBoolPointer(m.PreventBackupOfAppData),
+		AllowUserToDelete:                helpers.OptionalBoolPointer(m.AllowUserToDelete),
+		RequireNetworkTethered:           helpers.OptionalBoolPointer(m.RequireNetworkTethered),
+		HostExternally:                   helpers.OptionalBoolPointer(m.HostExternally),
 	}
-	if catID := stringIDPtr(m.CategoryID); catID != nil {
+	if catID := helpers.StringIDPtr(m.CategoryID); catID != nil {
 		g.Category = &proclassic.CategoryObject{ID: catID}
 	}
-	if siteID := stringIDPtr(m.SiteID); siteID != nil {
+	if siteID := helpers.StringIDPtr(m.SiteID); siteID != nil {
 		g.Site = &proclassic.SiteObject{ID: siteID}
 	}
 	return g
@@ -84,8 +84,8 @@ func buildMobileAppScope(ctx context.Context, m *scope.MobileScopeModelNoIbeacon
 	var diags diag.Diagnostics
 	t := m.TargetsOrZero()
 	s := &proclassic.MobileDeviceApplicationScope{
-		AllMobileDevices: optionalBoolPointer(t.AllMobileDevices),
-		AllJssUsers:      optionalBoolPointer(t.AllJssUsers),
+		AllMobileDevices: helpers.OptionalBoolPointer(t.AllMobileDevices),
+		AllJssUsers:      helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
 	mds, d := scope.BuildIDSlice(ctx, t.MobileDeviceIDs, func(id int) proclassic.MobileDeviceApplicationScopeMobileDevicesMobileDeviceItem {
@@ -286,14 +286,14 @@ func buildMobileAppSelfService(m *MobileAppSelfServiceModel) *proclassic.MobileD
 		SelfServiceInstallButtonText:      helpers.OptionalStringPointer(m.InstallButtonText),
 		SelfServiceAfterInstallButtonText: helpers.OptionalStringPointer(m.AfterInstallButtonText),
 		SelfServiceDescription:            helpers.OptionalStringPointer(m.SelfServiceDescription),
-		FeatureOnMainPage:                 optionalBoolPointer(m.FeatureOnMainPage),
+		FeatureOnMainPage:                 helpers.OptionalBoolPointer(m.FeatureOnMainPage),
 		Notification:                      buildMobileNotification(m.NotificationEnabled),
 		NotificationSubject:               helpers.OptionalStringPointer(m.NotificationSubject),
 		NotificationMessage:               helpers.OptionalStringPointer(m.NotificationMessage),
 	}
 
 	if m.SelfServiceIcon != nil {
-		if id := stringIDPtr(m.SelfServiceIcon.ID); id != nil {
+		if id := helpers.StringIDPtr(m.SelfServiceIcon.ID); id != nil {
 			ss.SelfServiceIcon = &proclassic.MobileDeviceApplicationSelfServiceSelfServiceIcon{ID: id}
 		}
 	}
@@ -302,9 +302,9 @@ func buildMobileAppSelfService(m *MobileAppSelfServiceModel) *proclassic.MobileD
 		cats := make([]proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.SelfServiceCategories))
 		for _, c := range m.SelfServiceCategories {
 			cats = append(cats, proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategoriesCategoryItem{
-				ID:        stringIDPtr(c.ID),
+				ID:        helpers.StringIDPtr(c.ID),
 				Name:      helpers.OptionalStringPointer(c.Name),
-				DisplayIn: optionalBoolPointer(c.DisplayIn),
+				DisplayIn: helpers.OptionalBoolPointer(c.DisplayIn),
 			})
 		}
 		ss.SelfServiceCategories = &proclassic.MobileDeviceApplicationSelfServiceSelfServiceCategories{Category: &cats}
@@ -315,8 +315,8 @@ func buildMobileAppSelfService(m *MobileAppSelfServiceModel) *proclassic.MobileD
 
 func buildMobileAppVpp(m *MobileAppVppModel) *proclassic.MobileDeviceApplicationVpp {
 	v := &proclassic.MobileDeviceApplicationVpp{
-		AssignVppDeviceBasedLicenses: optionalBoolPointer(m.AssignVppDeviceBasedLicenses),
-		VppAdminAccountID:            stringIDPtr(m.VppAdminAccountID),
+		AssignVppDeviceBasedLicenses: helpers.OptionalBoolPointer(m.AssignVppDeviceBasedLicenses),
+		VppAdminAccountID:            helpers.StringIDPtr(m.VppAdminAccountID),
 	}
 	if v.AssignVppDeviceBasedLicenses == nil && v.VppAdminAccountID == nil {
 		return nil

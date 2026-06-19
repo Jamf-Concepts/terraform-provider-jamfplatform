@@ -45,19 +45,12 @@ type toggleClient interface {
 	GetManagedSoftwareUpdateFeatureToggleStatusV1(ctx context.Context) (*pro.ManagedSoftwareUpdatePlanToggleStatusWrapper, error)
 }
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
-// before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create handles initial provisioning of the singleton. The API has no Create endpoint —
 // one record per tenant always exists — so this adopts the live value (preserving `enabled`
 // when omitted), PUTs, polls to settle, then reads back.
 func (r *ManagedSoftwareUpdateResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -103,7 +96,7 @@ func (r *ManagedSoftwareUpdateResource) Create(ctx context.Context, req resource
 // Read refreshes Terraform state with the latest feature state from the Jamf Pro API.
 func (r *ManagedSoftwareUpdateResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -149,7 +142,7 @@ func (r *ManagedSoftwareUpdateResource) Read(ctx context.Context, req resource.R
 // `enabled` into the plan as a known prior value.
 func (r *ManagedSoftwareUpdateResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

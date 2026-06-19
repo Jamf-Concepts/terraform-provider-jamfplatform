@@ -50,24 +50,24 @@ func flattenGeneral(g *proclassic.RestrictedSoftwareGeneral, state *RestrictedSo
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
 	state.ProcessName = helpers.StringPointerValueOrNull(g.ProcessName)
-	state.RestrictExactProcessName = preferCurrentBoolPointer(g.MatchExactProcessName, state.RestrictExactProcessName)
-	state.SendEmailNotificationOnViolation = preferCurrentBoolPointer(g.SendNotification, state.SendEmailNotificationOnViolation)
-	state.KillProcess = preferCurrentBoolPointer(g.KillProcess, state.KillProcess)
-	state.DeleteApplication = preferCurrentBoolPointer(g.DeleteExecutable, state.DeleteApplication)
-	state.DisplayMessage = preferCurrentStringPointer(g.DisplayMessage, state.DisplayMessage)
+	state.RestrictExactProcessName = helpers.PreferCurrentBoolPointer(g.MatchExactProcessName, state.RestrictExactProcessName)
+	state.SendEmailNotificationOnViolation = helpers.PreferCurrentBoolPointer(g.SendNotification, state.SendEmailNotificationOnViolation)
+	state.KillProcess = helpers.PreferCurrentBoolPointer(g.KillProcess, state.KillProcess)
+	state.DeleteApplication = helpers.PreferCurrentBoolPointer(g.DeleteExecutable, state.DeleteApplication)
+	state.DisplayMessage = helpers.PreferCurrentStringPointer(g.DisplayMessage, state.DisplayMessage)
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(stringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
 	} else {
-		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
 
 func flattenScope(ctx context.Context, s *proclassic.RestrictedSoftwareScope, state *RestrictedSoftwareScopeModel) {
 	if state.Targets != nil {
-		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
 		state.Targets.ComputerIDs = flattenIDNameSet(ctx, computerSlice(s.Computers))
 		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
 		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))

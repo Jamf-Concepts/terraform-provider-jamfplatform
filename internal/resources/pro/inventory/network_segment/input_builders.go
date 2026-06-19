@@ -5,7 +5,6 @@ package network_segment
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -22,17 +21,7 @@ func buildNetworkSegmentInput(plan NetworkSegmentResourceModel) *proclassic.Netw
 		EndingAddress:       helpers.OptionalStringPointer(plan.EndingAddress),
 		Building:            helpers.OptionalStringPointer(plan.Building),
 		Department:          helpers.OptionalStringPointer(plan.Department),
-		OverrideBuildings:   optionalBoolPointer(plan.OverrideBuildings),
-		OverrideDepartments: optionalBoolPointer(plan.OverrideDepartments),
+		OverrideBuildings:   helpers.OptionalBoolPointer(plan.OverrideBuildings),
+		OverrideDepartments: helpers.OptionalBoolPointer(plan.OverrideDepartments),
 	}
-}
-
-// optionalBoolPointer mirrors helpers.OptionalStringPointer for types.Bool. Returns
-// nil for null/unknown so omitted Optional bools do not get serialised as `false`.
-func optionalBoolPointer(b types.Bool) *bool {
-	if b.IsNull() || b.IsUnknown() {
-		return nil
-	}
-	v := b.ValueBool()
-	return &v
 }

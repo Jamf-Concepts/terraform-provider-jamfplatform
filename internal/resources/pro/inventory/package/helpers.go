@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/files"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // pollInterval is the cadence at which the verification poll nudges the
@@ -130,10 +131,10 @@ func PollPackageVerification(ctx context.Context, client *pro.Client, id, fileNa
 			return nil, fmt.Errorf("polling package %s: %w", id, err)
 		}
 
-		cur := strings.ToLower(derefString(pkg.HashValue))
-		hashType := derefString(pkg.HashType)
-		status := derefString(pkg.CloudTransferStatus)
-		sizeStr := derefString(pkg.Size)
+		cur := strings.ToLower(helpers.DerefString(pkg.HashValue))
+		hashType := helpers.DerefString(pkg.HashType)
+		status := helpers.DerefString(pkg.CloudTransferStatus)
+		sizeStr := helpers.DerefString(pkg.Size)
 
 		tflog.Info(ctx, "package poll tick", map[string]any{
 			"tick":           tick,
@@ -206,16 +207,6 @@ func readSourceBytes(ctx context.Context, src string) ([]byte, error) {
 		return nil, fmt.Errorf("reading manifest source %q: %w", src, err)
 	}
 	return data, nil
-}
-
-// derefString unwraps a *string returning "" on nil. Local mirror of
-// helpers.DerefString — kept here so the package has no helpers.go ↔
-// helpers package cyclic import constraint.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }
 
 // pollDecision summarises the convergence-check outcome for a single

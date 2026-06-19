@@ -28,13 +28,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
-// before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the GSX Connection settings singleton. The Jamf Pro API has no Create
 // endpoint for this object — one record per tenant always exists — so this funnels into a
 // full-replace PUT, then reads back authoritative state. The live settings read first are
@@ -42,7 +35,7 @@ func providerNotConfiguredError() (string, string) {
 // rather than being reset by the full-replace write.
 func (r *GsxConnectionSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -99,7 +92,7 @@ func (r *GsxConnectionSettingsResource) Create(ctx context.Context, req resource
 // WriteOnly secrets are not present in the response and are not carried in state.
 func (r *GsxConnectionSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -145,7 +138,7 @@ func (r *GsxConnectionSettingsResource) Read(ctx context.Context, req resource.R
 // UseStateForUnknown has already carried the Optional non-secret fields into the plan.
 func (r *GsxConnectionSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

@@ -5,7 +5,6 @@ package policy
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -90,40 +89,40 @@ func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, stat
 	}
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
-	state.Enabled = preferCurrentBoolPointer(g.Enabled, state.Enabled)
-	state.Trigger = preferCurrentStringPointer(g.Trigger, state.Trigger)
-	state.TriggerCheckin = preferCurrentBoolPointer(g.TriggerCheckin, state.TriggerCheckin)
-	state.TriggerEnrollmentComplete = preferCurrentBoolPointer(g.TriggerEnrollmentComplete, state.TriggerEnrollmentComplete)
-	state.TriggerLogin = preferCurrentBoolPointer(g.TriggerLogin, state.TriggerLogin)
-	state.TriggerNetworkStateChanged = preferCurrentBoolPointer(g.TriggerNetworkStateChanged, state.TriggerNetworkStateChanged)
-	state.TriggerStartup = preferCurrentBoolPointer(g.TriggerStartup, state.TriggerStartup)
-	state.TriggerOther = preferCurrentStringPointer(g.TriggerOther, state.TriggerOther)
-	state.Frequency = preferCurrentStringPointer(g.Frequency, state.Frequency)
-	state.RetryEvent = preferCurrentStringPointer(g.RetryEvent, state.RetryEvent)
+	state.Enabled = helpers.PreferCurrentBoolPointer(g.Enabled, state.Enabled)
+	state.Trigger = helpers.PreferCurrentStringPointer(g.Trigger, state.Trigger)
+	state.TriggerCheckin = helpers.PreferCurrentBoolPointer(g.TriggerCheckin, state.TriggerCheckin)
+	state.TriggerEnrollmentComplete = helpers.PreferCurrentBoolPointer(g.TriggerEnrollmentComplete, state.TriggerEnrollmentComplete)
+	state.TriggerLogin = helpers.PreferCurrentBoolPointer(g.TriggerLogin, state.TriggerLogin)
+	state.TriggerNetworkStateChanged = helpers.PreferCurrentBoolPointer(g.TriggerNetworkStateChanged, state.TriggerNetworkStateChanged)
+	state.TriggerStartup = helpers.PreferCurrentBoolPointer(g.TriggerStartup, state.TriggerStartup)
+	state.TriggerOther = helpers.PreferCurrentStringPointer(g.TriggerOther, state.TriggerOther)
+	state.Frequency = helpers.PreferCurrentStringPointer(g.Frequency, state.Frequency)
+	state.RetryEvent = helpers.PreferCurrentStringPointer(g.RetryEvent, state.RetryEvent)
 	if g.RetryAttempts != nil {
 		state.RetryAttempts = preferCurrentInt(g.RetryAttempts, state.RetryAttempts)
 	} else {
 		state.RetryAttempts = types.Int64Null()
 	}
-	state.NotifyOnEachFailedRetry = preferCurrentBoolPointer(g.NotifyOnEachFailedRetry, state.NotifyOnEachFailedRetry)
-	state.LimitToJamfProAssignedUser = preferCurrentBoolPointer(g.LocationUserOnly, state.LimitToJamfProAssignedUser)
-	state.TargetDrive = preferCurrentStringPointer(g.TargetDrive, state.TargetDrive)
-	state.Offline = preferCurrentBoolPointer(g.Offline, state.Offline)
-	state.NetworkRequirements = preferCurrentStringPointer(g.NetworkRequirements, state.NetworkRequirements)
+	state.NotifyOnEachFailedRetry = helpers.PreferCurrentBoolPointer(g.NotifyOnEachFailedRetry, state.NotifyOnEachFailedRetry)
+	state.LimitToJamfProAssignedUser = helpers.PreferCurrentBoolPointer(g.LocationUserOnly, state.LimitToJamfProAssignedUser)
+	state.TargetDrive = helpers.PreferCurrentStringPointer(g.TargetDrive, state.TargetDrive)
+	state.Offline = helpers.PreferCurrentBoolPointer(g.Offline, state.Offline)
+	state.NetworkRequirements = helpers.PreferCurrentStringPointer(g.NetworkRequirements, state.NetworkRequirements)
 
 	if g.Category != nil {
-		state.CategoryID = preferCurrentStringPointer(stringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.StringPointerValueOrNull(g.Category.Name)
 	} else {
-		state.CategoryID = preferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(stringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
 	} else {
-		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 
@@ -136,18 +135,18 @@ func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, stat
 		flattenPolicyNetworkLimitations(ctx, g.NetworkLimitations, state.NetworkLimitations)
 	}
 	if state.OverrideDefaultSettings != nil && g.OverrideDefaultSettings != nil {
-		state.OverrideDefaultSettings.TargetDrive = preferCurrentStringPointer(g.OverrideDefaultSettings.TargetDrive, state.OverrideDefaultSettings.TargetDrive)
-		state.OverrideDefaultSettings.DistributionPoint = preferCurrentStringPointer(g.OverrideDefaultSettings.DistributionPoint, state.OverrideDefaultSettings.DistributionPoint)
-		state.OverrideDefaultSettings.ForceAfpSmb = preferCurrentBoolPointer(g.OverrideDefaultSettings.ForceAfpSmb, state.OverrideDefaultSettings.ForceAfpSmb)
-		state.OverrideDefaultSettings.Sus = preferCurrentStringPointer(g.OverrideDefaultSettings.Sus, state.OverrideDefaultSettings.Sus)
+		state.OverrideDefaultSettings.TargetDrive = helpers.PreferCurrentStringPointer(g.OverrideDefaultSettings.TargetDrive, state.OverrideDefaultSettings.TargetDrive)
+		state.OverrideDefaultSettings.DistributionPoint = helpers.PreferCurrentStringPointer(g.OverrideDefaultSettings.DistributionPoint, state.OverrideDefaultSettings.DistributionPoint)
+		state.OverrideDefaultSettings.ForceAfpSmb = helpers.PreferCurrentBoolPointer(g.OverrideDefaultSettings.ForceAfpSmb, state.OverrideDefaultSettings.ForceAfpSmb)
+		state.OverrideDefaultSettings.Sus = helpers.PreferCurrentStringPointer(g.OverrideDefaultSettings.Sus, state.OverrideDefaultSettings.Sus)
 	}
 }
 
 func flattenPolicyDateTimeLimitations(ctx context.Context, dtl *proclassic.PolicyGeneralDateTimeLimitations, state *PolicyGeneralDateTimeLimitationsModel) {
-	state.ActivationDate = preferCurrentStringPointer(dtl.ActivationDate, state.ActivationDate)
-	state.ExpirationDate = preferCurrentStringPointer(dtl.ExpirationDate, state.ExpirationDate)
-	state.NoExecuteStart = preferCurrentStringPointer(dtl.NoExecuteStart, state.NoExecuteStart)
-	state.NoExecuteEnd = preferCurrentStringPointer(dtl.NoExecuteEnd, state.NoExecuteEnd)
+	state.ActivationDate = helpers.PreferCurrentStringPointer(dtl.ActivationDate, state.ActivationDate)
+	state.ExpirationDate = helpers.PreferCurrentStringPointer(dtl.ExpirationDate, state.ExpirationDate)
+	state.NoExecuteStart = helpers.PreferCurrentStringPointer(dtl.NoExecuteStart, state.NoExecuteStart)
+	state.NoExecuteEnd = helpers.PreferCurrentStringPointer(dtl.NoExecuteEnd, state.NoExecuteEnd)
 
 	if dtl.NoExecuteOn != nil && dtl.NoExecuteOn.Day != nil && len(*dtl.NoExecuteOn.Day) > 0 {
 		set, diagsLocal := types.SetValueFrom(ctx, types.StringType, *dtl.NoExecuteOn.Day)
@@ -160,8 +159,8 @@ func flattenPolicyDateTimeLimitations(ctx context.Context, dtl *proclassic.Polic
 }
 
 func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyGeneralNetworkLimitations, state *PolicyGeneralNetworkLimitationsModel) {
-	state.MinimumNetworkConnection = preferCurrentStringPointer(nl.MinimumNetworkConnection, state.MinimumNetworkConnection)
-	state.AnyIPAddress = preferCurrentBoolPointer(nl.AnyIPAddress, state.AnyIPAddress)
+	state.MinimumNetworkConnection = helpers.PreferCurrentStringPointer(nl.MinimumNetworkConnection, state.MinimumNetworkConnection)
+	state.AnyIPAddress = helpers.PreferCurrentBoolPointer(nl.AnyIPAddress, state.AnyIPAddress)
 	if nl.NetworkSegments != nil {
 		set, _ := scope.FlattenIDSlice(ctx, nl.NetworkSegments.NetworkSegment, func(i proclassic.IDName) *int { return i.ID })
 		state.NetworkSegmentIDs = set
@@ -178,8 +177,8 @@ func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *s
 	// declare would violate the framework's "produced inconsistent result after
 	// apply" check (plan said null, we would return a populated object).
 	if state.Targets != nil {
-		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
 		state.Targets.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
 		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups))
@@ -375,22 +374,22 @@ func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
 // ---- self_service / packages / scripts / printers / dock_items / etc. ----------
 
 func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySelfServiceModel) {
-	state.UseForSelfService = preferCurrentBoolPointer(ss.UseForSelfService, state.UseForSelfService)
-	state.SelfServiceDisplayName = preferCurrentStringPointer(ss.SelfServiceDisplayName, state.SelfServiceDisplayName)
-	state.InstallButtonText = preferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
-	state.ReinstallButtonText = preferCurrentStringPointer(ss.ReinstallButtonText, state.ReinstallButtonText)
-	state.SelfServiceDescription = preferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.EnsureUsersViewDescription = preferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.EnsureUsersViewDescription)
-	state.IncludeInFeaturedCategory = preferCurrentBoolPointer(ss.FeatureOnMainPage, state.IncludeInFeaturedCategory)
+	state.UseForSelfService = helpers.PreferCurrentBoolPointer(ss.UseForSelfService, state.UseForSelfService)
+	state.SelfServiceDisplayName = helpers.PreferCurrentStringPointer(ss.SelfServiceDisplayName, state.SelfServiceDisplayName)
+	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
+	state.ReinstallButtonText = helpers.PreferCurrentStringPointer(ss.ReinstallButtonText, state.ReinstallButtonText)
+	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.EnsureUsersViewDescription = helpers.PreferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.EnsureUsersViewDescription)
+	state.IncludeInFeaturedCategory = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.IncludeInFeaturedCategory)
 	state.DisplayNotifications = flattenNotificationEnabled(ss.Notification, state.DisplayNotifications)
-	state.NotificationLocation = preferCurrentStringPointer(ss.NotificationType, state.NotificationLocation)
-	state.NotificationSubject = preferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = preferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationLocation = helpers.PreferCurrentStringPointer(ss.NotificationType, state.NotificationLocation)
+	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
-		state.SelfServiceIcon.ID = preferCurrentStringPointer(stringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
-		state.SelfServiceIcon.URI = preferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
-		state.SelfServiceIcon.Filename = preferCurrentStringPointer(ss.SelfServiceIcon.Filename, state.SelfServiceIcon.Filename)
+		state.SelfServiceIcon.ID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
+		state.SelfServiceIcon.URI = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
+		state.SelfServiceIcon.Filename = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.Filename, state.SelfServiceIcon.Filename)
 	}
 
 	// Self Service categories are an unordered Set; rebuild the slice
@@ -418,7 +417,7 @@ func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySel
 }
 
 func flattenPolicyPackageConfiguration(pc *proclassic.PolicyPackageConfiguration, state *PolicyPackagesModel) {
-	state.DistributionPoint = preferCurrentStringPointer(pc.DistributionPoint, state.DistributionPoint)
+	state.DistributionPoint = helpers.PreferCurrentStringPointer(pc.DistributionPoint, state.DistributionPoint)
 
 	if pc.Packages == nil || pc.Packages.Package == nil {
 		state.Packages = nil
@@ -465,7 +464,7 @@ func flattenPolicyScripts(sc *proclassic.PolicyScripts, state *PolicyScriptsMode
 }
 
 func flattenPolicyPrinters(pr *proclassic.PolicyPrinters, state *PolicyPrintersModel) {
-	state.LeaveExistingDefault = preferCurrentBoolPointer(pr.LeaveExistingDefault, state.LeaveExistingDefault)
+	state.LeaveExistingDefault = helpers.PreferCurrentBoolPointer(pr.LeaveExistingDefault, state.LeaveExistingDefault)
 
 	if pr.Printer == nil {
 		state.Printers = nil
@@ -633,7 +632,7 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 	// Mirror the assignPolicyResourceModel section-level gate — only refresh
 	// when the caller already manages the sub-block.
 	if state.ManagementAccount != nil && am.ManagementAccount != nil {
-		state.ManagementAccount.Action = preferCurrentStringPointer(am.ManagementAccount.Action, state.ManagementAccount.Action)
+		state.ManagementAccount.Action = helpers.PreferCurrentStringPointer(am.ManagementAccount.Action, state.ManagementAccount.Action)
 		// managed_password is WriteOnly — framework strips from state.
 		// managed_password_wo_version round-trips as a regular Optional
 		// Int64; assignPolicyResourceModel does not overwrite the prior
@@ -642,7 +641,7 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 	}
 
 	if state.EfiPassword != nil && am.OpenFirmwareEfiPassword != nil {
-		state.EfiPassword.OfMode = preferCurrentStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.EfiPassword.OfMode)
+		state.EfiPassword.OfMode = helpers.PreferCurrentStringPointer(am.OpenFirmwareEfiPassword.OfMode, state.EfiPassword.OfMode)
 		// of_password is WriteOnly — framework strips from state.
 		// of_password_wo_version round-trips as a regular Optional Int64;
 		// the API never echoes it, so the prior state value passes through
@@ -651,36 +650,36 @@ func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, st
 }
 
 func flattenPolicyReboot(r *proclassic.PolicyReboot, state *PolicyRestartOptionsModel) {
-	state.Message = preferCurrentStringPointer(r.Message, state.Message)
-	state.StartupDisk = preferCurrentStringPointer(r.StartupDisk, state.StartupDisk)
-	state.SpecifyStartup = preferCurrentStringPointer(r.SpecifyStartup, state.SpecifyStartup)
-	state.NoUserLoggedIn = preferCurrentStringPointer(r.NoUserLoggedIn, state.NoUserLoggedIn)
-	state.UserLoggedIn = preferCurrentStringPointer(r.UserLoggedIn, state.UserLoggedIn)
+	state.Message = helpers.PreferCurrentStringPointer(r.Message, state.Message)
+	state.StartupDisk = helpers.PreferCurrentStringPointer(r.StartupDisk, state.StartupDisk)
+	state.SpecifyStartup = helpers.PreferCurrentStringPointer(r.SpecifyStartup, state.SpecifyStartup)
+	state.NoUserLoggedIn = helpers.PreferCurrentStringPointer(r.NoUserLoggedIn, state.NoUserLoggedIn)
+	state.UserLoggedIn = helpers.PreferCurrentStringPointer(r.UserLoggedIn, state.UserLoggedIn)
 	state.DelayMinutes = preferCurrentInt(r.MinutesUntilReboot, state.DelayMinutes)
-	state.StartRebootTimerImmediately = preferCurrentBoolPointer(r.StartRebootTimerImmediately, state.StartRebootTimerImmediately)
-	state.FileVault2Reboot = preferCurrentBoolPointer(r.FileVault2Reboot, state.FileVault2Reboot)
+	state.StartRebootTimerImmediately = helpers.PreferCurrentBoolPointer(r.StartRebootTimerImmediately, state.StartRebootTimerImmediately)
+	state.FileVault2Reboot = helpers.PreferCurrentBoolPointer(r.FileVault2Reboot, state.FileVault2Reboot)
 }
 
 func flattenPolicyMaintenance(m *proclassic.PolicyMaintenance, state *PolicyMaintenanceModel) {
-	state.UpdateInventory = preferCurrentBoolPointer(m.Recon, state.UpdateInventory)
-	state.ResetComputerNames = preferCurrentBoolPointer(m.ResetName, state.ResetComputerNames)
-	state.InstallCachedPackages = preferCurrentBoolPointer(m.InstallAllCachedPackages, state.InstallCachedPackages)
-	state.FixDiskPermissions = preferCurrentBoolPointer(m.Permissions, state.FixDiskPermissions)
-	state.FixByhostFiles = preferCurrentBoolPointer(m.Byhost, state.FixByhostFiles)
-	state.FlushSystemCaches = preferCurrentBoolPointer(m.SystemCache, state.FlushSystemCaches)
-	state.FlushUserCaches = preferCurrentBoolPointer(m.UserCache, state.FlushUserCaches)
-	state.VerifyStartupDisk = preferCurrentBoolPointer(m.Verify, state.VerifyStartupDisk)
+	state.UpdateInventory = helpers.PreferCurrentBoolPointer(m.Recon, state.UpdateInventory)
+	state.ResetComputerNames = helpers.PreferCurrentBoolPointer(m.ResetName, state.ResetComputerNames)
+	state.InstallCachedPackages = helpers.PreferCurrentBoolPointer(m.InstallAllCachedPackages, state.InstallCachedPackages)
+	state.FixDiskPermissions = helpers.PreferCurrentBoolPointer(m.Permissions, state.FixDiskPermissions)
+	state.FixByhostFiles = helpers.PreferCurrentBoolPointer(m.Byhost, state.FixByhostFiles)
+	state.FlushSystemCaches = helpers.PreferCurrentBoolPointer(m.SystemCache, state.FlushSystemCaches)
+	state.FlushUserCaches = helpers.PreferCurrentBoolPointer(m.UserCache, state.FlushUserCaches)
+	state.VerifyStartupDisk = helpers.PreferCurrentBoolPointer(m.Verify, state.VerifyStartupDisk)
 }
 
 func flattenPolicyFilesProcesses(fp *proclassic.PolicyFilesProcesses, state *PolicyFilesAndProcessesModel) {
-	state.SearchByPath = preferCurrentStringPointer(fp.SearchByPath, state.SearchByPath)
-	state.DeleteFileIfFound = preferCurrentBoolPointer(fp.DeleteFile, state.DeleteFileIfFound)
-	state.SearchByFilename = preferCurrentStringPointer(fp.LocateFile, state.SearchByFilename)
-	state.UpdateLocateDatabase = preferCurrentBoolPointer(fp.UpdateLocateDatabase, state.UpdateLocateDatabase)
-	state.SearchBySpotlight = preferCurrentStringPointer(fp.SpotlightSearch, state.SearchBySpotlight)
-	state.SearchForProcess = preferCurrentStringPointer(fp.SearchForProcess, state.SearchForProcess)
-	state.KillProcessIfFound = preferCurrentBoolPointer(fp.KillProcess, state.KillProcessIfFound)
-	state.ExecuteCommand = preferCurrentStringPointer(fp.RunCommand, state.ExecuteCommand)
+	state.SearchByPath = helpers.PreferCurrentStringPointer(fp.SearchByPath, state.SearchByPath)
+	state.DeleteFileIfFound = helpers.PreferCurrentBoolPointer(fp.DeleteFile, state.DeleteFileIfFound)
+	state.SearchByFilename = helpers.PreferCurrentStringPointer(fp.LocateFile, state.SearchByFilename)
+	state.UpdateLocateDatabase = helpers.PreferCurrentBoolPointer(fp.UpdateLocateDatabase, state.UpdateLocateDatabase)
+	state.SearchBySpotlight = helpers.PreferCurrentStringPointer(fp.SpotlightSearch, state.SearchBySpotlight)
+	state.SearchForProcess = helpers.PreferCurrentStringPointer(fp.SearchForProcess, state.SearchForProcess)
+	state.KillProcessIfFound = helpers.PreferCurrentBoolPointer(fp.KillProcess, state.KillProcessIfFound)
+	state.ExecuteCommand = helpers.PreferCurrentStringPointer(fp.RunCommand, state.ExecuteCommand)
 }
 
 // flattenPolicyUserInteraction collapses the wire's three-field deferral
@@ -689,8 +688,8 @@ func flattenPolicyFilesProcesses(fp *proclassic.PolicyFilesProcesses, state *Pol
 // here (server enforces the cross-field invariants on every PUT, so the
 // stored values are always self-consistent).
 func flattenPolicyUserInteraction(u *proclassic.PolicyUserInteraction, state *PolicyUserInteractionModel) {
-	state.StartMessage = preferCurrentStringPointer(u.MessageStart, state.StartMessage)
-	state.CompleteMessage = preferCurrentStringPointer(u.MessageFinish, state.CompleteMessage)
+	state.StartMessage = helpers.PreferCurrentStringPointer(u.MessageStart, state.StartMessage)
+	state.CompleteMessage = helpers.PreferCurrentStringPointer(u.MessageFinish, state.CompleteMessage)
 
 	defer_ := false
 	if u.AllowUsersToDefer != nil {
@@ -725,19 +724,11 @@ func flattenPolicyUserInteraction(u *proclassic.PolicyUserInteraction, state *Po
 }
 
 func flattenPolicyDiskEncryption(d *proclassic.PolicyDiskEncryption, state *PolicyDiskEncryptionModel) {
-	state.Action = preferCurrentStringPointer(d.Action, state.Action)
+	state.Action = helpers.PreferCurrentStringPointer(d.Action, state.Action)
 	state.DiskEncryptionConfigurationID = preferCurrentInt(d.DiskEncryptionConfigurationID, state.DiskEncryptionConfigurationID)
-	state.AuthRestart = preferCurrentBoolPointer(d.AuthRestart, state.AuthRestart)
-	state.RemediateKeyType = preferCurrentStringPointer(d.RemediateKeyType, state.RemediateKeyType)
+	state.AuthRestart = helpers.PreferCurrentBoolPointer(d.AuthRestart, state.AuthRestart)
+	state.RemediateKeyType = helpers.PreferCurrentStringPointer(d.RemediateKeyType, state.RemediateKeyType)
 	state.RemediateDiskEncryptionConfigurationID = preferCurrentInt(d.RemediateDiskEncryptionConfigurationID, state.RemediateDiskEncryptionConfigurationID)
 }
 
 // ---- small helpers -------------------------------------------------------------
-
-func stringFromIntPtr(p *int) *string {
-	if p == nil {
-		return nil
-	}
-	s := strconv.Itoa(*p)
-	return &s
-}

@@ -130,7 +130,7 @@ func (r *PatchExternalSourceListResource) List(ctx context.Context, req list.Lis
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(s.Name)
+		result.DisplayName = helpers.DerefString(s.Name)
 
 		id := helpers.StringValueFromIntPtr(s.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, patchExternalSourceIdentityModel{ID: id})...)
@@ -183,12 +183,4 @@ func (r *PatchExternalSourceListResource) List(ctx context.Context, req list.Lis
 }
 
 // patchExternalSourceName is the name accessor passed to filters.ApplyClassicFilter.
-func patchExternalSourceName(s proclassic.IDName) string { return derefString(s.Name) }
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
+func patchExternalSourceName(s proclassic.IDName) string { return helpers.DerefString(s.Name) }

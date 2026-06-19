@@ -118,7 +118,7 @@ func (r *EbookListResource) List(ctx context.Context, req list.ListRequest, stre
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(e.Name)
+		result.DisplayName = helpers.DerefString(e.Name)
 
 		id := helpers.StringValueFromIntPtr(e.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, ebookIdentityModel{ID: id})...)
@@ -152,13 +152,5 @@ func (r *EbookListResource) List(ctx context.Context, req list.ListRequest, stre
 
 // ebookListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func ebookListItemName(e proclassic.IDName) string {
-	return derefString(e.Name)
-}
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return helpers.DerefString(e.Name)
 }

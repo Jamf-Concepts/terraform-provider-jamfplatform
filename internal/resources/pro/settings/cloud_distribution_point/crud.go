@@ -22,20 +22,13 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is
-// invoked before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create enables the cloud distribution point (POST — the server's None→type
 // transition). The API rejects POST when a cloud distribution point is already
 // configured ("<TYPE> is already configured."); that case is mapped to an
 // import-guidance error.
 func (r *CloudDistributionPointResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -93,7 +86,7 @@ func (r *CloudDistributionPointResource) Create(ctx context.Context, req resourc
 // (destroyed or drifted away), so the resource is removed from state.
 func (r *CloudDistributionPointResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -147,7 +140,7 @@ func (r *CloudDistributionPointResource) Read(ctx context.Context, req resource.
 // emits it.
 func (r *CloudDistributionPointResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -195,7 +188,7 @@ func (r *CloudDistributionPointResource) Update(ctx context.Context, req resourc
 // turns off cloud distribution for the tenant.
 func (r *CloudDistributionPointResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

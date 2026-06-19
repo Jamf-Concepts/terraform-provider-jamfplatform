@@ -7,14 +7,15 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func TestInt64ValueFromPtr(t *testing.T) {
-	if got := int64ValueFromPtr(nil); !got.IsNull() {
+	if got := helpers.Int64FromIntPtr(nil); !got.IsNull() {
 		t.Errorf("nil pointer must map to null, got %v", got)
 	}
-	if got := int64ValueFromPtr(new(445)); got.ValueInt64() != 445 {
+	if got := helpers.Int64FromIntPtr(new(445)); got.ValueInt64() != 445 {
 		t.Errorf("expected 445, got %v", got)
 	}
 }

@@ -124,7 +124,7 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(p.Name)
+		result.DisplayName = helpers.DerefString(p.Name)
 
 		id := helpers.StringValueFromIntPtr(p.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, policyIdentityModel{ID: id})...)
@@ -158,13 +158,5 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 
 // policyListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func policyListItemName(p proclassic.IDName) string {
-	return derefString(p.Name)
-}
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return helpers.DerefString(p.Name)
 }

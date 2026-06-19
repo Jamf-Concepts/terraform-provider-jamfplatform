@@ -106,7 +106,7 @@ func (r *EnrollmentProfileListResource) List(ctx context.Context, req list.ListR
 			break
 		}
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(p.Name)
+		result.DisplayName = helpers.DerefString(p.Name)
 
 		id := helpers.StringValueFromIntPtr(p.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, enrollmentProfileIdentityModel{ID: id})...)
@@ -156,5 +156,5 @@ func (r *EnrollmentProfileListResource) List(ctx context.Context, req list.ListR
 }
 
 func enrollmentProfileItemName(p proclassic.MobileDeviceEnrollmentProfilesItemMobileDeviceEnrollmentProfile) string {
-	return derefString(p.Name)
+	return helpers.DerefString(p.Name)
 }

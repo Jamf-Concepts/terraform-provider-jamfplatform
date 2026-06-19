@@ -30,7 +30,7 @@ import (
 func buildPatchPolicyInput(ctx context.Context, plan PatchPolicyResourceModel) (*proclassic.PatchPolicy, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := &proclassic.PatchPolicy{
-		SoftwareTitleConfigurationID: stringIDPtr(plan.SoftwareTitleConfigurationID),
+		SoftwareTitleConfigurationID: helpers.StringIDPtr(plan.SoftwareTitleConfigurationID),
 		General:                      buildGeneral(plan),
 	}
 
@@ -195,7 +195,7 @@ func buildUserInteraction(m *PatchPolicyUserInteractionModel) *proclassic.PatchP
 		SelfServiceDescription: helpers.OptionalStringPointer(m.SelfServiceDescription),
 	}
 
-	if icon := stringIDPtr(m.SelfServiceIconID); icon != nil {
+	if icon := helpers.StringIDPtr(m.SelfServiceIconID); icon != nil {
 		ui.SelfServiceIcon = &proclassic.PatchPolicyUserInteractionSelfServiceIcon{ID: icon}
 	}
 

@@ -120,7 +120,7 @@ func (r *SiteListResource) List(ctx context.Context, req list.ListRequest, strea
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(s.Name)
+		result.DisplayName = helpers.DerefString(s.Name)
 
 		id := helpers.StringValueFromIntPtr(s.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, siteIdentityModel{ID: id})...)
@@ -166,12 +166,4 @@ func (r *SiteListResource) List(ctx context.Context, req list.ListRequest, strea
 }
 
 // siteName is the name accessor passed to filters.ApplyClassicFilter.
-func siteName(s proclassic.Site) string { return derefString(s.Name) }
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
+func siteName(s proclassic.Site) string { return helpers.DerefString(s.Name) }

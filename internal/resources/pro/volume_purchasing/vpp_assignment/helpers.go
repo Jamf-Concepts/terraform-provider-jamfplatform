@@ -18,11 +18,3 @@ func intStringOrNull(p *int) types.String {
 	}
 	return types.StringValue(strconv.Itoa(*p))
 }
-
-// derefString returns "" for a nil *string.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}

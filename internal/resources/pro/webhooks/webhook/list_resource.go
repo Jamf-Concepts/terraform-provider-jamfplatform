@@ -120,7 +120,7 @@ func (r *WebhookListResource) List(ctx context.Context, req list.ListRequest, st
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(item.Name)
+		result.DisplayName = helpers.DerefString(item.Name)
 
 		id := helpers.StringValueFromIntPtr(item.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, webhookIdentityModel{ID: id})...)
@@ -154,5 +154,5 @@ func (r *WebhookListResource) List(ctx context.Context, req list.ListRequest, st
 
 // webhookListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func webhookListItemName(item proclassic.IDName) string {
-	return derefString(item.Name)
+	return helpers.DerefString(item.Name)
 }

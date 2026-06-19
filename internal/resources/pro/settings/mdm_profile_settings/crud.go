@@ -19,24 +19,13 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
-// before Configure has populated r.client. Defense-in-depth: in normal operation the
-// framework gates CRUD on a successful Configure, but a misconfigured provider block
-// or a future framework change could route to CRUD with a nil client and panic the
-// SDK call site. Centralizing the message keeps the canonical singleton template
-// consistent across handlers.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create handles initial provisioning of the device communication settings singleton.
 // The Jamf Pro API has no Create endpoint for this object — one record per tenant
 // already exists — so this funnels into Update against the plan, then reads back
 // to capture authoritative state.
 func (r *MDMProfileSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -79,7 +68,7 @@ func (r *MDMProfileSettingsResource) Create(ctx context.Context, req resource.Cr
 // Read refreshes Terraform state with the latest settings from the Jamf Pro API.
 func (r *MDMProfileSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -123,7 +112,7 @@ func (r *MDMProfileSettingsResource) Read(ctx context.Context, req resource.Read
 // Update writes the new settings to the Jamf Pro API. Same SDK call as Create.
 func (r *MDMProfileSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

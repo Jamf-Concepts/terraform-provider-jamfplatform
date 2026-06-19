@@ -6,6 +6,7 @@ package printer
 import (
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -64,11 +65,11 @@ func TestDecodeCategory(t *testing.T) {
 }
 
 func TestDerefString(t *testing.T) {
-	if derefString(nil) != "" {
+	if helpers.DerefString(nil) != "" {
 		t.Errorf("nil deref must be empty string")
 	}
 	v := "hello"
-	if derefString(&v) != "hello" {
-		t.Errorf("expected hello, got %q", derefString(&v))
+	if helpers.DerefString(&v) != "hello" {
+		t.Errorf("expected hello, got %q", helpers.DerefString(&v))
 	}
 }

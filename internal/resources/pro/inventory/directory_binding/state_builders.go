@@ -6,7 +6,6 @@ package directory_binding
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -40,7 +39,7 @@ func assignDirectoryBindingResourceModel(state *DirectoryBindingResourceModel, b
 	state.Domain = helpers.StringPointerValueOrNull(b.Domain)
 	state.Username = helpers.StringPointerValueOrNull(b.Username)
 	state.ComputerOU = helpers.StringPointerValueOrNull(b.ComputerOu)
-	state.Priority = int64ValueFromPtr(b.Priority)
+	state.Priority = helpers.Int64FromIntPtr(b.Priority)
 
 	state.ActiveDirectory = assignActiveDirectoryModel(b.ActiveDirectory)
 	state.OpenDirectory = assignOpenDirectoryModel(b.OpenDirectory)
@@ -67,7 +66,7 @@ func assignDirectoryBindingDataSourceModel(state *DirectoryBindingDataSourceMode
 	state.Domain = helpers.StringPointerValueOrNull(b.Domain)
 	state.Username = helpers.StringPointerValueOrNull(b.Username)
 	state.ComputerOU = helpers.StringPointerValueOrNull(b.ComputerOu)
-	state.Priority = int64ValueFromPtr(b.Priority)
+	state.Priority = helpers.Int64FromIntPtr(b.Priority)
 
 	state.ActiveDirectory = assignActiveDirectoryModel(b.ActiveDirectory)
 	state.OpenDirectory = assignOpenDirectoryModel(b.OpenDirectory)
@@ -131,7 +130,7 @@ func assignAdmitmacModel(a *proclassic.DirectoryBindingAdmitmac) *directoryBindi
 		UserGIDAttributeMapping: helpers.StringPointerValueOrNull(a.UserGid),
 		GIDAttributeMapping:     helpers.StringPointerValueOrNull(a.Gid),
 		AdminGroup:              helpers.StringPointerValueOrNull(a.AdminGroup),
-		CachedCredentials:       int64ValueFromPtr(a.CachedCredentials),
+		CachedCredentials:       helpers.Int64FromIntPtr(a.CachedCredentials),
 		AddUserToLocal:          helpers.BoolPointerValueOrNull(a.AddUserToLocal),
 		UsersOU:                 helpers.StringPointerValueOrNull(a.UsersOu),
 		GroupsOU:                helpers.StringPointerValueOrNull(a.GroupsOu),
@@ -152,14 +151,4 @@ func assignCentrifyModel(c *proclassic.DirectoryBindingCentrify) *directoryBindi
 		Zone:                  helpers.StringPointerValueOrNull(c.Zone),
 		PreferredDomainServer: helpers.StringPointerValueOrNull(c.PreferredDomainServer),
 	}
-}
-
-// int64ValueFromPtr converts a nil-safe *int (the SDK shape) into a TF
-// Int64, mapping nil to null. The SDK uses *int for Priority and
-// CachedCredentials.
-func int64ValueFromPtr(p *int) types.Int64 {
-	if p == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(int64(*p))
 }

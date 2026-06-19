@@ -6,6 +6,7 @@ package network_segment
 import (
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -96,7 +97,7 @@ func TestOptionalBoolPointer(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := optionalBoolPointer(c.in)
+			got := helpers.OptionalBoolPointer(c.in)
 			switch {
 			case c.want == nil && got != nil:
 				t.Errorf("expected nil, got %v", *got)

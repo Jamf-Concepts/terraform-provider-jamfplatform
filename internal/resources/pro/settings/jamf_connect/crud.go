@@ -42,13 +42,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is
-// invoked before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // resolveByProfileID lists the Jamf Connect-linked configuration profiles and
 // returns the one whose Jamf Pro profile ID matches. Returns (nil, nil) when
 // no linked profile has that ID — the profile either does not exist or does
@@ -80,7 +73,7 @@ func profileNotLinkedDetail(profileID int64) string {
 // the settings. The 200 echo is authoritative state.
 func (r *JamfConnectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -109,7 +102,7 @@ func (r *JamfConnectResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	got, err := r.client.UpdateJamfConnectConfigProfileV1(createCtx, derefString(linked.UUID), buildJamfConnectInput(plan))
+	got, err := r.client.UpdateJamfConnectConfigProfileV1(createCtx, helpers.DerefString(linked.UUID), buildJamfConnectInput(plan))
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Connect deployment settings", err.Error())
 		return
@@ -131,7 +124,7 @@ func (r *JamfConnectResource) Create(ctx context.Context, req resource.CreateReq
 // Connect payload (or was deleted), so the resource is removed from state.
 func (r *JamfConnectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -202,7 +195,7 @@ func (r *JamfConnectResource) Read(ctx context.Context, req resource.ReadRequest
 // single full-replace write. The 200 echo is authoritative state.
 func (r *JamfConnectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -231,7 +224,7 @@ func (r *JamfConnectResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	got, err := r.client.UpdateJamfConnectConfigProfileV1(updateCtx, derefString(linked.UUID), buildJamfConnectInput(plan))
+	got, err := r.client.UpdateJamfConnectConfigProfileV1(updateCtx, helpers.DerefString(linked.UUID), buildJamfConnectInput(plan))
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Connect deployment settings", err.Error())
 		return

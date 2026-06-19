@@ -21,14 +21,6 @@ func extractWebhookID(w *proclassic.Webhook) string {
 	return strconv.Itoa(*w.ID)
 }
 
-// int64FromIntPtr renders an *int as a types.Int64, null for nil.
-func int64FromIntPtr(p *int) types.Int64 {
-	if p == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(int64(*p))
-}
-
 // smartGroupIDToState normalises the wire <smart_group_id> into state. The
 // server returns the sentinel -1 for a smart-group event with no group
 // selected, and omits the element entirely for non-smart events; both map to
@@ -48,14 +40,6 @@ func emptyStringToNull(p *string) types.String {
 		return types.StringNull()
 	}
 	return types.StringValue(*p)
-}
-
-// derefString returns the underlying string for a non-nil *string, or "".
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }
 
 // displayFieldNames extracts the <display_field><name> values from the server

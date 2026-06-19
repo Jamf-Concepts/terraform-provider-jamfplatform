@@ -25,7 +25,7 @@ func assignJamfConnectResourceModel(state *JamfConnectResourceModel, p *pro.Link
 	state.ID = types.StringValue(strconv.Itoa(profileID))
 	state.ConfigProfileUUID = helpers.StringPointerValueOrNull(p.UUID)
 
-	state.AutoDeploymentType = types.StringValue(derefString(p.AutoDeploymentType))
+	state.AutoDeploymentType = types.StringValue(helpers.DerefString(p.AutoDeploymentType))
 	state.Version = helpers.StringPointerValueOrNull(p.Version)
 
 	state.ProfileName = helpers.StringPointerValueOrNull(p.ProfileName)
@@ -40,18 +40,10 @@ func assignJamfConnectDataSourceModel(data *JamfConnectDataSourceModel, p *pro.L
 	data.ProfileID = types.Int64Value(int64(derefInt(p.ProfileID)))
 	data.ConfigProfileUUID = helpers.StringPointerValueOrNull(p.UUID)
 	data.ProfileName = helpers.StringPointerValueOrNull(p.ProfileName)
-	data.AutoDeploymentType = types.StringValue(derefString(p.AutoDeploymentType))
+	data.AutoDeploymentType = types.StringValue(helpers.DerefString(p.AutoDeploymentType))
 	data.Version = helpers.StringPointerValueOrNull(p.Version)
 	data.ScopeDescription = helpers.StringPointerValueOrNull(p.ScopeDescription)
 	data.SiteID = helpers.StringPointerValueOrNull(p.SiteID)
-}
-
-// derefString returns the pointed-to string, or "" when nil.
-func derefString(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
 
 // derefInt returns the pointed-to int, or 0 when nil.

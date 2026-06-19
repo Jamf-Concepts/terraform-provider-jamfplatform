@@ -49,13 +49,13 @@ func buildMacAppGeneral(m *MacAppGeneralModel) *proclassic.MacApplicationGeneral
 		Version:        helpers.OptionalStringPointer(m.Version),
 		BundleID:       helpers.OptionalStringPointer(m.BundleID),
 		URL:            helpers.OptionalStringPointer(m.URL),
-		IsFree:         optionalBoolPointer(m.IsFree),
+		IsFree:         helpers.OptionalBoolPointer(m.IsFree),
 		DeploymentType: helpers.OptionalStringPointer(m.DeploymentType),
 	}
-	if catID := stringIDPtr(m.CategoryID); catID != nil {
+	if catID := helpers.StringIDPtr(m.CategoryID); catID != nil {
 		g.Category = &proclassic.CategoryObject{ID: catID}
 	}
-	if siteID := stringIDPtr(m.SiteID); siteID != nil {
+	if siteID := helpers.StringIDPtr(m.SiteID); siteID != nil {
 		g.Site = &proclassic.SiteObject{ID: siteID}
 	}
 	return g
@@ -65,8 +65,8 @@ func buildMacAppScope(ctx context.Context, m *scope.ComputerScopeModelNoIbeacons
 	var diags diag.Diagnostics
 	t := m.TargetsOrZero()
 	s := &proclassic.MacApplicationScope{
-		AllComputers: optionalBoolPointer(t.AllComputers),
-		AllJssUsers:  optionalBoolPointer(t.AllJssUsers),
+		AllComputers: helpers.OptionalBoolPointer(t.AllComputers),
+		AllJssUsers:  helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
 	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.MacApplicationScopeComputersComputerItem {
@@ -266,8 +266,8 @@ func buildMacAppSelfService(m *MacAppSelfServiceModel) *proclassic.MacApplicatio
 	ss := &proclassic.MacApplicationSelfService{
 		InstallButtonText:           helpers.OptionalStringPointer(m.InstallButtonText),
 		SelfServiceDescription:      helpers.OptionalStringPointer(m.SelfServiceDescription),
-		ForceUsersToViewDescription: optionalBoolPointer(m.ForceUsersToViewDescription),
-		FeatureOnMainPage:           optionalBoolPointer(m.FeatureOnMainPage),
+		ForceUsersToViewDescription: helpers.OptionalBoolPointer(m.ForceUsersToViewDescription),
+		FeatureOnMainPage:           helpers.OptionalBoolPointer(m.FeatureOnMainPage),
 		Notification:                buildMacAppNotification(m.NotificationEnabled, m.NotificationMethod),
 		NotificationSubject:         helpers.OptionalStringPointer(m.NotificationSubject),
 		NotificationMessage:         helpers.OptionalStringPointer(m.NotificationMessage),
@@ -275,7 +275,7 @@ func buildMacAppSelfService(m *MacAppSelfServiceModel) *proclassic.MacApplicatio
 
 	if m.SelfServiceIcon != nil {
 		icon := &proclassic.MacApplicationSelfServiceSelfServiceIcon{}
-		if id := stringIDPtr(m.SelfServiceIcon.ID); id != nil {
+		if id := helpers.StringIDPtr(m.SelfServiceIcon.ID); id != nil {
 			icon.ID = id
 		}
 		if icon.ID != nil {
@@ -287,10 +287,10 @@ func buildMacAppSelfService(m *MacAppSelfServiceModel) *proclassic.MacApplicatio
 		cats := make([]proclassic.MacApplicationSelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.SelfServiceCategories))
 		for _, c := range m.SelfServiceCategories {
 			item := proclassic.MacApplicationSelfServiceSelfServiceCategoriesCategoryItem{
-				ID:        stringIDPtr(c.ID),
+				ID:        helpers.StringIDPtr(c.ID),
 				Name:      helpers.OptionalStringPointer(c.Name),
-				DisplayIn: optionalBoolPointer(c.DisplayIn),
-				FeatureIn: optionalBoolPointer(c.FeatureIn),
+				DisplayIn: helpers.OptionalBoolPointer(c.DisplayIn),
+				FeatureIn: helpers.OptionalBoolPointer(c.FeatureIn),
 			}
 			cats = append(cats, item)
 		}
@@ -302,8 +302,8 @@ func buildMacAppSelfService(m *MacAppSelfServiceModel) *proclassic.MacApplicatio
 
 func buildMacAppVpp(m *MacAppVppModel) *proclassic.MacApplicationVpp {
 	v := &proclassic.MacApplicationVpp{
-		AssignVppDeviceBasedLicenses: optionalBoolPointer(m.AssignVppDeviceBasedLicenses),
-		VppAdminAccountID:            stringIDPtr(m.VppAdminAccountID),
+		AssignVppDeviceBasedLicenses: helpers.OptionalBoolPointer(m.AssignVppDeviceBasedLicenses),
+		VppAdminAccountID:            helpers.StringIDPtr(m.VppAdminAccountID),
 	}
 	// License counts are server-computed; never written.
 	if v.AssignVppDeviceBasedLicenses == nil && v.VppAdminAccountID == nil {

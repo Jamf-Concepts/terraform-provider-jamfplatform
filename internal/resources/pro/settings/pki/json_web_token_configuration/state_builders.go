@@ -23,7 +23,7 @@ func assignJSONWebTokenConfigurationResourceModel(state *JSONWebTokenConfigurati
 		state.ID = types.StringValue(id)
 	}
 	state.Name = helpers.StringPointerValueOrNull(c.Name)
-	state.TokenExpiry = int64FromIntPtr(c.TokenExpiry)
+	state.TokenExpiry = helpers.Int64FromIntPtr(c.TokenExpiry)
 	state.Enabled = enabledFromDisabled(c.Disabled)
 }
 
@@ -37,7 +37,7 @@ func assignJSONWebTokenConfigurationDataSourceModel(state *JSONWebTokenConfigura
 		state.ID = types.StringValue(id)
 	}
 	state.Name = helpers.StringPointerValueOrNull(c.Name)
-	state.TokenExpiry = int64FromIntPtr(c.TokenExpiry)
+	state.TokenExpiry = helpers.Int64FromIntPtr(c.TokenExpiry)
 	state.Enabled = enabledFromDisabled(c.Disabled)
 }
 

@@ -40,7 +40,7 @@ func buildEbookInput(ctx context.Context, plan EbookResourceModel) (*proclassic.
 		// <self_service> on the wire (wire-probed — setting it in <general>
 		// propagates to both). Mirror that by stamping the icon id into general
 		// too so a repeated GET round-trips identically.
-		if iconID := stringIDPtr(plan.SelfService.IconID); iconID != nil {
+		if iconID := helpers.StringIDPtr(plan.SelfService.IconID); iconID != nil {
 			if out.General == nil {
 				out.General = &proclassic.EbookPostGeneral{}
 			}
@@ -57,15 +57,15 @@ func buildEbookGeneral(m *EbookGeneralModel) *proclassic.EbookPostGeneral {
 		Author:          helpers.OptionalStringPointer(m.Author),
 		URL:             helpers.OptionalStringPointer(m.URL),
 		DeploymentType:  helpers.OptionalStringPointer(m.DeploymentType),
-		DeployAsManaged: optionalBoolPointer(m.DeployAsManaged),
-		Free:            optionalBoolPointer(m.Free),
+		DeployAsManaged: helpers.OptionalBoolPointer(m.DeployAsManaged),
+		Free:            helpers.OptionalBoolPointer(m.Free),
 		FileType:        helpers.OptionalStringPointer(m.FileType),
 		Version:         helpers.OptionalStringPointer(m.Version),
 	}
-	if catID := stringIDPtr(m.CategoryID); catID != nil {
+	if catID := helpers.StringIDPtr(m.CategoryID); catID != nil {
 		g.Category = &proclassic.CategoryObject{ID: catID}
 	}
-	if siteID := stringIDPtr(m.SiteID); siteID != nil {
+	if siteID := helpers.StringIDPtr(m.SiteID); siteID != nil {
 		g.Site = &proclassic.SiteObject{ID: siteID}
 	}
 	return g
@@ -75,9 +75,9 @@ func buildEbookScope(ctx context.Context, m *EbookScopeModel) (*proclassic.Ebook
 	var diags diag.Diagnostics
 	t := m.TargetsOrZero()
 	s := &proclassic.EbookPostScope{
-		AllComputers:     optionalBoolPointer(t.AllComputers),
-		AllMobileDevices: optionalBoolPointer(t.AllMobileDevices),
-		AllJssUsers:      optionalBoolPointer(t.AllJssUsers),
+		AllComputers:     helpers.OptionalBoolPointer(t.AllComputers),
+		AllMobileDevices: helpers.OptionalBoolPointer(t.AllMobileDevices),
+		AllJssUsers:      helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
 	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.EbookScopeComputersComputerItem {
@@ -283,14 +283,14 @@ func buildEbookSelfService(m *EbookSelfServiceModel) *proclassic.EbookPostSelfSe
 		SelfServiceDisplayName:      helpers.OptionalStringPointer(m.DisplayName),
 		InstallButtonText:           helpers.OptionalStringPointer(m.InstallButtonText),
 		SelfServiceDescription:      helpers.OptionalStringPointer(m.SelfServiceDescription),
-		ForceUsersToViewDescription: optionalBoolPointer(m.ForceUsersToViewDescription),
-		FeatureOnMainPage:           optionalBoolPointer(m.FeatureOnMainPage),
+		ForceUsersToViewDescription: helpers.OptionalBoolPointer(m.ForceUsersToViewDescription),
+		FeatureOnMainPage:           helpers.OptionalBoolPointer(m.FeatureOnMainPage),
 		Notification:                buildEbookNotification(m.NotificationEnabled, m.NotificationMethod),
 		NotificationSubject:         helpers.OptionalStringPointer(m.NotificationSubject),
 		NotificationMessage:         helpers.OptionalStringPointer(m.NotificationMessage),
 	}
 
-	if iconID := stringIDPtr(m.IconID); iconID != nil {
+	if iconID := helpers.StringIDPtr(m.IconID); iconID != nil {
 		ss.SelfServiceIcon = &proclassic.EbookSelfServiceSelfServiceIcon{ID: iconID}
 	}
 
@@ -298,10 +298,10 @@ func buildEbookSelfService(m *EbookSelfServiceModel) *proclassic.EbookPostSelfSe
 		cats := make([]proclassic.EbookSelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.Categories))
 		for _, c := range m.Categories {
 			cats = append(cats, proclassic.EbookSelfServiceSelfServiceCategoriesCategoryItem{
-				ID:        stringIDPtr(c.ID),
+				ID:        helpers.StringIDPtr(c.ID),
 				Name:      helpers.OptionalStringPointer(c.Name),
-				DisplayIn: optionalBoolPointer(c.DisplayIn),
-				FeatureIn: optionalBoolPointer(c.FeatureIn),
+				DisplayIn: helpers.OptionalBoolPointer(c.DisplayIn),
+				FeatureIn: helpers.OptionalBoolPointer(c.FeatureIn),
 			})
 		}
 		ss.SelfServiceCategories = &proclassic.EbookSelfServiceSelfServiceCategories{Category: &cats}

@@ -121,7 +121,7 @@ func (r *JSONWebTokenConfigurationListResource) List(ctx context.Context, req li
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(item.Name)
+		result.DisplayName = helpers.DerefString(item.Name)
 
 		id := helpers.StringValueFromIntPtr(item.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, jsonWebTokenConfigurationIdentityModel{ID: id})...)
@@ -156,5 +156,5 @@ func (r *JSONWebTokenConfigurationListResource) List(ctx context.Context, req li
 // jsonWebTokenConfigurationListItemName is the name accessor passed to
 // filters.ApplyClassicFilter.
 func jsonWebTokenConfigurationListItemName(item proclassic.JsonWebTokenConfiguration) string {
-	return derefString(item.Name)
+	return helpers.DerefString(item.Name)
 }

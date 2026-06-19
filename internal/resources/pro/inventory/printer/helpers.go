@@ -12,16 +12,6 @@ import (
 // in state and rejects it as a literal user input to avoid confusion.
 const categoryUnassignedSentinel = "No category assigned"
 
-// derefString returns the underlying string for a non-nil *string, or "" for
-// nil. Used by the list resource for display-name rendering and by the
-// classic-filter name accessor.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
 // stringPtrEmitAlways returns a non-nil *string regardless of whether the TF
 // String is null. Null/unknown produce a pointer to "", which the SDK encodes
 // as `<element></element>`. The classic /printers endpoint distinguishes:
