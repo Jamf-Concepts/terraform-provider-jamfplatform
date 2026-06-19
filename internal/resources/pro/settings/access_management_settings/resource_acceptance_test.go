@@ -14,7 +14,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -44,17 +43,9 @@ func adeFixture(name, token string, woVersion int) string {
 // on the tenant after Terraform destroys the resources from state. The remote Delete is a
 // no-op, so the API must still return the record post-destroy.
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := pro.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetEnrollmentAccessManagementV4(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected Access Management settings record to persist on tenant after destroy, got error: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil Access Management settings record post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "Access Management settings", func(ctx context.Context) (any, error) {
+		return pro.New(testhelpers.NewAcceptanceClient(t)).GetEnrollmentAccessManagementV4(ctx)
+	})
 }
 
 // TestAccResource_ProAccessManagementSettings_Basic creates an ADE server object from the

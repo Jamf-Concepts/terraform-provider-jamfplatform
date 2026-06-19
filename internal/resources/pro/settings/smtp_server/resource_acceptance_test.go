@@ -7,14 +7,12 @@ package smtp_server_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"regexp"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -25,17 +23,9 @@ const smtpAddr = "jamfplatform_pro_smtp_server.test"
 // persists on the tenant after Terraform destroys the resource from state. The
 // remote Delete is a no-op, so the API must still return the record post-destroy.
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := pro.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetSmtpServerV2(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected SMTP Server record to persist on tenant after destroy, got error: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil SMTP Server record post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "SMTP Server", func(ctx context.Context) (any, error) {
+		return pro.New(testhelpers.NewAcceptanceClient(t)).GetSmtpServerV2(ctx)
+	})
 }
 
 // TestAccResource_ProSmtpServer_Basic exercises the BASIC happy-path plus a

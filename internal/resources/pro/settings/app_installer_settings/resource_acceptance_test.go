@@ -21,17 +21,9 @@ import (
 // checkSingletonRecordStillExists verifies the App Installer global settings record
 // persists on the tenant after Terraform destroys the resource from state.
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := pro.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetAppInstallerGlobalSettingsV1(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected App Installer settings to persist after destroy: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil App Installer settings post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "App Installer settings", func(ctx context.Context) (any, error) {
+		return pro.New(testhelpers.NewAcceptanceClient(t)).GetAppInstallerGlobalSettingsV1(ctx)
+	})
 }
 
 // TestAccResource_ProAppInstallerSettings_Basic creates settings with both blocks,

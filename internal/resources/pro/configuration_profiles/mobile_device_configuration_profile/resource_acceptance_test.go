@@ -93,14 +93,9 @@ func freshPayload(t *testing.T, fixture string) string {
 
 // ── SDK helpers ───────────────────────────────────────────────────────────────
 
-func newSDKClient(t *testing.T) *proclassic.Client {
-	t.Helper()
-	return proclassic.New(testhelpers.NewAcceptanceClient(t))
-}
-
 func checkDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		c := newSDKClient(t)
+		c := testhelpers.NewProClassicClient(t)
 		ctx := context.Background()
 		for _, rs := range s.RootModule().Resources {
 			if rs.Type != "jamfplatform_pro_mobile_device_configuration_profile" {
@@ -121,7 +116,7 @@ func checkDestroy(t *testing.T) resource.TestCheckFunc {
 
 func createDummyUser(t *testing.T, name string) string {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 	got, err := c.CreateUserByID(ctx, "0", &proclassic.UserPost{Name: &name})
 	if err != nil || got == nil || got.ID == nil {
@@ -138,7 +133,7 @@ func createDummyUser(t *testing.T, name string) string {
 
 func createDummyMobileDeviceGroup(t *testing.T, name string) string {
 	t.Helper()
-	c := newSDKClient(t)
+	c := testhelpers.NewProClassicClient(t)
 	ctx := context.Background()
 	isSmart := false
 	got, err := c.CreateMobileDeviceGroupByID(ctx, "0", &proclassic.MobileDeviceGroup{
