@@ -42,6 +42,24 @@ func popup(vs ...string) tftypes.Value {
 	return tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, elems)
 }
 
+// TestInputTypeValidator_Mobile_DefersOnUnknownCompanion is the §436 regression
+// guard: when input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING (known) but the
+// required directory_service_attribute is unknown (variable/for_each/resource-
+// driven), the validator MUST defer, not treat unknown as missing and error.
+// See STYLE_GUIDE "Config-time validators MUST defer on unknown values".
+func TestInputTypeValidator_Mobile_DefersOnUnknownCompanion(t *testing.T) {
+	unknown := tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
+	req := resource.ValidateConfigRequest{Config: configFromAttrs(t, map[string]tftypes.Value{
+		"input_type":                  str("DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"),
+		"directory_service_attribute": unknown,
+	})}
+	var resp resource.ValidateConfigResponse
+	inputTypeConfigValidator{}.ValidateResource(context.Background(), req, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("validator must defer when directory_service_attribute is unknown, got %v", resp.Diagnostics)
+	}
+}
+
 func TestInputTypeValidator_Mobile(t *testing.T) {
 	tests := []struct {
 		name    string

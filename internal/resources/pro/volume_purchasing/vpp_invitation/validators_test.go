@@ -82,3 +82,34 @@ func TestEmailValidator_SelfServiceNoRequirement(t *testing.T) {
 		t.Errorf("non-email mode must not require email fields, got %d errors", errs)
 	}
 }
+
+// TestEmailValidator_DefersOnUnknownFields is the §436 regression guard: with
+// distribution_method = "Send emails" (known) but the required sender / subject
+// / message fields UNKNOWN (variable/for_each/resource-driven), the validator
+// MUST defer, not treat unknown as missing and error. (buildConfig's setStr
+// cannot represent unknown, so this builds the config directly.) See
+// STYLE_GUIDE "Config-time validators MUST defer on unknown values".
+func TestEmailValidator_DefersOnUnknownFields(t *testing.T) {
+	r := NewVPPInvitationResource()
+	var sr resource.SchemaResponse
+	r.(*VPPInvitationResource).Schema(context.Background(), resource.SchemaRequest{}, &sr)
+	if sr.Diagnostics.HasError() {
+		t.Fatalf("schema diags: %v", sr.Diagnostics)
+	}
+	objType := sr.Schema.Type().TerraformType(context.Background()).(tftypes.Object)
+	vals := map[string]tftypes.Value{}
+	for name, ty := range objType.AttributeTypes {
+		vals[name] = tftypes.NewValue(ty, nil)
+	}
+	vals["distribution_method"] = tftypes.NewValue(tftypes.String, distributionMethodSendEmails)
+	for _, f := range []string{"sender_name", "sender_email_address", "subject", "message"} {
+		vals[f] = tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
+	}
+	cfg := tfsdk.Config{Raw: tftypes.NewValue(objType, vals), Schema: sr.Schema}
+
+	resp := &resource.ValidateConfigResponse{}
+	emailModeRequiresFieldsValidator{}.ValidateResource(context.Background(), resource.ValidateConfigRequest{Config: cfg}, resp)
+	if errs := len(resp.Diagnostics.Errors()); errs != 0 {
+		t.Errorf("validator must defer when required email fields are unknown, got %d errors: %v", errs, resp.Diagnostics)
+	}
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // accountAuthConfigValidator enforces the relationship between
@@ -34,24 +35,39 @@ func (v accountAuthConfigValidator) MarkdownDescription(ctx context.Context) str
 }
 
 // ValidateResource implements the plan-time cross-field check.
+//
+// Every attribute it reads is fetched as its typed value via GetAttribute and
+// guarded on IsUnknown before absence is treated as an error. A decode into the
+// Go model (`req.Config.Get`) would collapse an unknown `account` block to a nil
+// pointer, false-erroring "account required" whenever the block is sourced from
+// a variable / another resource. (STYLE_GUIDE §"Config-time validators MUST
+// defer on unknown values".)
 func (accountAuthConfigValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var data LdapServerResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	connPath := path.Root("connection_settings")
+	accountPath := connPath.AtName("account")
+
+	var authAttr types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, connPath.AtName("authentication_type"), &authAttr)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if data.Connection == nil {
-		return
-	}
-
-	authAttr := data.Connection.AuthenticationType
 	if authAttr.IsNull() || authAttr.IsUnknown() {
 		return
 	}
 	auth := authAttr.ValueString()
-	hasAccount := data.Connection.Account != nil
 
-	accountPath := path.Root("connection_settings").AtName("account")
+	var account types.Object
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, accountPath, &account)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Defer when the account block itself is unknown — its eventual presence is
+	// unknowable at plan time, so neither the "required" nor the "forbidden"
+	// branch can fire safely.
+	if account.IsUnknown() {
+		return
+	}
+	hasAccount := !account.IsNull()
 
 	if auth == authTypeNone {
 		if hasAccount {
@@ -73,8 +89,15 @@ func (accountAuthConfigValidator) ValidateResource(ctx context.Context, req reso
 		return
 	}
 
-	dn := data.Connection.Account.DistinguishedUsername
-	if dn.IsNull() || (!dn.IsUnknown() && dn.ValueString() == "") {
+	var dn types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, accountPath.AtName("distinguished_username"), &dn)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if dn.IsUnknown() {
+		return
+	}
+	if dn.IsNull() || dn.ValueString() == "" {
 		resp.Diagnostics.AddAttributeError(
 			accountPath.AtName("distinguished_username"),
 			"distinguished_username required for authenticated bind",
