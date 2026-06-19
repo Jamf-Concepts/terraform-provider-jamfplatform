@@ -75,10 +75,108 @@ jobs:
           terraform_version: "1.14.*"
           terraform_wrapper: false
       - run: go mod download
-      - run: go test -v -cover -count=1 -tags=acceptance -p=1 ./...
+        # -p=1 keeps tenant-stateful suites serial. Every gated env var below is
+        # sourced from a GitHub secret; when a secret is unset the value is empty
+        # and the corresponding suite self-skips (t.Skip) rather than failing.
+        # Source of truth: Getenv/LookupEnv sweep of internal/** (re-run before edits).
+      - name: Acceptance tests
+        id: acc
+        run: |
+          set -o pipefail
+          go test -v -cover -count=1 -tags=acceptance -p=1 ./... 2>&1 | tee test-output.log
         env:
           TF_ACC: "1"
+
+          # --- Core credentials (required; suites hard-skip without these) ---
           JAMFPLATFORM_BASE_URL: ${{ secrets.JAMFPLATFORM_BASE_URL }}
           JAMFPLATFORM_CLIENT_ID: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
           JAMFPLATFORM_CLIENT_SECRET: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
           JAMFPLATFORM_TENANT_ID: ${{ secrets.JAMFPLATFORM_TENANT_ID }}
+
+          # --- Automated Device Enrollment ---
+          JAMFPLATFORM_ADE_TOKEN: ${{ secrets.JAMFPLATFORM_ADE_TOKEN }}
+          JAMFPLATFORM_ADE_SERIAL: ${{ secrets.JAMFPLATFORM_ADE_SERIAL }}
+          JAMFPLATFORM_ADE_SERIAL2: ${{ secrets.JAMFPLATFORM_ADE_SERIAL2 }}
+          JAMFPLATFORM_ADE_MOBILE_SERIAL: ${{ secrets.JAMFPLATFORM_ADE_MOBILE_SERIAL }}
+          JAMFPLATFORM_ADE_MOBILE_SERIALS: ${{ secrets.JAMFPLATFORM_ADE_MOBILE_SERIALS }}
+
+          # --- Acceptance fixtures (existing tenant objects referenced by tests) ---
+          JAMFPLATFORM_ACC_USERNAME: ${{ secrets.JAMFPLATFORM_ACC_USERNAME }}
+          JAMFPLATFORM_ACC_ACCOUNT_MEMBER_ID: ${{ secrets.JAMFPLATFORM_ACC_ACCOUNT_MEMBER_ID }}
+          JAMFPLATFORM_ACC_NOTIFICATION_ACCOUNT_ID: ${{ secrets.JAMFPLATFORM_ACC_NOTIFICATION_ACCOUNT_ID }}
+          JAMFPLATFORM_ACC_COMPUTER_SERIAL: ${{ secrets.JAMFPLATFORM_ACC_COMPUTER_SERIAL }}
+          JAMFPLATFORM_ACC_MOBILE_SERIAL: ${{ secrets.JAMFPLATFORM_ACC_MOBILE_SERIAL }}
+          JAMFPLATFORM_ACC_CRITERIA_DS_GROUP: ${{ secrets.JAMFPLATFORM_ACC_CRITERIA_DS_GROUP }}
+          JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME: ${{ secrets.JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME }}
+          JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_VALUE: ${{ secrets.JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_VALUE }}
+          JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME: ${{ secrets.JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME }}
+          JAMFPLATFORM_ACC_ENROLLMENT_LDAP_SERVER_ID: ${{ secrets.JAMFPLATFORM_ACC_ENROLLMENT_LDAP_SERVER_ID }}
+          JAMFPLATFORM_ACC_VPP_ADAM_ID: ${{ secrets.JAMFPLATFORM_ACC_VPP_ADAM_ID }}
+          JAMFPLATFORM_ACC_VPP_DS_GROUP: ${{ secrets.JAMFPLATFORM_ACC_VPP_DS_GROUP }}
+          JAMFPLATFORM_ACC_MDPP_UUID_LOOKUP: ${{ secrets.JAMFPLATFORM_ACC_MDPP_UUID_LOOKUP }}
+
+          # --- Secrets, tokens & PKCS#12 blobs (base64) ---
+          JAMFPLATFORM_VPP_TOKEN: ${{ secrets.JAMFPLATFORM_VPP_TOKEN }}
+          JAMFPLATFORM_ACC_SMTP_GOOGLE: ${{ secrets.JAMFPLATFORM_ACC_SMTP_GOOGLE }}
+          JAMFPLATFORM_ACC_SELF_SERVICE_SAML: ${{ secrets.JAMFPLATFORM_ACC_SELF_SERVICE_SAML }}
+          JAMFPLATFORM_ACC_SSO_IDP_URL: ${{ secrets.JAMFPLATFORM_ACC_SSO_IDP_URL }}
+          JAMFPLATFORM_ACC_SSO_METADATA_BASE64: ${{ secrets.JAMFPLATFORM_ACC_SSO_METADATA_BASE64 }}
+          JAMFPLATFORM_ACC_SUPERVISION_P12_BASE64: ${{ secrets.JAMFPLATFORM_ACC_SUPERVISION_P12_BASE64 }}
+          JAMFPLATFORM_ACC_SUPERVISION_P12_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_SUPERVISION_P12_PASSWORD }}
+
+          # --- GSX (Global Service Exchange) connection ---
+          JAMFPLATFORM_ACC_GSX_KEYSTORE_BASE64: ${{ secrets.JAMFPLATFORM_ACC_GSX_KEYSTORE_BASE64 }}
+          JAMFPLATFORM_ACC_GSX_KEYSTORE_PASSWORD: ${{ secrets.JAMFPLATFORM_ACC_GSX_KEYSTORE_PASSWORD }}
+          JAMFPLATFORM_ACC_GSX_SERVICE_ACCOUNT: ${{ secrets.JAMFPLATFORM_ACC_GSX_SERVICE_ACCOUNT }}
+          JAMFPLATFORM_ACC_GSX_SHIP_TO: ${{ secrets.JAMFPLATFORM_ACC_GSX_SHIP_TO }}
+          JAMFPLATFORM_ACC_GSX_TOKEN: ${{ secrets.JAMFPLATFORM_ACC_GSX_TOKEN }}
+          JAMFPLATFORM_ACC_GSX_USERNAME: ${{ secrets.JAMFPLATFORM_ACC_GSX_USERNAME }}
+
+          # --- Google Cloud Identity Provider (Secure LDAP); the *_ROTATED pair is
+          #     optional and only guards the wo_version cert-rotation regression ---
+          JAMFPLATFORM_GOOGLE_DOMAIN_NAME: ${{ secrets.JAMFPLATFORM_GOOGLE_DOMAIN_NAME }}
+          JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64 }}
+          JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD }}
+          JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64_ROTATED: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_BASE64_ROTATED }}
+          JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD_ROTATED: ${{ secrets.JAMFPLATFORM_GOOGLE_KEYSTORE_PASSWORD_ROTATED }}
+
+          # --- Jamf Protect (separate product credentials) ---
+          JAMFPLATFORM_PROTECT_URL: ${{ secrets.JAMFPLATFORM_PROTECT_URL }}
+          JAMFPLATFORM_PROTECT_CLIENT_ID: ${{ secrets.JAMFPLATFORM_PROTECT_CLIENT_ID }}
+          JAMFPLATFORM_PROTECT_PASSWORD: ${{ secrets.JAMFPLATFORM_PROTECT_PASSWORD }}
+
+          # --- Destructive opt-ins (tests that mutate/erase tenant state stay
+          #     skipped unless explicitly enabled) ---
+          JAMFPLATFORM_ACC_DESTRUCTIVE: ${{ secrets.JAMFPLATFORM_ACC_DESTRUCTIVE }}
+          JAMFPLATFORM_ACC_CDP_DESTRUCTIVE: ${{ secrets.JAMFPLATFORM_ACC_CDP_DESTRUCTIVE }}
+
+          # --- Tuning ---
+          JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS: ${{ secrets.JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS }}
+
+      # Surface which acceptance suites actually ran vs. self-skipped, so an
+      # env-gated suite that never executes (missing secret) is visible instead
+      # of vanishing into a green check. Counts top-level TestAcc* results only.
+      - name: Gated suite summary
+        if: always()
+        run: |
+          log=test-output.log
+          {
+            echo "## Acceptance suite summary"
+            echo
+            if [ ! -s "$log" ]; then
+              echo "_No test output captured (job failed before tests ran)._"
+              exit 0
+            fi
+            pass=$(grep -cE '^--- PASS: TestAcc[^/]+\(' "$log" || true)
+            fail=$(grep -cE '^--- FAIL: TestAcc[^/]+\(' "$log" || true)
+            skip=$(grep -cE '^--- SKIP: TestAcc[^/]+\(' "$log" || true)
+            echo "**Ran:** ${pass:-0} passed, ${fail:-0} failed · **Skipped:** ${skip:-0}"
+            echo
+            echo "<details><summary>Skipped suites (gate unset)</summary>"
+            echo
+            echo '```'
+            grep -E '^--- SKIP: TestAcc[^/]+\(' "$log" | sed -E 's/^--- SKIP: //' | sort -u || true
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
