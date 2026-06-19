@@ -147,9 +147,10 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"category_name": schema.StringAttribute{
+						// No UseStateForUnknown: derived from the mutable category_id, so it
+						// must go Unknown when category_id changes. See STYLE_GUIDE §886.
 						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
-						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"site_id": schema.StringAttribute{
 						MarkdownDescription: "Jamf Pro site ID. Use `-1` (default) for \"no site\".",
@@ -158,9 +159,10 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"site_name": schema.StringAttribute{
+						// No UseStateForUnknown: derived from the mutable site_id, so it
+						// must go Unknown when site_id changes. See STYLE_GUIDE §886.
 						MarkdownDescription: "Site display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
-						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 				},
 			},

@@ -127,11 +127,10 @@ func (r *UserGroupResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"site_name": schema.StringAttribute{
+				// No UseStateForUnknown: derived from the mutable site_id, so it
+				// must go Unknown when site_id changes. See STYLE_GUIDE §886.
 				MarkdownDescription: "Site name reported by Jamf Pro for the assigned `site_id`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"members": schema.SetAttribute{
 				MarkdownDescription: "User IDs (as strings) to assign as members of a static user group. Required when `group_type = \"static\"`. Forbidden when `group_type = \"smart\"` — Jamf Pro resolves smart-group membership from `criteria`.",

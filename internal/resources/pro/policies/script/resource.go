@@ -98,11 +98,12 @@ func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"category_name": schema.StringAttribute{
+				// No UseStateForUnknown: category_name is derived from the
+				// mutable category_id, so it must go Unknown (not pin the stale
+				// value) when category_id changes, or the post-apply consistency
+				// check trips. See STYLE_GUIDE §886.
 				MarkdownDescription: "Display name of the category referenced by `category_id`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"info": schema.StringAttribute{
 				MarkdownDescription: "Informational text shown to end users (e.g. in Self Service) describing the script. Omit to leave any existing value untouched (it is not cleared on update); set to `\"\"` to clear it.",

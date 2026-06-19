@@ -127,15 +127,17 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					"network_requirements":            optComputedString("Network requirements label (`Any`, `Network Limitations`, etc.)."),
 					"category_id":                     optComputedString("Jamf Pro category ID. Use `-1` to clear."),
 					"category_name": schema.StringAttribute{
+						// No UseStateForUnknown: derived from the mutable category_id, so it
+						// must go Unknown when category_id changes. See STYLE_GUIDE §886.
 						MarkdownDescription: "Category display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
-						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"site_id": optComputedString("Jamf Pro site ID scoping the policy. Use `-1` for \"no site\"."),
 					"site_name": schema.StringAttribute{
+						// No UseStateForUnknown: derived from the mutable site_id, so it
+						// must go Unknown when site_id changes. See STYLE_GUIDE §886.
 						MarkdownDescription: "Site display name. Returned by Jamf Pro; not user-settable.",
 						Computed:            true,
-						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"date_time_limitations": schema.SingleNestedAttribute{
 						MarkdownDescription: "Optional schedule limitations for when the policy may run. Only the user-authored date/time inputs are surfaced — the derived epoch / UTC siblings Jamf Pro also stores are deterministic transforms of `activation_date` / `expiration_date` and can be reproduced client-side with Terraform stdlib (`formatdate`, etc.).",

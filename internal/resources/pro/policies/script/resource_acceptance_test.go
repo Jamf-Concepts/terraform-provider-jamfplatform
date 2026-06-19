@@ -333,3 +333,74 @@ func TestAccResource_ProScript_SplitOwnership(t *testing.T) {
 		},
 	})
 }
+
+// TestAccResource_ProScript_CategorySwap is the regression test for the
+// derived-name consistency rule (STYLE_GUIDE §886). `category_name` is a
+// Computed-only field derived from the mutable `category_id`. If it carries
+// stringplanmodifier.UseStateForUnknown(), step 2 (swapping category_id to a
+// differently-named category, in place) pins the stale prior name into the
+// plan while apply reads back the new name — Terraform Core then aborts with
+// "Provider produced inconsistent result after apply" on category_name.
+// With `category_name` modelled as plain Computed (no UseStateForUnknown), the
+// plan value goes Unknown and the post-apply name is accepted. This test FAILS
+// on the buggy schema and PASSES once the modifier is removed.
+func TestAccResource_ProScript_CategorySwap(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-pro-script-catswap-" + suffix
+	catA := "tf-acc-cat-a-" + suffix
+	catB := "tf-acc-cat-b-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckScriptDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_category" "a" {
+						name     = %q
+						priority = 9
+					}
+					resource "jamfplatform_pro_category" "b" {
+						name     = %q
+						priority = 9
+					}
+					resource "jamfplatform_pro_script" "test" {
+						name            = %q
+						priority        = "AFTER"
+						script_contents = "#!/bin/sh\necho catswap"
+						category_id     = jamfplatform_pro_category.a.id
+					}
+				`, catA, catB, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("jamfplatform_pro_script.test", "category_id", "jamfplatform_pro_category.a", "id"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_script.test", "category_name", catA),
+				),
+			},
+			{
+				// Swap category_id in place to a differently-named category.
+				// This is the step that trips the derived-name inconsistency.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_category" "a" {
+						name     = %q
+						priority = 9
+					}
+					resource "jamfplatform_pro_category" "b" {
+						name     = %q
+						priority = 9
+					}
+					resource "jamfplatform_pro_script" "test" {
+						name            = %q
+						priority        = "AFTER"
+						script_contents = "#!/bin/sh\necho catswap"
+						category_id     = jamfplatform_pro_category.b.id
+					}
+				`, catA, catB, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("jamfplatform_pro_script.test", "category_id", "jamfplatform_pro_category.b", "id"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_script.test", "category_name", catB),
+				),
+			},
+		},
+	})
+}

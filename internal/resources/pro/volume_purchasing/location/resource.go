@@ -177,11 +177,10 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 				},
 			},
 			"site_name": schema.StringAttribute{
+				// No UseStateForUnknown: derived from the mutable site_id, so it
+				// must go Unknown when site_id changes. See STYLE_GUIDE §886.
 				MarkdownDescription: "Site display name for the associated `site_id`. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"apple_id": schema.StringAttribute{
 				MarkdownDescription: "Apple ID associated with the uploaded service token.",
