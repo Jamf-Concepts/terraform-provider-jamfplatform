@@ -3,9 +3,11 @@
 
 // SDK endpoints used:
 //   proclassic.GetActivationCode
-//   proclassic.UpdateActivationCode    (PUT, XML)
+//   proclassic.UpdateActivationCode    (PUT, XML — known server bug: commits the write
+//                                        but returns HTTP 500; tolerated via read-back
+//                                        verification in applyActivationCode. PI-1401.)
 //
-// Status: current. Last reviewed 2026-06-03.
+// Status: current. Last reviewed 2026-06-19.
 
 package activation_code
 
@@ -42,14 +44,9 @@ func (r *ActivationCodeResource) Create(ctx context.Context, req resource.Create
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	if err := r.client.UpdateActivationCode(createCtx, buildActivationCodeInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error setting Jamf Pro activation code", err.Error())
-		return
-	}
-
-	got, err := r.client.GetActivationCode(createCtx)
-	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro activation code after write", err.Error())
+	got, applyDiags := r.applyActivationCode(createCtx, plan)
+	resp.Diagnostics.Append(applyDiags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	assignActivationCodeResourceModel(&plan, got)
@@ -130,14 +127,9 @@ func (r *ActivationCodeResource) Update(ctx context.Context, req resource.Update
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	if err := r.client.UpdateActivationCode(updateCtx, buildActivationCodeInput(plan)); err != nil {
-		resp.Diagnostics.AddError("Error updating Jamf Pro activation code", err.Error())
-		return
-	}
-
-	got, err := r.client.GetActivationCode(updateCtx)
-	if err != nil {
-		resp.Diagnostics.AddError("Error reading Jamf Pro activation code after update", err.Error())
+	got, applyDiags := r.applyActivationCode(updateCtx, plan)
+	resp.Diagnostics.Append(applyDiags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 	assignActivationCodeResourceModel(&plan, got)
