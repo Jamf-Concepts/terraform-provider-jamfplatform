@@ -78,7 +78,7 @@ func (r *UserExtensionAttributeResource) ConfigValidators(ctx context.Context) [
 // Schema returns the Terraform schema for the user extension attribute.
 func (r *UserExtensionAttributeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro user extension attribute — a custom inventory field collected for users (Classic API). Mirrors the Settings → User management → Extension Attributes UI. User EAs support only `Text Field` and `Pop-up Menu` input types; `popup_menu_choices` is valid only with `Pop-up Menu` (enforced at plan time).",
+		MarkdownDescription: "Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only `Text Field` and `Pop-up Menu` input types; `popup_menu_choices` is valid only with `Pop-up Menu` (enforced at plan time).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "User extension attribute ID assigned by Jamf Pro.",

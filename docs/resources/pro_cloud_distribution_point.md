@@ -57,7 +57,7 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `directory` (String) Directory / bucket path on the distribution point. Used by non-JCDS types.
-- `download_url` (String) Download endpoint URL. Used by non-JCDS types; server-derived and empty for `JAMF_CLOUD`.
+- `download_url` (String) Download endpoint URL. Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.
 - `expiration_seconds` (Number) AWS CloudFront signed-URL expiration window in seconds. Used by `AMAZON_S3`. Must be at least 1.
 - `key_pair_id` (String) AWS CloudFront key pair identifier used to sign URLs. Used by `AMAZON_S3` when `require_signed_urls` is enabled.
 - `master` (Boolean) Whether this is the master (primary) distribution point.
@@ -67,12 +67,12 @@ resource "jamfplatform_pro_cloud_distribution_point" "this" {
 - `secondary_auth_required` (Boolean) Whether secondary authentication is required for downloads.
 - `secondary_auth_time_to_live` (Number) Secondary authentication token time-to-live in seconds. Must be at least 1.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
-- `upload_url` (String) Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; server-derived and empty for `JAMF_CLOUD`.
+- `upload_url` (String) Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.
 - `username` (String) Connection username. Used by non-JCDS types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`); empty for `JAMF_CLOUD`.
 
 ### Read-Only
 
-- `cdn_url` (String) CDN URL. Server-derived (Computed).
+- `cdn_url` (String) CDN URL. Returned by Jamf Pro; not user-settable.
 - `has_connection_succeeded` (Boolean) Whether the most recent connection test against the distribution point succeeded. Computed — reflects live status and is re-evaluated on every apply.
 - `id` (String) Fixed singleton identifier. Always `singleton`.
 - `inventory_id` (String) Server-allocated inventory identifier for the distribution point. Computed and **not stable** — a new identifier is allocated whenever the cloud distribution point is recreated.

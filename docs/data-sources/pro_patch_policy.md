@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_patch_policy Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the server-derived release_date / incremental_update / reboot / minimum_os / kill_apps fields. Scope and user interaction are not surfaced — manage the policy as a resource for that detail.
+  Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the read-only release_date / incremental_update / reboot / minimum_os / kill_apps fields returned by Jamf Pro. Scope and user interaction are not surfaced — manage the policy as a resource for that detail.
 ---
 
 # jamfplatform_pro_patch_policy (Data Source)
 
-Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the server-derived `release_date` / `incremental_update` / `reboot` / `minimum_os` / `kill_apps` fields. Scope and user interaction are not surfaced — manage the policy as a resource for that detail.
+Look up a Jamf Pro patch policy by ID. Surfaces the general settings, including the read-only `release_date` / `incremental_update` / `reboot` / `minimum_os` / `kill_apps` fields returned by Jamf Pro. Scope and user interaction are not surfaced — manage the policy as a resource for that detail.
 
 ## Example Usage
 

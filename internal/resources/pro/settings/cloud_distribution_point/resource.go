@@ -140,7 +140,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"upload_url": schema.StringAttribute{
-				MarkdownDescription: "Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; server-derived and empty for `JAMF_CLOUD`.",
+				MarkdownDescription: "Upload endpoint URL (e.g. an Akamai NetStorage upload host). Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -148,7 +148,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"download_url": schema.StringAttribute{
-				MarkdownDescription: "Download endpoint URL. Used by non-JCDS types; server-derived and empty for `JAMF_CLOUD`.",
+				MarkdownDescription: "Download endpoint URL. Used by non-JCDS types; returned by Jamf Pro and empty for `JAMF_CLOUD`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -156,7 +156,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 				},
 			},
 			"cdn_url": schema.StringAttribute{
-				MarkdownDescription: "CDN URL. Server-derived (Computed).",
+				MarkdownDescription: "CDN URL. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

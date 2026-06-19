@@ -102,7 +102,7 @@ variable "webhook_signing_secret" {
 - `content_type` (String) **"Content Type"** in the Jamf Pro admin UI (the XML/JSON radio). Format of the webhook payload: `application/json` or `text/xml`. Defaults to `text/xml`.
 - `enable_display_fields_for_group_object` (Boolean) **"Include Display Fields for the Group Object"** in the Jamf Pro admin UI. Whether to include the smart group's display fields in the payload. Defaults to `false`. (The display field list itself is not settable via the API — see `display_fields`.)
 - `enabled` (Boolean) **"Enabled"** in the Jamf Pro admin UI. Whether the webhook is active. Defaults to `true`.
-- `hash_algorithm` (String) **"Algorithm"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always present on the wire; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`.
+- `hash_algorithm` (String) **"Algorithm"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always returned by Jamf Pro; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`.
 - `header` (String, Sensitive) **"Header Authentication"** metadata in the Jamf Pro admin UI (HEADER authentication). Must be a JSON object of header name/value pairs, e.g. `{"Authorization":"Bearer …"}`. Only valid when `authentication_type = "HEADER"`. `Sensitive` (it carries credentials) but tracked in state because Jamf echoes it back.
 - `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Password"** (BASIC) / **"Signing Secret"** (HASH_SIGNATURE) in the Jamf Pro admin UI. `WriteOnly` — sent to Jamf Pro on writes but **never persisted in Terraform state** (Jamf returns a redaction sentinel on read). Pair with `password_wo_version` to rotate. For HASH_SIGNATURE the server requires at least 16 characters.
 - `password_wo_version` (Number) Rotation trigger for the `WriteOnly` `password`. Bump this integer to force a new update that re-sends `password`. Initial create should set `password_wo_version = 1`. Leaving it unset or unchanged signals "leave the stored secret alone" — the provider omits the password from the next update so Jamf Pro retains the existing value.
@@ -113,7 +113,7 @@ variable "webhook_signing_secret" {
 
 ### Read-Only
 
-- `display_fields` (Set of String) Read-only set of display field names included in the group-object payload. **Not settable via Terraform** — the classic API rejects any populated display field (the field list is UI-managed); this attribute reflects whatever the Jamf Pro UI configured.
+- `display_fields` (Set of String) Read-only set of display field names included in the group-object payload. **Not settable via Terraform** — Jamf Pro rejects any populated display field (the field list is UI-managed); this attribute reflects whatever the Jamf Pro UI configured.
 - `id` (String) Webhook ID assigned by Jamf Pro.
 
 <a id="nestedatt--timeouts"></a>

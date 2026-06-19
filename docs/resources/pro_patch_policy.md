@@ -138,11 +138,11 @@ output "patch_policy_kill_apps" {
 ### Read-Only
 
 - `id` (String) Patch policy ID assigned by Jamf Pro.
-- `incremental_update` (Boolean) Whether the target version's patch definition is an incremental update (UI "Requires Incremental Update"). Server-derived; not user-settable.
-- `kill_apps` (Attributes List) Applications the patch definition closes before installing the target version (UI "Apps That Must Quit"). Server-derived from the patch definition; not user-settable. (see [below for nested schema](#nestedatt--kill_apps))
-- `minimum_os` (String) Minimum macOS version required by the target version's patch definition (UI "Minimum OS"). Server-derived; not user-settable.
-- `reboot` (Boolean) Whether installing the target version requires a reboot (UI "Reboot Required"). Server-derived from the patch definition; not user-settable.
-- `release_date` (Number) Release date of the target version's patch definition (UI "Release Date"), as a Unix epoch in milliseconds. Server-derived; not user-settable.
+- `incremental_update` (Boolean) Whether the target version's patch definition is an incremental update (UI "Requires Incremental Update"). Returned by Jamf Pro; not user-settable.
+- `kill_apps` (Attributes List) Applications the patch definition closes before installing the target version (UI "Apps That Must Quit"). Returned by Jamf Pro from the patch definition; not user-settable. (see [below for nested schema](#nestedatt--kill_apps))
+- `minimum_os` (String) Minimum macOS version required by the target version's patch definition (UI "Minimum OS"). Returned by Jamf Pro; not user-settable.
+- `reboot` (Boolean) Whether installing the target version requires a reboot (UI "Reboot Required"). Returned by Jamf Pro from the patch definition; not user-settable.
+- `release_date` (Number) Release date of the target version's patch definition (UI "Release Date"), as a Unix epoch in milliseconds. Returned by Jamf Pro; not user-settable.
 
 <a id="nestedatt--scope"></a>
 ### Nested Schema for `scope`
@@ -236,10 +236,10 @@ Optional:
 Optional:
 
 - `enabled` (Boolean) Whether notifications for the patch policy are shown in Notification Center (UI "Display notifications for the patch policy in Notification Center", under "Notifications and Reminders").
-- `message` (String) Notification message body. Write-only in practice — the classic API does not return it, so a configured value is preserved in state but not refreshed from the server.
+- `message` (String) Notification message body. Write-only in practice — Jamf Pro does not return it, so a configured value is preserved in state but not refreshed.
 - `reminders` (Attributes) Reminder cadence for the notifications. (see [below for nested schema](#nestedatt--user_interaction--notifications--reminders))
 - `subject` (String) Notification subject.
-- `type` (String) Notification type (e.g. `Self Service`). Write-only in practice — the classic API does not return it.
+- `type` (String) Notification type (e.g. `Self Service`). Write-only in practice — Jamf Pro does not return it.
 
 <a id="nestedatt--user_interaction--notifications--reminders"></a>
 ### Nested Schema for `user_interaction.notifications.reminders`

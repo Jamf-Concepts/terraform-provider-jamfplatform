@@ -100,7 +100,7 @@ output "adobe_air_extension_attributes" {
 
 ### Read-Only
 
-- `available_versions` (List of String) All `software_version` strings the patch source publishes for this title, newest first. Server-derived; use these as keys for `version_packages`.
+- `available_versions` (List of String) All `software_version` strings the patch source publishes for this title, newest first. Returned by Jamf Pro; use these as keys for `version_packages`.
 - `category_name` (String) Category display name. Returned by Jamf Pro; not user-settable.
 - `extension_attributes` (Attributes List) Extension attributes Jamf has attached to this title, with their acceptance status. Read-only — use `accept_extension_attributes` to accept pending ones. Empty for titles with no extension attribute. (see [below for nested schema](#nestedatt--extension_attributes))
 - `id` (String) Patch software title ID assigned by Jamf Pro.

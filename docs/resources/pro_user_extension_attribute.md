@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_user_extension_attribute Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro user extension attribute — a custom inventory field collected for users (Classic API). Mirrors the Settings → User management → Extension Attributes UI. User EAs support only Text Field and Pop-up Menu input types; popup_menu_choices is valid only with Pop-up Menu (enforced at plan time).
+  Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only Text Field and Pop-up Menu input types; popup_menu_choices is valid only with Pop-up Menu (enforced at plan time).
 ---
 
 # jamfplatform_pro_user_extension_attribute (Resource)
 
-Manages a Jamf Pro user extension attribute — a custom inventory field collected for users (Classic API). Mirrors the Settings → User management → Extension Attributes UI. User EAs support only `Text Field` and `Pop-up Menu` input types; `popup_menu_choices` is valid only with `Pop-up Menu` (enforced at plan time).
+Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only `Text Field` and `Pop-up Menu` input types; `popup_menu_choices` is valid only with `Pop-up Menu` (enforced at plan time).
 
 ## Example Usage
 

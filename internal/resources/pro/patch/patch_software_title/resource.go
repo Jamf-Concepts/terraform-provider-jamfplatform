@@ -171,7 +171,7 @@ func (r *PatchSoftwareTitleResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"available_versions": schema.ListAttribute{
-				MarkdownDescription: "All `software_version` strings the patch source publishes for this title, newest first. Server-derived; use these as keys for `version_packages`.",
+				MarkdownDescription: "All `software_version` strings the patch source publishes for this title, newest first. Returned by Jamf Pro; use these as keys for `version_packages`.",
 				Computed:            true,
 				ElementType:         types.StringType,
 			},

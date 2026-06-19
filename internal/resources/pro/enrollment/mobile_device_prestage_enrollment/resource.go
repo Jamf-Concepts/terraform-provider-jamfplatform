@@ -418,7 +418,7 @@ func namesSchema() schema.SingleNestedAttribute {
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"assign_names_using": schema.StringAttribute{
-				MarkdownDescription: "How device names are assigned. One of `\"Default Names\"`, `\"List of Names\"`, `\"Serial Numbers\"`, `\"Single Name\"`. These UI-label strings are the literal wire values.",
+				MarkdownDescription: "How device names are assigned. One of `\"Default Names\"`, `\"List of Names\"`, `\"Serial Numbers\"`, `\"Single Name\"`. These UI-label strings are the literal values Jamf Pro stores.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{

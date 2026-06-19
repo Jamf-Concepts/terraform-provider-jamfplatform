@@ -40,7 +40,7 @@ resource "jamfplatform_pro_patch_external_source" "custom" {
 
 - `certificate_validation_enabled` (Boolean) Whether software title definitions must be signed by a publicly trusted certificate before being downloaded from the source (UI "Validate Software Title Definitions"); unsigned definitions are not downloaded. Server-defaulted when omitted.
 - `enabled` (Boolean) Whether the patch external source is enabled. Server-defaulted when omitted.
-- `port` (Number) TCP port of the external patch source (the port portion of the UI "Server and Port" field). May be left unset; an empty wire value is treated as unset. Must be at least 1 when set — the server echoes an unset port as empty (decoded as 0), so the provider collapses 0 to null and rejecting an explicit 0 at plan time keeps that mapping internally consistent.
+- `port` (Number) TCP port of the external patch source (the port portion of the UI "Server and Port" field). May be left unset; an empty value is treated as unset. Must be at least 1 when set — Jamf Pro echoes an unset port as empty (decoded as 0), so the provider collapses 0 to null and rejecting an explicit 0 at plan time keeps that mapping internally consistent.
 - `ssl_enabled` (Boolean) Whether the source is contacted over SSL (UI "Use SSL"). Server-defaulted when omitted.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 

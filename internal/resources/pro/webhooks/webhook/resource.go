@@ -165,7 +165,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Sensitive:           true,
 			},
 			"hash_algorithm": schema.StringAttribute{
-				MarkdownDescription: "**\"Algorithm\"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always present on the wire; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`.",
+				MarkdownDescription: "**\"Algorithm\"** in the Jamf Pro admin UI (HASH_SIGNATURE authentication). Signature hash algorithm: `SHA256` or `SHA512`. Always returned by Jamf Pro; only meaningful for HASH_SIGNATURE. Defaults to `SHA256`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{hashAlgorithmAuthResetPlanModifier{}},
@@ -185,7 +185,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"display_fields": schema.SetAttribute{
-				MarkdownDescription: "Read-only set of display field names included in the group-object payload. **Not settable via Terraform** — the classic API rejects any populated display field (the field list is UI-managed); this attribute reflects whatever the Jamf Pro UI configured.",
+				MarkdownDescription: "Read-only set of display field names included in the group-object payload. **Not settable via Terraform** — Jamf Pro rejects any populated display field (the field list is UI-managed); this attribute reflects whatever the Jamf Pro UI configured.",
 				ElementType:         types.StringType,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},

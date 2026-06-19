@@ -143,23 +143,23 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 			// Computed (no plan modifier): they must go Unknown when
 			// target_version changes so the new definition's values are read.
 			"release_date": schema.Int64Attribute{
-				MarkdownDescription: "Release date of the target version's patch definition (UI \"Release Date\"), as a Unix epoch in milliseconds. Server-derived; not user-settable.",
+				MarkdownDescription: "Release date of the target version's patch definition (UI \"Release Date\"), as a Unix epoch in milliseconds. Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 			},
 			"incremental_update": schema.BoolAttribute{
-				MarkdownDescription: "Whether the target version's patch definition is an incremental update (UI \"Requires Incremental Update\"). Server-derived; not user-settable.",
+				MarkdownDescription: "Whether the target version's patch definition is an incremental update (UI \"Requires Incremental Update\"). Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 			},
 			"reboot": schema.BoolAttribute{
-				MarkdownDescription: "Whether installing the target version requires a reboot (UI \"Reboot Required\"). Server-derived from the patch definition; not user-settable.",
+				MarkdownDescription: "Whether installing the target version requires a reboot (UI \"Reboot Required\"). Returned by Jamf Pro from the patch definition; not user-settable.",
 				Computed:            true,
 			},
 			"minimum_os": schema.StringAttribute{
-				MarkdownDescription: "Minimum macOS version required by the target version's patch definition (UI \"Minimum OS\"). Server-derived; not user-settable.",
+				MarkdownDescription: "Minimum macOS version required by the target version's patch definition (UI \"Minimum OS\"). Returned by Jamf Pro; not user-settable.",
 				Computed:            true,
 			},
 			"kill_apps": schema.ListNestedAttribute{
-				MarkdownDescription: "Applications the patch definition closes before installing the target version (UI \"Apps That Must Quit\"). Server-derived from the patch definition; not user-settable.",
+				MarkdownDescription: "Applications the patch definition closes before installing the target version (UI \"Apps That Must Quit\"). Returned by Jamf Pro from the patch definition; not user-settable.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -292,11 +292,11 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 							// preferCurrent still preserves a user-set value the server
 							// drops.
 							"message": schema.StringAttribute{
-								MarkdownDescription: "Notification message body. Write-only in practice — the classic API does not return it, so a configured value is preserved in state but not refreshed from the server.",
+								MarkdownDescription: "Notification message body. Write-only in practice — Jamf Pro does not return it, so a configured value is preserved in state but not refreshed.",
 								Optional:            true,
 							},
 							"type": schema.StringAttribute{
-								MarkdownDescription: "Notification type (e.g. `Self Service`). Write-only in practice — the classic API does not return it.",
+								MarkdownDescription: "Notification type (e.g. `Self Service`). Write-only in practice — Jamf Pro does not return it.",
 								Optional:            true,
 							},
 							"reminders": schema.SingleNestedAttribute{

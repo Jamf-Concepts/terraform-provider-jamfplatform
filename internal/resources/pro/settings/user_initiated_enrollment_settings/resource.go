@@ -250,7 +250,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 						WriteOnly:           true,
 					},
 					"keystore_file_name": schema.StringAttribute{
-						MarkdownDescription: "Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so this is not server-derived — it round-trips from configuration only.",
+						MarkdownDescription: "Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so it round-trips from configuration only.",
 						Optional:            true,
 					},
 					"keystore_password": schema.StringAttribute{
@@ -289,7 +289,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 						WriteOnly:           true,
 					},
 					"keystore_file_name": schema.StringAttribute{
-						MarkdownDescription: "Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so this is not server-derived — it round-trips from configuration only.",
+						MarkdownDescription: "Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so it round-trips from configuration only.",
 						Optional:            true,
 					},
 					"keystore_password": schema.StringAttribute{

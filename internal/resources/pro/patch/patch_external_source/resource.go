@@ -106,7 +106,7 @@ func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.S
 				},
 			},
 			"port": schema.Int64Attribute{
-				MarkdownDescription: "TCP port of the external patch source (the port portion of the UI \"Server and Port\" field). May be left unset; an empty wire value is treated as unset. Must be at least 1 when set — the server echoes an unset port as empty (decoded as 0), so the provider collapses 0 to null and rejecting an explicit 0 at plan time keeps that mapping internally consistent.",
+				MarkdownDescription: "TCP port of the external patch source (the port portion of the UI \"Server and Port\" field). May be left unset; an empty value is treated as unset. Must be at least 1 when set — Jamf Pro echoes an unset port as empty (decoded as 0), so the provider collapses 0 to null and rejecting an explicit 0 at plan time keeps that mapping internally consistent.",
 				Optional:            true,
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),

@@ -78,7 +78,7 @@ func (r *AdvancedVolumePurchasingContentSearchResource) IdentitySchema(ctx conte
 // resource.
 func (r *AdvancedVolumePurchasingContentSearchResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's wire vocabulary, which differs from the UI labels — e.g. the UI's `Content Name` is `Name` on the wire, `Price` is `Cost`, `Location` is `Account`.",
+		MarkdownDescription: "Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's `Content Name` is `Name`, `Price` is `Cost`, `Location` is `Account`.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced volume purchasing content search ID assigned by Jamf Pro.",

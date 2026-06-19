@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_advanced_volume_purchasing_content_search Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's wire vocabulary, which differs from the UI labels — e.g. the UI's Content Name is Name on the wire, Price is Cost, Location is Account.
+  Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's Content Name is Name, Price is Cost, Location is Account.
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (Resource)
 
-Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's wire vocabulary, which differs from the UI labels — e.g. the UI's `Content Name` is `Name` on the wire, `Price` is `Cost`, `Location` is `Account`.
+Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's `Content Name` is `Name`, `Price` is `Cost`, `Location` is `Account`.
 
 ## Example Usage
 

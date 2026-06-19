@@ -174,7 +174,7 @@ Optional:
 
 Optional:
 
-- `assign_names_using` (String) How device names are assigned. One of `"Default Names"`, `"List of Names"`, `"Serial Numbers"`, `"Single Name"`. These UI-label strings are the literal wire values.
+- `assign_names_using` (String) How device names are assigned. One of `"Default Names"`, `"List of Names"`, `"Serial Numbers"`, `"Single Name"`. These UI-label strings are the literal values Jamf Pro stores.
 - `device_name_prefix` (String) Device name prefix (used in `"Serial Numbers"` mode).
 - `device_name_suffix` (String) Device name suffix (used in `"Serial Numbers"` mode).
 - `manage_names` (Boolean) **"Enforce Mobile Device Names"** in the Jamf Pro admin UI.

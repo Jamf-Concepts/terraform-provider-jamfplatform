@@ -160,7 +160,7 @@ Read-Only:
 Optional:
 
 - `keystore_file` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Raw base64 of the keystore file (`.p12`). Idiomatic usage: `filebase64("signing.p12")`. `WriteOnly` — never persisted in Terraform state.
-- `keystore_file_name` (String) Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so this is not server-derived — it round-trips from configuration only.
+- `keystore_file_name` (String) Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so it round-trips from configuration only.
 - `keystore_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Keystore password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Pair with `keystore_password_wo_version` (the rotation companion); bump that integer to re-send.
 - `keystore_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `keystore_password`. Bump this integer to force re-sending the keystore and password on the next apply.
 
@@ -176,7 +176,7 @@ Read-Only:
 Optional:
 
 - `keystore_file` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Raw base64 of the keystore file (`.p12`). Idiomatic usage: `filebase64("signing.p12")`. `WriteOnly` — never persisted in Terraform state.
-- `keystore_file_name` (String) Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so this is not server-derived — it round-trips from configuration only.
+- `keystore_file_name` (String) Optional display filename for the uploaded keystore, for your own reference. Jamf Pro does not return a filename, so it round-trips from configuration only.
 - `keystore_password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Keystore password. `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Pair with `keystore_password_wo_version` (the rotation companion); bump that integer to re-send.
 - `keystore_password_wo_version` (Number) Rotation trigger for the `WriteOnly` `keystore_password`. Bump this integer to force re-sending the keystore and password on the next apply.
 
