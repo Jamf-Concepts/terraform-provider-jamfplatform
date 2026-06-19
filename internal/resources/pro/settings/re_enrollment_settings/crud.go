@@ -20,13 +20,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler
-// fires before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the singleton. The Re-enrollment settings object always
 // exists on the tenant, so Create is a full-replace write followed by a
 // read-back. The write is guarded by the shared enrollment lock because the
@@ -34,7 +27,7 @@ func providerNotConfiguredError() (string, string) {
 // Enrollment settings object.
 func (r *ReEnrollmentSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -74,7 +67,7 @@ func (r *ReEnrollmentSettingsResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, reEnrollmentSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -89,7 +82,7 @@ func (r *ReEnrollmentSettingsResource) Create(ctx context.Context, req resource.
 // is GET-only, so it does not take the enrollment write lock.
 func (r *ReEnrollmentSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -97,7 +90,7 @@ func (r *ReEnrollmentSettingsResource) Read(ctx context.Context, req resource.Re
 	isImport := req.State.Raw.IsNull()
 
 	if isImport {
-		state.ID = initialID()
+		state.ID = helpers.InitialSingletonID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(reEnrollmentSettingsTimeoutAttributeTypes)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -121,7 +114,7 @@ func (r *ReEnrollmentSettingsResource) Read(ctx context.Context, req resource.Re
 	}
 	assignReEnrollmentSettingsResourceModel(&state, got)
 
-	state.ID = initialID()
+	state.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, reEnrollmentSettingsIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -134,7 +127,7 @@ func (r *ReEnrollmentSettingsResource) Read(ctx context.Context, req resource.Re
 // guarded by the shared enrollment lock.
 func (r *ReEnrollmentSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -162,7 +155,7 @@ func (r *ReEnrollmentSettingsResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, reEnrollmentSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

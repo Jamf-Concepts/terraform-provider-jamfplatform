@@ -29,19 +29,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler
-// fires before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create handles initial provisioning. Settings PUT first (no /v3/sso Create
 // endpoint), then the embedded signing certificate sub-block. Read-back
 // captures authoritative state.
 func (r *SsoSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -77,7 +70,7 @@ func (r *SsoSettingsResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ssoSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -91,7 +84,7 @@ func (r *SsoSettingsResource) Create(ctx context.Context, req resource.CreateReq
 // Read refreshes Terraform state with the latest settings + cert from the API.
 func (r *SsoSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -99,7 +92,7 @@ func (r *SsoSettingsResource) Read(ctx context.Context, req resource.ReadRequest
 	isImport := req.State.Raw.IsNull()
 
 	if isImport {
-		state.ID = initialID()
+		state.ID = helpers.InitialSingletonID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(ssoSettingsTimeoutAttributeTypes)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -120,7 +113,7 @@ func (r *SsoSettingsResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	state.ID = initialID()
+	state.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ssoSettingsIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -132,7 +125,7 @@ func (r *SsoSettingsResource) Read(ctx context.Context, req resource.ReadRequest
 // Update reconciles settings + cert state.
 func (r *SsoSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -164,7 +157,7 @@ func (r *SsoSettingsResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ssoSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

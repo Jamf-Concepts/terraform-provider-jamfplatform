@@ -179,15 +179,6 @@ func computedInt64(desc string) schema.Int64Attribute {
 	}
 }
 
-// int64ValueFromPtr converts a nil-safe *int (the SDK shape) into a TF Int64,
-// mapping nil to null.
-func int64ValueFromPtr(p *int) types.Int64 {
-	if p == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(int64(*p))
-}
-
 // accountWoVersion returns the connection.account.password_wo_version value
 // from a model, or a null Int64 when there is no account block.
 func accountWoVersion(m LdapServerResourceModel) types.Int64 {

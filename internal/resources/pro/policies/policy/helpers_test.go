@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -84,7 +85,7 @@ func TestExtractPolicyID_Nil(t *testing.T) {
 
 func TestStringIDPtr_ValidInteger(t *testing.T) {
 	t.Parallel()
-	got := stringIDPtr(types.StringValue("123"))
+	got := helpers.StringIDPtr(types.StringValue("123"))
 	if got == nil || *got != 123 {
 		t.Fatalf("expected 123, got %v", got)
 	}
@@ -92,13 +93,13 @@ func TestStringIDPtr_ValidInteger(t *testing.T) {
 
 func TestStringIDPtr_NullOrEmpty(t *testing.T) {
 	t.Parallel()
-	if stringIDPtr(types.StringNull()) != nil {
+	if helpers.StringIDPtr(types.StringNull()) != nil {
 		t.Fatal("expected nil for null input")
 	}
-	if stringIDPtr(types.StringValue("")) != nil {
+	if helpers.StringIDPtr(types.StringValue("")) != nil {
 		t.Fatal("expected nil for empty string")
 	}
-	if stringIDPtr(types.StringValue("not-an-int")) != nil {
+	if helpers.StringIDPtr(types.StringValue("not-an-int")) != nil {
 		t.Fatal("expected nil for non-integer input")
 	}
 }

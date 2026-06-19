@@ -40,13 +40,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is
-// invoked before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // syncPlans fires the fire-and-forget plans sync that follows every
 // successful register / settings write. A failure is reported as a warning —
 // the registration or update itself already succeeded, and the catalog can be
@@ -70,7 +63,7 @@ func (r *JamfProtectResource) syncPlans(ctx context.Context, diags *diag.Diagnos
 // follow-up PUT applies it. Create finishes with a fire-and-forget plans sync.
 func (r *JamfProtectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -125,7 +118,7 @@ func (r *JamfProtectResource) Create(ctx context.Context, req resource.CreateReq
 // from state.
 func (r *JamfProtectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -180,7 +173,7 @@ func (r *JamfProtectResource) Read(ctx context.Context, req resource.ReadRequest
 // alone runs. Both paths finish with a fire-and-forget plans sync.
 func (r *JamfProtectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -255,7 +248,7 @@ func (r *JamfProtectResource) Update(ctx context.Context, req resource.UpdateReq
 // remain in Jamf Pro, and the synced plans catalog persists.
 func (r *JamfProtectResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

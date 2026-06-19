@@ -115,7 +115,7 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 			break
 		}
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(it.Name)
+		result.DisplayName = helpers.DerefString(it.Name)
 		id := helpers.StringValueFromIntPtr(it.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, identityModel{ID: id})...)
 		if result.Diagnostics.HasError() {
@@ -145,12 +145,5 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 }
 
 func itemName(p proclassic.MobileDeviceConfigurationProfilesItemConfigurationProfile) string {
-	return derefString(p.Name)
-}
-
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return helpers.DerefString(p.Name)
 }

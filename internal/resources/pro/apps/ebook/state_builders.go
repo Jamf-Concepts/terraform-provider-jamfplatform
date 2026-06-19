@@ -53,26 +53,26 @@ func flattenEbookGeneral(g *proclassic.EbookGeneral, state *EbookGeneralModel) {
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
 	state.URL = helpers.StringPointerValueOrNull(g.URL)
-	state.Author = preferCurrentStringPointer(g.Author, state.Author)
-	state.DeploymentType = preferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
-	state.DeployAsManaged = preferCurrentBoolPointer(g.DeployAsManaged, state.DeployAsManaged)
-	state.Free = preferCurrentBoolPointer(g.Free, state.Free)
-	state.FileType = preferCurrentStringPointer(g.FileType, state.FileType)
-	state.Version = preferCurrentStringPointer(g.Version, state.Version)
+	state.Author = helpers.PreferCurrentStringPointer(g.Author, state.Author)
+	state.DeploymentType = helpers.PreferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
+	state.DeployAsManaged = helpers.PreferCurrentBoolPointer(g.DeployAsManaged, state.DeployAsManaged)
+	state.Free = helpers.PreferCurrentBoolPointer(g.Free, state.Free)
+	state.FileType = helpers.PreferCurrentStringPointer(g.FileType, state.FileType)
+	state.Version = helpers.PreferCurrentStringPointer(g.Version, state.Version)
 
 	if g.Category != nil {
-		state.CategoryID = preferCurrentStringPointer(stringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.StringPointerValueOrNull(g.Category.Name)
 	} else {
-		state.CategoryID = preferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(stringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
 	} else {
-		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
@@ -80,50 +80,50 @@ func flattenEbookGeneral(g *proclassic.EbookGeneral, state *EbookGeneralModel) {
 func flattenEbookScope(ctx context.Context, s *proclassic.EbookScope, state *EbookScopeModel) {
 	if state.Targets != nil {
 		t := state.Targets
-		t.AllComputers = preferCurrentBoolPointer(s.AllComputers, t.AllComputers)
-		t.AllMobileDevices = preferCurrentBoolPointer(s.AllMobileDevices, t.AllMobileDevices)
-		t.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, t.AllJssUsers)
+		t.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, t.AllComputers)
+		t.AllMobileDevices = helpers.PreferCurrentBoolPointer(s.AllMobileDevices, t.AllMobileDevices)
+		t.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, t.AllJssUsers)
 
 		t.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-		t.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		t.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
 		t.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
-		t.MobileDeviceGroupIDs = flattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
-		t.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		t.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
-		t.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
-		t.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
-		t.ClassIDs = flattenIDNameSet(ctx, classSlice(s.Classes))
+		t.MobileDeviceGroupIDs = scope.FlattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
+		t.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		t.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
+		t.UserIDs = scope.FlattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
+		t.UserGroupIDs = scope.FlattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+		t.ClassIDs = scope.FlattenIDNameSet(ctx, classSlice(s.Classes))
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = flattenIDNameSet(ctx, limitationsSegmentSlice(l.NetworkSegments))
-		state.Limitations.DirectoryServiceOrLocalUserNames = flattenNameSet(ctx, limitationsUserSlice(l.Users))
-		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, limitationsUserGroupSlice(l.UserGroups))
+		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, limitationsSegmentSlice(l.NetworkSegments))
+		state.Limitations.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, limitationsUserSlice(l.Users))
+		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, limitationsUserGroupSlice(l.UserGroups))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
 		state.Exclusions.ComputerIDs = flattenExclComputerItemSet(ctx, e.Computers)
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
 		state.Exclusions.MobileDeviceIDs = flattenExclMobileDeviceItemSet(ctx, e.MobileDevices)
-		state.Exclusions.MobileDeviceGroupIDs = flattenIDNameSet(ctx, exclMobileDeviceGroupSlice(e.MobileDeviceGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.UserIDs = flattenIDNameSet(ctx, exclJssUserSlice(e.JssUsers))
-		state.Exclusions.UserGroupIDs = flattenIDNameSet(ctx, exclJssUserGroupSlice(e.JssUserGroups))
+		state.Exclusions.MobileDeviceGroupIDs = scope.FlattenIDNameSet(ctx, exclMobileDeviceGroupSlice(e.MobileDeviceGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
+		state.Exclusions.UserIDs = scope.FlattenIDNameSet(ctx, exclJssUserSlice(e.JssUsers))
+		state.Exclusions.UserGroupIDs = scope.FlattenIDNameSet(ctx, exclJssUserGroupSlice(e.JssUserGroups))
 		state.Exclusions.NetworkSegmentIDs = flattenExclNetworkSegmentSet(ctx, e.NetworkSegments)
 		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenExclUsersNameSet(ctx, e.Users)
-		state.Exclusions.DirectoryServiceUserGroupNames = flattenNameSet(ctx, exclUserGroupSlice(e.UserGroups))
+		state.Exclusions.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, exclUserGroupSlice(e.UserGroups))
 	}
 }
 
 func flattenEbookSelfService(ss *proclassic.EbookSelfService, state *EbookSelfServiceModel) {
-	state.DisplayName = preferCurrentStringPointer(ss.SelfServiceDisplayName, state.DisplayName)
-	state.InstallButtonText = preferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
-	state.SelfServiceDescription = preferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.ForceUsersToViewDescription = preferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.ForceUsersToViewDescription)
-	state.FeatureOnMainPage = preferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
+	state.DisplayName = helpers.PreferCurrentStringPointer(ss.SelfServiceDisplayName, state.DisplayName)
+	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
+	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.ForceUsersToViewDescription = helpers.PreferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.ForceUsersToViewDescription)
+	state.FeatureOnMainPage = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
 
 	var apiEnabled *bool
 	var apiMethod *string
@@ -131,16 +131,16 @@ func flattenEbookSelfService(ss *proclassic.EbookSelfService, state *EbookSelfSe
 		apiEnabled = ss.Notification.Enabled
 		apiMethod = ss.Notification.Method
 	}
-	state.NotificationEnabled = preferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
-	state.NotificationMethod = preferCurrentStringPointer(apiMethod, state.NotificationMethod)
-	state.NotificationSubject = preferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = preferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.PreferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
+	state.NotificationMethod = helpers.PreferCurrentStringPointer(apiMethod, state.NotificationMethod)
+	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
 
 	if ss.SelfServiceIcon != nil {
-		state.IconID = preferCurrentStringPointer(stringFromIntPtr(ss.SelfServiceIcon.ID), state.IconID)
+		state.IconID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.IconID)
 		state.IconURI = helpers.StringPointerValueOrNull(ss.SelfServiceIcon.URI)
 	} else {
-		state.IconID = preferCurrentStringPointer(nil, state.IconID)
+		state.IconID = helpers.PreferCurrentStringPointer(nil, state.IconID)
 		state.IconURI = types.StringNull()
 	}
 
@@ -161,15 +161,15 @@ func flattenEbookSelfServiceCategories(api []proclassic.EbookSelfServiceSelfServ
 	out := make([]EbookSelfServiceCategoryModel, 0, len(api))
 	for _, c := range api {
 		idStr := ""
-		if s := stringFromIntPtr(c.ID); s != nil {
+		if s := helpers.StringFromIntPtr(c.ID); s != nil {
 			idStr = *s
 		}
 		current := byID[idStr]
 		out = append(out, EbookSelfServiceCategoryModel{
 			ID:        types.StringValue(idStr),
-			Name:      preferCurrentStringPointer(c.Name, current.Name),
-			DisplayIn: preferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
-			FeatureIn: preferCurrentBoolPointer(c.FeatureIn, current.FeatureIn),
+			Name:      helpers.PreferCurrentStringPointer(c.Name, current.Name),
+			DisplayIn: helpers.PreferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
+			FeatureIn: helpers.PreferCurrentBoolPointer(c.FeatureIn, current.FeatureIn),
 		})
 	}
 	state.Categories = out
@@ -343,15 +343,5 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.EbookScopeExclus
 		return types.SetNull(types.StringType)
 	}
 	out, _ := scope.FlattenNameSlice(ctx, u.User, func(i proclassic.EbookScopeExclusionsUsersUserItem) *string { return i.Name })
-	return out
-}
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
-
-func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.IDName) *string { return i.Name })
 	return out
 }

@@ -125,7 +125,7 @@ func (r *ClassListResource) List(ctx context.Context, req list.ListRequest, stre
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(c.Name)
+		result.DisplayName = helpers.DerefString(c.Name)
 
 		id := helpers.StringValueFromIntPtr(c.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, classIdentityModel{ID: id})...)
@@ -185,13 +185,5 @@ func (r *ClassListResource) List(ctx context.Context, req list.ListRequest, stre
 
 // classListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func classListItemName(c proclassic.ClassesItemClass) string {
-	return derefString(c.Name)
-}
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return helpers.DerefString(c.Name)
 }

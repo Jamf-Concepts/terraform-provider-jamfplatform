@@ -10,15 +10,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// int64ValueFromPtr converts a *int into a Terraform Int64, returning null when
-// the pointer is nil (e.g. `port` is absent for a connection type of NONE).
-func int64ValueFromPtr(p *int) types.Int64 {
-	if p == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(int64(*p))
-}
-
 // assignFileShareDistributionPointResourceModel populates a resource model
 // from a DistributionPoint response.
 //
@@ -50,14 +41,14 @@ func assignFileShareDistributionPointResourceModel(state *FileShareDistributionP
 	state.EnableLoadBalancing = helpers.BoolPointerValueOrNull(c.EnableLoadBalancing)
 
 	state.ShareName = helpers.ReconcileOptionalStringPointer(c.ShareName, state.ShareName)
-	state.Port = int64ValueFromPtr(c.Port)
+	state.Port = helpers.Int64FromIntPtr(c.Port)
 	state.Workgroup = helpers.ReconcileOptionalStringPointer(c.Workgroup, state.Workgroup)
 
 	state.ReadWriteUsername = helpers.ReconcileOptionalStringPointer(c.ReadWriteUsername, state.ReadWriteUsername)
 	state.ReadOnlyUsername = helpers.ReconcileOptionalStringPointer(c.ReadOnlyUsername, state.ReadOnlyUsername)
 
 	state.HTTPSEnabled = helpers.BoolPointerValueOrNull(c.HttpsEnabled)
-	state.HTTPSPort = int64ValueFromPtr(c.HttpsPort)
+	state.HTTPSPort = helpers.Int64FromIntPtr(c.HttpsPort)
 	state.HTTPSContext = helpers.ReconcileOptionalStringPointer(c.HttpsContext, state.HTTPSContext)
 	state.HTTPSSecurityType = helpers.ReconcileOptionalStringPointer(c.HttpsSecurityType, state.HTTPSSecurityType)
 	state.HTTPSUsername = helpers.ReconcileOptionalStringPointer(c.HttpsUsername, state.HTTPSUsername)
@@ -82,14 +73,14 @@ func assignFileShareDistributionPointDataSourceModel(state *FileShareDistributio
 	state.EnableLoadBalancing = helpers.BoolPointerValueOrNull(c.EnableLoadBalancing)
 
 	state.ShareName = helpers.StringPointerValueOrNull(c.ShareName)
-	state.Port = int64ValueFromPtr(c.Port)
+	state.Port = helpers.Int64FromIntPtr(c.Port)
 	state.Workgroup = helpers.StringPointerValueOrNull(c.Workgroup)
 
 	state.ReadWriteUsername = helpers.StringPointerValueOrNull(c.ReadWriteUsername)
 	state.ReadOnlyUsername = helpers.StringPointerValueOrNull(c.ReadOnlyUsername)
 
 	state.HTTPSEnabled = helpers.BoolPointerValueOrNull(c.HttpsEnabled)
-	state.HTTPSPort = int64ValueFromPtr(c.HttpsPort)
+	state.HTTPSPort = helpers.Int64FromIntPtr(c.HttpsPort)
 	state.HTTPSContext = helpers.StringPointerValueOrNull(c.HttpsContext)
 	state.HTTPSSecurityType = helpers.StringPointerValueOrNull(c.HttpsSecurityType)
 	state.HTTPSUsername = helpers.StringPointerValueOrNull(c.HttpsUsername)

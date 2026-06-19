@@ -7,13 +7,11 @@ package managed_software_updates_test
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
@@ -21,17 +19,9 @@ import (
 // checkSingletonRecordStillExists verifies the feature-toggle record persists on the tenant
 // after Terraform destroys the resource from state — the remote Delete is a no-op.
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := pro.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetManagedSoftwareUpdateFeatureToggleV1(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected Managed Software Updates feature toggle to persist on tenant after destroy, got error: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil feature toggle record post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "Managed Software Updates feature toggle", func(ctx context.Context) (any, error) {
+		return pro.New(testhelpers.NewAcceptanceClient(t)).GetManagedSoftwareUpdateFeatureToggleV1(ctx)
+	})
 }
 
 // TestAccResource_ProManagedSoftwareUpdateFeatureToggle_Basic flips the toggle across two

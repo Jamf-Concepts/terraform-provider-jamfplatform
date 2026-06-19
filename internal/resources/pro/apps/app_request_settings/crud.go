@@ -26,19 +26,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
-// before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create adopts and writes the App Request settings singleton. There is no Create endpoint,
 // so this reads the live settings as a merge base, PUTs the plan, and seeds state from the
 // returned echo.
 func (r *AppRequestSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -91,7 +84,7 @@ func (r *AppRequestSettingsResource) Create(ctx context.Context, req resource.Cr
 // Read refreshes Terraform state with the latest settings from the Jamf Pro API.
 func (r *AppRequestSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -139,7 +132,7 @@ func (r *AppRequestSettingsResource) Read(ctx context.Context, req resource.Read
 // has already carried omitted Optional+Computed fields into the plan as known prior values.
 func (r *AppRequestSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

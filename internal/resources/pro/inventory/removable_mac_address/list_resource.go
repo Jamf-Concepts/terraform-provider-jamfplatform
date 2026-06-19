@@ -121,7 +121,7 @@ func (r *RemovableMacAddressListResource) List(ctx context.Context, req list.Lis
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(m.Name)
+		result.DisplayName = helpers.DerefString(m.Name)
 
 		id := helpers.StringValueFromIntPtr(m.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, removableMacAddressIdentityModel{ID: id})...)
@@ -167,12 +167,6 @@ func (r *RemovableMacAddressListResource) List(ctx context.Context, req list.Lis
 }
 
 // removableMacAddressName is the name accessor passed to filters.ApplyClassicFilter.
-func removableMacAddressName(m proclassic.RemovableMacAddress) string { return derefString(m.Name) }
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+func removableMacAddressName(m proclassic.RemovableMacAddress) string {
+	return helpers.DerefString(m.Name)
 }

@@ -59,22 +59,22 @@ func flattenMacAppGeneral(g *proclassic.MacApplicationGeneral, state *MacAppGene
 	state.Version = helpers.StringPointerValueOrNull(g.Version)
 	state.BundleID = helpers.StringPointerValueOrNull(g.BundleID)
 	state.URL = helpers.StringPointerValueOrNull(g.URL)
-	state.IsFree = preferCurrentBoolPointer(g.IsFree, state.IsFree)
-	state.DeploymentType = preferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
+	state.IsFree = helpers.PreferCurrentBoolPointer(g.IsFree, state.IsFree)
+	state.DeploymentType = helpers.PreferCurrentStringPointer(g.DeploymentType, state.DeploymentType)
 
 	if g.Category != nil {
-		state.CategoryID = preferCurrentStringPointer(stringFromIntPtr(g.Category.ID), state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
 		state.CategoryName = helpers.StringPointerValueOrNull(g.Category.Name)
 	} else {
-		state.CategoryID = preferCurrentStringPointer(nil, state.CategoryID)
+		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
 	}
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(stringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
 	} else {
-		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
@@ -85,43 +85,43 @@ func flattenMacAppScope(ctx context.Context, s *proclassic.MacApplicationScope, 
 	// declare would violate the framework's "produced inconsistent result after
 	// apply" check (plan said null, we would return a populated object).
 	if state.Targets != nil {
-		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.AllJssUsers = preferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
 
 		state.Targets.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
-		state.Targets.UserIDs = flattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
-		state.Targets.UserGroupIDs = flattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
+		state.Targets.UserIDs = scope.FlattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
+		state.Targets.UserGroupIDs = scope.FlattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = flattenIDNameSet(ctx, limitationsSegmentSlice(l.NetworkSegments))
-		state.Limitations.DirectoryServiceOrLocalUserNames = flattenNameSet(ctx, limitationsUserSlice(l.Users))
-		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, limitationsUserGroupSlice(l.UserGroups))
+		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, limitationsSegmentSlice(l.NetworkSegments))
+		state.Limitations.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, limitationsUserSlice(l.Users))
+		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, limitationsUserGroupSlice(l.UserGroups))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
 		state.Exclusions.ComputerIDs = flattenExclComputerItemSet(ctx, e.Computers)
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.UserIDs = flattenIDNameSet(ctx, exclJssUserSlice(e.JssUsers))
-		state.Exclusions.UserGroupIDs = flattenIDNameSet(ctx, exclJssUserGroupSlice(e.JssUserGroups))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
+		state.Exclusions.UserIDs = scope.FlattenIDNameSet(ctx, exclJssUserSlice(e.JssUsers))
+		state.Exclusions.UserGroupIDs = scope.FlattenIDNameSet(ctx, exclJssUserGroupSlice(e.JssUserGroups))
 		state.Exclusions.NetworkSegmentIDs = flattenExclNetworkSegmentSet(ctx, e.NetworkSegments)
 		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenExclUsersNameSet(ctx, e.Users)
-		state.Exclusions.DirectoryServiceUserGroupNames = flattenNameSet(ctx, exclUserGroupSlice(e.UserGroups))
+		state.Exclusions.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, exclUserGroupSlice(e.UserGroups))
 	}
 }
 
 func flattenMacAppSelfService(ss *proclassic.MacApplicationSelfService, state *MacAppSelfServiceModel) {
-	state.InstallButtonText = preferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
-	state.SelfServiceDescription = preferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
-	state.ForceUsersToViewDescription = preferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.ForceUsersToViewDescription)
-	state.FeatureOnMainPage = preferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
+	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
+	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ss.SelfServiceDescription, state.SelfServiceDescription)
+	state.ForceUsersToViewDescription = helpers.PreferCurrentBoolPointer(ss.ForceUsersToViewDescription, state.ForceUsersToViewDescription)
+	state.FeatureOnMainPage = helpers.PreferCurrentBoolPointer(ss.FeatureOnMainPage, state.FeatureOnMainPage)
 
 	var apiEnabled *bool
 	var apiMethod *string
@@ -129,14 +129,14 @@ func flattenMacAppSelfService(ss *proclassic.MacApplicationSelfService, state *M
 		apiEnabled = ss.Notification.Enabled
 		apiMethod = ss.Notification.Method
 	}
-	state.NotificationEnabled = preferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
-	state.NotificationMethod = preferCurrentStringPointer(apiMethod, state.NotificationMethod)
-	state.NotificationSubject = preferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
-	state.NotificationMessage = preferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
+	state.NotificationEnabled = helpers.PreferCurrentBoolPointer(apiEnabled, state.NotificationEnabled)
+	state.NotificationMethod = helpers.PreferCurrentStringPointer(apiMethod, state.NotificationMethod)
+	state.NotificationSubject = helpers.PreferCurrentStringPointer(ss.NotificationSubject, state.NotificationSubject)
+	state.NotificationMessage = helpers.PreferCurrentStringPointer(ss.NotificationMessage, state.NotificationMessage)
 
 	if state.SelfServiceIcon != nil && ss.SelfServiceIcon != nil {
-		state.SelfServiceIcon.ID = preferCurrentStringPointer(stringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
-		state.SelfServiceIcon.URI = preferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
+		state.SelfServiceIcon.ID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ss.SelfServiceIcon.ID), state.SelfServiceIcon.ID)
+		state.SelfServiceIcon.URI = helpers.PreferCurrentStringPointer(ss.SelfServiceIcon.URI, state.SelfServiceIcon.URI)
 	}
 
 	if state.SelfServiceCategories != nil && ss.SelfServiceCategories != nil && ss.SelfServiceCategories.Category != nil {
@@ -157,26 +157,26 @@ func flattenMacAppSelfServiceCategories(api []proclassic.MacApplicationSelfServi
 	out := make([]MacAppSelfServiceCategoryModel, 0, len(api))
 	for _, c := range api {
 		idStr := ""
-		if s := stringFromIntPtr(c.ID); s != nil {
+		if s := helpers.StringFromIntPtr(c.ID); s != nil {
 			idStr = *s
 		}
 		current := byID[idStr]
 		out = append(out, MacAppSelfServiceCategoryModel{
 			ID:        types.StringValue(idStr),
-			Name:      preferCurrentStringPointer(c.Name, current.Name),
-			DisplayIn: preferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
-			FeatureIn: preferCurrentBoolPointer(c.FeatureIn, current.FeatureIn),
+			Name:      helpers.PreferCurrentStringPointer(c.Name, current.Name),
+			DisplayIn: helpers.PreferCurrentBoolPointer(c.DisplayIn, current.DisplayIn),
+			FeatureIn: helpers.PreferCurrentBoolPointer(c.FeatureIn, current.FeatureIn),
 		})
 	}
 	state.SelfServiceCategories = out
 }
 
 func flattenMacAppVpp(v *proclassic.MacApplicationVpp, state *MacAppVppModel) {
-	state.AssignVppDeviceBasedLicenses = preferCurrentBoolPointer(v.AssignVppDeviceBasedLicenses, state.AssignVppDeviceBasedLicenses)
-	state.VppAdminAccountID = preferCurrentStringPointer(stringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
-	state.TotalVppLicenses = int64FromIntPtr(v.TotalVppLicenses)
-	state.RemainingVppLicenses = int64FromIntPtr(v.RemainingVppLicenses)
-	state.UsedVppLicenses = int64FromIntPtr(v.UsedVppLicenses)
+	state.AssignVppDeviceBasedLicenses = helpers.PreferCurrentBoolPointer(v.AssignVppDeviceBasedLicenses, state.AssignVppDeviceBasedLicenses)
+	state.VppAdminAccountID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(v.VppAdminAccountID), state.VppAdminAccountID)
+	state.TotalVppLicenses = helpers.Int64FromIntPtr(v.TotalVppLicenses)
+	state.RemainingVppLicenses = helpers.Int64FromIntPtr(v.RemainingVppLicenses)
+	state.UsedVppLicenses = helpers.Int64FromIntPtr(v.UsedVppLicenses)
 }
 
 // ---- scope sub-slice accessors -------------------------------------------------
@@ -310,15 +310,5 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.MacApplicationSc
 		return types.SetNull(types.StringType)
 	}
 	out, _ := scope.FlattenNameSlice(ctx, u.User, func(i proclassic.MacApplicationScopeExclusionsUsersUserItem) *string { return i.Name })
-	return out
-}
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
-
-func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.IDName) *string { return i.Name })
 	return out
 }

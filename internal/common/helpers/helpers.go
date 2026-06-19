@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -69,6 +70,87 @@ func OptionalBoolPointer(value types.Bool) *bool {
 	}
 	b := value.ValueBool()
 	return &b
+}
+
+// StringIDPtr parses a Terraform string holding a numeric ID into a *int for API
+// payloads. Returns nil for null, unknown, empty, or un-parseable values so the
+// SDK's omitempty tag drops the field from the wire. Jamf Pro exposes many
+// referenced-object IDs as integers on the wire while Terraform carries them as
+// strings; this performs the narrowing at the boundary.
+func StringIDPtr(value types.String) *int {
+	if !IsConfiguredValue(value) {
+		return nil
+	}
+	s := value.ValueString()
+	if s == "" {
+		return nil
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return nil
+	}
+	return &v
+}
+
+// StringFromIntPtr converts a *int (the ProClassic SDK's integer wire shape) into
+// a *string, returning nil for nil input. Use when round-tripping an integer wire
+// ID through a string-typed helper such as PreferCurrentStringPointer.
+func StringFromIntPtr(p *int) *string {
+	if p == nil {
+		return nil
+	}
+	s := strconv.Itoa(*p)
+	return &s
+}
+
+// Int64FromIntPtr converts a *int (the ProClassic SDK's integer wire shape) into a
+// Terraform Int64, mapping nil to null.
+func Int64FromIntPtr(p *int) types.Int64 {
+	if p == nil {
+		return types.Int64Null()
+	}
+	return types.Int64Value(int64(*p))
+}
+
+// PreferCurrentStringPointer returns the caller's configured value when it is set,
+// otherwise adopts the API value. Use for Optional+Computed string scalars nested
+// in a server-managed section where the classic API may echo a value the user did
+// not author — unlike ReconcileOptionalStringPointer (which prefers the API value
+// except for the explicit empty-string edge), this always preserves a configured
+// current value.
+func PreferCurrentStringPointer(api *string, current types.String) types.String {
+	if IsConfiguredValue(current) {
+		return current
+	}
+	if api == nil {
+		return types.StringNull()
+	}
+	return types.StringValue(*api)
+}
+
+// PreferCurrentBoolPointer is the bool sibling of PreferCurrentStringPointer.
+func PreferCurrentBoolPointer(api *bool, current types.Bool) types.Bool {
+	if IsConfiguredValue(current) {
+		return current
+	}
+	if api == nil {
+		return types.BoolNull()
+	}
+	return types.BoolValue(*api)
+}
+
+// ProviderNotConfiguredError returns the (summary, detail) pair every Pro CRUD
+// handler uses to guard against a nil SDK client — the case where a CRUD method
+// fires before Configure populated the provider data.
+func ProviderNotConfiguredError() (string, string) {
+	return "Provider not configured",
+		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
+}
+
+// InitialSingletonID returns the fixed Terraform state ID used by Pro singleton
+// resources. See SingletonID for the rationale.
+func InitialSingletonID() types.String {
+	return types.StringValue(SingletonID)
 }
 
 // OptionalInt64Pointer converts a Terraform Int64 into a *int for API payloads.

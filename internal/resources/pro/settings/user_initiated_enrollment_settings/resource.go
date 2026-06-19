@@ -518,6 +518,3 @@ func (r *UserInitiatedEnrollmentSettingsResource) ImportState(ctx context.Contex
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
-
-// initialID returns the canonical singleton id for use in CRUD handlers.
-func initialID() types.String { return types.StringValue(helpers.SingletonID) }

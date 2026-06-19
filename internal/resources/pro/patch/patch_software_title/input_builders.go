@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -55,7 +56,7 @@ func buildPatchSoftwareTitleUpdateInput(ctx context.Context, plan PatchSoftwareT
 		name := v
 		out.Name = &name
 	}
-	if id := optionalIntFromStringID(plan.CategoryID); id != nil {
+	if id := helpers.StringIDPtr(plan.CategoryID); id != nil {
 		// This endpoint clears a category with wire id 0 — id -1 is a silent
 		// no-op here (it does clear <site>, but not <category>). Map the
 		// user-facing "-1 = No category assigned" sentinel (and any non-positive
@@ -65,7 +66,7 @@ func buildPatchSoftwareTitleUpdateInput(ctx context.Context, plan PatchSoftwareT
 		wireID := max(*id, 0)
 		out.Category = &proclassic.CategoryObject{ID: &wireID}
 	}
-	if id := optionalIntFromStringID(plan.SiteID); id != nil {
+	if id := helpers.StringIDPtr(plan.SiteID); id != nil {
 		out.Site = &proclassic.SiteObject{ID: id}
 	}
 	if n := buildNotifications(plan); n != nil {
@@ -160,24 +161,6 @@ func buildVersionItems(planPackages map[string]string, priorKeys []string) []pro
 		items = append(items, item)
 	}
 	return items
-}
-
-// optionalIntFromStringID parses the user's string ID into an int pointer.
-// Returns nil for null/unknown/empty inputs. Non-parseable inputs return nil —
-// the schema validates IDs upstream where applicable.
-func optionalIntFromStringID(value types.String) *int {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	s := value.ValueString()
-	if s == "" {
-		return nil
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return nil
-	}
-	return &n
 }
 
 // versionPackageKeys returns the declared version_packages keys from a model's

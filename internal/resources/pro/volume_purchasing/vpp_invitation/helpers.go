@@ -27,14 +27,6 @@ func intStringOrNull(p *int) types.String {
 	return types.StringValue(strconv.Itoa(*p))
 }
 
-// derefString returns "" for a nil *string.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
 // flattenUsages builds the Computed invitation_usages list from the SDK block.
 // Always returns a known (possibly empty) list so the Computed attribute never
 // stays unknown after apply.

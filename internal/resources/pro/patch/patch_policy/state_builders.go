@@ -33,7 +33,7 @@ func assignPatchPolicyResourceModel(ctx context.Context, state *PatchPolicyResou
 		state.ID = types.StringValue(id)
 	}
 	if p.SoftwareTitleConfigurationID != nil {
-		state.SoftwareTitleConfigurationID = preferCurrentStringPointer(stringFromIntPtr(p.SoftwareTitleConfigurationID), state.SoftwareTitleConfigurationID)
+		state.SoftwareTitleConfigurationID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(p.SoftwareTitleConfigurationID), state.SoftwareTitleConfigurationID)
 	}
 
 	diags.Append(flattenGeneral(ctx, p.General, state)...)
@@ -59,12 +59,12 @@ func flattenGeneral(ctx context.Context, g *proclassic.PatchPolicyGeneral, state
 		return diags
 	}
 
-	state.Name = preferCurrentStringPointer(g.Name, state.Name)
-	state.TargetVersion = preferCurrentStringPointer(g.TargetVersion, state.TargetVersion)
-	state.Enabled = preferCurrentBoolPointer(g.Enabled, state.Enabled)
-	state.DistributionMethod = preferCurrentStringPointer(g.DistributionMethod, state.DistributionMethod)
-	state.AllowDowngrade = preferCurrentBoolPointer(g.AllowDowngrade, state.AllowDowngrade)
-	state.PatchUnknown = preferCurrentBoolPointer(g.PatchUnknown, state.PatchUnknown)
+	state.Name = helpers.PreferCurrentStringPointer(g.Name, state.Name)
+	state.TargetVersion = helpers.PreferCurrentStringPointer(g.TargetVersion, state.TargetVersion)
+	state.Enabled = helpers.PreferCurrentBoolPointer(g.Enabled, state.Enabled)
+	state.DistributionMethod = helpers.PreferCurrentStringPointer(g.DistributionMethod, state.DistributionMethod)
+	state.AllowDowngrade = helpers.PreferCurrentBoolPointer(g.AllowDowngrade, state.AllowDowngrade)
+	state.PatchUnknown = helpers.PreferCurrentBoolPointer(g.PatchUnknown, state.PatchUnknown)
 
 	// Server-derived (Computed-only): adopt verbatim.
 	state.ReleaseDate = int64ValueOrNull(g.ReleaseDate)
@@ -103,37 +103,37 @@ func flattenKillApps(ctx context.Context, ka *proclassic.PatchPolicyGeneralKillA
 
 func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *PatchPolicyScopeModel) {
 	if state.Targets != nil {
-		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
 		state.Targets.ComputerIDs = flattenComputerSet(ctx, computerSlice(s.Computers))
-		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
 		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = flattenIDNameSet(ctx, limitationsNetworkSegmentSlice(l.NetworkSegments))
-		state.Limitations.IbeaconIDs = flattenIDNameSet(ctx, limitationsIbeaconSlice(l.Ibeacons))
+		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, limitationsNetworkSegmentSlice(l.NetworkSegments))
+		state.Limitations.IbeaconIDs = scope.FlattenIDNameSet(ctx, limitationsIbeaconSlice(l.Ibeacons))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
 		state.Exclusions.ComputerIDs = flattenExclComputerSet(ctx, exclComputerSlice(e.Computers))
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.NetworkSegmentIDs = flattenIDNameSet(ctx, exclNetworkSegmentSlice(e.NetworkSegments))
-		state.Exclusions.IbeaconIDs = flattenIDNameSet(ctx, exclIbeaconSlice(e.Ibeacons))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
+		state.Exclusions.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, exclNetworkSegmentSlice(e.NetworkSegments))
+		state.Exclusions.IbeaconIDs = scope.FlattenIDNameSet(ctx, exclIbeaconSlice(e.Ibeacons))
 	}
 }
 
 func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *PatchPolicyUserInteractionModel) {
-	state.InstallButtonText = preferCurrentStringPointer(ui.InstallButtonText, state.InstallButtonText)
-	state.SelfServiceDescription = preferCurrentStringPointer(ui.SelfServiceDescription, state.SelfServiceDescription)
+	state.InstallButtonText = helpers.PreferCurrentStringPointer(ui.InstallButtonText, state.InstallButtonText)
+	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ui.SelfServiceDescription, state.SelfServiceDescription)
 	if ui.SelfServiceIcon != nil {
-		state.SelfServiceIconID = preferCurrentStringPointer(stringFromIntPtr(ui.SelfServiceIcon.ID), state.SelfServiceIconID)
+		state.SelfServiceIconID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(ui.SelfServiceIcon.ID), state.SelfServiceIconID)
 	} else {
-		state.SelfServiceIconID = preferCurrentStringPointer(nil, state.SelfServiceIconID)
+		state.SelfServiceIconID = helpers.PreferCurrentStringPointer(nil, state.SelfServiceIconID)
 	}
 
 	// A managed sub-block resolves ALL its Computed leaves even when the server
@@ -153,10 +153,10 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 		if n != nil {
 			nEnabled, nSubject, nMsg, nType, nReminders = n.NotificationEnabled, n.NotificationSubject, n.NotificationMessage, n.NotificationType, n.Reminders
 		}
-		state.Notifications.Enabled = preferCurrentBoolPointer(nEnabled, state.Notifications.Enabled)
-		state.Notifications.Subject = preferCurrentStringPointer(nSubject, state.Notifications.Subject)
-		state.Notifications.Message = preferCurrentStringPointer(nMsg, state.Notifications.Message)
-		state.Notifications.Type = preferCurrentStringPointer(nType, state.Notifications.Type)
+		state.Notifications.Enabled = helpers.PreferCurrentBoolPointer(nEnabled, state.Notifications.Enabled)
+		state.Notifications.Subject = helpers.PreferCurrentStringPointer(nSubject, state.Notifications.Subject)
+		state.Notifications.Message = helpers.PreferCurrentStringPointer(nMsg, state.Notifications.Message)
+		state.Notifications.Type = helpers.PreferCurrentStringPointer(nType, state.Notifications.Type)
 		if state.Notifications.Reminders != nil {
 			var (
 				rEnabled *bool
@@ -165,7 +165,7 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 			if nReminders != nil {
 				rEnabled, rFreq = nReminders.NotificationRemindersEnabled, nReminders.NotificationReminderFrequency
 			}
-			state.Notifications.Reminders.Enabled = preferCurrentBoolPointer(rEnabled, state.Notifications.Reminders.Enabled)
+			state.Notifications.Reminders.Enabled = helpers.PreferCurrentBoolPointer(rEnabled, state.Notifications.Reminders.Enabled)
 			state.Notifications.Reminders.Frequency = preferCurrentInt64Pointer(rFreq, state.Notifications.Reminders.Frequency)
 		}
 	}
@@ -178,7 +178,7 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 		if ui.Deadlines != nil {
 			dEnabled, dPeriod = ui.Deadlines.DeadlineEnabled, ui.Deadlines.DeadlinePeriod
 		}
-		state.Deadlines.Enabled = preferCurrentBoolPointer(dEnabled, state.Deadlines.Enabled)
+		state.Deadlines.Enabled = helpers.PreferCurrentBoolPointer(dEnabled, state.Deadlines.Enabled)
 		state.Deadlines.Period = preferCurrentInt64Pointer(dPeriod, state.Deadlines.Period)
 	}
 
@@ -191,8 +191,8 @@ func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *Pa
 			gDuration, gSubject, gMsg = ui.GracePeriod.GracePeriodDuration, ui.GracePeriod.NotificationCenterSubject, ui.GracePeriod.Message
 		}
 		state.GracePeriod.Duration = preferCurrentInt64Pointer(gDuration, state.GracePeriod.Duration)
-		state.GracePeriod.NotificationCenterSubject = preferCurrentStringPointer(gSubject, state.GracePeriod.NotificationCenterSubject)
-		state.GracePeriod.Message = preferCurrentStringPointer(gMsg, state.GracePeriod.Message)
+		state.GracePeriod.NotificationCenterSubject = helpers.PreferCurrentStringPointer(gSubject, state.GracePeriod.NotificationCenterSubject)
+		state.GracePeriod.Message = helpers.PreferCurrentStringPointer(gMsg, state.GracePeriod.Message)
 	}
 }
 
@@ -283,11 +283,6 @@ func exclIbeaconSlice(i *proclassic.PatchPolicyScopeExclusionsIbeacons) *[]procl
 }
 
 // ---- set flatteners ------------------------------------------------------------
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
 
 func flattenComputerSet(ctx context.Context, items *[]proclassic.PatchPolicyScopeComputersComputerItem) types.Set {
 	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.PatchPolicyScopeComputersComputerItem) *int { return i.ID })

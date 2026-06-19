@@ -50,37 +50,37 @@ func flattenGeneral(g *proclassic.RestrictedSoftwareGeneral, state *RestrictedSo
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
 	state.ProcessName = helpers.StringPointerValueOrNull(g.ProcessName)
-	state.RestrictExactProcessName = preferCurrentBoolPointer(g.MatchExactProcessName, state.RestrictExactProcessName)
-	state.SendEmailNotificationOnViolation = preferCurrentBoolPointer(g.SendNotification, state.SendEmailNotificationOnViolation)
-	state.KillProcess = preferCurrentBoolPointer(g.KillProcess, state.KillProcess)
-	state.DeleteApplication = preferCurrentBoolPointer(g.DeleteExecutable, state.DeleteApplication)
-	state.DisplayMessage = preferCurrentStringPointer(g.DisplayMessage, state.DisplayMessage)
+	state.RestrictExactProcessName = helpers.PreferCurrentBoolPointer(g.MatchExactProcessName, state.RestrictExactProcessName)
+	state.SendEmailNotificationOnViolation = helpers.PreferCurrentBoolPointer(g.SendNotification, state.SendEmailNotificationOnViolation)
+	state.KillProcess = helpers.PreferCurrentBoolPointer(g.KillProcess, state.KillProcess)
+	state.DeleteApplication = helpers.PreferCurrentBoolPointer(g.DeleteExecutable, state.DeleteApplication)
+	state.DisplayMessage = helpers.PreferCurrentStringPointer(g.DisplayMessage, state.DisplayMessage)
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(stringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
 	} else {
-		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
+		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()
 	}
 }
 
 func flattenScope(ctx context.Context, s *proclassic.RestrictedSoftwareScope, state *RestrictedSoftwareScopeModel) {
 	if state.Targets != nil {
-		state.Targets.AllComputers = preferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.ComputerIDs = flattenIDNameSet(ctx, computerSlice(s.Computers))
-		state.Targets.ComputerGroupIDs = flattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-		state.Targets.BuildingIDs = flattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = flattenIDNameSet(ctx, departmentSlice(s.Departments))
+		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
+		state.Targets.ComputerIDs = scope.FlattenIDNameSet(ctx, computerSlice(s.Computers))
+		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
+		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
+		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
-		state.Exclusions.ComputerIDs = flattenIDNameSet(ctx, exclComputerSlice(e.Computers))
-		state.Exclusions.ComputerGroupIDs = flattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = flattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = flattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenNameSet(ctx, exclUsersSlice(e.Users))
+		state.Exclusions.ComputerIDs = scope.FlattenIDNameSet(ctx, exclComputerSlice(e.Computers))
+		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
+		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
+		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
+		state.Exclusions.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, exclUsersSlice(e.Users))
 	}
 }
 
@@ -150,13 +150,3 @@ func exclUsersSlice(u *proclassic.RestrictedSoftwareScopeExclusionsUsers) *[]pro
 }
 
 // ---- set flatteners ------------------------------------------------------------
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
-
-func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.IDName) *string { return i.Name })
-	return out
-}

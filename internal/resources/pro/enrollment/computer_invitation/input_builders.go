@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -29,11 +28,11 @@ func buildComputerInvitationInput(plan ComputerInvitationResourceModel, sshPassw
 	in := &proclassic.ComputerInvitation{
 		InvitationType:              helpers.OptionalStringPointer(plan.InvitationType),
 		ExpirationDate:              helpers.OptionalStringPointer(plan.ExpirationDate),
-		KeepExistingSiteMembership:  optionalBoolPointer(plan.KeepExistingSiteMembership),
-		MultipleUsesAllowed:         optionalBoolPointer(plan.MultipleUsesAllowed),
-		CreateAccountIfDoesNotExist: optionalBoolPointer(plan.CreateAccountIfDoesNotExist),
-		HideAccount:                 optionalBoolPointer(plan.HideAccount),
-		LockDownSsh:                 optionalBoolPointer(plan.LockDownSSH),
+		KeepExistingSiteMembership:  helpers.OptionalBoolPointer(plan.KeepExistingSiteMembership),
+		MultipleUsesAllowed:         helpers.OptionalBoolPointer(plan.MultipleUsesAllowed),
+		CreateAccountIfDoesNotExist: helpers.OptionalBoolPointer(plan.CreateAccountIfDoesNotExist),
+		HideAccount:                 helpers.OptionalBoolPointer(plan.HideAccount),
+		LockDownSsh:                 helpers.OptionalBoolPointer(plan.LockDownSSH),
 		SshUsername:                 helpers.OptionalStringPointer(plan.SSHUsername),
 		SshPassword:                 sshPassword,
 	}
@@ -45,15 +44,4 @@ func buildComputerInvitationInput(plan ComputerInvitationResourceModel, sshPassw
 	}
 
 	return in
-}
-
-// optionalBoolPointer mirrors helpers.OptionalStringPointer for types.Bool.
-// Returns nil for null/unknown so omitted Optional bools are not serialised as
-// `false`.
-func optionalBoolPointer(b types.Bool) *bool {
-	if b.IsNull() || b.IsUnknown() {
-		return nil
-	}
-	v := b.ValueBool()
-	return &v
 }

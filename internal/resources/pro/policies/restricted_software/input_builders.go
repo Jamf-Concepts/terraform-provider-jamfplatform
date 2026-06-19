@@ -49,7 +49,7 @@ func buildGeneral(m *RestrictedSoftwareGeneralModel) *proclassic.RestrictedSoftw
 		DeleteExecutable:      helpers.OptionalBoolPointer(m.DeleteApplication),
 		DisplayMessage:        helpers.OptionalStringPointer(m.DisplayMessage),
 	}
-	if siteID := stringIDPtr(m.SiteID); siteID != nil {
+	if siteID := helpers.StringIDPtr(m.SiteID); siteID != nil {
 		g.Site = &proclassic.SiteObject{ID: siteID}
 	}
 	return g

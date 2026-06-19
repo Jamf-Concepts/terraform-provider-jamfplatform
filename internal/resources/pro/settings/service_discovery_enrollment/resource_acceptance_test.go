@@ -62,17 +62,9 @@ func serviceDiscoveryConfig(adeName, token string, enrollmentType string) string
 // checkSingletonRecordStillExists verifies the well-known settings record persists on the
 // tenant after Terraform destroys the resources from state (singleton — no remote delete).
 func checkSingletonRecordStillExists(t *testing.T) resource.TestCheckFunc {
-	return func(_ *terraform.State) error {
-		c := pro.New(testhelpers.NewAcceptanceClient(t))
-		got, err := c.GetServiceDiscoveryEnrollmentWellKnownSettingsV1(context.Background())
-		if err != nil {
-			return fmt.Errorf("expected service discovery well-known settings to persist post-destroy, got error: %w", err)
-		}
-		if got == nil {
-			return fmt.Errorf("expected non-nil well-known settings record post-destroy")
-		}
-		return nil
-	}
+	return testhelpers.RequireSingletonStillExists(t, "service discovery well-known settings", func(ctx context.Context) (any, error) {
+		return pro.New(testhelpers.NewAcceptanceClient(t)).GetServiceDiscoveryEnrollmentWellKnownSettingsV1(ctx)
+	})
 }
 
 // TestAccResource_ProServiceDiscoveryEnrollment_Basic creates an ADE server object from

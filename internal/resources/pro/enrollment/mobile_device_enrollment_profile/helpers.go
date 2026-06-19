@@ -39,14 +39,6 @@ func int64ValueOrNull(p *int) types.Int64 {
 	return types.Int64Value(int64(*p))
 }
 
-// derefString returns "" for a nil *string.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
 // flattenAttachments builds the Computed attachments list from the SDK block.
 func flattenAttachments(a *proclassic.MobileDeviceEnrollmentProfileAttachments) types.List {
 	if a == nil || a.Attachment == nil || len(*a.Attachment) == 0 {

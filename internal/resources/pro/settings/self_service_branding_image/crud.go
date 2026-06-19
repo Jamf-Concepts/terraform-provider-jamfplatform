@@ -25,18 +25,11 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is
-// invoked before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create uploads an image and derives its ID from the returned URL. source_hash
 // is already set on the plan by ModifyPlan, so Create just streams the bytes.
 func (r *SelfServiceBrandingImageResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -88,7 +81,7 @@ func (r *SelfServiceBrandingImageResource) Create(ctx context.Context, req resou
 // downloaded bytes so subsequent plans are stable.
 func (r *SelfServiceBrandingImageResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -169,7 +162,7 @@ func (r *SelfServiceBrandingImageResource) Read(ctx context.Context, req resourc
 // carried forward by UseStateForUnknown, so Update just persists the plan.
 func (r *SelfServiceBrandingImageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

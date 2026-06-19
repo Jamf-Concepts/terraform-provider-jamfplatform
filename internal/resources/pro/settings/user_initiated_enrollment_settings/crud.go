@@ -31,19 +31,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler
-// fires before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the singleton. The settings object always exists on the
 // tenant, so Create is a read-merge-write followed by an Access-Group reconcile
 // and a read-back.
 func (r *UserInitiatedEnrollmentSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -75,7 +68,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Create(ctx context.Context, re
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, userInitiatedEnrollmentSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -88,14 +81,14 @@ func (r *UserInitiatedEnrollmentSettingsResource) Create(ctx context.Context, re
 // Read is GET-only, so it does not take the enrollment write lock.
 func (r *UserInitiatedEnrollmentSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
 	var state UserInitiatedEnrollmentSettingsResourceModel
 	isImport := req.State.Raw.IsNull()
 	if isImport {
-		state.ID = initialID()
+		state.ID = helpers.InitialSingletonID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(userInitiatedEnrollmentSettingsTimeoutAttributeTypes)
 		state.AccessGroups = types.SetNull(types.ObjectType{AttrTypes: accessGroupAttrTypes})
 		state.MessagingLanguages = types.MapNull(types.ObjectType{AttrTypes: messagingLanguageAttrTypes})
@@ -118,7 +111,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Read(ctx context.Context, req 
 		return
 	}
 
-	state.ID = initialID()
+	state.ID = helpers.InitialSingletonID()
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, userInitiatedEnrollmentSettingsIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -129,7 +122,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Read(ctx context.Context, req 
 // Update reconciles settings + cert + access-group state.
 func (r *UserInitiatedEnrollmentSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -162,7 +155,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Update(ctx context.Context, re
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, userInitiatedEnrollmentSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
 		return

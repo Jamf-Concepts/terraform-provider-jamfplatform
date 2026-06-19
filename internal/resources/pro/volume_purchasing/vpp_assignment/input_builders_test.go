@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
@@ -176,16 +177,16 @@ func TestBuildScope_PopulatedTargetsAndNameKeyedGroups(t *testing.T) {
 }
 
 func TestStringIDPtr(t *testing.T) {
-	if stringIDPtr(types.StringNull()) != nil {
+	if helpers.StringIDPtr(types.StringNull()) != nil {
 		t.Error("null must be nil")
 	}
-	if stringIDPtr(types.StringValue("")) != nil {
+	if helpers.StringIDPtr(types.StringValue("")) != nil {
 		t.Error("empty must be nil")
 	}
-	if stringIDPtr(types.StringValue("abc")) != nil {
+	if helpers.StringIDPtr(types.StringValue("abc")) != nil {
 		t.Error("non-numeric must be nil")
 	}
-	if p := stringIDPtr(types.StringValue("42")); p == nil || *p != 42 {
+	if p := helpers.StringIDPtr(types.StringValue("42")); p == nil || *p != 42 {
 		t.Errorf("42 must parse, got %v", p)
 	}
 }

@@ -5,11 +5,9 @@ package mobile_device_configuration_profile
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
@@ -59,10 +57,10 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.MobileDevic
 		g.DeploymentMethod = &dm
 	}
 
-	if id := optionalIntFromStringID(m.CategoryID); id != nil {
+	if id := helpers.StringIDPtr(m.CategoryID); id != nil {
 		g.Category = &proclassic.CategoryObject{ID: id}
 	}
-	if id := optionalIntFromStringID(m.SiteID); id != nil {
+	if id := helpers.StringIDPtr(m.SiteID); id != nil {
 		g.Site = &proclassic.SiteObject{ID: id}
 	}
 
@@ -84,8 +82,8 @@ func buildScope(ctx context.Context, m *scope.MobileScopeModel) (*proclassic.Mob
 	var diags diag.Diagnostics
 	t := m.TargetsOrZero()
 	s := &proclassic.MobileDeviceConfigurationProfileScope{
-		AllMobileDevices: optionalBoolPointer(t.AllMobileDevices),
-		AllJssUsers:      optionalBoolPointer(t.AllJssUsers),
+		AllMobileDevices: helpers.OptionalBoolPointer(t.AllMobileDevices),
+		AllJssUsers:      helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
 	mds, d := scope.BuildIDSlice(ctx, t.MobileDeviceIDs, func(id int) proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem {
@@ -299,7 +297,7 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.MobileDeviceConfiguratio
 	var diags diag.Diagnostics
 	ss := &proclassic.MobileDeviceConfigurationProfileSelfService{
 		SelfServiceDescription: helpers.OptionalStringPointer(m.SelfServiceDescription),
-		FeatureOnMainPage:      optionalBoolPointer(m.FeatureOnMainPage),
+		FeatureOnMainPage:      helpers.OptionalBoolPointer(m.FeatureOnMainPage),
 	}
 
 	hasDisallowed := !m.RemovalDisallowed.IsNull() && !m.RemovalDisallowed.IsUnknown() && m.RemovalDisallowed.ValueString() != ""
@@ -321,7 +319,7 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.MobileDeviceConfiguratio
 		items := make([]proclassic.Category, 0, len(m.Categories))
 		for _, c := range m.Categories {
 			item := proclassic.Category{}
-			if id := optionalIntFromStringID(c.ID); id != nil {
+			if id := helpers.StringIDPtr(c.ID); id != nil {
 				item.ID = id
 			}
 			items = append(items, item)
@@ -332,27 +330,4 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.MobileDeviceConfiguratio
 	}
 
 	return ss, diags
-}
-
-func optionalBoolPointer(value types.Bool) *bool {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	v := value.ValueBool()
-	return &v
-}
-
-func optionalIntFromStringID(value types.String) *int {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	s := value.ValueString()
-	if s == "" {
-		return nil
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return nil
-	}
-	return &n
 }

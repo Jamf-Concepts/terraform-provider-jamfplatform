@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
@@ -34,10 +33,10 @@ func buildMobileDeviceInvitationInput(plan MobileDeviceInvitationResourceModel, 
 	in := &proclassic.MobileDeviceInvitationPost{
 		InvitationType:             helpers.OptionalStringPointer(plan.InvitationType),
 		ExpirationDate:             helpers.OptionalStringPointer(plan.ExpirationDate),
-		KeepExistingSiteMembership: optionalBoolPointer(plan.KeepExistingSiteMembership),
+		KeepExistingSiteMembership: helpers.OptionalBoolPointer(plan.KeepExistingSiteMembership),
 		// Write names (NOT the read names MultipleUsesAllowed / LoginRequired).
-		AllowMultipleUses: optionalBoolPointer(plan.MultipleUsesAllowed),
-		RequireLogin:      optionalBoolPointer(plan.RequireLogin),
+		AllowMultipleUses: helpers.OptionalBoolPointer(plan.MultipleUsesAllowed),
+		RequireLogin:      helpers.OptionalBoolPointer(plan.RequireLogin),
 		Subject:           helpers.OptionalStringPointer(plan.Subject),
 		Message:           helpers.OptionalStringPointer(plan.Message),
 		ReplyTo:           helpers.OptionalStringPointer(plan.ReplyTo),
@@ -54,15 +53,4 @@ func buildMobileDeviceInvitationInput(plan MobileDeviceInvitationResourceModel, 
 	}
 
 	return in
-}
-
-// optionalBoolPointer mirrors helpers.OptionalStringPointer for types.Bool.
-// Returns nil for null/unknown so omitted Optional bools are not serialised as
-// `false`.
-func optionalBoolPointer(b types.Bool) *bool {
-	if b.IsNull() || b.IsUnknown() {
-		return nil
-	}
-	v := b.ValueBool()
-	return &v
 }

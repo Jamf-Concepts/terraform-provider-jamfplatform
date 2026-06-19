@@ -126,7 +126,7 @@ func (r *UserGroupListResource) List(ctx context.Context, req list.ListRequest, 
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(u.Name)
+		result.DisplayName = helpers.DerefString(u.Name)
 
 		id := helpers.StringValueFromIntPtr(u.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, userGroupIdentityModel{ID: id})...)
@@ -182,13 +182,5 @@ func (r *UserGroupListResource) List(ctx context.Context, req list.ListRequest, 
 
 // userGroupListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func userGroupListItemName(u proclassic.UserGroupsItemUserGroup) string {
-	return derefString(u.Name)
-}
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return helpers.DerefString(u.Name)
 }

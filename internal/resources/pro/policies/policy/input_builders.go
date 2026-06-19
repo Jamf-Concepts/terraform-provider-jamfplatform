@@ -117,28 +117,28 @@ func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic
 	var diags diag.Diagnostics
 	g := &proclassic.PolicyPostGeneral{
 		Name:                       helpers.OptionalStringPointer(m.Name),
-		Enabled:                    optionalBoolPointer(m.Enabled),
+		Enabled:                    helpers.OptionalBoolPointer(m.Enabled),
 		Trigger:                    helpers.OptionalStringPointer(m.Trigger),
-		TriggerCheckin:             optionalBoolPointer(m.TriggerCheckin),
-		TriggerEnrollmentComplete:  optionalBoolPointer(m.TriggerEnrollmentComplete),
-		TriggerLogin:               optionalBoolPointer(m.TriggerLogin),
-		TriggerNetworkStateChanged: optionalBoolPointer(m.TriggerNetworkStateChanged),
-		TriggerStartup:             optionalBoolPointer(m.TriggerStartup),
+		TriggerCheckin:             helpers.OptionalBoolPointer(m.TriggerCheckin),
+		TriggerEnrollmentComplete:  helpers.OptionalBoolPointer(m.TriggerEnrollmentComplete),
+		TriggerLogin:               helpers.OptionalBoolPointer(m.TriggerLogin),
+		TriggerNetworkStateChanged: helpers.OptionalBoolPointer(m.TriggerNetworkStateChanged),
+		TriggerStartup:             helpers.OptionalBoolPointer(m.TriggerStartup),
 		TriggerOther:               helpers.OptionalStringPointer(m.TriggerOther),
 		Frequency:                  helpers.OptionalStringPointer(m.Frequency),
 		RetryEvent:                 helpers.OptionalStringPointer(m.RetryEvent),
 		RetryAttempts:              optionalInt64ToInt(m.RetryAttempts),
-		NotifyOnEachFailedRetry:    optionalBoolPointer(m.NotifyOnEachFailedRetry),
-		LocationUserOnly:           optionalBoolPointer(m.LimitToJamfProAssignedUser),
+		NotifyOnEachFailedRetry:    helpers.OptionalBoolPointer(m.NotifyOnEachFailedRetry),
+		LocationUserOnly:           helpers.OptionalBoolPointer(m.LimitToJamfProAssignedUser),
 		TargetDrive:                helpers.OptionalStringPointer(m.TargetDrive),
-		Offline:                    optionalBoolPointer(m.Offline),
+		Offline:                    helpers.OptionalBoolPointer(m.Offline),
 		NetworkRequirements:        helpers.OptionalStringPointer(m.NetworkRequirements),
 	}
 
-	if catID := stringIDPtr(m.CategoryID); catID != nil {
+	if catID := helpers.StringIDPtr(m.CategoryID); catID != nil {
 		g.Category = &proclassic.CategoryObject{ID: catID}
 	}
-	if siteID := stringIDPtr(m.SiteID); siteID != nil {
+	if siteID := helpers.StringIDPtr(m.SiteID); siteID != nil {
 		g.Site = &proclassic.SiteObject{ID: siteID}
 	}
 
@@ -158,7 +158,7 @@ func buildPolicyGeneral(ctx context.Context, m *PolicyGeneralModel) (*proclassic
 		g.OverrideDefaultSettings = &proclassic.PolicyGeneralOverrideDefaultSettings{
 			TargetDrive:       helpers.OptionalStringPointer(m.OverrideDefaultSettings.TargetDrive),
 			DistributionPoint: helpers.OptionalStringPointer(m.OverrideDefaultSettings.DistributionPoint),
-			ForceAfpSmb:       optionalBoolPointer(m.OverrideDefaultSettings.ForceAfpSmb),
+			ForceAfpSmb:       helpers.OptionalBoolPointer(m.OverrideDefaultSettings.ForceAfpSmb),
 			Sus:               helpers.OptionalStringPointer(m.OverrideDefaultSettings.Sus),
 		}
 	}
@@ -192,7 +192,7 @@ func buildPolicyNetworkLimitations(ctx context.Context, m *PolicyGeneralNetworkL
 	var diags diag.Diagnostics
 	nl := &proclassic.PolicyGeneralNetworkLimitations{
 		MinimumNetworkConnection: helpers.OptionalStringPointer(m.MinimumNetworkConnection),
-		AnyIPAddress:             optionalBoolPointer(m.AnyIPAddress),
+		AnyIPAddress:             helpers.OptionalBoolPointer(m.AnyIPAddress),
 	}
 
 	segs, d := scope.BuildIDSlice(ctx, m.NetworkSegmentIDs, func(id int) proclassic.IDName {
@@ -212,8 +212,8 @@ func buildPolicyScope(ctx context.Context, m *scope.ComputerScopeModel) (*procla
 	var diags diag.Diagnostics
 	t := m.TargetsOrZero()
 	s := &proclassic.PolicyPostScope{
-		AllComputers: optionalBoolPointer(t.AllComputers),
-		AllJssUsers:  optionalBoolPointer(t.AllJssUsers),
+		AllComputers: helpers.OptionalBoolPointer(t.AllComputers),
+		AllJssUsers:  helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
 	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.PolicyScopeComputersComputerItem {
@@ -429,13 +429,13 @@ func buildPolicyScopeExclusions(ctx context.Context, m *scope.ComputerScopeExclu
 
 func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSelfService {
 	ss := &proclassic.PolicyPostSelfService{
-		UseForSelfService:           optionalBoolPointer(m.UseForSelfService),
+		UseForSelfService:           helpers.OptionalBoolPointer(m.UseForSelfService),
 		SelfServiceDisplayName:      helpers.OptionalStringPointer(m.SelfServiceDisplayName),
 		InstallButtonText:           helpers.OptionalStringPointer(m.InstallButtonText),
 		ReinstallButtonText:         helpers.OptionalStringPointer(m.ReinstallButtonText),
 		SelfServiceDescription:      helpers.OptionalStringPointer(m.SelfServiceDescription),
-		ForceUsersToViewDescription: optionalBoolPointer(m.EnsureUsersViewDescription),
-		FeatureOnMainPage:           optionalBoolPointer(m.IncludeInFeaturedCategory),
+		ForceUsersToViewDescription: helpers.OptionalBoolPointer(m.EnsureUsersViewDescription),
+		FeatureOnMainPage:           helpers.OptionalBoolPointer(m.IncludeInFeaturedCategory),
 		Notification:                buildNotificationEnabled(m.DisplayNotifications),
 		NotificationType:            helpers.OptionalStringPointer(m.NotificationLocation),
 		NotificationSubject:         helpers.OptionalStringPointer(m.NotificationSubject),
@@ -444,7 +444,7 @@ func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSel
 
 	if m.SelfServiceIcon != nil {
 		icon := &proclassic.PolicySelfServiceSelfServiceIcon{
-			ID:       stringIDPtr(m.SelfServiceIcon.ID),
+			ID:       helpers.StringIDPtr(m.SelfServiceIcon.ID),
 			URI:      helpers.OptionalStringPointer(m.SelfServiceIcon.URI),
 			Filename: helpers.OptionalStringPointer(m.SelfServiceIcon.Filename),
 		}
@@ -457,10 +457,10 @@ func buildPolicySelfService(m *PolicySelfServiceModel) *proclassic.PolicyPostSel
 		cats := make([]proclassic.PolicySelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.Categories))
 		for _, c := range m.Categories {
 			cats = append(cats, proclassic.PolicySelfServiceSelfServiceCategoriesCategoryItem{
-				ID:        stringIDPtr(c.ID),
+				ID:        helpers.StringIDPtr(c.ID),
 				Name:      helpers.OptionalStringPointer(c.Name),
-				DisplayIn: optionalBoolPointer(c.DisplayIn),
-				FeatureIn: optionalBoolPointer(c.FeatureIn),
+				DisplayIn: helpers.OptionalBoolPointer(c.DisplayIn),
+				FeatureIn: helpers.OptionalBoolPointer(c.FeatureIn),
 			})
 		}
 		ss.SelfServiceCategories = &proclassic.PolicySelfServiceSelfServiceCategories{Category: &cats}
@@ -481,12 +481,12 @@ func buildPolicyPackageConfiguration(m *PolicyPackagesModel) *proclassic.PolicyP
 		items := make([]proclassic.PolicyPackageConfigurationPackagesPackageItem, 0, len(m.Packages))
 		for _, p := range m.Packages {
 			items = append(items, proclassic.PolicyPackageConfigurationPackagesPackageItem{
-				ID:            stringIDPtr(p.ID),
+				ID:            helpers.StringIDPtr(p.ID),
 				Name:          helpers.OptionalStringPointer(p.Name),
 				Action:        helpers.OptionalStringPointer(p.Action),
-				Fut:           optionalBoolPointer(p.Fut),
-				Feu:           optionalBoolPointer(p.Feu),
-				UpdateAutorun: optionalBoolPointer(p.UpdateAutorun),
+				Fut:           helpers.OptionalBoolPointer(p.Fut),
+				Feu:           helpers.OptionalBoolPointer(p.Feu),
+				UpdateAutorun: helpers.OptionalBoolPointer(p.UpdateAutorun),
 			})
 		}
 		out.Packages = &proclassic.PolicyPackageConfigurationPackages{Package: &items}
@@ -501,7 +501,7 @@ func buildPolicyScripts(m *PolicyScriptsModel) *proclassic.PolicyPostScripts {
 	items := make([]proclassic.PolicyScriptsScriptItem, 0, len(m.Scripts))
 	for _, s := range m.Scripts {
 		items = append(items, proclassic.PolicyScriptsScriptItem{
-			ID:          stringIDPtr(s.ID),
+			ID:          helpers.StringIDPtr(s.ID),
 			Name:        helpers.OptionalStringPointer(s.Name),
 			Priority:    helpers.OptionalStringPointer(s.Priority),
 			Parameter4:  helpers.OptionalStringPointer(s.Parameter4),
@@ -519,16 +519,16 @@ func buildPolicyScripts(m *PolicyScriptsModel) *proclassic.PolicyPostScripts {
 
 func buildPolicyPrinters(m *PolicyPrintersModel) *proclassic.PolicyPostPrinters {
 	p := &proclassic.PolicyPostPrinters{
-		LeaveExistingDefault: optionalBoolPointer(m.LeaveExistingDefault),
+		LeaveExistingDefault: helpers.OptionalBoolPointer(m.LeaveExistingDefault),
 	}
 	if len(m.Printers) > 0 {
 		items := make([]proclassic.PolicyPrintersPrinterItem, 0, len(m.Printers))
 		for _, pr := range m.Printers {
 			items = append(items, proclassic.PolicyPrintersPrinterItem{
-				ID:          stringIDPtr(pr.ID),
+				ID:          helpers.StringIDPtr(pr.ID),
 				Name:        helpers.OptionalStringPointer(pr.Name),
 				Action:      printerActionToWire(pr.Action),
-				MakeDefault: optionalBoolPointer(pr.MakeDefault),
+				MakeDefault: helpers.OptionalBoolPointer(pr.MakeDefault),
 			})
 		}
 		p.Printer = &items
@@ -570,7 +570,7 @@ func buildPolicyDockItems(m *PolicyDockItemsModel) *proclassic.PolicyPostDockIte
 	items := make([]proclassic.PolicyPostDockItemsDockItemItem, 0, len(m.DockItems))
 	for _, di := range m.DockItems {
 		items = append(items, proclassic.PolicyPostDockItemsDockItemItem{
-			ID:     stringIDPtr(di.ID),
+			ID:     helpers.StringIDPtr(di.ID),
 			Name:   helpers.OptionalStringPointer(di.Name),
 			Action: helpers.OptionalStringPointer(di.Action),
 		})
@@ -605,9 +605,9 @@ func buildPolicyAccountMaintenance(plan PolicyResourceModel, secrets *policyAcco
 				Home:                   helpers.OptionalStringPointer(a.Home),
 				Hint:                   helpers.OptionalStringPointer(a.Hint),
 				Picture:                helpers.OptionalStringPointer(a.Picture),
-				Admin:                  optionalBoolPointer(a.Admin),
-				FilevaultEnabled:       optionalBoolPointer(a.FilevaultEnabled),
-				SecureTokenAllowed:     optionalBoolPointer(a.SecureTokenAllowed),
+				Admin:                  helpers.OptionalBoolPointer(a.Admin),
+				FilevaultEnabled:       helpers.OptionalBoolPointer(a.FilevaultEnabled),
+				SecureTokenAllowed:     helpers.OptionalBoolPointer(a.SecureTokenAllowed),
 			})
 		}
 		am.Accounts = &proclassic.PolicyAccountMaintenanceAccounts{Account: &items}
@@ -617,7 +617,7 @@ func buildPolicyAccountMaintenance(plan PolicyResourceModel, secrets *policyAcco
 		items := make([]proclassic.IDName, 0, len(plan.DirectoryBindings))
 		for _, b := range plan.DirectoryBindings {
 			items = append(items, proclassic.IDName{
-				ID:   stringIDPtr(b.ID),
+				ID:   helpers.StringIDPtr(b.ID),
 				Name: helpers.OptionalStringPointer(b.Name),
 			})
 		}
@@ -653,33 +653,33 @@ func buildPolicyReboot(m *PolicyRestartOptionsModel) *proclassic.PolicyPostReboo
 		NoUserLoggedIn:              helpers.OptionalStringPointer(m.NoUserLoggedIn),
 		UserLoggedIn:                helpers.OptionalStringPointer(m.UserLoggedIn),
 		MinutesUntilReboot:          optionalInt64ToInt(m.DelayMinutes),
-		StartRebootTimerImmediately: optionalBoolPointer(m.StartRebootTimerImmediately),
-		FileVault2Reboot:            optionalBoolPointer(m.FileVault2Reboot),
+		StartRebootTimerImmediately: helpers.OptionalBoolPointer(m.StartRebootTimerImmediately),
+		FileVault2Reboot:            helpers.OptionalBoolPointer(m.FileVault2Reboot),
 	}
 }
 
 func buildPolicyMaintenance(m *PolicyMaintenanceModel) *proclassic.PolicyPostMaintenance {
 	return &proclassic.PolicyPostMaintenance{
-		Recon:                    optionalBoolPointer(m.UpdateInventory),
-		ResetName:                optionalBoolPointer(m.ResetComputerNames),
-		InstallAllCachedPackages: optionalBoolPointer(m.InstallCachedPackages),
-		Permissions:              optionalBoolPointer(m.FixDiskPermissions),
-		Byhost:                   optionalBoolPointer(m.FixByhostFiles),
-		SystemCache:              optionalBoolPointer(m.FlushSystemCaches),
-		UserCache:                optionalBoolPointer(m.FlushUserCaches),
-		Verify:                   optionalBoolPointer(m.VerifyStartupDisk),
+		Recon:                    helpers.OptionalBoolPointer(m.UpdateInventory),
+		ResetName:                helpers.OptionalBoolPointer(m.ResetComputerNames),
+		InstallAllCachedPackages: helpers.OptionalBoolPointer(m.InstallCachedPackages),
+		Permissions:              helpers.OptionalBoolPointer(m.FixDiskPermissions),
+		Byhost:                   helpers.OptionalBoolPointer(m.FixByhostFiles),
+		SystemCache:              helpers.OptionalBoolPointer(m.FlushSystemCaches),
+		UserCache:                helpers.OptionalBoolPointer(m.FlushUserCaches),
+		Verify:                   helpers.OptionalBoolPointer(m.VerifyStartupDisk),
 	}
 }
 
 func buildPolicyFilesProcesses(m *PolicyFilesAndProcessesModel) *proclassic.PolicyPostFilesProcesses {
 	return &proclassic.PolicyPostFilesProcesses{
 		SearchByPath:         helpers.OptionalStringPointer(m.SearchByPath),
-		DeleteFile:           optionalBoolPointer(m.DeleteFileIfFound),
+		DeleteFile:           helpers.OptionalBoolPointer(m.DeleteFileIfFound),
 		LocateFile:           helpers.OptionalStringPointer(m.SearchByFilename),
-		UpdateLocateDatabase: optionalBoolPointer(m.UpdateLocateDatabase),
+		UpdateLocateDatabase: helpers.OptionalBoolPointer(m.UpdateLocateDatabase),
 		SpotlightSearch:      helpers.OptionalStringPointer(m.SearchBySpotlight),
 		SearchForProcess:     helpers.OptionalStringPointer(m.SearchForProcess),
-		KillProcess:          optionalBoolPointer(m.KillProcessIfFound),
+		KillProcess:          helpers.OptionalBoolPointer(m.KillProcessIfFound),
 		RunCommand:           helpers.OptionalStringPointer(m.ExecuteCommand),
 	}
 }
@@ -744,7 +744,7 @@ func buildPolicyDiskEncryption(m *PolicyDiskEncryptionModel) *proclassic.PolicyP
 	return &proclassic.PolicyPostDiskEncryption{
 		Action:                                 helpers.OptionalStringPointer(m.Action),
 		DiskEncryptionConfigurationID:          optionalInt64ToInt(m.DiskEncryptionConfigurationID),
-		AuthRestart:                            optionalBoolPointer(m.AuthRestart),
+		AuthRestart:                            helpers.OptionalBoolPointer(m.AuthRestart),
 		RemediateKeyType:                       helpers.OptionalStringPointer(m.RemediateKeyType),
 		RemediateDiskEncryptionConfigurationID: optionalInt64ToInt(m.RemediateDiskEncryptionConfigurationID),
 	}

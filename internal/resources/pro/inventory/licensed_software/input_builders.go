@@ -54,7 +54,7 @@ func buildGeneral(plan LicensedSoftwareResourceModel) *proclassic.LicensedSoftwa
 		RemoveTitlesFromInventoryReports:   helpers.OptionalBoolPointer(plan.RemoveTitlesFromInventoryReports),
 		ExcludeTitlesPurchasedFromAppStore: helpers.OptionalBoolPointer(plan.ExcludeTitlesPurchasedFromAppStore),
 	}
-	if siteID := stringIDPtr(plan.SiteID); siteID != nil {
+	if siteID := helpers.StringIDPtr(plan.SiteID); siteID != nil {
 		g.Site = &proclassic.SiteObject{ID: siteID}
 	}
 	return g

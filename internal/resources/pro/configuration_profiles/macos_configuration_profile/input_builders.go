@@ -5,11 +5,9 @@ package macos_configuration_profile
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
@@ -65,7 +63,7 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.OsXConfigur
 	g := &proclassic.OsXConfigurationProfileGeneral{
 		Name:             helpers.OptionalStringPointer(m.Name),
 		Description:      helpers.OptionalStringPointer(m.Description),
-		UserRemovable:    optionalBoolPointer(m.UserRemovable),
+		UserRemovable:    helpers.OptionalBoolPointer(m.UserRemovable),
 		RedeployOnUpdate: helpers.OptionalStringPointer(m.RedeployOnUpdate),
 	}
 
@@ -78,10 +76,10 @@ func buildGeneral(m *GeneralModel, existingUUID string) (*proclassic.OsXConfigur
 		g.DistributionMethod = &dm
 	}
 
-	if id := optionalIntFromStringID(m.CategoryID); id != nil {
+	if id := helpers.StringIDPtr(m.CategoryID); id != nil {
 		g.Category = &proclassic.CategoryObject{ID: id}
 	}
-	if id := optionalIntFromStringID(m.SiteID); id != nil {
+	if id := helpers.StringIDPtr(m.SiteID); id != nil {
 		g.Site = &proclassic.SiteObject{ID: id}
 	}
 
@@ -112,8 +110,8 @@ func buildScope(ctx context.Context, m *scope.ComputerScopeModel) (*proclassic.O
 	var diags diag.Diagnostics
 	t := m.TargetsOrZero()
 	s := &proclassic.OsXConfigurationProfileScope{
-		AllComputers: optionalBoolPointer(t.AllComputers),
-		AllJssUsers:  optionalBoolPointer(t.AllJssUsers),
+		AllComputers: helpers.OptionalBoolPointer(t.AllComputers),
+		AllJssUsers:  helpers.OptionalBoolPointer(t.AllJssUsers),
 	}
 
 	computers, d := scope.BuildIDSlice(ctx, t.ComputerIDs, func(id int) proclassic.OsXConfigurationProfileScopeComputersComputerItem {
@@ -329,8 +327,8 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.OsXConfigurationProfileS
 		SelfServiceDisplayName:      helpers.OptionalStringPointer(m.SelfServiceDisplayName),
 		InstallButtonText:           helpers.OptionalStringPointer(m.InstallButtonText),
 		SelfServiceDescription:      helpers.OptionalStringPointer(m.SelfServiceDescription),
-		ForceUsersToViewDescription: optionalBoolPointer(m.EnsureUsersViewDescription),
-		FeatureOnMainPage:           optionalBoolPointer(m.FeatureOnMainPage),
+		ForceUsersToViewDescription: helpers.OptionalBoolPointer(m.EnsureUsersViewDescription),
+		FeatureOnMainPage:           helpers.OptionalBoolPointer(m.FeatureOnMainPage),
 		NotificationMessage:         helpers.OptionalStringPointer(m.NotificationMessage),
 		NotificationSubject:         helpers.OptionalStringPointer(m.NotificationSubject),
 	}
@@ -362,10 +360,10 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.OsXConfigurationProfileS
 		items := make([]proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem, 0, len(m.Categories))
 		for _, c := range m.Categories {
 			item := proclassic.OsXConfigurationProfileSelfServiceSelfServiceCategoriesCategoryItem{
-				DisplayIn: optionalBoolPointer(c.DisplayIn),
-				FeatureIn: optionalBoolPointer(c.FeatureIn),
+				DisplayIn: helpers.OptionalBoolPointer(c.DisplayIn),
+				FeatureIn: helpers.OptionalBoolPointer(c.FeatureIn),
 			}
-			if id := optionalIntFromStringID(c.ID); id != nil {
+			if id := helpers.StringIDPtr(c.ID); id != nil {
 				item.ID = id
 			}
 			items = append(items, item)
@@ -376,32 +374,4 @@ func buildSelfService(m *SelfServiceModel) (*proclassic.OsXConfigurationProfileS
 	}
 
 	return ss, diags
-}
-
-// optionalBoolPointer returns nil for null/unknown TF bools; otherwise a
-// pointer to the underlying value. Mirrors helpers.OptionalStringPointer.
-func optionalBoolPointer(value types.Bool) *bool {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	v := value.ValueBool()
-	return &v
-}
-
-// optionalIntFromStringID parses the user's string ID into an int pointer.
-// Returns nil for null/unknown/empty inputs. Non-parseable inputs return nil
-// — the schema validates these upstream via attribute-level validators.
-func optionalIntFromStringID(value types.String) *int {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	s := value.ValueString()
-	if s == "" {
-		return nil
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return nil
-	}
-	return &n
 }

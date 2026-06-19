@@ -123,7 +123,7 @@ func (r *IbeaconListResource) List(ctx context.Context, req list.ListRequest, st
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(ib.Name)
+		result.DisplayName = helpers.DerefString(ib.Name)
 
 		id := helpers.StringValueFromIntPtr(ib.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, ibeaconIdentityModel{ID: id})...)
@@ -179,5 +179,5 @@ func (r *IbeaconListResource) List(ctx context.Context, req list.ListRequest, st
 
 // ibeaconListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func ibeaconListItemName(ib proclassic.Ibeacon) string {
-	return derefString(ib.Name)
+	return helpers.DerefString(ib.Name)
 }

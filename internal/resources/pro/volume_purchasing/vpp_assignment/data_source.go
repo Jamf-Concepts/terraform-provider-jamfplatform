@@ -176,7 +176,7 @@ func (d *VPPAssignmentDataSource) resolveIDByName(ctx context.Context, name stri
 	var matchID string
 	matches := 0
 	for _, item := range listed.VppAssignments {
-		if derefString(item.Name) == name {
+		if helpers.DerefString(item.Name) == name {
 			matches++
 			matchID = helpers.StringValueFromIntPtr(item.ID).ValueString()
 		}

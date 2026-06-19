@@ -119,7 +119,7 @@ func (r *ProvisioningProfileListResource) List(ctx context.Context, req list.Lis
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(p.Name)
+		result.DisplayName = helpers.DerefString(p.Name)
 
 		id := helpers.StringValueFromIntPtr(p.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, provisioningProfileIdentityModel{ID: id})...)
@@ -173,5 +173,5 @@ func (r *ProvisioningProfileListResource) List(ctx context.Context, req list.Lis
 
 // provisioningProfileItemName is the name accessor passed to filters.ApplyClassicFilter.
 func provisioningProfileItemName(p proclassic.MobileDeviceProvisioningProfilesItemMobileDeviceProvisioningProfile) string {
-	return derefString(p.Name)
+	return helpers.DerefString(p.Name)
 }

@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -162,6 +161,3 @@ func (r *LocalAdminPasswordSettingsResource) ImportState(ctx context.Context, re
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
-
-// initialID returns the canonical singleton id for use in CRUD handlers.
-func initialID() types.String { return types.StringValue(helpers.SingletonID) }

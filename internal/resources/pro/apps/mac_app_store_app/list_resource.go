@@ -119,7 +119,7 @@ func (r *MacAppListResource) List(ctx context.Context, req list.ListRequest, str
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(a.Name)
+		result.DisplayName = helpers.DerefString(a.Name)
 
 		id := helpers.StringValueFromIntPtr(a.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, macAppIdentityModel{ID: id})...)
@@ -153,13 +153,5 @@ func (r *MacAppListResource) List(ctx context.Context, req list.ListRequest, str
 
 // macAppListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func macAppListItemName(a proclassic.MacApplicationsItemMacApplication) string {
-	return derefString(a.Name)
-}
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return helpers.DerefString(a.Name)
 }

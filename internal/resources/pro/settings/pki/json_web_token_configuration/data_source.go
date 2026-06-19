@@ -143,7 +143,7 @@ func (d *JSONWebTokenConfigurationDataSource) findJSONWebTokenConfigurationByNam
 	}
 	if listed != nil {
 		for i := range listed.JsonWebTokenConfigurations {
-			if derefString(listed.JsonWebTokenConfigurations[i].Name) == name {
+			if helpers.DerefString(listed.JsonWebTokenConfigurations[i].Name) == name {
 				return &listed.JsonWebTokenConfigurations[i], nil
 			}
 		}

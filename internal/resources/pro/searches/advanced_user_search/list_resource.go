@@ -127,7 +127,7 @@ func (r *AdvancedUserSearchListResource) List(ctx context.Context, req list.List
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(s.Name)
+		result.DisplayName = helpers.DerefString(s.Name)
 
 		id := helpers.StringValueFromIntPtr(s.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, advancedUserSearchIdentityModel{ID: id})...)
@@ -181,13 +181,5 @@ func (r *AdvancedUserSearchListResource) List(ctx context.Context, req list.List
 // advancedUserSearchListItemName is the name accessor passed to
 // filters.ApplyClassicFilter.
 func advancedUserSearchListItemName(s proclassic.IDName) string {
-	return derefString(s.Name)
-}
-
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
+	return helpers.DerefString(s.Name)
 }

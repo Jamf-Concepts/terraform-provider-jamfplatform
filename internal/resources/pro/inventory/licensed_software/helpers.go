@@ -37,32 +37,6 @@ func extractLicensedSoftwareID(ls *proclassic.LicensedSoftware) string {
 	return ""
 }
 
-// stringIDPtr parses a TF String holding a numeric ID into *int. Returns nil for
-// null/unknown/empty/un-parseable.
-func stringIDPtr(value types.String) *int {
-	if !helpers.IsConfiguredValue(value) {
-		return nil
-	}
-	s := value.ValueString()
-	if s == "" {
-		return nil
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return nil
-	}
-	return &v
-}
-
-// stringFromIntPtr renders an *int as an *string for the preferCurrent helpers.
-func stringFromIntPtr(p *int) *string {
-	if p == nil {
-		return nil
-	}
-	s := strconv.Itoa(*p)
-	return &s
-}
-
 // emptyToNil collapses a wire empty string to a nil pointer. The classic
 // /licensedsoftware endpoint echoes "" for every unset optional string, so an
 // adopted-from-wire value must be nulled to match an unset (null) config.
@@ -84,17 +58,6 @@ func preferCurrentStringPointer(api *string, current types.String) types.String 
 		return current
 	}
 	return helpers.StringPointerValueOrNull(emptyToNil(api))
-}
-
-// preferCurrentBoolPointer is the bool sibling of preferCurrentStringPointer.
-func preferCurrentBoolPointer(api *bool, current types.Bool) types.Bool {
-	if helpers.IsConfiguredValue(current) {
-		return current
-	}
-	if api == nil {
-		return types.BoolNull()
-	}
-	return types.BoolValue(*api)
 }
 
 // int64ValueOrZero renders an *int as a known Int64, defaulting nil to 0. Used
@@ -124,15 +87,7 @@ func stringValueOrNullEmpty(p *string) types.String {
 	return helpers.StringPointerValueOrNull(emptyToNil(p))
 }
 
-// derefString returns the underlying string for a non-nil *string, or "" for nil.
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
 // licensedSoftwareListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func licensedSoftwareListItemName(item proclassic.LicensedSoftwareAllItemLicensedSoftware) string {
-	return derefString(item.Name)
+	return helpers.DerefString(item.Name)
 }

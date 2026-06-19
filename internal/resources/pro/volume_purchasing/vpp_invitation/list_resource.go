@@ -108,7 +108,7 @@ func (r *VPPInvitationListResource) List(ctx context.Context, req list.ListReque
 			break
 		}
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(p.Name)
+		result.DisplayName = helpers.DerefString(p.Name)
 
 		id := helpers.StringValueFromIntPtr(p.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, vppInvitationIdentityModel{ID: id})...)
@@ -161,5 +161,5 @@ func (r *VPPInvitationListResource) List(ctx context.Context, req list.ListReque
 }
 
 func vppInvitationItemName(p proclassic.IDName) string {
-	return derefString(p.Name)
+	return helpers.DerefString(p.Name)
 }

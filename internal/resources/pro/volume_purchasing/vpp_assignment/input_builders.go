@@ -5,7 +5,6 @@ package vpp_assignment
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -36,7 +35,7 @@ func buildVPPAssignmentInput(ctx context.Context, plan VPPAssignmentResourceMode
 
 	general := &proclassic.VppAssignmentPostGeneral{
 		Name:              helpers.OptionalStringPointer(plan.Name),
-		VppAdminAccountID: stringIDPtr(plan.VPPAdminAccountID),
+		VppAdminAccountID: helpers.StringIDPtr(plan.VPPAdminAccountID),
 	}
 	out := &proclassic.VppAssignmentPost{General: general}
 
@@ -151,17 +150,4 @@ func buildAdamItems[T any](ctx context.Context, set types.Set, mk func(int) T) (
 		out = append(out, mk(int(raw)))
 	}
 	return &out, diags
-}
-
-// stringIDPtr parses a numeric ID string into *int, or nil for null/unknown/empty
-// or non-numeric input.
-func stringIDPtr(v types.String) *int {
-	if v.IsNull() || v.IsUnknown() || v.ValueString() == "" {
-		return nil
-	}
-	n, err := strconv.Atoi(v.ValueString())
-	if err != nil {
-		return nil
-	}
-	return &n
 }

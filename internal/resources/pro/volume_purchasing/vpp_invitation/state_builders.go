@@ -80,17 +80,17 @@ func assignVPPInvitationDataSourceModel(ctx context.Context, state *VPPInvitatio
 func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *scope.UserScopeModel) {
 	if state.Targets != nil {
 		state.Targets.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
-		state.Targets.JssUserIDs = flattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
-		state.Targets.JssUserGroupIDs = flattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
+		state.Targets.JssUserIDs = scope.FlattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
+		state.Targets.JssUserGroupIDs = scope.FlattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
 	}
 
 	if state.Limitations != nil {
-		state.Limitations.DirectoryServiceUserGroupNames = flattenNameSet(ctx, limitationsUserGroupsSlice(s.Limitations))
+		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, limitationsUserGroupsSlice(s.Limitations))
 	}
 	if state.Exclusions != nil && s.Exclusions != nil {
 		e := s.Exclusions
-		state.Exclusions.JssUserIDs = flattenIDNameSet(ctx, exclJssUsersSlice(e.JssUsers))
-		state.Exclusions.JssUserGroupIDs = flattenIDNameSet(ctx, exclJssUserGroupsSlice(e.JssUserGroups))
+		state.Exclusions.JssUserIDs = scope.FlattenIDNameSet(ctx, exclJssUsersSlice(e.JssUsers))
+		state.Exclusions.JssUserGroupIDs = scope.FlattenIDNameSet(ctx, exclJssUserGroupsSlice(e.JssUserGroups))
 		state.Exclusions.DirectoryServiceUserGroupNames = flattenExclDSGroupSet(ctx, exclDSGroupsSlice(e.UserGroups))
 	}
 }
@@ -140,16 +140,6 @@ func exclDSGroupsSlice(g *proclassic.VppInvitationScopeExclusionsUserGroups) *[]
 }
 
 // ---- set flatteners ------------------------------------------------------------
-
-func flattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
-	return out
-}
-
-func flattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
-	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.IDName) *string { return i.Name })
-	return out
-}
 
 func flattenExclDSGroupSet(ctx context.Context, items *[]proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem) types.Set {
 	out, _ := scope.FlattenNameSlice(ctx, items, func(i proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem) *string { return i.Name })

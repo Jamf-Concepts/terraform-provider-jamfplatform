@@ -19,20 +19,13 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is invoked
-// before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the service-discovery well-known settings. The API has no Create
 // endpoint — the record always exists (one per tenant) — so this PUTs the declared
 // rows. The PUT is a by-key merge that returns 204 No Content with no echo, so state
 // is read back via GET.
 func (r *ServiceDiscoveryEnrollmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -84,7 +77,7 @@ func (r *ServiceDiscoveryEnrollmentResource) Create(ctx context.Context, req res
 // Read refreshes Terraform state with the latest settings from the Jamf Pro API.
 func (r *ServiceDiscoveryEnrollmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -133,7 +126,7 @@ func (r *ServiceDiscoveryEnrollmentResource) Read(ctx context.Context, req resou
 // no echo, so authoritative state comes from a follow-up GET.
 func (r *ServiceDiscoveryEnrollmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

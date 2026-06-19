@@ -5,13 +5,13 @@ package class
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // assignClassResourceModel populates a resource model from a Class response.
@@ -31,7 +31,7 @@ func assignClassResourceModel(ctx context.Context, state *ClassResourceModel, c 
 	state.Description = helpers.ReconcileOptionalStringPointer(c.Description, state.Description)
 	state.Source = helpers.StringPointerValueOrNull(c.Source)
 
-	siteID, siteName := flattenSite(c.Site)
+	siteID, siteName := scope.FlattenSiteObject(c.Site)
 	state.SiteID = helpers.ReconcileOptionalStringPointer(siteID, state.SiteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
 
@@ -71,7 +71,7 @@ func assignClassDataSourceModel(ctx context.Context, state *ClassDataSourceModel
 	state.Description = helpers.StringPointerValueOrNull(c.Description)
 	state.Source = helpers.StringPointerValueOrNull(c.Source)
 
-	siteID, siteName := flattenSite(c.Site)
+	siteID, siteName := scope.FlattenSiteObject(c.Site)
 	state.SiteID = helpers.StringPointerValueOrNull(siteID)
 	state.SiteName = helpers.StringPointerValueOrNull(siteName)
 
@@ -100,20 +100,6 @@ func stringSetOrNull(ctx context.Context, values []string) (types.Set, diag.Diag
 		return types.SetNull(types.StringType), nil
 	}
 	return types.SetValueFrom(ctx, types.StringType, values)
-}
-
-// flattenSite returns (id-as-string, name) pointers from a SiteObject. Returns
-// (nil, nil) when site is absent.
-func flattenSite(site *proclassic.SiteObject) (*string, *string) {
-	if site == nil {
-		return nil, nil
-	}
-	var idPtr *string
-	if site.ID != nil {
-		s := strconv.Itoa(*site.ID)
-		idPtr = &s
-	}
-	return idPtr, site.Name
 }
 
 // --- inner-collection accessors (nil-safe) ---

@@ -5,11 +5,10 @@ package class
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // buildClassInput converts a plan model into the SDK payload used for Create and
@@ -44,7 +43,7 @@ func buildClassInput(ctx context.Context, plan ClassResourceModel) (*proclassic.
 	input := &proclassic.ClassPost{
 		Name:                 &name,
 		Description:          plan.Description.ValueStringPointer(),
-		Site:                 buildSiteObject(plan.SiteID),
+		Site:                 scope.BuildSiteObject(plan.SiteID),
 		Students:             &proclassic.ClassPostStudents{Student: &students},
 		Teachers:             &proclassic.ClassPostTeachers{Teacher: &teachers},
 		StudentGroupIds:      &proclassic.ClassPostStudentGroupIds{ID: &studentGroups},
@@ -53,22 +52,4 @@ func buildClassInput(ctx context.Context, plan ClassResourceModel) (*proclassic.
 	}
 
 	return input, diags
-}
-
-// buildSiteObject converts the plan site_id into the SDK SiteObject. Returns nil
-// when site_id is null/unknown/empty so the server applies its default (the NONE
-// site, ID -1).
-func buildSiteObject(siteID types.String) *proclassic.SiteObject {
-	if siteID.IsNull() || siteID.IsUnknown() {
-		return nil
-	}
-	idStr := siteID.ValueString()
-	if idStr == "" {
-		return nil
-	}
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return nil
-	}
-	return &proclassic.SiteObject{ID: &id}
 }

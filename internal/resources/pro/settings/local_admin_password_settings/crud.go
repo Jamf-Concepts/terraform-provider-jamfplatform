@@ -29,20 +29,13 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler fires
-// before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the singleton. The LAPS settings object always exists on the
 // tenant, so Create is really adoption: read the live settings, merge the
 // declared controls over them, then full-replace write and adopt the echoed
 // result as state.
 func (r *LocalAdminPasswordSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -64,7 +57,7 @@ func (r *LocalAdminPasswordSettingsResource) Create(ctx context.Context, req res
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, localAdminPasswordSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -78,7 +71,7 @@ func (r *LocalAdminPasswordSettingsResource) Create(ctx context.Context, req res
 // Read refreshes Terraform state with the latest LAPS settings.
 func (r *LocalAdminPasswordSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -86,7 +79,7 @@ func (r *LocalAdminPasswordSettingsResource) Read(ctx context.Context, req resou
 	isImport := req.State.Raw.IsNull()
 
 	if isImport {
-		state.ID = initialID()
+		state.ID = helpers.InitialSingletonID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(localAdminPasswordSettingsTimeoutAttributeTypes)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -113,7 +106,7 @@ func (r *LocalAdminPasswordSettingsResource) Read(ctx context.Context, req resou
 		return
 	}
 
-	state.ID = initialID()
+	state.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, localAdminPasswordSettingsIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -125,7 +118,7 @@ func (r *LocalAdminPasswordSettingsResource) Read(ctx context.Context, req resou
 // Update reconciles LAPS settings via a full-replace write.
 func (r *LocalAdminPasswordSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -147,7 +140,7 @@ func (r *LocalAdminPasswordSettingsResource) Update(ctx context.Context, req res
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, localAdminPasswordSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

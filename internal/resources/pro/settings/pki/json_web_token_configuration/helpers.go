@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // extractJSONWebTokenConfigurationID returns the assigned ID as a string from a
@@ -18,20 +17,4 @@ func extractJSONWebTokenConfigurationID(c *proclassic.JsonWebTokenConfiguration)
 		return ""
 	}
 	return strconv.Itoa(*c.ID)
-}
-
-// int64FromIntPtr renders an *int as a types.Int64, null for nil.
-func int64FromIntPtr(p *int) types.Int64 {
-	if p == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(int64(*p))
-}
-
-// derefString returns the underlying string for a non-nil *string, or "".
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }

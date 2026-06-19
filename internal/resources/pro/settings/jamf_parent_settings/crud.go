@@ -45,16 +45,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler
-// fires before Configure has populated r.client. Defense-in-depth: in normal
-// operation the framework gates CRUD on a successful Configure, but a
-// misconfigured provider block or a future framework change could route to CRUD
-// with a nil client and panic the SDK call site.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // Create provisions the singleton. The Jamf Parent settings object always
 // exists on the tenant, so Create is really adoption: applyAndRefresh reads
 // the live settings and passes them as the merge base so fields the user did
@@ -63,7 +53,7 @@ func providerNotConfiguredError() (string, string) {
 // through unchanged.
 func (r *JamfParentSettingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -85,7 +75,7 @@ func (r *JamfParentSettingsResource) Create(ctx context.Context, req resource.Cr
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, jamfParentSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -99,7 +89,7 @@ func (r *JamfParentSettingsResource) Create(ctx context.Context, req resource.Cr
 // Read refreshes Terraform state with the latest Jamf Parent settings.
 func (r *JamfParentSettingsResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -107,7 +97,7 @@ func (r *JamfParentSettingsResource) Read(ctx context.Context, req resource.Read
 	isImport := req.State.Raw.IsNull()
 
 	if isImport {
-		state.ID = initialID()
+		state.ID = helpers.InitialSingletonID()
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(jamfParentSettingsTimeoutAttributeTypes)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -134,7 +124,7 @@ func (r *JamfParentSettingsResource) Read(ctx context.Context, req resource.Read
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	state.ID = initialID()
+	state.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, jamfParentSettingsIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -151,7 +141,7 @@ func (r *JamfParentSettingsResource) Read(ctx context.Context, req resource.Read
 // STYLE_GUIDE §768.3 (see the annotation block at the top of this file).
 func (r *JamfParentSettingsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -173,7 +163,7 @@ func (r *JamfParentSettingsResource) Update(ctx context.Context, req resource.Up
 		return
 	}
 
-	plan.ID = initialID()
+	plan.ID = helpers.InitialSingletonID()
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, jamfParentSettingsIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

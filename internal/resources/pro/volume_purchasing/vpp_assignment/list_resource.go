@@ -106,7 +106,7 @@ func (r *VPPAssignmentListResource) List(ctx context.Context, req list.ListReque
 			break
 		}
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(p.Name)
+		result.DisplayName = helpers.DerefString(p.Name)
 
 		id := helpers.StringValueFromIntPtr(p.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, vppAssignmentIdentityModel{ID: id})...)
@@ -155,5 +155,5 @@ func (r *VPPAssignmentListResource) List(ctx context.Context, req list.ListReque
 }
 
 func vppAssignmentItemName(p proclassic.VppAssignmentsItemVppAssignment) string {
-	return derefString(p.Name)
+	return helpers.DerefString(p.Name)
 }

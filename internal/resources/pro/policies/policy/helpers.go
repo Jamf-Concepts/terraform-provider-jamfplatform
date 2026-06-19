@@ -52,35 +52,7 @@ func flattenNotificationEnabled(n *proclassic.NotificationValue, current types.B
 	if n != nil {
 		apiEnabled = n.Enabled
 	}
-	return preferCurrentBoolPointer(apiEnabled, current)
-}
-
-// preferCurrentStringPointer returns the current TF value when the caller
-// already supplied one, otherwise adopts the API value (or null when both
-// are absent). Designed for Optional+Computed scalar attrs nested inside
-// managed sections: protects against Jamf classic API quirks where the
-// server may echo a different value than what the caller wrote (e.g.
-// self_service.display_notifications), at the cost of not detecting
-// server-side drift. The canary accepts the tradeoff.
-func preferCurrentStringPointer(api *string, current types.String) types.String {
-	if helpers.IsConfiguredValue(current) {
-		return current
-	}
-	if api == nil {
-		return types.StringNull()
-	}
-	return types.StringValue(*api)
-}
-
-// preferCurrentBoolPointer is the bool sibling of preferCurrentStringPointer.
-func preferCurrentBoolPointer(api *bool, current types.Bool) types.Bool {
-	if helpers.IsConfiguredValue(current) {
-		return current
-	}
-	if api == nil {
-		return types.BoolNull()
-	}
-	return types.BoolValue(*api)
+	return helpers.PreferCurrentBoolPointer(apiEnabled, current)
 }
 
 // preferCurrentInt is the int64 sibling. API is *int (SDK convention).
@@ -92,16 +64,6 @@ func preferCurrentInt(api *int, current types.Int64) types.Int64 {
 		return types.Int64Null()
 	}
 	return types.Int64Value(int64(*api))
-}
-
-// optionalBoolPointer is the bool sibling of helpers.OptionalStringPointer.
-// Mirrors the same null/unknown handling for write payloads.
-func optionalBoolPointer(value types.Bool) *bool {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	v := value.ValueBool()
-	return &v
 }
 
 // invertOptionalBoolPointer is optionalBoolPointer with the value negated.
@@ -133,23 +95,6 @@ func optionalInt64ToInt(value types.Int64) *int {
 		return nil
 	}
 	v := int(value.ValueInt64())
-	return &v
-}
-
-// stringIDPtr parses a TF String holding a numeric ID into *int. Returns nil
-// for null/unknown/empty/un-parseable.
-func stringIDPtr(value types.String) *int {
-	if !helpers.IsConfiguredValue(value) {
-		return nil
-	}
-	s := value.ValueString()
-	if s == "" {
-		return nil
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return nil
-	}
 	return &v
 }
 

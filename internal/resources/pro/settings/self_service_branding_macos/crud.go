@@ -28,13 +28,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// providerNotConfiguredError is the diagnostic emitted when a CRUD handler is
-// invoked before Configure has populated r.client.
-func providerNotConfiguredError() (string, string) {
-	return "Provider not configured",
-		"The Jamf Pro client was not configured before the CRUD operation fired. Verify the provider block, credentials, and that Configure ran without errors."
-}
-
 // findExisting returns the single macOS branding configuration on the tenant,
 // or nil if none exists. The endpoint caps the tenant at one configuration, so
 // the List result has zero or one element.
@@ -61,7 +54,7 @@ func isAlreadyExistsError(err error) bool {
 // when one already exists (409); that case is mapped to import guidance.
 func (r *SelfServiceBrandingMacosResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -119,7 +112,7 @@ func (r *SelfServiceBrandingMacosResource) Create(ctx context.Context, req resou
 // removed from state on a normal refresh, or reported as a failed import.
 func (r *SelfServiceBrandingMacosResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -175,7 +168,7 @@ func (r *SelfServiceBrandingMacosResource) Read(ctx context.Context, req resourc
 // omitted from the plan (removed from configuration) is cleared on the tenant.
 func (r *SelfServiceBrandingMacosResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 
@@ -228,7 +221,7 @@ func (r *SelfServiceBrandingMacosResource) Update(ctx context.Context, req resou
 // DELETE). An already-absent configuration is the delete's objective.
 func (r *SelfServiceBrandingMacosResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	if r.client == nil {
-		resp.Diagnostics.AddError(providerNotConfiguredError())
+		resp.Diagnostics.AddError(helpers.ProviderNotConfiguredError())
 		return
 	}
 

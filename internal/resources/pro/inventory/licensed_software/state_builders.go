@@ -67,12 +67,12 @@ func flattenGeneral(g *proclassic.LicensedSoftwareGeneral, state *LicensedSoftwa
 	state.Publisher = preferCurrentStringPointer(g.Publisher, state.Publisher)
 	state.Platform = preferCurrentStringPointer(g.Platform, state.Platform)
 	state.Notes = preferCurrentStringPointer(g.Notes, state.Notes)
-	state.SendEmailOnViolation = preferCurrentBoolPointer(g.SendEmailOnViolation, state.SendEmailOnViolation)
-	state.RemoveTitlesFromInventoryReports = preferCurrentBoolPointer(g.RemoveTitlesFromInventoryReports, state.RemoveTitlesFromInventoryReports)
-	state.ExcludeTitlesPurchasedFromAppStore = preferCurrentBoolPointer(g.ExcludeTitlesPurchasedFromAppStore, state.ExcludeTitlesPurchasedFromAppStore)
+	state.SendEmailOnViolation = helpers.PreferCurrentBoolPointer(g.SendEmailOnViolation, state.SendEmailOnViolation)
+	state.RemoveTitlesFromInventoryReports = helpers.PreferCurrentBoolPointer(g.RemoveTitlesFromInventoryReports, state.RemoveTitlesFromInventoryReports)
+	state.ExcludeTitlesPurchasedFromAppStore = helpers.PreferCurrentBoolPointer(g.ExcludeTitlesPurchasedFromAppStore, state.ExcludeTitlesPurchasedFromAppStore)
 
 	if g.Site != nil {
-		state.SiteID = preferCurrentStringPointer(stringFromIntPtr(g.Site.ID), state.SiteID)
+		state.SiteID = preferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
 		state.SiteName = stringValueOrNullEmpty(g.Site.Name)
 	} else {
 		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)

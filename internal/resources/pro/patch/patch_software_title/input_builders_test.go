@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -253,7 +254,7 @@ func TestOptionalIntFromStringID(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := optionalIntFromStringID(tc.in)
+			got := helpers.StringIDPtr(tc.in)
 			if tc.wantNil {
 				if got != nil {
 					t.Errorf("expected nil, got %d", *got)

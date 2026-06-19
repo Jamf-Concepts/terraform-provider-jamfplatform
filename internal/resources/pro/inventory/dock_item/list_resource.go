@@ -125,7 +125,7 @@ func (r *DockItemListResource) List(ctx context.Context, req list.ListRequest, s
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = derefString(di.Name)
+		result.DisplayName = helpers.DerefString(di.Name)
 
 		id := helpers.StringValueFromIntPtr(di.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, dockItemIdentityModel{ID: id})...)
@@ -189,5 +189,5 @@ func (r *DockItemListResource) List(ctx context.Context, req list.ListRequest, s
 
 // dockItemListItemName is the name accessor passed to filters.ApplyClassicFilter.
 func dockItemListItemName(di proclassic.IDName) string {
-	return derefString(di.Name)
+	return helpers.DerefString(di.Name)
 }
