@@ -62,7 +62,9 @@ jobs:
     name: Acceptance Tests
     needs: unit
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # No job timeout-minutes: serial (-p=1) tenant suites can exceed an hour;
+    # rely on the GitHub default 6h job ceiling. Per-package limit is enforced
+    # by `go test -timeout` below (matches `make testacc`).
     environment: acceptance
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -83,7 +85,7 @@ jobs:
         id: acc
         run: |
           set -o pipefail
-          go test -v -cover -count=1 -tags=acceptance -p=1 ./... 2>&1 | tee test-output.log
+          go test -v -cover -count=1 -tags=acceptance -timeout=120m -p=1 ./... 2>&1 | tee test-output.log
         env:
           TF_ACC: "1"
 
