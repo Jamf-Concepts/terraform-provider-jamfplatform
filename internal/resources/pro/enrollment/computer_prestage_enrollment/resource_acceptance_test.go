@@ -704,6 +704,76 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
 	})
 }
 
+func TestAccResource_ProComputerPrestageEnrollment_ExpectError_PssoModesMutuallyExclusive(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	token := requireADETokenBlob(t)
+	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: adeFixtureBlock(suffix, token) + fmt.Sprintf(`
+resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
+  display_name                          = "tf-acc-expect-psso-conflict-%s"
+  mandatory                             = true
+  mdm_removable                         = true
+  require_authentication                = false
+  device_enrollment_program_instance_id = %s
+  keep_existing_location_information    = false
+  keep_existing_site_membership         = false
+  auto_advance_setup                    = false
+  install_profiles_during_setup         = false
+  prevent_activation_lock               = false
+  enable_device_based_activation_lock   = false
+
+  psso_enabled               = true
+  platform_sso_app_bundle_id = "com.okta.mobile"
+  psso_config_profile_id     = "123"
+}
+`, suffix, adeFixtureRef),
+				ExpectError: regexp.MustCompile(`exclusive`),
+			},
+		},
+	})
+}
+
+func TestAccResource_ProComputerPrestageEnrollment_ExpectError_AttendedPssoConflictsWithEnrollmentCustomization(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	token := requireADETokenBlob(t)
+	suffix := testhelpers.RunSuffix()
+	accCleanupOrphans(t, suffix)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: adeFixtureBlock(suffix, token) + fmt.Sprintf(`
+resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
+  display_name                          = "tf-acc-expect-attended-ec-conflict-%s"
+  mandatory                             = true
+  mdm_removable                         = true
+  require_authentication                = false
+  device_enrollment_program_instance_id = %s
+  keep_existing_location_information    = false
+  keep_existing_site_membership         = false
+  auto_advance_setup                    = false
+  install_profiles_during_setup         = false
+  prevent_activation_lock               = false
+  enable_device_based_activation_lock   = false
+
+  psso_enabled                = true
+  psso_config_profile_id      = "123"
+  enrollment_customization_id = "5"
+}
+`, suffix, adeFixtureRef),
+				ExpectError: regexp.MustCompile(`enrollment customization|incompatible`),
+			},
+		},
+	})
+}
+
 func TestAccResource_ProComputerPrestageEnrollment_ExpectError_BadRecoveryLockType(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)

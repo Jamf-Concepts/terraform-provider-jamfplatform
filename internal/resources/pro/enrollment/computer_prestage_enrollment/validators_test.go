@@ -176,6 +176,122 @@ func TestRecoveryLockPasswordRequiresManualAndEnabled_FiresWhenEnableNull(t *tes
 	}
 }
 
+func TestPssoConfigProfileConflictsWithBundle_FiresWhenBothReal(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{
+		"platform_sso_app_bundle_id": "com.okta.mobile",
+		"psso_config_profile_id":     "123",
+	})
+	out := runStringValidator(t, pssoConfigProfileConflictsWithBundle(),
+		cfg, "psso_config_profile_id", types.StringValue("123"))
+	if len(out) == 0 {
+		t.Errorf("real bundle + real profile id should fire the mutual-exclusion validator")
+	}
+}
+
+func TestPssoConfigProfileConflictsWithBundle_NoConflictWhenProfileSentinel(t *testing.T) {
+	// "-1" is the attended-mode "none" form; pairing it with a real bundle is
+	// a valid unattended-only config and must NOT trip the validator.
+	cfg := buildConfig(t, map[string]any{
+		"platform_sso_app_bundle_id": "com.okta.mobile",
+		"psso_config_profile_id":     "-1",
+	})
+	out := runStringValidator(t, pssoConfigProfileConflictsWithBundle(),
+		cfg, "psso_config_profile_id", types.StringValue("-1"))
+	if len(out) != 0 {
+		t.Errorf(`profile id "-1" (none) + real bundle should not fire, got %v`, out)
+	}
+}
+
+func TestPssoConfigProfileConflictsWithBundle_NoConflictWhenBundleEmpty(t *testing.T) {
+	// "" is the unattended-mode "none" form.
+	cfg := buildConfig(t, map[string]any{
+		"platform_sso_app_bundle_id": "",
+		"psso_config_profile_id":     "123",
+	})
+	out := runStringValidator(t, pssoConfigProfileConflictsWithBundle(),
+		cfg, "psso_config_profile_id", types.StringValue("123"))
+	if len(out) != 0 {
+		t.Errorf(`real profile id + empty bundle (none) should not fire, got %v`, out)
+	}
+}
+
+// §config-time validators must defer on unknown: a bundle id wired from a
+// variable is UNKNOWN at validate time and must not false-error.
+func TestPssoConfigProfileConflictsWithBundle_DefersWhenBundleUnknown(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{
+		"platform_sso_app_bundle_id": unknownString{},
+		"psso_config_profile_id":     "123",
+	})
+	out := runStringValidator(t, pssoConfigProfileConflictsWithBundle(),
+		cfg, "psso_config_profile_id", types.StringValue("123"))
+	if len(out) != 0 {
+		t.Errorf("unknown bundle id must defer (no diagnostic), got %v", out)
+	}
+}
+
+func TestPssoConfigProfileConflictsWithBundle_NoConflictWhenProfileNull(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{
+		"platform_sso_app_bundle_id": "com.okta.mobile",
+		"psso_config_profile_id":     nil, // null String
+	})
+	out := runStringValidator(t, pssoConfigProfileConflictsWithBundle(),
+		cfg, "psso_config_profile_id", types.StringNull())
+	if len(out) != 0 {
+		t.Errorf("null profile id should not fire, got %v", out)
+	}
+}
+
+func TestPssoAttendedConflictsWithEnrollmentCustomization_FiresWhenBothReal(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{
+		"psso_config_profile_id":      "123",
+		"enrollment_customization_id": "5",
+	})
+	out := runStringValidator(t, pssoAttendedConflictsWithEnrollmentCustomization(),
+		cfg, "psso_config_profile_id", types.StringValue("123"))
+	if len(out) == 0 {
+		t.Errorf("attended profile + enabled enrollment customization should fire validator")
+	}
+}
+
+func TestPssoAttendedConflictsWithEnrollmentCustomization_NoConflictWhenCustomizationNone(t *testing.T) {
+	// "0" is the enrollment_customization_id "none" form.
+	cfg := buildConfig(t, map[string]any{
+		"psso_config_profile_id":      "123",
+		"enrollment_customization_id": "0",
+	})
+	out := runStringValidator(t, pssoAttendedConflictsWithEnrollmentCustomization(),
+		cfg, "psso_config_profile_id", types.StringValue("123"))
+	if len(out) != 0 {
+		t.Errorf(`attended profile + customization "0" (none) should not fire, got %v`, out)
+	}
+}
+
+func TestPssoAttendedConflictsWithEnrollmentCustomization_NoConflictWhenNotAttended(t *testing.T) {
+	// Profile id "-1" is the attended "none" form: the constraint does not apply.
+	cfg := buildConfig(t, map[string]any{
+		"psso_config_profile_id":      "-1",
+		"enrollment_customization_id": "5",
+	})
+	out := runStringValidator(t, pssoAttendedConflictsWithEnrollmentCustomization(),
+		cfg, "psso_config_profile_id", types.StringValue("-1"))
+	if len(out) != 0 {
+		t.Errorf(`profile "-1" (not attended) + customization should not fire, got %v`, out)
+	}
+}
+
+// §config-time validators must defer on unknown.
+func TestPssoAttendedConflictsWithEnrollmentCustomization_DefersWhenCustomizationUnknown(t *testing.T) {
+	cfg := buildConfig(t, map[string]any{
+		"psso_config_profile_id":      "123",
+		"enrollment_customization_id": unknownString{},
+	})
+	out := runStringValidator(t, pssoAttendedConflictsWithEnrollmentCustomization(),
+		cfg, "psso_config_profile_id", types.StringValue("123"))
+	if len(out) != 0 {
+		t.Errorf("unknown enrollment_customization_id must defer (no diagnostic), got %v", out)
+	}
+}
+
 func TestPrefillTypeCustomRequiresFullAndUserNames_DefersWhenCompanionUnknown(t *testing.T) {
 	// prefill_type=CUSTOM with a required companion UNKNOWN must defer.
 	cfg := buildConfig(t, map[string]any{

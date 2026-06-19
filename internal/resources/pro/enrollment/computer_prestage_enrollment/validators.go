@@ -12,6 +12,78 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// platformSsoBundleConfigured reports whether platform_sso_app_bundle_id holds a
+// real (unattended-mode) value. Empty string is the wire "none" form, so it
+// counts as unset.
+func platformSsoBundleConfigured(v types.String) bool {
+	return !v.IsNull() && !v.IsUnknown() && v.ValueString() != ""
+}
+
+// pssoConfigProfileConfigured reports whether psso_config_profile_id holds a
+// real (attended-mode) value. Both the empty string and the "-1" sentinel are
+// "none", so either counts as unset.
+func pssoConfigProfileConfigured(v types.String) bool {
+	if v.IsNull() || v.IsUnknown() {
+		return false
+	}
+	s := v.ValueString()
+	return s != "" && s != sentinelNoneIDDash1
+}
+
+// enrollmentCustomizationEnabled reports whether enrollment_customization_id
+// selects a real customization. Its "none" sentinel is "0" (not "-1"), and ""
+// is also none, so either counts as disabled.
+func enrollmentCustomizationEnabled(v types.String) bool {
+	if v.IsNull() || v.IsUnknown() {
+		return false
+	}
+	s := v.ValueString()
+	return s != "" && s != "0"
+}
+
+// pssoConfigProfileConflictsWithBundle is a value-specific cross-field validator
+// attached to psso_config_profile_id (attended Platform SSO). It rejects a
+// config that ALSO sets platform_sso_app_bundle_id (unattended Platform SSO);
+// Jamf Pro treats the two as a single either/or mode. Off-the-shelf
+// stringvalidator.ConflictsWith is wrong here because each field's "none" form
+// is a value (psso_config_profile_id's literal "-1" sentinel, the bundle's "")
+// rather than null, so ConflictsWith would over-fire when one side is "none".
+func pssoConfigProfileConflictsWithBundle() validator.String {
+	return pssoConfigProfileConflictsWithBundleValidator{}
+}
+
+type pssoConfigProfileConflictsWithBundleValidator struct{}
+
+func (pssoConfigProfileConflictsWithBundleValidator) Description(_ context.Context) string {
+	return "psso_config_profile_id (attended Platform SSO) and platform_sso_app_bundle_id (unattended Platform SSO) are mutually exclusive."
+}
+
+func (v pssoConfigProfileConflictsWithBundleValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (pssoConfigProfileConflictsWithBundleValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	// Only the attended-mode "real value" case can conflict.
+	if !pssoConfigProfileConfigured(req.ConfigValue) {
+		return
+	}
+	companion := path.Root("platform_sso_app_bundle_id")
+	var bundle types.String
+	if d := req.Config.GetAttribute(ctx, companion, &bundle); d.HasError() {
+		resp.Diagnostics.Append(d...)
+		return
+	}
+	// Defer on unknown sibling (§config-time validators must defer on unknown);
+	// platformSsoBundleConfigured already returns false for unknown.
+	if platformSsoBundleConfigured(bundle) {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Conflicting Platform SSO mode inputs",
+			"psso_config_profile_id selects attended Platform SSO and platform_sso_app_bundle_id selects unattended Platform SSO; the two are mutually exclusive. Set at most one.",
+		)
+	}
+}
+
 // recoveryLockPasswordTypeRandomConflictsWithPassword fires only when the
 // declared type is "RANDOM" but the user also supplied a plaintext
 // recovery_lock_password. Off-the-shelf ConflictsWith would over-fire when
@@ -111,6 +183,45 @@ func (recoveryLockPasswordRequiresManualAndEnabledValidator) ValidateString(ctx 
 			path.Root("recovery_lock_password"),
 			`recovery_lock_password requires recovery_lock_password_type = "MANUAL"`,
 			fmt.Sprintf(`recovery_lock_password_type is %q; only "MANUAL" accepts a user-supplied password.`, pwdType.ValueString()),
+		)
+	}
+}
+
+// pssoAttendedConflictsWithEnrollmentCustomization is attached to
+// psso_config_profile_id. Jamf Pro forbids an enrollment customization when
+// attended Platform SSO is in use, so when this field holds a real (attended)
+// value and enrollment_customization_id is enabled, the config is rejected.
+func pssoAttendedConflictsWithEnrollmentCustomization() validator.String {
+	return pssoAttendedConflictsWithEnrollmentCustomizationValidator{}
+}
+
+type pssoAttendedConflictsWithEnrollmentCustomizationValidator struct{}
+
+func (pssoAttendedConflictsWithEnrollmentCustomizationValidator) Description(_ context.Context) string {
+	return "Enrollment customization cannot be enabled when attended Platform SSO (psso_config_profile_id) is used."
+}
+
+func (v pssoAttendedConflictsWithEnrollmentCustomizationValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (pssoAttendedConflictsWithEnrollmentCustomizationValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	// Only attended Platform SSO triggers the constraint.
+	if !pssoConfigProfileConfigured(req.ConfigValue) {
+		return
+	}
+	companion := path.Root("enrollment_customization_id")
+	var customization types.String
+	if d := req.Config.GetAttribute(ctx, companion, &customization); d.HasError() {
+		resp.Diagnostics.Append(d...)
+		return
+	}
+	// Defer on unknown companion; enrollmentCustomizationEnabled is false for unknown.
+	if enrollmentCustomizationEnabled(customization) {
+		resp.Diagnostics.AddAttributeError(
+			companion,
+			"Enrollment customization conflicts with attended Platform SSO",
+			`psso_config_profile_id selects attended Platform SSO, which is incompatible with an enrollment customization. Set enrollment_customization_id to "0" (none) or switch to unattended Platform SSO (platform_sso_app_bundle_id).`,
 		)
 	}
 }

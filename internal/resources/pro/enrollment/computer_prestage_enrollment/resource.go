@@ -61,6 +61,7 @@ var (
 	_ resource.Resource                = &ComputerPrestageEnrollmentResource{}
 	_ resource.ResourceWithImportState = &ComputerPrestageEnrollmentResource{}
 	_ resource.ResourceWithIdentity    = &ComputerPrestageEnrollmentResource{}
+	_ resource.ResourceWithModifyPlan  = &ComputerPrestageEnrollmentResource{}
 )
 
 // NewComputerPrestageEnrollmentResource returns a new resource instance.
@@ -340,7 +341,7 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"platform_sso_app_bundle_id": schema.StringAttribute{
-				MarkdownDescription: "Bundle identifier of the Platform SSO application (e.g. `\"com.okta.mobile\"`).",
+				MarkdownDescription: "Bundle identifier of the **unattended** Platform SSO application (e.g. `\"com.okta.mobile\"`). Mutually exclusive with `psso_config_profile_id` (attended Platform SSO).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -348,9 +349,13 @@ func (r *ComputerPrestageEnrollmentResource) Schema(ctx context.Context, req res
 				},
 			},
 			"psso_config_profile_id": schema.StringAttribute{
-				MarkdownDescription: "Configuration profile ID associated with the Platform SSO application. Sentinel `\"-1\"` = none.",
+				MarkdownDescription: "Configuration profile ID for **attended** Platform SSO. Mutually exclusive with `platform_sso_app_bundle_id` (unattended Platform SSO), and incompatible with an enrollment customization (`enrollment_customization_id` must be `\"0\"`). Sentinel `\"-1\"` = none.",
 				Optional:            true,
 				Computed:            true,
+				Validators: []validator.String{
+					pssoConfigProfileConflictsWithBundle(),
+					pssoAttendedConflictsWithEnrollmentCustomization(),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -412,6 +417,57 @@ func (r *ComputerPrestageEnrollmentResource) Configure(ctx context.Context, req 
 		return
 	}
 	r.client = client
+}
+
+// ModifyPlan keeps the two Platform SSO mode inputs from being written together.
+//
+// platform_sso_app_bundle_id (unattended) and psso_config_profile_id (attended)
+// are both Optional+Computed with UseStateForUnknown, so the field the user did
+// not author in HCL carries the prior server value forward into the plan. If an
+// admin switches the PreStage from one mode to the other in the Jamf Pro UI, a
+// later apply would otherwise reassert the HCL-configured field AND write the
+// stale server value of the other field back — putting both on the wire. When
+// the config selects exactly one mode, force the other field's plan to its wire
+// "none" form so only the configured mode is sent.
+func (r *ComputerPrestageEnrollmentResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// No coupling to apply on destroy.
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var cfgBundle, cfgProfile, cfgCustomization types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("platform_sso_app_bundle_id"), &cfgBundle)...)
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("psso_config_profile_id"), &cfgProfile)...)
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("enrollment_customization_id"), &cfgCustomization)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	bundleSet := platformSsoBundleConfigured(cfgBundle)
+	profileSet := pssoConfigProfileConfigured(cfgProfile)
+
+	// Only override a field when the user left it out of HCL entirely (config
+	// null). If they explicitly wrote its "none" form, the plan already equals
+	// config — overriding a known config value trips the framework's "planned
+	// value does not match config value" check.
+	switch {
+	case bundleSet && cfgProfile.IsNull():
+		// Unattended mode selected: clear the attended profile id to its "none"
+		// sentinel so a UI switch to attended can't ride along on the next PUT.
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("psso_config_profile_id"), types.StringValue(sentinelNoneIDDash1))...)
+	case profileSet:
+		// Attended mode selected.
+		if cfgBundle.IsNull() {
+			// Clear the unattended bundle id to its "none" (empty) form.
+			resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("platform_sso_app_bundle_id"), types.StringValue(""))...)
+		}
+		if cfgCustomization.IsNull() {
+			// Attended Platform SSO is incompatible with an enrollment
+			// customization; disable it (sentinel "0") so a UI-set customization
+			// can't ride along on the next PUT and trip the server constraint.
+			resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("enrollment_customization_id"), types.StringValue("0"))...)
+		}
+	}
 }
 
 // ImportState handles import by the Jamf Pro PreStage enrollment ID.
