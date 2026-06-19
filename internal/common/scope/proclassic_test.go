@@ -11,15 +11,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func iptr(i int) *int       { return &i }
-func sptr(s string) *string { return &s }
-
 func TestFlattenIDNameSet(t *testing.T) {
 	ctx := context.Background()
 	if got := FlattenIDNameSet(ctx, nil); !got.IsNull() {
 		t.Errorf("nil items should be null set, got %v", got)
 	}
-	items := &[]proclassic.IDName{{ID: iptr(1), Name: sptr("a")}, {ID: iptr(2), Name: sptr("b")}}
+	items := &[]proclassic.IDName{{ID: new(1), Name: new("a")}, {ID: new(2), Name: new("b")}}
 	got := FlattenIDNameSet(ctx, items)
 	if got.IsNull() || len(got.Elements()) != 2 {
 		t.Errorf("expected 2-element set, got %v", got)
@@ -31,7 +28,7 @@ func TestFlattenNameSet(t *testing.T) {
 	if got := FlattenNameSet(ctx, nil); !got.IsNull() {
 		t.Errorf("nil items should be null set, got %v", got)
 	}
-	items := &[]proclassic.IDName{{ID: iptr(1), Name: sptr("alpha")}}
+	items := &[]proclassic.IDName{{ID: new(1), Name: new("alpha")}}
 	got := FlattenNameSet(ctx, items)
 	if got.IsNull() || len(got.Elements()) != 1 {
 		t.Errorf("expected 1-element set, got %v", got)
@@ -43,7 +40,7 @@ func TestFlattenSiteObject(t *testing.T) {
 	if id != nil || name != nil {
 		t.Errorf("nil site should yield (nil,nil)")
 	}
-	id, name = FlattenSiteObject(&proclassic.SiteObject{ID: iptr(7), Name: sptr("HQ")})
+	id, name = FlattenSiteObject(&proclassic.SiteObject{ID: new(7), Name: new("HQ")})
 	if id == nil || *id != "7" || name == nil || *name != "HQ" {
 		t.Errorf("got (%v,%v), want (\"7\",\"HQ\")", id, name)
 	}

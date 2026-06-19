@@ -9,10 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func intPtr(i int) *int         { return &i }
-func strPtr(s string) *string   { return &s }
-func boolPtrLocal(b bool) *bool { return &b }
-
 func TestStringIDPtr(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -23,7 +19,7 @@ func TestStringIDPtr(t *testing.T) {
 		{"unknown", types.StringUnknown(), nil},
 		{"empty", types.StringValue(""), nil},
 		{"non-numeric", types.StringValue("abc"), nil},
-		{"numeric", types.StringValue("42"), intPtr(42)},
+		{"numeric", types.StringValue("42"), new(42)},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -42,7 +38,7 @@ func TestStringFromIntPtr(t *testing.T) {
 	if got := StringFromIntPtr(nil); got != nil {
 		t.Errorf("StringFromIntPtr(nil) = %v, want nil", got)
 	}
-	if got := StringFromIntPtr(intPtr(7)); got == nil || *got != "7" {
+	if got := StringFromIntPtr(new(7)); got == nil || *got != "7" {
 		t.Errorf("StringFromIntPtr(7) = %v, want \"7\"", got)
 	}
 }
@@ -51,18 +47,18 @@ func TestInt64FromIntPtr(t *testing.T) {
 	if got := Int64FromIntPtr(nil); !got.IsNull() {
 		t.Errorf("Int64FromIntPtr(nil) should be null")
 	}
-	if got := Int64FromIntPtr(intPtr(9)); got.IsNull() || got.ValueInt64() != 9 {
+	if got := Int64FromIntPtr(new(9)); got.IsNull() || got.ValueInt64() != 9 {
 		t.Errorf("Int64FromIntPtr(9) = %v, want 9", got)
 	}
 }
 
 func TestPreferCurrentStringPointer(t *testing.T) {
 	// Configured current always wins, even when the API echoes a different value.
-	if got := PreferCurrentStringPointer(strPtr("api"), types.StringValue("cfg")); got.ValueString() != "cfg" {
+	if got := PreferCurrentStringPointer(new("api"), types.StringValue("cfg")); got.ValueString() != "cfg" {
 		t.Errorf("configured current should win, got %v", got)
 	}
 	// Unset current adopts the API value.
-	if got := PreferCurrentStringPointer(strPtr("api"), types.StringNull()); got.ValueString() != "api" {
+	if got := PreferCurrentStringPointer(new("api"), types.StringNull()); got.ValueString() != "api" {
 		t.Errorf("unset current should adopt API value, got %v", got)
 	}
 	// Nil API with unset current is null.
@@ -72,10 +68,10 @@ func TestPreferCurrentStringPointer(t *testing.T) {
 }
 
 func TestPreferCurrentBoolPointer(t *testing.T) {
-	if got := PreferCurrentBoolPointer(boolPtrLocal(false), types.BoolValue(true)); got.ValueBool() != true {
+	if got := PreferCurrentBoolPointer(new(false), types.BoolValue(true)); got.ValueBool() != true {
 		t.Errorf("configured current should win, got %v", got)
 	}
-	if got := PreferCurrentBoolPointer(boolPtrLocal(true), types.BoolNull()); got.ValueBool() != true {
+	if got := PreferCurrentBoolPointer(new(true), types.BoolNull()); got.ValueBool() != true {
 		t.Errorf("unset current should adopt API value, got %v", got)
 	}
 	if got := PreferCurrentBoolPointer(nil, types.BoolNull()); !got.IsNull() {
