@@ -54,6 +54,30 @@ func validateComputer(t *testing.T, attrs map[string]tftypes.Value) resource.Val
 	return resp
 }
 
+// TestInputTypeValidator_Computer_DefersOnUnknownCompanion is the §436
+// regression guard: when input_type is known but the required companion
+// (script / directory_service_attribute) is unknown — sourced from a variable,
+// for_each, or another resource — the validator MUST defer, not treat unknown
+// as missing and error. See STYLE_GUIDE "Config-time validators MUST defer on
+// unknown values".
+func TestInputTypeValidator_Computer_DefersOnUnknownCompanion(t *testing.T) {
+	unknown := tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
+	cases := []struct {
+		name  string
+		attrs map[string]tftypes.Value
+	}{
+		{"SCRIPT with unknown script", map[string]tftypes.Value{"input_type": str("SCRIPT"), "script": unknown}},
+		{"DSAM with unknown directory_service_attribute", map[string]tftypes.Value{"input_type": str("DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"), "directory_service_attribute": unknown}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if resp := validateComputer(t, tc.attrs); resp.Diagnostics.HasError() {
+				t.Errorf("validator must defer on unknown companion, got %v", resp.Diagnostics)
+			}
+		})
+	}
+}
+
 func TestInputTypeValidator_Computer(t *testing.T) {
 	tests := []struct {
 		name    string
