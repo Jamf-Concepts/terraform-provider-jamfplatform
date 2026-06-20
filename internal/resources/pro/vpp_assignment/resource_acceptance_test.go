@@ -343,6 +343,9 @@ func TestAccResource_ProVPPAssignment_DSGroupScope(t *testing.T) {
 	// Plan-time scope preflight resolves the group, so the directory must exist
 	// before plan — pre-create it via the SDK (not an in-config fixture).
 	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
+	// Wait until the fresh fixture's bind is up so the plan-time scope preflight
+	// resolves the group instead of failing "not found".
+	testhelpers.WaitForLdapGroupResolvable(t, group)
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckVPPAssignmentDestroy(t),

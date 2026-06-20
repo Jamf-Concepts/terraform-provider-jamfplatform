@@ -584,6 +584,9 @@ func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-pro-mobileapp-ldap-" + suffix
 	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
+	// Wait until the fresh fixture's bind is up so the plan-time scope preflight
+	// resolves the group instead of failing "not found".
+	testhelpers.WaitForLdapGroupResolvable(t, group)
 
 	config := fmt.Sprintf(`
 		resource "jamfplatform_pro_mobile_device_app" "test" {

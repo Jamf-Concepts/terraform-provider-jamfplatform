@@ -66,18 +66,31 @@ func RequireSingletonStillExists(t *testing.T, label string, get func(context.Co
 // independent check that the encoding is server-acceptable.
 func ResolveDSGroupWireValue(t *testing.T, name string) string {
 	t.Helper()
-	resolver := pro.New(NewAcceptanceClient(t))
+	groups := WaitForLdapGroupResolvable(t, name)
+	if len(groups) != 1 {
+		t.Fatalf("group %q must resolve to exactly one directory group (got %d) — pick an unambiguous name", name, len(groups))
+	}
+	if groups[0].UUID == "" {
+		t.Fatalf("group %q resolved with no uuid mapping", name)
+	}
+	return criteria.EncodeDSGroupValue(groups[0].UUID, strconv.Itoa(groups[0].LdapServerID))
+}
 
-	// Poll until the group surfaces (>=1 match), riding out a freshly-created
-	// fixture server's connection-establishment delay. A persistent 0 (or a search
-	// error) past the timeout is a real failure and fatals below.
-	var groups []ldapgroups.Group
-	var err error
+// WaitForLdapGroupResolvable polls /v1/ldap/groups until name resolves to at least
+// one exact match, returning the matches. It rides out the connection-establishment
+// delay on a freshly-created LDAP fixture server (the bind is not ready the instant
+// the create POST returns). Call it after EnsureLdapServerFixture in any test that
+// then resolves the group — directly (ResolveDSGroupWireValue) or via the provider's
+// plan-time scope preflight. Fatals on a persistent empty result or search error
+// past the timeout (a real config failure, not a transient delay).
+func WaitForLdapGroupResolvable(t *testing.T, name string) []ldapgroups.Group {
+	t.Helper()
+	resolver := pro.New(NewAcceptanceClient(t))
 	deadline := time.Now().Add(dsGroupResolveTimeout)
 	for {
-		groups, err = ldapgroups.ResolveByName(context.Background(), resolver, name)
+		groups, err := ldapgroups.ResolveByName(context.Background(), resolver, name)
 		if err == nil && len(groups) >= 1 {
-			break
+			return groups
 		}
 		if time.Now().After(deadline) {
 			if err != nil {
@@ -87,12 +100,4 @@ func ResolveDSGroupWireValue(t *testing.T, name string) string {
 		}
 		time.Sleep(dsGroupResolveInterval)
 	}
-
-	if len(groups) != 1 {
-		t.Fatalf("group %q must resolve to exactly one directory group (got %d) — pick an unambiguous name", name, len(groups))
-	}
-	if groups[0].UUID == "" {
-		t.Fatalf("group %q resolved with no uuid mapping", name)
-	}
-	return criteria.EncodeDSGroupValue(groups[0].UUID, strconv.Itoa(groups[0].LdapServerID))
 }
