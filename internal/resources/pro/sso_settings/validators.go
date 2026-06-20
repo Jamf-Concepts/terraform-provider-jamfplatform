@@ -378,7 +378,9 @@ func RequiresSamlBoolValidator(fieldName string) validator.Bool {
 // SsoBypassAllowedValidator constructs the bypass-specific guard. Retained as a
 // named constructor for the existing schema wiring; the rule is identical to
 // every other SAML-only flag.
-func SsoBypassAllowedValidator() validator.Bool { return RequiresSamlBoolValidator("sso_bypass_allowed") }
+func SsoBypassAllowedValidator() validator.Bool {
+	return RequiresSamlBoolValidator("sso_bypass_allowed")
+}
 
 // Description returns the validator description.
 func (v requiresSamlBoolValidator) Description(_ context.Context) string {
