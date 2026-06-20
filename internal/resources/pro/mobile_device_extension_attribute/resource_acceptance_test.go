@@ -75,44 +75,12 @@ func mdeaPopup(name string) string {
 	`, name)
 }
 
-// mdeaDSAM builds a DIRECTORY_SERVICE_ATTRIBUTE_MAPPING extension attribute,
-// which requires LDAP configured on the tenant (else Create 400s with
-// "[INVALID_CONTENT] ... if LDAP is not configured") and reads user/location
-// from the directory service. It stands up the same two ordered fixtures as the
-// computer EA test: a dummy LDAP server (no reachable host needed — the
-// ldap_server resource does not verify connectivity), then the inventory
-// collection setting that enables directory-service user/location collection
-// (tenant-wide). The inventory-settings Delete is state-only; the LDAP server is
-// removed on teardown.
-func mdeaDSAM(name string) string {
-	return fmt.Sprintf(`
-		resource "jamfplatform_pro_ldap_server" "ea_fixture" {
-			connection_settings = {
-				display_name        = "tf-acc-mdea-dsam-ldap"
-				directory_service   = "Open Directory"
-				hostname            = "ldap.acc-anon.example.com"
-				port                = 389
-				use_ssl             = false
-				authentication_type = "none"
-			}
-		}
-
-		resource "jamfplatform_pro_computer_inventory_collection_settings" "ea_fixture" {
-			depends_on                                       = [jamfplatform_pro_ldap_server.ea_fixture]
-			collect_user_and_location_from_directory_service = true
-		}
-
-		resource "jamfplatform_pro_mobile_device_extension_attribute" "test" {
-			depends_on                  = [jamfplatform_pro_computer_inventory_collection_settings.ea_fixture]
-			name                        = %q
-			data_type                   = "STRING"
-			input_type                  = "DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"
-			inventory_display           = "USER_AND_LOCATION"
-			directory_service_attribute = "mail"
-		}
-	`, name)
-}
-
+// Mobile device EAs support DIRECTORY_SERVICE_ATTRIBUTE_MAPPING, but the tenant
+// precondition ("LDAP configured") requires inventory collection to pull
+// user/location from the directory service — and unlike computers, mobile devices
+// expose no equivalent inventory-collection settings resource (the setting is not
+// surfaced in the API/UI), so we cannot reliably stand up that precondition. DSAM
+// is therefore not exercised here; the computer EA test covers that input type.
 func TestAccResource_ProMobileDeviceExtensionAttribute_Lifecycle(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -144,14 +112,6 @@ func TestAccResource_ProMobileDeviceExtensionAttribute_Lifecycle(t *testing.T) {
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateVerifyIgnore: []string{"timeouts"},
-			},
-			{
-				Config: mdeaDSAM(renamed),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(mdeaResource, "input_type", "DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"),
-					resource.TestCheckResourceAttr(mdeaResource, "directory_service_attribute", "mail"),
-					resource.TestCheckNoResourceAttr(mdeaResource, "popup_menu_choices.0"),
-				),
 			},
 		},
 	})
