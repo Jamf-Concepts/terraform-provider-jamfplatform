@@ -18,10 +18,13 @@
 // location's id is the VPP account id the assignment references. Token material
 // MUST come from env — never commit it.
 //
-// Assigning actual content requires the fixture account to OWN the adam_id, which
-// varies by token. A content step is gated behind JAMFPLATFORM_ACC_VPP_ADAM_ID
-// (an owned iOS-app adam_id); skipped when unset. There is NO ebook acc step (the
-// tenant has no book-owning VPP account fixture).
+// Assigning actual content requires the fixture account to OWN the adam_id. The
+// adam_id is read live from the location fixture's Computed `content` catalog
+// (one row per owned adam_id) — Create polls until Apple's first sync completes,
+// so `content` is populated by the time the assignment plans. We select the
+// first iOS app (content_type "App" targeting iphone/ipad), so the test follows
+// whatever the token currently owns rather than a hand-maintained env var. There
+// is NO ebook acc step (the tenant has no book-owning VPP account fixture).
 //
 // Directory-service-group tests stand up the shared Okta LDAP server fixture via
 // the SDK (so the directory exists before the plan-time scope preflight) and use
@@ -34,7 +37,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strconv"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -50,9 +52,6 @@ const resAddr = "jamfplatform_pro_vpp_assignment.test"
 // vppTokenEnvVar holds the base64 `.vpptoken` contents used to stand up a VPP
 // location fixture (which owns the VPP account the assignment references).
 const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
-
-// adamIDEnvVar names an iOS-app adam_id the fixture account owns (content step).
-const adamIDEnvVar = "JAMFPLATFORM_ACC_VPP_ADAM_ID"
 
 func vppToken(t *testing.T) string {
 	v := os.Getenv(vppTokenEnvVar)
@@ -204,12 +203,21 @@ func TestAccResource_ProVPPAssignment(t *testing.T) {
 	})
 }
 
-// contentConfig assigns a single iOS app by adam_id (owned by the fixture
-// account) and then clears it ([]).
-func contentConfig(token, suffix, name, adamID string, assign bool) string {
+// contentConfig assigns a single iOS app then clears it ([]). The adam_id is
+// selected live from the location fixture's Computed `content` catalog (first
+// content_type=="App" row targeting iphone/ipad), so it tracks whatever the
+// fixture token currently owns instead of a hand-set env var. A resource
+// ARGUMENT may be unknown at plan time (unlike count/for_each), so the location
+// applies + syncs first and the adam_id resolves before the assignment applies.
+func contentConfig(token, suffix, name string, assign bool) string {
 	ios := "[]"
 	if assign {
-		ios = "[" + adamID + "]"
+		ios = `[
+    [for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+      c.adam_id
+      if c.content_type == "App" && (contains(c.device_types, "iphone") || contains(c.device_types, "ipad"))
+    ][0],
+  ]`
 	}
 	return vppLocationFixture(token, suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_vpp_assignment" "test" {
@@ -227,16 +235,11 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
 }
 
 // TestAccResource_ProVPPAssignment_Content exercises the content opt-out path
-// (assign then clear an iOS app). Requires an owned adam_id.
+// (assign then clear an iOS app). The adam_id is read live from the location
+// fixture's owned content, so the only gate is JAMFPLATFORM_VPP_TOKEN (a token
+// whose account owns at least one iOS app).
 func TestAccResource_ProVPPAssignment_Content(t *testing.T) {
 	token := vppToken(t)
-	adamID := os.Getenv(adamIDEnvVar)
-	if adamID == "" {
-		t.Skipf("%s not set; skipping VPP assignment content test", adamIDEnvVar)
-	}
-	if _, err := strconv.ParseInt(adamID, 10, 64); err != nil {
-		t.Fatalf("%s must be a numeric adam_id, got %q", adamIDEnvVar, adamID)
-	}
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-vppa-content-" + suffix
@@ -246,15 +249,17 @@ func TestAccResource_ProVPPAssignment_Content(t *testing.T) {
 		CheckDestroy:             testAccCheckVPPAssignmentDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: contentConfig(token, suffix, name, adamID, true),
+				Config: contentConfig(token, suffix, name, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
+					// Exactly one app assigned; its value is server-owned (derived
+					// from the location catalog), so we assert the count, not a
+					// hard-coded id.
 					resource.TestCheckResourceAttr(resAddr, "ios_app_adam_ids.#", "1"),
-					resource.TestCheckTypeSetElemAttr(resAddr, "ios_app_adam_ids.*", adamID),
 				),
 			},
 			{
 				// Clear ([]) — opt-out empty emits a clearing <ios_apps/> element.
-				Config: contentConfig(token, suffix, name, adamID, false),
+				Config: contentConfig(token, suffix, name, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resAddr, "ios_app_adam_ids.#", "0"),
 				),
