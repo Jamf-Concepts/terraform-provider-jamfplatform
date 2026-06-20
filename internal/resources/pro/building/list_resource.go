@@ -18,7 +18,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/buildings"
 )
 
 // defaultListTimeout caps how long the list operation will wait on the Jamf Pro
@@ -61,8 +60,8 @@ func (r *BuildingListResource) ListResourceConfigSchema(ctx context.Context, req
 		Description: "Searches for Jamf Pro buildings using the same filter clauses as the buildings data source.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
-				filters.SelectorDescription(buildings.BuildingFilterSelectors),
-				buildings.BuildingFilterSelectors,
+				filters.SelectorDescription(BuildingFilterSelectors),
+				BuildingFilterSelectors,
 			),
 		},
 	}
@@ -87,7 +86,7 @@ func (r *BuildingListResource) List(ctx context.Context, req list.ListRequest, s
 		return
 	}
 
-	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(buildings.BuildingFilterSelectors))
+	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(BuildingFilterSelectors))
 	tflog.Debug(ctx, "building list filters", map[string]any{"filter": filterExpression})
 
 	listCtx, cancel := context.WithTimeout(ctx, defaultListTimeout)

@@ -40,7 +40,8 @@ Resource packages live under `internal/resources/<domain>/<resource>/` and use r
 | `plan_modifiers.go` | Schema plan modifiers (if needed) |
 | `validators.go` | Schema validators (if needed) |
 | `list_resource.go` | List resource implementation |
-| `data_source.go` | Data source implementation |
+| `data_source.go` | Singular (by-id / by-name) data source implementation |
+| `datasource_plural.go` | Plural (list) data source implementation, when the resource also exposes one |
 
 ### Optional split-outs for complex resources
 
@@ -50,6 +51,13 @@ Resource packages live under `internal/resources/<domain>/<resource>/` and use r
 ### Data-source-only packages
 
 Packages that only contain a data source use `model_types.go` for their model structs and `data_source.go` for the implementation.
+
+### Plural (list) data sources
+
+A plural data source (`jamfplatform_pro_categories`) lives **in the same package as its singular counterpart** (`category/`), not in a separate `categories/` package. Add `datasource_plural.go` for the implementation; its model structs join the package's existing `model_types.go` alongside every other construct's models. Reuse the singular package's exported schema helpers, state builders, and SDK wiring wherever the shapes overlap (see `app_installer/` and `app_installer_title/` for full reuse).
+
+- The plural read timeout const is `defaultPluralReadTimeout` to avoid colliding with the singular's `defaultReadTimeout`; `minJamfProVersion` is shared (declared once in the package).
+- Where the list endpoint returns a strict subset of the singular's fields, the plural carries its own result model (e.g. `UserGroupsDataSourceResultModel`) so the sparse shape is explicit in one package rather than implied across two directories.
 
 ## Test File Conventions
 
@@ -62,6 +70,8 @@ Packages that only contain a data source use `model_types.go` for their model st
 | `state_upgrader_test.go` | State upgrader tests (where present) |
 | `resource_acceptance_test.go` | Resource acceptance tests (`//go:build acceptance`) |
 | `datasource_acceptance_test.go` | Data-source-only package acceptance tests (`//go:build acceptance`) |
+| `schema_plural_test.go` | Plural data source schema validation |
+| `datasource_plural_acceptance_test.go` | Plural data source acceptance tests (`//go:build acceptance`) |
 
 ## Client Conventions
 

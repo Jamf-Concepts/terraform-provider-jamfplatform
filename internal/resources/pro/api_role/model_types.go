@@ -35,3 +35,18 @@ type apiRoleIdentityModel struct {
 type ApiRoleListResourceModel struct {
 	Filters []filters.FilterModel `tfsdk:"filter"`
 }
+
+// ApiRolesDataSourceModel represents the Terraform data source model for API role searches.
+type ApiRolesDataSourceModel struct {
+	ID       types.String                    `tfsdk:"id"`
+	ApiRoles []ApiRolesDataSourceResultModel `tfsdk:"api_roles"`
+	Filters  []filters.FilterModel           `tfsdk:"filter"`
+	Timeouts datasourceTimeouts.Value        `tfsdk:"timeouts"`
+}
+
+// ApiRolesDataSourceResultModel represents a single API role in the search results.
+type ApiRolesDataSourceResultModel struct {
+	ID          types.String `tfsdk:"id"`
+	DisplayName types.String `tfsdk:"display_name"`
+	Privileges  types.Set    `tfsdk:"privileges"`
+}

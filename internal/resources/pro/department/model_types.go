@@ -34,3 +34,17 @@ type departmentIdentityModel struct {
 type DepartmentListResourceModel struct {
 	Filters []filters.FilterModel `tfsdk:"filter"`
 }
+
+// DepartmentsDataSourceModel represents the Terraform data source model for department searches.
+type DepartmentsDataSourceModel struct {
+	ID          types.String                       `tfsdk:"id"`
+	Departments []DepartmentsDataSourceResultModel `tfsdk:"departments"`
+	Filters     []filters.FilterModel              `tfsdk:"filter"`
+	Timeouts    datasourceTimeouts.Value           `tfsdk:"timeouts"`
+}
+
+// DepartmentsDataSourceResultModel represents a single department in the search results.
+type DepartmentsDataSourceResultModel struct {
+	ID   types.String `tfsdk:"id"`
+	Name types.String `tfsdk:"name"`
+}

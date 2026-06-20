@@ -18,7 +18,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/departments"
 )
 
 // defaultListTimeout caps how long the list operation will wait on the Jamf Pro
@@ -61,8 +60,8 @@ func (r *DepartmentListResource) ListResourceConfigSchema(ctx context.Context, r
 		Description: "Searches for Jamf Pro departments using the same filter clauses as the departments data source.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
-				filters.SelectorDescription(departments.DepartmentFilterSelectors),
-				departments.DepartmentFilterSelectors,
+				filters.SelectorDescription(DepartmentFilterSelectors),
+				DepartmentFilterSelectors,
 			),
 		},
 	}
@@ -87,7 +86,7 @@ func (r *DepartmentListResource) List(ctx context.Context, req list.ListRequest,
 		return
 	}
 
-	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(departments.DepartmentFilterSelectors))
+	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(DepartmentFilterSelectors))
 	tflog.Debug(ctx, "department list filters", map[string]any{"filter": filterExpression})
 
 	listCtx, cancel := context.WithTimeout(ctx, defaultListTimeout)

@@ -5,6 +5,7 @@ package user
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -29,4 +30,26 @@ type UserDataSourceModel struct {
 	EnableCustomPhotoURL types.Bool     `tfsdk:"enable_custom_photo_url"`
 	CustomPhotoURL       types.String   `tfsdk:"custom_photo_url"`
 	Timeouts             timeouts.Value `tfsdk:"timeouts"`
+}
+
+// UsersDataSourceModel represents the Terraform data source model for inventory
+// user searches.
+type UsersDataSourceModel struct {
+	ID       types.String                 `tfsdk:"id"`
+	Users    []UsersDataSourceResultModel `tfsdk:"users"`
+	Filters  []filters.FilterModel        `tfsdk:"filter"`
+	Timeouts timeouts.Value               `tfsdk:"timeouts"`
+}
+
+// UsersDataSourceResultModel represents a single user in the search results.
+type UsersDataSourceResultModel struct {
+	ID                   types.String `tfsdk:"id"`
+	Username             types.String `tfsdk:"username"`
+	FullName             types.String `tfsdk:"full_name"`
+	EmailAddress         types.String `tfsdk:"email_address"`
+	PhoneNumber          types.String `tfsdk:"phone_number"`
+	Position             types.String `tfsdk:"position"`
+	ManagedAppleID       types.String `tfsdk:"managed_apple_id"`
+	EnableCustomPhotoURL types.Bool   `tfsdk:"enable_custom_photo_url"`
+	CustomPhotoURL       types.String `tfsdk:"custom_photo_url"`
 }

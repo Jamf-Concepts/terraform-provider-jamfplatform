@@ -17,7 +17,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/categories"
 )
 
 var _ list.ListResource = &CategoryListResource{}
@@ -55,8 +54,8 @@ func (r *CategoryListResource) ListResourceConfigSchema(ctx context.Context, req
 		Description: "Searches for Jamf Pro categories using the same filter clauses as the categories data source.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
-				filters.SelectorDescription(categories.CategoryFilterSelectors),
-				categories.CategoryFilterSelectors,
+				filters.SelectorDescription(CategoryFilterSelectors),
+				CategoryFilterSelectors,
 			),
 		},
 	}
@@ -81,7 +80,7 @@ func (r *CategoryListResource) List(ctx context.Context, req list.ListRequest, s
 		return
 	}
 
-	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(categories.CategoryFilterSelectors))
+	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(CategoryFilterSelectors))
 	tflog.Debug(ctx, "category list filters", map[string]any{"filter": filterExpression})
 
 	cats, err := r.client.ListCategoriesV1(ctx, nil, filterExpression)
