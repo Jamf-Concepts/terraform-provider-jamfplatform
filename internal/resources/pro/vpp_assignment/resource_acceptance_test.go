@@ -22,8 +22,8 @@
 // adam_id is read live from the location fixture's Computed `content` catalog
 // (one row per owned adam_id) — Create polls until Apple's first sync completes,
 // so `content` is populated by the time the assignment plans. We select the
-// first iOS app (content_type "App" targeting iphone/ipad), so the test follows
-// whatever the token currently owns rather than a hand-maintained env var. There
+// first iOS app (content_type "IOS_APP"), so the test follows whatever the
+// token currently owns rather than a hand-maintained env var. There
 // is NO ebook acc step (the tenant has no book-owning VPP account fixture).
 //
 // Directory-service-group tests stand up the shared Okta LDAP server fixture via
@@ -205,8 +205,9 @@ func TestAccResource_ProVPPAssignment(t *testing.T) {
 
 // contentConfig assigns a single iOS app then clears it ([]). The adam_id is
 // selected live from the location fixture's Computed `content` catalog (first
-// content_type=="App" row targeting iphone/ipad), so it tracks whatever the
-// fixture token currently owns instead of a hand-set env var. A resource
+// content_type=="IOS_APP" row — the Jamf VolumePurchasingContent contentType
+// enum is IOS_APP/MAC_APP/BOOK/UNKNOWN), so it tracks whatever the fixture
+// token currently owns instead of a hand-set env var. A resource
 // ARGUMENT may be unknown at plan time (unlike count/for_each), so the location
 // applies + syncs first and the adam_id resolves before the assignment applies.
 func contentConfig(token, suffix, name string, assign bool) string {
@@ -214,8 +215,7 @@ func contentConfig(token, suffix, name string, assign bool) string {
 	if assign {
 		ios = `[
     [for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
-      c.adam_id
-      if c.content_type == "App" && (contains(c.device_types, "iphone") || contains(c.device_types, "ipad"))
+      c.adam_id if c.content_type == "IOS_APP"
     ][0],
   ]`
 	}
