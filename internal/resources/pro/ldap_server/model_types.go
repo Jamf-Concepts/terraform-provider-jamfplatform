@@ -119,8 +119,8 @@ type ldapUserGroupMappingsModel struct {
 // every field is modelled Optional+Computed with no mode gating.
 type ldapMembershipMappingsModel struct {
 	MembershipLocation                types.String `tfsdk:"membership_location"`                 // user_group_membership_stored_in
-	MemberUserMapping                 types.String `tfsdk:"member_user_mapping"`                 // map_group_membership_to_user_field
-	GroupMembershipMapping            types.String `tfsdk:"group_membership_mapping"`            // map_user_membership_to_group_field
+	MemberUserMapping                 types.String `tfsdk:"member_user_mapping"`                 // map_user_membership_to_group_field (Group Object: the group's member attr, e.g. member/uniqueMember)
+	GroupMembershipMapping            types.String `tfsdk:"group_membership_mapping"`            // map_group_membership_to_user_field (User Object: the user's groups attr, e.g. memberOf)
 	AppendToUsername                  types.String `tfsdk:"append_to_username"`                  // append_to_username
 	UseDN                             types.Bool   `tfsdk:"use_dn"`                              // use_dn
 	UseLDAPCompare                    types.Bool   `tfsdk:"use_ldap_compare"`                    // user_group_membership_use_ldap_compare

@@ -93,8 +93,8 @@ func buildMappingsInput(m *ldapMappingsModel) *proclassic.LdapServerPostMappings
 		b := m.UserGroupMembershipMappings
 		out.UserGroupMembershipMappings = &proclassic.LdapServerMappingsForUsersUserGroupMembershipMappings{
 			UserGroupMembershipStoredIn:                      helpers.OptionalStringPointer(b.MembershipLocation),
-			MapGroupMembershipToUserField:                    helpers.OptionalStringPointer(b.MemberUserMapping),
-			MapUserMembershipToGroupField:                    helpers.OptionalStringPointer(b.GroupMembershipMapping),
+			MapUserMembershipToGroupField:                    helpers.OptionalStringPointer(b.MemberUserMapping),
+			MapGroupMembershipToUserField:                    helpers.OptionalStringPointer(b.GroupMembershipMapping),
 			AppendToUsername:                                 helpers.OptionalStringPointer(b.AppendToUsername),
 			UseDn:                                            helpers.OptionalBoolPointer(b.UseDN),
 			UserGroupMembershipUseLdapCompare:                helpers.OptionalBoolPointer(b.UseLDAPCompare),

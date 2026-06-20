@@ -50,8 +50,8 @@ func fullLdapServerResponse() *proclassic.LdapServer {
 			},
 			UserGroupMembershipMappings: &proclassic.LdapServerMappingsForUsersUserGroupMembershipMappings{
 				UserGroupMembershipStoredIn:                      new(membershipGroupObject),
-				MapGroupMembershipToUserField:                    new("member"),
-				MapUserMembershipToGroupField:                    new("memberOf"),
+				MapUserMembershipToGroupField:                    new("member"),
+				MapGroupMembershipToUserField:                    new("memberOf"),
 				UseDn:                                            new(true),
 				MembershipScopingOptimization:                    new(true),
 				GroupMembershipEnabledWhenUserMembershipSelected: new(false),
@@ -113,6 +113,9 @@ func TestAssignLdapServerResourceModel_RoundTrip(t *testing.T) {
 	// Mappings: map_phone + membership *string field round-trip.
 	if state.MappingsForUsers.UserMappings.Phone.ValueString() != "telephoneNumber" {
 		t.Errorf("phone=%q", state.MappingsForUsers.UserMappings.Phone.ValueString())
+	}
+	if state.MappingsForUsers.UserGroupMembershipMappings.MemberUserMapping.ValueString() != "member" {
+		t.Errorf("member_user_mapping=%q (want the Group Object member attr from map_user_membership_to_group_field)", state.MappingsForUsers.UserGroupMembershipMappings.MemberUserMapping.ValueString())
 	}
 	if state.MappingsForUsers.UserGroupMembershipMappings.GroupMembershipMapping.ValueString() != "memberOf" {
 		t.Errorf("group_membership_mapping=%q", state.MappingsForUsers.UserGroupMembershipMappings.GroupMembershipMapping.ValueString())

@@ -190,8 +190,8 @@ func assignMappingsModel(m *proclassic.LdapServerMappingsForUsers) *ldapMappings
 	if b := m.UserGroupMembershipMappings; b != nil {
 		out.UserGroupMembershipMappings = &ldapMembershipMappingsModel{
 			MembershipLocation:                helpers.StringPointerValueOrNull(b.UserGroupMembershipStoredIn),
-			MemberUserMapping:                 helpers.StringPointerValueOrNull(b.MapGroupMembershipToUserField),
-			GroupMembershipMapping:            helpers.StringPointerValueOrNull(b.MapUserMembershipToGroupField),
+			MemberUserMapping:                 helpers.StringPointerValueOrNull(b.MapUserMembershipToGroupField),
+			GroupMembershipMapping:            helpers.StringPointerValueOrNull(b.MapGroupMembershipToUserField),
 			AppendToUsername:                  helpers.StringPointerValueOrNull(b.AppendToUsername),
 			UseDN:                             helpers.BoolPointerValueOrNull(b.UseDn),
 			UseLDAPCompare:                    helpers.BoolPointerValueOrNull(b.UserGroupMembershipUseLdapCompare),

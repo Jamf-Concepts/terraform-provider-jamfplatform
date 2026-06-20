@@ -81,11 +81,14 @@ func TestBuildLdapServerInput_FullSimple(t *testing.T) {
 	if got := derefStr(t, in.MappingsForUsers.UserMappings.MapPhone, "map_phone"); got != "telephoneNumber" {
 		t.Errorf("map_phone=%q", got)
 	}
+	// member_user_mapping (Group Object: the group's member attr) wires to
+	// map_user_membership_to_group_field; group_membership_mapping (User Object:
+	// the user's groups attr) wires to map_group_membership_to_user_field.
 	// map_user_membership_to_group_field is the SDK-fixed *string (was *bool).
-	if got := derefStr(t, in.MappingsForUsers.UserGroupMembershipMappings.MapUserMembershipToGroupField, "map_user_membership_to_group_field"); got != "memberOf" {
+	if got := derefStr(t, in.MappingsForUsers.UserGroupMembershipMappings.MapUserMembershipToGroupField, "map_user_membership_to_group_field"); got != "member" {
 		t.Errorf("map_user_membership_to_group_field=%q", got)
 	}
-	if got := derefStr(t, in.MappingsForUsers.UserGroupMembershipMappings.MapGroupMembershipToUserField, "map_group_membership_to_user_field"); got != "member" {
+	if got := derefStr(t, in.MappingsForUsers.UserGroupMembershipMappings.MapGroupMembershipToUserField, "map_group_membership_to_user_field"); got != "memberOf" {
 		t.Errorf("map_group_membership_to_user_field=%q", got)
 	}
 }
