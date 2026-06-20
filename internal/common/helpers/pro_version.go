@@ -80,6 +80,24 @@ func WarnIfBelowProviderFloor(actual, floor string) diag.Diagnostic {
 	return nil
 }
 
+// AtLeastJamfProVersion reports whether actual is >= min (semver-prefix compare,
+// build suffixes stripped). FAIL-OPEN: on either parse failure it returns true.
+// Callers use this to gate version-specific WORKAROUNDS for behaviour that exists
+// only at/after some Jamf Pro version; the provider's support floor is the modern
+// version (ProviderMinJamfProVersion), so an unknown/unparseable tenant version is
+// treated as modern and the workaround stays engaged.
+func AtLeastJamfProVersion(actual, min string) bool {
+	a, err := parseSemverPrefix(actual)
+	if err != nil {
+		return true
+	}
+	b, err := parseSemverPrefix(min)
+	if err != nil {
+		return true
+	}
+	return compareSemver(a, b) >= 0
+}
+
 type semver struct {
 	major, minor, patch int
 }

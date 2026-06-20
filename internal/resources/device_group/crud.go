@@ -158,11 +158,13 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		}
 		plan.Criteria = resolved
 		authoredDSGroups = authored
-		// device_group's wire value must be the group ID (its PATCH endpoint rejects
-		// names — wire-probed); resolve name->id for the request, keep the id->name
-		// map to restore the authored name after the flatten.
+		// On Jamf Pro >= 11.29 the wire value must be the group ID (the endpoint
+		// rejects names — wire-probed); resolve name->id for the request and keep the
+		// id->name map to restore the authored name after the flatten. Pre-11.29 the
+		// endpoint resolves the name itself (and rejects the id), so pass the name
+		// through unchanged.
 		var wireCriteria []DeviceGroupCriteriaModel
-		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(createCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(createCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria, r.groupRefWriteSendsID(createCtx))
 		criteria := expandDeviceGroupCriteria(wireCriteria)
 		reqBody.Criteria = &criteria
 	case "static":
@@ -355,11 +357,13 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		}
 		plan.Criteria = resolved
 		authoredDSGroups = authored
-		// device_group's UPDATE (PATCH) requires the group ID, not the name
+		// On Jamf Pro >= 11.29 the UPDATE (PATCH) requires the group ID, not the name
 		// (wire-probed: PATCH with a name 400s). Resolve name->id for the request and
 		// keep the id->name map to restore the authored name after the flatten.
+		// Pre-11.29 the endpoint resolves the name itself (and rejects the id), so
+		// pass the name through unchanged.
 		var wireCriteria []DeviceGroupCriteriaModel
-		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(updateCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(updateCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria, r.groupRefWriteSendsID(updateCtx))
 		criteria := expandDeviceGroupCriteria(wireCriteria)
 		updateReq.Criteria = &criteria
 	}

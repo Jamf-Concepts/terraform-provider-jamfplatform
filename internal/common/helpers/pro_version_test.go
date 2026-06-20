@@ -51,6 +51,30 @@ func TestRequireMinJamfProVersion(t *testing.T) {
 	}
 }
 
+func TestAtLeastJamfProVersion(t *testing.T) {
+	tests := []struct {
+		name   string
+		actual string
+		min    string
+		want   bool
+	}{
+		{"above min", "11.29.0", "11.28.0", true},
+		{"at min", "11.29.0", "11.29.0", true},
+		{"below min", "11.28.0", "11.29.0", false},
+		{"patch below", "11.29.0", "11.29.1", false},
+		{"build suffix at min", "11.29.0-t1700000000", "11.29.0", true},
+		{"actual unparseable fails open", "garbage", "11.29.0", true},
+		{"min unparseable fails open", "11.28.0", "garbage", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := AtLeastJamfProVersion(tc.actual, tc.min); got != tc.want {
+				t.Fatalf("AtLeastJamfProVersion(%q, %q) = %v, want %v", tc.actual, tc.min, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestWarnIfBelowProviderFloor(t *testing.T) {
 	tests := []struct {
 		name    string
