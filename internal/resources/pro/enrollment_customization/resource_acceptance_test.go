@@ -8,9 +8,11 @@ package enrollment_customization_test
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -68,6 +70,124 @@ resource "jamfplatform_pro_sso_settings" "ec_fixture" {
 	}
 }
 `, idpURL)
+}
+
+// LDAP-pane tests need a directory service configured on the tenant, or Jamf Pro
+// rejects the LDAP/Directory Service panel ("[INVALID_STATE] Directory service
+// must be configured for Jamf Pro to use the Directory Service panel"). They stand
+// up a jamfplatform_pro_ldap_server fixture pointed at an Okta LDAP interface and
+// depend_on it. The Okta subdomain/SLD/TLD are derived from the SAML metadata URL
+// already used for the SSO fixtures (JAMFPLATFORM_ACC_SSO_IDP_URL); the bind
+// service-account credentials come from these two env vars.
+const (
+	envLdapUsername = "JAMFPLATFORM_ACC_LDAP_USERNAME"
+	envLdapPassword = "JAMFPLATFORM_ACC_LDAP_PASSWORD" //nolint:gosec // env var name, not a credential
+)
+
+// oktaLdapEnv carries the LDAP fixture inputs: the service-account credentials plus
+// the Okta host split into <subdomain>.<sld>.<tld> (e.g. dev-12345678.okta.com).
+type oktaLdapEnv struct {
+	username, password  string
+	subdomain, sld, tld string
+}
+
+// requireOktaLdapEnv skips the calling test unless the LDAP service-account username
+// and password and the SAML IdP metadata URL are all set, then derives the Okta host
+// components from the URL (mirroring the jamfpro provider's okta_subdomain/sld/tld
+// locals).
+func requireOktaLdapEnv(t *testing.T) oktaLdapEnv {
+	t.Helper()
+	username := os.Getenv(envLdapUsername)
+	password := os.Getenv(envLdapPassword)
+	idpURL := os.Getenv(envSsoIdpURL)
+	if username == "" || password == "" || idpURL == "" {
+		t.Skipf("skipping LDAP-pane enrollment-customization test: set %s, %s, and %s so the test can configure an Okta LDAP directory-service fixture (Jamf Pro requires a directory service configured before an LDAP/Directory Service panel can be created)", envLdapUsername, envLdapPassword, envSsoIdpURL)
+	}
+	u, err := url.Parse(idpURL)
+	if err != nil || u.Hostname() == "" {
+		t.Skipf("skipping LDAP-pane enrollment-customization test: %s=%q is not a valid URL: %v", envSsoIdpURL, idpURL, err)
+	}
+	labels := strings.Split(u.Hostname(), ".")
+	if len(labels) < 3 {
+		t.Skipf("skipping LDAP-pane enrollment-customization test: %s host %q must be <subdomain>.<sld>.<tld> (e.g. dev-12345678.okta.com)", envSsoIdpURL, u.Hostname())
+	}
+	return oktaLdapEnv{
+		username:  username,
+		password:  password,
+		subdomain: labels[0],
+		sld:       labels[len(labels)-2],
+		tld:       labels[len(labels)-1],
+	}
+}
+
+// ldapServerFixture returns a jamfplatform_pro_ldap_server resource (Terraform name
+// "ec_ldap") pointed at the Okta LDAP interface, refactored from the jamfpro
+// provider's equivalent onto this provider's schema (connection_settings +
+// mappings_for_users nested attributes, WriteOnly password + password_wo_version).
+// Jamf Pro classic /ldapservers does not test connectivity on save, so the server
+// lands regardless of whether Okta LDAP is actually reachable — it only needs to
+// exist for the Directory Service panel precondition. Unlike the SSO fixture, the
+// ldap_server Delete removes the server, so teardown leaves the tenant clean.
+func ldapServerFixture(prefix string, e oktaLdapEnv) string {
+	host := fmt.Sprintf("%s.ldap.%s.%s", e.subdomain, e.sld, e.tld)
+	dc := fmt.Sprintf("dc=%s,dc=%s,dc=%s", e.subdomain, e.sld, e.tld)
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_ldap_server" "ec_ldap" {
+	connection_settings = {
+		display_name        = "%[1]s-Okta"
+		directory_service   = "Custom"
+		hostname            = %[2]q
+		port                = 636
+		use_ssl             = true
+		authentication_type = "simple"
+		connection_timeout  = 15
+		search_timeout      = 60
+		use_wildcards       = true
+
+		account = {
+			distinguished_username = "uid=%[3]s,%[4]s"
+			password               = %[5]q
+			password_wo_version    = 1
+		}
+	}
+
+	mappings_for_users = {
+		user_mappings = {
+			object_class_limitation = "all"
+			object_classes          = "inetOrgPerson"
+			search_base             = "ou=users,%[4]s"
+			search_scope            = "All Subtrees"
+			user_id                 = "uid"
+			username                = "uid"
+			real_name               = "cn"
+			email_address           = "mail"
+			department              = "department"
+			position                = "title"
+			user_uuid               = "uid"
+		}
+		user_group_mappings = {
+			object_class_limitation = "all"
+			object_classes          = "groupofUniqueNames"
+			search_base             = "ou=groups,%[4]s"
+			search_scope            = "All Subtrees"
+			group_id                = "uniqueIdentifier"
+			group_name              = "cn"
+			group_uuid              = "uniqueIdentifier"
+		}
+		user_group_membership_mappings = {
+			membership_location                 = "group object"
+			use_dn                              = false
+			recursive_lookups                   = false
+			member_user_mapping                 = "uniqueMember"
+			map_user_membership_use_dn          = true
+			object_class_limitation             = "all"
+			search_scope                        = "All Subtrees"
+			use_ldap_compare                    = false
+			membership_calculation_optimization = true
+		}
+	}
+}
+`, prefix, host, e.username, dc, e.password)
 }
 
 // fixtureIconPath returns the absolute path to the committed 100x100 PNG
@@ -163,10 +283,13 @@ func TestAccResource_ProEnrollmentCustomization_TextOnly(t *testing.T) {
 // pane with a directory_service_groups entry.
 func TestAccResource_ProEnrollmentCustomization_LdapOnly(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	ldapEnv := requireOktaLdapEnv(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-ldap-" + suffix
 	cfg := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc ldap"
 			%s
@@ -180,7 +303,7 @@ func TestAccResource_ProEnrollmentCustomization_LdapOnly(t *testing.T) {
 				login_button_text    = "Login"
 			}]
 		}
-	`, name, configCommon())
+	`, ldapServerFixture(name, ldapEnv), name, configCommon())
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -188,6 +311,11 @@ func TestAccResource_ProEnrollmentCustomization_LdapOnly(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config: cfg,
 			Check: resource.ComposeAggregateTestCheckFunc(
+				// Assert the LDAP fixture itself created — this is the directory
+				// service the LDAP pane depends on.
+				resource.TestCheckResourceAttrSet("jamfplatform_pro_ldap_server.ec_ldap", "id"),
+				resource.TestCheckResourceAttr("jamfplatform_pro_ldap_server.ec_ldap", "connection_settings.display_name", name+"-Okta"),
+				resource.TestCheckResourceAttr("jamfplatform_pro_ldap_server.ec_ldap", "connection_settings.directory_service", "Custom"),
 				resource.TestCheckResourceAttr("jamfplatform_pro_enrollment_customization.test", "ldap_panes.#", "1"),
 				resource.TestCheckResourceAttr("jamfplatform_pro_enrollment_customization.test", "ldap_panes.0.username_text", "Username"),
 			),
@@ -236,10 +364,13 @@ func TestAccResource_ProEnrollmentCustomization_SsoOnly(t *testing.T) {
 // with one LDAP pane.
 func TestAccResource_ProEnrollmentCustomization_TextAndLdap(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	ldapEnv := requireOktaLdapEnv(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-textldap-" + suffix
 	cfg := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc text+ldap"
 			%s
@@ -261,7 +392,7 @@ func TestAccResource_ProEnrollmentCustomization_TextAndLdap(t *testing.T) {
 				login_button_text    = "Login"
 			}]
 		}
-	`, name, configCommon())
+	`, ldapServerFixture(name, ldapEnv), name, configCommon())
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -474,12 +605,18 @@ func TestAccResource_ProEnrollmentCustomization_AlreadyHasAuth_Rejection(t *test
 // server's tolerance for cross-auth Update transitions is not yet wire-probed.
 func TestAccResource_ProEnrollmentCustomization_UpdateRoundTrip(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	ldapEnv := requireOktaLdapEnv(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-update-" + suffix
+	// step 2 attaches an LDAP pane, so the directory-service fixture must exist;
+	// keep it stable across all three steps to avoid create/destroy churn.
+	fixture := ldapServerFixture(name, ldapEnv)
 
 	// step 1: single text pane, baseline branding.
 	step1 := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc update step1"
 			branding_settings = {
@@ -497,12 +634,14 @@ func TestAccResource_ProEnrollmentCustomization_UpdateRoundTrip(t *testing.T) {
 				next_button_text     = "Next"
 			}]
 		}
-	`, name)
+	`, fixture, name)
 
 	// step 2: branding palette mutated, text pane body mutated, second text
 	// pane appended, LDAP pane attached.
 	step2 := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc update step2"
 			branding_settings = {
@@ -539,12 +678,14 @@ func TestAccResource_ProEnrollmentCustomization_UpdateRoundTrip(t *testing.T) {
 				login_button_text   = "Login"
 			}]
 		}
-	`, name)
+	`, fixture, name)
 
 	// step 3: LDAP pane removed, second text pane removed (back to single text
 	// pane). Description mutated to assert plain-string Update too.
 	step3 := fmt.Sprintf(`
+		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
+			depends_on   = [jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc update step3"
 			branding_settings = {
@@ -562,7 +703,7 @@ func TestAccResource_ProEnrollmentCustomization_UpdateRoundTrip(t *testing.T) {
 				next_button_text     = "Next"
 			}]
 		}
-	`, name)
+	`, fixture, name)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -615,14 +756,17 @@ func TestAccResource_ProEnrollmentCustomization_UpdateRoundTrip(t *testing.T) {
 func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_LdapToSso(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	idpURL := requireSsoIdpURL(t)
+	ldapEnv := requireOktaLdapEnv(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-xauth-l2s-" + suffix
-	fixture := ssoSamlFixture(idpURL)
+	// Both fixtures present throughout: SAML for the SSO pane (step 2), the LDAP
+	// directory service for the LDAP pane (step 1).
+	fixture := ssoSamlFixture(idpURL) + ldapServerFixture(name, ldapEnv)
 
 	step1 := fmt.Sprintf(`
 		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
-			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture, jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc cross-auth ldap->sso step1"
 			%s
@@ -641,7 +785,7 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_LdapToSso(t *tes
 	step2 := fmt.Sprintf(`
 		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
-			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture, jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc cross-auth ldap->sso step2"
 			%s
@@ -682,14 +826,17 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_LdapToSso(t *tes
 func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_SsoToLdap(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	idpURL := requireSsoIdpURL(t)
+	ldapEnv := requireOktaLdapEnv(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ec-xauth-s2l-" + suffix
-	fixture := ssoSamlFixture(idpURL)
+	// Both fixtures present throughout: SAML for the SSO pane (step 1), the LDAP
+	// directory service for the LDAP pane (step 2).
+	fixture := ssoSamlFixture(idpURL) + ldapServerFixture(name, ldapEnv)
 
 	step1 := fmt.Sprintf(`
 		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
-			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture, jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc cross-auth sso->ldap step1"
 			%s
@@ -704,7 +851,7 @@ func TestAccResource_ProEnrollmentCustomization_CrossAuthUpdate_SsoToLdap(t *tes
 	step2 := fmt.Sprintf(`
 		%s
 		resource "jamfplatform_pro_enrollment_customization" "test" {
-			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture]
+			depends_on   = [jamfplatform_pro_sso_settings.ec_fixture, jamfplatform_pro_ldap_server.ec_ldap]
 			display_name = %q
 			description  = "tf acc cross-auth sso->ldap step2"
 			%s
