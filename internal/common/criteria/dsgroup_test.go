@@ -60,7 +60,9 @@ func TestParseEncodedValue(t *testing.T) {
 		{"base64 of unrelated json object", b64JSON(`{"foo":"bar"}`), false, false},
 		// looked encoded but malformed → error
 		{"empty uuid (Okta trap)", b64JSON(`{"uuid":"","serverId":"31"}`), false, true},
-		{"malformed uuid", b64JSON(`{"uuid":"not-a-uuid","serverId":"31"}`), false, true},
+		// the uuid is an opaque directory id — an Okta-style id (not a hex UUID) is
+		// valid; only emptiness is a defect.
+		{"opaque non-hex uuid (Okta)", b64JSON(`{"uuid":"00g14cxwfog4FUbSv698","serverId":"31"}`), true, false},
 		{"empty serverId", b64JSON(`{"uuid":"` + wireUUID + `","serverId":""}`), false, true},
 		{"serverId only, missing uuid", b64JSON(`{"serverId":"31"}`), false, true},
 	}

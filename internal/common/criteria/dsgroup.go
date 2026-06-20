@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -102,11 +101,6 @@ var dsGroupAllowlist = map[ObjectType]map[string]bool{
 	},
 }
 
-// uuidPattern matches the canonical 8-4-4-4-12 hex UUID form. Case-insensitive:
-// validation must not reject a valid-but-lowercase uuid (the wire is uppercase,
-// but a pasted blob is preserved verbatim — see ResolveValue).
-var uuidPattern = regexp.MustCompile(`^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$`)
-
 // ErrNoUUID is returned when a directory group resolves but carries no uuid (the
 // Okta default-mappings trap — Jamf rejects saving a smart group whose group has
 // no uuid, so the provider must fail loudly rather than encode an empty uuid).
@@ -194,9 +188,10 @@ func ParseEncodedValue(value string) (dsGroupRef, bool, error) {
 	if ref.UUID == "" {
 		return dsGroupRef{}, false, fmt.Errorf("encoded directory-service group value has an empty uuid (the directory lookup returned no uuid mapping — e.g. Okta with default mappings)")
 	}
-	if !uuidPattern.MatchString(ref.UUID) {
-		return dsGroupRef{}, false, fmt.Errorf("encoded directory-service group value has a malformed uuid %q", ref.UUID)
-	}
+	// The uuid is an OPAQUE directory identifier — an AD objectGUID is a hex UUID,
+	// but Okta and other cloud IdPs use their own id formats (e.g. "00g14cxwf…").
+	// Only emptiness is a real defect (the default-mappings trap above); do NOT
+	// constrain the format, or every non-AD directory's group is wrongly rejected.
 	if ref.ServerID == "" {
 		return dsGroupRef{}, false, fmt.Errorf("encoded directory-service group value has an empty serverId")
 	}
