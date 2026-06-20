@@ -60,10 +60,11 @@ func testAccCheckAllowedFileExtensionDestroy(t *testing.T) resource.TestCheckFun
 	}
 }
 
-// regexpConflict matches the server's 409 rejection for a duplicate extension. A single,
-// whitespace-free token avoids the line-wrap brittleness Terraform introduces when it
-// renders long error details (the §ExpectError regex line-wrap lesson).
-func regexpConflict() *regexp.Regexp { return regexp.MustCompile("Conflict") }
+// regexpConflict matches the server's 409 rejection for a duplicate extension. The error
+// surfaces the raw SDK message ("...status 409... Duplicate extension"), so match the
+// "409" status token — whitespace-free, immune to the line-wrap brittleness Terraform
+// introduces when it renders long error details (the §ExpectError regex line-wrap lesson).
+func regexpConflict() *regexp.Regexp { return regexp.MustCompile("409") }
 
 // regexpWhitespace matches the schema validator rejection for surrounding whitespace.
 // "whitespace" is a single token, immune to the error-detail line wrap.
