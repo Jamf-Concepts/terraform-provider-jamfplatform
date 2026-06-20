@@ -35,6 +35,9 @@ import (
 //     recognises the name<->id representation swap as a no-op).
 func TestAccResource_DeviceGroup_JamfGroupMemberOf(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	// The "member of" / "not member of" directory-service-group operators are
+	// rejected before Jamf Pro 11.29.
+	testhelpers.RequireMinJamfProVersion(t, "11.29.0")
 
 	suffix := testhelpers.RunSuffix()
 	fixtureName := "tf-acc-dg-cg-fixture-" + suffix

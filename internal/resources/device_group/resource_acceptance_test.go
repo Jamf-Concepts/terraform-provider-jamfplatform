@@ -389,6 +389,9 @@ func TestAccResource_DeviceGroup_DSGroupCriteria(t *testing.T) {
 	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
 	groupName := testhelpers.RequireLdapGroupName(t)
 	testhelpers.AccPreCheck(t)
+	// The "Username directory service group" criterion is rejected (400
+	// INVALID_FIELD) before Jamf Pro 11.29.
+	testhelpers.RequireMinJamfProVersion(t, "11.29.0")
 
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-dsgroup-" + suffix

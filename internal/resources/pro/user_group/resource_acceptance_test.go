@@ -356,6 +356,11 @@ func TestAccResource_ProUserGroup_Smart_AllOperators(t *testing.T) {
 			fixtureName := "tf-acc-pro-ug-fixture-" + suffix
 
 			needsFixture := spec.op == "member of" || spec.op == "not member of"
+			if needsFixture {
+				// The group "member of" / "not member of" operators are rejected
+				// before Jamf Pro 11.29; skip just these operators on older tenants.
+				testhelpers.RequireMinJamfProVersion(t, "11.29.0")
+			}
 			value := spec.value
 			if needsFixture {
 				value = fixtureName

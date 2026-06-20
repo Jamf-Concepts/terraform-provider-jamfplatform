@@ -29,6 +29,9 @@ import (
 // deleted on cleanup.
 func TestAccResource_ProUserGroup_JamfGroupMemberOf(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	// The "member of" directory-service-group operator is rejected before Jamf
+	// Pro 11.29.
+	testhelpers.RequireMinJamfProVersion(t, "11.29.0")
 
 	suffix := testhelpers.RunSuffix()
 	fixtureName := "tf-acc-ug-cg-fixture-" + suffix
