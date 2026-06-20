@@ -730,6 +730,10 @@ resource "jamfplatform_pro_policy" "test" {
 // populated on Read when already managed by the caller).
 func TestAccPolicyResource_PackageConfigurationDistributionPoint(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	// The policy references the "default" distribution point; the server rejects
+	// the write (409 "Problem with distribution server") unless a principal DP is
+	// configured, so make the tenant's existing cloud DP principal for the test.
+	testhelpers.EnsurePrincipalCloudDistributionPoint(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-policy-pkgcfg-dp-" + suffix
 
@@ -738,12 +742,12 @@ func TestAccPolicyResource_PackageConfigurationDistributionPoint(t *testing.T) {
 		CheckDestroy:             testAccCheckPolicyDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: policyConfigPackageConfigurationDistributionPoint(name, "Dummy DP"),
+				Config: policyConfigPackageConfigurationDistributionPoint(name, "default"),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("packages").AtMapKey("distribution_point"),
-						knownvalue.StringExact("Dummy DP"),
+						knownvalue.StringExact("default"),
 					),
 				},
 			},
@@ -765,7 +769,7 @@ resource "jamfplatform_pro_policy" "test" {
     name = %q
   }
   packages = {
-    distribution_point = "Dummy DP"
+    distribution_point = "default"
     packages = [
       {
         id     = jamfplatform_pro_package.fixture.id
@@ -789,6 +793,9 @@ resource "jamfplatform_pro_policy" "test" {
 // populated on Read when already managed by the caller).
 func TestAccPolicyResource_PackageConfigurationPackages(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	// See PackageConfigurationDistributionPoint: the "default" distribution_point
+	// reference requires a principal DP on the tenant.
+	testhelpers.EnsurePrincipalCloudDistributionPoint(t)
 	suffix := testhelpers.RunSuffix()
 	policyName := "tf-acc-policy-pkgcfg-pkgs-" + suffix
 	pkgDisplay := "tf-acc-pkg-fixture-" + suffix
@@ -805,7 +812,7 @@ func TestAccPolicyResource_PackageConfigurationPackages(t *testing.T) {
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("packages").AtMapKey("distribution_point"),
-						knownvalue.StringExact("Dummy DP"),
+						knownvalue.StringExact("default"),
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
