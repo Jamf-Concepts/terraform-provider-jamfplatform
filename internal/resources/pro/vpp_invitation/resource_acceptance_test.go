@@ -20,9 +20,9 @@
 // The pure plan-time validation tests (ExpectError) need no account or token —
 // they use a literal vpp_account_id and never apply.
 //
-// Directory-service-group tests additionally need a real LDAP group name in
-// JAMFPLATFORM_ACC_VPP_DS_GROUP (its presence also signals the tenant has LDAP
-// configured, so the not-found preflight errors rather than warns).
+// Directory-service-group tests stand up the shared Okta LDAP server fixture via
+// the SDK (so the directory exists before the plan-time scope preflight) and use
+// JAMFPLATFORM_ACC_LDAP_GROUP_NAME for the real group name.
 //
 // NOTE on email message: the classic API form-decodes the <message> field (a
 // bare `%` 500s), so the provider form-URL-encodes it; the email test uses a `%@`
@@ -50,10 +50,6 @@ const resAddr = "jamfplatform_pro_vpp_invitation.test"
 // vppTokenEnvVar holds the base64 `.vpptoken` contents used to stand up a VPP
 // location fixture (which owns the VPP account the invitation references).
 const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
-
-// dsGroupEnvVar names a real directory-service (LDAP) group; its presence also
-// implies the tenant has LDAP configured (so the preflight errors, not warns).
-const dsGroupEnvVar = "JAMFPLATFORM_ACC_VPP_DS_GROUP"
 
 func vppToken(t *testing.T) string {
 	v := os.Getenv(vppTokenEnvVar)
@@ -351,13 +347,14 @@ func TestAccResource_ProVPPInvitation_DriftRecovery(t *testing.T) {
 // account fixture) and a real LDAP group name.
 func TestAccResource_ProVPPInvitation_DSGroupScope(t *testing.T) {
 	token := vppToken(t)
-	group := os.Getenv(dsGroupEnvVar)
-	if group == "" {
-		t.Skipf("%s not set; skipping directory-service group scope test", dsGroupEnvVar)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	group := testhelpers.RequireLdapGroupName(t)
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-vpp-dsscope-" + suffix
+	// Plan-time scope preflight resolves the group, so the directory must exist
+	// before plan — pre-create it via the SDK (not an in-config fixture).
+	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckVPPInvitationDestroy(t),
@@ -464,14 +461,13 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
 }
 
 // TestAccResource_ProVPPInvitation_DSGroupNotFound exercises the directory-service
-// preflight (a plan-time check; no apply, so no account fixture needed). Skipped
-// unless the tenant has LDAP configured (signalled by JAMFPLATFORM_ACC_VPP_DS_GROUP);
-// otherwise the preflight warns rather than errors.
+// preflight (a plan-time check; no apply, so no account fixture needed). Pre-creates
+// the LDAP directory so the preflight errors (group genuinely not found) rather than
+// warning (directory unreachable).
 func TestAccResource_ProVPPInvitation_DSGroupNotFound(t *testing.T) {
 	testhelpers.AccPreCheck(t)
-	if os.Getenv(dsGroupEnvVar) == "" {
-		t.Skipf("%s not set; skipping directory-service preflight test", dsGroupEnvVar)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	testhelpers.EnsureLdapServerFixture(t, "tf-acc-vpp-dsbad", ldapEnv)
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

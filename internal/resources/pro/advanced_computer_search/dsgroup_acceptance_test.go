@@ -7,7 +7,6 @@ package advanced_computer_search_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -16,34 +15,27 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
-// Directory-service group criteria coverage — gated behind
-// JAMFPLATFORM_ACC_CRITERIA_DS_GROUP=1 (+ _NAME = an exact LDAP/cloud-IdP group
-// name). The equivalent base64 is resolved + encoded in-test (same path the
-// provider uses), so the swap value always matches; an optional _VALUE supplies
-// the real wire base64 as an independent encoding oracle. Real group names are
-// never committed — see memory: no real LDAP names in public files.
-const (
-	envDSGroupGate = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP"
-	envDSGroupName = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME"
-)
+// Directory-service group criteria coverage. The equivalent base64 is resolved +
+// encoded in-test (same path the provider uses), so the swap value always matches;
+// the live apply is the independent check that the encoding is server-acceptable.
+// Real group names are never committed — see memory: no real LDAP names in public
+// files. Stands up the shared Okta LDAP directory-service fixture (via the SDK, so
+// the directory exists before the pre-apply group resolve) and resolves
+// JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it.
 
 // TestAccResource_ACS_DSGroupCriteria authors a directory-service group criterion
 // by NAME, asserts state round-trips back to the NAME, and asserts swapping the
 // config to the equivalent raw base64 (and back) produces EMPTY plans — the
 // ModifyPlan semantic-equality suppression on the []CriterionModel path.
 func TestAccResource_ACS_DSGroupCriteria(t *testing.T) {
-	if os.Getenv(envDSGroupGate) == "" {
-		t.Skipf("set %s=1 (plus %s) to run directory-service group criteria acceptance", envDSGroupGate, envDSGroupName)
-	}
-	groupName := os.Getenv(envDSGroupName)
-	if groupName == "" {
-		t.Skipf("%s must be set", envDSGroupName)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	groupName := testhelpers.RequireLdapGroupName(t)
 	testhelpers.AccPreCheck(t)
-	groupValue := testhelpers.ResolveDSGroupWireValue(t, groupName)
 
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-acs-dsgroup-" + suffix
+	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
+	groupValue := testhelpers.ResolveDSGroupWireValue(t, groupName)
 	const rn = "jamfplatform_pro_advanced_computer_search.dsgroup"
 
 	cfg := func(value string) string {

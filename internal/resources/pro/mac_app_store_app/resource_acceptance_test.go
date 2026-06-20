@@ -45,12 +45,6 @@ const macAppResourceAddr = "jamfplatform_pro_mac_app_store_app.test"
 // Tokens MUST come from env — never commit token material.
 const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
 
-// ldapGroupEnvVar names a real directory-service group the tenant's LDAP /
-// cloud-IdP actually has. directory_service_user_group_names is server-matched
-// against real groups ("Problem matching limitation user group" 409 otherwise),
-// so this path can only be exercised against a tenant with a known group.
-const ldapGroupEnvVar = "JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME"
-
 // testAccCheckMacAppDestroy verifies apps created during the test were destroyed.
 func testAccCheckMacAppDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
@@ -689,18 +683,17 @@ func TestAccListResource_ProMacApp(t *testing.T) {
 
 // TestAccResource_ProMacApp_ScopeLdapGroup exercises a limitation that
 // references a real directory-service user group, which the server validates
-// against the configured LDAP / cloud-IdP. Gated on
-// JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME (a group the tenant actually has);
-// also serves as the live check that the plan-time DS-group preflight accepts a
-// real group rather than rejecting it.
+// against the configured LDAP / cloud-IdP. Gated on JAMFPLATFORM_ACC_LDAP_GROUP_NAME
+// (a group the Okta directory actually has); also serves as the live check that the
+// plan-time DS-group preflight accepts a real group rather than rejecting it. The
+// directory must exist before plan, so the LDAP server is pre-created via the SDK.
 func TestAccResource_ProMacApp_ScopeLdapGroup(t *testing.T) {
-	group := os.Getenv(ldapGroupEnvVar)
-	if group == "" {
-		t.Skipf("%s not set; skipping directory-service group scope test", ldapGroupEnvVar)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	group := testhelpers.RequireLdapGroupName(t)
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-pro-macapp-ldap-" + suffix
+	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
 
 	config := fmt.Sprintf(`
 		resource "jamfplatform_pro_mac_app_store_app" "test" {

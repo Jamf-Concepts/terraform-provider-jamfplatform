@@ -7,7 +7,6 @@ package advanced_mobile_device_search_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -16,31 +15,25 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
-// Directory-service group criteria coverage — gated behind
-// JAMFPLATFORM_ACC_CRITERIA_DS_GROUP=1 (+ _NAME). This is the highest-value DS
+// Directory-service group criteria coverage. This is the highest-value DS
 // acceptance: criteria is a types.List (Optional+Computed), so the resolve /
 // readback / suppress paths bridge types.List <-> []CriterionModel — exercise
 // that round-trip end to end. See the computer-search counterpart for rationale.
-const (
-	envDSGroupGate = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP"
-	envDSGroupName = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_NAME"
-)
+// Stands up the shared Okta LDAP directory-service fixture (via the SDK, so the
+// directory exists before the pre-apply group resolve) and resolves
+// JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it.
 
 // TestAccResource_AMDS_DSGroupCriteria mirrors the computer-search test on the
 // mobile (Pro v1, types.List) surface.
 func TestAccResource_AMDS_DSGroupCriteria(t *testing.T) {
-	if os.Getenv(envDSGroupGate) == "" {
-		t.Skipf("set %s=1 (plus %s) to run directory-service group criteria acceptance", envDSGroupGate, envDSGroupName)
-	}
-	groupName := os.Getenv(envDSGroupName)
-	if groupName == "" {
-		t.Skipf("%s must be set", envDSGroupName)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	groupName := testhelpers.RequireLdapGroupName(t)
 	testhelpers.AccPreCheck(t)
-	groupValue := testhelpers.ResolveDSGroupWireValue(t, groupName)
 
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-amds-dsgroup-" + suffix
+	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
+	groupValue := testhelpers.ResolveDSGroupWireValue(t, groupName)
 	const rn = "jamfplatform_pro_advanced_mobile_device_search.dsgroup"
 
 	cfg := func(value string) string {

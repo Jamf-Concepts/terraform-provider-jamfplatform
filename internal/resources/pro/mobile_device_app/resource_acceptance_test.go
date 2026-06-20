@@ -21,7 +21,6 @@ package mobile_device_app_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -36,11 +35,6 @@ import (
 )
 
 const mobileAppResourceAddr = "jamfplatform_pro_mobile_device_app.test"
-
-// ldapGroupEnvVar names a real directory-service group the tenant's LDAP /
-// cloud-IdP actually has. directory_service_user_group_names is server-matched
-// against real groups ("Problem matching limitation user group" 409 otherwise).
-const ldapGroupEnvVar = "JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME"
 
 // testAccCheckMobileAppDestroy verifies apps created during the test were
 // destroyed. Note the server returns 400 on a successful DELETE (handled in the
@@ -579,17 +573,17 @@ func TestAccListResource_ProMobileApp(t *testing.T) {
 
 // TestAccResource_ProMobileApp_ScopeLdapGroup exercises a limitation that
 // references a real directory-service user group, which the server validates
-// against the configured LDAP / cloud-IdP. Gated on
-// JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME; also serves as the live check that the
-// plan-time DS-group preflight accepts a real group rather than rejecting it.
+// against the configured LDAP / cloud-IdP. Gated on JAMFPLATFORM_ACC_LDAP_GROUP_NAME;
+// also serves as the live check that the plan-time DS-group preflight accepts a real
+// group rather than rejecting it. The directory must exist before plan, so the LDAP
+// server is pre-created via the SDK.
 func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
-	group := os.Getenv(ldapGroupEnvVar)
-	if group == "" {
-		t.Skipf("%s not set; skipping directory-service group scope test", ldapGroupEnvVar)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	group := testhelpers.RequireLdapGroupName(t)
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-pro-mobileapp-ldap-" + suffix
+	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
 
 	config := fmt.Sprintf(`
 		resource "jamfplatform_pro_mobile_device_app" "test" {

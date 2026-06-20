@@ -32,19 +32,13 @@ import (
 // vice versa.
 //
 // Env-gated tests:
-//   - TestAccResource_..._AccessGroupLdap requires a real configured LDAP /
-//     directory-service group on the tenant, supplied via:
-//       JAMFPLATFORM_ACC_ENROLLMENT_LDAP_SERVER_ID
-//       JAMFPLATFORM_ACC_ENROLLMENT_GROUP_ID
-//       JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME
-//     Unset → t.Skipf (mirrors sso_settings' requireIdpURL pattern).
+//   - TestAccResource_..._AccessGroupLdap stands up the shared Okta LDAP server
+//     fixture (testhelpers.LdapServerFixture, labelled acc_ldap), references its id
+//     for ldap_server_id, and resolves JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it.
+//     Gated on the Okta LDAP env vars (RequireOktaLdapEnv + RequireLdapGroupName);
+//     unset → t.Skipf.
 
 const uieResourceAddr = "jamfplatform_pro_user_initiated_enrollment_settings.test"
-
-const (
-	envEnrollmentLdapServerID = "JAMFPLATFORM_ACC_ENROLLMENT_LDAP_SERVER_ID"
-	envEnrollmentGroupName    = "JAMFPLATFORM_ACC_ENROLLMENT_GROUP_NAME"
-)
 
 // fixtureKeystoreBase64 reads the committed dummy PKCS#12 fixture and returns
 // its raw base64. The keystore field is WriteOnly so it cannot be a file path in
@@ -60,8 +54,6 @@ func fixtureKeystoreBase64(t *testing.T) string {
 	return base64.StdEncoding.EncodeToString(data)
 }
 
-// requireLdapGroupEnv skips the test unless all three LDAP-group env vars are
-// set, returning (ldapServerID, groupID, groupName).
 // checkAccessGroupResolvedID finds the access_group element with the given name
 // and asserts the provider resolved a directory group id for it — non-empty and
 // not the built-in "-1". The value itself is tenant-specific and not asserted.
@@ -85,17 +77,6 @@ func checkAccessGroupResolvedID(addr, groupName string) resource.TestCheckFunc {
 		}
 		return fmt.Errorf("access_group %q not found in state for %s", groupName, addr)
 	}
-}
-
-func requireLdapGroupEnv(t *testing.T) (string, string) {
-	t.Helper()
-	srv := os.Getenv(envEnrollmentLdapServerID)
-	name := os.Getenv(envEnrollmentGroupName)
-	if srv == "" || name == "" {
-		t.Skipf("skipping: set %s and %s to a real directory-service group (by name) to exercise the LDAP access-group add/remove path",
-			envEnrollmentLdapServerID, envEnrollmentGroupName)
-	}
-	return srv, name
 }
 
 // checkUIEStillExists verifies Delete did not remove the settings record.
@@ -422,7 +403,12 @@ func TestAccResource_ProUserInitiatedEnrollmentSettings_AccessGroupBuiltin(t *te
 // step.
 func TestAccResource_ProUserInitiatedEnrollmentSettings_AccessGroupLdap(t *testing.T) {
 	testhelpers.AccPreCheck(t)
-	ldapServerID, groupName := requireLdapGroupEnv(t)
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	groupName := testhelpers.RequireLdapGroupName(t)
+	suffix := testhelpers.RunSuffix()
+	// Apply-time resolution against a specific ldap_server_id, so the in-config TF
+	// fixture (created first via the implicit acc_ldap.id reference) is sufficient.
+	fixture := testhelpers.LdapServerFixture("tf-acc-uie-ldap-"+suffix, ldapEnv)
 
 	const builtinElem = `{
 			ldap_server_id                         = "-1"
@@ -433,20 +419,20 @@ func TestAccResource_ProUserInitiatedEnrollmentSettings_AccessGroupLdap(t *testi
 		}`
 
 	envElem := fmt.Sprintf(`{
-			ldap_server_id                         = %q
+			ldap_server_id                         = jamfplatform_pro_ldap_server.acc_ldap.id
 			name                                   = %q
 			enterprise_enrollment_enabled          = true
 			personal_enrollment_enabled            = false
 			account_driven_user_enrollment_enabled = false
-		}`, ldapServerID, groupName)
+		}`, groupName)
 
-	withEnvGroup := fmt.Sprintf(`
+	withEnvGroup := fixture + fmt.Sprintf(`
 		resource "jamfplatform_pro_user_initiated_enrollment_settings" "test" {
 			access_group = [%s, %s]
 		}
 	`, builtinElem, envElem)
 
-	builtinOnly := fmt.Sprintf(`
+	builtinOnly := fixture + fmt.Sprintf(`
 		resource "jamfplatform_pro_user_initiated_enrollment_settings" "test" {
 			access_group = [%s]
 		}
@@ -462,8 +448,7 @@ func TestAccResource_ProUserInitiatedEnrollmentSettings_AccessGroupLdap(t *testi
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(uieResourceAddr, "access_group.#", "2"),
 					resource.TestCheckTypeSetElemNestedAttrs(uieResourceAddr, "access_group.*", map[string]string{
-						"ldap_server_id": ldapServerID,
-						"name":           groupName,
+						"name": groupName,
 					}),
 					// The provider resolved the directory group id from the name;
 					// assert an id came back (non-empty, not the built-in "-1"),

@@ -23,9 +23,9 @@
 // (an owned iOS-app adam_id); skipped when unset. There is NO ebook acc step (the
 // tenant has no book-owning VPP account fixture).
 //
-// Directory-service-group tests additionally need a real LDAP group name in
-// JAMFPLATFORM_ACC_VPP_DS_GROUP (its presence also signals the tenant has LDAP
-// configured, so the not-found preflight errors rather than warns).
+// Directory-service-group tests stand up the shared Okta LDAP server fixture via
+// the SDK (so the directory exists before the plan-time scope preflight) and use
+// JAMFPLATFORM_ACC_LDAP_GROUP_NAME for the real group name.
 
 package vpp_assignment_test
 
@@ -53,10 +53,6 @@ const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
 
 // adamIDEnvVar names an iOS-app adam_id the fixture account owns (content step).
 const adamIDEnvVar = "JAMFPLATFORM_ACC_VPP_ADAM_ID"
-
-// dsGroupEnvVar names a real directory-service (LDAP) group; its presence also
-// implies the tenant has LDAP configured (so the preflight errors, not warns).
-const dsGroupEnvVar = "JAMFPLATFORM_ACC_VPP_DS_GROUP"
 
 func vppToken(t *testing.T) string {
 	v := os.Getenv(vppTokenEnvVar)
@@ -339,13 +335,14 @@ func TestAccResource_ProVPPAssignment_DriftRecovery(t *testing.T) {
 // account fixture) and a real LDAP group name.
 func TestAccResource_ProVPPAssignment_DSGroupScope(t *testing.T) {
 	token := vppToken(t)
-	group := os.Getenv(dsGroupEnvVar)
-	if group == "" {
-		t.Skipf("%s not set; skipping directory-service group scope test", dsGroupEnvVar)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	group := testhelpers.RequireLdapGroupName(t)
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-vppa-dsscope-" + suffix
+	// Plan-time scope preflight resolves the group, so the directory must exist
+	// before plan — pre-create it via the SDK (not an in-config fixture).
+	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckVPPAssignmentDestroy(t),
@@ -412,14 +409,13 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
 }
 
 // TestAccResource_ProVPPAssignment_DSGroupNotFound exercises the directory-service
-// preflight (a plan-time check; no apply, so no account fixture needed). Skipped
-// unless the tenant has LDAP configured (signalled by JAMFPLATFORM_ACC_VPP_DS_GROUP);
-// otherwise the preflight warns rather than errors.
+// preflight (a plan-time check; no apply, so no account fixture needed). Pre-creates
+// the LDAP directory so the preflight errors (group genuinely not found) rather than
+// warning (directory unreachable).
 func TestAccResource_ProVPPAssignment_DSGroupNotFound(t *testing.T) {
 	testhelpers.AccPreCheck(t)
-	if os.Getenv(dsGroupEnvVar) == "" {
-		t.Skipf("%s not set; skipping directory-service preflight test", dsGroupEnvVar)
-	}
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	testhelpers.EnsureLdapServerFixture(t, "tf-acc-vppa-dsbad", ldapEnv)
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{

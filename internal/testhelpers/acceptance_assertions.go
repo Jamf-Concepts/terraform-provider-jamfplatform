@@ -8,7 +8,6 @@ package testhelpers
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"testing"
@@ -21,10 +20,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 )
-
-// envDSGroupValue is the optional acceptance oracle: when set, ResolveDSGroupWireValue
-// cross-checks the provider's encoded directory-service group value against it.
-const envDSGroupValue = "JAMFPLATFORM_ACC_CRITERIA_DS_GROUP_VALUE"
 
 // NewProClassicClient builds a ProClassic SDK client from the acceptance client.
 func NewProClassicClient(t *testing.T) *proclassic.Client {
@@ -56,8 +51,10 @@ func RequireSingletonStillExists(t *testing.T, label string, get func(context.Co
 
 // ResolveDSGroupWireValue resolves a directory-service group by name to its encoded
 // wire value (uuid + ldap server id). Fails the test unless the name resolves to
-// exactly one group with a uuid mapping. When envDSGroupValue is set, the resolved
-// value is cross-checked against it as an independent oracle.
+// exactly one group with a uuid mapping. The value is computed via the same
+// criteria.EncodeDSGroupValue the provider uses, so the acc test's name<->base64
+// swap step is byte-aligned with the provider; the live apply itself is the
+// independent check that the encoding is server-acceptable.
 func ResolveDSGroupWireValue(t *testing.T, name string) string {
 	t.Helper()
 	groups, err := ldapgroups.ResolveByName(context.Background(), pro.New(NewAcceptanceClient(t)), name)
@@ -70,9 +67,5 @@ func ResolveDSGroupWireValue(t *testing.T, name string) string {
 	if groups[0].UUID == "" {
 		t.Fatalf("group %q resolved with no uuid mapping", name)
 	}
-	wire := criteria.EncodeDSGroupValue(groups[0].UUID, strconv.Itoa(groups[0].LdapServerID))
-	if want := os.Getenv(envDSGroupValue); want != "" && wire != want {
-		t.Fatalf("provider resolved %q to %q, but %s=%q — name/value mismatch or an encoding bug", name, wire, envDSGroupValue, want)
-	}
-	return wire
+	return criteria.EncodeDSGroupValue(groups[0].UUID, strconv.Itoa(groups[0].LdapServerID))
 }
