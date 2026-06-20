@@ -463,36 +463,11 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
 	})
 }
 
-// TestAccResource_ProVPPInvitation_DSGroupNotFound exercises the directory-service
-// preflight (a plan-time check; no apply, so no account fixture needed). Pre-creates
-// the LDAP directory so the preflight errors (group genuinely not found) rather than
-// warning (directory unreachable).
-func TestAccResource_ProVPPInvitation_DSGroupNotFound(t *testing.T) {
-	testhelpers.AccPreCheck(t)
-	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
-	testhelpers.EnsureLdapServerFixture(t, "tf-acc-vpp-dsbad", ldapEnv)
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(`
-resource "jamfplatform_pro_vpp_invitation" "test" {
-  name                = "tf-acc-vpp-dsbad"
-  vpp_account_id      = %q
-  distribution_method = "Make available in Self Service only"
-
-  scope = {
-    exclusions = {
-      directory_service_user_group_names = ["tf-acc-no-such-ldap-group-zzz"]
-    }
-  }
-}
-`, litAccount),
-				ExpectError: regexp.MustCompile(`Directory-service group not found`),
-			},
-		},
-	})
-}
+// NOTE: the directory-service-group preflight is intentionally advisory now (a
+// no-match warns, never errors at plan) so a same-apply directory+scope bootstrap
+// isn't blocked — see helpers.RetryOnDirectoryGroupMatchConflict and the
+// criteria/scope unit tests. A wrong group name therefore surfaces at apply (after a
+// bounded retry), not plan, so there is no plan-time "not found" acc test here.
 
 func TestAccDataSource_ProVPPInvitation_AmbiguousSelector(t *testing.T) {
 	testhelpers.AccPreCheck(t)
