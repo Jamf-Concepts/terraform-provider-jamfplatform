@@ -282,6 +282,21 @@ func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanReques
 					"state_bytes": len(stateBytes),
 				})
 				plan.General.Payloads = state.General.Payloads
+				// The byte-only payload change made the framework propose an
+				// update on `general`, which marked every Computed-null-config
+				// sibling Unknown. UseStateForUnknown restores most of them, but
+				// category_name / site_name intentionally lack it (§886: they must
+				// go Unknown when their backing id changes). A payload-only NoOp
+				// cannot have changed either id, so restore each derived name from
+				// state when its id is unchanged — otherwise the spurious Unknown
+				// keeps the plan a non-empty update. When an id *is* changing in the
+				// same plan, leave the name Unknown so §886 still holds.
+				if plan.General.CategoryID.Equal(state.General.CategoryID) {
+					plan.General.CategoryName = state.General.CategoryName
+				}
+				if plan.General.SiteID.Equal(state.General.SiteID) {
+					plan.General.SiteName = state.General.SiteName
+				}
 				resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 				return
 			case payloadhelpers.DecisionApply:

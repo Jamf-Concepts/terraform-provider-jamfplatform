@@ -108,13 +108,18 @@ func (r *UserGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 		return // additive: only touch the plan when a representation actually collapsed
 	}
 	plan.Criteria = fromCriterionModels(suppressed)
-	// member_count is Computed without UseStateForUnknown, so core flipped it to
-	// unknown for the (now-reverted) update. When suppression reconciled the
-	// criteria back to state, restore it so a representation-only swap is an empty
-	// plan. Safe: member_count depends only on membership, which is unchanged when
-	// the criteria are equal. (site_name already uses UseStateForUnknown.)
+	// member_count and site_name are both Computed without UseStateForUnknown, so
+	// core flipped them to unknown for the (now-reverted) update. When suppression
+	// reconciled the criteria back to state, restore them so a representation-only
+	// swap is an empty plan. Safe: member_count depends only on membership, which is
+	// unchanged when the criteria are equal; site_name is derived from site_id (it
+	// dropped UseStateForUnknown per §886) and a criteria-only swap cannot change
+	// site_id, so the prior name still holds.
 	if criteria.CriteriaModelsEqual(suppressed, toCriterionModels(state.Criteria)) {
 		plan.MemberCount = state.MemberCount
+		if plan.SiteID.Equal(state.SiteID) {
+			plan.SiteName = state.SiteName
+		}
 	}
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
