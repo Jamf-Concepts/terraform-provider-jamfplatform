@@ -36,3 +36,17 @@ type siteIdentityModel struct {
 type SiteListResourceModel struct {
 	Filter *filters.ClassicFilterModel `tfsdk:"filter"`
 }
+
+// SitesDataSourceModel represents the Terraform data source model for site searches.
+type SitesDataSourceModel struct {
+	ID       types.String                 `tfsdk:"id"`
+	Sites    []SitesDataSourceResultModel `tfsdk:"sites"`
+	Filter   *filters.ClassicFilterModel  `tfsdk:"filter"`
+	Timeouts datasourceTimeouts.Value     `tfsdk:"timeouts"`
+}
+
+// SitesDataSourceResultModel represents a single site in the search results.
+type SitesDataSourceResultModel struct {
+	ID   types.String `tfsdk:"id"`
+	Name types.String `tfsdk:"name"`
+}

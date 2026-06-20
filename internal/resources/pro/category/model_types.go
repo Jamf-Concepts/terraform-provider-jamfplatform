@@ -35,3 +35,18 @@ type categoryIdentityModel struct {
 type CategoryListResourceModel struct {
 	Filters []filters.FilterModel `tfsdk:"filter"`
 }
+
+// CategoriesDataSourceModel represents the Terraform data source model for category searches.
+type CategoriesDataSourceModel struct {
+	ID         types.String                      `tfsdk:"id"`
+	Categories []CategoriesDataSourceResultModel `tfsdk:"categories"`
+	Filters    []filters.FilterModel             `tfsdk:"filter"`
+	Timeouts   datasourceTimeouts.Value          `tfsdk:"timeouts"`
+}
+
+// CategoriesDataSourceResultModel represents a single category in the search results.
+type CategoriesDataSourceResultModel struct {
+	ID       types.String `tfsdk:"id"`
+	Name     types.String `tfsdk:"name"`
+	Priority types.Int64  `tfsdk:"priority"`
+}

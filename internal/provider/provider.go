@@ -50,23 +50,17 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_volume_purchasing_content_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/allowed_file_extension"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_client"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_clients"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role_privileges"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_roles"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_title"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_titles"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_form_field"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_store_country_codes"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/automated_device_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/automated_device_enrollment_public_key"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/building"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/buildings"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/categories"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/category"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/class"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/cloud_distribution_point"
@@ -77,7 +71,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/computer_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/computer_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/department"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/departments"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/directory_binding"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/disk_encryption_configuration"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/dock_item"
@@ -112,7 +105,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/mobile_device_prestage_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/mobile_device_provisioning_profile"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/network_segment"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/network_segments"
 	pkg "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/package"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch_external_source"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/patch_internal_source"
@@ -130,7 +122,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/restricted_software"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/return_to_service"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/script"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/scripts"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/self_service_branding_image"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/self_service_branding_ios"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/self_service_branding_macos"
@@ -138,7 +129,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/self_service_plus_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/service_discovery_enrollment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/site"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sites"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/smtp_server"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_settings"
@@ -146,9 +136,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_group"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_groups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_initiated_enrollment_settings"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/users"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/volume_purchasing_notification"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_assignment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
@@ -447,10 +435,10 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		account_group.NewAccountGroupDataSource,
 		account_privileges.NewAccountPrivilegesDataSource,
 		api_client.NewApiClientDataSource,
-		api_clients.NewApiClientsDataSource,
+		api_client.NewApiClientsDataSource,
 		api_role.NewApiRoleDataSource,
 		api_role_privileges.NewApiRolePrivilegesDataSource,
-		api_roles.NewApiRolesDataSource,
+		api_role.NewApiRolesDataSource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentDataSource,
 		automated_device_enrollment_public_key.NewAutomatedDeviceEnrollmentPublicKeyDataSource,
 		blueprint.NewBlueprintDataSource,
@@ -463,8 +451,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		benchmarks.NewBenchmarksDataSource,
 		allowed_file_extension.NewAllowedFileExtensionDataSource,
 		building.NewBuildingDataSource,
-		buildings.NewBuildingsDataSource,
-		categories.NewCategoriesDataSource,
+		building.NewBuildingsDataSource,
+		category.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
 		computer_extension_attribute.NewComputerExtensionAttributeDataSource,
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeDataSource,
@@ -474,7 +462,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		cloud_identity_provider.NewCloudIdentityProviderDataSource,
 		cloud_identity_provider.NewCloudIdentityProvidersDataSource,
 		department.NewDepartmentDataSource,
-		departments.NewDepartmentsDataSource,
+		department.NewDepartmentsDataSource,
 		device_group.NewDeviceGroupDataSource,
 		device_groups.NewDeviceGroupsDataSource,
 		device.NewDeviceDataSource,
@@ -496,9 +484,9 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
 		app_installer.NewAppInstallerDataSource,
-		app_installers.NewAppInstallersDataSource,
+		app_installer.NewAppInstallersDataSource,
 		app_installer_title.NewAppInstallerTitleDataSource,
-		app_installer_titles.NewAppInstallerTitlesDataSource,
+		app_installer_title.NewAppInstallerTitlesDataSource,
 		app_request_form_field.NewAppRequestFormFieldDataSource,
 		app_store_country_codes.NewAppStoreCountryCodesDataSource,
 		ebook.NewEbookDataSource,
@@ -508,7 +496,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		macos_configuration_profile.NewDataSource,
 		mobile_device_configuration_profile.NewDataSource,
 		network_segment.NewNetworkSegmentDataSource,
-		network_segments.NewNetworkSegmentsDataSource,
+		network_segment.NewNetworkSegmentsDataSource,
 		pkg.NewPackageDataSource,
 		policy.NewPolicyDataSource,
 		restricted_software.NewRestrictedSoftwareDataSource,
@@ -518,7 +506,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		access_management_settings.NewAccessManagementSettingsDataSource,
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
 		script.NewScriptDataSource,
-		scripts.NewScriptsDataSource,
+		script.NewScriptsDataSource,
 		app_installer_settings.NewAppInstallerSettingsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
 		activation_code.NewActivationCodeDataSource,
@@ -552,12 +540,12 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		sso_settings.NewSsoDependenciesDataSource,
 		sso_settings.NewSsoSettingsDataSource,
 		sso_settings.NewSsoSpMetadataDataSource,
-		sites.NewSitesDataSource,
+		site.NewSitesDataSource,
 		class.NewClassDataSource,
 		user_group.NewUserGroupDataSource,
-		user_groups.NewUserGroupsDataSource,
+		user_group.NewUserGroupsDataSource,
 		user.NewUserDataSource,
-		users.NewUsersDataSource,
+		user.NewUsersDataSource,
 		advanced_computer_search.NewAdvancedComputerSearchDataSource,
 		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchDataSource,
 		advanced_user_search.NewAdvancedUserSearchDataSource,

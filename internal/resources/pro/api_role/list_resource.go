@@ -17,7 +17,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_roles"
 )
 
 var _ list.ListResource = &ApiRoleListResource{}
@@ -55,8 +54,8 @@ func (r *ApiRoleListResource) ListResourceConfigSchema(ctx context.Context, req 
 		Description: "Searches for Jamf Pro API roles using the same filter clauses as the api_roles data source.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
-				filters.SelectorDescription(api_roles.ApiRoleFilterSelectors),
-				api_roles.ApiRoleFilterSelectors,
+				filters.SelectorDescription(ApiRoleFilterSelectors),
+				ApiRoleFilterSelectors,
 			),
 		},
 	}
@@ -81,7 +80,7 @@ func (r *ApiRoleListResource) List(ctx context.Context, req list.ListRequest, st
 		return
 	}
 
-	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(api_roles.ApiRoleFilterSelectors))
+	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(ApiRoleFilterSelectors))
 	tflog.Debug(ctx, "api role list filters", map[string]any{"filter": filterExpression})
 
 	roles, err := r.client.ListApiRolesV1(ctx, nil, filterExpression)

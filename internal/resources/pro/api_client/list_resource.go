@@ -17,7 +17,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_clients"
 )
 
 var _ list.ListResource = &ApiClientListResource{}
@@ -55,8 +54,8 @@ func (r *ApiClientListResource) ListResourceConfigSchema(ctx context.Context, re
 		Description: "Searches for Jamf Pro API clients using the same filter clauses as the api_clients data source.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
-				filters.SelectorDescription(api_clients.ApiClientFilterSelectors),
-				api_clients.ApiClientFilterSelectors,
+				filters.SelectorDescription(ApiClientFilterSelectors),
+				ApiClientFilterSelectors,
 			),
 		},
 	}
@@ -82,7 +81,7 @@ func (r *ApiClientListResource) List(ctx context.Context, req list.ListRequest, 
 		return
 	}
 
-	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(api_clients.ApiClientFilterSelectors))
+	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(ApiClientFilterSelectors))
 	tflog.Debug(ctx, "api client list filters", map[string]any{"filter": filterExpression})
 
 	clients, err := r.client.ListApiIntegrationsV1(ctx, nil, filterExpression)

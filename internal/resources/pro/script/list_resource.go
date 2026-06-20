@@ -18,7 +18,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/scripts"
 )
 
 // defaultListTimeout caps how long the list operation will wait on the Jamf Pro
@@ -62,8 +61,8 @@ func (r *ScriptListResource) ListResourceConfigSchema(ctx context.Context, req l
 		Description: "Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results — the supported selectors match the scripts data source.",
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
-				filters.SelectorDescription(scripts.ScriptFilterSelectors),
-				scripts.ScriptFilterSelectors,
+				filters.SelectorDescription(ScriptFilterSelectors),
+				ScriptFilterSelectors,
 			),
 		},
 	}
@@ -88,7 +87,7 @@ func (r *ScriptListResource) List(ctx context.Context, req list.ListRequest, str
 		return
 	}
 
-	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(scripts.ScriptFilterSelectors))
+	filterExpression := filters.BuildRSQLExpression(config.Filters, filters.AllowList(ScriptFilterSelectors))
 	tflog.Debug(ctx, "script list filters", map[string]any{"filter": filterExpression})
 
 	listCtx, cancel := context.WithTimeout(ctx, defaultListTimeout)
