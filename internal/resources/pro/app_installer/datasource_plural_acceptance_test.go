@@ -23,7 +23,7 @@ func TestAccDataSource_ProAppInstallers_All(t *testing.T) {
 	name := "tf-acc-app-installers-ds-" + suffix
 	cfg := fmt.Sprintf(`
 		data "jamfplatform_pro_app_installer_titles" "catalog" {
-			name_substring = "010 Editor"
+			name_substring = "Jamf Composer"
 		}
 		resource "jamfplatform_pro_app_installer" "test" {
 			name            = %q

@@ -22,15 +22,19 @@ import (
 
 const resourceAddr = "jamfplatform_pro_app_installer.test"
 
-// titleName is a stable catalog title in the test tenant.
-const titleName = "010 Editor"
+// titleName is a stable catalog title in the test tenant. A Jamf-published
+// title is used deliberately: Jamf owns the catalog entry, so it stays healthy
+// (a third-party title, "010 Editor", was found server-corrupt on the test
+// tenant — its /titles/{id} GET 500s and the deployments LIST duplicates rows
+// backed by it, which is outside this provider's control).
+const titleName = "Jamf Composer"
 
 // catalogDS resolves the title through the catalog data source; the deployment
 // references the resolved title_name (exercising the DS → resource wiring rather
 // than hard-coding the name).
 const catalogDS = `
 data "jamfplatform_pro_app_installer_titles" "catalog" {
-	name_substring = "010 Editor"
+	name_substring = "Jamf Composer"
 }
 `
 
