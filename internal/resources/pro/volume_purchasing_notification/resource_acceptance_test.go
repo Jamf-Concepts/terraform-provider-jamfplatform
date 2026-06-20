@@ -15,8 +15,9 @@
 //     jamfplatform_pro_volume_purchasing_location fixture gated on
 //     JAMFPLATFORM_VPP_TOKEN (a real ABM/ASM .vpptoken; same gate as the location
 //     + assignment VPP tests). Token material MUST come from env — never commit it.
-//   - internal_recipients references a real Jamf Pro account id, supplied via
-//     JAMFPLATFORM_ACC_NOTIFICATION_ACCOUNT_ID; skipped when unset.
+//   - internal_recipients references a Jamf Pro account id; the test stands up
+//     its own jamfplatform_pro_account fixture and references its id — no env
+//     var, no tenant prerequisite.
 
 package volume_purchasing_notification_test
 
@@ -39,9 +40,6 @@ const resAddr = "jamfplatform_pro_volume_purchasing_notification.test"
 
 // vppTokenEnvVar holds the base64 `.vpptoken` used to stand up a location fixture.
 const vppTokenEnvVar = "JAMFPLATFORM_VPP_TOKEN"
-
-// accountIDEnvVar names a real Jamf Pro account id for the internal-recipient test.
-const accountIDEnvVar = "JAMFPLATFORM_ACC_NOTIFICATION_ACCOUNT_ID"
 
 func testAccCheckNotificationDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
@@ -206,28 +204,42 @@ func TestAccResource_ProVolumePurchasingNotification_Locations(t *testing.T) {
 	})
 }
 
-// internalRecipientsConfig references a real Jamf account id in internal_recipients.
-func internalRecipientsConfig(name, accountID string, withRecipient bool) string {
+// internalRecipientsConfig stands up a jamfplatform_pro_account fixture and
+// references its id in internal_recipients (add when withRecipient, else clear
+// to []). The account is present in both steps so it is created once; the
+// notification clears the recipient before the account is destroyed.
+func internalRecipientsConfig(name, suffix string, withRecipient bool) string {
 	recipients := "[]"
 	if withRecipient {
-		recipients = fmt.Sprintf("[%q]", accountID)
+		recipients = "[jamfplatform_pro_account.recipient.id]"
 	}
 	return fmt.Sprintf(`
+resource "jamfplatform_pro_account" "recipient" {
+  username      = "tf-acc-vpn-recipient-%[3]s"
+  full_name     = "TF Acc VPN Recipient"
+  email_address = "tf-acc-vpn-recipient-%[3]s@example.invalid"
+  access_level  = "Full Access"
+  privilege_set = "Custom"
+
+  password            = "Pr0bePassw0rd-%[3]s"
+  password_wo_version = 1
+
+  privileges = {
+    jamf_pro_server_objects = ["Read Computers"]
+  }
+}
+
 resource "jamfplatform_pro_volume_purchasing_notification" "test" {
   name                = %[1]q
   triggers            = ["NO_MORE_LICENSES"]
   internal_recipients = %[2]s
 }
-`, name, recipients)
+`, name, recipients, suffix)
 }
 
 // TestAccResource_ProVolumePurchasingNotification_InternalRecipients exercises the
-// internal_recipients add-then-clear path. Gated on a real account id.
+// internal_recipients add-then-clear path against a self-provisioned account.
 func TestAccResource_ProVolumePurchasingNotification_InternalRecipients(t *testing.T) {
-	accountID := os.Getenv(accountIDEnvVar)
-	if accountID == "" {
-		t.Skipf("%s not set; skipping internal_recipients test", accountIDEnvVar)
-	}
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-vpn-ir-" + suffix
@@ -237,14 +249,14 @@ func TestAccResource_ProVolumePurchasingNotification_InternalRecipients(t *testi
 		CheckDestroy:             testAccCheckNotificationDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: internalRecipientsConfig(name, accountID, true),
+				Config: internalRecipientsConfig(name, suffix, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resAddr, "internal_recipients.#", "1"),
-					resource.TestCheckTypeSetElemAttr(resAddr, "internal_recipients.*", accountID),
+					resource.TestCheckTypeSetElemAttrPair(resAddr, "internal_recipients.*", "jamfplatform_pro_account.recipient", "id"),
 				),
 			},
 			{
-				Config: internalRecipientsConfig(name, accountID, false),
+				Config: internalRecipientsConfig(name, suffix, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resAddr, "internal_recipients.#", "0"),
 				),
