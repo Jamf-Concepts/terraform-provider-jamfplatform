@@ -150,32 +150,47 @@ data "jamfplatform_pro_account_group" "by_name" {
 	})
 }
 
-// TestAccResource_ProAccountGroup_Members exercises membership add and remove.
-// Gated on JAMFPLATFORM_ACC_ACCOUNT_MEMBER_ID (an existing account ID) since it
-// requires a real member to reference.
-func TestAccResource_ProAccountGroup_Members(t *testing.T) {
-	memberID := os.Getenv("JAMFPLATFORM_ACC_ACCOUNT_MEMBER_ID")
-	if memberID == "" {
-		t.Skip("set JAMFPLATFORM_ACC_ACCOUNT_MEMBER_ID to an existing Jamf Pro account ID to run the membership test")
+// accountGroupMembersConfig builds an account group plus a jamfplatform_pro_account
+// fixture used as a real member (withMember adds it, else members = []). The
+// account is present in both steps so it is created once; the group clears the
+// member before the account is destroyed. The account mirrors the proven
+// jamfplatform_pro_account acceptance shape (unique email + Custom privilege set
+// with a privileges block — an empty email or the Administrator set fail create).
+func accountGroupMembersConfig(name, suffix string, withMember bool) string {
+	members := "[]"
+	if withMember {
+		members = "[jamfplatform_pro_account.member.id]"
 	}
-	name := fmt.Sprintf("tf-acc-account-group-members-%d", os.Getpid())
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_account" "member" {
+  username      = "tf-acc-ag-member-%[2]s"
+  full_name     = "TF Acc AG Member"
+  email_address = "tf-acc-ag-member-%[2]s@example.invalid"
+  access_level  = "Full Access"
+  privilege_set = "Custom"
 
-	withMember := fmt.Sprintf(`
+  password            = "Pr0bePassw0rd-%[2]s"
+  password_wo_version = 1
+
+  privileges = {
+    jamf_pro_server_objects = ["Read Computers"]
+  }
+}
+
 resource "jamfplatform_pro_account_group" "members" {
-  display_name  = %q
+  display_name  = %[1]q
   access_level  = "Full Access"
   privilege_set = "Auditor"
-  members       = [%s]
+  members       = %[3]s
 }
-`, name, memberID)
-	withoutMember := fmt.Sprintf(`
-resource "jamfplatform_pro_account_group" "members" {
-  display_name  = %q
-  access_level  = "Full Access"
-  privilege_set = "Auditor"
-  members       = []
+`, name, suffix, members)
 }
-`, name)
+
+// TestAccResource_ProAccountGroup_Members exercises membership add and remove
+// against a self-provisioned jamfplatform_pro_account member fixture.
+func TestAccResource_ProAccountGroup_Members(t *testing.T) {
+	name := fmt.Sprintf("tf-acc-account-group-members-%d", os.Getpid())
+	suffix := testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testhelpers.AccPreCheck(t) },
@@ -183,14 +198,14 @@ resource "jamfplatform_pro_account_group" "members" {
 		CheckDestroy:             testAccCheckAccountGroupDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: withMember,
+				Config: accountGroupMembersConfig(name, suffix, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_pro_account_group.members", "members.#", "1"),
-					resource.TestCheckTypeSetElemAttr("jamfplatform_pro_account_group.members", "members.*", memberID),
+					resource.TestCheckTypeSetElemAttrPair("jamfplatform_pro_account_group.members", "members.*", "jamfplatform_pro_account.member", "id"),
 				),
 			},
 			{
-				Config: withoutMember,
+				Config: accountGroupMembersConfig(name, suffix, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_pro_account_group.members", "members.#", "0"),
 				),
