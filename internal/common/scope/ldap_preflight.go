@@ -18,9 +18,16 @@ import (
 // `directory_service_user_group_names` set. The classic scope endpoints match
 // these names against the tenant's configured directory service and reject
 // unknown names at apply time with an opaque 409 ("Problem matching limitation
-// user group"). This surfaces the same failure at plan time with a clear,
-// per-name message — call it from a scope-bearing resource's ModifyPlan, once
-// per set (limitations and exclusions each have their own).
+// user group"). This surfaces a hint at plan time with a clear, per-name message —
+// call it from a scope-bearing resource's ModifyPlan, once per set (limitations and
+// exclusions each have their own).
+//
+// It is ADVISORY (never blocks the plan): a no-match is a WARNING, not an error.
+// Blocking would break the legitimate bootstrap case — creating the directory and a
+// group-scoped resource in the same apply, where the directory does not exist yet at
+// plan time. A genuinely wrong name still fails loudly at apply (the write retries
+// the 409 for a bounded window, then surfaces it). See
+// helpers.IsDirectoryGroupMatchConflict / the resources' retry-on-write.
 //
 // Behaviour:
 //   - nil searcher, or null/unknown set: no-op (nothing to check, or the
@@ -29,10 +36,9 @@ import (
 //     resource's not-yet-known attribute): skipped — they cannot be validated
 //     at plan time.
 //   - a name resolving to >=1 exact directory group (on any server): OK.
-//   - a name with no exact match: an error diagnostic at attrPath.
-//   - a search transport error: a WARNING (not an error). The preflight is
-//     best-effort and must not block plans when the directory API is
-//     unreachable or LDAP is unconfigured; the server still enforces on apply.
+//   - a name with no exact match: a WARNING (bootstrap-friendly; enforced at apply).
+//   - a search transport error: a WARNING (the directory API is unreachable / not
+//     yet configured; the server still enforces on apply).
 func ValidateDirectoryServiceUserGroupNames(ctx context.Context, searcher ldapgroups.Searcher, set types.Set, attrPath path.Path) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if searcher == nil || set.IsNull() || set.IsUnknown() {
@@ -59,10 +65,10 @@ func ValidateDirectoryServiceUserGroupNames(ctx context.Context, searcher ldapgr
 			continue
 		}
 		if len(matches) == 0 {
-			diags.AddAttributeError(
+			diags.AddAttributeWarning(
 				attrPath,
-				"Directory-service group not found",
-				fmt.Sprintf("No directory-service user group named %q exists on any configured LDAP / cloud-identity-provider server. Jamf Pro would reject this on apply with \"Problem matching limitation user group\". Check the name (it is matched exactly) or add the group to your directory service.", name),
+				"Directory-service group not found yet",
+				fmt.Sprintf("No directory-service user group named %q exists on any configured LDAP / cloud-identity-provider server *as of plan time*. This is expected when the directory is being created in the same apply (bootstrap); the write retries until the group resolves. If the name is simply wrong it will fail at apply with \"Problem matching limitation user group\" — the match is exact.", name),
 			)
 		}
 	}

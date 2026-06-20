@@ -344,6 +344,55 @@ func IsForbiddenError(err error) bool {
 	return false
 }
 
+// directoryGroupMatch bounds the retry-on-write that rides out a bootstrap apply.
+const (
+	directoryGroupMatchTimeout  = 90 * time.Second
+	directoryGroupMatchInterval = 5 * time.Second
+)
+
+// IsDirectoryGroupMatchConflict reports whether err is the classic scope endpoints'
+// rejection of a directory-service user-group name it cannot match against the
+// configured directory ("Problem matching limitation user group"). During a
+// bootstrap apply this is transient — the referenced LDAP / cloud-IdP directory is
+// still being created in the same apply, or its bind has not finished coming up — so
+// the write is retried (see RetryOnDirectoryGroupMatchConflict). The phrase is
+// distinctive; match on it within any Jamf API error.
+func IsDirectoryGroupMatchConflict(err error) bool {
+	if err == nil {
+		return false
+	}
+	if _, ok := errors.AsType[*jamfplatform.APIResponseError](err); !ok {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "matching limitation user group")
+}
+
+// RetryOnDirectoryGroupMatchConflict calls write and, while it returns the classic
+// "Problem matching limitation user group" rejection, retries it for a bounded
+// window. This makes a from-scratch single apply work: a group-scoped resource and
+// the jamfplatform_pro_ldap_server it references (by group NAME, which creates no
+// dependency) are created in the same apply, so the scope write can land before the
+// directory is queryable. Any other error — or a persistent conflict past the
+// timeout (a genuinely wrong group name) — is returned unchanged so it surfaces
+// loudly. Honours ctx cancellation. Use the err-only variant for Update writes.
+func RetryOnDirectoryGroupMatchConflict(ctx context.Context, write func() error) error {
+	deadline := time.Now().Add(directoryGroupMatchTimeout)
+	for {
+		err := write()
+		if err == nil || !IsDirectoryGroupMatchConflict(err) {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(directoryGroupMatchInterval):
+		}
+	}
+}
+
 // EnsureResourceTimeouts guarantees the timeout object has the expected shape for resource timeouts.
 func EnsureResourceTimeouts(value resourcetimeouts.Value, attrTypes map[string]attr.Type) resourcetimeouts.Value {
 	if value.IsNull() && !value.IsUnknown() {

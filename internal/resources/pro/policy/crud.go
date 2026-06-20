@@ -55,6 +55,15 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	created, err := r.client.CreatePolicyByID(createCtx, "0", input)
+	if helpers.IsDirectoryGroupMatchConflict(err) {
+		// Bootstrap apply: the referenced directory is still coming up. Retry until
+		// the scope group resolves (or a real wrong-name conflict persists).
+		err = helpers.RetryOnDirectoryGroupMatchConflict(createCtx, func() error {
+			var e error
+			created, e = r.client.CreatePolicyByID(createCtx, "0", input)
+			return e
+		})
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro policy", err.Error())
 		return
@@ -195,7 +204,9 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	if err := r.client.UpdatePolicyByID(updateCtx, plan.ID.ValueString(), input); err != nil {
+	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
+		return r.client.UpdatePolicyByID(updateCtx, plan.ID.ValueString(), input)
+	}); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro policy", err.Error())
 		return
 	}

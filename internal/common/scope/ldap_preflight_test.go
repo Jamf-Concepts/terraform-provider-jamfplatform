@@ -50,11 +50,15 @@ func TestValidateDSGroups_KnownGroupPasses(t *testing.T) {
 	}
 }
 
-func TestValidateDSGroups_UnknownGroupErrors(t *testing.T) {
+func TestValidateDSGroups_UnknownGroupWarnsNotErrors(t *testing.T) {
 	f := &fakeSearcher{results: []pro.LdapGroup{{Name: "Admins", ID: "1", LdapServerID: 31}}}
 	diags := ValidateDirectoryServiceUserGroupNames(context.Background(), f, strSet("Nope"), preflightPath)
-	if !diags.HasError() {
-		t.Fatal("unknown group should produce an error diagnostic")
+	// Advisory: a no-match must NOT block the plan (bootstrap case), only warn.
+	if diags.HasError() {
+		t.Fatalf("unknown group should warn, not error: %v", diags)
+	}
+	if diags.WarningsCount() == 0 {
+		t.Fatal("unknown group should produce a warning diagnostic")
 	}
 }
 

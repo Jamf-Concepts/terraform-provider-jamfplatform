@@ -76,6 +76,15 @@ func (r *EbookResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	created, err := r.client.CreateEbookByID(createCtx, "0", payload)
+	if helpers.IsDirectoryGroupMatchConflict(err) {
+		// Bootstrap apply: the referenced directory is still coming up. Retry until
+		// the scope group resolves (or a real wrong-name conflict persists).
+		err = helpers.RetryOnDirectoryGroupMatchConflict(createCtx, func() error {
+			var e error
+			created, e = r.client.CreateEbookByID(createCtx, "0", payload)
+			return e
+		})
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro ebook", err.Error())
 		return
@@ -205,7 +214,9 @@ func (r *EbookResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	if err := r.client.UpdateEbookByID(updateCtx, plan.ID.ValueString(), payload); err != nil {
+	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
+		return r.client.UpdateEbookByID(updateCtx, plan.ID.ValueString(), payload)
+	}); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro ebook", err.Error())
 		return
 	}

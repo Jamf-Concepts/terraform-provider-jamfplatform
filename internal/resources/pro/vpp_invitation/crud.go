@@ -47,6 +47,15 @@ func (r *VPPInvitationResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	created, err := r.client.CreateVPPInvitationByID(createCtx, "0", input)
+	if helpers.IsDirectoryGroupMatchConflict(err) {
+		// Bootstrap apply: the referenced directory is still coming up. Retry until
+		// the scope group resolves (or a real wrong-name conflict persists).
+		err = helpers.RetryOnDirectoryGroupMatchConflict(createCtx, func() error {
+			var e error
+			created, e = r.client.CreateVPPInvitationByID(createCtx, "0", input)
+			return e
+		})
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro VPP invitation", err.Error())
 		return
@@ -157,7 +166,9 @@ func (r *VPPInvitationResource) Update(ctx context.Context, req resource.UpdateR
 	}
 
 	// PUT returns no body — must GET to refresh server-derived fields.
-	if err := r.client.UpdateVPPInvitationByID(updateCtx, plan.ID.ValueString(), input); err != nil {
+	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
+		return r.client.UpdateVPPInvitationByID(updateCtx, plan.ID.ValueString(), input)
+	}); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro VPP invitation", err.Error())
 		return
 	}

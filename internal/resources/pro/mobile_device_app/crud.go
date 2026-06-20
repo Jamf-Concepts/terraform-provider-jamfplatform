@@ -70,6 +70,16 @@ func (r *MobileAppResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	created, err := r.client.CreateMobileDeviceApplicationByID(createCtx, "0", payload)
+	if helpers.IsDirectoryGroupMatchConflict(err) {
+		// Bootstrap apply: the referenced directory is still coming up. Retry the
+		// POST (which carries the scope) until the group resolves. The follow-up PUT
+		// below then re-sends the same scope to an already-validated app.
+		err = helpers.RetryOnDirectoryGroupMatchConflict(createCtx, func() error {
+			var e error
+			created, e = r.client.CreateMobileDeviceApplicationByID(createCtx, "0", payload)
+			return e
+		})
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device app", err.Error())
 		return
@@ -217,7 +227,9 @@ func (r *MobileAppResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	if err := r.client.UpdateMobileDeviceApplicationByID(updateCtx, plan.ID.ValueString(), payload); err != nil {
+	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
+		return r.client.UpdateMobileDeviceApplicationByID(updateCtx, plan.ID.ValueString(), payload)
+	}); err != nil {
 		resp.Diagnostics.AddError("Error updating Jamf Pro mobile device app", err.Error())
 		return
 	}

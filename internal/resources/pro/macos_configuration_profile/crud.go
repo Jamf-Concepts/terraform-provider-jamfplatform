@@ -61,6 +61,15 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 	}
 
 	created, err := r.client.CreateOSXConfigurationProfileByID(createCtx, "0", input)
+	if helpers.IsDirectoryGroupMatchConflict(err) {
+		// Bootstrap apply: the referenced directory is still coming up. Retry until
+		// the scope group resolves (or a real wrong-name conflict persists).
+		err = helpers.RetryOnDirectoryGroupMatchConflict(createCtx, func() error {
+			var e error
+			created, e = r.client.CreateOSXConfigurationProfileByID(createCtx, "0", input)
+			return e
+		})
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating Jamf Pro macOS configuration profile", err.Error())
 		return
@@ -235,7 +244,9 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	}
 
 	id := state.ID.ValueString()
-	if err := r.client.UpdateOSXConfigurationProfileByID(updateCtx, id, input); err != nil {
+	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
+		return r.client.UpdateOSXConfigurationProfileByID(updateCtx, id, input)
+	}); err != nil {
 		resp.Diagnostics.AddError("Error updating macOS configuration profile", err.Error())
 		return
 	}
