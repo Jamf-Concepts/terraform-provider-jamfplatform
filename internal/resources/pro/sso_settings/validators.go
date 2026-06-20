@@ -354,30 +354,44 @@ func (userAttributeEnabledValidator) ValidateBool(ctx context.Context, req valid
 	)
 }
 
-// ===== sso_bypass_allowed value-discriminated guard =========================
+// ===== SAML-only feature-flag guard =========================================
 
-// ssoBypassAllowedValidator rejects `sso_bypass_allowed = true` when
-// `configuration_type = "OIDC"`. Jamf Pro only honors the bypass toggle
-// when SAML is part of the configuration (`SAML` or `OIDC_WITH_SAML`); on
-// pure OIDC the server silently coerces the field to false, which would
-// otherwise produce a plan-vs-apply mismatch at apply time.
-type ssoBypassAllowedValidator struct{}
+// requiresSamlBoolValidator rejects a feature-flag bool set to `true` when
+// `configuration_type = "OIDC"`. Jamf Pro only honors these SSO feature
+// toggles — bypass, enrollment SSO, macOS Self Service SSO, account-driven
+// enrollment SSO, group enrollment access — when SAML is part of the
+// configuration (`SAML` or `OIDC_WITH_SAML`). On pure OIDC the server silently
+// coerces every one of them to false, which would otherwise produce a
+// plan-vs-apply mismatch ("was true, but now false") at apply time.
+type requiresSamlBoolValidator struct {
+	// fieldName is the snake_case attribute name, used verbatim in the
+	// diagnostic so the message names the offending field.
+	fieldName string
+}
 
-// SsoBypassAllowedValidator constructs the validator.
-func SsoBypassAllowedValidator() validator.Bool { return ssoBypassAllowedValidator{} }
+// RequiresSamlBoolValidator constructs a validator that forbids fieldName=true
+// unless configuration_type includes SAML.
+func RequiresSamlBoolValidator(fieldName string) validator.Bool {
+	return requiresSamlBoolValidator{fieldName: fieldName}
+}
+
+// SsoBypassAllowedValidator constructs the bypass-specific guard. Retained as a
+// named constructor for the existing schema wiring; the rule is identical to
+// every other SAML-only flag.
+func SsoBypassAllowedValidator() validator.Bool { return RequiresSamlBoolValidator("sso_bypass_allowed") }
 
 // Description returns the validator description.
-func (ssoBypassAllowedValidator) Description(_ context.Context) string {
-	return "sso_bypass_allowed = true requires configuration_type to include SAML"
+func (v requiresSamlBoolValidator) Description(_ context.Context) string {
+	return fmt.Sprintf("%s = true requires configuration_type to include SAML", v.fieldName)
 }
 
 // MarkdownDescription returns the markdown description.
-func (v ssoBypassAllowedValidator) MarkdownDescription(ctx context.Context) string {
+func (v requiresSamlBoolValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
 }
 
 // ValidateBool implements validator.Bool.
-func (ssoBypassAllowedValidator) ValidateBool(ctx context.Context, req validator.BoolRequest, resp *validator.BoolResponse) {
+func (v requiresSamlBoolValidator) ValidateBool(ctx context.Context, req validator.BoolRequest, resp *validator.BoolResponse) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
@@ -396,8 +410,8 @@ func (ssoBypassAllowedValidator) ValidateBool(ctx context.Context, req validator
 	}
 	resp.Diagnostics.AddAttributeError(
 		req.Path,
-		"sso_bypass_allowed = true requires configuration_type to include SAML",
-		"Jamf Pro only honors the SSO bypass toggle when configuration_type is \"SAML\" or \"OIDC_WITH_SAML\". Set sso_bypass_allowed to false (or omit it), or change configuration_type.",
+		fmt.Sprintf("%s = true requires configuration_type to include SAML", v.fieldName),
+		fmt.Sprintf("Jamf Pro only honors %s when configuration_type is \"SAML\" or \"OIDC_WITH_SAML\"; in pure OIDC mode it is silently coerced to false. Set %s to false (or omit it), or change configuration_type.", v.fieldName, v.fieldName),
 	)
 }
 

@@ -119,29 +119,39 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"sso_for_enrollment_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable SSO for user-initiated enrollment.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-			},
-			"sso_for_macos_self_service_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable SSO for the macOS Self Service app.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-			},
-			"enrollment_sso_for_account_driven_enrollment_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable SSO for Account-Driven Enrollment (both User and Device variants). Requires Account-Driven Device Enrollment to be enabled on the tenant.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
-			},
-			"group_enrollment_access_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Restrict enrollment SSO to a single LDAP/IdP group. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied.",
+				MarkdownDescription: "Enable SSO for user-initiated enrollment. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 				Validators: []validator.Bool{
+					RequiresSamlBoolValidator("sso_for_enrollment_enabled"),
+				},
+			},
+			"sso_for_macos_self_service_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable SSO for the macOS Self Service app. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+				Validators: []validator.Bool{
+					RequiresSamlBoolValidator("sso_for_macos_self_service_enabled"),
+				},
+			},
+			"enrollment_sso_for_account_driven_enrollment_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable SSO for Account-Driven Enrollment (both User and Device variants). Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Also requires Account-Driven Device Enrollment to be enabled on the tenant.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+				Validators: []validator.Bool{
+					RequiresSamlBoolValidator("enrollment_sso_for_account_driven_enrollment_enabled"),
+				},
+			},
+			"group_enrollment_access_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Restrict enrollment SSO to a single LDAP/IdP group. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+				Validators: []validator.Bool{
+					RequiresSamlBoolValidator("group_enrollment_access_enabled"),
 					GroupEnrollmentAccessEnabledValidator(),
 				},
 			},

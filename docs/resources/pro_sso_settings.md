@@ -160,8 +160,8 @@ variable "sso_key_password" {
 ### Optional
 
 - `enrollment_sso_config` (Attributes) Configuration consumed by the Account-Driven Enrollment SSO flow. (see [below for nested schema](#nestedatt--enrollment_sso_config))
-- `enrollment_sso_for_account_driven_enrollment_enabled` (Boolean) Enable SSO for Account-Driven Enrollment (both User and Device variants). Requires Account-Driven Device Enrollment to be enabled on the tenant.
-- `group_enrollment_access_enabled` (Boolean) Restrict enrollment SSO to a single LDAP/IdP group. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied.
+- `enrollment_sso_for_account_driven_enrollment_enabled` (Boolean) Enable SSO for Account-Driven Enrollment (both User and Device variants). Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. Also requires Account-Driven Device Enrollment to be enabled on the tenant.
+- `group_enrollment_access_enabled` (Boolean) Restrict enrollment SSO to a single LDAP/IdP group. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode. When set together with `sso_for_enrollment_enabled = true`, `group_enrollment_access_name` must also be supplied.
 - `group_enrollment_access_name` (String) Name of the LDAP/IdP group allowed to enroll. Required when `group_enrollment_access_enabled` and `sso_for_enrollment_enabled` are both `true`.
 - `oidc_settings` (Attributes) OIDC configuration. Required when `configuration_type` is `OIDC` or `OIDC_WITH_SAML`. May be omitted in pure SAML mode. (see [below for nested schema](#nestedatt--oidc_settings))
 - `saml_settings` (Attributes) SAML configuration. Required when `configuration_type` is `SAML` or `OIDC_WITH_SAML`. Must be omitted in pure OIDC mode. (see [below for nested schema](#nestedatt--saml_settings))
@@ -173,8 +173,8 @@ variable "sso_key_password" {
 `keystore_password` and `password` are both `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state. Bump the matching `_wo_version` integer to force the next Update to re-send the value. (see [below for nested schema](#nestedatt--signing_certificate))
 - `sso_bypass_allowed` (Boolean) Allow administrators to bypass SSO when signing in. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
 - `sso_enabled` (Boolean) Whether SSO is enabled on the tenant.
-- `sso_for_enrollment_enabled` (Boolean) Enable SSO for user-initiated enrollment.
-- `sso_for_macos_self_service_enabled` (Boolean) Enable SSO for the macOS Self Service app.
+- `sso_for_enrollment_enabled` (Boolean) Enable SSO for user-initiated enrollment. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
+- `sso_for_macos_self_service_enabled` (Boolean) Enable SSO for the macOS Self Service app. Only honored when `configuration_type` includes SAML (`SAML` or `OIDC_WITH_SAML`); Jamf Pro silently coerces the value to `false` in pure OIDC mode.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

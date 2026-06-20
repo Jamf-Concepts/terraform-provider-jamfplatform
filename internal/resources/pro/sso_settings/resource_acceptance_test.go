@@ -104,10 +104,12 @@ func checkCertSetupType(t *testing.T, want string) resource.TestCheckFunc {
 const oidcEnabledConfig = `
 	resource "jamfplatform_pro_sso_settings" "test" {
 		sso_enabled                                          = true
-		sso_for_enrollment_enabled                           = true
-		sso_for_macos_self_service_enabled                   = false
-		enrollment_sso_for_account_driven_enrollment_enabled = false
-		group_enrollment_access_enabled                      = false
+		# The SSO feature flags (enrollment, macOS Self Service, account-driven
+		# enrollment, group access) are SAML-only: in pure OIDC mode writing them
+		# is a no-op — Jamf Pro keeps and returns whatever the tenant already has
+		# (false on a never-SAML tenant, true on one with residual SAML metadata).
+		# Omit them so the Optional+Computed values absorb the tenant's value
+		# instead of forcing a plan-vs-apply mismatch in either direction.
 		configuration_type                                   = "OIDC"
 		oidc_settings = {
 			user_mapping                   = "EMAIL"
@@ -130,10 +132,7 @@ func TestAccResource_ProSsoSettings_DisableEnable(t *testing.T) {
 	const disabled = `
 		resource "jamfplatform_pro_sso_settings" "test" {
 			sso_enabled                                          = false
-			sso_for_enrollment_enabled                           = true
-			sso_for_macos_self_service_enabled                   = false
-			enrollment_sso_for_account_driven_enrollment_enabled = false
-			group_enrollment_access_enabled                      = false
+			# OIDC-only: SSO feature flags are a no-op; omit (see oidcEnabledConfig).
 			configuration_type                                   = "OIDC"
 			oidc_settings = {
 				user_mapping                   = "EMAIL"
@@ -296,10 +295,6 @@ func TestAccResource_ProSsoSettings_BypassAllowedValidator(t *testing.T) {
 					resource "jamfplatform_pro_sso_settings" "test" {
 						sso_enabled                                          = true
 						sso_bypass_allowed                                   = true
-						sso_for_enrollment_enabled                           = true
-						sso_for_macos_self_service_enabled                   = false
-						enrollment_sso_for_account_driven_enrollment_enabled = false
-						group_enrollment_access_enabled                      = false
 						configuration_type                                   = "OIDC"
 						oidc_settings = {
 							user_mapping = "EMAIL"
@@ -313,28 +308,37 @@ func TestAccResource_ProSsoSettings_BypassAllowedValidator(t *testing.T) {
 }
 
 // TestAccResource_ProSsoSettings_GroupEnrollmentValidator exercises the
-// value-specific validator on group_enrollment_access_enabled.
+// value-specific validator on group_enrollment_access_enabled. Group enrollment
+// access (and sso_for_enrollment) are SAML-only, so the name-required rule is
+// only reachable in OIDC_WITH_SAML mode — hence the IdP-URL gate.
 func TestAccResource_ProSsoSettings_GroupEnrollmentValidator(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	idpURL := requireIdpURL(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: `
+				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_sso_settings" "test" {
 						sso_enabled                                          = true
-							sso_for_enrollment_enabled                           = true
+						sso_for_enrollment_enabled                           = true
 						sso_for_macos_self_service_enabled                   = false
 						enrollment_sso_for_account_driven_enrollment_enabled = false
 						group_enrollment_access_enabled                      = true
-						# group_enrollment_access_name intentionally omitted
-						configuration_type                                   = "OIDC"
+						# group_enrollment_access_name intentionally omitted.
+						configuration_type                                   = "OIDC_WITH_SAML"
 						oidc_settings = {
 							user_mapping = "EMAIL"
 						}
+						saml_settings = {
+							entity_id            = "/saml/metadata"
+							metadata_source      = "URL"
+							idp_url              = %q
+							group_attribute_name = "http://schemas.xmlsoap.org/claims/Group"
+						}
 					}
-				`,
+				`, idpURL),
 				ExpectError: regexp.MustCompile(`group_enrollment_access_name required`),
 			},
 		},
@@ -389,10 +393,6 @@ func TestAccResource_ProSsoSettings_OIDCForbidsSAMLBlock(t *testing.T) {
 				Config: `
 					resource "jamfplatform_pro_sso_settings" "test" {
 						sso_enabled                                          = true
-							sso_for_enrollment_enabled                           = true
-						sso_for_macos_self_service_enabled                   = false
-						enrollment_sso_for_account_driven_enrollment_enabled = false
-						group_enrollment_access_enabled                      = false
 						configuration_type                                   = "OIDC"
 						oidc_settings = {
 							user_mapping = "EMAIL"
@@ -417,10 +417,7 @@ func TestAccResource_ProSsoSettings_CertGenerated(t *testing.T) {
 	const cfg = `
 		resource "jamfplatform_pro_sso_settings" "test" {
 			sso_enabled                                          = true
-			sso_for_enrollment_enabled                           = true
-			sso_for_macos_self_service_enabled                   = false
-			enrollment_sso_for_account_driven_enrollment_enabled = false
-			group_enrollment_access_enabled                      = false
+			# OIDC-only: SSO feature flags are a no-op; omit (see oidcEnabledConfig).
 			configuration_type                                   = "OIDC"
 			oidc_settings = {
 				user_mapping                   = "EMAIL"
@@ -461,10 +458,7 @@ func TestAccResource_ProSsoSettings_CertTransition_GeneratedToNone(t *testing.T)
 	const base = `
 		resource "jamfplatform_pro_sso_settings" "test" {
 			sso_enabled                                          = true
-			sso_for_enrollment_enabled                           = true
-			sso_for_macos_self_service_enabled                   = false
-			enrollment_sso_for_account_driven_enrollment_enabled = false
-			group_enrollment_access_enabled                      = false
+			# OIDC-only: SSO feature flags are a no-op; omit (see oidcEnabledConfig).
 			configuration_type                                   = "OIDC"
 			oidc_settings = {
 				user_mapping                   = "EMAIL"

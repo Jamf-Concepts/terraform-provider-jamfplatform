@@ -752,3 +752,73 @@ func TestSigning_ErrorsWhenAllSiblingsNull(t *testing.T) {
 		t.Error("setup_type = UPLOADED must error when required siblings null")
 	}
 }
+
+// ===== requiresSamlBoolValidator ============================================
+//
+// Reads path.Root("configuration_type"). The validated flag arrives via
+// req.ConfigValue. The rule: a feature flag set true is rejected in pure OIDC
+// mode (the server silently coerces it to false) and allowed when SAML is part
+// of the configuration. Null/unknown flag, or unknown configuration_type, defer.
+
+func runRequiresSamlValidator(flag, configType tftypes.Value) []string {
+	objType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"configuration_type": tftypes.String,
+	}}
+	req := validator.BoolRequest{
+		Path:        path.Root("sso_for_enrollment_enabled"),
+		ConfigValue: tftypesToTypesBool(flag),
+		Config: tfsdk.Config{
+			Schema: schema.Schema{Attributes: map[string]schema.Attribute{
+				"configuration_type": schema.StringAttribute{Optional: true},
+			}},
+			Raw: tftypes.NewValue(objType, map[string]tftypes.Value{
+				"configuration_type": configType,
+			}),
+		},
+	}
+	var resp validator.BoolResponse
+	RequiresSamlBoolValidator("sso_for_enrollment_enabled").ValidateBool(context.Background(), req, &resp)
+	return boolDiagSummaries(resp)
+}
+
+func TestRequiresSaml_ErrorsWhenTrueAndOIDC(t *testing.T) {
+	out := runRequiresSamlValidator(boolVal(stSet, true), strVal(stSet, configurationTypeOIDC))
+	if len(out) == 0 {
+		t.Error("flag = true must error when configuration_type = OIDC")
+	}
+}
+
+func TestRequiresSaml_SilentWhenFalseAndOIDC(t *testing.T) {
+	out := runRequiresSamlValidator(boolVal(stSet, false), strVal(stSet, configurationTypeOIDC))
+	if len(out) != 0 {
+		t.Errorf("flag = false must pass in OIDC, got %v", out)
+	}
+}
+
+func TestRequiresSaml_PassesWhenTrueAndSAML(t *testing.T) {
+	out := runRequiresSamlValidator(boolVal(stSet, true), strVal(stSet, configurationTypeSAML))
+	if len(out) != 0 {
+		t.Errorf("flag = true must pass when configuration_type = SAML, got %v", out)
+	}
+}
+
+func TestRequiresSaml_PassesWhenTrueAndOIDCWithSAML(t *testing.T) {
+	out := runRequiresSamlValidator(boolVal(stSet, true), strVal(stSet, configurationTypeOIDCWithSAML))
+	if len(out) != 0 {
+		t.Errorf("flag = true must pass when configuration_type = OIDC_WITH_SAML, got %v", out)
+	}
+}
+
+func TestRequiresSaml_DefersWhenConfigTypeUnknown(t *testing.T) {
+	out := runRequiresSamlValidator(boolVal(stSet, true), strVal(stUnknown, ""))
+	if len(out) != 0 {
+		t.Errorf("must defer when configuration_type unknown, got %v", out)
+	}
+}
+
+func TestRequiresSaml_SilentWhenFlagNull(t *testing.T) {
+	out := runRequiresSamlValidator(boolVal(stNull, false), strVal(stSet, configurationTypeOIDC))
+	if len(out) != 0 {
+		t.Errorf("must defer when flag null, got %v", out)
+	}
+}
