@@ -20,7 +20,7 @@ import (
 // It is NOT suitable for endpoints where polling interferes with the delete:
 //   - /ebooks is async AND GET-sensitive (polling holds it alive past 3.5min),
 //     so its Delete is fire-and-trust — issue DELETE once, never GET, warn on the
-//     accepted 4xx. See internal/resources/pro/apps/ebook/crud.go.
+//     accepted 4xx. See internal/resources/pro/ebook/crud.go.
 //   - /macapplications is a clean synchronous DELETE (200), so it uses a plain
 //     delete with a not-found-as-success branch.
 //
