@@ -30,29 +30,21 @@ internal/
 │   ├── device_group/  # Resource, data source, list resource                 (Platform Services)
 │   ├── device_groups/ # Plural data source                                   (Platform Services)
 │   ├── devices/       # Plural data source                                   (Platform Services)
-│   └── pro/           # Jamf Pro resources — two-tier domain grouping
-│       ├── accounts/                # account, account_group (+ account_privileges data source)
-│       ├── api/                     # api_role, api_client (+ api_role_privileges data source)
-│       ├── apps/                    # app_installer, mac_app_store_app, mobile_device_app, mobile_device_provisioning_profile, app_request_settings, app_request_form_field, ebook (+ app_installer_title(s), app_store_country_codes data sources)
-│       ├── configuration_profiles/  # macos_configuration_profile, mobile_device_configuration_profile (payloadhelpers/ shared)
-│       ├── enrollment/              # automated_device_enrollment (+ public_key), computer_prestage_enrollment, mobile_device_prestage_enrollment, enrollment_customization, mobile_device_enrollment_profile, computer_invitation, mobile_device_invitation, return_to_service, supervision_identity
-│       ├── inventory/               # category, site, building, department, network_segment, ibeacon, dock_item, directory_binding, disk_encryption_configuration, package, icon, printer, licensed_software, allowed_file_extension, computer/mobile_device/user_extension_attribute, inventory_preload_record, removable_mac_address (+ plural data sources)
-│       ├── patch/                   # patch_software_title, patch_policy, patch_external_source, patch_internal_source (data source) (availabletitles/ shared)
-│       ├── policies/                # policy, script, restricted_software
-│       ├── searches/                # advanced_computer_search, advanced_mobile_device_search, advanced_user_search, advanced_volume_purchasing_content_search
-│       ├── settings/                # 30+ singleton settings resources (self_service_plus_settings, cloud_distribution_point, ldap_server, sso_settings, jamf_connect, jamf_protect, …)
-│       ├── users/                   # user, user_group (+ user_groups, users plural data sources), class
-│       ├── volume_purchasing/       # location, vpp_assignment, vpp_invitation, volume_purchasing_notification
-│       └── webhooks/                # webhook
+│   └── pro/           # Jamf Pro resources — flat single tier: every leaf package sits directly under pro/
+│                      #   (folder name = Terraform slug minus `jamfplatform_pro_`, snake_case). No domain tier.
+│                      #   ~115 packages, fully flat (e.g. the five PKI constructs are pki_adcs/, pki_venafi/, pki_digicert/, … — no pki/ grouping dir).
 ├── actions/
 │   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
 │   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (13 MDM commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
 ├── common/
+│   ├── availabletitles/ # Shared patch available-titles lookup (patch_external_source, patch_internal_source)
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
 │   ├── files/         # Shared upload-source plumbing for resources that upload file content
 │   ├── filters/       # RSQL + classic filter schema/expression builder
 │   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version
+│   ├── invitationcommon/ # Shared enrollment-invitation helpers (computer_invitation, mobile_device_invitation)
 │   ├── ldapgroups/    # Directory-service (LDAP / cloud-IdP) group resolution + scope preflight validation
+│   ├── payloadhelpers/ # mobileconfig mask / compare / identifier injection (macos/mobile_device_configuration_profile)
 │   ├── planmodifiers/ # Shared Terraform Plugin Framework plan modifiers
 │   ├── plisthelpers/  # Generic plist (Apple property list) parsing / normalisation helpers
 │   ├── scope/         # Classic scope sub-block factories + builders + validators (see STYLE_GUIDE §Scope helper)
@@ -71,17 +63,17 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 | Pattern | Reference |
 |---|---|
 | Complex CRUD with state upgrader + nested payload sub-package | `internal/resources/blueprints/blueprint/` |
-| Simple Pro CRUD (+ list + data sources) | `internal/resources/pro/inventory/category/` |
-| Pro CRUD with lossy-PUT canonicalisation + snake_case mapping | `internal/resources/pro/policies/script/` |
-| Pro singleton settings | `internal/resources/pro/settings/self_service_plus_settings/` |
-| ProClassic CRUD | `internal/resources/pro/inventory/site/` (and `network_segment/`) |
-| Scope-bearing classic resource | `internal/resources/pro/policies/policy/` |
-| Classic configuration profile (mobileconfig payload diff suppression) | `internal/resources/pro/configuration_profiles/macos_configuration_profile/` |
-| Plaintext secret with `WriteOnly + _wo_version` | `internal/resources/pro/inventory/directory_binding/` |
-| Classic-CRUD resource with a v2 side-channel (extension-attribute accept) | `internal/resources/pro/patch/patch_software_title/` |
-| Positional id-less nested lists + opt-out sub-collections (omit=retain/`[]`=clear) + Computed nested collections as `types.List` | `internal/resources/pro/inventory/licensed_software/` |
-| Create-only immutable upload (server rejects every PUT once the blob exists → all attrs RequiresReplace + no-PUT Update) | `internal/resources/pro/apps/mobile_device_provisioning_profile/` |
-| Classic XML merge PUT where empty clears (always-emit scalars / clear-by-omission) + Location/Purchasing blocks + read-only attachments (bearer-auth-refused upload) | `internal/resources/pro/enrollment/mobile_device_enrollment_profile/` |
+| Simple Pro CRUD (+ list + data sources) | `internal/resources/pro/category/` |
+| Pro CRUD with lossy-PUT canonicalisation + snake_case mapping | `internal/resources/pro/script/` |
+| Pro singleton settings | `internal/resources/pro/self_service_plus_settings/` |
+| ProClassic CRUD | `internal/resources/pro/site/` (and `network_segment/`) |
+| Scope-bearing classic resource | `internal/resources/pro/policy/` |
+| Classic configuration profile (mobileconfig payload diff suppression) | `internal/resources/pro/macos_configuration_profile/` |
+| Plaintext secret with `WriteOnly + _wo_version` | `internal/resources/pro/directory_binding/` |
+| Classic-CRUD resource with a v2 side-channel (extension-attribute accept) | `internal/resources/pro/patch_software_title/` |
+| Positional id-less nested lists + opt-out sub-collections (omit=retain/`[]`=clear) + Computed nested collections as `types.List` | `internal/resources/pro/licensed_software/` |
+| Create-only immutable upload (server rejects every PUT once the blob exists → all attrs RequiresReplace + no-PUT Update) | `internal/resources/pro/mobile_device_provisioning_profile/` |
+| Classic XML merge PUT where empty clears (always-emit scalars / clear-by-omission) + Location/Purchasing blocks + read-only attachments (bearer-auth-refused upload) | `internal/resources/pro/mobile_device_enrollment_profile/` |
 
 ## Jamf Pro resources — one-paragraph orientation
 

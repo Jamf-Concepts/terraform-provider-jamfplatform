@@ -8,7 +8,7 @@ This document covers the testing strategy and instructions for the Terraform Pro
 |------------------------|--------------|--------------|-----------------------------------------------------------------------------------------------|
 | Unit                   | (none)       | No           | `make test`                                                                                   |
 | Acceptance (all)       | `acceptance` | Yes          | `make testacc`                                                                                |
-| Acceptance (targeted)  | `acceptance` | Yes          | `make testacc-run RUN=<regex> PKG=<package>` (e.g. `RUN=TestAccResource_ProSite_Basic PKG=./internal/resources/pro/inventory/site/...`) |
+| Acceptance (targeted)  | `acceptance` | Yes          | `make testacc-run RUN=<regex> PKG=<package>` (e.g. `RUN=TestAccResource_ProSite_Basic PKG=./internal/resources/pro/site/...`) |
 
 ### Unit Tests
 
@@ -42,7 +42,7 @@ go test -v -cover -count=1 -tags=acceptance -p=1 ./...
 ```bash
 make testacc-run \
   RUN=TestAccResource_ProNetworkSegment_Basic \
-  PKG=./internal/resources/pro/inventory/network_segment/...
+  PKG=./internal/resources/pro/network_segment/...
 ```
 
 ## Test File Layout
@@ -151,7 +151,7 @@ A single Create-only test is **not** sufficient. The acceptance suite for a reso
 4. **All "shape" branches** — for any resource with mutually exclusive sub-blocks (auth modes, scope variants, payload kinds), include at least one happy-path test per shape so each input-builder branch is wire-validated.
 5. **Server-side drift recovery** where applicable. For self-healing resources (image uploads, hash convergence, lossy GETs), include a multi-step test that mutates a user input and asserts the Computed echo attributes update — not just that they remain `Set`.
 
-The reference enumeration of these patterns lives in `internal/resources/pro/enrollment/enrollment_customization/resource_acceptance_test.go`. Copy from there when scaffolding a new resource's acceptance file.
+The reference enumeration of these patterns lives in `internal/resources/pro/enrollment_customization/resource_acceptance_test.go`. Copy from there when scaffolding a new resource's acceptance file.
 
 ### Client acceptance tests
 
@@ -195,10 +195,10 @@ A `Computed` attribute that the server populates **asynchronously** (e.g. `compu
 
 ### Profile-corpus regression test (opt-in build tag)
 
-`internal/resources/pro/configuration_profiles/macos_configuration_profile/helpers_corpus_test.go` is gated by `//go:build profile_corpus`. It iterates a 200-profile mobileconfig corpus under `testing/profile_roundtrip/` (gitignored, developer-machine-only) and asserts the mask-and-compare diff suppression is stable. Run with:
+`internal/resources/pro/macos_configuration_profile/helpers_corpus_test.go` is gated by `//go:build profile_corpus`. It iterates a 200-profile mobileconfig corpus under `testing/profile_roundtrip/` (gitignored, developer-machine-only) and asserts the mask-and-compare diff suppression is stable. Run with:
 
 ```bash
-go test -tags profile_corpus ./internal/resources/pro/configuration_profiles/macos_configuration_profile/...
+go test -tags profile_corpus ./internal/resources/pro/macos_configuration_profile/...
 ```
 
 Not part of CI. Regenerate the corpus before running by replaying `/tmp/sample_titles.py` + `/tmp/roundtrip.py` against a tenant. Background on the diff classes the mask covers: [STYLE_GUIDE.md §Configuration profile payload diff suppression](STYLE_GUIDE.md#configuration-profile-payload-diff-suppression-mask-and-compare).
