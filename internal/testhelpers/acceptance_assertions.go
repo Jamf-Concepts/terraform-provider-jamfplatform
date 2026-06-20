@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -19,6 +20,14 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
+)
+
+// A freshly-created LDAP server fixture is not queryable the instant the POST
+// returns — Jamf needs a moment to establish the bind/connection before
+// /v1/ldap/groups surfaces its groups. ResolveDSGroupWireValue rides out that gap.
+const (
+	dsGroupResolveTimeout  = 120 * time.Second
+	dsGroupResolveInterval = 5 * time.Second
 )
 
 // NewProClassicClient builds a ProClassic SDK client from the acceptance client.
@@ -57,10 +66,28 @@ func RequireSingletonStillExists(t *testing.T, label string, get func(context.Co
 // independent check that the encoding is server-acceptable.
 func ResolveDSGroupWireValue(t *testing.T, name string) string {
 	t.Helper()
-	groups, err := ldapgroups.ResolveByName(context.Background(), pro.New(NewAcceptanceClient(t)), name)
-	if err != nil {
-		t.Fatalf("resolving %q: %v", name, err)
+	resolver := pro.New(NewAcceptanceClient(t))
+
+	// Poll until the group surfaces (>=1 match), riding out a freshly-created
+	// fixture server's connection-establishment delay. A persistent 0 (or a search
+	// error) past the timeout is a real failure and fatals below.
+	var groups []ldapgroups.Group
+	var err error
+	deadline := time.Now().Add(dsGroupResolveTimeout)
+	for {
+		groups, err = ldapgroups.ResolveByName(context.Background(), resolver, name)
+		if err == nil && len(groups) >= 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			if err != nil {
+				t.Fatalf("resolving %q within %s: %v", name, dsGroupResolveTimeout, err)
+			}
+			t.Fatalf("group %q did not resolve within %s (search returned no exact match — check the group exists in the directory and the LDAP fixture surfaces it)", name, dsGroupResolveTimeout)
+		}
+		time.Sleep(dsGroupResolveInterval)
 	}
+
 	if len(groups) != 1 {
 		t.Fatalf("group %q must resolve to exactly one directory group (got %d) — pick an unambiguous name", name, len(groups))
 	}
