@@ -10,30 +10,45 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
-// createInventoryUserFixture creates a throwaway Jamf Pro inventory user via the
-// SDK (Pro v1 /users — the same endpoint the data source reads) and registers
-// its deletion, returning the username. The provider ships no user resource, so
-// the data-source test self-provisions its subject this way rather than
-// depending on a pre-existing tenant user named by an env var.
+// createInventoryUserFixture creates a throwaway Jamf Pro inventory user and
+// registers its deletion, returning the username. The provider ships no user
+// resource, so the data-source test self-provisions its subject this way rather
+// than depending on a pre-existing tenant user named by an env var.
+//
+// Create and delete go through the CLASSIC /JSSResource/users API on purpose:
+// the Pro v1 /users endpoint is broken on Jamf Pro 11.28 (POST 500s but still
+// persists the record; DELETE 500s and is a silent no-op), whereas the classic
+// endpoint works on every version (wire-probed). The data source under test
+// still reads via Pro v1, which is unaffected.
 func createInventoryUserFixture(t *testing.T) string {
 	t.Helper()
-	c := pro.New(testhelpers.NewAcceptanceClient(t))
+	c := proclassic.New(testhelpers.NewAcceptanceClient(t))
 	ctx := context.Background()
 	username := "tf-acc-user-" + testhelpers.RunSuffix()
-	email := username + "@example.invalid"
-	created, err := c.CreateUserV1(ctx, &pro.UserInventory{Username: &username, Email: &email}, false)
+
+	id, _, err := c.ApplyUser(ctx, &proclassic.UserPost{Name: &username})
 	if err != nil {
 		t.Fatalf("creating inventory user fixture: %v", err)
 	}
+
 	t.Cleanup(func() {
-		if err := c.DeleteUserV1(ctx, created.ID); err != nil {
-			t.Errorf("deleting inventory user fixture %s: %v", created.ID, err)
+		if err := c.DeleteUserByID(ctx, id); err != nil {
+			t.Errorf("deleting inventory user fixture %s: %v", id, err)
+			return
+		}
+		// Confirm the delete took effect with an authoritative GET — never trust
+		// the delete status alone (the v1 delete is a silent no-op on 11.28).
+		if _, err := c.GetUserByID(ctx, id); err == nil {
+			t.Errorf("inventory user fixture %s still present after delete", id)
+		} else if !helpers.IsNotFoundError(err) {
+			t.Errorf("verifying inventory user fixture %s deletion: %v", id, err)
 		}
 	})
 	return username
