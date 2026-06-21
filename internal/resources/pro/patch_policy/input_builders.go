@@ -130,9 +130,13 @@ func buildScopeLimitations(ctx context.Context, m *PatchPolicyScopeLimitationsMo
 		l.Ibeacons = &proclassic.PatchPolicyScopeLimitationsIbeacons{Ibeacon: ibeacons}
 	}
 
-	if l.NetworkSegments == nil && l.Ibeacons == nil {
-		return nil, diags
-	}
+	// Always emit the block when the user declared `limitations` (the caller's
+	// gate) so an all-empty declared block clears every category. /patchpolicies
+	// was wire-probed to REPLACE an omitted <limitations>/<exclusions> sub-block
+	// (so omission already clears here), but most classic scope endpoints MERGE
+	// it (retaining members) — emitting the empty block clears correctly under
+	// both, keeping the build uniform regardless of per-endpoint omit semantics.
+	// (Target categories are direct <scope> children and replace on omit.)
 	return l, diags
 }
 
@@ -178,10 +182,7 @@ func buildScopeExclusions(ctx context.Context, m *PatchPolicyScopeExclusionsMode
 		e.Ibeacons = &proclassic.PatchPolicyScopeExclusionsIbeacons{Ibeacon: ibeacons}
 	}
 
-	if e.Computers == nil && e.ComputerGroups == nil && e.Buildings == nil &&
-		e.Departments == nil && e.NetworkSegments == nil && e.Ibeacons == nil {
-		return nil, diags
-	}
+	// Always emit the block when declared — see buildScopeLimitations.
 	return e, diags
 }
 

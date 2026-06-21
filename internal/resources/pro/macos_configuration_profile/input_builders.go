@@ -220,9 +220,11 @@ func buildScopeLimitations(ctx context.Context, m *scope.ComputerScopeLimitation
 		l.UserGroups = &proclassic.OsXConfigurationProfileScopeLimitationsUserGroups{UserGroup: userGroups}
 	}
 
-	if l.NetworkSegments == nil && l.Ibeacons == nil && l.Users == nil && l.UserGroups == nil {
-		return nil, diags
-	}
+	// Always emit the block when the user declared `limitations` (the caller's
+	// gate). The classic /osxconfigurationprofiles endpoint MERGES an omitted
+	// sub-block (wire-probed), so collapsing an all-empty block to nil would
+	// retain the server's existing members. An empty <limitations></limitations>
+	// clears every category, which is what `[]` / omission means.
 	return l, diags
 }
 
@@ -312,12 +314,7 @@ func buildScopeExclusions(ctx context.Context, m *scope.ComputerScopeExclusionsM
 		e.UserGroups = &proclassic.OsXConfigurationProfileScopeExclusionsUserGroups{UserGroup: userGroups}
 	}
 
-	if e.Computers == nil && e.ComputerGroups == nil && e.Buildings == nil &&
-		e.Departments == nil && e.JssUsers == nil && e.JssUserGroups == nil &&
-		e.NetworkSegments == nil && e.Ibeacons == nil &&
-		e.Users == nil && e.UserGroups == nil {
-		return nil, diags
-	}
+	// Always emit the block when declared — see buildScopeLimitations.
 	return e, diags
 }
 

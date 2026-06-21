@@ -139,9 +139,12 @@ func buildScopeExclusions(ctx context.Context, m *RestrictedSoftwareScopeExclusi
 		e.Users = &proclassic.RestrictedSoftwareScopeExclusionsUsers{User: users}
 	}
 
-	if e.Computers == nil && e.ComputerGroups == nil && e.Buildings == nil &&
-		e.Departments == nil && e.Users == nil {
-		return nil, diags
-	}
+	// Always emit the block when the user declared `exclusions` (the caller's
+	// gate). The classic /restrictedsoftware endpoint MERGES an omitted
+	// <exclusions> sub-block (wire-probed), so collapsing an all-empty block to
+	// nil would retain the server's existing members. An empty
+	// <exclusions></exclusions> clears every category, which is what `[]` /
+	// omission means. (Target categories are direct <scope> children and replace
+	// on omit — no such handling needed.)
 	return e, diags
 }
