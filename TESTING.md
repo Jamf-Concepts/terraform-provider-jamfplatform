@@ -8,6 +8,7 @@ This document covers the testing strategy and instructions for the Terraform Pro
 |------------------------|--------------|--------------|-----------------------------------------------------------------------------------------------|
 | Unit                   | (none)       | No           | `make test`                                                                                   |
 | Acceptance (all)       | `acceptance` | Yes          | `make testacc`                                                                                |
+| Acceptance (changed)   | `acceptance` | Yes          | `make testacc-changed` (changed packages + their transitive dependents)                       |
 | Acceptance (targeted)  | `acceptance` | Yes          | `make testacc-run RUN=<regex> PKG=<package>` (e.g. `RUN=TestAccResource_ProSite_Basic PKG=./internal/resources/pro/site/...`) |
 
 ### Unit Tests
@@ -44,6 +45,26 @@ make testacc-run \
   RUN=TestAccResource_ProNetworkSegment_Basic \
   PKG=./internal/resources/pro/network_segment/...
 ```
+
+**Changed-scope runs:** `make testacc-changed` runs acceptance tests only for the
+packages your branch touches plus everything that transitively depends on them.
+It shells out to `scripts/acctargets`, which diffs against `origin/main` (override
+with `BASE=<ref>`) and walks the package import graph:
+
+- Change one resource (e.g. `internal/resources/pro/category/`) → only that
+  package's acceptance tests run.
+- Change a shared helper (e.g. `internal/common/scope/`) → that package **and**
+  every consumer (`policy`, the apps, `user_group`, the VPP resources, the
+  config profiles, the advanced searches, …) run.
+- Change a global file — `go.mod`/`go.sum`, anything under `.github/workflows/`,
+  `internal/testhelpers/`, or the provider hub `internal/provider/` — resolves
+  to the full suite (`./...`).
+
+The graph deliberately **cuts `internal/provider`'s out-edges**. The provider
+imports every resource package purely to register it, and `testhelpers` imports
+the provider, so without the cut every change would look like it touches the
+whole suite. The cut keeps real edges (a package's own deps, shared helpers,
+cross-package test fixtures) and drops only the registration fan-out.
 
 ## Test File Layout
 
@@ -205,7 +226,23 @@ Not part of CI. Regenerate the corpus before running by replaying `/tmp/sample_t
 
 ### CI scaling
 
-Current acceptance job in `.github/workflows/integration-tests.yml` runs Platform Services and Pro tests serially (`-p=1`, 30-minute timeout). When acceptance runtime starts pressing the timeout, split into a dedicated `acceptance-tests.yml` workflow — single serial job (no matrix; parallel acceptance against the same tenant causes naming/ID collisions), independently tunable timeout, optional post-merge-only cadence.
+The full suite runs serially (`-p=1`) against a single shared tenant, which can
+exceed two hours end to end. To keep PRs fast, CI scopes acceptance to the
+change set:
+
+- **Per PR** (`integration-tests.yml`): the `plan-acc` job runs
+  `scripts/acctargets` to compute the affected packages, then calls the reusable
+  `acceptance.yml` workflow with just that subset. A PR touching no acceptance
+  package skips the acceptance job entirely.
+- **Nightly + on demand** (`acceptance-full.yml`): the complete suite (`./...`)
+  as a regression safety net, on a `0 2 * * *` cron and `workflow_dispatch`.
+
+Both paths run through the reusable `acceptance.yml` (one copy of the tenant
+secret wiring) and share the `acceptance-tenant` concurrency group, so a
+scheduled full run queues behind any in-progress PR run rather than colliding on
+the tenant. Acceptance against one tenant must stay serial — parallel runs cause
+naming/ID collisions — so scaling is "test fewer packages," not "test in
+parallel."
 
 ### Benchmark-specific considerations
 
@@ -213,16 +250,17 @@ CBEngine benchmarks deploy asynchronously. The benchmark must reach `SYNCED` sta
 
 ## CI/CD
 
-All CI lives in **`.github/workflows/integration-tests.yml`**, triggered on PRs to `main` and via `workflow_dispatch`.
+PR CI lives in **`.github/workflows/integration-tests.yml`**, triggered on PRs to `main` and via `workflow_dispatch`. The acceptance run itself is factored into the reusable **`.github/workflows/acceptance.yml`**, and the full-suite schedule lives in **`.github/workflows/acceptance-full.yml`**.
 
-| Job          | What it does                                            | Gating                                  | Timeout |
-|--------------|---------------------------------------------------------|-----------------------------------------|---------|
-| `build`      | `go build` + `golangci-lint run`                        | —                                       | 5 min   |
-| `generate`   | Runs `make generate`, fails if `git diff` is non-empty  | —                                       | default |
-| `unit`       | `go test -v -cover -count=1 ./...`                      | Needs `build`                           | 10 min  |
-| `acceptance` | `go test -v -cover -count=1 -tags=acceptance -p=1 ./...` | Needs `unit`; gated by `acceptance` env | 30 min  |
+| Job          | What it does                                                              | Gating                                  | Timeout |
+|--------------|---------------------------------------------------------------------------|-----------------------------------------|---------|
+| `build`      | `go build` + `golangci-lint run`                                          | —                                       | 5 min   |
+| `generate`   | Runs `make generate`, fails if `git diff` is non-empty                    | —                                       | default |
+| `unit`       | `go test -v -cover -count=1 ./...`                                        | Needs `build`                           | 10 min  |
+| `plan-acc`   | `scripts/acctargets` → the affected package set for this PR               | Needs `unit`                            | 5 min   |
+| `acceptance` | Calls `acceptance.yml` with the scoped package set (`-p=1`)               | Needs `plan-acc`; skipped if empty; gated by `acceptance` env | 6 h (default) |
 
-The `acceptance` job requires manual approval through the GitHub `acceptance` environment before it runs. It executes against Terraform `1.14.*`.
+The reusable `acceptance.yml` also backs the scheduled full run (`acceptance-full.yml`, `packages: ./...`). Both run in the GitHub `acceptance` environment (which holds the tenant secrets) and execute against Terraform `1.15.*`.
 
 ### Required GitHub Secrets
 

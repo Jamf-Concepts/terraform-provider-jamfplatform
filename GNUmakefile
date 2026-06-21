@@ -16,7 +16,7 @@ generate:
 # generated fixtures, examples, and local-testing scratch dirs are left alone.
 # Add new top-level Go packages here if any are introduced.
 fmt:
-	gofmt -s -w -e main.go internal/ tools/
+	gofmt -s -w -e main.go internal/ tools/ scripts/
 
 fix:
 	go fix ./...
@@ -44,4 +44,20 @@ TESTARGS ?=
 testacc-run:
 	TF_ACC=1 go test -v -cover -count=1 -tags acceptance -timeout 120m -p=1 -run '$(RUN)' $(TESTARGS) $(PKG)
 
-.PHONY: fmt fix lint test testacc testacc-run build install generate
+# testacc-changed runs acceptance tests only for the packages affected by the
+# current change set: the changed packages plus everything that transitively
+# depends on them (see scripts/acctargets). Override BASE to diff against a ref
+# other than origin/main:
+#   make testacc-changed
+#   make testacc-changed BASE=origin/feat/pro-expansion
+BASE ?=
+testacc-changed:
+	@pkgs="$$(go run scripts/acctargets/main.go $(BASE))"; \
+	if [ -z "$$pkgs" ]; then \
+		echo "No acceptance packages affected by the current changes."; \
+		exit 0; \
+	fi; \
+	echo "Acceptance scope: $$pkgs"; \
+	TF_ACC=1 go test -v -cover -count=1 -tags acceptance -timeout 120m -p=1 $$pkgs
+
+.PHONY: fmt fix lint test testacc testacc-run testacc-changed build install generate
