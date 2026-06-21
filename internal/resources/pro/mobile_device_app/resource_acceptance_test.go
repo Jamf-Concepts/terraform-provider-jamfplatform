@@ -609,11 +609,14 @@ func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
 		}
 	`, name, group)
 
-	// cleared removes the directory-service group from scope. Applied as a final
-	// step BEFORE the framework destroys the resource: destroying an app while a
-	// DS group is still scoped can leave an orphaned app->LDAP association that
+	// cleared removes the directory-service group from scope by assigning an
+	// empty set `[]` (the natural "remove all" gesture). Applied as a final step
+	// BEFORE the framework destroys the resource: destroying an app while a DS
+	// group is still scoped can leave an orphaned app->LDAP association that
 	// blocks the LDAP server's deletion (a server-side data-integrity bug). By
 	// clearing the reference first, teardown leaves nothing pinning the directory.
+	// `[]` round-trips because the scope set is Optional+Computed with the
+	// CanonicalEmptySet plan modifier.
 	cleared := fmt.Sprintf(`
 		resource "jamfplatform_pro_mobile_device_app" "test" {
 			general = {
@@ -626,6 +629,10 @@ func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
 			scope = {
 				targets = {
 					all_mobile_devices = true
+				}
+
+				limitations = {
+					directory_service_user_group_names = []
 				}
 			}
 		}
@@ -644,9 +651,10 @@ func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
 				),
 			},
 			{
-				// Detach the DS group before destroy (see `cleared` above). The
-				// post-step plan must be empty, which enforces that the clear
-				// actually round-tripped server-side.
+				// Detach the DS group before destroy (see `cleared` above) via an
+				// empty set `[]`. The `[]` plans as null (CanonicalEmptySet),
+				// so no explicit count assertion — the implicit post-step empty-plan
+				// check enforces that the clear round-tripped server-side.
 				Config: cleared,
 				Check:  resource.TestCheckResourceAttrSet(mobileAppResourceAddr, "id"),
 			},

@@ -386,10 +386,12 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
 			},
 			{
 				// Detach the DS group from both limitations and exclusions BEFORE
-				// the framework destroys the invitation. Destroying while a DS group
-				// is still scoped can leave an orphaned scope->LDAP association that
-				// blocks the LDAP server's deletion (a server-side data-integrity
-				// bug). The post-step empty-plan check enforces the clear round-tripped.
+				// the framework destroys the invitation, via an empty set `[]` (the
+				// natural "remove all" gesture). Destroying while a DS group is still
+				// scoped can leave an orphaned scope->LDAP association that blocks the
+				// LDAP server's deletion (a server-side data-integrity bug). `[]`
+				// plans as null (CanonicalEmptySet); the post-step empty-plan
+				// check enforces the clear round-tripped.
 				Config: vppLocationFixture(token, suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_vpp_invitation" "test" {
   name                = %[1]q
@@ -397,8 +399,12 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
   distribution_method = "Make available in Self Service only"
 
   scope = {
-    limitations = {}
-    exclusions  = {}
+    limitations = {
+      directory_service_user_group_names = []
+    }
+    exclusions = {
+      directory_service_user_group_names = []
+    }
   }
 }
 `, name),
