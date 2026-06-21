@@ -62,6 +62,14 @@ jobs:
     name: Acceptance Tests
     needs: unit
     runs-on: ubuntu-latest
+    # Serialise across ALL PRs and branches: the suite mutates a single shared
+    # Jamf tenant, so only one acceptance run may execute at a time. The group is
+    # a constant (NOT github.ref) so a second PR's run shares it and waits for the
+    # in-progress run instead of running alongside it. cancel-in-progress: false
+    # never kills a running suite — the newcomer queues until it finishes.
+    concurrency:
+      group: acceptance-tenant
+      cancel-in-progress: false
     # No job timeout-minutes: serial (-p=1) tenant suites can exceed an hour;
     # rely on the GitHub default 6h job ceiling. Per-package limit is enforced
     # by `go test -timeout` below (matches `make testacc`).
