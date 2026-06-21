@@ -366,3 +366,59 @@ func TestAccResource_ProEbook_SelfServiceCategories(t *testing.T) {
 		},
 	})
 }
+
+// TestAccResource_ProEbook_ScopeLimitationsClearWithEmptySet verifies that an
+// all-empty but declared `limitations` block clears its members. /ebooks MERGES
+// an omitted <limitations> sub-block (wire-probed), so the build must emit an
+// empty <limitations></limitations>; otherwise the member is retained
+// server-side and the apply fails the post-apply consistency check. Uses a
+// network-segment fixture (no LDAP needed).
+func TestAccResource_ProEbook_ScopeLimitationsClearWithEmptySet(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ebook-limclear-" + suffix
+	seg := "tf-acc-netseg-ebook-" + suffix
+	cfg := func(segs string) string {
+		return fmt.Sprintf(`
+resource "jamfplatform_pro_network_segment" "fixture" {
+  name             = %q
+  starting_address = "10.97.0.0"
+  ending_address   = "10.97.0.255"
+}
+
+resource "jamfplatform_pro_ebook" "test" {
+  general = {
+    name            = %q
+    url             = "https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf"
+    file_type       = "PDF"
+    version         = "1.0"
+    deployment_type = "Make Available in Self Service"
+  }
+  scope = {
+    targets = {
+      all_computers = true
+    }
+    limitations = {
+      network_segment_ids = [%s]
+    }
+  }
+}
+`, seg, name, segs)
+	}
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckEbookDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: cfg(`jamfplatform_pro_network_segment.fixture.id`),
+				Check:  resource.TestCheckResourceAttr(ebookResourceAddr, "scope.limitations.network_segment_ids.#", "1"),
+			},
+			{
+				// Clear to [] — declared-but-empty <limitations> must be emitted so
+				// the merge endpoint clears. Implicit post-step empty-plan enforces it.
+				Config: cfg(``),
+				Check:  resource.TestCheckResourceAttr(ebookResourceAddr, "scope.limitations.network_segment_ids.#", "0"),
+			},
+		},
+	})
+}

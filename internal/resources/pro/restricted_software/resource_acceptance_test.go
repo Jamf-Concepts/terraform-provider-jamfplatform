@@ -281,3 +281,50 @@ func TestAccResource_ProRestrictedSoftware_AllComputersConflict(t *testing.T) {
 		},
 	})
 }
+
+// TestAccResource_ProRestrictedSoftware_ScopeExclusionsClearWithEmptySet verifies
+// that an all-empty but declared `exclusions` block clears its members.
+// /restrictedsoftware MERGES an omitted <exclusions> sub-block (wire-probed), so
+// the build must emit an empty <exclusions></exclusions>; otherwise the excluded
+// user is retained server-side and the apply fails the post-apply consistency
+// check. Uses free-text local usernames (the same category the ScopeUpdate test
+// exercises), so no fixtures are required.
+func TestAccResource_ProRestrictedSoftware_ScopeExclusionsClearWithEmptySet(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-rs-exclclear-" + suffix
+	cfg := func(users string) string {
+		return fmt.Sprintf(`
+resource "jamfplatform_pro_restricted_software" "test" {
+  general = {
+    name         = %q
+    process_name = "Solitaire.app"
+  }
+  scope = {
+    targets = {
+      all_computers = true
+    }
+    exclusions = {
+      directory_service_or_local_user_names = [%s]
+    }
+  }
+}
+`, name, users)
+	}
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckRestrictedSoftwareDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: cfg(`"tf-acc-exclude-user"`),
+				Check:  resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "1"),
+			},
+			{
+				// Clear to [] — declared-but-empty <exclusions> must be emitted so
+				// the merge endpoint clears. Implicit post-step empty-plan enforces it.
+				Config: cfg(``),
+				Check:  resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "0"),
+			},
+		},
+	})
+}

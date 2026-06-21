@@ -2410,3 +2410,56 @@ func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 		},
 	})
 }
+
+// TestAccPolicyResource_ScopeLimitationsClearWithEmptySet verifies that an
+// all-empty but declared `limitations` block clears its members on the wire.
+// /policies MERGES an omitted <limitations> sub-block (wire-probed), so the
+// build must emit an empty <limitations></limitations> rather than omit it;
+// otherwise the member is retained server-side and the apply fails the
+// post-apply consistency check. Uses a network-segment fixture (no LDAP needed).
+func TestAccPolicyResource_ScopeLimitationsClearWithEmptySet(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-policy-limclear-" + suffix
+	seg := "tf-acc-netseg-limclear-" + suffix
+	cfg := func(segs string) string {
+		return fmt.Sprintf(`
+resource "jamfplatform_pro_network_segment" "fixture" {
+  name             = %q
+  starting_address = "10.98.0.0"
+  ending_address   = "10.98.0.255"
+}
+
+resource "jamfplatform_pro_policy" "test" {
+  general = {
+    name = %q
+  }
+  scope = {
+    targets = {
+      all_computers = true
+    }
+    limitations = {
+      network_segment_ids = [%s]
+    }
+  }
+}
+`, seg, name, segs)
+	}
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: cfg(`jamfplatform_pro_network_segment.fixture.id`),
+				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_policy.test", "scope.limitations.network_segment_ids.#", "1"),
+			},
+			{
+				// Clear to [] — the declared-but-empty <limitations> block must be
+				// emitted so the merge endpoint clears the segment. The implicit
+				// post-step empty-plan check enforces the clear round-tripped.
+				Config: cfg(``),
+				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_policy.test", "scope.limitations.network_segment_ids.#", "0"),
+			},
+		},
+	})
+}

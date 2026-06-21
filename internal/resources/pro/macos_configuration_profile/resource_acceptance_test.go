@@ -949,3 +949,58 @@ func TestAccResource_MacOSConfigurationProfile_AdminUIRemove_SurfacesAsDrift(t *
 		},
 	})
 }
+
+// TestAccResource_MacOSConfigurationProfile_ScopeLimitationsClearWithEmptySet
+// verifies that an all-empty but declared `limitations` block clears its
+// members. /osxconfigurationprofiles MERGES an omitted <limitations> sub-block
+// (wire-probed), so the build must emit an empty <limitations></limitations>;
+// otherwise the member is retained server-side and the apply fails the
+// post-apply consistency check. Uses a network-segment fixture (no LDAP needed).
+func TestAccResource_MacOSConfigurationProfile_ScopeLimitationsClearWithEmptySet(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-macoscp-limclear-" + suffix
+	seg := "tf-acc-netseg-macoscp-" + suffix
+	payload := readFixture(t, "1Password__notifications_profile.mobileconfig")
+	cfg := func(segs string) string {
+		return fmt.Sprintf(`
+resource "jamfplatform_pro_network_segment" "fixture" {
+  name             = %q
+  starting_address = "10.96.0.0"
+  ending_address   = "10.96.0.255"
+}
+
+resource "jamfplatform_pro_macos_configuration_profile" "test" {
+  general = {
+    name     = %q
+    payloads = <<EOF
+%sEOF
+  }
+  scope = {
+    targets = {
+      all_computers = true
+    }
+    limitations = {
+      network_segment_ids = [%s]
+    }
+  }
+}
+`, seg, name, payload, segs)
+	}
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: cfg(`jamfplatform_pro_network_segment.fixture.id`),
+				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_macos_configuration_profile.test", "scope.limitations.network_segment_ids.#", "1"),
+			},
+			{
+				// Clear to [] — declared-but-empty <limitations> must be emitted so
+				// the merge endpoint clears. Implicit post-step empty-plan enforces it.
+				Config: cfg(``),
+				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_macos_configuration_profile.test", "scope.limitations.network_segment_ids.#", "0"),
+			},
+		},
+	})
+}
