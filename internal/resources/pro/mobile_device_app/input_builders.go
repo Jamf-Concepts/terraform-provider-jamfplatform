@@ -189,9 +189,11 @@ func buildMobileAppScopeLimitations(ctx context.Context, m *scope.MobileScopeLim
 		l.UserGroups = &proclassic.MobileDeviceApplicationScopeLimitationsUserGroups{UserGroup: userGroups}
 	}
 
-	if l.NetworkSegments == nil && l.Users == nil && l.UserGroups == nil {
-		return nil, diags
-	}
+	// Always emit the block when the user declared `limitations` (the caller's
+	// gate). The classic application endpoint MERGES an omitted sub-block, so
+	// collapsing an all-empty block to nil would retain the server's existing
+	// members instead of clearing them. An empty <limitations></limitations>
+	// clears every category (wire-probed), which is what `[]` / omission means.
 	return l, diags
 }
 
@@ -273,11 +275,7 @@ func buildMobileAppScopeExclusions(ctx context.Context, m *scope.MobileScopeExcl
 		e.UserGroups = &proclassic.MobileDeviceApplicationScopeExclusionsUserGroups{UserGroup: userGroups}
 	}
 
-	if e.MobileDevices == nil && e.MobileDeviceGroups == nil && e.Buildings == nil &&
-		e.Departments == nil && e.JssUsers == nil && e.JssUserGroups == nil &&
-		e.NetworkSegments == nil && e.Users == nil && e.UserGroups == nil {
-		return nil, diags
-	}
+	// Always emit the block when declared — see buildMobileAppScopeLimitations.
 	return e, diags
 }
 

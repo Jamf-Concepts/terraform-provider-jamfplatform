@@ -14,7 +14,8 @@ import (
 // FlattenIDNameSet projects a ProClassic []IDName pointer-slice into a Terraform
 // Set<String> of the items' integer IDs. Thin, diagnostics-dropping wrapper over
 // FlattenIDSlice for the common proclassic.IDName shape that classic scope and
-// reference sub-blocks use throughout. Returns a null set for nil/empty input.
+// reference sub-blocks use throughout. Returns an empty set for nil/empty input
+// (empty is the canonical "no members" value — see FlattenIDSlice).
 func FlattenIDNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
 	out, _ := FlattenIDSlice(ctx, items, func(i proclassic.IDName) *int { return i.ID })
 	return out

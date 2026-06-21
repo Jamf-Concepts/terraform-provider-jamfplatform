@@ -121,8 +121,8 @@ func TestFlattenIDSlice_NilSlice(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
-	if !got.IsNull() {
-		t.Errorf("expected null set, got %+v", got)
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("expected empty set, got %+v", got)
 	}
 }
 
@@ -132,8 +132,8 @@ func TestFlattenIDSlice_EmptySlice(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
-	if !got.IsNull() {
-		t.Errorf("expected null set for empty slice, got %+v", got)
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("expected empty set for empty slice, got %+v", got)
 	}
 }
 
@@ -161,14 +161,14 @@ func TestFlattenIDSlice_SkipsNilExtract(t *testing.T) {
 	}
 }
 
-func TestFlattenIDSlice_AllNilCollapsesToNull(t *testing.T) {
+func TestFlattenIDSlice_AllNilCollapsesToEmpty(t *testing.T) {
 	items := []testItem{{ID: nil}, {ID: nil}}
 	got, diags := FlattenIDSlice(context.Background(), &items, extractID)
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
-	if !got.IsNull() {
-		t.Errorf("expected null set when every item extracts to nil, got %+v", got)
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("expected empty set when every item extracts to nil, got %+v", got)
 	}
 }
 
@@ -223,8 +223,8 @@ func TestFlattenNameSlice_NilSlice(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
-	if !got.IsNull() {
-		t.Errorf("expected null set, got %+v", got)
+	if got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("expected empty set, got %+v", got)
 	}
 }
 

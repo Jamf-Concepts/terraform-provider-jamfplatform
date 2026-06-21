@@ -94,7 +94,7 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 	}
 }
 
-func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
+func TestFlattenScope_NilSubBlocksProduceEmptySets(t *testing.T) {
 	t.Parallel()
 	state := &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{AllMobileDevices: types.BoolValue(false)}}
 	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
@@ -114,8 +114,8 @@ func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 		"UserIDs":              state.Targets.UserIDs,
 		"UserGroupIDs":         state.Targets.UserGroupIDs,
 	} {
-		if !s.IsNull() {
-			t.Fatalf("%s expected null when SDK sub-block absent, got %v", label, s)
+		if s.IsNull() || len(s.Elements()) != 0 {
+			t.Fatalf("%s expected empty set when SDK sub-block absent, got %v", label, s)
 		}
 	}
 }

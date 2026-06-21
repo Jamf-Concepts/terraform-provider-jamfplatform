@@ -7,9 +7,20 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// EmptyStringSet returns a known, empty Set<String>. It is the canonical
+// "no members" value for every classic scope target category: the schema
+// factories (IDSetAttribute / NameSetAttribute) are Optional+Computed and the
+// CanonicalEmptySet plan modifier settles both a null config and an `[]`
+// config to this value, so the read path must produce it too (rather than a
+// null set) to stay consistent with the plan. See scope/schema.go.
+func EmptyStringSet() types.Set {
+	return types.SetValueMust(types.StringType, []attr.Value{})
+}
 
 // BuildIDSlice projects a Terraform Set<String> of numeric Jamf Pro IDs
 // into the SDK pointer-slice expected by classic scope sub-blocks. mk is
@@ -61,11 +72,12 @@ func BuildIDSlice[T any](
 }
 
 // FlattenIDSlice projects an SDK pointer-slice into a Terraform Set<String>
-// of ID values. extract returns the int ID from the SDK item type. Returns
-// types.SetNull(types.StringType) if items is nil or empty so state stays
-// null on absent sub-blocks (matching omission semantics on the read side).
-// Items whose extract returns nil are skipped — server should not return
-// such items but defend.
+// of ID values. extract returns the int ID from the SDK item type. Returns an
+// empty Set<String> (EmptyStringSet) if items is nil or empty: empty is the
+// canonical "no members" value for these Optional+Computed scope sets, so an
+// absent sub-block reads back as `[]`, not null (see scope/schema.go and the
+// CanonicalEmptySet plan modifier). Items whose extract returns nil are
+// skipped — server should not return such items but defend.
 func FlattenIDSlice[T any](
 	ctx context.Context,
 	items *[]T,
@@ -73,7 +85,7 @@ func FlattenIDSlice[T any](
 ) (types.Set, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if items == nil || len(*items) == 0 {
-		return types.SetNull(types.StringType), diags
+		return EmptyStringSet(), diags
 	}
 	values := make([]string, 0, len(*items))
 	for _, item := range *items {
@@ -84,7 +96,7 @@ func FlattenIDSlice[T any](
 		values = append(values, strconv.Itoa(*idPtr))
 	}
 	if len(values) == 0 {
-		return types.SetNull(types.StringType), diags
+		return EmptyStringSet(), diags
 	}
 	out, d := types.SetValueFrom(ctx, types.StringType, values)
 	diags.Append(d...)
@@ -122,8 +134,10 @@ func BuildNameSlice[T any](
 
 // FlattenNameSlice projects an SDK pointer-slice into a Terraform Set<String>
 // of name values. extract returns the name pointer from the SDK item type.
-// Items whose extract returns nil or empty string are skipped — server-side
-// blanks have no meaningful TF representation.
+// Returns an empty Set<String> (EmptyStringSet) on nil/empty input — see
+// FlattenIDSlice for the empty-is-canonical rationale. Items whose extract
+// returns nil or empty string are skipped — server-side blanks have no
+// meaningful TF representation.
 func FlattenNameSlice[T any](
 	ctx context.Context,
 	items *[]T,
@@ -131,7 +145,7 @@ func FlattenNameSlice[T any](
 ) (types.Set, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	if items == nil || len(*items) == 0 {
-		return types.SetNull(types.StringType), diags
+		return EmptyStringSet(), diags
 	}
 	values := make([]string, 0, len(*items))
 	for _, item := range *items {
@@ -142,7 +156,7 @@ func FlattenNameSlice[T any](
 		values = append(values, *namePtr)
 	}
 	if len(values) == 0 {
-		return types.SetNull(types.StringType), diags
+		return EmptyStringSet(), diags
 	}
 	out, d := types.SetValueFrom(ctx, types.StringType, values)
 	diags.Append(d...)

@@ -279,7 +279,9 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 				Config: stepScopeShrink,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.targets.computer_group_ids.#", "1"),
-					resource.TestCheckNoResourceAttr(patchPolicyType+".test", "scope.targets.building_ids.#"),
+					// A shrunk-away category flattens to an empty set (canonical
+					// "no members" for these Optional+Computed scope sets), not null.
+					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.targets.building_ids.#", "0"),
 				),
 			},
 			{

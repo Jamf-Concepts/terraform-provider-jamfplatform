@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -216,6 +217,84 @@ func TestResetIfSourceChangedString_PlanModifyString(t *testing.T) {
 			}
 			if !resp.PlanValue.Equal(tc.wantPlan) {
 				t.Fatalf("plan value = %v, want %v", resp.PlanValue, tc.wantPlan)
+			}
+		})
+	}
+}
+
+func TestCanonicalEmptySet(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	setOf := func(vals ...string) types.Set {
+		elems := make([]attr.Value, 0, len(vals))
+		for _, v := range vals {
+			elems = append(elems, types.StringValue(v))
+		}
+		return types.SetValueMust(types.StringType, elems)
+	}
+
+	tests := []struct {
+		name      string
+		config    types.Set
+		wantEmpty bool // expect a known, empty set
+		wantVals  []string
+	}{
+		{
+			name:      "null config plans empty set (omission clears, canonical [])",
+			config:    types.SetNull(types.StringType),
+			wantEmpty: true,
+		},
+		{
+			name:      "empty set config flows through as empty",
+			config:    setOf(),
+			wantEmpty: true,
+		},
+		{
+			name:     "unknown config left untouched",
+			config:   types.SetUnknown(types.StringType),
+			wantVals: nil, // PlanValue seeded with the unknown stays unknown
+		},
+		{
+			name:     "non-empty config flows through",
+			config:   setOf("DataJARLDAPS_JamfPro_Admins"),
+			wantVals: []string{"DataJARLDAPS_JamfPro_Admins"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			req := planmodifier.SetRequest{ConfigValue: tc.config}
+			// Seed PlanValue with the config so "flow through" / "untouched"
+			// cases mirror the framework's pre-modifier proposed plan.
+			resp := &planmodifier.SetResponse{PlanValue: tc.config}
+			CanonicalEmptySet().PlanModifySet(ctx, req, resp)
+
+			if resp.PlanValue.IsNull() {
+				t.Fatalf("plan must never be null (canonical is empty set), got null")
+			}
+			if tc.wantEmpty {
+				if resp.PlanValue.IsUnknown() || len(resp.PlanValue.Elements()) != 0 {
+					t.Fatalf("expected known empty set, got %v", resp.PlanValue)
+				}
+				return
+			}
+			if tc.config.IsUnknown() {
+				if !resp.PlanValue.IsUnknown() {
+					t.Fatalf("expected unknown plan to remain unknown, got %v", resp.PlanValue)
+				}
+				return
+			}
+			var got []string
+			resp.PlanValue.ElementsAs(ctx, &got, false)
+			if len(got) != len(tc.wantVals) {
+				t.Fatalf("plan vals = %v, want %v", got, tc.wantVals)
+			}
+			for i := range got {
+				if got[i] != tc.wantVals[i] {
+					t.Fatalf("plan vals = %v, want %v", got, tc.wantVals)
+				}
 			}
 		})
 	}

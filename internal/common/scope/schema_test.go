@@ -18,8 +18,13 @@ func TestIDSetAttribute_DefaultShape(t *testing.T) {
 	if attr.Required {
 		t.Error("expected Required=false")
 	}
-	if attr.Computed {
-		t.Error("expected Computed=false")
+	// Optional+Computed: Computed permits the CanonicalEmptySet plan
+	// modifier to plan `[]` as null so an empty set round-trips (clears).
+	if !attr.Computed {
+		t.Error("expected Computed=true")
+	}
+	if len(attr.PlanModifiers) != 1 {
+		t.Errorf("expected 1 plan modifier (CanonicalEmptySet), got %d", len(attr.PlanModifiers))
 	}
 	if attr.ElementType != types.StringType {
 		t.Errorf("expected ElementType=types.StringType, got %T", attr.ElementType)
@@ -37,8 +42,11 @@ func TestNameSetAttribute_DefaultShape(t *testing.T) {
 	if attr.Required {
 		t.Error("expected Required=false")
 	}
-	if attr.Computed {
-		t.Error("expected Computed=false")
+	if !attr.Computed {
+		t.Error("expected Computed=true")
+	}
+	if len(attr.PlanModifiers) != 1 {
+		t.Errorf("expected 1 plan modifier (CanonicalEmptySet), got %d", len(attr.PlanModifiers))
 	}
 	if attr.ElementType != types.StringType {
 		t.Errorf("expected ElementType=types.StringType, got %T", attr.ElementType)

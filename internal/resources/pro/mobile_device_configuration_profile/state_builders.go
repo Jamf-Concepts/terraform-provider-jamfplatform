@@ -118,42 +118,42 @@ func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationPr
 			diags.Append(d...)
 			state.Targets.MobileDeviceIDs = v
 		} else {
-			state.Targets.MobileDeviceIDs = types.SetNull(types.StringType)
+			state.Targets.MobileDeviceIDs = scope.EmptyStringSet()
 		}
 		if s.MobileDeviceGroups != nil {
 			v, d := scope.FlattenIDSlice(ctx, s.MobileDeviceGroups.MobileDeviceGroup, func(c proclassic.IDName) *int { return c.ID })
 			diags.Append(d...)
 			state.Targets.MobileDeviceGroupIDs = v
 		} else {
-			state.Targets.MobileDeviceGroupIDs = types.SetNull(types.StringType)
+			state.Targets.MobileDeviceGroupIDs = scope.EmptyStringSet()
 		}
 		if s.Buildings != nil {
 			v, d := scope.FlattenIDSlice(ctx, s.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
 			diags.Append(d...)
 			state.Targets.BuildingIDs = v
 		} else {
-			state.Targets.BuildingIDs = types.SetNull(types.StringType)
+			state.Targets.BuildingIDs = scope.EmptyStringSet()
 		}
 		if s.Departments != nil {
 			v, d := scope.FlattenIDSlice(ctx, s.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
 			diags.Append(d...)
 			state.Targets.DepartmentIDs = v
 		} else {
-			state.Targets.DepartmentIDs = types.SetNull(types.StringType)
+			state.Targets.DepartmentIDs = scope.EmptyStringSet()
 		}
 		if s.JssUsers != nil {
 			v, d := scope.FlattenIDSlice(ctx, s.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
 			diags.Append(d...)
 			state.Targets.UserIDs = v
 		} else {
-			state.Targets.UserIDs = types.SetNull(types.StringType)
+			state.Targets.UserIDs = scope.EmptyStringSet()
 		}
 		if s.JssUserGroups != nil {
 			v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.UserGroup, func(c proclassic.IDName) *int { return c.ID })
 			diags.Append(d...)
 			state.Targets.UserGroupIDs = v
 		} else {
-			state.Targets.UserGroupIDs = types.SetNull(types.StringType)
+			state.Targets.UserGroupIDs = scope.EmptyStringSet()
 		}
 	}
 
@@ -176,28 +176,28 @@ func flattenScopeLimitations(ctx context.Context, l *proclassic.MobileDeviceConf
 		diags.Append(d...)
 		state.NetworkSegmentIDs = v
 	} else {
-		state.NetworkSegmentIDs = types.SetNull(types.StringType)
+		state.NetworkSegmentIDs = scope.EmptyStringSet()
 	}
 	if l.Ibeacons != nil {
 		v, d := scope.FlattenIDSlice(ctx, l.Ibeacons.Ibeacon, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.IbeaconIDs = v
 	} else {
-		state.IbeaconIDs = types.SetNull(types.StringType)
+		state.IbeaconIDs = scope.EmptyStringSet()
 	}
 	if l.Users != nil {
 		v, d := scope.FlattenNameSlice(ctx, l.Users.User, func(c proclassic.IDName) *string { return c.Name })
 		diags.Append(d...)
 		state.DirectoryServiceOrLocalUserNames = v
 	} else {
-		state.DirectoryServiceOrLocalUserNames = types.SetNull(types.StringType)
+		state.DirectoryServiceOrLocalUserNames = scope.EmptyStringSet()
 	}
 	if l.UserGroups != nil {
 		v, d := scope.FlattenNameSlice(ctx, l.UserGroups.UserGroup, func(c proclassic.IDName) *string { return c.Name })
 		diags.Append(d...)
 		state.DirectoryServiceUserGroupNames = v
 	} else {
-		state.DirectoryServiceUserGroupNames = types.SetNull(types.StringType)
+		state.DirectoryServiceUserGroupNames = scope.EmptyStringSet()
 	}
 	return diags
 }
@@ -214,42 +214,42 @@ func flattenScopeExclusions(ctx context.Context, e *proclassic.MobileDeviceConfi
 		diags.Append(d...)
 		state.MobileDeviceIDs = v
 	} else {
-		state.MobileDeviceIDs = types.SetNull(types.StringType)
+		state.MobileDeviceIDs = scope.EmptyStringSet()
 	}
 	if e.MobileDeviceGroups != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.MobileDeviceGroups.MobileDeviceGroup, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.MobileDeviceGroupIDs = v
 	} else {
-		state.MobileDeviceGroupIDs = types.SetNull(types.StringType)
+		state.MobileDeviceGroupIDs = scope.EmptyStringSet()
 	}
 	if e.Buildings != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.BuildingIDs = v
 	} else {
-		state.BuildingIDs = types.SetNull(types.StringType)
+		state.BuildingIDs = scope.EmptyStringSet()
 	}
 	if e.Departments != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.DepartmentIDs = v
 	} else {
-		state.DepartmentIDs = types.SetNull(types.StringType)
+		state.DepartmentIDs = scope.EmptyStringSet()
 	}
 	if e.JssUsers != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.UserIDs = v
 	} else {
-		state.UserIDs = types.SetNull(types.StringType)
+		state.UserIDs = scope.EmptyStringSet()
 	}
 	if e.JssUserGroups != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.JssUserGroups.UserGroup, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.UserGroupIDs = v
 	} else {
-		state.UserGroupIDs = types.SetNull(types.StringType)
+		state.UserGroupIDs = scope.EmptyStringSet()
 	}
 	if e.NetworkSegments != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.NetworkSegments.NetworkSegment, func(c proclassic.MobileDeviceConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int {
@@ -258,14 +258,14 @@ func flattenScopeExclusions(ctx context.Context, e *proclassic.MobileDeviceConfi
 		diags.Append(d...)
 		state.NetworkSegmentIDs = v
 	} else {
-		state.NetworkSegmentIDs = types.SetNull(types.StringType)
+		state.NetworkSegmentIDs = scope.EmptyStringSet()
 	}
 	if e.Ibeacons != nil {
 		v, d := scope.FlattenIDSlice(ctx, e.Ibeacons.Ibeacon, func(c proclassic.IDName) *int { return c.ID })
 		diags.Append(d...)
 		state.IbeaconIDs = v
 	} else {
-		state.IbeaconIDs = types.SetNull(types.StringType)
+		state.IbeaconIDs = scope.EmptyStringSet()
 	}
 	if e.Users != nil {
 		v, d := scope.FlattenNameSlice(ctx, e.Users.User, func(c proclassic.MobileDeviceConfigurationProfileScopeExclusionsUsersUserItem) *string {
@@ -274,14 +274,14 @@ func flattenScopeExclusions(ctx context.Context, e *proclassic.MobileDeviceConfi
 		diags.Append(d...)
 		state.DirectoryServiceOrLocalUserNames = v
 	} else {
-		state.DirectoryServiceOrLocalUserNames = types.SetNull(types.StringType)
+		state.DirectoryServiceOrLocalUserNames = scope.EmptyStringSet()
 	}
 	if e.UserGroups != nil {
 		v, d := scope.FlattenNameSlice(ctx, e.UserGroups.UserGroup, func(c proclassic.IDName) *string { return c.Name })
 		diags.Append(d...)
 		state.DirectoryServiceUserGroupNames = v
 	} else {
-		state.DirectoryServiceUserGroupNames = types.SetNull(types.StringType)
+		state.DirectoryServiceUserGroupNames = scope.EmptyStringSet()
 	}
 	return diags
 }

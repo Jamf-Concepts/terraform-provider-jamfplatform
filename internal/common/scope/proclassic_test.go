@@ -13,8 +13,8 @@ import (
 
 func TestFlattenIDNameSet(t *testing.T) {
 	ctx := context.Background()
-	if got := FlattenIDNameSet(ctx, nil); !got.IsNull() {
-		t.Errorf("nil items should be null set, got %v", got)
+	if got := FlattenIDNameSet(ctx, nil); got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("nil items should be empty set, got %v", got)
 	}
 	items := &[]proclassic.IDName{{ID: new(1), Name: new("a")}, {ID: new(2), Name: new("b")}}
 	got := FlattenIDNameSet(ctx, items)
@@ -25,8 +25,8 @@ func TestFlattenIDNameSet(t *testing.T) {
 
 func TestFlattenNameSet(t *testing.T) {
 	ctx := context.Background()
-	if got := FlattenNameSet(ctx, nil); !got.IsNull() {
-		t.Errorf("nil items should be null set, got %v", got)
+	if got := FlattenNameSet(ctx, nil); got.IsNull() || len(got.Elements()) != 0 {
+		t.Errorf("nil items should be empty set, got %v", got)
 	}
 	items := &[]proclassic.IDName{{ID: new(1), Name: new("alpha")}}
 	got := FlattenNameSet(ctx, items)

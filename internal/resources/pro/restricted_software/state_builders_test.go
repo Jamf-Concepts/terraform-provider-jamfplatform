@@ -94,9 +94,19 @@ func TestFlattenScope_TargetsAndNameKeyedExclusions(t *testing.T) {
 	if l := len(state.Targets.ComputerGroupIDs.Elements()); l != 1 {
 		t.Errorf("expected 1 computer group ID, got %d", l)
 	}
-	// Empty target categories must flatten to null (server returns empty elements).
-	if !state.Targets.BuildingIDs.IsNull() || !state.Targets.DepartmentIDs.IsNull() || !state.Targets.ComputerIDs.IsNull() {
-		t.Errorf("empty targets must be null")
+	// Empty target categories flatten to an empty set (the canonical "no
+	// members" value for these Optional+Computed scope sets), not null.
+	for _, tc := range []struct {
+		label string
+		set   types.Set
+	}{
+		{"BuildingIDs", state.Targets.BuildingIDs},
+		{"DepartmentIDs", state.Targets.DepartmentIDs},
+		{"ComputerIDs", state.Targets.ComputerIDs},
+	} {
+		if tc.set.IsNull() || len(tc.set.Elements()) != 0 {
+			t.Errorf("empty target %s must be an empty set, got %v", tc.label, tc.set)
+		}
 	}
 	if l := len(state.Exclusions.DirectoryServiceOrLocalUserNames.Elements()); l != 2 {
 		t.Errorf("expected 2 excluded users, got %d", l)

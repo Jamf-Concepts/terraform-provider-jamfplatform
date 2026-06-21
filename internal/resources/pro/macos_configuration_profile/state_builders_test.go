@@ -73,7 +73,7 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 	}
 }
 
-func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
+func TestFlattenScope_NilSubBlocksProduceEmptySets(t *testing.T) {
 	t.Parallel()
 	// Reconcile semantics: state.AllComputers stays null when the user did
 	// not author it, even if the server reports a value (Optional+Computed
@@ -97,8 +97,8 @@ func TestFlattenScope_NilSubBlocksProduceNullSets(t *testing.T) {
 		"UserIDs":          state.Targets.UserIDs,
 		"UserGroupIDs":     state.Targets.UserGroupIDs,
 	} {
-		if !s.IsNull() {
-			t.Fatalf("%s expected null when SDK sub-block absent, got %v", label, s)
+		if s.IsNull() || len(s.Elements()) != 0 {
+			t.Fatalf("%s expected empty set when SDK sub-block absent, got %v", label, s)
 		}
 	}
 }
