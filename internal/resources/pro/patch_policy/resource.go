@@ -164,11 +164,11 @@ func (r *PatchPolicyResource) Schema(ctx context.Context, req resource.SchemaReq
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"kill_app_name": schema.StringAttribute{
-							MarkdownDescription: "Display name of the application closed before patching (e.g. `010 Editor.app`).",
+							MarkdownDescription: "Display name of the application closed before patching (e.g. `Jamf Composer.app`).",
 							Computed:            true,
 						},
 						"kill_app_bundle_id": schema.StringAttribute{
-							MarkdownDescription: "Bundle identifier of the application closed before patching (e.g. `com.SweetScape.010Editor`).",
+							MarkdownDescription: "Bundle identifier of the application closed before patching (e.g. `com.jamfsoftware.Composer`).",
 							Computed:            true,
 						},
 					},

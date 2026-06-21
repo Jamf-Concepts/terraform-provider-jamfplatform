@@ -15,7 +15,7 @@ Look up a single App Installer deployment by ID or by exact name. Exactly one of
 ```terraform
 # Look up an App Installer deployment by exact name.
 data "jamfplatform_pro_app_installer" "by_name" {
-  name = "010 Editor (Self Service)"
+  name = "Jamf Composer (Self Service)"
 }
 
 output "deployment_id" {

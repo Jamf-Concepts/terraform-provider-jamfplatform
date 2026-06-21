@@ -40,7 +40,7 @@ func TestAppInstallerTitlesDataSource_Schema(t *testing.T) {
 func TestFilterAndMapTitles_NoFilter(t *testing.T) {
 	titles := []pro.AppInstallerTitle{
 		{ID: "1", TitleName: "Adobe Lightroom Classic"},
-		{ID: "2", TitleName: "010 Editor"},
+		{ID: "2", TitleName: "Jamf Composer"},
 	}
 	got := FilterAndMapTitles(titles, types.StringNull())
 	if len(got) != 2 {
@@ -51,11 +51,11 @@ func TestFilterAndMapTitles_NoFilter(t *testing.T) {
 func TestFilterAndMapTitles_Substring(t *testing.T) {
 	titles := []pro.AppInstallerTitle{
 		{ID: "1", TitleName: "Adobe Lightroom Classic"},
-		{ID: "2", TitleName: "010 Editor"},
+		{ID: "2", TitleName: "Jamf Composer"},
 	}
-	got := FilterAndMapTitles(titles, types.StringValue("editor"))
+	got := FilterAndMapTitles(titles, types.StringValue("composer"))
 	if len(got) != 1 || got[0].ID.ValueString() != "2" {
-		t.Fatalf("expected only the editor title, got %+v", got)
+		t.Fatalf("expected only the composer title, got %+v", got)
 	}
 }
 

@@ -23,8 +23,8 @@ resource "jamfplatform_pro_category" "apps" {
 # The catalog title is referenced by name (resolved to an ID by the provider);
 # list available titles with the jamfplatform_pro_app_installer_titles data source.
 resource "jamfplatform_pro_app_installer" "auto" {
-  name            = "010 Editor (automatic)"
-  app_title_name  = "010 Editor"
+  name            = "Jamf Composer (automatic)"
+  app_title_name  = "Jamf Composer"
   deployment_type = "INSTALL_AUTOMATICALLY"
   update_behavior = "AUTOMATIC"
 
@@ -35,19 +35,19 @@ resource "jamfplatform_pro_app_installer" "auto" {
 
 # Self Service deployment with notification and Self Service presentation.
 resource "jamfplatform_pro_app_installer" "self_service" {
-  name            = "010 Editor (Self Service)"
-  app_title_name  = "010 Editor"
+  name            = "Jamf Composer (Self Service)"
+  app_title_name  = "Jamf Composer"
   deployment_type = "SELF_SERVICE"
   update_behavior = "AUTOMATIC"
 
   notification_settings = {
-    notification_message = "010 Editor is available to install."
+    notification_message = "Jamf Composer is available to install."
     deadline             = 48
     suppress             = false
   }
 
   self_service_settings = {
-    description                  = "Install 010 Editor from Self Service."
+    description                  = "Install Jamf Composer from Self Service."
     force_view_description       = true
     include_in_featured_category = true
 

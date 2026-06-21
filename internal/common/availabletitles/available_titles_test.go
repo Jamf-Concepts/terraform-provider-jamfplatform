@@ -47,7 +47,7 @@ func TestMapTitles_NilAndEmptyYieldNonNilEmpty(t *testing.T) {
 // /patchavailabletitles wire shape (free-form name_id values included).
 func TestMapTitles_FromLiveWire(t *testing.T) {
 	wire := `<patch_available_titles><size>2</size><available_titles>` +
-		`<available_title><name_id>518</name_id><last_modified>2026-03-05T15:31:49Z</last_modified><current_version>16.0.4</current_version><publisher>SweetScape</publisher><app_name>010 Editor</app_name></available_title>` +
+		`<available_title><name_id>518</name_id><last_modified>2026-03-05T15:31:49Z</last_modified><current_version>16.0.4</current_version><publisher>Jamf</publisher><app_name>Jamf Composer</app_name></available_title>` +
 		`<available_title><name_id>com.cisco.anyconnect.gui</name_id><last_modified>2024-01-10T22:12:48Z</last_modified><current_version>4.10.07073</current_version><publisher>Cisco</publisher><app_name>Cisco AnyConnect Secure Mobility Client</app_name></available_title>` +
 		`</available_titles></patch_available_titles>`
 
@@ -60,10 +60,10 @@ func TestMapTitles_FromLiveWire(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("expected 2 titles, got %d", len(got))
 	}
-	if got[0].NameID.ValueString() != "518" || got[0].AppName.ValueString() != "010 Editor" {
+	if got[0].NameID.ValueString() != "518" || got[0].AppName.ValueString() != "Jamf Composer" {
 		t.Errorf("title[0] mismatch: name_id=%q app_name=%q", got[0].NameID.ValueString(), got[0].AppName.ValueString())
 	}
-	if got[0].CurrentVersion.ValueString() != "16.0.4" || got[0].Publisher.ValueString() != "SweetScape" {
+	if got[0].CurrentVersion.ValueString() != "16.0.4" || got[0].Publisher.ValueString() != "Jamf" {
 		t.Errorf("title[0] version/publisher mismatch: %q / %q", got[0].CurrentVersion.ValueString(), got[0].Publisher.ValueString())
 	}
 	if got[1].NameID.ValueString() != "com.cisco.anyconnect.gui" {

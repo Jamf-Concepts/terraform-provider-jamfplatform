@@ -66,7 +66,7 @@ Optional:
 
 Read-Only:
 
-- `app_name` (String) Display name of the software title (e.g. `010 Editor`).
+- `app_name` (String) Display name of the software title (e.g. `Jamf Composer`).
 - `current_version` (String) Newest version the source currently publishes for this title.
 - `last_modified` (String) Timestamp (RFC 3339) the title's definition was last updated in the source.
 - `name_id` (String) Catalog key identifying the software title within its source. Use this value as `name_id` on `jamfplatform_pro_patch_software_title`. Free-form (e.g. `518`, `0F5`, or `com.cisco.anyconnect.gui`).

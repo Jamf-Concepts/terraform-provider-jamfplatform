@@ -14,13 +14,13 @@ func sampleEntries() []pro.AppInstallerDeploymentListEntry {
 	return []pro.AppInstallerDeploymentListEntry{
 		{
 			ID:             "177",
-			Name:           "010 Editor",
+			Name:           "Jamf Composer",
 			Enabled:        true,
 			DeploymentType: "SELF_SERVICE",
 			UpdateBehavior: "AUTOMATIC",
 			App: &pro.AppInstallerApp{
 				ID:                  "518",
-				BundleID:            "com.SweetScape.010Editor",
+				BundleID:            "com.jamfsoftware.Composer",
 				LatestVersion:       "16.0.4",
 				SelectedVersion:     "",
 				DeployedVersion:     "16.0.4",
@@ -50,7 +50,7 @@ func TestFilterAndMapDeployments_Expanded(t *testing.T) {
 	if d.ID.ValueString() != "177" || d.UpdateBehavior.ValueString() != "AUTOMATIC" {
 		t.Errorf("entry 0 scalars mismatch: %+v", d)
 	}
-	if d.App == nil || d.App.BundleID.ValueString() != "com.SweetScape.010Editor" {
+	if d.App == nil || d.App.BundleID.ValueString() != "com.jamfsoftware.Composer" {
 		t.Errorf("entry 0 app mismatch: %+v", d.App)
 	}
 	if !d.App.TitleAvailableInAis.ValueBool() {

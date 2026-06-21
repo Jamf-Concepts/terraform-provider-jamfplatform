@@ -38,7 +38,7 @@ func DataSourceAttributes() map[string]schema.Attribute {
 			Computed:            true,
 		},
 		"app_name": schema.StringAttribute{
-			MarkdownDescription: "Display name of the software title (e.g. `010 Editor`).",
+			MarkdownDescription: "Display name of the software title (e.g. `Jamf Composer`).",
 			Computed:            true,
 		},
 		"current_version": schema.StringAttribute{

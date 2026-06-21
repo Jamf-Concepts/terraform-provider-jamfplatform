@@ -257,8 +257,8 @@ Optional:
 
 Read-Only:
 
-- `kill_app_bundle_id` (String) Bundle identifier of the application closed before patching (e.g. `com.SweetScape.010Editor`).
-- `kill_app_name` (String) Display name of the application closed before patching (e.g. `010 Editor.app`).
+- `kill_app_bundle_id` (String) Bundle identifier of the application closed before patching (e.g. `com.jamfsoftware.Composer`).
+- `kill_app_name` (String) Display name of the application closed before patching (e.g. `Jamf Composer.app`).
 
 ## Import
 

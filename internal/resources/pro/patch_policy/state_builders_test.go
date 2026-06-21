@@ -74,7 +74,7 @@ func TestAssignResourceModel_GeneralSplit(t *testing.T) {
 func TestFlattenKillApps(t *testing.T) {
 	ka := &proclassic.PatchPolicyGeneralKillApps{
 		KillApp: &[]proclassic.PatchPolicyGeneralKillAppsKillAppItem{
-			{KillAppName: new("010 Editor.app"), KillAppBundleID: new("com.SweetScape.010Editor")},
+			{KillAppName: new("Jamf Composer.app"), KillAppBundleID: new("com.jamfsoftware.Composer")},
 		},
 	}
 	list, diags := flattenKillApps(context.Background(), ka)
@@ -90,10 +90,10 @@ func TestFlattenKillApps(t *testing.T) {
 	}
 	obj := elems[0].(types.Object)
 	attrs := obj.Attributes()
-	if attrs["kill_app_name"].(types.String).ValueString() != "010 Editor.app" {
+	if attrs["kill_app_name"].(types.String).ValueString() != "Jamf Composer.app" {
 		t.Errorf("kill_app_name not flattened")
 	}
-	if attrs["kill_app_bundle_id"].(types.String).ValueString() != "com.SweetScape.010Editor" {
+	if attrs["kill_app_bundle_id"].(types.String).ValueString() != "com.jamfsoftware.Composer" {
 		t.Errorf("kill_app_bundle_id not flattened")
 	}
 
