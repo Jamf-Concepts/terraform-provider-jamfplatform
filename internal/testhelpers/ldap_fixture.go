@@ -199,7 +199,25 @@ func EnsureLdapServerFixture(t *testing.T, prefix string, e OktaLdapEnv) string 
 		t.Fatalf("LDAP server fixture %q: create response missing id", c.displayName)
 	}
 	id := strconv.Itoa(*created.ID)
-	t.Cleanup(func() { _ = client.DeleteLDAPServerByID(context.Background(), id) })
+	t.Cleanup(func() {
+		ctx := context.Background()
+		if err := client.DeleteLDAPServerByID(ctx, id); err == nil {
+			return
+		}
+		// Delete can be refused when a scope-bearing object still references this
+		// directory — e.g. an orphaned app->LDAP association left behind by a
+		// killed/cancelled run (a server-side data-integrity bug the API cannot
+		// otherwise clear). Fall back to DISABLING the server so the leak is benign:
+		// a disabled directory is skipped for group resolution and so will not cause
+		// "group name not unique" failures in later runs. Best-effort.
+		if err := client.UpdateLDAPServerByID(ctx, id, &proclassic.LdapServerPost{
+			Connection: &proclassic.LdapServerPostConnection{IsEnabled: ptr(false)},
+		}); err != nil {
+			t.Logf("LDAP fixture %s: delete blocked and disable fallback failed: %v", id, err)
+		} else {
+			t.Logf("LDAP fixture %s: delete blocked (likely orphaned reference); disabled it instead so it won't poison later runs", id)
+		}
+	})
 	return id
 }
 
