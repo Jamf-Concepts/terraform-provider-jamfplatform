@@ -20,7 +20,7 @@ func TestAccDataSource_ProAppInstallerTitle_ByID(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	cfg := `
 		data "jamfplatform_pro_app_installer_titles" "catalog" {
-			name_substring = "010 Editor"
+			name_substring = "Jamf Composer"
 		}
 		data "jamfplatform_pro_app_installer_title" "one" {
 			id = data.jamfplatform_pro_app_installer_titles.catalog.titles[0].id

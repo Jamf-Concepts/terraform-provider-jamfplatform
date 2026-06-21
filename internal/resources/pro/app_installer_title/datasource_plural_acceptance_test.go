@@ -37,7 +37,7 @@ func TestAccDataSource_ProAppInstallerTitles_Substring(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	cfg := `
 		data "jamfplatform_pro_app_installer_titles" "filtered" {
-			name_substring = "010 Editor"
+			name_substring = "Jamf Composer"
 		}
 	`
 	resource.Test(t, resource.TestCase{
