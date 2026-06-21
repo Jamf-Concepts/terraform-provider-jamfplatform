@@ -199,13 +199,11 @@ func TestAccResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(patchSoftwareType+".test", "id"),
 					resource.TestCheckResourceAttr(patchSoftwareType+".test", "name_id", accTitleNameID),
 					resource.TestCheckResourceAttr(patchSoftwareType+".test", "source_id", "1"),
-					// Server default. site_id is intentionally not asserted here:
-					// the classic patch-title GET only emits a <site> block when
-					// the instance has sites configured, so on a no-sites tenant
-					// it is legitimately null. The site round-trip (set to a real
-					// fixture id, then -1) is covered deterministically by the
-					// later steps, which create a jamfplatform_pro_site fixture.
+					// Server defaults. The classic patch-title GET omits the <site>
+					// block on a no-sites tenant; siteValues collapses that to the
+					// "-1" NONE sentinel (like category) so site_id is always known.
 					resource.TestCheckResourceAttr(patchSoftwareType+".test", "category_id", "-1"),
+					resource.TestCheckResourceAttr(patchSoftwareType+".test", "site_id", "-1"),
 					// Catalog versions populated by the server.
 					resource.TestCheckResourceAttrSet(patchSoftwareType+".test", "available_versions.#"),
 				),

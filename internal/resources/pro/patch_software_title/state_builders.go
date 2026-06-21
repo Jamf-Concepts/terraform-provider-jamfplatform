@@ -128,10 +128,19 @@ func categoryValues(c *proclassic.CategoryObject) (types.String, types.String) {
 	return helpers.StringValueFromIntPtr(c.ID), helpers.StringPointerValueOrNull(c.Name)
 }
 
-// siteValues maps an SDK site object onto (id, name) Terraform strings.
+// siteValues maps an SDK site object onto (id, name) Terraform strings. Both a
+// missing <site> block (the classic GET omits it entirely on a tenant with no
+// sites configured) and an id <= 0 (explicitly "NONE") collapse to the "-1"
+// user-facing sentinel. site_id is Optional+Computed with UseStateForUnknown, so
+// it must never resolve to null: otherwise a plan that carried "-1" forward would
+// hit "inconsistent result after apply" the moment the server drops the block.
+// Mirrors categoryValues' "-1" treatment.
 func siteValues(s *proclassic.SiteObject) (types.String, types.String) {
 	if s == nil {
-		return types.StringNull(), types.StringNull()
+		return types.StringValue("-1"), types.StringNull()
+	}
+	if s.ID == nil || *s.ID <= 0 {
+		return types.StringValue("-1"), helpers.StringPointerValueOrNull(s.Name)
 	}
 	return helpers.StringValueFromIntPtr(s.ID), helpers.StringPointerValueOrNull(s.Name)
 }
