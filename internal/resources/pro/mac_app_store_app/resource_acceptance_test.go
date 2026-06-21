@@ -19,11 +19,14 @@ package mac_app_store_app_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"regexp"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -329,39 +332,86 @@ func TestAccResource_ProMacApp_CategoryFlip(t *testing.T) {
 	})
 }
 
-// Jamf Parent App Store metadata, captured from the iTunes Lookup API
-// (https://itunes.apple.com/lookup?id=1458797105) on 2026-05-31. These are
-// stored verbatim by /macapplications (no App Store resolution), so they are
-// pinned here rather than fetched at runtime to keep the test deterministic.
-// The bundle_id is what links the created app to the VPP location's synced
-// content for device-based assignment.
-const (
-	jamfParentName     = "Jamf Parent"
-	jamfParentVersion  = "5.2.4"
-	jamfParentBundleID = "com.jamf.parent"
-	jamfParentURL      = "https://apps.apple.com/us/app/jamf-parent/id1458797105?uo=4"
-	jamfParentDesc     = `Jamf Parent empowers parents to manage their children's school-issued devices. Using the intuitive interface, you can restrict which apps your child can access on their device, receive notifications when your child arrives at school, and schedule homework time or bedtime by using Device Rules to allow or restrict certain apps.
+// itunesMacAppMeta is the subset of the iTunes Lookup API response the
+// /macapplications endpoint stores verbatim (no App Store resolution happens
+// server-side, so the test must supply real metadata). Field tags mirror the
+// public API (see the iTunes Search API docs / the itunessearchapi provider).
+type itunesMacAppMeta struct {
+	TrackName    string `json:"trackName"`
+	BundleID     string `json:"bundleId"`
+	Version      string `json:"version"`
+	TrackViewURL string `json:"trackViewUrl"`
+	Description  string `json:"description"`
+	PrimaryGenre string `json:"primaryGenreName"`
+	ArtworkURL   string `json:"artworkUrl512"`
+}
 
-Key features:
+// lookupITunesMacApp resolves an adam_id to its App Store metadata via the public
+// iTunes Lookup API (https://itunes.apple.com/lookup?id=<adamId>). It returns
+// ok=false (not an error) when the id has no public listing — VPP/ABM accounts
+// can own custom B2B or unlisted apps that the public catalog cannot resolve, so
+// the caller tries each owned adam_id until one resolves. A non-nil error is a
+// transport/decoding failure, distinct from "not found".
+func lookupITunesMacApp(adamID string) (itunesMacAppMeta, bool, error) {
+	endpoint := fmt.Sprintf("https://itunes.apple.com/lookup?id=%s&country=us", url.QueryEscape(adamID))
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return itunesMacAppMeta{}, false, fmt.Errorf("build request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return itunesMacAppMeta{}, false, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return itunesMacAppMeta{}, false, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	var env struct {
+		ResultCount int                `json:"resultCount"`
+		Results     []itunesMacAppMeta `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+		return itunesMacAppMeta{}, false, fmt.Errorf("decode: %w", err)
+	}
+	if env.ResultCount == 0 || len(env.Results) == 0 {
+		return itunesMacAppMeta{}, false, nil // no public listing
+	}
+	m := env.Results[0]
+	if m.BundleID == "" || m.Version == "" {
+		return itunesMacAppMeta{}, false, nil // listing too sparse to drive /macapplications
+	}
+	return m, true, nil
+}
 
+// setMacAppTFVars publishes the resolved metadata as TF_VAR_* so the dynamic
+// config below reads it through `variable` blocks. Routing the values through
+// env (rather than baking them into the HCL string) sidesteps escaping the
+// multi-line App Store description and lets the same static config serve every
+// step. Registered cleanups unset the vars after the test.
+func setMacAppTFVars(t *testing.T, m itunesMacAppMeta) {
+	t.Helper()
+	for k, v := range map[string]string{
+		"TF_VAR_mac_name":        m.TrackName,
+		"TF_VAR_mac_version":     m.Version,
+		"TF_VAR_mac_bundle_id":   m.BundleID,
+		"TF_VAR_mac_url":         m.TrackViewURL,
+		"TF_VAR_mac_description": m.Description,
+		"TF_VAR_mac_artwork_url": m.ArtworkURL,
+	} {
+		key := k
+		if err := os.Setenv(key, v); err != nil {
+			t.Fatalf("set %s: %v", key, err)
+		}
+		t.Cleanup(func() { _ = os.Unsetenv(key) })
+	}
+}
 
-- Restrict and allow apps in real time (including games and social media)
-- Restrict and allow device features (including the camera)
-- Restrict and allow websites
-- Create scheduled app restrictions for homework time, bedtime, and timeout`
-	jamfParentGenre = "Education"
-	// artworkUrl512 from the same iTunes lookup — uploaded via the
-	// jamfplatform_pro_icon resource and referenced by id, so the icon is
-	// embedded through the proper composition rather than inline upload.
-	jamfParentArtworkURL = "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/62/6e/bb/626ebb84-337a-9546-1b80-77843f3ad105/AppIcon-0-0-1x_U007epad-0-9-0-0-sRGB-GLES2_U002c0-85-220.png/512x512bb.jpg"
-)
-
-// macAppVPPFullMetadataConfig builds a self-contained config: a VPP location
-// created from the env-supplied ABM token, a category, and a Mac App Store app
-// populated with the full Jamf Parent metadata and assigned device-based VPP
-// licenses from that location. The app's name is suffixed for uniqueness; VPP
-// content matching keys on bundle_id, which is pinned to the real value.
-func macAppVPPFullMetadataConfig(token, suffix, buttonText string) string {
+// macAppVPPLocationFixture is the env-token VPP location both VPP-test steps
+// share. Both step configs must include it so Terraform does not destroy the
+// directory between Create and Update (the token can only register one location).
+func macAppVPPLocationFixture(token, suffix string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_volume_purchasing_location" "vpp" {
 			name                                     = "tf-acc-macapp-vpp-%[2]s"
@@ -369,22 +419,52 @@ func macAppVPPFullMetadataConfig(token, suffix, buttonText string) string {
 			service_token_wo_version                 = 1
 			automatically_populate_purchased_content = true
 		}
+	`, token, suffix)
+}
+
+// macAppVPPDiscoverConfig stands up the VPP location and surfaces, via an HCL
+// output, the adam_ids of every MAC_APP in its synced content that still has a
+// free device-assignable license. The discovery step's Check reads the output
+// and resolves the first one's App Store metadata from iTunes.
+func macAppVPPDiscoverConfig(token, suffix string) string {
+	return macAppVPPLocationFixture(token, suffix) + `
+		output "mac_adam_ids" {
+			value = [
+				for c in jamfplatform_pro_volume_purchasing_location.vpp.content :
+				c.adam_id
+				if c.content_type == "MAC_APP" && c.license_count_total > c.license_count_in_use
+			]
+		}
+	`
+}
+
+// macAppVPPDynamicConfig builds the Mac App Store app from TF_VAR_* metadata
+// (resolved live by the discovery step) and assigns device-based VPP licenses
+// from the shared location. buttonText and assignDeviceLicenses vary per step.
+func macAppVPPDynamicConfig(token, suffix, buttonText string, assignDeviceLicenses bool) string {
+	return macAppVPPLocationFixture(token, suffix) + fmt.Sprintf(`
+		variable "mac_name" { type = string }
+		variable "mac_version" { type = string }
+		variable "mac_bundle_id" { type = string }
+		variable "mac_url" { type = string }
+		variable "mac_description" { type = string }
+		variable "mac_artwork_url" { type = string }
 
 		resource "jamfplatform_pro_category" "edu" {
-			name     = "tf-acc-macapp-edu-%[2]s"
+			name     = "tf-acc-macapp-edu-%[1]s"
 			priority = 9
 		}
 
-		resource "jamfplatform_pro_icon" "jamf_parent" {
-			icon_file_source = %[9]q
+		resource "jamfplatform_pro_icon" "app" {
+			icon_file_source = var.mac_artwork_url
 		}
 
 		resource "jamfplatform_pro_mac_app_store_app" "test" {
 			general = {
-				name            = "%[3]s tf-acc %[2]s"
-				version         = %[4]q
-				bundle_id       = %[5]q
-				url             = %[6]q
+				name            = "${var.mac_name} tf-acc %[1]s"
+				version         = var.mac_version
+				bundle_id       = var.mac_bundle_id
+				url             = var.mac_url
 				is_free         = true
 				deployment_type = "Make Available in Self Service"
 				category_id     = jamfplatform_pro_category.edu.id
@@ -397,17 +477,17 @@ func macAppVPPFullMetadataConfig(token, suffix, buttonText string) string {
 			}
 
 			self_service = {
-				install_button_text             = %[8]q
-				self_service_description         = %[7]q
+				install_button_text             = %[2]q
+				self_service_description         = var.mac_description
 				force_users_to_view_description  = false
 				feature_on_main_page             = true
 				notification_enabled             = true
 				notification_method              = "Self Service"
-				notification_subject             = "Jamf Parent is available"
-				notification_message             = "Install Jamf Parent from Self Service."
+				notification_subject             = "${var.mac_name} is available"
+				notification_message             = "Install ${var.mac_name} from Self Service."
 
 				self_service_icon = {
-					id = jamfplatform_pro_icon.jamf_parent.id
+					id = jamfplatform_pro_icon.app.id
 				}
 
 				self_service_categories = [
@@ -420,11 +500,11 @@ func macAppVPPFullMetadataConfig(token, suffix, buttonText string) string {
 			}
 
 			vpp = {
-				assign_vpp_device_based_licenses = true
+				assign_vpp_device_based_licenses = %[3]t
 				vpp_admin_account_id             = jamfplatform_pro_volume_purchasing_location.vpp.id
 			}
 		}
-	`, token, suffix, jamfParentName, jamfParentVersion, jamfParentBundleID, jamfParentURL, jamfParentDesc, buttonText, jamfParentArtworkURL)
+	`, suffix, buttonText, assignDeviceLicenses)
 }
 
 // TestAccResource_ProMacApp_VPPFullMetadata is the full-coverage gated test: it
@@ -432,17 +512,22 @@ func macAppVPPFullMetadataConfig(token, suffix, buttonText string) string {
 // is_free + category), an all_computers scope, the complete self_service block
 // (description, notification, the SetNested self_service_categories diff-by-id
 // path, and a self_service_icon referencing a jamfplatform_pro_icon resource
-// that uploads Jamf Parent's real App Store artwork), and the top-level vpp
-// block with device-based assignment.
+// that uploads the app's real App Store artwork), and the top-level vpp block
+// with device-based assignment.
 //
-// Gated on JAMFPLATFORM_VPP_TOKEN: device-based VPP assignment 409s ("App is
-// not available for device assignment") unless the token's location owns
-// device-assignable licenses for bundle_id com.jamf.parent. The in-place update
-// flips install_button_text and assign_vpp_device_based_licenses true->false
-// (wire-probed to round-trip), verifying the GET-after-Update path on the vpp
-// block. The icon is embedded via composition (jamfplatform_pro_icon handles
-// upload + the server-side PNG re-encode); mac_app references it by id, so no
-// inline icon upload is needed.
+// The app is sourced dynamically rather than hard-coded: device-based VPP
+// assignment 409s ("App is not available for device assignment") unless the
+// app's bundle_id matches a device-assignable title the token's location owns.
+// Step 1 stands up the location and reads a device-assignable MAC_APP adam_id
+// from its synced content via an HCL output; the Check resolves that adam_id's
+// App Store metadata (bundle_id / version / url / description / artwork) from
+// the public iTunes Lookup API; later steps inject it via TF_VAR_*. The update
+// step flips install_button_text and assign_vpp_device_based_licenses
+// true->false (wire-probed to round-trip), verifying the GET-after-Update path
+// on the vpp block.
+//
+// Gated on JAMFPLATFORM_VPP_TOKEN. Skipped if the token's location owns no
+// device-assignable Mac app (nothing to assign).
 func TestAccResource_ProMacApp_VPPFullMetadata(t *testing.T) {
 	token := os.Getenv(vppTokenEnvVar)
 	if token == "" {
@@ -451,38 +536,88 @@ func TestAccResource_ProMacApp_VPPFullMetadata(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 
+	// Populated by the discovery step's Check, consumed by later steps' PreConfig.
+	var meta itunesMacAppMeta
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckMacAppDestroy(t),
 		Steps: []resource.TestStep{
+			// Step 1 (discovery): stand up the location, pick a device-assignable
+			// MAC_APP adam_id from its content output, resolve its App Store metadata.
 			{
-				Config: macAppVPPFullMetadataConfig(token, suffix, "Get"),
+				Config: macAppVPPDiscoverConfig(token, suffix),
+				Check: func(s *terraform.State) error {
+					out, ok := s.RootModule().Outputs["mac_adam_ids"]
+					if !ok {
+						return fmt.Errorf("output mac_adam_ids not found in state")
+					}
+					ids, ok := out.Value.([]any)
+					if !ok {
+						return fmt.Errorf("output mac_adam_ids is %T, want a list", out.Value)
+					}
+					if len(ids) == 0 {
+						t.Skipf("VPP token's location owns no device-assignable Mac app; nothing to assign")
+					}
+					// The location may own custom/B2B apps absent from the public
+					// catalog. Try each owned adam_id until one resolves.
+					for _, raw := range ids {
+						id := fmt.Sprintf("%v", raw)
+						m, found, err := lookupITunesMacApp(id)
+						if err != nil {
+							t.Logf("iTunes lookup for adam_id %s failed: %v; trying next", id, err)
+							continue
+						}
+						if !found {
+							t.Logf("adam_id %s has no public iTunes listing; trying next", id)
+							continue
+						}
+						meta = m
+						t.Logf("resolved adam_id %s -> %q (%s)", id, m.TrackName, m.BundleID)
+						return nil
+					}
+					t.Skipf("none of the %d device-assignable Mac apps the token owns resolve in the public iTunes catalog (likely custom/B2B titles)", len(ids))
+					return nil
+				},
+			},
+			// Step 2 (create): inject resolved metadata and create the app with
+			// device-based VPP assignment against the same location.
+			{
+				PreConfig: func() { setMacAppTFVars(t, meta) },
+				Config:    macAppVPPDynamicConfig(token, suffix, "Get", true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "id"),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "general.version", jamfParentVersion),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "general.bundle_id", jamfParentBundleID),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "general.url", jamfParentURL),
+					resource.TestCheckResourceAttrWith(macAppResourceAddr, "general.bundle_id", func(v string) error {
+						if v != meta.BundleID {
+							return fmt.Errorf("general.bundle_id = %q, want resolved %q", v, meta.BundleID)
+						}
+						return nil
+					}),
+					resource.TestCheckResourceAttrWith(macAppResourceAddr, "general.version", func(v string) error {
+						if v != meta.Version {
+							return fmt.Errorf("general.version = %q, want resolved %q", v, meta.Version)
+						}
+						return nil
+					}),
+					resource.TestCheckResourceAttrSet(macAppResourceAddr, "general.url"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "general.is_free", "true"),
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "general.category_id"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.all_computers", "true"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.install_button_text", "Get"),
-					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.self_service_description", jamfParentDesc),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.notification_enabled", "true"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.self_service_categories.#", "1"),
-					resource.TestCheckResourceAttrPair(macAppResourceAddr, "self_service.self_service_icon.id", "jamfplatform_pro_icon.jamf_parent", "id"),
+					resource.TestCheckResourceAttrPair(macAppResourceAddr, "self_service.self_service_icon.id", "jamfplatform_pro_icon.app", "id"),
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "self_service.self_service_icon.uri"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "vpp.assign_vpp_device_based_licenses", "true"),
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "vpp.vpp_admin_account_id"),
 					resource.TestCheckResourceAttrSet(macAppResourceAddr, "vpp.total_vpp_licenses"),
 				),
 			},
+			// Step 3 (update): flip the Self Service button text and turn
+			// device-based assignment off.
 			{
-				Config: strings.Replace(
-					macAppVPPFullMetadataConfig(token, suffix, "Install"),
-					"assign_vpp_device_based_licenses = true",
-					"assign_vpp_device_based_licenses = false",
-					1,
-				),
+				PreConfig: func() { setMacAppTFVars(t, meta) },
+				Config:    macAppVPPDynamicConfig(token, suffix, "Install", false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(macAppResourceAddr, "self_service.install_button_text", "Install"),
 					resource.TestCheckResourceAttr(macAppResourceAddr, "vpp.assign_vpp_device_based_licenses", "false"),
