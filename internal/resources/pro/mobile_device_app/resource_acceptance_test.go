@@ -609,6 +609,28 @@ func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
 		}
 	`, name, group)
 
+	// cleared removes the directory-service group from scope. Applied as a final
+	// step BEFORE the framework destroys the resource: destroying an app while a
+	// DS group is still scoped can leave an orphaned app->LDAP association that
+	// blocks the LDAP server's deletion (a server-side data-integrity bug). By
+	// clearing the reference first, teardown leaves nothing pinning the directory.
+	cleared := fmt.Sprintf(`
+		resource "jamfplatform_pro_mobile_device_app" "test" {
+			general = {
+				name      = %q
+				version   = "1.0"
+				bundle_id = "com.example.tfacc.mobileapp.ldap"
+				os_type   = "iOS"
+			}
+
+			scope = {
+				targets = {
+					all_mobile_devices = true
+				}
+			}
+		}
+	`, name)
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckMobileAppDestroy(t),
@@ -620,6 +642,13 @@ func TestAccResource_ProMobileApp_ScopeLdapGroup(t *testing.T) {
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.limitations.directory_service_user_group_names.#", "1"),
 					resource.TestCheckResourceAttr(mobileAppResourceAddr, "scope.limitations.directory_service_user_group_names.0", group),
 				),
+			},
+			{
+				// Detach the DS group before destroy (see `cleared` above). The
+				// post-step plan must be empty, which enforces that the clear
+				// actually round-tripped server-side.
+				Config: cleared,
+				Check:  resource.TestCheckResourceAttrSet(mobileAppResourceAddr, "id"),
 			},
 		},
 	})
