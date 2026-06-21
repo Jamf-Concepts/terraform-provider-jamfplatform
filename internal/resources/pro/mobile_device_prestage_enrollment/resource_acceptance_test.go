@@ -184,15 +184,20 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_Minimal(t *testing.T) {
 func TestAccResource_ProMobileDevicePrestageEnrollment_Full_UpdateRoundTrip(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
+	// require_authentication = true (config V1) needs a Directory Service on the
+	// tenant or Create returns PREREQUISITE_NOT_MET; stand up the shared Okta
+	// LDAP server fixture and depend on it.
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
 	suffix := testhelpers.RunSuffix()
 	accCleanupOrphans(t, suffix)
 	name := "tf-acc-mobile-prestage-full-" + suffix
+	ldapFixture := testhelpers.LdapServerFixture(name, ldapEnv)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: adeFixtureBlock(suffix, token) + testAccMobilePrestageFullConfigV1(name),
+				Config: ldapFixture + adeFixtureBlock(suffix, token) + testAccMobilePrestageFullConfigV1(name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "display_name", name),
 					resource.TestCheckResourceAttr(resourceName, "support_phone_number", "+44-1-555-0100"),
@@ -204,7 +209,7 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_Full_UpdateRoundTrip(t *t
 				),
 			},
 			{
-				Config: adeFixtureBlock(suffix, token) + testAccMobilePrestageFullConfigV2(name+"-v2"),
+				Config: ldapFixture + adeFixtureBlock(suffix, token) + testAccMobilePrestageFullConfigV2(name+"-v2"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "display_name", name+"-v2"),
 					resource.TestCheckResourceAttr(resourceName, "support_phone_number", "+44-1-555-0200"),
@@ -739,6 +744,8 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
 func testAccMobilePrestageFullConfigV1(name string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
+  depends_on = [jamfplatform_pro_ldap_server.acc_ldap]
+
   display_name                          = %q
   device_enrollment_program_instance_id = %s
   timezone                              = "UTC"
@@ -792,6 +799,8 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
 func testAccMobilePrestageFullConfigV2(name string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
+  depends_on = [jamfplatform_pro_ldap_server.acc_ldap]
+
   display_name                          = %q
   device_enrollment_program_instance_id = %s
   timezone                              = "UTC"
