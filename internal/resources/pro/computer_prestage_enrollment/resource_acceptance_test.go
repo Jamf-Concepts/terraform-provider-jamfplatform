@@ -191,15 +191,22 @@ func TestAccResource_ProComputerPrestageEnrollment_Minimal(t *testing.T) {
 func TestAccResource_ProComputerPrestageEnrollment_Full_UpdateRoundTrip(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	token := requireADETokenBlob(t)
+	// require_authentication = true (V1) is rejected by Jamf Pro with
+	// PREREQUISITE_NOT_MET unless a Directory Service is configured on the
+	// tenant. Stand up the shared Okta LDAP fixture and order the prestage
+	// after it via depends_on. The fixture HCL is included in BOTH steps so
+	// TF does not destroy the directory service between Create and Update.
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
 	suffix := testhelpers.RunSuffix()
 	accCleanupOrphans(t, suffix)
 	name := "tf-acc-computer-prestage-full-" + suffix
+	ldapFixture := testhelpers.LdapServerFixture("tf-acc-prestage-ldap-"+suffix, ldapEnv)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: adeFixtureBlock(suffix, token) + testAccComputerPrestageFullConfigV1(name),
+				Config: adeFixtureBlock(suffix, token) + ldapFixture + testAccComputerPrestageFullConfigV1(name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "display_name", name),
 					resource.TestCheckResourceAttr(resourceName, "support_phone_number", "+44-1-555-0100"),
@@ -211,7 +218,7 @@ func TestAccResource_ProComputerPrestageEnrollment_Full_UpdateRoundTrip(t *testi
 				),
 			},
 			{
-				Config: adeFixtureBlock(suffix, token) + testAccComputerPrestageFullConfigV2(name+"-v2"),
+				Config: adeFixtureBlock(suffix, token) + ldapFixture + testAccComputerPrestageFullConfigV2(name+"-v2"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "display_name", name+"-v2"),
 					resource.TestCheckResourceAttr(resourceName, "support_phone_number", "+44-1-555-0200"),
@@ -986,8 +993,10 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
   }
 
   scope_serial_numbers = []
+
+  depends_on = [%[3]s]
 }
-`, name, adeFixtureRef)
+`, name, adeFixtureRef, testhelpers.LdapFixtureResourceAddr)
 }
 
 func testAccComputerPrestageFullConfigV2(name string) string {
@@ -1044,8 +1053,10 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
   custom_package_ids = []
 
   scope_serial_numbers = []
+
+  depends_on = [%[3]s]
 }
-`, name, adeFixtureRef)
+`, name, adeFixtureRef, testhelpers.LdapFixtureResourceAddr)
 }
 
 func testAccComputerPrestageRecoveryLockManualConfig(name string) string {
