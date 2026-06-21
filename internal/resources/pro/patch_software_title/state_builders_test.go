@@ -192,9 +192,12 @@ func TestCategorySiteNotificationValues_NilBlocks(t *testing.T) {
 	if !cid.IsNull() || !cname.IsNull() {
 		t.Errorf("nil category must yield null/null")
 	}
+	// site_id is a tri-state attribute: a nil site means "no site", which the
+	// read path collapses to the "-1" sentinel (never null) so the value
+	// round-trips. site_name stays null when absent.
 	sid, sname := siteValues(nil)
-	if !sid.IsNull() || !sname.IsNull() {
-		t.Errorf("nil site must yield null/null")
+	if sid.ValueString() != "-1" || !sname.IsNull() {
+		t.Errorf("nil site must yield id=-1/name=null, got id=%q name-null=%v", sid.ValueString(), sname.IsNull())
 	}
 	web, email := notificationValues(nil)
 	if !web.IsNull() || !email.IsNull() {
