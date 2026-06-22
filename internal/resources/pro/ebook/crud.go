@@ -1,0 +1,280 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+// SDK endpoints used:
+//   proclassic.CreateEbookByID   (POST   /ebooks/id/0)
+//   proclassic.GetEbookByID      (GET    /ebooks/id/{id})
+//   proclassic.UpdateEbookByID   (PUT    /ebooks/id/{id})
+//   proclassic.DeleteEbookByID   (DELETE /ebooks/id/{id})
+//   proclassic.ListEbooks        (data source / list resource)
+//   proclassic.GetEbookByName    (data source name lookup)
+//
+// Status: current. Last reviewed 2026-06-03.
+//
+// Update semantics: the classic /ebooks PUT is a partial-merge, not a
+// full-replace (wire-probed — omitting <general> fields and the entire <scope>
+// block retained the prior values). The provider sends the full plan payload on
+// every Update, so in-place edits to managed sections converge cleanly. Removing
+// an entire optional block from config omits it from the payload, so the server
+// retains the previously-stored block — a known ProClassic limitation. To clear
+// a block, null its individual fields rather than deleting the block.
+//
+// Delete semantics: FIRE-AND-TRUST. The classic /ebooks DELETE is asynchronous
+// behind a MISLEADING response — the server returns HTTP 400 with body
+// <ebook><id>N</id></ebook> (no error envelope) even though it has ACCEPTED the
+// delete and completes it server-side later. Two wire-probed rules (2026-06-04),
+// both pointing the same way — leave it alone:
+//
+//   - Re-issuing the DELETE delays the async removal (single delete vs
+//     repeated-every-15s held it present far longer).
+//   - POLLING GET-by-id to confirm ALSO delays it: an ebook polled every 3s
+//     stayed present past 3.5min and only cleared once polling STOPPED. (Unlike
+//     /mobiledeviceapplications, which returns the same misleading 400 but
+//     clears in ~2s and is not GET-sensitive.)
+//
+// So Delete issues the DELETE exactly once and does NOT GET to confirm. The
+// accepted-but-misleading 4xx is treated as success-with-a-warning: the ebook is
+// dropped from state and the server finishes shortly. A 5xx / transport error is
+// a genuine failure and is surfaced. Because confirmation is impossible without
+// interfering, the acceptance CheckDestroy is a documented no-op. pro/v1 ebooks
+// has no delete path, so classic is the only door. The Jamf API team is aware of
+// the misleading 400.
+
+package ebook
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+)
+
+// Create creates a new Jamf Pro ebook. Classic POSTs to id="0"; the server
+// allocates the real integer ID and returns it in the response body.
+func (r *EbookResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan EbookResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	createTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, plan.Timeouts.IsNull(), plan.Timeouts.IsUnknown(), defaultCreateTimeout, plan.Timeouts.Create)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
+
+	payload, buildDiags := buildEbookInput(createCtx, plan)
+	resp.Diagnostics.Append(buildDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	created, err := r.client.CreateEbookByID(createCtx, "0", payload)
+	if helpers.IsDirectoryGroupMatchConflict(err) {
+		// Bootstrap apply: the referenced directory is still coming up. Retry until
+		// the scope group resolves (or a real wrong-name conflict persists).
+		err = helpers.RetryOnDirectoryGroupMatchConflict(createCtx, func() error {
+			var e error
+			created, e = r.client.CreateEbookByID(createCtx, "0", payload)
+			return e
+		})
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("Error creating Jamf Pro ebook", err.Error())
+		return
+	}
+	id := extractEbookID(created)
+	if id == "" {
+		resp.Diagnostics.AddError(
+			"Create response missing ebook ID",
+			"Jamf Pro returned 201 Created with no ebook ID; cannot persist state.",
+		)
+		return
+	}
+
+	got, err := r.client.GetEbookByID(createCtx, id)
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading created Jamf Pro ebook", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(assignEbookResourceModel(createCtx, &plan, got)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ebookIdentityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	tflog.Trace(ctx, "created Jamf Pro ebook", map[string]any{"id": plan.ID.ValueString()})
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// Read refreshes Terraform state with the latest ebook representation.
+func (r *EbookResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state EbookResourceModel
+	isImport := req.State.Raw.IsNull()
+
+	if isImport {
+		if req.Identity == nil {
+			resp.Diagnostics.AddError(
+				"Missing resource identity",
+				"Terraform requested a refresh for this ebook without existing state or identity data, so the provider cannot determine which ebook to read.",
+			)
+			return
+		}
+		var identity ebookIdentityModel
+		resp.Diagnostics.Append(req.Identity.Get(ctx, &identity)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if identity.ID.IsNull() || identity.ID.IsUnknown() || identity.ID.ValueString() == "" {
+			resp.Diagnostics.AddError(
+				"Missing ebook ID",
+				"The resource identity did not include an 'id' attribute, so the provider cannot refresh the ebook.",
+			)
+			return
+		}
+		state.ID = identity.ID
+		state.Timeouts = helpers.NewResourceTimeoutsNullValue(ebookTimeoutAttributeTypes)
+	} else {
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultReadTimeout, state.Timeouts.Read)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
+	if state.ID.IsNull() || state.ID.ValueString() == "" {
+		resp.Diagnostics.AddError("Missing ID", "Cannot read Jamf Pro ebook without ID.")
+		return
+	}
+
+	got, err := r.client.GetEbookByID(readCtx, state.ID.ValueString())
+	if err != nil {
+		if helpers.IsNotFoundError(err) {
+			tflog.Info(ctx, "Jamf Pro ebook not found, removing from state", map[string]any{"id": state.ID.ValueString()})
+			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ebookIdentityModel{ID: state.ID})...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			resp.State.RemoveResource(ctx)
+			return
+		}
+		resp.Diagnostics.AddError("Error reading Jamf Pro ebook", err.Error())
+		return
+	}
+
+	resp.Diagnostics.Append(assignEbookResourceModel(readCtx, &state, got)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ebookIdentityModel{ID: state.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// Update updates a Jamf Pro ebook. Classic UpdateEbookByID returns 201 with an
+// empty body — we must GET to refresh state.
+func (r *EbookResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan EbookResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, plan.Timeouts.IsNull(), plan.Timeouts.IsUnknown(), defaultUpdateTimeout, plan.Timeouts.Update)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	payload, buildDiags := buildEbookInput(updateCtx, plan)
+	resp.Diagnostics.Append(buildDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if err := helpers.RetryOnDirectoryGroupMatchConflict(updateCtx, func() error {
+		return r.client.UpdateEbookByID(updateCtx, plan.ID.ValueString(), payload)
+	}); err != nil {
+		resp.Diagnostics.AddError("Error updating Jamf Pro ebook", err.Error())
+		return
+	}
+
+	got, err := r.client.GetEbookByID(updateCtx, plan.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Error reading updated Jamf Pro ebook", err.Error())
+		return
+	}
+	resp.Diagnostics.Append(assignEbookResourceModel(updateCtx, &plan, got)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ebookIdentityModel{ID: plan.ID})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// Delete removes a Jamf Pro ebook (fire-and-trust). See the package
+// delete-semantics note in this file's header for why it never GETs to confirm.
+func (r *EbookResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state EbookResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	deleteTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, state.Timeouts.IsNull(), state.Timeouts.IsUnknown(), defaultDeleteTimeout, state.Timeouts.Delete)
+	resp.Diagnostics.Append(timeoutDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	deleteCtx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
+
+	id := state.ID.ValueString()
+	if state.ID.IsNull() || id == "" {
+		resp.Diagnostics.AddError("Missing ID", "Cannot delete Jamf Pro ebook without ID.")
+		return
+	}
+
+	// Fire-and-trust: issue the DELETE exactly once and do NOT GET to confirm
+	// (polling delays the server-side async removal — wire-probed). Treat the
+	// accepted-but-misleading 4xx as success-with-a-warning; surface a 5xx /
+	// transport error as a genuine failure.
+	delErr := r.client.DeleteEbookByID(deleteCtx, id)
+	switch {
+	case delErr == nil || helpers.IsNotFoundError(delErr):
+		tflog.Trace(ctx, "Jamf Pro ebook deletion confirmed", map[string]any{"id": id})
+	case helpers.IsClientError(delErr):
+		resp.Diagnostics.AddWarning(
+			"Jamf Pro ebook deletion is asynchronous and was not confirmed",
+			fmt.Sprintf("The classic /ebooks DELETE for id %s returned an accepted-but-misleading client error. The ebook has been removed from Terraform state; the server completes the deletion a short time later. Confirmation is intentionally not polled because GET-by-id requests delay the server-side removal. (delete response: %v)", id, delErr),
+		)
+	default:
+		resp.Diagnostics.AddError("Error deleting Jamf Pro ebook", fmt.Sprintf("%v", delErr))
+	}
+}

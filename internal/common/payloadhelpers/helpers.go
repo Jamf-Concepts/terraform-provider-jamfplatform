@@ -1,0 +1,443 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+// Package payloadhelpers provides shared mobileconfig plist parsing,
+// masking, and diff-suppression helpers used by all configuration profile
+// resources (macOS and mobile device). All functions are pure — they operate
+// on byte slices and maps and carry no resource-specific state.
+package payloadhelpers
+
+import (
+	"bytes"
+	"encoding/base64"
+	"fmt"
+	"html"
+	"strings"
+
+	"howett.net/plist"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
+)
+
+// Server-controlled keys skipped on both sides before diff comparison.
+// Only keys Jamf Pro derives on every write/read regardless of input value
+// land here.
+//
+// Keys Jamf Pro only *conditionally* defaults (e.g. `PayloadEnabled` when
+// absent, `VendorConfig` only for webcontent-filter payloads) are
+// intentionally **not** in this list. The intersection-compare in
+// LenientEqualPlist drops asymmetric keys at comparison time, which means:
+//
+//   - user omits the key → only server side has it → intersection drops it → no spurious diff.
+//   - user authors the key → both sides have it → compared → drift detected if the user later edits.
+//
+// `PayloadOrganization` is in this list — wire-confirmed 2026-05-26 that
+// Jamf Pro Classic always overwrites the field with "JAMF Software" on
+// both top-level and per-PayloadContent slots, regardless of the
+// user-authored value. The previous "conditional default" assumption
+// produced persistent payload diffs on every plan that authored an
+// organization. Trade-off: a user-authored edit to PayloadOrganization
+// will be silently dropped on the wire — but Jamf already drops it
+// regardless, so masking the key matches reality. Drift detection on
+// every other value the user authors is unaffected.
+var (
+	maskedTopLevelKeys = map[string]struct{}{
+		"PayloadDisplayName":  {}, // server sets from classic <general><name> on every write
+		"PayloadIdentifier":   {}, // server assigns a new lowercase UUID on create
+		"PayloadUUID":         {}, // server assigns a new lowercase UUID on create
+		"PayloadOrganization": {}, // server always overwrites with "JAMF Software"
+		"PayloadDescription":  {}, // server always empties the top-level description
+		"PayloadEnabled":      {}, // server always strips at top-level (Apple-spec is per-payload, not top-level)
+	}
+	maskedPayloadContentKeys = map[string]struct{}{
+		"PayloadDisplayName":  {}, // server-defaulted per PayloadType
+		"PayloadIdentifier":   {}, // server may assign on create
+		"PayloadUUID":         {}, // server may assign on create; preserved on update by InjectTopLevelIdentifiers
+		"PayloadOrganization": {}, // server always overwrites with "JAMF Software"
+	}
+	// serverInjectedPayloadTypes are PayloadContent[i].PayloadType values Jamf
+	// Pro inserts into the mobileconfig as a side-effect of a *different*
+	// classic-API field. They are dropped from both sides of mask comparison
+	// because the user never authored them — they exist purely because the
+	// user set the sibling classic-API knob (e.g. self_service.security
+	// authorization_password materialises as a com.apple.profileRemovalPassword
+	// PayloadContent entry). Dropping them means the masked plan and the
+	// masked server response stay length-aligned through Create/Update.
+	//
+	// Trade-off: a user who *manually* authors a payload entry of one of these
+	// types (rare but possible) loses drift detection on it. The
+	// MaskPayload-design note above explicitly rejects skip-lists for keys
+	// users might author — this list intentionally accepts the carve-out
+	// because every entry here is paired with a first-class classic-API field
+	// the resource already exposes, and the in-payload form is redundant.
+	serverInjectedPayloadTypes = map[string]struct{}{
+		"com.apple.profileRemovalPassword": {}, // mirrors self_service.authorization_password
+	}
+	// mcxLikePayloadTypes enumerates PayloadType values whose inner
+	// `.PayloadContent` child is opaque user-authored vendor preference data.
+	// For these types, drift detection compares the inner subtree strictly
+	// (keysets must match exactly) so admin-UI key add/remove inside the
+	// vendor preference dict surfaces on the next plan. Apple's MCX format
+	// (com.apple.ManagedClient.preferences) is the canonical case — Jamf Pro
+	// UI exposes it as "Application & Custom Settings" / "Custom Settings".
+	// Jamf is the transport for this subtree, not the editor: it never
+	// injects metadata at the inner preference depth, so strict compare is
+	// safe.
+	mcxLikePayloadTypes = map[string]struct{}{
+		"com.apple.ManagedClient.preferences": {},
+	}
+)
+
+// MaskPayload returns a deep-cloned representation of the input plist with
+// every server-controlled key dropped and every string value trimmed. The
+// result is suitable for equality comparison against another masked payload
+// — equality implies the two payloads are semantically the same modulo
+// Jamf's well-known server-side normalisations.
+//
+// See STYLE_GUIDE.md §Configuration profile payload diff suppression for
+// the diff-class catalogue this mask is designed to neutralise.
+func MaskPayload(raw []byte) (map[string]any, error) {
+	parsed, _, err := plisthelpers.ParsePlist(raw)
+	if err != nil {
+		return nil, err
+	}
+	return maskTopLevel(parsed), nil
+}
+
+func maskTopLevel(p map[string]any) map[string]any {
+	out := make(map[string]any, len(p))
+	for k, v := range p {
+		if _, masked := maskedTopLevelKeys[k]; masked {
+			continue
+		}
+		if k == "PayloadContent" {
+			if arr, ok := v.([]any); ok {
+				out[k] = maskPayloadContent(arr)
+				continue
+			}
+		}
+		trimmed := trimAny(v)
+		if isEmpty(trimmed) {
+			continue
+		}
+		out[k] = trimmed
+	}
+	return out
+}
+
+func maskPayloadContent(items []any) []any {
+	out := make([]any, 0, len(items))
+	for _, it := range items {
+		dict, ok := it.(map[string]any)
+		if !ok {
+			out = append(out, trimAny(it))
+			continue
+		}
+		if ptype, ok := dict["PayloadType"].(string); ok {
+			if _, injected := serverInjectedPayloadTypes[ptype]; injected {
+				continue
+			}
+		}
+		masked := make(map[string]any, len(dict))
+		for k, v := range dict {
+			if _, drop := maskedPayloadContentKeys[k]; drop {
+				continue
+			}
+			trimmed := trimAny(v)
+			if isEmpty(trimmed) {
+				continue
+			}
+			masked[k] = trimmed
+		}
+		out = append(out, masked)
+	}
+	return out
+}
+
+// isEmpty reports whether a plist value is equivalent to "user did not
+// author anything" — empty string, nil, or empty collection.
+func isEmpty(v any) bool {
+	switch t := v.(type) {
+	case nil:
+		return true
+	case string:
+		return t == ""
+	case []any:
+		return len(t) == 0
+	case map[string]any:
+		return len(t) == 0
+	default:
+		return false
+	}
+}
+
+// normalizeBase64InString collapses line-wrap whitespace from string values
+// that decode cleanly as base64. Apple-spec mobileconfig binary blobs live
+// inside `<data>` tags (which howett.net/plist decodes to []byte and carry
+// no whitespace), but some vendor payloads embed base64 inside `<string>`
+// values — and Jamf Pro can line-wrap long base64 strings on the way back.
+// Whitespace-only differences inside such strings would otherwise produce
+// spurious diffs.
+//
+// Heuristic deliberately conservative — only fires when:
+//   - The string contains an explicit newline (`\n` or `\r`). Plain spaces
+//     do not trigger; natural-language values like "Allow 1Password
+//     Launch Item" pass through untouched even when they happen to be
+//     all-alphanumeric.
+//   - After all-whitespace strip, the result is at least 32 characters and
+//     a multiple of 4. Real base64 cert/blob content is nearly always far
+//     longer; multi-line natural-language descriptions are vanishingly
+//     unlikely to satisfy both length floor and length-mod-4.
+//   - The cleaned form decodes successfully under standard base64.
+//
+// Anything that fails any gate is returned unchanged.
+func normalizeBase64InString(s string) string {
+	if !strings.ContainsAny(s, "\n\r") {
+		return s
+	}
+	clean := strings.Join(strings.Fields(s), "")
+	if len(clean) < 32 || len(clean)%4 != 0 {
+		return s
+	}
+	if _, err := base64.StdEncoding.DecodeString(clean); err == nil {
+		return clean
+	}
+	return s
+}
+
+// trimAny recursively trims whitespace from every string value in the plist
+// tree. For ordinary text values this is `strings.TrimSpace`. For string
+// values that decode as base64, internal whitespace is also collapsed (see
+// normalizeBase64InString) so server-side line wrapping does not produce
+// spurious diffs.
+func trimAny(v any) any {
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(normalizeBase64InString(t))
+	case []any:
+		out := make([]any, len(t))
+		for i, item := range t {
+			out[i] = trimAny(item)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, val := range t {
+			out[k] = trimAny(val)
+		}
+		return out
+	default:
+		return v
+	}
+}
+
+// PayloadsSemanticallyEqual returns true when the two raw mobileconfig
+// payloads are equal after skipping server-controlled fields and treating
+// asymmetric dict keys as a no-op (intersection compare).
+//
+// The intersection compare is the formal expression of the user's
+// "ignore overridden fields, no mapping tables" directive: when Jamf Pro
+// adds or drops a key the user didn't author, both sides differ in their
+// key-sets — but a real semantic change is in the *value* of a key that
+// is on both sides. The compare therefore walks the union of keys at every
+// dict, but only fails when a key present on both sides has differing
+// values.
+//
+// Trade-off: a user who edits only a key Jamf Pro itself derives (e.g.
+// tunes `PayloadOrganization` from empty to a value, then back) won't see
+// a diff — the server will substitute its own value, so flagging that as
+// drift would produce a persistent diff loop.
+func PayloadsSemanticallyEqual(a, b []byte) (bool, error) {
+	ma, err := MaskPayload(a)
+	if err != nil {
+		return false, fmt.Errorf("masking left side: %w", err)
+	}
+	mb, err := MaskPayload(b)
+	if err != nil {
+		return false, fmt.Errorf("masking right side: %w", err)
+	}
+	return LenientEqualPlist(ma, mb), nil
+}
+
+// LenientEqualPlist compares two parsed-and-masked plist trees with
+// intersection semantics: dict keys present on only one side are ignored;
+// shared keys must compare equal. Arrays compare positionally. Scalars
+// compare via plisthelpers.NumericEqual for ints (howett.net/plist returns int64 or
+// uint64 depending on sign).
+//
+// Exception: PayloadContent[i] entries whose PayloadType is in
+// mcxLikePayloadTypes (e.g. com.apple.ManagedClient.preferences — Jamf
+// Pro's "Application & Custom Settings") get their inner `.PayloadContent`
+// child strict-compared via plisthelpers.Equal. That subtree is opaque
+// user-authored vendor preference data; admin-UI key add/remove inside it
+// is real drift and must surface on the next plan. Remaining keys at the
+// MCX entry depth still use intersection so per-payload metadata defaults
+// Jamf injects (e.g. PayloadEnabled) keep tolerating one-sided presence.
+//
+// Intersection compare elsewhere remains the documented trade-off: it
+// keeps the corpus quiet on Jamf's many conditional-default injections
+// (top-level `PayloadRemovalDisallowed`, per-payload `PayloadEnabled`,
+// PPPC service strips, etc.) without having to enumerate every one.
+func LenientEqualPlist(a, b any) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	switch av := a.(type) {
+	case map[string]any:
+		bv, ok := b.(map[string]any)
+		if !ok {
+			return false
+		}
+		if pt, _ := av["PayloadType"].(string); pt != "" {
+			if _, isMCX := mcxLikePayloadTypes[pt]; isMCX {
+				ai, aHas := av["PayloadContent"]
+				bi, bHas := bv["PayloadContent"]
+				if aHas != bHas {
+					return false
+				}
+				if aHas && !plisthelpers.Equal(ai, bi) {
+					return false
+				}
+				for k, va := range av {
+					if k == "PayloadContent" {
+						continue
+					}
+					if vb, exists := bv[k]; exists {
+						if !LenientEqualPlist(va, vb) {
+							return false
+						}
+					}
+				}
+				return true
+			}
+		}
+		for k, va := range av {
+			if vb, exists := bv[k]; exists {
+				if !LenientEqualPlist(va, vb) {
+					return false
+				}
+			}
+		}
+		return true
+	case []any:
+		bv, ok := b.([]any)
+		if !ok || len(av) != len(bv) {
+			return false
+		}
+		for i := range av {
+			if !LenientEqualPlist(av[i], bv[i]) {
+				return false
+			}
+		}
+		return true
+	case []uint8:
+		bv, ok := b.([]uint8)
+		if !ok {
+			return false
+		}
+		return bytes.Equal(av, bv)
+	case uint64:
+		return plisthelpers.NumericEqual(int64(av), b)
+	case int64:
+		return plisthelpers.NumericEqual(av, b)
+	case int:
+		return plisthelpers.NumericEqual(int64(av), b)
+	default:
+		return a == b
+	}
+}
+
+// InjectTopLevelIdentifierValues overwrites the top-level PayloadUUID and
+// PayloadIdentifier of newPayload with the supplied strings. The values
+// should be the server-canonical identifiers sourced from state (e.g.
+// state.General.UUID). Without this step, every PUT produces a new top-level
+// UUID server-side and devices treat the update as a fresh install.
+//
+// If both uuid and identifier are empty (Create path), newPayload is
+// returned unchanged.
+func InjectTopLevelIdentifierValues(newPayload []byte, uuid, identifier string) ([]byte, error) {
+	if uuid == "" && identifier == "" {
+		return newPayload, nil
+	}
+	next, format, err := plisthelpers.ParsePlist(newPayload)
+	if err != nil {
+		return nil, fmt.Errorf("parsing new payload for identifier injection: %w", err)
+	}
+	if uuid != "" {
+		next["PayloadUUID"] = uuid
+	}
+	if identifier != "" {
+		next["PayloadIdentifier"] = identifier
+	}
+	buf := &bytes.Buffer{}
+	enc := plist.NewEncoderForFormat(buf, format)
+	enc.Indent("\t")
+	if err := enc.Encode(next); err != nil {
+		return nil, fmt.Errorf("re-serialising payload after identifier injection: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// PrepareWirePayload produces the payload bytes a configuration-profile
+// resource actually sends to the Classic API: server-canonical identifier
+// injection (InjectTopLevelIdentifierValues) followed by structural-whitespace
+// compaction (plisthelpers.CompactStructuralWhitespace).
+//
+// Compaction exists because the Classic API's server-side plist parser
+// materialises whitespace text nodes between sibling <array> tags as phantom
+// empty <array/> entries in the stored plist (wire-probed against
+// JSSResource/mobiledeviceconfigurationprofiles, 2026-06-10). It must run
+// after identifier injection — that step re-serialises the plist
+// pretty-printed, reintroducing the whitespace.
+//
+// Compaction is best-effort: when the payload is not well-formed XML the
+// uncompacted bytes are returned so the server reports the malformation with
+// its own error.
+func PrepareWirePayload(newPayload []byte, uuid, identifier string) ([]byte, error) {
+	prepared, err := InjectTopLevelIdentifierValues(newPayload, uuid, identifier)
+	if err != nil {
+		return nil, err
+	}
+	if compacted, cErr := plisthelpers.CompactStructuralWhitespace(prepared); cErr == nil {
+		prepared = compacted
+	}
+	return prepared, nil
+}
+
+// InjectTopLevelIdentifiers is the existingPayload-based wrapper used by
+// unit tests. CRUD callers use InjectTopLevelIdentifierValues directly so
+// they can pass server-canonical identifiers sourced from state.General.UUID.
+func InjectTopLevelIdentifiers(newPayload, existingPayload []byte) ([]byte, error) {
+	if len(existingPayload) == 0 {
+		return newPayload, nil
+	}
+	exist, _, err := plisthelpers.ParsePlist(existingPayload)
+	if err != nil {
+		return newPayload, nil //nolint:nilerr // best-effort
+	}
+	uuid, _ := exist["PayloadUUID"].(string)
+	identifier, _ := exist["PayloadIdentifier"].(string)
+	return InjectTopLevelIdentifierValues(newPayload, uuid, identifier)
+}
+
+// ExtractServerPayloadFromGeneral pulls the mobileconfig plist text out of a
+// classic API GET response. The server returns the payload inside
+// <general><payloads>...</payloads></general> as XML-entity-encoded text (not
+// CDATA). This helper exists for tests that work directly with captured wire XML.
+func ExtractServerPayloadFromGeneral(wireXML []byte) ([]byte, error) {
+	const (
+		openTag  = "<payloads>"
+		closeTag = "</payloads>"
+	)
+	si := bytes.Index(wireXML, []byte(openTag))
+	ei := bytes.Index(wireXML, []byte(closeTag))
+	if si < 0 || ei < 0 || si >= ei {
+		return nil, fmt.Errorf("no <payloads> block found")
+	}
+	inner := wireXML[si+len(openTag) : ei]
+	inner = bytes.TrimSpace(inner)
+	if bytes.HasPrefix(inner, []byte("<![CDATA[")) && bytes.HasSuffix(inner, []byte("]]>")) {
+		return inner[len("<![CDATA[") : len(inner)-len("]]>")], nil
+	}
+	return []byte(html.UnescapeString(string(inner))), nil
+}

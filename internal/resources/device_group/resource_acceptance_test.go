@@ -19,6 +19,29 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
+// logAttrValue returns a TestCheckFunc that logs the value of a state attribute.
+// Use to emit resolved server-derived values (e.g. jamf_pro_id) into the test
+// output for cross-checking against Jamf Pro UI / API.
+func logAttrValue(t *testing.T, resourceName, attribute string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("%s not found in state", resourceName)
+		}
+		v, ok := rs.Primary.Attributes[attribute]
+		if !ok {
+			t.Logf("%s.%s: <absent>", resourceName, attribute)
+			return nil
+		}
+		if v == "" {
+			t.Logf("%s.%s: <null>", resourceName, attribute)
+			return nil
+		}
+		t.Logf("%s.%s = %q", resourceName, attribute, v)
+		return nil
+	}
+}
+
 // testAccCheckDeviceGroupDestroy verifies that device groups created during the test
 // have been destroyed.
 func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
@@ -49,6 +72,7 @@ func testAccCheckDeviceGroupDestroy(t *testing.T) resource.TestCheckFunc {
 
 func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.SkipUnlessProGroupsReadable(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-static-computer-" + suffix
 	nameUpdated := "tf-acc-static-computer-updated-" + suffix
@@ -71,6 +95,14 @@ func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "name", name),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "group_type", "static"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "device_type", "computer"),
+					// jamf_pro_id is resolved via Pro /v2/groups and depends on the test
+					// tenant having the "Read Groups" privilege wired up on the API
+					// client. If this assertion fails on a tenant that lacks Jamf Pro
+					// entirely or lacks the privilege, see the Pro forbidden warning
+					// surfaced during the plan output.
+					resource.TestCheckResourceAttrSet("jamfplatform_device_group.test_static", "jamf_pro_id"),
+					logAttrValue(t, "jamfplatform_device_group.test_static", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_static", "jamf_pro_id"),
 				),
 			},
 			{
@@ -120,6 +152,8 @@ func TestAccResource_DeviceGroup_SmartComputer(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_smart", "group_type", "smart"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_smart", "device_type", "computer"),
 					resource.TestCheckResourceAttrSet("jamfplatform_device_group.test_smart", "member_count"),
+					logAttrValue(t, "jamfplatform_device_group.test_smart", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_smart", "jamf_pro_id"),
 				),
 			},
 		},
@@ -153,6 +187,8 @@ func TestAccResource_DeviceGroup_SmartMobile(t *testing.T) {
 					resource.TestCheckResourceAttrSet("jamfplatform_device_group.test_mobile", "id"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_mobile", "name", name),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_mobile", "device_type", "mobile"),
+					logAttrValue(t, "jamfplatform_device_group.test_mobile", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_mobile", "jamf_pro_id"),
 				),
 			},
 		},
@@ -176,6 +212,10 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 						device_type = "computer"
 					}
 				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					logAttrValue(t, "jamfplatform_device_group.test_import", "id"),
+					logAttrValue(t, "jamfplatform_device_group.test_import", "jamf_pro_id"),
+				),
 			},
 			{
 				ResourceName:      "jamfplatform_device_group.test_import",
@@ -188,6 +228,7 @@ func TestAccResource_DeviceGroup_ImportState(t *testing.T) {
 
 func TestAccDataSource_DeviceGroup(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	testhelpers.SkipUnlessProGroupsReadable(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ds-device-group-" + suffix
 
@@ -211,6 +252,10 @@ func TestAccDataSource_DeviceGroup(t *testing.T) {
 					resource.TestCheckResourceAttr("data.jamfplatform_device_group.test", "name", name),
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "group_type"),
 					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "device_type"),
+					resource.TestCheckResourceAttrSet("data.jamfplatform_device_group.test", "jamf_pro_id"),
+					logAttrValue(t, "jamfplatform_device_group.source", "id"),
+					logAttrValue(t, "jamfplatform_device_group.source", "jamf_pro_id"),
+					logAttrValue(t, "data.jamfplatform_device_group.test", "jamf_pro_id"),
 				),
 			},
 		},
@@ -259,6 +304,8 @@ func TestAccResource_DeviceGroup_DescriptionNullVsEmpty(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(rn, "id"),
 					resource.TestCheckResourceAttr(rn, "description", "initial value"),
+					logAttrValue(t, rn, "id"),
+					logAttrValue(t, rn, "jamf_pro_id"),
 				),
 			},
 			// Step 2: set description to explicit empty string — must be preserved as ""
@@ -317,6 +364,91 @@ func TestAccResource_DeviceGroup_DescriptionNullVsEmpty(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(rn, "description", "restored"),
 				),
+			},
+		},
+	})
+}
+
+// Directory-service group criteria acceptance coverage.
+//
+// Requires a tenant with a directory service configured and a real resolvable
+// group. Stands up the shared Okta LDAP directory-service fixture (via the SDK, so
+// the directory exists before the pre-apply group resolve) and resolves
+// JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it. The equivalent base64 is resolved +
+// encoded in-test (same path the provider uses) so the swap value always matches;
+// the live apply is the independent check that the encoding is server-acceptable.
+// Real group names are never committed — see memory: no real LDAP names in public
+// files.
+
+// TestAccResource_DeviceGroup_DSGroupCriteria exercises a directory-service group
+// smart-group criterion authored by NAME, asserts the provider stores the name
+// (not the base64) in state, and — the crux — that swapping the config to the
+// EQUIVALENT raw base64 value produces an EMPTY plan (the ModifyPlan semantic
+// equality suppression).
+func TestAccResource_DeviceGroup_DSGroupCriteria(t *testing.T) {
+	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
+	groupName := testhelpers.RequireLdapGroupName(t)
+	testhelpers.AccPreCheck(t)
+	// The "Username directory service group" criterion is rejected (400
+	// INVALID_FIELD) before Jamf Pro 11.29.
+	testhelpers.RequireMinJamfProVersion(t, "11.29.0")
+
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-dsgroup-" + suffix
+	testhelpers.EnsureLdapServerFixture(t, name, ldapEnv)
+
+	// Resolve the group exactly as the provider does, so the step-2 base64 is
+	// byte-identical to what the provider resolves the name to.
+	groupValue := testhelpers.ResolveDSGroupWireValue(t, groupName)
+
+	const criterion = "Username directory service group" // accepted on the computer surface
+
+	cfg := func(value string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_device_group" "dsgroup" {
+				name        = %q
+				description = "Acceptance test — safe to delete"
+				group_type  = "smart"
+				device_type = "computer"
+				criteria = [{
+					criteria = %q
+					operator = "member of"
+					value    = %q
+				}]
+			}
+		`, name, criterion, value)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckDeviceGroupDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// Author by NAME. State must round-trip back to the NAME (not base64).
+				Config: cfg(groupName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_device_group.dsgroup", "id"),
+					resource.TestCheckResourceAttr("jamfplatform_device_group.dsgroup", "criteria.0.criteria", criterion),
+					resource.TestCheckResourceAttr("jamfplatform_device_group.dsgroup", "criteria.0.value", groupName),
+				),
+			},
+			{
+				// Swap the config to the equivalent raw base64. Same group → no diff.
+				Config: cfg(groupValue),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+			{
+				// And back to the NAME again — also a no-op.
+				Config: cfg(groupName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 			},
 		},
 	})

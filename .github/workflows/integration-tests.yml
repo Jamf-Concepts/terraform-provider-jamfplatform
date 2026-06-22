@@ -58,27 +58,41 @@ jobs:
       - run: go mod download
       - run: go test -v -cover -count=1 ./...
 
-  acceptance:
-    name: Acceptance Tests
+  # Compute the minimal acceptance scope for this PR: the changed packages plus
+  # everything that transitively depends on them (scripts/acctargets). A change
+  # to a global file (go.mod, CI, testhelpers, the provider hub) resolves to
+  # "./..." — the full suite.
+  plan-acc:
+    name: Plan Acceptance Scope
     needs: unit
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: acceptance
+    timeout-minutes: 5
+    outputs:
+      packages: ${{ steps.scope.outputs.packages }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          # Full history so merge-base against the PR base branch resolves.
+          fetch-depth: 0
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: "go.mod"
           cache: true
-      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: "1.14.*"
-          terraform_wrapper: false
-      - run: go mod download
-      - run: go test -v -cover -count=1 -tags=acceptance -p=1 ./...
-        env:
-          TF_ACC: "1"
-          JAMFPLATFORM_BASE_URL: ${{ secrets.JAMFPLATFORM_BASE_URL }}
-          JAMFPLATFORM_CLIENT_ID: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
-          JAMFPLATFORM_CLIENT_SECRET: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
-          JAMFPLATFORM_TENANT_ID: ${{ secrets.JAMFPLATFORM_TENANT_ID }}
+      - id: scope
+        run: |
+          base="origin/${{ github.base_ref }}"
+          git fetch --no-tags origin "${{ github.base_ref }}" || true
+          pkgs="$(go run scripts/acctargets/main.go "$base")"
+          echo "Acceptance scope: ${pkgs:-<none — no acceptance packages affected>}"
+          echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
+
+  # Run the (surgical) acceptance subset. Skipped entirely when the change set
+  # affects no acceptance package.
+  acceptance:
+    name: Acceptance
+    needs: plan-acc
+    if: needs.plan-acc.outputs.packages != ''
+    uses: ./.github/workflows/acceptance.yml
+    with:
+      packages: ${{ needs.plan-acc.outputs.packages }}
+    secrets: inherit

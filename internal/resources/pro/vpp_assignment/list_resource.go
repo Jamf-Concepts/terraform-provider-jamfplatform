@@ -1,0 +1,159 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package vpp_assignment
+
+import (
+	"context"
+	"time"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/list"
+	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+)
+
+const defaultListTimeout = 90 * time.Second
+
+var (
+	_ list.ListResource              = &VPPAssignmentListResource{}
+	_ list.ListResourceWithConfigure = &VPPAssignmentListResource{}
+)
+
+func NewVPPAssignmentListResource() list.ListResource {
+	return &VPPAssignmentListResource{}
+}
+
+type VPPAssignmentListResource struct {
+	client *proclassic.Client
+}
+
+func (r *VPPAssignmentListResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_pro_vpp_assignment"
+}
+
+func (r *VPPAssignmentListResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	client, diags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_vpp_assignment")
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.client = client
+}
+
+func (r *VPPAssignmentListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
+	resp.Schema = listschema.Schema{
+		Description: "Lists Jamf Pro VPP assignments. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.",
+		Attributes: map[string]listschema.Attribute{
+			"filter": filters.ClassicListFilterAttribute(),
+		},
+	}
+}
+
+func (r *VPPAssignmentListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
+	if r.client == nil {
+		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
+			diag.NewErrorDiagnostic("Unconfigured Provider", "The provider has not been configured yet."),
+		})
+		return
+	}
+
+	var config VPPAssignmentListResourceModel
+	diags := req.Config.Get(ctx, &config)
+	if diags.HasError() {
+		stream.Results = list.ListResultsStreamDiagnostics(diags)
+		return
+	}
+
+	listCtx, cancel := context.WithTimeout(ctx, defaultListTimeout)
+	defer cancel()
+
+	apiResp, err := r.client.ListVPPAssignments(listCtx)
+	if err != nil {
+		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
+			diag.NewErrorDiagnostic("Unable to list Jamf Pro VPP assignments", err.Error()),
+		})
+		return
+	}
+
+	items := []proclassic.VppAssignmentsItemVppAssignment{}
+	if apiResp != nil {
+		items = apiResp.VppAssignments
+	}
+
+	filter := filters.ClassicFilterModel{}
+	if config.Filter != nil {
+		filter = *config.Filter
+	}
+	items = filters.ApplyClassicFilter(items, filter, vppAssignmentItemName)
+
+	maxResults := req.Limit
+	if maxResults <= 0 || maxResults > int64(len(items)) {
+		maxResults = int64(len(items))
+	}
+
+	results := make([]list.ListResult, 0, maxResults)
+
+	for _, p := range items {
+		if int64(len(results)) >= maxResults {
+			break
+		}
+		result := req.NewListResult(ctx)
+		result.DisplayName = helpers.DerefString(p.Name)
+
+		id := helpers.StringValueFromIntPtr(p.ID)
+		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, vppAssignmentIdentityModel{ID: id})...)
+		if result.Diagnostics.HasError() {
+			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+			return
+		}
+
+		if req.IncludeResource {
+			state := VPPAssignmentResourceModel{
+				ID:                  id,
+				Name:                helpers.StringPointerValueOrNull(p.Name),
+				VPPAdminAccountID:   intStringOrNull(p.VppAdminAccountID),
+				VPPAdminAccountName: types.StringNull(),
+				IosAppAdamIDs:       types.SetNull(types.Int64Type),
+				MacAppAdamIDs:       types.SetNull(types.Int64Type),
+				EbookAdamIDs:        types.SetNull(types.Int64Type),
+				Timeouts:            helpers.NewResourceTimeoutsNullValue(vppAssignmentTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+		}
+		results = append(results, result)
+	}
+
+	tflog.Debug(ctx, "Listed Jamf Pro VPP assignments", map[string]any{
+		"name_substring": filter.NameSubstring.ValueString(),
+		"limit":          req.Limit,
+		"returned":       len(results),
+	})
+
+	if len(results) == 0 {
+		stream.Results = list.NoListResults
+		return
+	}
+	stream.Results = func(push func(list.ListResult) bool) {
+		for _, result := range results {
+			if !push(result) {
+				return
+			}
+		}
+	}
+}
+
+func vppAssignmentItemName(p proclassic.VppAssignmentsItemVppAssignment) string {
+	return helpers.DerefString(p.Name)
+}

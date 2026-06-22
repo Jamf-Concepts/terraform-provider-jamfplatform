@@ -72,7 +72,10 @@ func assignDeviceGroupModel(ctx context.Context, model *DeviceGroupResourceModel
 // flattenDeviceGroupCriteria converts API criteria into Terraform models.
 func flattenDeviceGroupCriteria(criteria []devicegroups.DeviceGroupCriteriaRepresentationV1, current []DeviceGroupCriteriaModel) []DeviceGroupCriteriaModel {
 	if len(criteria) == 0 {
-		return nil
+		if current == nil {
+			return nil
+		}
+		return []DeviceGroupCriteriaModel{}
 	}
 	result := make([]DeviceGroupCriteriaModel, len(criteria))
 	stateAware := current != nil

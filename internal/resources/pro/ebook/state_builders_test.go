@@ -1,0 +1,160 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package ebook
+
+import (
+	"context"
+	"testing"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+func setLen(s types.Set) int { return len(s.Elements()) }
+
+func TestFlattenEbookGeneral_ServerDerivedAndCategory(t *testing.T) {
+	g := &proclassic.EbookGeneral{
+		ID:             new(79),
+		Name:           new("Field Guide"),
+		URL:            new("https://example.org/guide.pdf"),
+		FileType:       new("PDF"),
+		Version:        new("1.0"),
+		DeploymentType: new(deploymentTypeSelfService),
+		Free:           new(false),
+		Category:       &proclassic.CategoryObject{ID: new(-1), Name: new("No category assigned")},
+		Site:           &proclassic.SiteObject{ID: new(-1), Name: new("NONE")},
+	}
+	// Empty prior state → adopt the API values.
+	state := &EbookGeneralModel{}
+	flattenEbookGeneral(g, state)
+
+	if state.ID.ValueString() != "79" {
+		t.Errorf("id not flattened: %q", state.ID.ValueString())
+	}
+	if state.FileType.ValueString() != "PDF" {
+		t.Errorf("file_type not flattened: %q", state.FileType.ValueString())
+	}
+	if state.CategoryID.ValueString() != "-1" {
+		t.Errorf("category_id not flattened: %q", state.CategoryID.ValueString())
+	}
+	if state.CategoryName.ValueString() != "No category assigned" {
+		t.Errorf("category_name not flattened: %q", state.CategoryName.ValueString())
+	}
+	if state.SiteName.ValueString() != "NONE" {
+		t.Errorf("site_name not flattened: %q", state.SiteName.ValueString())
+	}
+}
+
+func TestFlattenEbookScope_DualTargetRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	s := &proclassic.EbookScope{
+		AllComputers:     new(false),
+		AllMobileDevices: new(false),
+		AllJssUsers:      new(false),
+		Computers: &proclassic.EbookScopeComputers{
+			Computer: &[]proclassic.EbookScopeComputersComputerItem{{ID: new(11)}, {ID: new(12)}},
+		},
+		MobileDevices: &proclassic.EbookScopeMobileDevices{
+			MobileDevice: &[]proclassic.EbookScopeMobileDevicesMobileDeviceItem{{ID: new(21)}},
+		},
+		MobileDeviceGroups: &proclassic.EbookScopeMobileDeviceGroups{
+			MobileDeviceGroup: &[]proclassic.IDName{{ID: new(6)}},
+		},
+		Classes: &proclassic.EbookScopeClasses{
+			Class: &[]proclassic.IDName{{ID: new(41)}, {ID: new(42)}},
+		},
+		Limitations: &proclassic.EbookScopeLimitations{
+			Users: &proclassic.EbookScopeLimitationsUsers{User: &[]proclassic.IDName{{Name: new("alice")}}},
+		},
+		Exclusions: &proclassic.EbookScopeExclusions{
+			MobileDevices: &proclassic.EbookScopeExclusionsMobileDevices{
+				MobileDevice: &[]proclassic.EbookScopeExclusionsMobileDevicesMobileDeviceItem{{ID: new(99)}},
+			},
+			UserGroups: &proclassic.EbookScopeExclusionsUserGroups{UserGroup: &[]proclassic.IDName{{Name: new("Admins")}}},
+		},
+	}
+
+	state := &EbookScopeModel{
+		Targets:     &EbookScopeTargetsModel{},
+		Limitations: &EbookScopeLimitationsModel{},
+		Exclusions:  &EbookScopeExclusionsModel{},
+	}
+	flattenEbookScope(ctx, s, state)
+
+	if setLen(state.Targets.ComputerIDs) != 2 {
+		t.Errorf("computer_ids: want 2, got %d", setLen(state.Targets.ComputerIDs))
+	}
+	if setLen(state.Targets.MobileDeviceIDs) != 1 {
+		t.Errorf("mobile_device_ids: want 1, got %d", setLen(state.Targets.MobileDeviceIDs))
+	}
+	if setLen(state.Targets.MobileDeviceGroupIDs) != 1 {
+		t.Errorf("mobile_device_group_ids: want 1, got %d", setLen(state.Targets.MobileDeviceGroupIDs))
+	}
+	if setLen(state.Targets.ClassIDs) != 2 {
+		t.Errorf("class_ids: want 2, got %d", setLen(state.Targets.ClassIDs))
+	}
+	if setLen(state.Limitations.DirectoryServiceOrLocalUserNames) != 1 {
+		t.Errorf("limitations user names: want 1, got %d", setLen(state.Limitations.DirectoryServiceOrLocalUserNames))
+	}
+	if setLen(state.Exclusions.MobileDeviceIDs) != 1 {
+		t.Errorf("exclusions mobile_device_ids: want 1, got %d", setLen(state.Exclusions.MobileDeviceIDs))
+	}
+	if setLen(state.Exclusions.DirectoryServiceUserGroupNames) != 1 {
+		t.Errorf("exclusions user_group names: want 1, got %d", setLen(state.Exclusions.DirectoryServiceUserGroupNames))
+	}
+	if state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
+		t.Errorf("all_computers should be false, got %v", state.Targets.AllComputers)
+	}
+}
+
+func TestFlattenEbookSelfService_CategoriesPreserveAuthoredValuesByID(t *testing.T) {
+	ss := &proclassic.EbookSelfService{
+		InstallButtonText: new("Install"),
+		Notification:      &proclassic.NotificationValue{Enabled: new(true), Method: new("Self Service")},
+		SelfServiceIcon:   &proclassic.EbookSelfServiceSelfServiceIcon{ID: new(805), URI: new("https://icons/h")},
+		SelfServiceCategories: &proclassic.EbookSelfServiceSelfServiceCategories{
+			Category: &[]proclassic.EbookSelfServiceSelfServiceCategoriesCategoryItem{
+				{ID: new(3), Name: new("eBooks"), DisplayIn: new(true), FeatureIn: new(false)},
+			},
+		},
+	}
+	// Prior state declares category 3 with authored display_in/feature_in.
+	state := &EbookSelfServiceModel{
+		Categories: []EbookSelfServiceCategoryModel{
+			{ID: types.StringValue("3"), DisplayIn: types.BoolValue(true), FeatureIn: types.BoolValue(false)},
+		},
+	}
+	flattenEbookSelfService(ss, state)
+
+	if state.NotificationEnabled.IsNull() || !state.NotificationEnabled.ValueBool() {
+		t.Errorf("notification_enabled not flattened")
+	}
+	if state.NotificationMethod.ValueString() != "Self Service" {
+		t.Errorf("notification_method not flattened: %q", state.NotificationMethod.ValueString())
+	}
+	if state.IconID.ValueString() != "805" {
+		t.Errorf("icon_id not flattened: %q", state.IconID.ValueString())
+	}
+	if state.IconURI.ValueString() != "https://icons/h" {
+		t.Errorf("icon_uri not flattened: %q", state.IconURI.ValueString())
+	}
+	if len(state.Categories) != 1 {
+		t.Fatalf("categories: want 1, got %d", len(state.Categories))
+	}
+	c := state.Categories[0]
+	if c.ID.ValueString() != "3" || !c.DisplayIn.ValueBool() || c.FeatureIn.ValueBool() {
+		t.Errorf("category authored values not preserved: %+v", c)
+	}
+}
+
+func TestExtractEbookID_PrefersTopLevel(t *testing.T) {
+	e := &proclassic.Ebook{ID: new(7), General: &proclassic.EbookGeneral{ID: new(9)}}
+	if got := extractEbookID(e); got != "7" {
+		t.Errorf("want top-level id 7, got %q", got)
+	}
+	e = &proclassic.Ebook{General: &proclassic.EbookGeneral{ID: new(9)}}
+	if got := extractEbookID(e); got != "9" {
+		t.Errorf("want general id 9 fallback, got %q", got)
+	}
+}

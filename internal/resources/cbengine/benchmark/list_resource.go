@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
 var _ list.ListResource = &BenchmarkListResource{}
@@ -43,16 +43,16 @@ func (r *BenchmarkListResource) Configure(ctx context.Context, req resource.Conf
 		return
 	}
 
-	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
+	pd, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
-			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
+			"Expected *providerdata.Data. Please report this issue to the provider developers.",
 		)
 		return
 	}
 
-	r.client = compliancebenchmarks.New(rootClient)
+	r.client = compliancebenchmarks.New(pd.Client)
 }
 
 // ListResourceConfigSchema declares the supported filter attributes.

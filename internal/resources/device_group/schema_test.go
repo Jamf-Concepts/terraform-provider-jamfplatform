@@ -53,7 +53,7 @@ func TestDeviceGroupResource_Schema(t *testing.T) {
 		}
 	}
 
-	computedAttrs := []string{"id", "member_count"}
+	computedAttrs := []string{"id", "jamf_pro_id", "member_count"}
 	for _, name := range computedAttrs {
 		attr, ok := s.Attributes[name]
 		if !ok {
@@ -63,6 +63,17 @@ func TestDeviceGroupResource_Schema(t *testing.T) {
 		if !attr.IsComputed() {
 			t.Errorf("attribute %q should be computed", name)
 		}
+	}
+
+	jamfProID, ok := s.Attributes["jamf_pro_id"].(resourceschema.StringAttribute)
+	if !ok {
+		t.Fatal("jamf_pro_id should be a StringAttribute")
+	}
+	if jamfProID.IsRequired() || jamfProID.IsOptional() {
+		t.Error("jamf_pro_id must be Computed-only (not Required, not Optional)")
+	}
+	if len(jamfProID.PlanModifiers) == 0 {
+		t.Error("jamf_pro_id must carry a UseStateForUnknown plan modifier")
 	}
 
 	optionalAttrs := []string{"description", "members", "criteria", "timeouts"}
@@ -137,7 +148,7 @@ func TestDeviceGroupDataSource_Schema(t *testing.T) {
 		}
 	}
 
-	computedAttrs := []string{"name", "description", "device_type", "group_type", "member_count", "members"}
+	computedAttrs := []string{"name", "description", "device_type", "group_type", "jamf_pro_id", "member_count", "members"}
 	for _, name := range computedAttrs {
 		attr, ok := resp.Schema.Attributes[name]
 		if !ok {

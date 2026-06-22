@@ -2,141 +2,110 @@
 
 ## Overview
 
-This is a Terraform provider for Jamf Platform APIs, built using the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) v1.17.0 with Protocol v6. The Go module path is `github.com/Jamf-Concepts/terraform-provider-jamfplatform`.
+Terraform provider for Jamf Platform APIs, built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) v1.19.0 with Protocol v6. Go module path: `github.com/Jamf-Concepts/terraform-provider-jamfplatform`.
 
-The provider exposes four Terraform construct types: **resources** (CRUD-managed objects), **data sources** (read-only lookups), **list resources** (query-based streaming with RSQL filters), and **actions** (fire-and-forget device management commands).
+Four construct types: **resources** (CRUD), **data sources** (read-only lookups), **list resources** (RSQL-filtered streaming), **actions** (fire-and-forget device commands).
 
-## Current Resource Inventory
+The Jamf Platform API client is the external Go SDK `github.com/Jamf-Concepts/jamfplatform-go-sdk` (package `jamfplatform`). Not vendored.
 
-Resources (3): `device_group`, `blueprints_blueprint`, `cbengine_benchmark`.
+## Companion Docs (authoritative on conflict)
 
-Data Sources (12): single-item lookups and filtered list sources across all resource domains — blueprints (blueprint, blueprints, component, components), cbengine (benchmark, benchmarks, baselines, rules), devices (device, devices, device_group, device_groups).
-
-List Resources (3): `device_group`, `blueprints_blueprint`, `cbengine_benchmark` — streaming query resources with declarative RSQL filter support.
-
-Actions (4): device management commands — `erase`, `restart`, `shutdown`, `unmanage`.
+- `STYLE_GUIDE.md` — Go style, file conventions, schema rules, Jamf Pro naming/version/endpoint policies, scope helper, profile payload normalisation, ID/import conventions.
+- `TESTING.md` — test categories, commands, build tags, CI.
+- `CONTRIBUTING.md` — contribution workflow, Pro-resource workflow (incl. ProClassic SDK payload audit), release-versioning policy.
+- `README.md` — user-facing provider usage.
+- `spike/JAMF_PRO_INVENTORY.md` — gitignored Pro SDK namespace adoption tracker.
+- `spike/PRO_ROLLOUT_PLAN.md` — gitignored Pro rollout planning doc.
 
 ## Project Structure
 
 ```
 internal/
-├── provider/          # Provider config, registration, and logging
-├── resources/         # Resource, data source, and list resource implementations
-│   ├── blueprints/    # blueprint/, blueprints/, component/, components/
-│   ├── cbengine/      # benchmark/, benchmarks/, baselines/, rules/
-│   ├── device/        # Single device data source
-│   ├── device_group/  # Resource, data source, list resource
-│   ├── device_groups/ # Plural data source
-│   └── devices/       # Plural data source
-├── actions/           # Fire-and-forget device actions
-│   └── device/        # erase, restart, shutdown, unmanage
-├── client/            # Jamf Platform API client (OAuth, HTTP, domain methods)
-└── common/            # Shared packages
-    ├── helpers/       # Type conversions, polling, timeout, state reconciliation
-    └── filters/       # RSQL filter schema blocks and expression builder
-testing/               # Terraform-native integration tests (.tftest.hcl, .tfquery.hcl)
-local-testing/         # Manual API request workflows for development
-examples/              # Example .tf configs for all construct types
-docs/                  # Auto-generated provider documentation
+├── provider/          # Provider config, registration, logging
+├── providerdata/      # Shared Data{} carrying SDK client + cached Pro version
+├── resources/
+│   ├── blueprints/    # blueprint/, blueprints/, component/, components/    (Platform Services)
+│   ├── cbengine/      # benchmark/, benchmarks/, baselines/, rules/         (Platform Services)
+│   ├── device/        # Single device data source                            (Platform Services)
+│   ├── device_group/  # Resource, data source, list resource                 (Platform Services)
+│   ├── device_groups/ # Plural data source                                   (Platform Services)
+│   ├── devices/       # Plural data source                                   (Platform Services)
+│   └── pro/           # Jamf Pro resources — flat single tier: every leaf package sits directly under pro/
+│                      #   (folder name = Terraform slug minus `jamfplatform_pro_`, snake_case). No domain tier.
+│                      #   ~115 packages, fully flat (e.g. the five PKI constructs are pki_adcs/, pki_venafi/, pki_digicert/, … — no pki/ grouping dir).
+├── actions/
+│   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
+│   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (13 MDM commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
+├── common/
+│   ├── availabletitles/ # Shared patch available-titles lookup (patch_external_source, patch_internal_source)
+│   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
+│   ├── files/         # Shared upload-source plumbing for resources that upload file content
+│   ├── filters/       # RSQL + classic filter schema/expression builder
+│   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version
+│   ├── invitationcommon/ # Shared enrollment-invitation helpers (computer_invitation, mobile_device_invitation)
+│   ├── ldapgroups/    # Directory-service (LDAP / cloud-IdP) group resolution + scope preflight validation
+│   ├── payloadhelpers/ # mobileconfig mask / compare / identifier injection (macos/mobile_device_configuration_profile)
+│   ├── planmodifiers/ # Shared Terraform Plugin Framework plan modifiers
+│   ├── plisthelpers/  # Generic plist (Apple property list) parsing / normalisation helpers
+│   ├── scope/         # Classic scope sub-block factories + builders + validators (see STYLE_GUIDE §Scope helper)
+│   └── validators/    # Shared Terraform Plugin Framework validators (unique-string-field across collections)
+└── testhelpers/       # Acceptance fixtures (provider factories, real client, mock server)
+tools/                 # go:generate entrypoint (copywrite, terraform fmt, tfplugindocs)
+local-testing/         # Manual API request workflows for development (gitignored)
+examples/{provider,resources,data-sources,list-resources,actions}/
+docs/                  # Auto-generated provider documentation — do not hand-edit
 ```
 
-Resources are grouped by API domain. Within a domain, the primary resource package (e.g. `blueprint/`) contains the resource, data source, and list resource. Sibling packages (e.g. `blueprints/`, `components/`) hold related plural or secondary data sources.
+Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource Package File Conventions](STYLE_GUIDE.md#resource-package-file-conventions).
+
+### Reference implementations (copy from these)
+
+| Pattern | Reference |
+|---|---|
+| Complex CRUD with state upgrader + nested payload sub-package | `internal/resources/blueprints/blueprint/` |
+| Simple Pro CRUD (+ list + data sources) | `internal/resources/pro/category/` |
+| Pro CRUD with lossy-PUT canonicalisation + snake_case mapping | `internal/resources/pro/script/` |
+| Pro singleton settings | `internal/resources/pro/self_service_plus_settings/` |
+| ProClassic CRUD | `internal/resources/pro/site/` (and `network_segment/`) |
+| Scope-bearing classic resource | `internal/resources/pro/policy/` |
+| Classic configuration profile (mobileconfig payload diff suppression) | `internal/resources/pro/macos_configuration_profile/` |
+| Plaintext secret with `WriteOnly + _wo_version` | `internal/resources/pro/directory_binding/` |
+| Classic-CRUD resource with a v2 side-channel (extension-attribute accept) | `internal/resources/pro/patch_software_title/` |
+| Positional id-less nested lists + opt-out sub-collections (omit=retain/`[]`=clear) + Computed nested collections as `types.List` | `internal/resources/pro/licensed_software/` |
+| Create-only immutable upload (server rejects every PUT once the blob exists → all attrs RequiresReplace + no-PUT Update) | `internal/resources/pro/mobile_device_provisioning_profile/` |
+| Classic XML merge PUT where empty clears (always-emit scalars / clear-by-omission) + Location/Purchasing blocks + read-only attachments (bearer-auth-refused upload) | `internal/resources/pro/mobile_device_enrollment_profile/` |
+
+## Jamf Pro resources — one-paragraph orientation
+
+Terraform construct name format: `jamfplatform_pro_<resource>` regardless of whether the SDK source is `pro/` or `proclassic/`. One `jamfplatform.Client` built from `JAMFPLATFORM_*` credentials serves both Platform Services and Pro. Every Pro resource declares an unexported `const minJamfProVersion` and funnels Configure through `providerdata.ConfigurePro` (no hand-rolled boilerplate). Each Pro resource's `crud.go` opens with an SDK-endpoints annotation block (`Status: current. Last reviewed YYYY-MM-DD.`) — Pro / ProClassic only; Platform Services resources are exempt. Full rules: [STYLE_GUIDE.md §Jamf Pro Resource Naming](STYLE_GUIDE.md#jamf-pro-resource-naming), §Minimum Jamf Pro version check, §Endpoint adoption & migration policy. Workflow for adding a Pro resource (incl. SDK-comparison + ProClassic payload audit gate): [CONTRIBUTING.md §Adding a Jamf Pro Resource](CONTRIBUTING.md#adding-a-jamf-pro-resource).
 
 ## Tooling
 
 - Go >= 1.26, Terraform >= 1.13.0.
-- Releases are built with goreleaser (`goreleaser.yml`). There is no Makefile.
+- `GNUmakefile` is the canonical entrypoint. Default target: `fmt lint install generate`.
+- Releases built with goreleaser (`goreleaser.yml`).
+- `make generate` → `tools/tools.go`: copyright headers (`hashicorp/copywrite`), `terraform fmt -recursive ../examples/`, provider docs (`hashicorp/terraform-plugin-docs`).
 
-## Jamf Platform API
+| Target | Description |
+|---|---|
+| `build` | Build the provider |
+| `install` | Build and install locally |
+| `fmt` | `gofmt -s -w -e .` |
+| `fix` | `go fix ./...` — rewrites deprecated API usages |
+| `lint` | `golangci-lint run` |
+| `generate` | Copyright headers + `terraform fmt examples/` + docs |
+| `test` | Unit tests (excludes `acceptance` build tag) |
+| `testacc` | Acceptance tests (sets `TF_ACC=1`, requires tenant) |
+| `testacc-run` | Targeted acc rerun (`RUN=<regex> PKG=<path>`) |
 
-- The Jamf Platform API is RESTful and exposes multiple endpoints — client functions are fully operational and the API spec is available piecemeal upon request. You can see client/auth flows in the `internal/client` package.
-- The client uses explicit version suffixes on types and functions (e.g. `CreateBlueprintV1`, `CreateCBEngineBenchmarkV2`) to support multiple API versions without breaking changes. When endpoints are upgraded, new V2 types/functions are added alongside V1 and resources migrate at their own pace.
-
-## Provider Development
-
-- Terraform Plugin Framework code lives in `internal/`.
-- The client is in `internal/client`.
-- Shared utilities are in `internal/common` — `helpers` (type conversions, polling, state reconciliation, error detection) and `filters` (RSQL filter schema blocks and expression building).
-- Resource implementations are grouped by package in `internal/resources/<domain>/<resource>` with files split by concern (crud, helpers, resource, types, data source, list).
-- Complex resources may use sub-packages for nested payload builders (e.g. `blueprint/components/`).
-- Run formatting and linting before committing: `golangci-lint run` and `go fmt ./...`.
-- Generate docs with go's native methodology.
-- Run tests with go native methodology. Tests should be split into unit and acceptance tests, and we should not run acceptance tests by default as they require a real Jamf tenant.
-
-## Current State vs Conventions
-
-All existing resource packages have been refactored to follow the conventions below. The three CRUD resource packages (`device_group`, `cbengine/benchmark`, `blueprints/blueprint`) use the full file split (`model_types.go`, `schema_types.go`, `mappings.go`, `input_builders.go`, `state_builders.go`, `helpers.go`, `list_resource.go`). Data-source-only packages use `model_types.go` for their model structs. New resources and future changes should maintain these conventions.
-
-## Code Organization Guidelines
-
-- Look for opportunities to create reusable packages (helper/utility functions) instead of duplicating logic in resource packages.
-- Keep packages split by concern with focused files (crud, helpers, resource, types, data source).
-- Always look for existing helper functions that can be reused before adding new code.
-- Only use native Go, golang/x packages, and Terraform Plugin Framework packages. Avoid third-party dependencies.
-
-## Code Style Guidelines
-
-- Follow Go conventions and idiomatic patterns.
-- Favor clear and descriptive naming for variables, functions, and types.
-- Always ensure constants, functions, variable sets and types have a short comment describing their purpose.
-- Do not add comments inside type definitions or function bodies.
-
-### Resource Package File Conventions
-
-Use resource-agnostic filenames and helper names so the same structure can apply to all resources:
-
-- `resource.go`: schema and boilerplate.
-- `crud.go`: Create/Read/Update/Delete and import.
-- `model_types.go`: Terraform model structs only.
-- `schema_types.go`: attr type maps used to build ObjectValue/ListValue state.
-- `mappings.go`: lookup tables and name mappings.
-- `input_builders.go`: build API inputs from Terraform model data.
-- `state_builders.go`: map API responses to Terraform state.
-- `helpers.go`: resource-specific helper functions that don't fit elsewhere.
-- `plan_modifiers.go`: schema plan modifiers (if needed).
-- `validators.go`: schema validators (if needed).
-- `list_resource.go`: for list resources implementing `list.ListResource`.
-- `data_source.go`: for data sources implementing `datasource.DataSource`.
-- `resource_test.go`: acceptance tests for the resource.
-
-For list resources, follow the framework list resource pattern.
-
-Optional split-outs for complex resources:
-
-- `endpoints_builders.go` and `endpoints_state.go` when endpoint logic dominates.
-- `nested_builders.go` and `nested_state.go` for large nested payloads.
-
-## Schema Guidelines
-
-- Schemas should be inline and as flat as possible.
-- Favor nested attributes (set/single/list) instead of blocks wherever possible.
-- **Sets vs Lists**: Use sets for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `device_groups` scope, `raw_component`, component configuration sets). Use lists for ordered user-supplied collections whose position is semantically meaningful (e.g. smart-group `criteria`, where evaluation order, parentheses, and `and_or` joins are positional) and for computed API results that are read-only — sets require element hashing which adds CPU overhead with no benefit when the user doesn't control the values. Data source attributes returning API data should always use lists.
+Before committing: `make fix fmt lint test`. Then `make generate` if any schema description or example changed.
 
 ## Environment Variables
 
-- `JAMFPLATFORM_BASE_URL` — Base URL of the Jamf Platform tenant (e.g. `https://us.apigw.jamf.com`). Region specific. `https://eu.apigw.jamf.com` for Europe, `https://apac.apigw.jamf.com` for Asia-Pacific.
-- `JAMFPLATFORM_CLIENT_ID` — API client ID for authentication.
-- `JAMFPLATFORM_CLIENT_SECRET` — API client secret for authentication.
-- These can also be set in the provider block in Terraform configuration.
+- `JAMFPLATFORM_BASE_URL` — `https://us.apigw.jamf.com` / `eu.apigw.jamf.com` / `apac.apigw.jamf.com`.
+- `JAMFPLATFORM_CLIENT_ID` / `JAMFPLATFORM_CLIENT_SECRET` — API client credentials.
+- Acceptance tests additionally require `TF_ACC=1` (set automatically by `make testacc`).
 
-## Testing
+## Copyright headers
 
-- **Unit tests**: `go test ./...` — runs schema validation, metadata, plan modifier, state migration, flattener/expander, helper, and client tests (no real API needed).
-- **Acceptance tests**: `go test -tags=acceptance ./... -p=1` — creates real resources against a Jamf Platform tenant. Requires `JAMFPLATFORM_BASE_URL`, `JAMFPLATFORM_CLIENT_ID`, and `JAMFPLATFORM_CLIENT_SECRET` environment variables.
-- Test files follow the `*_test.go` convention next to the code they test.
-
-## Adding a New Resource
-
-1. Ask for or ingest the provided OpenAPI specification or request/response examples.
-2. Create `internal/provider/<resource_name>_resource.go` implementing `resource.Resource` with CRUD + `ImportState`.
-3. Register the resource in `provider.go` → `Resources()`.
-4. Create `internal/provider/<resource_name>_resource_test.go` with acceptance tests.
-5. Add schema validation tests in `schema_test.go`.
-6. Update `examples/` with example `.tf` files.
-7. Run `go test ./...` to ensure tests pass.
-8. Run the recommended go command to generate documentation from schema descriptions.
-
-## Documentation & Examples
-
-- Update `examples/` when adding new resources or data sources.
-- Run the recommended go command to regenerate documentation from schema descriptions.
+Every Go file carries `// Copyright Jamf Software LLC <year>` + `// SPDX-License-Identifier: MPL-2.0`. Managed by `copywrite` via `make generate`. 2026

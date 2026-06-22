@@ -7,10 +7,13 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/device_groups"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
@@ -30,7 +33,10 @@ func NewDeviceGroupListResource() list.ListResource {
 
 // DeviceGroupListResource implements Terraform query list support for device groups.
 type DeviceGroupListResource struct {
-	client *devicegroups.Client
+	client    *devicegroups.Client
+	proClient *pro.Client
+	pd        *providerdata.Data
+	groupRef  criteria.GroupResolver
 }
 
 // Metadata sets the list resource type name.
@@ -44,16 +50,19 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 		return
 	}
 
-	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
+	pd, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected List Configure Type",
-			"Expected *jamfplatform.Client. Please report this issue to the provider developers.",
+			"Expected *providerdata.Data. Please report this issue to the provider developers.",
 		)
 		return
 	}
 
-	r.client = devicegroups.New(rootClient)
+	r.client = devicegroups.New(pd.Client)
+	r.proClient = pro.New(pd.Client)
+	r.groupRef = criteria.NewProGroupResolver(proclassic.New(pd.Client))
+	r.pd = pd
 }
 
 // ListResourceConfigSchema describes the supported list filters.
@@ -163,6 +172,14 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 				return
 			}
+			// No prior state in a list/query result → reverse-resolve any Jamf-group
+			// "member of" criterion id back to the group name (11.29 read regression)
+			// so `terraform query -generate-config-out` emits names, not ids.
+			state.Criteria = readbackGroupRefCriteria(ctx, r.groupRef, dsObjectType(state.DeviceType.ValueString()), state.Criteria, nil)
+
+			jamfProID, jamfProDiags := resolveJamfProID(ctx, r.proClient, r.pd, detail.ID)
+			result.Diagnostics.Append(jamfProDiags...)
+			state.JamfProID = jamfProID
 
 			state.Timeouts = helpers.EnsureResourceTimeouts(state.Timeouts, deviceGroupTimeoutAttributeTypes)
 

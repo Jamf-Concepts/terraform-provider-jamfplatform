@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadIdentifier</key><string>com.example.notifications</string>
+<key>PayloadUUID</key><string>00000000-0000-0000-0000-000000000001</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadScope</key><string>System</string>
+<key>PayloadContent</key><array><dict>
+<key>PayloadType</key><string>com.apple.notificationsettings</string>
+<key>PayloadIdentifier</key><string>com.example.notifications.inner</string>
+<key>PayloadUUID</key><string>00000000-0000-0000-0000-000000000002</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>NotificationSettings</key><array><dict>
+<key>BundleIdentifier</key><string>com.example.app</string>
+<key>NotificationsEnabled</key><true/>
+</dict></array>
+</dict></array>
+</dict></plist>

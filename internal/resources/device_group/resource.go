@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -25,14 +28,31 @@ import (
 )
 
 // DeviceGroupResource implements the Terraform resource for Jamf device groups.
+//
+// Although this resource targets the Platform Services Device Group Inventory
+// API, it also issues a single Pro `/v2/groups/{id}` call after every successful
+// Get/Create/Update so the computed `jamf_pro_id` attribute can be populated.
+// That bridges Platform UUIDs to the numeric Jamf Pro classic ID required by
+// classic-API scope blocks (policies, configuration profiles, restricted
+// software). The Pro lookup is best-effort: 403 nulls the attribute and emits a
+// one-shot warning; 404/Pro-less tenants null the attribute silently.
 type DeviceGroupResource struct {
-	client *devicegroups.Client
+	client    *devicegroups.Client
+	proClient *pro.Client
+	pd        *providerdata.Data
+	// groupRef maps a Jamf-group "member of" criterion value between its group
+	// name and the numeric id Jamf Pro 11.29 echoes on read (COMPUTER device type
+	// regresses; MOBILE is clean). Backed by the classic group endpoints —
+	// device_group COMPUTER membership stores CLASSIC computer-group ids, so this
+	// resolves via proclassic, not Pro /v2/groups.
+	groupRef criteria.GroupResolver
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &DeviceGroupResource{}
 var _ resource.ResourceWithImportState = &DeviceGroupResource{}
 var _ resource.ResourceWithIdentity = &DeviceGroupResource{}
+var _ resource.ResourceWithModifyPlan = &DeviceGroupResource{}
 
 const (
 	defaultCreateTimeout = 120 * time.Second
@@ -71,6 +91,13 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Unique identifier assigned by the API.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"jamf_pro_id": schema.StringAttribute{
+				MarkdownDescription: "Numeric Jamf Pro classic ID for the group, resolved from the `/api/pro/v2/tenant/{tenantId}/groups` endpoint. Used to reference the group from classic-API scope blocks (policies, configuration profiles, restricted software). Null when the Platform API client lacks the `Read Groups` privilege (a single missing-privilege warning surfaces during plan), when the group cannot be located in Jamf Pro, or when the bridging call transiently fails.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -133,10 +160,10 @@ func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaReq
 							Required:            true,
 						},
 						"operator": schema.StringAttribute{
-							MarkdownDescription: operatorDescription(),
+							MarkdownDescription: criteria.Description(criteria.Operators),
 							Required:            true,
 							Validators: []validator.String{
-								stringvalidator.OneOf(ValidOperators...),
+								stringvalidator.OneOf(criteria.Operators...),
 							},
 						},
 						"value": schema.StringAttribute{
@@ -179,18 +206,21 @@ func (r *DeviceGroupResource) Configure(ctx context.Context, req resource.Config
 		return
 	}
 
-	rootClient, ok := req.ProviderData.(*jamfplatform.Client)
+	pd, ok := req.ProviderData.(*providerdata.Data)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *jamfplatform.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *providerdata.Data, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	r.client = devicegroups.New(rootClient)
+	r.client = devicegroups.New(pd.Client)
+	r.proClient = pro.New(pd.Client)
+	r.groupRef = criteria.NewProGroupResolver(proclassic.New(pd.Client))
+	r.pd = pd
 }
 
 // ImportState handles the import of existing Device Group resources.

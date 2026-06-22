@@ -1,0 +1,28 @@
+name: Acceptance Tests (Full Suite)
+
+# The complete acceptance suite over every package (./...). PRs run only the
+# surgical subset affected by their change set (see integration-tests.yml →
+# plan-acc); this scheduled run is the safety net that exercises everything and
+# catches cross-package regressions the scoped runs cannot see.
+#
+# Runs nightly and on demand. Shares the acceptance-tenant concurrency group
+# with the PR runs (declared in the reusable workflow), so it queues behind any
+# in-progress PR acceptance run rather than colliding on the shared tenant.
+
+on:
+  schedule:
+    # 02:00 UTC daily. Cron has no timezone; adjust if the tenant has a
+    # maintenance window.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full:
+    name: Full Suite
+    uses: ./.github/workflows/acceptance.yml
+    with:
+      packages: "./..."
+    secrets: inherit

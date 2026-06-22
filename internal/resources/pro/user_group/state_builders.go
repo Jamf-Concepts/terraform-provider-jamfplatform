@@ -1,0 +1,227 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package user_group
+
+import (
+	"context"
+	"strconv"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
+)
+
+// assignUserGroupResourceModel populates a resource model from a UserGroup
+// response. Members are derived from the response's <users> block when the
+// group is static and the caller has indicated members are managed
+// (manageMembers=true). Smart groups always set members=null in state — the
+// server-resolved user list is informational and would cause endless drift
+// if surfaced as a managed attribute.
+func assignUserGroupResourceModel(
+	ctx context.Context,
+	state *UserGroupResourceModel,
+	ug *proclassic.UserGroup,
+	manageMembers bool,
+) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if ug == nil {
+		return diags
+	}
+
+	if ug.ID != nil {
+		state.ID = helpers.StringValueFromIntPtr(ug.ID)
+	}
+	if ug.Name != nil {
+		state.Name = helpers.StringPointerValueOrNull(ug.Name)
+	}
+	state.GroupType = groupTypeFromIsSmart(ug.IsSmart)
+	// notify_on_membership_change is Optional+Computed with a static default.
+	// Server is authoritative: take the API value directly.
+	// ReconcileOptionalBoolPointer would return null when current is null
+	// (import path), causing ImportStateVerify drift even though the API
+	// returned the value.
+	state.NotifyOnMembershipChange = helpers.BoolPointerValueOrNull(ug.IsNotifyOnChange)
+
+	siteID, siteName := scope.FlattenSiteObject(ug.Site)
+	state.SiteID = helpers.ReconcileOptionalStringPointer(siteID, state.SiteID)
+	state.SiteName = helpers.StringPointerValueOrNull(siteName)
+
+	state.Criteria = flattenCriteria(ug.Criteria)
+
+	memberIDs, memberCount := flattenMembers(ug.Users)
+	state.MemberCount = types.Int64Value(int64(memberCount))
+
+	isSmart := ug.IsSmart != nil && *ug.IsSmart
+	switch {
+	case isSmart:
+		state.Members = types.SetNull(types.StringType)
+	case manageMembers:
+		// Coerce nil → empty slice. types.SetValueFrom(ctx, T, nil) returns a
+		// null set, which conflicts with an explicit empty-set plan (the user
+		// transitioned members from non-empty to []) and surfaces as the
+		// framework's "produced inconsistent result after apply" error. Mirror
+		// the device_group state_builders.go pattern.
+		if memberIDs == nil {
+			memberIDs = []string{}
+		}
+		set, setDiags := types.SetValueFrom(ctx, types.StringType, memberIDs)
+		diags.Append(setDiags...)
+		if !diags.HasError() {
+			state.Members = set
+		}
+	default:
+		state.Members = types.SetNull(types.StringType)
+	}
+
+	return diags
+}
+
+// assignUserGroupDataSourceModel populates a data source model from a UserGroup
+// response. Symmetric with the resource builder but always surfaces the full
+// user list as the Computed `users` block — DS users are read-only.
+func assignUserGroupDataSourceModel(state *UserGroupDataSourceModel, ug *proclassic.UserGroup) {
+	if ug == nil {
+		return
+	}
+	if ug.ID != nil {
+		state.ID = helpers.StringValueFromIntPtr(ug.ID)
+	}
+	if ug.Name != nil {
+		state.Name = helpers.StringPointerValueOrNull(ug.Name)
+	}
+	state.GroupType = groupTypeFromIsSmart(ug.IsSmart)
+	state.NotifyOnMembershipChange = helpers.BoolPointerValueOrNull(ug.IsNotifyOnChange)
+
+	siteID, siteName := scope.FlattenSiteObject(ug.Site)
+	state.SiteID = helpers.StringPointerValueOrNull(siteID)
+	state.SiteName = helpers.StringPointerValueOrNull(siteName)
+
+	state.Criteria = flattenCriteria(ug.Criteria)
+	state.Users = flattenUsers(ug.Users)
+
+	_, memberCount := flattenMembers(ug.Users)
+	state.MemberCount = types.Int64Value(int64(memberCount))
+}
+
+// groupTypeFromIsSmart maps the SDK bool flag to the schema's discriminator string.
+func groupTypeFromIsSmart(isSmart *bool) types.String {
+	if isSmart == nil {
+		return types.StringNull()
+	}
+	if *isSmart {
+		return types.StringValue("smart")
+	}
+	return types.StringValue("static")
+}
+
+// flattenCriteria converts the SDK criteria wrapper into the Terraform model
+// slice. Server is authoritative for every field on a criterion — Required
+// (name, search_type, value), Computed-with-defaults (priority, and_or,
+// has_opening_parenthesis, has_closing_parenthesis). No Reconcile* helpers
+// here: Reconcile returns null when the API value is empty AND state was
+// previously null, which is exactly the import path — and that mismatches
+// the post-apply refresh path which sees the same API value but had a
+// configured-default state. Direct copy keeps both paths in sync.
+func flattenCriteria(wrapper *proclassic.UserGroupCriteria) []UserGroupCriterionModel {
+	if wrapper == nil || wrapper.Criterion == nil || len(*wrapper.Criterion) == 0 {
+		return nil
+	}
+	src := *wrapper.Criterion
+	out := make([]UserGroupCriterionModel, len(src))
+	for i, c := range src {
+		// priority is Computed — server is authoritative and always returns it
+		// (Jamf orders criteria by priority internally). Direct copy.
+		priority := types.Int64Null()
+		if c.Priority != nil {
+			priority = types.Int64Value(int64(*c.Priority))
+		}
+
+		var name types.String
+		if c.Name != nil && *c.Name != "" {
+			name = types.StringValue(*c.Name)
+		} else {
+			name = types.StringNull()
+		}
+
+		var searchType types.String
+		if c.SearchType != nil && *c.SearchType != "" {
+			searchType = types.StringValue(*c.SearchType)
+		} else {
+			searchType = types.StringNull()
+		}
+
+		// criterion.value is Required — server is authoritative. Direct copy
+		// (no Reconcile) so the import path lands the same value as the
+		// post-apply refresh path.
+		value := helpers.StringPointerValueOrNull(c.Value)
+
+		var andOr types.String
+		if c.AndOr != nil && *c.AndOr != "" {
+			andOr = types.StringValue(*c.AndOr)
+		} else {
+			andOr = types.StringNull()
+		}
+
+		// has_opening_parenthesis / has_closing_parenthesis are Optional+Computed
+		// with static defaults. Server is authoritative — take the API value
+		// directly. ReconcileOptionalBoolPointer would return null on the import
+		// path (current null) even when the API returned the value.
+		out[i] = UserGroupCriterionModel{
+			Priority:              priority,
+			Name:                  name,
+			SearchType:            searchType,
+			Value:                 value,
+			AndOr:                 andOr,
+			HasOpeningParenthesis: helpers.BoolPointerValueOrNull(c.OpeningParen),
+			HasClosingParenthesis: helpers.BoolPointerValueOrNull(c.ClosingParen),
+		}
+	}
+	return out
+}
+
+// flattenMembers returns (user IDs as strings, count) from a UserGroupUsers
+// wrapper. Order is preserved as returned by the API.
+func flattenMembers(wrapper *proclassic.UserGroupUsers) ([]string, int) {
+	if wrapper == nil || wrapper.User == nil {
+		return nil, 0
+	}
+	users := *wrapper.User
+	ids := make([]string, 0, len(users))
+	for _, u := range users {
+		if u.ID == nil {
+			continue
+		}
+		ids = append(ids, strconv.Itoa(*u.ID))
+	}
+	return ids, len(users)
+}
+
+// flattenUsers converts the SDK users wrapper into the data source's
+// Computed users slice.
+func flattenUsers(wrapper *proclassic.UserGroupUsers) []UserGroupUserModel {
+	if wrapper == nil || wrapper.User == nil {
+		return nil
+	}
+	src := *wrapper.User
+	out := make([]UserGroupUserModel, 0, len(src))
+	for _, u := range src {
+		var idVal types.String
+		if u.ID != nil {
+			idVal = types.StringValue(strconv.Itoa(*u.ID))
+		} else {
+			idVal = types.StringNull()
+		}
+		out = append(out, UserGroupUserModel{
+			ID:           idVal,
+			Username:     helpers.StringPointerValueOrNull(u.Username),
+			FullName:     helpers.StringPointerValueOrNull(u.FullName),
+			PhoneNumber:  helpers.StringPointerValueOrNull(u.PhoneNumber),
+			EmailAddress: helpers.StringPointerValueOrNull(u.EmailAddress),
+		})
+	}
+	return out
+}

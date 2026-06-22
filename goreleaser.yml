@@ -61,4 +61,35 @@ release:
   # If you want to manually examine the release before its live, uncomment this line:
   # draft: true
 changelog:
-  disable: true
+  use: git
+  sort: asc
+  groups:
+    - title: Breaking Changes
+      regexp: "(?i)^.*(breaking|!:|BREAKING CHANGE).*"
+      order: 0
+    - title: Features
+      regexp: '(?i)^.*feat(\(.+\))?!?:.*'
+      order: 1
+    - title: Bug Fixes
+      regexp: '(?i)^.*fix(\(.+\))?!?:.*'
+      order: 2
+    - title: Performance
+      regexp: '(?i)^.*perf(\(.+\))?!?:.*'
+      order: 3
+    - title: Refactors
+      regexp: '(?i)^.*refactor(\(.+\))?!?:.*'
+      order: 4
+    - title: Documentation
+      regexp: '(?i)^.*docs(\(.+\))?!?:.*'
+      order: 5
+    - title: Tests
+      regexp: '(?i)^.*test(\(.+\))?!?:.*'
+      order: 6
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^chore"
+      - "^ci"
+      - "Merge pull request"
+      - "Merge branch"

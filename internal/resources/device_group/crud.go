@@ -5,10 +5,13 @@ package device_group
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -18,7 +21,92 @@ import (
 
 const (
 	deviceGroupCreateRetryDelay = 10 * time.Second
+	deviceGroupDeleteRetryDelay = 10 * time.Second
 )
+
+// isDeletePropagationConflict reports whether a device-group DELETE error is a
+// transient 406/409 raised while a dependent resource that referenced the group
+// (e.g. a just-deleted blueprint) is still propagating server-side. The group
+// still exists in this case, so re-issuing the DELETE once the reference clears
+// is the correct action. (Distinct from the classic apps' accepted-async
+// deletes, which return a misleading 400 and must NOT be re-issued.) The
+// transport no longer retries 4xx, so this retry is handled here explicitly.
+// The 406/409 set is from observed delete-after-blueprint behaviour; widen it if
+// acceptance testing surfaces another transient status on this path.
+func isDeletePropagationConflict(err error) bool {
+	apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err)
+	if !ok {
+		return false
+	}
+	return apiErr.HasStatus(http.StatusNotAcceptable) || apiErr.HasStatus(http.StatusConflict)
+}
+
+// ModifyPlan suppresses a no-op diff when a directory-service group criterion's
+// planned value is a different REPRESENTATION of the same group already in state
+// (a raw base64 value swapped for the equivalent group name, or vice versa).
+// Skips create (no prior state) and destroy (no plan); soft — any resolve
+// failure leaves the diff intact.
+func (r *DeviceGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || r.proClient == nil {
+		return
+	}
+	var plan, state DeviceGroupResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() || len(plan.Criteria) == 0 {
+		return
+	}
+	// Suppress no-op representation swaps for both criterion families: a
+	// directory-service group base64<->name swap, and a Jamf-group name<->id swap
+	// (11.29 reads a member-of value back as the group id). Disjoint criterion
+	// names, so the two passes never touch the same element.
+	suppressed := suppressEquivalentDSGroupCriteria(ctx, r.proClient, plan.Criteria, state.Criteria)
+	suppressed = suppressEquivalentGroupRefCriteria(ctx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), suppressed, state.Criteria)
+	changed := false
+	for i := range suppressed {
+		if !suppressed[i].AttributeValue.Equal(plan.Criteria[i].AttributeValue) {
+			changed = true
+			break
+		}
+	}
+	if !changed {
+		return // additive: only touch the plan when a representation actually collapsed
+	}
+	plan.Criteria = suppressed
+	// If suppression reconciled the criteria back to state, the swap is a pure
+	// representation change with no membership impact. member_count is Computed
+	// WITHOUT UseStateForUnknown, so core has already flipped it to unknown for the
+	// (now-reverted) update — leaving a phantom "member_count -> known after apply"
+	// diff. Restore it from state so a representation-only swap yields an empty
+	// plan. Safe: member_count depends only on membership, which is unchanged when
+	// the criteria are equal. (id / jamf_pro_id / members already use
+	// UseStateForUnknown and need no such restore.)
+	if deviceGroupCriteriaEqual(plan.Criteria, state.Criteria) {
+		plan.MemberCount = state.MemberCount
+	}
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
+// deviceGroupCriteriaEqual reports whether two criteria slices are identical
+// across every modelled field — used to confirm a directory-service group
+// suppression left no real criteria change before restoring Computed siblings.
+func deviceGroupCriteriaEqual(a, b []DeviceGroupCriteriaModel) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Order.Equal(b[i].Order) ||
+			!a[i].AttributeName.Equal(b[i].AttributeName) ||
+			!a[i].Operator.Equal(b[i].Operator) ||
+			!a[i].AttributeValue.Equal(b[i].AttributeValue) ||
+			!a[i].JoinType.Equal(b[i].JoinType) ||
+			!a[i].HasOpeningParenthesis.Equal(b[i].HasOpeningParenthesis) ||
+			!a[i].HasClosingParenthesis.Equal(b[i].HasClosingParenthesis) {
+			return false
+		}
+	}
+	return true
+}
 
 // Create creates a new Jamf Platform device group resource.
 func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -59,9 +147,25 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		GroupType:   strings.ToUpper(plan.GroupType.ValueString()),
 	}
 
+	var authoredDSGroups map[string]string
+	var authoredGroupRefs map[string]string
 	switch strings.ToLower(plan.GroupType.ValueString()) {
 	case "smart":
-		criteria := expandDeviceGroupCriteria(plan.Criteria)
+		resolved, authored, dsDiags := resolveDSGroupCriteria(createCtx, r.proClient, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		resp.Diagnostics.Append(dsDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.Criteria = resolved
+		authoredDSGroups = authored
+		// On Jamf Pro >= 11.29 the wire value must be the group ID (the endpoint
+		// rejects names — wire-probed); resolve name->id for the request and keep the
+		// id->name map to restore the authored name after the flatten. Pre-11.29 the
+		// endpoint resolves the name itself (and rejects the id), so pass the name
+		// through unchanged.
+		var wireCriteria []DeviceGroupCriteriaModel
+		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(createCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria, r.groupRefWriteSendsID(createCtx))
+		criteria := expandDeviceGroupCriteria(wireCriteria)
 		reqBody.Criteria = &criteria
 	case "static":
 		if manageMembers {
@@ -88,6 +192,16 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 	if !r.refreshDeviceGroupState(createCtx, created.ID, &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
+	plan.Criteria = restoreAuthoredDSGroupCriteria(plan.Criteria, authoredDSGroups)
+	plan.Criteria = restoreAuthoredGroupRefCriteria(plan.Criteria, authoredGroupRefs, dsObjectType(plan.DeviceType.ValueString()))
+
+	// resolveJamfProID degrades all Pro bridging failures to warnings so the
+	// Platform Create result is never discarded. Append diagnostics without a
+	// HasError gate — orphaning a successfully-created group would force a
+	// manual `terraform import` to recover.
+	jamfProID, jamfProDiags := resolveJamfProID(createCtx, r.proClient, r.pd, plan.ID.ValueString())
+	resp.Diagnostics.Append(jamfProDiags...)
+	plan.JamfProID = jamfProID
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -182,10 +296,17 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 		}
 	}
 
+	priorCriteria := state.Criteria
 	resp.Diagnostics.Append(assignDeviceGroupModel(readCtx, &state, grp, members, manageMembers, manageDescription)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	state.Criteria = readbackDSGroupCriteria(readCtx, r.proClient, state.Criteria, priorCriteria)
+	state.Criteria = readbackGroupRefCriteria(readCtx, r.groupRef, dsObjectType(state.DeviceType.ValueString()), state.Criteria, priorCriteria)
+
+	jamfProID, jamfProDiags := resolveJamfProID(readCtx, r.proClient, r.pd, state.ID.ValueString())
+	resp.Diagnostics.Append(jamfProDiags...)
+	state.JamfProID = jamfProID
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -226,8 +347,24 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 		Description: plan.Description.ValueStringPointer(),
 	}
 
+	var authoredDSGroups map[string]string
+	var authoredGroupRefs map[string]string
 	if strings.ToLower(plan.GroupType.ValueString()) == "smart" {
-		criteria := expandDeviceGroupCriteria(plan.Criteria)
+		resolved, authored, dsDiags := resolveDSGroupCriteria(updateCtx, r.proClient, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria)
+		resp.Diagnostics.Append(dsDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.Criteria = resolved
+		authoredDSGroups = authored
+		// On Jamf Pro >= 11.29 the UPDATE (PATCH) requires the group ID, not the name
+		// (wire-probed: PATCH with a name 400s). Resolve name->id for the request and
+		// keep the id->name map to restore the authored name after the flatten.
+		// Pre-11.29 the endpoint resolves the name itself (and rejects the id), so
+		// pass the name through unchanged.
+		var wireCriteria []DeviceGroupCriteriaModel
+		wireCriteria, authoredGroupRefs = resolveGroupRefWireIDs(updateCtx, r.groupRef, dsObjectType(plan.DeviceType.ValueString()), plan.Criteria, r.groupRefWriteSendsID(updateCtx))
+		criteria := expandDeviceGroupCriteria(wireCriteria)
 		updateReq.Criteria = &criteria
 	}
 
@@ -271,6 +408,12 @@ func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateReq
 	if !r.refreshDeviceGroupState(updateCtx, plan.ID.ValueString(), &plan, manageMembers, manageDescription, &resp.Diagnostics) {
 		return
 	}
+	plan.Criteria = restoreAuthoredDSGroupCriteria(plan.Criteria, authoredDSGroups)
+	plan.Criteria = restoreAuthoredGroupRefCriteria(plan.Criteria, authoredGroupRefs, dsObjectType(plan.DeviceType.ValueString()))
+
+	jamfProID, jamfProDiags := resolveJamfProID(updateCtx, r.proClient, r.pd, plan.ID.ValueString())
+	resp.Diagnostics.Append(jamfProDiags...)
+	plan.JamfProID = jamfProID
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -303,14 +446,27 @@ func (r *DeviceGroupResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	err := r.client.DeleteDeviceGroup(deleteCtx, state.ID.ValueString())
-	if err != nil {
-		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "device group already removed", map[string]any{
-				"id": state.ID.ValueString(),
-			})
-			return
+	// Retry the DELETE on a transient 406/409 (a dependent resource that
+	// referenced this group is still propagating its own deletion); a clean
+	// success or a not-found means the group is gone. Any other error is
+	// terminal. Bounded by the delete timeout.
+	id := state.ID.ValueString()
+	pollErr := jamfplatform.PollUntil(deleteCtx, deviceGroupDeleteRetryDelay, func(c context.Context) (bool, error) {
+		err := r.client.DeleteDeviceGroup(c, id)
+		switch {
+		case err == nil:
+			return true, nil
+		case helpers.IsNotFoundError(err):
+			tflog.Info(c, "device group already removed", map[string]any{"id": id})
+			return true, nil
+		case isDeletePropagationConflict(err):
+			tflog.Info(c, "device group delete blocked by a still-propagating dependency; retrying", map[string]any{"id": id})
+			return false, nil
+		default:
+			return false, err
 		}
-		resp.Diagnostics.AddError("Error deleting device group", err.Error())
+	})
+	if pollErr != nil {
+		resp.Diagnostics.AddError("Error deleting device group", pollErr.Error())
 	}
 }

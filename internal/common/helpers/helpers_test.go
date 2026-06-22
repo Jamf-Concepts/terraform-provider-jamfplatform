@@ -50,6 +50,21 @@ func TestStringPointerValueOrNull(t *testing.T) {
 	}
 }
 
+func TestOptionalStringPointer(t *testing.T) {
+	if got := OptionalStringPointer(types.StringNull()); got != nil {
+		t.Errorf("null should yield nil pointer, got %v", got)
+	}
+	if got := OptionalStringPointer(types.StringUnknown()); got != nil {
+		t.Errorf("unknown should yield nil pointer (not pointer to empty string), got %v", got)
+	}
+	if got := OptionalStringPointer(types.StringValue("hello")); got == nil || *got != "hello" {
+		t.Errorf("expected pointer to 'hello', got %v", got)
+	}
+	if got := OptionalStringPointer(types.StringValue("")); got == nil || *got != "" {
+		t.Errorf("explicit empty string must be forwarded, got %v", got)
+	}
+}
+
 func TestBoolPointerValueOrNull(t *testing.T) {
 	b := true
 	f := false
@@ -110,6 +125,54 @@ func TestReconcileOptionalString(t *testing.T) {
 	}
 }
 
+func TestPreserveStringWhenWireEmpty(t *testing.T) {
+	cases := []struct {
+		name    string
+		wire    *string
+		current types.String
+		want    types.String
+	}{
+		{
+			name:    "wire empty + configured non-empty current preserves current (the masked-error-path bug class)",
+			wire:    new(""),
+			current: types.StringValue("user-authored"),
+			want:    types.StringValue("user-authored"),
+		},
+		{
+			name:    "wire nil + configured current preserves current",
+			wire:    nil,
+			current: types.StringValue("user-authored"),
+			want:    types.StringValue("user-authored"),
+		},
+		{
+			name:    "wire non-empty replaces current",
+			wire:    new("server-value"),
+			current: types.StringValue("old"),
+			want:    types.StringValue("server-value"),
+		},
+		{
+			name:    "wire nil + null current stays null",
+			wire:    nil,
+			current: types.StringNull(),
+			want:    types.StringNull(),
+		},
+		{
+			name:    "wire empty + null current stays null",
+			wire:    new(""),
+			current: types.StringNull(),
+			want:    types.StringNull(),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := PreserveStringWhenWireEmpty(tc.wire, tc.current)
+			if !got.Equal(tc.want) {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestIsNotFoundError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -147,6 +210,28 @@ func TestIsServerError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if result := IsServerError(tc.err); result != tc.expected {
 				t.Errorf("IsServerError(%v) = %v, want %v", tc.err, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestIsForbiddenError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"nil", nil, false},
+		{"plain error", errors.New("some error"), false},
+		{"403 response", &jamfplatform.APIResponseError{StatusCode: 403}, true},
+		{"401 response", &jamfplatform.APIResponseError{StatusCode: 401}, false},
+		{"404 response", &jamfplatform.APIResponseError{StatusCode: 404}, false},
+		{"500 response", &jamfplatform.APIResponseError{StatusCode: 500}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if result := IsForbiddenError(tc.err); result != tc.expected {
+				t.Errorf("IsForbiddenError(%v) = %v, want %v", tc.err, result, tc.expected)
 			}
 		})
 	}
