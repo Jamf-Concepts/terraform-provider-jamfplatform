@@ -44,6 +44,12 @@ func TestFlattenSiteObject(t *testing.T) {
 	if id == nil || *id != "7" || name == nil || *name != "HQ" {
 		t.Errorf("got (%v,%v), want (\"7\",\"HQ\")", id, name)
 	}
+	// "NONE" sentinel (id -1): the classic GET nondeterministically echoes or omits
+	// the name, so it must be nilled regardless of what the server returned.
+	id, name = FlattenSiteObject(&proclassic.SiteObject{ID: new(-1), Name: new("NONE")})
+	if id == nil || *id != "-1" || name != nil {
+		t.Errorf("got (%v,%v), want (\"-1\",nil) for the NONE sentinel", id, name)
+	}
 }
 
 func TestBuildSiteObject(t *testing.T) {

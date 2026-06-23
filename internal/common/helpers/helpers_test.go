@@ -50,6 +50,30 @@ func TestStringPointerValueOrNull(t *testing.T) {
 	}
 }
 
+func TestDerivedRefName(t *testing.T) {
+	hq := "HQ"
+	none := "NONE"
+	id5 := 5
+	idZero := 0
+	idNeg := -1
+
+	// Real positive id: trust the echoed name.
+	if got := DerivedRefName(&id5, &hq); got.ValueString() != "HQ" {
+		t.Errorf("positive id should yield echoed name, got %q", got.ValueString())
+	}
+	// Sentinel ids (nil, 0, -1): name must null regardless of the echo, because
+	// the classic GET nondeterministically echoes or omits "NONE".
+	if got := DerivedRefName(nil, &none); !got.IsNull() {
+		t.Error("nil id should yield null name")
+	}
+	if got := DerivedRefName(&idZero, &none); !got.IsNull() {
+		t.Error("id 0 should yield null name")
+	}
+	if got := DerivedRefName(&idNeg, &none); !got.IsNull() {
+		t.Error("id -1 should yield null name")
+	}
+}
+
 func TestOptionalStringPointer(t *testing.T) {
 	if got := OptionalStringPointer(types.StringNull()); got != nil {
 		t.Errorf("null should yield nil pointer, got %v", got)

@@ -103,6 +103,25 @@ func StringFromIntPtr(p *int) *string {
 	return &s
 }
 
+// DerivedRefName maps a server-echoed reference name onto state for a Computed
+// `*_name` field derived from a sibling reference id (site_name←site_id,
+// category_name←category_id, etc.). The Jamf classic GET nondeterministically
+// either echoes `<name>NONE</name>` or omits the name element entirely for the
+// "none"/unassigned sentinel (id nil or <= 0), so the echoed name MUST NOT be
+// trusted there: a sentinel id always yields a null name, making the derived
+// field deterministic across reads. Trusting the echo lets the value flip
+// between "NONE" and null between refreshes, tripping ImportStateVerify and
+// "Provider produced inconsistent result after apply". For a real positive id
+// the echoed name is authoritative. This is the derived-name analogue of the
+// id sentinel-collapse rule — see STYLE_GUIDE.md §Server-derived computed fields
+// & Optional+Computed attributes.
+func DerivedRefName(id *int, name *string) types.String {
+	if id == nil || *id <= 0 {
+		return types.StringNull()
+	}
+	return StringPointerValueOrNull(name)
+}
+
 // Int64FromIntPtr converts a *int (the ProClassic SDK's integer wire shape) into a
 // Terraform Int64, mapping nil to null.
 func Int64FromIntPtr(p *int) types.Int64 {

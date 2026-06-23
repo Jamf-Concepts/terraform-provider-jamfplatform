@@ -28,7 +28,7 @@ func assignEnrollmentProfileResourceModel(state *EnrollmentProfileResourceModel,
 	state.UUID = stringOrNull(g.UUID)
 	if g.Site != nil {
 		state.SiteID = helpers.StringValueFromIntPtr(g.Site.ID)
-		state.SiteName = stringOrNull(g.Site.Name)
+		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	}
 
 	if state.Location != nil {
@@ -56,7 +56,7 @@ func assignEnrollmentProfileDataSourceModel(state *EnrollmentProfileDataSourceMo
 	state.UUID = stringOrNull(g.UUID)
 	if g.Site != nil {
 		state.SiteID = helpers.StringValueFromIntPtr(g.Site.ID)
-		state.SiteName = stringOrNull(g.Site.Name)
+		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	}
 	state.Location = flattenLocationModel(api.Location)
 	state.Purchasing = flattenPurchasingModel(api.Purchasing)

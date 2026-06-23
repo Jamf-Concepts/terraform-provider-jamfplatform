@@ -17,15 +17,15 @@ func bigInt(s string) *proclassic.BigInt {
 }
 
 func TestSiteValues_EchoVerbatim(t *testing.T) {
-	// The `-1`/`NONE` "no site" markers are echoed verbatim (not collapsed to
-	// null), mirroring the site_id/site_name convention.
+	// The `-1` id marker echoes verbatim, but the derived name nulls on the
+	// sentinel (the classic GET nondeterministically echoes/omits "NONE").
 	noneID := siteIDValue(&proclassic.ComputerInvitationEnrollIntoSite{ID: new(-1), Name: new("NONE")})
 	if noneID.ValueString() != "-1" {
 		t.Errorf("no-site id must echo -1, got %q", noneID.ValueString())
 	}
 	noneName := siteNameValue(&proclassic.ComputerInvitationEnrollIntoSite{ID: new(-1), Name: new("NONE")})
-	if noneName.ValueString() != "NONE" {
-		t.Errorf("no-site name must echo NONE, got %q", noneName.ValueString())
+	if !noneName.IsNull() {
+		t.Errorf("no-site name must be null on the sentinel, got %q", noneName.ValueString())
 	}
 
 	if !siteIDValue(nil).IsNull() {
@@ -74,8 +74,8 @@ func TestAssignComputerInvitationResourceModel_DriftAndSentinels(t *testing.T) {
 	if state.EnrollIntoSiteID.ValueString() != "-1" {
 		t.Errorf("no-site id must echo -1, got %q", state.EnrollIntoSiteID.ValueString())
 	}
-	if state.EnrollIntoSiteName.ValueString() != "NONE" {
-		t.Errorf("no-site name must echo NONE, got %q", state.EnrollIntoSiteName.ValueString())
+	if !state.EnrollIntoSiteName.IsNull() {
+		t.Errorf("no-site name must be null on the sentinel, got %q", state.EnrollIntoSiteName.ValueString())
 	}
 	if state.Invitation.ValueString() != "308000000000000000000000000000000000001" {
 		t.Errorf("invitation precision lost: %q", state.Invitation.ValueString())

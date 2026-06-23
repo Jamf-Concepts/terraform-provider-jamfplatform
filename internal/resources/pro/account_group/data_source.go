@@ -127,7 +127,7 @@ func assignAccountGroupDataSourceModel(data *AccountGroupDataSourceModel, g *pro
 
 	if g.Site != nil && g.Site.ID != nil {
 		data.SiteID = types.Int64Value(int64(*g.Site.ID))
-		data.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
+		data.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
 		data.SiteID = types.Int64Value(-1)
 		data.SiteName = types.StringNull()

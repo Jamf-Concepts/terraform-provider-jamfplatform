@@ -30,7 +30,11 @@ func FlattenNameSet(ctx context.Context, items *[]proclassic.IDName) types.Set {
 
 // FlattenSiteObject unpacks a ProClassic SiteObject (nil-able integer ID + name)
 // into (idString, name) pointers for state assignment. Returns (nil, nil) when the
-// site is absent; the ID is rendered as its decimal string when present.
+// site is absent; the ID is rendered as its decimal string when present. The name
+// is nilled for the "NONE"/unassigned sentinel (id nil or <= 0): the classic GET
+// nondeterministically echoes or omits "<name>NONE</name>" there, so trusting it
+// would flip the derived site_name between reads (ImportStateVerify / "inconsistent
+// result after apply"). See STYLE_GUIDE §Server-derived computed fields.
 func FlattenSiteObject(site *proclassic.SiteObject) (*string, *string) {
 	if site == nil {
 		return nil, nil
@@ -39,6 +43,9 @@ func FlattenSiteObject(site *proclassic.SiteObject) (*string, *string) {
 	if site.ID != nil {
 		s := strconv.Itoa(*site.ID)
 		idPtr = &s
+	}
+	if site.ID == nil || *site.ID <= 0 {
+		return idPtr, nil
 	}
 	return idPtr, site.Name
 }

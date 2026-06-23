@@ -117,15 +117,17 @@ func assignPatchSoftwareTitleDataSourceModel(ctx context.Context, state *PatchSo
 // A nil category yields null/null. The endpoint reports "no category" as id -1
 // (never assigned) or id 0 (explicitly cleared via the buildPatchSoftwareTitleUpdateInput
 // wire translation); both collapse to the "-1" user-facing sentinel so state
-// matches config regardless of which the server echoes.
+// matches config regardless of which the server echoes. The derived name nulls on
+// the sentinel via helpers.DerivedRefName — the GET nondeterministically echoes
+// or omits the "NONE" name, so trusting it would flip category_name between reads.
 func categoryValues(c *proclassic.CategoryObject) (types.String, types.String) {
 	if c == nil {
 		return types.StringNull(), types.StringNull()
 	}
 	if c.ID == nil || *c.ID <= 0 {
-		return types.StringValue("-1"), helpers.StringPointerValueOrNull(c.Name)
+		return types.StringValue("-1"), helpers.DerivedRefName(c.ID, c.Name)
 	}
-	return helpers.StringValueFromIntPtr(c.ID), helpers.StringPointerValueOrNull(c.Name)
+	return helpers.StringValueFromIntPtr(c.ID), helpers.DerivedRefName(c.ID, c.Name)
 }
 
 // siteValues maps an SDK site object onto (id, name) Terraform strings. Both a
@@ -134,15 +136,17 @@ func categoryValues(c *proclassic.CategoryObject) (types.String, types.String) {
 // user-facing sentinel. site_id is Optional+Computed with UseStateForUnknown, so
 // it must never resolve to null: otherwise a plan that carried "-1" forward would
 // hit "inconsistent result after apply" the moment the server drops the block.
-// Mirrors categoryValues' "-1" treatment.
+// Mirrors categoryValues' "-1" treatment. site_name nulls on the sentinel via
+// helpers.DerivedRefName — the GET nondeterministically echoes or omits the "NONE"
+// name, so trusting it would flip site_name between reads (ImportStateVerify fail).
 func siteValues(s *proclassic.SiteObject) (types.String, types.String) {
 	if s == nil {
 		return types.StringValue("-1"), types.StringNull()
 	}
 	if s.ID == nil || *s.ID <= 0 {
-		return types.StringValue("-1"), helpers.StringPointerValueOrNull(s.Name)
+		return types.StringValue("-1"), helpers.DerivedRefName(s.ID, s.Name)
 	}
-	return helpers.StringValueFromIntPtr(s.ID), helpers.StringPointerValueOrNull(s.Name)
+	return helpers.StringValueFromIntPtr(s.ID), helpers.DerivedRefName(s.ID, s.Name)
 }
 
 // notificationValues maps the notifications block onto (web, email) bools. A nil

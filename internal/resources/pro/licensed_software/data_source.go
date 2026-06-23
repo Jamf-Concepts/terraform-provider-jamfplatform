@@ -157,7 +157,7 @@ func assignLicensedSoftwareFlatDataSource(state *LicensedSoftwareDataSourceModel
 		state.ExcludeTitlesPurchasedFromAppStore = helpers.BoolPointerValueOrNull(g.ExcludeTitlesPurchasedFromAppStore)
 		if g.Site != nil {
 			state.SiteID = helpers.StringValueFromIntPtr(g.Site.ID)
-			state.SiteName = stringValueOrNullEmpty(g.Site.Name)
+			state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 		}
 	}
 }

@@ -64,7 +64,7 @@ func flattenMacAppGeneral(g *proclassic.MacApplicationGeneral, state *MacAppGene
 
 	if g.Category != nil {
 		state.CategoryID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Category.ID), state.CategoryID)
-		state.CategoryName = helpers.StringPointerValueOrNull(g.Category.Name)
+		state.CategoryName = helpers.DerivedRefName(g.Category.ID, g.Category.Name)
 	} else {
 		state.CategoryID = helpers.PreferCurrentStringPointer(nil, state.CategoryID)
 		state.CategoryName = types.StringNull()
@@ -72,7 +72,7 @@ func flattenMacAppGeneral(g *proclassic.MacApplicationGeneral, state *MacAppGene
 
 	if g.Site != nil {
 		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
-		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
+		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
 		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()

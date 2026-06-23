@@ -62,8 +62,9 @@ func TestAssignResourceModel_OmitsMatchedRecords(t *testing.T) {
 	if state.ID.ValueString() != "463" {
 		t.Errorf("id mismatch: %q", state.ID.ValueString())
 	}
-	if state.SiteName.ValueString() != "NONE" {
-		t.Errorf("site_name mismatch: %q", state.SiteName.ValueString())
+	// Sentinel site (id -1): derived name nulls, not the flaky server echo.
+	if !state.SiteName.IsNull() {
+		t.Errorf("site_name should be null on the sentinel, got %q", state.SiteName.ValueString())
 	}
 	if len(state.Criteria) != 1 {
 		t.Errorf("expected 1 criterion, got %d", len(state.Criteria))

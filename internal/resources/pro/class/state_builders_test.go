@@ -48,8 +48,9 @@ func TestAssignResourceModel_PopulatedAndResolvedIDs(t *testing.T) {
 	if state.ID.ValueString() != "3" {
 		t.Errorf("id = %q", state.ID.ValueString())
 	}
-	if state.SiteID.ValueString() != "-1" || state.SiteName.ValueString() != "NONE" {
-		t.Errorf("site = %q / %q", state.SiteID.ValueString(), state.SiteName.ValueString())
+	// Sentinel site (id -1): derived name nulls, not the flaky server echo.
+	if state.SiteID.ValueString() != "-1" || !state.SiteName.IsNull() {
+		t.Errorf("site = %q / %q (name should be null on the sentinel)", state.SiteID.ValueString(), state.SiteName.ValueString())
 	}
 	if state.Source.ValueString() != "N/A" {
 		t.Errorf("source = %q", state.Source.ValueString())

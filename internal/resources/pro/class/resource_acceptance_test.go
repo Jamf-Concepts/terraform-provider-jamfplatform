@@ -126,7 +126,9 @@ func TestAccResource_ProClass_Lifecycle(t *testing.T) {
 					resource.TestCheckResourceAttr(classResource, "name", name),
 					resource.TestCheckResourceAttr(classResource, "description", "created by acc test"),
 					resource.TestCheckResourceAttr(classResource, "site_id", "-1"),
-					resource.TestCheckResourceAttr(classResource, "site_name", "NONE"),
+					// No site: site_name is null (absent) on the "-1" sentinel — the
+					// server echo of "NONE" is flaky, so DerivedRefName nulls it.
+					resource.TestCheckNoResourceAttr(classResource, "site_name"),
 					resource.TestCheckResourceAttrSet(classResource, "source"),
 					resource.TestCheckResourceAttr(classResource, "students.#", "2"),
 					resource.TestCheckTypeSetElemAttr(classResource, "students.*", studentA),

@@ -38,11 +38,12 @@ func TestFlattenEbookGeneral_ServerDerivedAndCategory(t *testing.T) {
 	if state.CategoryID.ValueString() != "-1" {
 		t.Errorf("category_id not flattened: %q", state.CategoryID.ValueString())
 	}
-	if state.CategoryName.ValueString() != "No category assigned" {
-		t.Errorf("category_name not flattened: %q", state.CategoryName.ValueString())
+	// Sentinel category/site (id -1): derived names null, not the flaky echo.
+	if !state.CategoryName.IsNull() {
+		t.Errorf("category_name should be null on the sentinel, got %q", state.CategoryName.ValueString())
 	}
-	if state.SiteName.ValueString() != "NONE" {
-		t.Errorf("site_name not flattened: %q", state.SiteName.ValueString())
+	if !state.SiteName.IsNull() {
+		t.Errorf("site_name should be null on the sentinel, got %q", state.SiteName.ValueString())
 	}
 }
 

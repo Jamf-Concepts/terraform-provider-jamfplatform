@@ -160,11 +160,11 @@ func assignEbookFlatDataSource(state *EbookDataSourceModel, e *proclassic.Ebook)
 		state.DeployAsManaged = helpers.BoolPointerValueOrNull(e.General.DeployAsManaged)
 		if e.General.Category != nil {
 			state.CategoryID = helpers.StringValueFromIntPtr(e.General.Category.ID)
-			state.CategoryName = helpers.StringPointerValueOrNull(e.General.Category.Name)
+			state.CategoryName = helpers.DerivedRefName(e.General.Category.ID, e.General.Category.Name)
 		}
 		if e.General.Site != nil {
 			state.SiteID = helpers.StringValueFromIntPtr(e.General.Site.ID)
-			state.SiteName = helpers.StringPointerValueOrNull(e.General.Site.Name)
+			state.SiteName = helpers.DerivedRefName(e.General.Site.ID, e.General.Site.Name)
 		}
 	}
 }
