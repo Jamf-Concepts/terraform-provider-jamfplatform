@@ -1,19 +1,19 @@
 # terraform-provider-jamfplatform
 
-Provides resources and data sources for managing [Jamf Platform Services](https://developer.jamf.com/platform-api/):
+Provides resources and data sources for managing the products and services available through the [Jamf Platform API](https://developer.jamf.com/platform-api/):
 
 * [Compliance Benchmark Engine](https://learn.jamf.com/en-US/bundle/jamf-compliance-benchmarks-configuration-guide/page/Compliance_Benchmarks_Configuration_Guide.html)
   * [API Reference](https://developer.jamf.com/platform-api/reference/getbenchmark)
 * [Blueprints](https://learn.jamf.com/en-US/bundle/jamf-pro-blueprints-configuration-guide/page/Jamf_Pro_Blueprints_Configuration_Guide.html)
-  * [API Reference](https://developer.jamf.com/platform-api/reference/blueprints-1)
+  * [API Reference](https://developer.jamf.com/platform-api/reference/listblueprints)
 * Device Groups
-  * [API Reference](https://developer.jamf.com/platform-api/reference/device-groups)
-* [Devices](https://developer.jamf.com/platform-api/reference/devices)
-* [Device Actions](https://developer.jamf.com/platform-api/reference/device-actions)
+  * [API Reference](https://developer.jamf.com/platform-api/reference/get_v1-tenant-tenantid-device-groups)
+* [Devices](https://developer.jamf.com/platform-api/reference/get_v1-tenant-tenantid-devices)
+* [Device Actions](https://developer.jamf.com/platform-api/reference/post_v1-tenant-tenantid-devices-id-check-in)
 
-It additionally provides resources and data sources for [Jamf Pro](https://developer.jamf.com/jamf-pro/reference/jamf-pro-api) under the `jamfplatform_pro_*` namespace, with further Jamf products to follow. See the **Supported Jamf products** section below for the per-product tenant version targets.
+It additionally provides resources and data sources for [Jamf Pro](https://developer.jamf.com/platform-api/reference/get_v1-tenant-tenantid-account-groups) under the `jamfplatform_pro_*` namespace, with further Jamf products to follow. See the **Supported Jamf products** section below for the per-product tenant version targets.
 
-Note that some of these APIs are only available in private beta. Provider stability, functionality and schemas are subject to change without notice.
+Note that the Platform API is currently in public beta. Provider stability, functionality and schemas are subject to change without notice.
 
 ## Acknowledgements
 
