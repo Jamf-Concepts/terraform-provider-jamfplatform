@@ -86,6 +86,7 @@ func (r *PolicyResource) IdentitySchema(ctx context.Context, req resource.Identi
 // element names are noted in attribute descriptions where they differ.
 func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled** — both are obsolete in Jamf Pro, superseded by MDM-driven app installs / OS update scheduling and the patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -325,17 +326,17 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 						Optional:            true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								"id":          schema.StringAttribute{MarkdownDescription: "Script ID.", Required: true},
-								"name":        optComputedString("Script display name. Returned by Jamf Pro."),
-								"priority":    optComputedString("Run order."),
-								"parameter4":  optComputedString("Parameter 4 passed to the script."),
-								"parameter5":  optComputedString("Parameter 5 passed to the script."),
-								"parameter6":  optComputedString("Parameter 6 passed to the script."),
-								"parameter7":  optComputedString("Parameter 7 passed to the script."),
-								"parameter8":  optComputedString("Parameter 8 passed to the script."),
-								"parameter9":  optComputedString("Parameter 9 passed to the script."),
-								"parameter10": optComputedString("Parameter 10 passed to the script."),
-								"parameter11": optComputedString("Parameter 11 passed to the script."),
+								"id":           schema.StringAttribute{MarkdownDescription: "Script ID.", Required: true},
+								"name":         optComputedString("Script display name. Returned by Jamf Pro."),
+								"priority":     optComputedString("Run order."),
+								"parameter_4":  optComputedString("Parameter 4 passed to the script."),
+								"parameter_5":  optComputedString("Parameter 5 passed to the script."),
+								"parameter_6":  optComputedString("Parameter 6 passed to the script."),
+								"parameter_7":  optComputedString("Parameter 7 passed to the script."),
+								"parameter_8":  optComputedString("Parameter 8 passed to the script."),
+								"parameter_9":  optComputedString("Parameter 9 passed to the script."),
+								"parameter_10": optComputedString("Parameter 10 passed to the script."),
+								"parameter_11": optComputedString("Parameter 11 passed to the script."),
 							},
 						},
 					},

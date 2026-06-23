@@ -176,14 +176,14 @@ type PolicyScriptItemModel struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Priority    types.String `tfsdk:"priority"`
-	Parameter4  types.String `tfsdk:"parameter4"`
-	Parameter5  types.String `tfsdk:"parameter5"`
-	Parameter6  types.String `tfsdk:"parameter6"`
-	Parameter7  types.String `tfsdk:"parameter7"`
-	Parameter8  types.String `tfsdk:"parameter8"`
-	Parameter9  types.String `tfsdk:"parameter9"`
-	Parameter10 types.String `tfsdk:"parameter10"`
-	Parameter11 types.String `tfsdk:"parameter11"`
+	Parameter4  types.String `tfsdk:"parameter_4"`
+	Parameter5  types.String `tfsdk:"parameter_5"`
+	Parameter6  types.String `tfsdk:"parameter_6"`
+	Parameter7  types.String `tfsdk:"parameter_7"`
+	Parameter8  types.String `tfsdk:"parameter_8"`
+	Parameter9  types.String `tfsdk:"parameter_9"`
+	Parameter10 types.String `tfsdk:"parameter_10"`
+	Parameter11 types.String `tfsdk:"parameter_11"`
 }
 
 // PolicyPrintersModel models <policy><printers>.

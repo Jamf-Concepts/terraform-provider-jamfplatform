@@ -507,14 +507,14 @@ Required:
 Optional:
 
 - `name` (String) Script display name. Returned by Jamf Pro.
-- `parameter10` (String) Parameter 10 passed to the script.
-- `parameter11` (String) Parameter 11 passed to the script.
-- `parameter4` (String) Parameter 4 passed to the script.
-- `parameter5` (String) Parameter 5 passed to the script.
-- `parameter6` (String) Parameter 6 passed to the script.
-- `parameter7` (String) Parameter 7 passed to the script.
-- `parameter8` (String) Parameter 8 passed to the script.
-- `parameter9` (String) Parameter 9 passed to the script.
+- `parameter_10` (String) Parameter 10 passed to the script.
+- `parameter_11` (String) Parameter 11 passed to the script.
+- `parameter_4` (String) Parameter 4 passed to the script.
+- `parameter_5` (String) Parameter 5 passed to the script.
+- `parameter_6` (String) Parameter 6 passed to the script.
+- `parameter_7` (String) Parameter 7 passed to the script.
+- `parameter_8` (String) Parameter 8 passed to the script.
+- `parameter_9` (String) Parameter 9 passed to the script.
 - `priority` (String) Run order.
 
 
