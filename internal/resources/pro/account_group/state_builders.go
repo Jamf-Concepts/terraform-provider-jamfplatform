@@ -85,7 +85,7 @@ func assignServerDerivedBaseFields(state *AccountGroupResourceModel, g *proclass
 	// Site (id Optional+Computed, name derived/Computed).
 	if g.Site != nil && g.Site.ID != nil {
 		state.SiteID = types.Int64Value(int64(*g.Site.ID))
-		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
+		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
 		state.SiteID = types.Int64Value(-1)
 		state.SiteName = types.StringNull()

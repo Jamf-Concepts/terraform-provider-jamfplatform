@@ -159,11 +159,11 @@ func assignMobileAppFlatDataSource(state *MobileAppDataSourceModel, a *proclassi
 		state.DeploymentType = helpers.StringPointerValueOrNull(a.General.DeploymentType)
 		if a.General.Category != nil {
 			state.CategoryID = helpers.StringValueFromIntPtr(a.General.Category.ID)
-			state.CategoryName = helpers.StringPointerValueOrNull(a.General.Category.Name)
+			state.CategoryName = helpers.DerivedRefName(a.General.Category.ID, a.General.Category.Name)
 		}
 		if a.General.Site != nil {
 			state.SiteID = helpers.StringValueFromIntPtr(a.General.Site.ID)
-			state.SiteName = helpers.StringPointerValueOrNull(a.General.Site.Name)
+			state.SiteName = helpers.DerivedRefName(a.General.Site.ID, a.General.Site.Name)
 		}
 	}
 }

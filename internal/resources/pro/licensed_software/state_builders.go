@@ -73,7 +73,7 @@ func flattenGeneral(g *proclassic.LicensedSoftwareGeneral, state *LicensedSoftwa
 
 	if g.Site != nil {
 		state.SiteID = preferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
-		state.SiteName = stringValueOrNullEmpty(g.Site.Name)
+		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
 		state.SiteID = preferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()

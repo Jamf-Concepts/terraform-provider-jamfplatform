@@ -47,8 +47,9 @@ func TestFlattenGeneral_RenameMapping(t *testing.T) {
 	if state.DeleteApplication.ValueBool() {
 		t.Errorf("delete_application must reflect delete_executable=false")
 	}
-	if state.SiteID.ValueString() != "-1" || state.SiteName.ValueString() != "None" {
-		t.Errorf("site not flattened: id=%q name=%q", state.SiteID.ValueString(), state.SiteName.ValueString())
+	// Sentinel site (id -1): derived name nulls, not the flaky server echo.
+	if state.SiteID.ValueString() != "-1" || !state.SiteName.IsNull() {
+		t.Errorf("site not flattened: id=%q name=%q (name should be null on the sentinel)", state.SiteID.ValueString(), state.SiteName.ValueString())
 	}
 }
 

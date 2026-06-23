@@ -176,7 +176,9 @@ func TestAccResource_ProLicensedSoftware(t *testing.T) {
 					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "platform", "Any"),
 					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "send_email_on_violation", "false"),
 					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "site_id", "-1"),
-					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "site_name", "NONE"),
+					// No site: site_name is null (absent) on the "-1" sentinel — the
+					// server echo of "NONE" is flaky, so DerivedRefName nulls it.
+					resource.TestCheckNoResourceAttr(licensedSoftwareResourceAddr, "site_name"),
 					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "software_definitions.#", "1"),
 					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "software_definitions.0.name", "Acme Editor"),
 					resource.TestCheckResourceAttr(licensedSoftwareResourceAddr, "software_definitions.0.compare_type", "is"),

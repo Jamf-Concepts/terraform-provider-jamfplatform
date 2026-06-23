@@ -149,7 +149,9 @@ func TestAccResource_ProAdvancedUserSearch_Lifecycle(t *testing.T) {
 					resource.TestCheckResourceAttrSet(ausResource, "id"),
 					resource.TestCheckResourceAttr(ausResource, "name", name),
 					resource.TestCheckResourceAttr(ausResource, "site_id", "-1"),
-					resource.TestCheckResourceAttr(ausResource, "site_name", "NONE"),
+					// No site: site_name is null (absent) on the "-1" sentinel — the
+					// server echo of "NONE" is flaky, so DerivedRefName nulls it.
+					resource.TestCheckNoResourceAttr(ausResource, "site_name"),
 					resource.TestCheckResourceAttr(ausResource, "criteria.#", "1"),
 					resource.TestCheckResourceAttr(ausResource, "criteria.0.name", "Full Name"),
 					resource.TestCheckResourceAttr(ausResource, "display_fields.#", "2"),

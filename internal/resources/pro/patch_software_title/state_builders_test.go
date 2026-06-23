@@ -91,11 +91,14 @@ func TestAssignResourceModel_ManagedSubsetReconcile(t *testing.T) {
 	if state.CategoryID.ValueString() != "-1" {
 		t.Errorf("category_id: %q", state.CategoryID.ValueString())
 	}
-	if state.CategoryName.ValueString() != "No category assigned" {
-		t.Errorf("category_name: %q", state.CategoryName.ValueString())
+	// Sentinel category/site (id -1): the derived name is nulled, not echoed —
+	// the classic GET nondeterministically echoes or omits the "none" name, so
+	// DerivedRefName collapses it to null for a stable round-trip.
+	if !state.CategoryName.IsNull() {
+		t.Errorf("category_name should be null on the sentinel, got %q", state.CategoryName.ValueString())
 	}
-	if state.SiteID.ValueString() != "-1" || state.SiteName.ValueString() != "NONE" {
-		t.Errorf("site: id=%q name=%q", state.SiteID.ValueString(), state.SiteName.ValueString())
+	if state.SiteID.ValueString() != "-1" || !state.SiteName.IsNull() {
+		t.Errorf("site: id=%q name=%q (name should be null on the sentinel)", state.SiteID.ValueString(), state.SiteName.ValueString())
 	}
 	if !state.WebNotification.ValueBool() || !state.EmailNotification.ValueBool() {
 		t.Errorf("notifications: web=%v email=%v", state.WebNotification.ValueBool(), state.EmailNotification.ValueBool())

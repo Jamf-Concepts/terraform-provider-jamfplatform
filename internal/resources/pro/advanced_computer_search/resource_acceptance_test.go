@@ -155,7 +155,9 @@ func TestAccResource_ProAdvancedComputerSearch_Lifecycle(t *testing.T) {
 					resource.TestCheckResourceAttrSet(acsResource, "id"),
 					resource.TestCheckResourceAttr(acsResource, "name", name),
 					resource.TestCheckResourceAttr(acsResource, "site_id", "-1"),
-					resource.TestCheckResourceAttr(acsResource, "site_name", "NONE"),
+					// No site: site_name is null (absent) on the "-1" sentinel — the
+					// server echo of "NONE" is flaky, so DerivedRefName nulls it.
+					resource.TestCheckNoResourceAttr(acsResource, "site_name"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.#", "1"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.0.name", "Computer Name"),
 					resource.TestCheckResourceAttr(acsResource, "criteria.0.search_type", "like"),

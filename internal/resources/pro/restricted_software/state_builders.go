@@ -58,7 +58,7 @@ func flattenGeneral(g *proclassic.RestrictedSoftwareGeneral, state *RestrictedSo
 
 	if g.Site != nil {
 		state.SiteID = helpers.PreferCurrentStringPointer(helpers.StringFromIntPtr(g.Site.ID), state.SiteID)
-		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
+		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	} else {
 		state.SiteID = helpers.PreferCurrentStringPointer(nil, state.SiteID)
 		state.SiteName = types.StringNull()

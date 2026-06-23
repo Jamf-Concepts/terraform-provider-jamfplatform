@@ -43,8 +43,9 @@ func TestAssignUserGroupResourceModel_Static_PopulatesMembers(t *testing.T) {
 	if state.SiteID.ValueString() != "-1" {
 		t.Errorf("SiteID expected -1, got %s", state.SiteID)
 	}
-	if state.SiteName.ValueString() != "NONE" {
-		t.Errorf("SiteName expected NONE, got %s", state.SiteName)
+	// Sentinel site (id -1): derived name nulls, not the flaky server echo.
+	if !state.SiteName.IsNull() {
+		t.Errorf("SiteName expected null on the sentinel, got %s", state.SiteName)
 	}
 	if state.MemberCount.ValueInt64() != 1 {
 		t.Errorf("MemberCount expected 1, got %d", state.MemberCount.ValueInt64())

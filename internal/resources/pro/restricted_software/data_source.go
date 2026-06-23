@@ -156,7 +156,7 @@ func assignRestrictedSoftwareFlatDataSource(state *RestrictedSoftwareDataSourceM
 		state.DisplayMessage = helpers.StringPointerValueOrNull(rs.General.DisplayMessage)
 		if rs.General.Site != nil {
 			state.SiteID = helpers.StringValueFromIntPtr(rs.General.Site.ID)
-			state.SiteName = helpers.StringPointerValueOrNull(rs.General.Site.Name)
+			state.SiteName = helpers.DerivedRefName(rs.General.Site.ID, rs.General.Site.Name)
 		}
 	}
 }

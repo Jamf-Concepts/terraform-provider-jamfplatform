@@ -172,11 +172,11 @@ func assignPolicyFlatDataSource(state *PolicyDataSourceFlatModel, p *proclassic.
 		state.Trigger = helpers.StringPointerValueOrNull(p.General.Trigger)
 		if p.General.Category != nil {
 			state.CategoryID = helpers.StringValueFromIntPtr(p.General.Category.ID)
-			state.CategoryName = helpers.StringPointerValueOrNull(p.General.Category.Name)
+			state.CategoryName = helpers.DerivedRefName(p.General.Category.ID, p.General.Category.Name)
 		}
 		if p.General.Site != nil {
 			state.SiteID = helpers.StringValueFromIntPtr(p.General.Site.ID)
-			state.SiteName = helpers.StringPointerValueOrNull(p.General.Site.Name)
+			state.SiteName = helpers.DerivedRefName(p.General.Site.ID, p.General.Site.Name)
 		}
 	}
 }

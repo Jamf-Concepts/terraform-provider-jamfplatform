@@ -146,9 +146,11 @@ func TestAccResource_ProRestrictedSoftware_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.send_email_notification_on_violation", "false"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.kill_process", "false"),
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.delete_application", "false"),
-					// Server-derived site echo resolves to the "None" site.
+					// No site assigned: site_id stays the "-1" sentinel; site_name is
+					// null (absent from state) because DerivedRefName refuses to trust
+					// the flaky server echo of "NONE" for the sentinel.
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.site_id", "-1"),
-					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "general.site_name", "NONE"),
+					resource.TestCheckNoResourceAttr(restrictedSoftwareResourceAddr, "general.site_name"),
 				),
 			},
 			{

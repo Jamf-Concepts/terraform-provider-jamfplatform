@@ -137,8 +137,9 @@ func TestAssign_CreatePath_RoundTrip(t *testing.T) {
 	if !plan.SiteID.Equal(types.StringValue("-1")) {
 		t.Errorf("SiteID = %v, want -1", plan.SiteID)
 	}
-	if !plan.SiteName.Equal(types.StringValue("NONE")) {
-		t.Errorf("SiteName = %v, want NONE", plan.SiteName)
+	// Sentinel site (id -1): derived name nulls, not the flaky server echo.
+	if !plan.SiteName.IsNull() {
+		t.Errorf("SiteName = %v, want null on the sentinel", plan.SiteName)
 	}
 
 	if len(plan.Licenses) != 2 {

@@ -106,11 +106,11 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 	// visible so users see Jamf's default rather than null.
 	if g.Category != nil {
 		state.CategoryID = helpers.StringValueFromIntPtr(g.Category.ID)
-		state.CategoryName = helpers.StringPointerValueOrNull(g.Category.Name)
+		state.CategoryName = helpers.DerivedRefName(g.Category.ID, g.Category.Name)
 	}
 	if g.Site != nil {
 		state.SiteID = helpers.StringValueFromIntPtr(g.Site.ID)
-		state.SiteName = helpers.StringPointerValueOrNull(g.Site.Name)
+		state.SiteName = helpers.DerivedRefName(g.Site.ID, g.Site.Name)
 	}
 }
 

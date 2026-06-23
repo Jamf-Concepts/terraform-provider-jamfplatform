@@ -11,12 +11,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/invitationcommon"
 )
 
-// siteIDValue / siteNameValue echo a read-back
-// MobileDeviceInvitationEnrollIntoSite verbatim into the enroll_into_site_id /
-// enroll_into_site_name attributes, preserving the `-1`/`NONE` "no site" markers
-// (no collapse to null — the id is Optional+Computed and the name Computed-only,
-// mirroring the site_id/site_name convention). A nil block (absent on the wire)
-// maps both to null.
+// siteIDValue / siteNameValue map a read-back MobileDeviceInvitationEnrollIntoSite
+// into the enroll_into_site_id / enroll_into_site_name attributes. The id preserves
+// the `-1` "no site" marker (Optional+Computed, mirroring the site_id convention);
+// the derived name is nulled on the sentinel via helpers.DerivedRefName rather than
+// echoed, since the classic GET nondeterministically echoes or omits "NONE" there.
+// A nil block (absent on the wire) maps both to null.
 func siteIDValue(s *proclassic.MobileDeviceInvitationEnrollIntoSite) types.String {
 	if s == nil {
 		return types.StringNull()
@@ -28,7 +28,7 @@ func siteNameValue(s *proclassic.MobileDeviceInvitationEnrollIntoSite) types.Str
 	if s == nil {
 		return types.StringNull()
 	}
-	return helpers.StringPointerValueOrNull(s.Name)
+	return helpers.DerivedRefName(s.ID, s.Name)
 }
 
 // assignMobileDeviceInvitationResourceModel populates a resource model from a
