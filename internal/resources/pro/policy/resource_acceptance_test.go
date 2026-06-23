@@ -922,9 +922,9 @@ resource "jamfplatform_pro_policy" "test" {
   scripts = {
     scripts = [
       {
-        id         = jamfplatform_pro_script.fixture.id
-        priority   = %q
-        parameter4 = %q
+        id          = jamfplatform_pro_script.fixture.id
+        priority    = %q
+        parameter_4 = %q
       },
     ]
   }
@@ -937,7 +937,7 @@ resource "jamfplatform_pro_policy" "test" {
 // references its ID from policy.scripts.scripts. The policy's wire form for
 // `priority` is `Before`/`After`/`At Reboot`, distinct from the fixture's
 // enum. Step 2 swaps priority and
-// parameter4 to exercise the Update path on the scripts set without
+// parameter_4 to exercise the Update path on the scripts set without
 // recreating the fixture.
 func TestAccPolicyResource_ScriptsFullCoverage(t *testing.T) {
 	testhelpers.AccPreCheck(t)
@@ -964,7 +964,7 @@ func TestAccPolicyResource_ScriptsFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("parameter4"),
+						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("parameter_4"),
 						knownvalue.StringExact("tf-acc-p4-initial"),
 					),
 				},
@@ -979,7 +979,7 @@ func TestAccPolicyResource_ScriptsFullCoverage(t *testing.T) {
 					),
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
-						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("parameter4"),
+						tfjsonpath.New("scripts").AtMapKey("scripts").AtSliceIndex(0).AtMapKey("parameter_4"),
 						knownvalue.StringExact("tf-acc-p4-updated"),
 					),
 				},
