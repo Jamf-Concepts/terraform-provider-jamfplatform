@@ -15,9 +15,11 @@ import (
 )
 
 // assignGetToResource maps a fresh GET response onto the resource model.
-// state is the prior state (used for PreserveStringWhenWireEmpty defence and
-// the nested-block omission rule). plan is mutated in-place. versionLocks and
-// nested-block ids are NOT stored in state.
+// plan is the target written to state and is mutated in-place — on Update it
+// is the NEW plan, so it (not the prior state) governs which Optional-only
+// nested blocks are populated (see the block-gating note below). state is the
+// prior state, used for the PreserveStringWhenWireEmpty defence.
+// versionLocks and nested-block ids are NOT stored in state.
 func assignGetToResource(_ context.Context, plan *MobileDevicePrestageEnrollmentResourceModel, state MobileDevicePrestageEnrollmentResourceModel, got *pro.GetMobileDevicePrestageV3) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -79,26 +81,37 @@ func assignGetToResource(_ context.Context, plan *MobileDevicePrestageEnrollment
 	plan.AnchorCertificates = stringSliceToList(got.AnchorCertificates)
 	plan.ProfileUUID = types.StringValue(got.ProfileUUID)
 
-	// Optional-only typed-pointer nested blocks: when the user omits the
-	// block, the prior state pointer is nil; preserve nil rather than
-	// synthesising a populated zero-value model (Terraform Core rejects a
-	// null → ObjectVal transition).
-	if state.SkipSetupItems != nil {
+	// Optional-only typed-pointer nested blocks (STYLE_GUIDE §303: block
+	// omission == "do not manage this section"). The gate MUST key off the
+	// model being WRITTEN to state — `plan`, the mutated target — never the
+	// prior `state` param. On Update the target is the NEW plan: when the
+	// user removes a previously-managed block, the plan pointer is nil while
+	// the prior state still holds the populated block. Gating on the prior
+	// state would repopulate from the wire and trip Terraform Core's
+	// "was null, but now ObjectVal(...)" consistency error at apply. On
+	// Create / Read the target is the only model, so the gate is unchanged.
+	// Capture presence first — the assignments below reassign each field.
+	manageSkipSetupItems := plan.SkipSetupItems != nil
+	manageNames := plan.Names != nil
+	manageLocationInformation := plan.LocationInformation != nil
+	managePurchasingInformation := plan.PurchasingInformation != nil
+
+	if manageSkipSetupItems {
 		plan.SkipSetupItems = flattenSkipSetupItems(got.SkipSetupItems)
 	} else {
 		plan.SkipSetupItems = nil
 	}
-	if state.Names != nil {
+	if manageNames {
 		plan.Names = flattenNames(got.Names)
 	} else {
 		plan.Names = nil
 	}
-	if state.LocationInformation != nil {
+	if manageLocationInformation {
 		plan.LocationInformation = flattenLocationInformation(got.LocationInformation)
 	} else {
 		plan.LocationInformation = nil
 	}
-	if state.PurchasingInformation != nil {
+	if managePurchasingInformation {
 		plan.PurchasingInformation = flattenPurchasingInformation(got.PurchasingInformation)
 	} else {
 		plan.PurchasingInformation = nil

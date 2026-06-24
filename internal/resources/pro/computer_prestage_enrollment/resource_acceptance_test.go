@@ -230,6 +230,25 @@ func TestAccResource_ProComputerPrestageEnrollment_Full_UpdateRoundTrip(t *testi
 					resource.TestCheckResourceAttr(resourceName, "account_settings.admin_password_wo_version", "2"),
 				),
 			},
+			// Step 3 — REMOVE all four Optional-only nested blocks that were
+			// managed in steps 1-2. Before the gate-on-target fix this Update
+			// crashed with "Provider produced inconsistent result after apply:
+			// .location_information: was null, but now cty.ObjectVal(...)" (and
+			// the WriteOnly-masked "inconsistent values for sensitive
+			// attribute" on account_settings). A clean apply here is the
+			// regression guard; the framework's implicit post-apply plan must
+			// also be empty, proving the removed blocks stay null on refresh
+			// rather than re-appearing as drift.
+			{
+				Config: adeFixtureBlock(suffix, token) + ldapFixture + testAccComputerPrestageBlocksRemovedConfig(name+"-v2"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "display_name", name+"-v2"),
+					resource.TestCheckNoResourceAttr(resourceName, "skip_setup_items.filevault"),
+					resource.TestCheckNoResourceAttr(resourceName, "location_information.username"),
+					resource.TestCheckNoResourceAttr(resourceName, "purchasing_information.apple_care_id"),
+					resource.TestCheckNoResourceAttr(resourceName, "account_settings.admin_username"),
+				),
+			},
 		},
 	})
 }
@@ -991,6 +1010,40 @@ resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
     prefill_primary_account_info_feature_enabled = true
     prefill_type                                 = "DEVICE_OWNER"
   }
+
+  scope_serial_numbers = []
+
+  depends_on = [%[3]s]
+}
+`, name, adeFixtureRef, testhelpers.LdapFixtureResourceAddr)
+}
+
+// testAccComputerPrestageBlocksRemovedConfig is V2 with every Optional-only
+// nested block (skip_setup_items, location_information, purchasing_information,
+// account_settings) OMITTED. Used to exercise the remove-on-update transition:
+// blocks managed in prior steps disappear from config, so the plan is null for
+// each and the provider must write null (not repopulate from the wire GET).
+func testAccComputerPrestageBlocksRemovedConfig(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_computer_prestage_enrollment" "test" {
+  display_name                          = %q
+  mandatory                             = false
+  mdm_removable                         = false
+  default_prestage                      = false
+  support_phone_number                  = "+44-1-555-0200"
+  support_email_address                 = "newops@example.test"
+  department                            = "NewOps"
+  require_authentication                = false
+  authentication_prompt                 = "Updated prompt"
+  device_enrollment_program_instance_id = %s
+  keep_existing_location_information    = true
+  keep_existing_site_membership         = true
+  auto_advance_setup                    = true
+  install_profiles_during_setup         = false
+  prevent_activation_lock               = true
+  enable_device_based_activation_lock   = false
+
+  custom_package_ids = []
 
   scope_serial_numbers = []
 

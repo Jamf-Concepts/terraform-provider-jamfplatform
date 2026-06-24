@@ -221,6 +221,24 @@ func TestAccResource_ProMobileDevicePrestageEnrollment_Full_UpdateRoundTrip(t *t
 					resource.TestCheckResourceAttr(resourceName, "names.prestage_device_names.#", "1"),
 				),
 			},
+			// Step 3 — REMOVE all four Optional-only nested blocks
+			// (skip_setup_items, names, location_information,
+			// purchasing_information) managed in steps 1-2. Before the
+			// gate-on-target fix this Update crashed with "Provider produced
+			// inconsistent result after apply: ...: was null, but now
+			// cty.ObjectVal(...)". A clean apply is the regression guard; the
+			// framework's implicit post-apply empty-plan check proves the
+			// removed blocks stay null on refresh rather than re-appearing.
+			{
+				Config: ldapFixture + adeFixtureBlock(suffix, token) + testAccMobilePrestageBlocksRemovedConfig(name+"-v2"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "display_name", name+"-v2"),
+					resource.TestCheckNoResourceAttr(resourceName, "skip_setup_items.biometric"),
+					resource.TestCheckNoResourceAttr(resourceName, "names.assign_names_using"),
+					resource.TestCheckNoResourceAttr(resourceName, "location_information.username"),
+					resource.TestCheckNoResourceAttr(resourceName, "purchasing_information.apple_care_id"),
+				),
+			},
 		},
 	})
 }
@@ -846,6 +864,40 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
       { device_name = "iPad-1" },
     ]
   }
+
+  scope_serial_numbers = []
+}
+`, name, adeFixtureRef)
+}
+
+// testAccMobilePrestageBlocksRemovedConfig is V2 with every Optional-only
+// nested block (skip_setup_items, names, location_information,
+// purchasing_information) OMITTED. Exercises the remove-on-update transition:
+// blocks managed in prior steps disappear from config, so the plan is null for
+// each and the provider must write null (not repopulate from the wire GET).
+func testAccMobilePrestageBlocksRemovedConfig(name string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_mobile_device_prestage_enrollment" "test" {
+  depends_on = [jamfplatform_pro_ldap_server.acc_ldap]
+
+  display_name                          = %q
+  device_enrollment_program_instance_id = %s
+  timezone                              = "UTC"
+
+  timeouts = {
+    create = "1m"
+    read   = "1m"
+    update = "1m"
+    delete = "1m"
+  }
+  mandatory                             = false
+  mdm_removable                         = false
+  supervised                            = true
+  support_phone_number                  = "+44-1-555-0200"
+  support_email_address                 = "newops@example.test"
+  department                            = "NewOps"
+  require_authentication                = false
+  authentication_prompt                 = "Updated prompt"
 
   scope_serial_numbers = []
 }

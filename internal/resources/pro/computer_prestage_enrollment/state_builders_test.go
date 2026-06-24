@@ -108,6 +108,78 @@ func TestFlattenAccountSettings_PreservesWoVersionFromPrior(t *testing.T) {
 	}
 }
 
+// TestAssignGetToResource_RemovedBlocksStayNil reproduces the apply-time
+// "was null, but now ObjectVal(...)" crash: an Update where the user removed
+// the previously-managed nested blocks. The PLAN (target) has nil pointers
+// while the PRIOR state still holds the populated blocks and the GET echoes
+// them. The state-builder must honour the plan and leave each block nil, never
+// repopulate from the prior state or the wire.
+func TestAssignGetToResource_RemovedBlocksStayNil(t *testing.T) {
+	plan := ComputerPrestageEnrollmentResourceModel{
+		ID: types.StringValue("384"),
+		// All four nested blocks omitted from config → nil on the plan.
+	}
+	prior := ComputerPrestageEnrollmentResourceModel{
+		ID:                    types.StringValue("384"),
+		SkipSetupItems:        &SkipSetupItemsModel{},
+		LocationInformation:   &LocationInformationModel{Username: types.StringValue("alice")},
+		PurchasingInformation: &PurchasingInformationModel{Purchased: types.BoolValue(true)},
+		AccountSettings:       &AccountSettingsModel{AdminUsername: types.StringValue("ladmin")},
+	}
+	got := &pro.GetComputerPrestageV3{
+		ID:                    "384",
+		SkipSetupItems:        map[string]bool{"Biometric": true},
+		LocationInformation:   &pro.LocationInformationV2{Username: "alice", BuildingID: "-1", DepartmentID: "-1"},
+		PurchasingInformation: &pro.PrestagePurchasingInformationV2{Purchased: true},
+		AccountSettings:       &pro.AccountSettingsResponse{AdminUsername: "ladmin", PayloadConfigured: true},
+	}
+
+	if d := assignGetToResource(context.Background(), &plan, prior, got); d.HasError() {
+		t.Fatalf("unexpected diags: %v", d)
+	}
+
+	if plan.SkipSetupItems != nil {
+		t.Errorf("skip_setup_items must stay nil when removed from config, got %+v", plan.SkipSetupItems)
+	}
+	if plan.LocationInformation != nil {
+		t.Errorf("location_information must stay nil when removed from config, got %+v", plan.LocationInformation)
+	}
+	if plan.PurchasingInformation != nil {
+		t.Errorf("purchasing_information must stay nil when removed from config, got %+v", plan.PurchasingInformation)
+	}
+	if plan.AccountSettings != nil {
+		t.Errorf("account_settings must stay nil when removed from config, got %+v", plan.AccountSettings)
+	}
+}
+
+// TestAssignGetToResource_ManagedBlocksRefreshed is the companion: a block the
+// plan still manages (non-nil pointer) must be (re)populated from the wire.
+func TestAssignGetToResource_ManagedBlocksRefreshed(t *testing.T) {
+	plan := ComputerPrestageEnrollmentResourceModel{
+		ID:                  types.StringValue("384"),
+		LocationInformation: &LocationInformationModel{}, // managed (even if empty)
+	}
+	prior := ComputerPrestageEnrollmentResourceModel{ID: types.StringValue("384")}
+	got := &pro.GetComputerPrestageV3{
+		ID:                  "384",
+		LocationInformation: &pro.LocationInformationV2{Username: "bob", BuildingID: "7", DepartmentID: "-1"},
+	}
+
+	if d := assignGetToResource(context.Background(), &plan, prior, got); d.HasError() {
+		t.Fatalf("unexpected diags: %v", d)
+	}
+	if plan.LocationInformation == nil {
+		t.Fatalf("location_information managed by plan must be populated from the wire")
+	}
+	if plan.LocationInformation.Username.ValueString() != "bob" || plan.LocationInformation.BuildingID.ValueString() != "7" {
+		t.Errorf("managed block not refreshed from wire: %+v", plan.LocationInformation)
+	}
+	// Blocks the plan did not manage must remain nil.
+	if plan.PurchasingInformation != nil || plan.AccountSettings != nil || plan.SkipSetupItems != nil {
+		t.Errorf("unmanaged blocks must stay nil")
+	}
+}
+
 func TestScopeSerialsToSet(t *testing.T) {
 	// nil resp → empty set
 	got := scopeSerialsToSet(nil)
