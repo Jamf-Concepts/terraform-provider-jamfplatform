@@ -5,8 +5,8 @@
 
 // Tests in this file create real Jamf Pro administrator accounts via the Pro API
 // and write the privilege grid via the classic API. Base-field updates route
-// through Pro PUT, which the platform gateway currently rejects (403); that path
-// is covered by a separately-skipped test until the permission lands.
+// through Pro PUT (now accepted via the platform gateway) and are exercised by
+// TestAccResource_ProAccount_BaseUpdate.
 
 package account_test
 
@@ -114,9 +114,65 @@ func TestAccResource_ProAccount(t *testing.T) {
 	})
 }
 
-// TestAccResource_ProAccount_BaseUpdate exercises an in-place base-field update,
-// which routes through Pro PUT. This is currently rejected by the platform
-// gateway (403 BAD_PERMISSIONS); un-skip when that permission is granted.
+// baseAccountConfig renders a non-Custom (Auditor) account so the base-update
+// path is exercised in isolation: no Custom privilege grid means no classic
+// write, so only the Pro PUT base-field path runs.
+func baseAccountConfig(suffix, fullName, accessStatus string, passwordWOVersion int) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_account" "test" {
+  username      = "tf-acc-base-%[1]s"
+  full_name     = %[2]q
+  email_address = "tf-acc-base-%[1]s@example.invalid"
+  access_level  = "Full Access"
+  privilege_set = "Auditor"
+  access_status = %[3]q
+
+  password            = "Pr0bePassw0rd-%[1]s-v%[4]d"
+  password_wo_version = %[4]d
+}
+`, suffix, fullName, accessStatus, passwordWOVersion)
+}
+
+// TestAccResource_ProAccount_BaseUpdate exercises in-place base-field updates,
+// which route through Pro PUT. Step 2 changes plain base fields (full name,
+// access status); step 3 rotates the WriteOnly password (bumped wo_version →
+// password re-sent on the same PUT). Both confirm the gateway now accepts the
+// Pro update that previously returned 403 BAD_PERMISSIONS.
 func TestAccResource_ProAccount_BaseUpdate(t *testing.T) {
-	t.Skip("base-field updates route through Pro PUT, which the platform gateway currently rejects with 403; un-skip when the Pro update permission lands")
+	suffix := testhelpers.RunSuffix()
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testhelpers.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckAccountDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: baseAccountConfig(suffix, "TF Acc Base", "Enabled", 1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_pro_account.test", "id"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "full_name", "TF Acc Base"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "access_status", "Enabled"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "privilege_set", "Auditor"),
+				),
+			},
+			{
+				// In-place base-field update (no password change ⇒ Pro PUT without
+				// re-sending the password).
+				Config: baseAccountConfig(suffix, "TF Acc Base Renamed", "Disabled", 1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "full_name", "TF Acc Base Renamed"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "access_status", "Disabled"),
+				),
+			},
+			{
+				// Password rotation: bump password_wo_version ⇒ password re-sent on
+				// the Pro PUT.
+				Config: baseAccountConfig(suffix, "TF Acc Base Renamed", "Disabled", 2),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "password_wo_version", "2"),
+					resource.TestCheckResourceAttr("jamfplatform_pro_account.test", "full_name", "TF Acc Base Renamed"),
+				),
+			},
+		},
+	})
 }

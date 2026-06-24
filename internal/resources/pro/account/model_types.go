@@ -17,8 +17,7 @@ import (
 // hybrid: created via the Pro v1 /accounts API (the only path that can set
 // accountType, including FEDERATED), with the Custom privilege grid carried via
 // the ProClassic /accounts/userid endpoint. Base-field updates route through Pro
-// PUT (currently gateway-403 until the permission lands); privilege updates route
-// through classic.
+// PUT; privilege updates route through classic.
 type AccountResourceModel struct {
 	ID                  types.String             `tfsdk:"id"`
 	Username            types.String             `tfsdk:"username"`

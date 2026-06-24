@@ -12,10 +12,9 @@
 //   - ProClassic /accounts/userid: the Custom privilege grid (read + write),
 //     which the Pro API cannot express.
 //
-// Base-field updates route through Pro PUT, which is currently rejected by the
-// platform gateway (403 BAD_PERMISSIONS) until that permission is granted;
-// privilege-only updates route through classic and work today. account_type is
-// RequiresReplace (classic cannot change it; only Pro create sets it).
+// Base-field updates route through Pro PUT; privilege-only updates route through
+// classic. account_type is RequiresReplace (classic cannot change it; only Pro
+// create sets it).
 package account
 
 import (
@@ -87,7 +86,7 @@ func (r *AccountResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the account resource.
 func (r *AccountResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. **In-place updates to base account fields (username, full name, email, access level, etc.) are not currently accepted by Jamf Pro and will return an error; only privilege changes can be applied to an existing account.** Changing `account_type` forces the account to be replaced.",
+		MarkdownDescription: "Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing `account_type` forces the account to be replaced.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Account ID assigned by Jamf Pro.",

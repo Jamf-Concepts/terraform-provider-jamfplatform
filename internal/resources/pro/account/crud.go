@@ -4,14 +4,14 @@
 // SDK endpoints used:
 //   pro.CreateAccountV1               (POST /accounts; sets accountType incl. FEDERATED)
 //   pro.GetAccountV1                  (base-field read)
-//   pro.UpdateAccountV1              (PUT base fields; gateway-403 until perm lands)
+//   pro.UpdateAccountV1               (PUT base fields)
 //   pro.DeleteAccountV1
 //   pro.ResolveAccountV1IDByName      (data source username lookup)
 //   proclassic.GetAccountByUserID     (Custom privilege grid read)
 //   proclassic.UpdateAccountByUserID  (Custom privilege grid write — merge)
 //   proclassic.ListAccounts           (privilege-catalog discovery, ModifyPlan)
 //
-// Status: current. Last reviewed 2026-06-12.
+// Status: current. Last reviewed 2026-06-24.
 
 package account
 
@@ -170,10 +170,10 @@ func (r *AccountResource) Read(ctx context.Context, req resource.ReadRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update applies base-field changes via Pro PUT (currently gateway-403 until the
-// permission lands) and Custom privilege changes via the classic API. Each side
-// is called only when its inputs actually changed, so a privilege-only edit does
-// not trip the Pro PUT permission gap.
+// Update applies base-field changes via Pro PUT and Custom privilege changes via
+// the classic API. Each side is called only when its inputs actually changed, so
+// a privilege-only edit skips the Pro PUT and a base-only edit skips the classic
+// write.
 func (r *AccountResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state, cfg AccountResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)

@@ -1,17 +1,16 @@
 // Copyright Jamf Software LLC 2026
 // SPDX-License-Identifier: MPL-2.0
 
-// SDK endpoints used:
+// SDK endpoints used (Pro v1 /account-groups is read-only AND gateway-blocked,
+// so every surface — resource, data source, list — goes through ProClassic):
 //   proclassic.CreateAccountGroupByID   (POST id="0")
-//   proclassic.GetAccountGroupByID
+//   proclassic.GetAccountGroupByID      (read; data source id lookup; list expand)
+//   proclassic.GetAccountGroupByName    (data source name lookup)
 //   proclassic.UpdateAccountGroupByID   (PUT, 201 empty body)
 //   proclassic.DeleteAccountGroupByID
-//   proclassic.ListAccounts             (privilege-catalog discovery, ModifyPlan)
-//   pro.ListAccountGroupsV1             (data source / list resource)
-//   pro.GetAccountGroupV1               (data source id lookup)
-//   pro.ResolveAccountGroupV1IDByName   (data source name lookup)
+//   proclassic.ListAccounts             (list-resource enumeration; privilege-catalog discovery in ModifyPlan)
 //
-// Status: current. Last reviewed 2026-06-12.
+// Status: current. Last reviewed 2026-06-24.
 
 package account_group
 
