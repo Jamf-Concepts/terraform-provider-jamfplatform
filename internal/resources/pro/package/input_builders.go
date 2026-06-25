@@ -80,13 +80,13 @@ func buildPackageInput(plan PackageResourceModel) *pro.Package {
 	input.Sha256 = helpers.OptionalStringPointer(plan.Sha256)
 	input.Md5 = helpers.OptionalStringPointer(plan.Md5)
 
-	// Size: emit from plan when known so the full-replace PUT preserves the
-	// server-derived value. Audit §13.8 A.7 confirmed the server ignores
-	// user-supplied size on never-uploaded records — but on records with an
-	// uploaded binary, omitting size from the PUT body clears the field
-	// (see ManifestLifecycle Step 2 regression). Echoing state's value back
-	// keeps the field stable.
-	input.Size = helpers.OptionalStringPointer(plan.Size)
+	// Size is never sent. It is server-derived from the cloud-distribution-point
+	// binary and read-only on the write endpoints: wire-confirmed
+	// (platform-nmartin, 2026-06-25) that the server drops a user-supplied size
+	// on POST, and that ANY metadata PUT — whether it echoes size back or omits
+	// it — blanks the server-managed size to "". The value is restored only by a
+	// CDP inventory refresh, which Update performs after the PUT (see
+	// finalReadRestoringSize). input.Size therefore stays nil.
 
 	return input
 }
@@ -108,6 +108,12 @@ func mergePlanIntoServerState(plan PackageResourceModel, server *pro.Package) *p
 	// Indexed, InstallLanguage, ParentPackageID, SelfHeal*, ...) survive
 	// the PUT.
 	merged := *server
+
+	// Never send size: it is server-derived and read-only on PUT — wire-confirmed
+	// that ANY PUT blanks the server-managed size regardless of the value sent.
+	// The post-PUT cloud-distribution-point refresh in Update re-derives it
+	// (see finalReadRestoringSize).
+	merged.Size = nil
 
 	// User-managed metadata: take from plan.
 	merged.PackageName = plan.DisplayName.ValueString()

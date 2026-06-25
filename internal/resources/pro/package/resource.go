@@ -76,7 +76,7 @@ func (r *PackageResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the package resource.
 func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro package. A package record carries the metadata (name, category, restart requirement, OS requirement, info/notes, optional manifest, optional hashes) that Jamf Pro joins with a binary on a distribution point.\n\n**Three operating modes are inferred from the configuration**:\n\n- **JCDS upload** — set `package_file_source` (local path or `https?://` URL). The provider creates the metadata record, streams the binary to the Jamf Cloud Distribution Point, then polls until JCDS finishes computing every hash and `cloud_transfer_status` becomes `READY`. In this mode the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`) are populated by Jamf Pro — supplying any of them in config errors at plan time (`ConflictsWith`).\n- **File-share DP with user-supplied hashes (FSDP-with-hashes)** — omit `package_file_source` and supply the hash attributes directly. The provider sends them verbatim; Jamf Pro stores whatever the user supplies without validation. Use this when the binary lives on a customer-managed share and hashes are computed off-cluster.\n- **Pure metadata-only (FSDP)** — omit `package_file_source` and all hash attributes. The provider manages only the package metadata record; no upload, no hash compute, no verification poll.\n\n**Hash behaviour notes:**\n\n- `package_file_source_checksum` (optional) is a user-supplied SHA-3-512 hint validated locally before any bytes leave the workstation. A mismatch errors out without uploading — useful for guarding against on-disk corruption.\n- `size` is **Computed-only**. Jamf Pro rejects user-supplied size updates even on FSDP records.\n- Re-uploads are hash-aware: changing only metadata (`info`, `notes`, `priority`, ...) issues one metadata update; the binary is not re-uploaded.\n\n**Manifest sub-resource**: `manifest_file_source` (Optional) uploads a `.plist` manifest associated with the package. Setting the source after a state without one uploads; clearing the source deletes the manifest in Jamf Pro. Re-upload only fires when the freshly-loaded source content differs from the stored `manifest` body.\n\n**URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider streams the URL into a sanitised tempfile under the OS tempdir, enforces an 8 GiB download cap, and follows up to 10 redirects.",
+		MarkdownDescription: "Manages a Jamf Pro package. A package record carries the metadata (name, category, restart requirement, operating system requirement, info/notes, optional manifest, optional hashes) that Jamf Pro pairs with a file on a distribution point.\n\n**The operating mode is inferred from the configuration**:\n\n- **Cloud distribution point upload** — set `package_file_source` (a local path or `https?://` URL). The provider creates the package record, uploads the file to the Jamf Cloud Distribution Point, and waits until Jamf Pro finishes calculating the file hashes and `cloud_transfer_status` becomes `READY`. In this mode Jamf Pro populates the hash attributes (`sha3_512`, `sha256`, `md5`, `size`, `hash_type`, `hash_value`); setting any of them in configuration is rejected before the change runs.\n- **Distribution point with supplied hashes** — omit `package_file_source` and set the hash attributes directly. Jamf Pro stores the values as given, without validating them. Use this when the file lives on a distribution point you manage and the hashes are calculated elsewhere.\n- **Metadata only** — omit `package_file_source` and all hash attributes. The provider manages only the package record; no file is uploaded.\n\n**Notes:**\n\n- `package_file_source_checksum` (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading — useful for catching on-disk corruption.\n- `size` is read-only — Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.\n- Changing only metadata (`info`, `notes`, `priority`, ...) updates the record without re-uploading the file; the file is re-uploaded only when its contents change.\n\n**Manifest**: `manifest_file_source` (optional) uploads a `.plist` manifest for the package. Setting it uploads the manifest; clearing it removes the manifest from Jamf Pro. The manifest is re-uploaded only when its contents change.\n\n**URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Package ID assigned by Jamf Pro.",
@@ -177,18 +177,18 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 
 			// Upload-source inputs (no wire field — pure provider plumbing).
 			"package_file_source": schema.StringAttribute{
-				MarkdownDescription: "Optional local filesystem path or `http(s)://` URL pointing to the package binary. Setting this triggers a JCDS upload during create/update and gates the verification poll. When omitted, the resource manages only the package metadata record (FSDP modes). Mutually exclusive with the hash attributes — supplying both errors at plan time.",
+				MarkdownDescription: "Optional local path or `http(s)://` URL pointing to the package file. Set it to upload the file to the Jamf Cloud Distribution Point on create or update. When omitted, the resource manages only the package record. Cannot be combined with the hash attributes — setting both is rejected before the change runs.",
 				Optional:            true,
 			},
 			"package_file_source_checksum": schema.StringAttribute{
-				MarkdownDescription: "Optional user-supplied SHA-3-512 hex digest validated against the locally-computed hash before upload. Mismatch errors out without uploading. Mutually exclusive with `stream_url_directly`.",
+				MarkdownDescription: "Optional SHA-3-512 hex digest checked against the file locally before it is uploaded. A mismatch fails the apply without uploading. Cannot be combined with `stream_url_directly`.",
 				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.ConflictsWith(path.MatchRoot("stream_url_directly")),
 				},
 			},
 			"stream_url_directly": schema.BoolAttribute{
-				MarkdownDescription: "When `true` and `package_file_source` is an `http(s)://` URL, stream the body straight to JCDS instead of staging to a tempfile. Skips disk usage at the cost of: no 429 retry, no pre-upload checksum validation (`ConflictsWith` `package_file_source_checksum`), no `Content-Length` precompute (chunked transfer encoding), and no recovery from mid-stream origin failure. Use on disk-constrained runners with multi-GB binaries. Ignored for local-path sources.",
+				MarkdownDescription: "When `true` and `package_file_source` is an `http(s)://` URL, the file is sent straight to the Jamf Cloud Distribution Point as it downloads, instead of being saved to a temporary file first. This avoids using local disk, but disables retry on rate-limiting, pre-upload checksum validation (so it cannot be combined with `package_file_source_checksum`), and recovery if the download is interrupted partway. Use it on disk-constrained machines with very large files. Ignored for local-path sources.",
 				Optional:            true,
 			},
 			"manifest_file_source": schema.StringAttribute{
@@ -212,9 +212,11 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 
-			// Hash attrs: Optional+Computed in both JCDS and FSDP modes.
+			// Hash attrs: Optional+Computed — Jamf Pro calculates them after a
+			// cloud distribution point upload, or the user supplies them when
+			// managing a record without an uploaded file.
 			"sha3_512": schema.StringAttribute{
-				MarkdownDescription: "SHA-3-512 hex digest of the package binary. JCDS uploads populate this in Jamf Pro after verification; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
+				MarkdownDescription: "SHA-3-512 hex digest of the package file. Calculated by Jamf Pro after a cloud distribution point upload, or set directly when managing the record without an uploaded file. Cannot be combined with `package_file_source`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -225,7 +227,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"sha256": schema.StringAttribute{
-				MarkdownDescription: "SHA-256 hex digest of the package binary. JCDS uploads populate this in Jamf Pro; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
+				MarkdownDescription: "SHA-256 hex digest of the package file. Calculated by Jamf Pro after a cloud distribution point upload, or set directly when managing the record without an uploaded file. Cannot be combined with `package_file_source`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -236,7 +238,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"md5": schema.StringAttribute{
-				MarkdownDescription: "MD5 hex digest of the package binary. JCDS uploads populate this in Jamf Pro; FSDP-mode users may supply it. Mutually exclusive with `package_file_source`.",
+				MarkdownDescription: "MD5 hex digest of the package file. Calculated by Jamf Pro after a cloud distribution point upload, or set directly when managing the record without an uploaded file. Cannot be combined with `package_file_source`.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -247,7 +249,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"hash_type": schema.StringAttribute{
-				MarkdownDescription: "Hash algorithm advertised for the package. Allowed user-set values: `\"MD5\"`, `\"SHA_256\"`, `\"SHA3_512\"`. Jamf Pro may also return the legacy default `\"SHA_512\"` on records that have never been uploaded — this value is accepted on read but not on write. Mutually exclusive with `package_file_source` (JCDS mode populates `\"SHA3_512\"` post-verification).",
+				MarkdownDescription: "Hash algorithm for the package. Values you can set: `\"MD5\"`, `\"SHA_256\"`, `\"SHA3_512\"`. Jamf Pro may also return the legacy default `\"SHA_512\"` on records that have never had a file uploaded — that value is accepted on read but cannot be set. Cannot be combined with `package_file_source` (a cloud distribution point upload sets this to `\"SHA3_512\"`).",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -259,7 +261,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"hash_value": schema.StringAttribute{
-				MarkdownDescription: "Primary hash value used by Jamf Pro to match the package on a distribution point. JCDS mode populates this with the SHA-3-512 of the verified upload; FSDP mode users may supply a digest matching `hash_type`. Mutually exclusive with `package_file_source`. Requires `hash_type` to be set when user-supplied.",
+				MarkdownDescription: "Primary hash Jamf Pro uses to match the package on a distribution point. Set to the SHA-3-512 of the file after a cloud distribution point upload, or supply a digest matching `hash_type` when managing the record directly. Cannot be combined with `package_file_source`, and requires `hash_type` when set.",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{
@@ -271,24 +273,20 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 
-			// Server-only / Computed-only fields.
+			// Read-only — Jamf Pro derives size from the uploaded binary and
+			// silently drops any value supplied on create or update (wire-probed
+			// platform-nmartin 2026-06-25). Every metadata update blanks the
+			// server-managed value, which the resource re-derives from a cloud
+			// distribution point refresh afterwards; modelled as plain Computed
+			// (no state-forwarding plan modifier) per STYLE_GUIDE §Server-derived
+			// computed fields so it can recompute when the binary changes without
+			// tripping "inconsistent result after apply".
 			"size": schema.StringAttribute{
-				MarkdownDescription: "Package binary size in bytes. Returned by Jamf Pro; not user-settable. Populated automatically by JCDS uploads — Jamf Pro silently drops user-supplied size values on update.",
+				MarkdownDescription: "Package binary size in bytes. Read-only — Jamf Pro calculates this from the uploaded package file, so any value set in configuration is ignored. Packages managed as metadata only (no uploaded file) leave this empty. Shown as `(known after apply)` on any update that changes the package, because Jamf Pro recalculates the size after the change is saved.",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					// Watch both upload sources — DeletePackageManifestV1
-					// has a server-side side effect of clearing the
-					// package's size field, so a manifest_file_source
-					// transition set→null must also invalidate the planned
-					// size value.
-					resetIfSourceChangedString(
-						path.MatchRoot("package_file_source"),
-						path.MatchRoot("manifest_file_source"),
-					),
-				},
 			},
 			"install_language": schema.StringAttribute{
-				MarkdownDescription: "Locale tag, default `\"en_US\"`. Returned by Jamf Pro; not user-settable. Not exposed in the Jamf Pro admin UI; surfaced Computed-only to avoid drift on refresh.",
+				MarkdownDescription: "Locale tag, default `\"en_US\"`. Returned by Jamf Pro; not user-settable. Not exposed in the Jamf Pro admin UI; surfaced as read-only to avoid drift on refresh.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -316,7 +314,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"cloud_transfer_status": schema.StringAttribute{
-				MarkdownDescription: "JCDS transfer status — populated as the cloud distribution point processes an upload. The verification poll converges on `\"READY\"` for JCDS uploads; FSDP records leave this empty.",
+				MarkdownDescription: "Cloud distribution point transfer status — updated as Jamf Pro processes an uploaded file, reaching `\"READY\"` once the upload is complete. Empty for records with no uploaded file.",
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					resetIfSourceChangedString(path.MatchRoot("package_file_source")),

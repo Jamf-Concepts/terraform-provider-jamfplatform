@@ -216,6 +216,9 @@ func TestAccResource_ProPackage_LocalUploadCreateAndUpdate(t *testing.T) {
 					resource.TestCheckResourceAttr(packageResourceAddr, "info", "initial create"),
 					resource.TestCheckResourceAttr(packageResourceAddr, "hash_type", "SHA3_512"),
 					resource.TestCheckResourceAttr(packageResourceAddr, "cloud_transfer_status", "READY"),
+					// Jamf Pro derives size from the uploaded binary; it must be
+					// populated after a JCDS upload.
+					resource.TestCheckResourceAttrSet(packageResourceAddr, "size"),
 					testCheckPackageHashConverged(t, packageResourceAddr, staticDigest(sha161)),
 				),
 			},
@@ -234,6 +237,11 @@ func TestAccResource_ProPackage_LocalUploadCreateAndUpdate(t *testing.T) {
 				Config: hclLocalUpload(name, fileName, src150, "metadata-only-edit"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(packageResourceAddr, "info", "metadata-only-edit"),
+					// Regression guard: a metadata-only update blanks Jamf Pro's
+					// server-managed size; the resource re-derives it from a
+					// cloud distribution point refresh, so it must remain
+					// populated (not collapse to empty) after the update.
+					resource.TestCheckResourceAttrSet(packageResourceAddr, "size"),
 					testCheckPackageHashEquals(t, packageResourceAddr, staticDigest(sha150)),
 				),
 			},
@@ -287,6 +295,9 @@ func TestAccResource_ProPackage_URLUploadCreateAndUpdate(t *testing.T) {
 				Config: hclURLUpload(name, fileName, urlFixture160, "url-meta-only", false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(packageResourceAddr, "info", "url-meta-only"),
+					// Regression guard: metadata-only update must not blank the
+					// server-derived size (see local-upload Step 3).
+					resource.TestCheckResourceAttrSet(packageResourceAddr, "size"),
 					testCheckPackageHashEquals(t, packageResourceAddr, staticDigest(sha160)),
 				),
 			},
@@ -524,6 +535,7 @@ resource "jamfplatform_pro_package" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet(packageResourceAddr, "manifest"),
 					resource.TestCheckResourceAttrSet(packageResourceAddr, "manifest_file_name"),
+					resource.TestCheckResourceAttrSet(packageResourceAddr, "size"),
 					testCheckPackageHashConverged(t, packageResourceAddr, staticDigest(sha161)),
 				),
 			},
@@ -536,6 +548,12 @@ resource "jamfplatform_pro_package" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr(packageResourceAddr, "manifest"),
 					resource.TestCheckNoResourceAttr(packageResourceAddr, "manifest_file_name"),
+					// Removing the manifest clears the server-managed size AND
+					// the metadata update blanks it; the resource must re-derive
+					// it from a cloud distribution point refresh so it stays
+					// populated rather than collapsing to empty.
+					resource.TestCheckResourceAttrSet(packageResourceAddr, "size"),
+					testCheckPackageHashConverged(t, packageResourceAddr, staticDigest(sha161)),
 				),
 			},
 		},
