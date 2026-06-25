@@ -15,8 +15,11 @@ import (
 )
 
 // assignGetToResource maps a fresh GET response onto the resource model.
-// state is the prior state (used for *_wo_version reconciliation +
-// PreserveStringWhenWireEmpty defence). plan is mutated in-place.
+// plan is the target written to state and is mutated in-place — on Update it
+// is the NEW plan, so it (not the prior state) governs which Optional-only
+// nested blocks are populated (see the block-gating note below). state is the
+// prior state, used only for *_wo_version reconciliation + the
+// PssoConfigProfileID null/value defence.
 func assignGetToResource(_ context.Context, plan *ComputerPrestageEnrollmentResourceModel, state ComputerPrestageEnrollmentResourceModel, got *pro.GetComputerPrestageV3) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -78,28 +81,43 @@ func assignGetToResource(_ context.Context, plan *ComputerPrestageEnrollmentReso
 	}
 	planRecoveryLockPwdWoVersion := plan.RecoveryLockPasswordWoVersion
 
-	// Optional-only typed-pointer nested blocks (see STYLE_GUIDE: block
-	// omission == "do not manage this section"). When the user omits the
-	// block in HCL, the prior state's pointer is nil; preserve that nil
-	// rather than synthesising a populated zero-value model from the
-	// wire — Terraform Core rejects a `null → ObjectVal(...)` transition
-	// with "was null, but now …".
-	if state.SkipSetupItems != nil {
+	// Optional-only typed-pointer nested blocks (STYLE_GUIDE §303: block
+	// omission == "do not manage this section"). The gate MUST key off the
+	// model being WRITTEN to state — `plan`, the mutated target — never the
+	// prior `state` param. The target pointer is the planned value Terraform
+	// Core compares the apply result against:
+	//   - Create / Read: target is the only model; its pointer reflects the
+	//     user's config / the stored (or import-seeded) state.
+	//   - Update: target is the NEW plan. When the user removes a
+	//     previously-managed block, the plan pointer is nil even though the
+	//     prior state still holds the populated block. Gating on the prior
+	//     state would repopulate from the wire and trip Terraform Core's
+	//     "was null, but now ObjectVal(...)" consistency error at apply — the
+	//     exact failure this guards against. (The policy resource gates the
+	//     same way: it passes a single model and reads `state.X != nil` on
+	//     that mutated target, which is the plan on Update.)
+	// Capture presence first — the assignments below reassign each field.
+	manageSkipSetupItems := plan.SkipSetupItems != nil
+	manageLocationInformation := plan.LocationInformation != nil
+	managePurchasingInformation := plan.PurchasingInformation != nil
+	manageAccountSettings := plan.AccountSettings != nil
+
+	if manageSkipSetupItems {
 		plan.SkipSetupItems = flattenSkipSetupItems(got.SkipSetupItems)
 	} else {
 		plan.SkipSetupItems = nil
 	}
-	if state.LocationInformation != nil {
+	if manageLocationInformation {
 		plan.LocationInformation = flattenLocationInformation(got.LocationInformation)
 	} else {
 		plan.LocationInformation = nil
 	}
-	if state.PurchasingInformation != nil {
+	if managePurchasingInformation {
 		plan.PurchasingInformation = flattenPurchasingInformation(got.PurchasingInformation)
 	} else {
 		plan.PurchasingInformation = nil
 	}
-	if state.AccountSettings != nil {
+	if manageAccountSettings {
 		plan.AccountSettings = flattenAccountSettings(got.AccountSettings, state.AccountSettings)
 	} else {
 		plan.AccountSettings = nil
