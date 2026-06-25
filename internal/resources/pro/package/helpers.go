@@ -171,6 +171,67 @@ func PollPackageVerification(ctx context.Context, client *pro.Client, id, fileNa
 	}
 }
 
+// sizeRestorePollBudget bounds the post-PUT poll that re-derives the
+// server-managed `size`. The binary is already committed to the cloud
+// distribution point, so refresh-inventory repopulates size within a tick
+// or two; a longer wait means the CDP is busy, and we proceed with whatever
+// the server reports rather than failing an otherwise-successful apply.
+const sizeRestorePollBudget = 2 * time.Minute
+
+// finalReadRestoringSize performs the final post-write GET, re-deriving the
+// server-managed `size` for cloud-distribution-point-backed packages.
+//
+// `size` is read-only on /v1/packages and is computed only from CDP
+// inventory: wire-confirmed (platform-nmartin, 2026-06-25) that the server
+// drops a user-supplied size on POST and that ANY metadata PUT — whether it
+// echoes size back or omits it — blanks the server-managed size to "". For a
+// package whose binary lives on the CDP (cloudTransferStatus non-empty) this
+// nudges refresh-inventory and polls until size repopulates, then returns the
+// refreshed record. For metadata-only / FSDP packages (no CDP binary) size is
+// legitimately empty and would never repopulate, so the first GET is returned
+// unchanged. A poll timeout is non-fatal: the write itself succeeded and the
+// next refresh (or read) will populate size — failing the apply over a
+// derived field would be the worse outcome.
+func finalReadRestoringSize(ctx context.Context, client *pro.Client, id, fileName string) (*pro.Package, error) {
+	got, err := client.GetPackageV1(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// No CDP binary (metadata-only / FSDP), size already populated (e.g.
+	// Create, where no PUT blanked it), or no file name to target a refresh:
+	// nothing to restore.
+	if helpers.DerefString(got.CloudTransferStatus) == "" || helpers.DerefString(got.Size) != "" || fileName == "" {
+		return got, nil
+	}
+
+	pollCtx, cancel := context.WithTimeout(ctx, sizeRestorePollBudget)
+	defer cancel()
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	for {
+		// Nudge the CDP, then re-read. The first iteration runs immediately;
+		// in practice size returns on this first refresh.
+		_ = client.RefreshCloudDistributionPointInventoryV1(pollCtx, fileName)
+		if refreshed, getErr := client.GetPackageV1(pollCtx, id); getErr == nil {
+			got = refreshed
+			if helpers.DerefString(got.Size) != "" {
+				return got, nil
+			}
+		}
+		select {
+		case <-pollCtx.Done():
+			// Non-fatal — return the latest record (size still empty) rather
+			// than failing the apply over a server-derived field.
+			tflog.Warn(ctx, "package size did not repopulate after write; proceeding with empty size", map[string]any{
+				"id":        id,
+				"file_name": fileName,
+			})
+			return got, nil
+		case <-ticker.C:
+		}
+	}
+}
+
 // ManifestBodiesEqual compares the manifest body stored in state with the
 // content found at the supplied manifest file source. Returns true when
 // stored already matches the file source content — re-upload is unnecessary.

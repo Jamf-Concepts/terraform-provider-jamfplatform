@@ -45,7 +45,7 @@ func (d *PackageDataSource) Metadata(ctx context.Context, req datasource.Metadat
 // (apart from the id/display_name selectors, which are Optional+Computed).
 func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and JCDS transfer status.",
+		MarkdownDescription: "Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and cloud distribution point transfer status.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Package ID. Mutually exclusive with `display_name`.",
@@ -79,7 +79,7 @@ func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"parent_package_id":            schema.StringAttribute{MarkdownDescription: "Parent package ID (`\"-1\"` for no parent).", Computed: true},
 			"self_healing_action":          schema.StringAttribute{MarkdownDescription: "Self-healing action.", Computed: true},
 			"self_heal_notify":             schema.BoolAttribute{MarkdownDescription: "Self-healing notify flag.", Computed: true},
-			"cloud_transfer_status":        schema.StringAttribute{MarkdownDescription: "JCDS transfer status.", Computed: true},
+			"cloud_transfer_status":        schema.StringAttribute{MarkdownDescription: "Cloud distribution point transfer status.", Computed: true},
 			"indexed":                      schema.BoolAttribute{MarkdownDescription: "Indexing telemetry.", Computed: true},
 			"format":                       schema.StringAttribute{MarkdownDescription: "Distribution-point format.", Computed: true},
 			"timeouts":                     timeouts.Attributes(ctx),

@@ -98,7 +98,7 @@ func (r *PackageResource) Create(ctx context.Context, req resource.CreateRequest
 		}
 	}
 
-	got, err := r.client.GetPackageV1(createCtx, plan.ID.ValueString())
+	got, err := finalReadRestoringSize(createCtx, r.client, plan.ID.ValueString(), plan.FileName.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading created Jamf Pro package", err.Error())
 		return
@@ -385,14 +385,9 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 				return
 			}
 		}
-		// DeletePackageManifestV1 clears the package's server-derived
-		// `size` field (observed via ManifestLifecycle acc trace). Nudge
-		// the cloud distribution point so JCDS re-derives size from the
-		// binary that's still attached to this package id. Errors are
-		// non-fatal — the worst case is a slightly stale state.
-		if state.FileName.ValueString() != "" {
-			_ = r.client.RefreshCloudDistributionPointInventoryV1(updateCtx, state.FileName.ValueString())
-		}
+		// Deleting the manifest clears the package's server-derived `size` —
+		// but so does the metadata update below; finalReadRestoringSize
+		// re-derives it from the cloud distribution point after the update.
 	}
 
 	// Metadata PUT (full-replace) — runs after upload+poll AND manifest
@@ -404,13 +399,13 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 		resp.Diagnostics.AddError("Error reading post-reconcile Jamf Pro package", err.Error())
 		return
 	}
+	// No hash override on re-upload: the upload + convergence poll above
+	// already left Jamf Pro's own SHA3_512/SHA-256/MD5 on the record (and a
+	// metadata update does not blank them), so the freshly-fetched
+	// postReconcile carries the correct, converged values. Forcing them here
+	// would re-send identical data — and the gold-standard upload flow treats
+	// the upload as the sole source of truth for hashes.
 	input := mergePlanIntoServerState(plan, postReconcile)
-	if willReupload {
-		sha3TypeTag := hashTypeSHA3512
-		input.HashType = &sha3TypeTag
-		input.HashValue = &localSha3
-		input.Sha3512 = &localSha3
-	}
 	tflog.Info(ctx, "package metadata PUT body", map[string]any{
 		"id":          plan.ID.ValueString(),
 		"input_info":  helpers.DerefString(input.Info),
@@ -431,7 +426,7 @@ func (r *PackageResource) Update(ctx context.Context, req resource.UpdateRequest
 		"resp_size":  helpers.DerefString(putResp.Size),
 	})
 
-	got, err := r.client.GetPackageV1(updateCtx, plan.ID.ValueString())
+	got, err := finalReadRestoringSize(updateCtx, r.client, plan.ID.ValueString(), plan.FileName.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro package", err.Error())
 		return
@@ -715,7 +710,7 @@ func reconcileManifestAndFinalise(updateCtx, identityCtx context.Context, client
 		}
 	}
 
-	got, err := client.GetPackageV1(updateCtx, plan.ID.ValueString())
+	got, err := finalReadRestoringSize(updateCtx, client, plan.ID.ValueString(), plan.FileName.ValueString())
 	if err != nil {
 		return errorDiag("Error reading updated Jamf Pro package", err.Error())
 	}

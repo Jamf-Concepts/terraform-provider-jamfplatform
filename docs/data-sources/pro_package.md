@@ -3,12 +3,12 @@
 page_title: "jamfplatform_pro_package Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Look up a Jamf Pro package by ID or by exact display name. Exactly one of id or display_name must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and JCDS transfer status.
+  Look up a Jamf Pro package by ID or by exact display name. Exactly one of id or display_name must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and cloud distribution point transfer status.
 ---
 
 # jamfplatform_pro_package (Data Source)
 
-Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and JCDS transfer status.
+Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and cloud distribution point transfer status.
 
 ## Example Usage
 
@@ -37,7 +37,7 @@ data "jamfplatform_pro_package" "by_name" {
 
 - `available_in_software_update` (Boolean) Available in Software Update flag.
 - `category_id` (String) Category ID (`"-1"` sentinel for None).
-- `cloud_transfer_status` (String) JCDS transfer status.
+- `cloud_transfer_status` (String) Cloud distribution point transfer status.
 - `file_name` (String) On-disk filename Jamf Pro associates with the binary.
 - `fill_existing_users` (Boolean) Fill Existing User home directories (FEU) flag.
 - `fill_user_template` (Boolean) Fill User Template (FUT) flag.
