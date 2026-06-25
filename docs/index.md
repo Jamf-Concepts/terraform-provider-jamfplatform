@@ -3,6 +3,7 @@
 page_title: "jamfplatform Provider"
 description: |-
   Provider for Jamf Platform API Services https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Configure base_url and credentials via the provider block, environment variables, or Terraform variables.
+  **Note:** The Jamf Platform API is currently in public beta. Provider stability, functionality, and schemas are subject to change without notice.
   Supported Jamf products and tenant version targets
   | Product | Resource namespace | Built against API as of |
   |---------|--------------------|--------------------------|
@@ -14,6 +15,8 @@ description: |-
 # jamfplatform Provider
 
 Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). Configure `base_url` and credentials via the provider block, environment variables, or Terraform variables.
+
+> **Note:** The Jamf Platform API is currently in public beta. Provider stability, functionality, and schemas are subject to change without notice.
 
 **Supported Jamf products and tenant version targets**
 
