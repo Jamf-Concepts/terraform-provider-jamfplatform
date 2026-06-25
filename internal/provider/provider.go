@@ -181,6 +181,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 		MarkdownDescription: fmt.Sprintf(
 			"Provider for [Jamf Platform API Services](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). "+
 				"Configure `base_url` and credentials via the provider block, environment variables, or Terraform variables.\n\n"+
+				"> **Note:** The Jamf Platform API is currently in public beta. Provider stability, functionality, and schemas are subject to change without notice.\n\n"+
 				"**Supported Jamf products and tenant version targets**\n\n"+
 				"| Product | Resource namespace | Built against API as of |\n"+
 				"|---------|--------------------|--------------------------|\n"+
