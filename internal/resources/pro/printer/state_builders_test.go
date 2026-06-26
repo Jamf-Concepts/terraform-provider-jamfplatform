@@ -59,6 +59,53 @@ func TestAssignPrinterResourceModel_FullPayload(t *testing.T) {
 	}
 }
 
+// TestAssignPrinterResourceModel_GenericCollapsesPPDTrio asserts that when the
+// server reports use_generic=true it still echoes the bundled Generic.ppd path,
+// the state builder nulls the whole PPD trio. The cross-field validator forbids
+// ppd/ppd_path/ppd_contents in generic mode, so a faithful read must collapse the
+// echo to round-trip.
+func TestAssignPrinterResourceModel_GenericCollapsesPPDTrio(t *testing.T) {
+	state := PrinterResourceModel{}
+	api := &proclassic.Printer{
+		ID:          new(67),
+		Name:        new("Printer"),
+		UseGeneric:  new(true),
+		Ppd:         new("Generic.ppd"),
+		PpdPath:     new("/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/PrintCore.framework/Resources/Generic.ppd"),
+		PpdContents: new("*PPD-Adobe: \"4.3\""),
+	}
+	if diags := assignPrinterResourceModel(&state, api); diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if !state.PPD.IsNull() {
+		t.Errorf("ppd must be null in generic mode, got %q", state.PPD.ValueString())
+	}
+	if !state.PPDPath.IsNull() {
+		t.Errorf("ppd_path must be null in generic mode, got %q", state.PPDPath.ValueString())
+	}
+	if !state.PPDContents.IsNull() {
+		t.Errorf("ppd_contents must be null in generic mode, got %q", state.PPDContents.ValueString())
+	}
+}
+
+// TestAssignPrinterResourceModel_NonGenericKeepsPPDPath asserts the PPD trio is
+// preserved when use_generic=false.
+func TestAssignPrinterResourceModel_NonGenericKeepsPPDPath(t *testing.T) {
+	state := PrinterResourceModel{}
+	api := &proclassic.Printer{
+		ID:         new(70),
+		Name:       new("HP"),
+		UseGeneric: new(false),
+		PpdPath:    new("/Library/Printers/PPDs/Contents/Resources/HP.ppd"),
+	}
+	if diags := assignPrinterResourceModel(&state, api); diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if state.PPDPath.ValueString() != "/Library/Printers/PPDs/Contents/Resources/HP.ppd" {
+		t.Errorf("ppd_path must be preserved in non-generic mode, got %q", state.PPDPath.ValueString())
+	}
+}
+
 // TestAssignPrinterResourceModel_CategorySentinelDecodes verifies the wire
 // sentinel `categoryUnassignedSentinel` rounds-trips to null in TF state.
 func TestAssignPrinterResourceModel_CategorySentinelDecodes(t *testing.T) {

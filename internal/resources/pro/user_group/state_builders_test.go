@@ -90,6 +90,40 @@ func TestAssignUserGroupResourceModel_Smart_MembersAlwaysNull(t *testing.T) {
 	}
 }
 
+// TestAssignUserGroupResourceModel_EmptyCriterionValueIsEmptyNotNull asserts
+// that a criterion the server returns with an empty or absent value (e.g. an
+// unset "before (yyyy-mm-dd)" date, as seen on a real smart group) round-trips
+// to "" rather than null. The value attribute is Required, so null would fail
+// validation on a faithful export.
+func TestAssignUserGroupResourceModel_EmptyCriterionValueIsEmptyNotNull(t *testing.T) {
+	id := 87
+	ug := &proclassic.UserGroup{
+		ID:      &id,
+		Name:    new("Int and Date"),
+		IsSmart: new(true),
+		Criteria: &proclassic.UserGroupCriteria{Criterion: &[]proclassic.Criterion{
+			{Name: new("Date EA"), Priority: new(0), AndOr: new("and"), SearchType: new("before (yyyy-mm-dd)"), Value: new(""), OpeningParen: new(false), ClosingParen: new(false)},
+			{Name: new("Integer EA"), Priority: new(1), AndOr: new("and"), SearchType: new("is"), Value: nil, OpeningParen: new(false), ClosingParen: new(false)},
+		}},
+	}
+
+	state := &UserGroupResourceModel{}
+	if diags := assignUserGroupResourceModel(context.Background(), state, ug, false); diags.HasError() {
+		t.Fatalf("diagnostics: %v", diags)
+	}
+	if len(state.Criteria) != 2 {
+		t.Fatalf("Criteria expected 2, got %d", len(state.Criteria))
+	}
+	for i, c := range state.Criteria {
+		if c.Value.IsNull() {
+			t.Errorf("criterion[%d].value must be empty string, not null", i)
+		}
+		if c.Value.ValueString() != "" {
+			t.Errorf("criterion[%d].value expected \"\", got %q", i, c.Value.ValueString())
+		}
+	}
+}
+
 func TestAssignUserGroupDataSourceModel_PopulatesUsersBlock(t *testing.T) {
 	id := 2
 	ug := &proclassic.UserGroup{

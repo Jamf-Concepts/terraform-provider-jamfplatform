@@ -37,7 +37,9 @@ func TestAccDataSource_ProPrinter_ByID(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_printer.lookup", "name", "jamfplatform_pro_printer.src", "name"),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_printer.lookup", "uri", "jamfplatform_pro_printer.src", "uri"),
-					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_printer.lookup", "ppd_path"),
+					// use_generic defaults true, so the PPD trio collapses to
+					// null in state (server echo notwithstanding).
+					resource.TestCheckNoResourceAttr("data.jamfplatform_pro_printer.lookup", "ppd_path"),
 				),
 			},
 		},

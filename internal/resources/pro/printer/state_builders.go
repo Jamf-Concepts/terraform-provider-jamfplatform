@@ -40,12 +40,24 @@ func assignPrinterResourceModel(state *PrinterResourceModel, p *proclassic.Print
 	state.Notes = helpers.StringPointerValueOrNull(p.Notes)
 	state.MakeDefault = helpers.BoolPointerValueOrNull(p.MakeDefault)
 	state.UseGeneric = helpers.BoolPointerValueOrNull(p.UseGeneric)
-	state.PPD = helpers.StringPointerValueOrNull(p.Ppd)
-	state.PPDPath = helpers.StringPointerValueOrNull(p.PpdPath)
-	state.PPDContents = trimmedStringValueFromPtr(p.PpdContents)
+	state.PPD, state.PPDPath, state.PPDContents = ppdTrioValues(p)
 	state.Shared = helpers.BoolPointerValueOrNull(p.Shared)
 	state.OSRequirements = helpers.StringPointerValueOrNull(p.OsRequirements)
 	return diags
+}
+
+// ppdTrioValues maps the server's PPD trio (ppd, ppd_path, ppd_contents) into
+// state, collapsing all three to null when the printer is in generic mode
+// (use_generic true or omitted). The Jamf Pro server echoes the bundled
+// Generic.ppd path even for a generic printer, but the cross-field validator
+// forbids the trio in that mode — so a faithful read must null it to round-trip.
+func ppdTrioValues(p *proclassic.Printer) (ppd, ppdPath types.String, ppdContents trimmedStringValue) {
+	if p.UseGeneric == nil || *p.UseGeneric {
+		return types.StringNull(), types.StringNull(), trimmedStringValueFromPtr(nil)
+	}
+	return helpers.StringPointerValueOrNull(p.Ppd),
+		helpers.StringPointerValueOrNull(p.PpdPath),
+		trimmedStringValueFromPtr(p.PpdContents)
 }
 
 // assignPrinterDataSourceModel populates a data source model from a Printer
@@ -70,9 +82,7 @@ func assignPrinterDataSourceModel(state *PrinterDataSourceModel, p *proclassic.P
 	state.Notes = helpers.StringPointerValueOrNull(p.Notes)
 	state.MakeDefault = helpers.BoolPointerValueOrNull(p.MakeDefault)
 	state.UseGeneric = helpers.BoolPointerValueOrNull(p.UseGeneric)
-	state.PPD = helpers.StringPointerValueOrNull(p.Ppd)
-	state.PPDPath = helpers.StringPointerValueOrNull(p.PpdPath)
-	state.PPDContents = trimmedStringValueFromPtr(p.PpdContents)
+	state.PPD, state.PPDPath, state.PPDContents = ppdTrioValues(p)
 	state.Shared = helpers.BoolPointerValueOrNull(p.Shared)
 	state.OSRequirements = helpers.StringPointerValueOrNull(p.OsRequirements)
 	return diags
