@@ -63,7 +63,7 @@ func TestAssignMacApp_GuardedBlocks(t *testing.T) {
 		Vpp: &proclassic.MacApplicationVpp{VppAdminAccountID: new(-1)},
 	}
 
-	diags := assignMacAppResourceModel(context.Background(), state, server)
+	diags := assignMacAppResourceModel(context.Background(), state, server, false)
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
@@ -78,6 +78,55 @@ func TestAssignMacApp_GuardedBlocks(t *testing.T) {
 	}
 	if state.ID.ValueString() != "42" {
 		t.Errorf("id not set: %q", state.ID.ValueString())
+	}
+}
+
+// TestAssignMacAppResourceModel_IncludeUnmanagedHydratesFromScratch pins the
+// config-generation contract: with includeUnmanaged set and an empty starting
+// model, every wire-present section is allocated and hydrated from the server.
+func TestAssignMacAppResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	state := &MacAppResourceModel{}
+	server := &proclassic.MacApplication{
+		ID:      new(42),
+		General: &proclassic.MacApplicationGeneral{ID: new(42), Name: new("iMovie")},
+		Scope: &proclassic.MacApplicationScope{
+			AllComputers: new(true),
+			ComputerGroups: &proclassic.MacApplicationScopeComputerGroups{
+				ComputerGroup: &[]proclassic.IDName{{ID: new(5)}, {ID: new(6)}},
+			},
+			Exclusions: &proclassic.MacApplicationScopeExclusions{
+				Users: &proclassic.MacApplicationScopeExclusionsUsers{
+					User: &[]proclassic.MacApplicationScopeExclusionsUsersUserItem{{Name: new("alice")}},
+				},
+			},
+		},
+		SelfService: &proclassic.MacApplicationSelfService{InstallButtonText: new("Install")},
+		Vpp:         &proclassic.MacApplicationVpp{AssignVppDeviceBasedLicenses: new(true)},
+	}
+	diags := assignMacAppResourceModel(context.Background(), state, server, true)
+	if diags.HasError() {
+		t.Fatalf("unexpected diags: %v", diags)
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllComputers.ValueBool() {
+		t.Fatal("expected all_computers hydrated true")
+	}
+	if got := len(state.Scope.Targets.ComputerGroupIDs.Elements()); got != 2 {
+		t.Fatalf("expected 2 computer_group_ids, got %d", got)
+	}
+	if state.Scope.Exclusions == nil {
+		t.Fatal("expected exclusions allocated when wire-present")
+	}
+	if state.Scope.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Scope.Limitations)
+	}
+	if state.SelfService == nil || state.SelfService.InstallButtonText.ValueString() != "Install" {
+		t.Fatalf("expected self_service hydrated; got %+v", state.SelfService)
+	}
+	if state.Vpp == nil || !state.Vpp.AssignVppDeviceBasedLicenses.ValueBool() {
+		t.Fatalf("expected vpp hydrated; got %+v", state.Vpp)
 	}
 }
 
@@ -107,7 +156,7 @@ func TestFlattenMacAppScope_RoundTrip(t *testing.T) {
 			},
 		},
 	}
-	flattenMacAppScope(ctx, s, state)
+	flattenMacAppScope(ctx, s, state, false)
 
 	var computerIDs []string
 	state.Targets.ComputerIDs.ElementsAs(ctx, &computerIDs, false)

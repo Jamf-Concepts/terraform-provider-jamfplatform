@@ -81,7 +81,7 @@ func TestFlattenEbookScope_DualTargetRoundTrip(t *testing.T) {
 		Limitations: &EbookScopeLimitationsModel{},
 		Exclusions:  &EbookScopeExclusionsModel{},
 	}
-	flattenEbookScope(ctx, s, state)
+	flattenEbookScope(ctx, s, state, false)
 
 	if setLen(state.Targets.ComputerIDs) != 2 {
 		t.Errorf("computer_ids: want 2, got %d", setLen(state.Targets.ComputerIDs))
@@ -146,6 +146,52 @@ func TestFlattenEbookSelfService_CategoriesPreserveAuthoredValuesByID(t *testing
 	c := state.Categories[0]
 	if c.ID.ValueString() != "3" || !c.DisplayIn.ValueBool() || c.FeatureIn.ValueBool() {
 		t.Errorf("category authored values not preserved: %+v", c)
+	}
+}
+
+// TestAssignEbookResourceModel_IncludeUnmanagedHydratesFromScratch pins the
+// config-generation contract: with includeUnmanaged set and an empty starting
+// model, every wire-present section is allocated and hydrated from the server.
+func TestAssignEbookResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	state := &EbookResourceModel{}
+	src := &proclassic.Ebook{
+		ID:      new(9),
+		General: &proclassic.EbookGeneral{Name: new("tf-acc"), URL: new("https://example.org/g.pdf")},
+		Scope: &proclassic.EbookScope{
+			AllComputers: new(true),
+			ComputerGroups: &proclassic.EbookScopeComputerGroups{
+				ComputerGroup: &[]proclassic.IDName{{ID: new(11)}, {ID: new(22)}},
+			},
+			Exclusions: &proclassic.EbookScopeExclusions{
+				UserGroups: &proclassic.EbookScopeExclusionsUserGroups{UserGroup: &[]proclassic.IDName{{Name: new("Admins")}}},
+			},
+		},
+		SelfService: &proclassic.EbookSelfService{InstallButtonText: new("Install")},
+	}
+	diags := assignEbookResourceModel(context.Background(), state, src, true)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllComputers.ValueBool() {
+		t.Fatal("expected all_computers hydrated true")
+	}
+	if got := setLen(state.Scope.Targets.ComputerGroupIDs); got != 2 {
+		t.Fatalf("expected 2 computer_group_ids, got %d", got)
+	}
+	if state.Scope.Exclusions == nil {
+		t.Fatal("expected exclusions allocated when wire-present")
+	}
+	if setLen(state.Scope.Exclusions.DirectoryServiceUserGroupNames) != 1 {
+		t.Fatalf("expected 1 excluded user_group name, got %d", setLen(state.Scope.Exclusions.DirectoryServiceUserGroupNames))
+	}
+	if state.Scope.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Scope.Limitations)
+	}
+	if state.SelfService == nil || state.SelfService.InstallButtonText.ValueString() != "Install" {
+		t.Fatalf("expected self_service hydrated; got %+v", state.SelfService)
 	}
 }
 

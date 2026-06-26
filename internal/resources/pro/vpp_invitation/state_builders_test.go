@@ -55,7 +55,7 @@ func sampleAPI() *proclassic.VppInvitation {
 
 func TestAssignResourceModel_GeneralAndUsages(t *testing.T) {
 	state := &VPPInvitationResourceModel{}
-	assignVPPInvitationResourceModel(context.Background(), state, sampleAPI())
+	assignVPPInvitationResourceModel(context.Background(), state, sampleAPI(), false)
 
 	if state.ID.ValueString() != "2" {
 		t.Errorf("id = %q", state.ID.ValueString())
@@ -75,7 +75,7 @@ func TestAssignResourceModel_GeneralAndUsages(t *testing.T) {
 func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 	// nil Scope in state → scope not populated (server always echoes <scope>).
 	state := &VPPInvitationResourceModel{}
-	assignVPPInvitationResourceModel(context.Background(), state, sampleAPI())
+	assignVPPInvitationResourceModel(context.Background(), state, sampleAPI(), false)
 	if state.Scope != nil {
 		t.Error("unmanaged scope block must stay nil")
 	}
@@ -86,7 +86,7 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 		Limitations: &scope.UserScopeLimitationsModel{},
 		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}}
-	assignVPPInvitationResourceModel(context.Background(), managed, sampleAPI())
+	assignVPPInvitationResourceModel(context.Background(), managed, sampleAPI(), false)
 	if managed.Scope.Targets.JssUserGroupIDs.IsNull() || len(managed.Scope.Targets.JssUserGroupIDs.Elements()) != 1 {
 		t.Errorf("jss_user_group_ids = %v", managed.Scope.Targets.JssUserGroupIDs)
 	}
@@ -95,6 +95,31 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 	}
 	if managed.Scope.Exclusions.DirectoryServiceUserGroupNames.IsNull() {
 		t.Error("exclusions DS names should be populated by name")
+	}
+}
+
+// TestAssignVPPInvitationResourceModel_IncludeUnmanagedHydratesFromScratch pins
+// the config-generation contract: with includeUnmanaged set and an empty
+// starting model, the wire-present scope is allocated and hydrated from the
+// server.
+func TestAssignVPPInvitationResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	state := &VPPInvitationResourceModel{}
+	assignVPPInvitationResourceModel(context.Background(), state, sampleAPI(), true)
+
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if state.Scope.Targets.JssUserGroupIDs.IsNull() || len(state.Scope.Targets.JssUserGroupIDs.Elements()) != 1 {
+		t.Errorf("expected jss_user_group_ids hydrated; got %v", state.Scope.Targets.JssUserGroupIDs)
+	}
+	if state.Scope.Limitations == nil || state.Scope.Limitations.DirectoryServiceUserGroupNames.IsNull() {
+		t.Fatalf("expected limitations hydrated when wire-present; got %+v", state.Scope.Limitations)
+	}
+	if state.Scope.Exclusions == nil || state.Scope.Exclusions.DirectoryServiceUserGroupNames.IsNull() {
+		t.Fatalf("expected exclusions hydrated when wire-present; got %+v", state.Scope.Exclusions)
+	}
+	if state.InvitationUsages.IsNull() || len(state.InvitationUsages.Elements()) != 1 {
+		t.Errorf("expected invitation_usages hydrated; got %v", state.InvitationUsages)
 	}
 }
 

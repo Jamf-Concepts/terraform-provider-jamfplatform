@@ -23,7 +23,15 @@ import (
 // block would violate the framework's "produced inconsistent result after apply"
 // check (plan said null, we'd return a populated object). See
 // feedback_server_derived_echo_attrs.
-func assignPatchPolicyResourceModel(ctx context.Context, state *PatchPolicyResourceModel, p *proclassic.PatchPolicy) diag.Diagnostics {
+//
+// includeUnmanaged inverts those section gates for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present optional section is
+// allocated and hydrated, yielding a complete exported config rather than a
+// general-only one. CRUD callers pass false. The patch-policy flatteners use the
+// PreferCurrent* helpers (which adopt the wire value when the current state is
+// null), so allocating an empty section is sufficient for it to fully hydrate.
+func assignPatchPolicyResourceModel(ctx context.Context, state *PatchPolicyResourceModel, p *proclassic.PatchPolicy, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
 		return diags
@@ -38,12 +46,18 @@ func assignPatchPolicyResourceModel(ctx context.Context, state *PatchPolicyResou
 
 	diags.Append(flattenGeneral(ctx, p.General, state)...)
 
+	if includeUnmanaged && state.Scope == nil && p.Scope != nil {
+		state.Scope = &PatchPolicyScopeModel{}
+	}
 	if state.Scope != nil && p.Scope != nil {
-		flattenScope(ctx, p.Scope, state.Scope)
+		flattenScope(ctx, p.Scope, state.Scope, includeUnmanaged)
 	}
 
+	if includeUnmanaged && state.UserInteraction == nil && p.UserInteraction != nil {
+		state.UserInteraction = &PatchPolicyUserInteractionModel{}
+	}
 	if state.UserInteraction != nil && p.UserInteraction != nil {
-		flattenUserInteraction(p.UserInteraction, state.UserInteraction)
+		flattenUserInteraction(p.UserInteraction, state.UserInteraction, includeUnmanaged)
 	}
 
 	return diags
@@ -101,7 +115,23 @@ func flattenKillApps(ctx context.Context, ka *proclassic.PatchPolicyGeneralKillA
 	return types.ListValue(objType, objects)
 }
 
-func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *PatchPolicyScopeModel) {
+// flattenScope refreshes the scope sub-blocks the caller already manages. When
+// includeUnmanaged is set (config generation) every wire-present sub-block is
+// first allocated so the from-scratch read hydrates the full scope rather than
+// leaving unmanaged targets/limitations/exclusions null.
+func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *PatchPolicyScopeModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &PatchPolicyScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &PatchPolicyScopeLimitationsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &PatchPolicyScopeExclusionsModel{}
+		}
+	}
+
 	if state.Targets != nil {
 		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
 		state.Targets.ComputerIDs = flattenComputerSet(ctx, computerSlice(s.Computers))
@@ -127,7 +157,27 @@ func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *Pa
 	}
 }
 
-func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *PatchPolicyUserInteractionModel) {
+// flattenUserInteraction refreshes the user_interaction sub-blocks the caller
+// already manages. When includeUnmanaged is set (config generation) every
+// wire-present sub-block (and the reminders block nested under notifications) is
+// first allocated so the from-scratch read hydrates the full block rather than
+// leaving unmanaged notifications/deadlines/grace_period null.
+func flattenUserInteraction(ui *proclassic.PatchPolicyUserInteraction, state *PatchPolicyUserInteractionModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Notifications == nil && ui.Notifications != nil {
+			state.Notifications = &PatchPolicyUserInteractionNotificationsModel{}
+		}
+		if state.Notifications != nil && state.Notifications.Reminders == nil && ui.Notifications != nil && ui.Notifications.Reminders != nil {
+			state.Notifications.Reminders = &PatchPolicyUserInteractionNotificationsRemindersModel{}
+		}
+		if state.Deadlines == nil && ui.Deadlines != nil {
+			state.Deadlines = &PatchPolicyUserInteractionDeadlinesModel{}
+		}
+		if state.GracePeriod == nil && ui.GracePeriod != nil {
+			state.GracePeriod = &PatchPolicyUserInteractionGracePeriodModel{}
+		}
+	}
+
 	state.InstallButtonText = helpers.PreferCurrentStringPointer(ui.InstallButtonText, state.InstallButtonText)
 	state.SelfServiceDescription = helpers.PreferCurrentStringPointer(ui.SelfServiceDescription, state.SelfServiceDescription)
 	if ui.SelfServiceIcon != nil {

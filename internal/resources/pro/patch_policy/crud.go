@@ -107,7 +107,7 @@ func (r *PatchPolicyResource) Create(ctx context.Context, req resource.CreateReq
 		resp.Diagnostics.AddError("Error reading created Jamf Pro patch policy", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignPatchPolicyResourceModel(createCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignPatchPolicyResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -183,7 +183,7 @@ func (r *PatchPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	resp.Diagnostics.Append(assignPatchPolicyResourceModel(readCtx, &state, got)...)
+	resp.Diagnostics.Append(assignPatchPolicyResourceModel(readCtx, &state, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -228,7 +228,7 @@ func (r *PatchPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro patch policy", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignPatchPolicyResourceModel(updateCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignPatchPolicyResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

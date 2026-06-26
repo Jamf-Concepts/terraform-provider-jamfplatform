@@ -71,7 +71,7 @@ func (r *VPPInvitationResource) Create(ctx context.Context, req resource.CreateR
 		resp.Diagnostics.AddError("Error reading created Jamf Pro VPP invitation", err.Error())
 		return
 	}
-	assignVPPInvitationResourceModel(createCtx, &plan, got)
+	assignVPPInvitationResourceModel(createCtx, &plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppInvitationIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -135,7 +135,7 @@ func (r *VPPInvitationResource) Read(ctx context.Context, req resource.ReadReque
 		resp.Diagnostics.AddError("Error reading Jamf Pro VPP invitation", err.Error())
 		return
 	}
-	assignVPPInvitationResourceModel(readCtx, &state, got)
+	assignVPPInvitationResourceModel(readCtx, &state, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppInvitationIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -178,7 +178,7 @@ func (r *VPPInvitationResource) Update(ctx context.Context, req resource.UpdateR
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro VPP invitation", err.Error())
 		return
 	}
-	assignVPPInvitationResourceModel(updateCtx, &plan, got)
+	assignVPPInvitationResourceModel(updateCtx, &plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppInvitationIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

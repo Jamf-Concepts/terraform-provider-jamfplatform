@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -24,6 +23,11 @@ import (
 // /patchpolicies endpoint. The list resource schema does not expose a
 // user-overridable timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item GET issued when IncludeResource is
+// requested (config generation). A single slow item is skipped from the
+// generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
 
 var _ list.ListResource = &PatchPolicyListResource{}
 var _ list.ListResourceWithConfigure = &PatchPolicyListResource{}
@@ -71,11 +75,12 @@ func (r *PatchPolicyListResource) ListResourceConfigSchema(ctx context.Context, 
 
 // List executes the query and streams patch policy identities back to Terraform.
 //
-// The classic /patchpolicies list endpoint returns only id+name per item. When
-// include_resource is requested we therefore hydrate only id and name; the
-// remaining attributes are set null rather than issuing a per-item GET against
-// this concurrency-sensitive classic endpoint. Consumers needing full detail
-// should use the singular data source or the managed resource.
+// The classic /patchpolicies list endpoint returns only id+name per item, so
+// when IncludeResource is requested (config generation) each policy is fetched
+// individually and hydrated through the shared Read state-builder with
+// includeUnmanaged=true, populating every wire-present section (general, scope,
+// user_interaction) so the generated config is complete rather than
+// identity-only.
 func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
 	if r.client == nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
@@ -143,25 +148,21 @@ func (r *PatchPolicyListResource) List(ctx context.Context, req list.ListRequest
 		}
 
 		if req.IncludeResource {
-			// The list endpoint exposes only id+name; the remaining attributes
-			// are left null (see method doc).
-			objType := types.ObjectType{AttrTypes: killAppAttrTypes}
-			state := PatchPolicyResourceModel{
-				ID:                           id,
-				SoftwareTitleConfigurationID: types.StringNull(),
-				Name:                         helpers.StringPointerValueOrNull(s.Name),
-				Enabled:                      types.BoolNull(),
-				TargetVersion:                types.StringNull(),
-				DistributionMethod:           types.StringNull(),
-				AllowDowngrade:               types.BoolNull(),
-				PatchUnknown:                 types.BoolNull(),
-				ReleaseDate:                  types.Int64Null(),
-				IncrementalUpdate:            types.BoolNull(),
-				Reboot:                       types.BoolNull(),
-				MinimumOS:                    types.StringNull(),
-				KillApps:                     types.ListNull(objType),
-				Timeouts:                     helpers.NewResourceTimeoutsNullValue(patchPolicyTimeoutAttributeTypes),
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetPatchPolicyByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping Jamf Pro patch policy from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
+			state := PatchPolicyResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(patchPolicyTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignPatchPolicyResourceModel(ctx, &state, got, true)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

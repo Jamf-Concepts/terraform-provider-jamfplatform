@@ -18,7 +18,15 @@ import (
 // the caller already manages it (state.Scope non-nil) so the server's
 // always-returned <scope> doesn't fabricate a block the user never declared.
 // invitation_usages (read-only) is always refreshed.
-func assignVPPInvitationResourceModel(ctx context.Context, state *VPPInvitationResourceModel, api *proclassic.VppInvitation) {
+//
+// includeUnmanaged inverts the scope gate for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so the wire-present scope block is hydrated from
+// the server, yielding a complete exported config rather than an identity-only
+// one. CRUD callers pass false. The scope flattener adopts the wire value
+// verbatim, so allocating an empty section is sufficient for it to fully
+// hydrate.
+func assignVPPInvitationResourceModel(ctx context.Context, state *VPPInvitationResourceModel, api *proclassic.VppInvitation, includeUnmanaged bool) {
 	if api == nil || api.General == nil {
 		return
 	}
@@ -38,8 +46,11 @@ func assignVPPInvitationResourceModel(ctx context.Context, state *VPPInvitationR
 	state.Message = helpers.StringPointerValueOrNull(g.Message)
 	state.RequireLogin = helpers.BoolPointerValueOrNull(g.RequireLogin)
 
+	if includeUnmanaged && state.Scope == nil && api.Scope != nil {
+		state.Scope = &scope.UserScopeModel{}
+	}
 	if state.Scope != nil && api.Scope != nil {
-		flattenScope(ctx, api.Scope, state.Scope)
+		flattenScope(ctx, api.Scope, state.Scope, includeUnmanaged)
 	}
 	state.InvitationUsages = flattenUsages(api.InvitationUsages)
 }
@@ -72,12 +83,28 @@ func assignVPPInvitationDataSourceModel(ctx context.Context, state *VPPInvitatio
 		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}
 	if api.Scope != nil {
-		flattenScope(ctx, api.Scope, state.Scope)
+		flattenScope(ctx, api.Scope, state.Scope, false)
 	}
 	state.InvitationUsages = flattenUsages(api.InvitationUsages)
 }
 
-func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *scope.UserScopeModel) {
+// flattenScope refreshes the scope sub-blocks the caller already manages. When
+// includeUnmanaged is set (config generation) every wire-present sub-block is
+// first allocated so the from-scratch read hydrates the full scope rather than
+// leaving unmanaged targets/limitations/exclusions null.
+func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *scope.UserScopeModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &scope.UserScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &scope.UserScopeLimitationsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &scope.UserScopeExclusionsModel{}
+		}
+	}
+
 	if state.Targets != nil {
 		state.Targets.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
 		state.Targets.JssUserIDs = scope.FlattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))

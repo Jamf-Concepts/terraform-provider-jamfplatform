@@ -43,7 +43,9 @@ func NewMacAppListResource() list.ListResource {
 // block is applied client-side via filters.ApplyClassicFilter. List items carry
 // only id + name on the wire, so when IncludeResource is requested (config
 // generation) each app is fetched individually and hydrated through the shared
-// Read state-builder — matching the resource's import fidelity.
+// Read state-builder with includeUnmanaged=true, populating every wire-present
+// section (general, scope, self_service, vpp) so the generated config is
+// complete rather than general-only.
 type MacAppListResource struct {
 	client *proclassic.Client
 }
@@ -151,7 +153,7 @@ func (r *MacAppListResource) List(ctx context.Context, req list.ListRequest, str
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(macAppTimeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignMacAppResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(assignMacAppResourceModel(ctx, &state, got, true)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

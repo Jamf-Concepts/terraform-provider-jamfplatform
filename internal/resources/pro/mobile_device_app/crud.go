@@ -115,7 +115,7 @@ func (r *MobileAppResource) Create(ctx context.Context, req resource.CreateReque
 		resp.Diagnostics.AddError("Error reading created Jamf Pro mobile device app", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignMobileAppResourceModel(createCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignMobileAppResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -191,7 +191,7 @@ func (r *MobileAppResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	resp.Diagnostics.Append(assignMobileAppResourceModel(readCtx, &state, got)...)
+	resp.Diagnostics.Append(assignMobileAppResourceModel(readCtx, &state, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -239,7 +239,7 @@ func (r *MobileAppResource) Update(ctx context.Context, req resource.UpdateReque
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro mobile device app", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignMobileAppResourceModel(updateCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignMobileAppResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

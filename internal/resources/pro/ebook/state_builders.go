@@ -21,7 +21,15 @@ import (
 // with default values, so populating an unmanaged section would violate the
 // framework's "produced inconsistent result after apply" check (plan said null,
 // we'd return a populated object). See feedback_server_derived_echo_attrs.
-func assignEbookResourceModel(ctx context.Context, state *EbookResourceModel, e *proclassic.Ebook) diag.Diagnostics {
+//
+// includeUnmanaged inverts those section gates for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present optional section is
+// allocated and hydrated, yielding a complete exported config rather than a
+// general-only one. CRUD callers pass false. The ebook flatteners use the
+// PreferCurrent* helpers (which adopt the wire value when the current state is
+// null), so allocating an empty section is sufficient for it to fully hydrate.
+func assignEbookResourceModel(ctx context.Context, state *EbookResourceModel, e *proclassic.Ebook, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if e == nil {
 		return diags
@@ -36,8 +44,14 @@ func assignEbookResourceModel(ctx context.Context, state *EbookResourceModel, e 
 	}
 	flattenEbookGeneral(e.General, state.General)
 
+	if includeUnmanaged && state.Scope == nil && e.Scope != nil {
+		state.Scope = &EbookScopeModel{}
+	}
 	if state.Scope != nil && e.Scope != nil {
-		flattenEbookScope(ctx, e.Scope, state.Scope)
+		flattenEbookScope(ctx, e.Scope, state.Scope, includeUnmanaged)
+	}
+	if includeUnmanaged && state.SelfService == nil && e.SelfService != nil {
+		state.SelfService = &EbookSelfServiceModel{}
 	}
 	if state.SelfService != nil && e.SelfService != nil {
 		flattenEbookSelfService(e.SelfService, state.SelfService)
@@ -77,7 +91,23 @@ func flattenEbookGeneral(g *proclassic.EbookGeneral, state *EbookGeneralModel) {
 	}
 }
 
-func flattenEbookScope(ctx context.Context, s *proclassic.EbookScope, state *EbookScopeModel) {
+// flattenEbookScope refreshes the scope sub-blocks the caller already manages.
+// When includeUnmanaged is set (config generation) every wire-present sub-block
+// is first allocated so the from-scratch read hydrates the full scope rather
+// than leaving unmanaged targets/limitations/exclusions null.
+func flattenEbookScope(ctx context.Context, s *proclassic.EbookScope, state *EbookScopeModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &EbookScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &EbookScopeLimitationsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &EbookScopeExclusionsModel{}
+		}
+	}
+
 	if state.Targets != nil {
 		t := state.Targets
 		t.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, t.AllComputers)
