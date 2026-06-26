@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -103,6 +104,9 @@ func (r *VPPAssignmentResource) Read(ctx context.Context, req resource.ReadReque
 		}
 		state.ID = identity.ID
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(vppAssignmentTimeoutAttributeTypes)
+		state.IosAppAdamIDs = types.SetNull(types.Int64Type)
+		state.MacAppAdamIDs = types.SetNull(types.Int64Type)
+		state.EbookAdamIDs = types.SetNull(types.Int64Type)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {

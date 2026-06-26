@@ -142,6 +142,7 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 			return
 		}
 		state.ID = identity.ID
+		state.Timeouts = helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
