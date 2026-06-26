@@ -82,8 +82,8 @@ func (r *SsoFailoverURLResource) Schema(ctx context.Context, req resource.Schema
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"regeneration_trigger": schema.StringAttribute{
-				MarkdownDescription: "Rotation trigger. Set to any free-text value (e.g. a version label or timestamp). Changing this value on a subsequent apply forces the provider to call the failover regenerate endpoint and produces a new `failover_url`.",
-				Required:            true,
+				MarkdownDescription: "Rotation trigger. Set to any free-text value (e.g. a version label or timestamp); changing it on a subsequent apply calls the failover regenerate endpoint and produces a new `failover_url`. Optional — omit to leave the current URL untouched. Jamf Pro never returns this value, so it stays absent on read and an existing failover URL can be imported without supplying it.",
+				Optional:            true,
 			},
 			"failover_url": schema.StringAttribute{
 				MarkdownDescription: "Current failover URL. Treat as a credential — anyone holding the URL can bypass SSO to sign in.",

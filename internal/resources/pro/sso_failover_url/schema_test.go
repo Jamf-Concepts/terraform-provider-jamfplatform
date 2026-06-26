@@ -34,8 +34,11 @@ func TestSsoFailoverURLResource_Schema(t *testing.T) {
 	}
 
 	rt, ok := resp.Schema.Attributes["regeneration_trigger"]
-	if !ok || !rt.IsRequired() {
-		t.Errorf("regeneration_trigger must be Required")
+	if !ok || !rt.IsOptional() {
+		t.Errorf("regeneration_trigger must be Optional")
+	}
+	if ok && rt.IsRequired() {
+		t.Errorf("regeneration_trigger must not be Required — Jamf never returns it, so Required breaks the import/generate-config-out round-trip")
 	}
 	for _, name := range []string{"failover_url", "generation_time", "generation_time_utc", "id"} {
 		attr, ok := resp.Schema.Attributes[name]
