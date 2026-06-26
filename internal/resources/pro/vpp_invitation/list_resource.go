@@ -8,12 +8,10 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -22,6 +20,11 @@ import (
 )
 
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item GET issued when IncludeResource is
+// requested (config generation). A single slow item is skipped from the
+// generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
 
 var (
 	_ list.ListResource              = &VPPInvitationListResource{}
@@ -101,7 +104,6 @@ func (r *VPPInvitationListResource) List(ctx context.Context, req list.ListReque
 	}
 
 	results := make([]list.ListResult, 0, maxResults)
-	emptyUsages := types.ListValueMust(usageObjectType, []attr.Value{})
 
 	for _, p := range items {
 		if int64(len(results)) >= maxResults {
@@ -118,20 +120,21 @@ func (r *VPPInvitationListResource) List(ctx context.Context, req list.ListReque
 		}
 
 		if req.IncludeResource {
-			state := VPPInvitationResourceModel{
-				ID:                       id,
-				Name:                     helpers.StringPointerValueOrNull(p.Name),
-				VPPAccountID:             types.StringNull(),
-				DistributionMethod:       types.StringNull(),
-				AutoRegisterManagedUsers: types.BoolNull(),
-				SenderName:               types.StringNull(),
-				SenderEmailAddress:       types.StringNull(),
-				Subject:                  types.StringNull(),
-				Message:                  types.StringNull(),
-				RequireLogin:             types.BoolNull(),
-				InvitationUsages:         emptyUsages,
-				Timeouts:                 helpers.NewResourceTimeoutsNullValue(vppInvitationTimeoutAttributeTypes),
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetVPPInvitationByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping Jamf Pro VPP invitation from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
+			state := VPPInvitationResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(vppInvitationTimeoutAttributeTypes),
+			}
+			assignVPPInvitationResourceModel(ctx, &state, got, true)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

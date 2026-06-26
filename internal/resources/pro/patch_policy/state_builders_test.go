@@ -35,7 +35,7 @@ func TestAssignResourceModel_GeneralSplit(t *testing.T) {
 	}
 
 	state := &PatchPolicyResourceModel{}
-	diags := assignPatchPolicyResourceModel(context.Background(), state, p)
+	diags := assignPatchPolicyResourceModel(context.Background(), state, p, false)
 	if diags.HasError() {
 		t.Fatalf("assign diags: %v", diags)
 	}
@@ -140,7 +140,7 @@ func TestFlattenScope_EntityByID(t *testing.T) {
 			Exclusions:  &PatchPolicyScopeExclusionsModel{},
 		},
 	}
-	diags := assignPatchPolicyResourceModel(context.Background(), state, p)
+	diags := assignPatchPolicyResourceModel(context.Background(), state, p, false)
 	if diags.HasError() {
 		t.Fatalf("assign diags: %v", diags)
 	}
@@ -172,7 +172,7 @@ func TestFlattenScope_UnmanagedNotRefreshed(t *testing.T) {
 		},
 	}
 	state := &PatchPolicyResourceModel{} // Scope nil → unmanaged.
-	if diags := assignPatchPolicyResourceModel(context.Background(), state, p); diags.HasError() {
+	if diags := assignPatchPolicyResourceModel(context.Background(), state, p, false); diags.HasError() {
 		t.Fatalf("assign diags: %v", diags)
 	}
 	if state.Scope != nil {
@@ -217,7 +217,7 @@ func TestFlattenUserInteraction_NestedRoundTrip(t *testing.T) {
 			GracePeriod: &PatchPolicyUserInteractionGracePeriodModel{},
 		},
 	}
-	if diags := assignPatchPolicyResourceModel(context.Background(), state, p); diags.HasError() {
+	if diags := assignPatchPolicyResourceModel(context.Background(), state, p, false); diags.HasError() {
 		t.Fatalf("assign diags: %v", diags)
 	}
 
@@ -239,6 +239,75 @@ func TestFlattenUserInteraction_NestedRoundTrip(t *testing.T) {
 	}
 	if ui.GracePeriod.Duration.ValueInt64() != 15 || ui.GracePeriod.NotificationCenterSubject.ValueString() != "Important" {
 		t.Errorf("grace_period not flattened")
+	}
+}
+
+// TestAssignPatchPolicyResourceModel_IncludeUnmanagedHydratesFromScratch pins
+// the config-generation contract: with includeUnmanaged set and an empty
+// starting model, every wire-present section (scope + its sub-blocks,
+// user_interaction + its sub-blocks) is allocated and hydrated from the server.
+func TestAssignPatchPolicyResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	p := &proclassic.PatchPolicy{
+		ID:      new(1),
+		General: &proclassic.PatchPolicyGeneral{Name: new("p"), TargetVersion: new("1.0")},
+		Scope: &proclassic.PatchPolicyScope{
+			AllComputers: new(true),
+			ComputerGroups: &proclassic.PatchPolicyScopeComputerGroups{
+				ComputerGroup: &[]proclassic.IDName{{ID: new(20)}, {ID: new(21)}},
+			},
+			Exclusions: &proclassic.PatchPolicyScopeExclusions{
+				Ibeacons: &proclassic.PatchPolicyScopeExclusionsIbeacons{
+					Ibeacon: &[]proclassic.IDName{{ID: new(75)}},
+				},
+			},
+		},
+		UserInteraction: &proclassic.PatchPolicyUserInteraction{
+			InstallButtonText: new("Update"),
+			Notifications: &proclassic.PatchPolicyUserInteractionNotifications{
+				NotificationEnabled: new(true),
+				Reminders: &proclassic.PatchPolicyUserInteractionNotificationsReminders{
+					NotificationReminderFrequency: new(24),
+				},
+			},
+			Deadlines: &proclassic.PatchPolicyUserInteractionDeadlines{DeadlinePeriod: new(7)},
+		},
+	}
+
+	state := &PatchPolicyResourceModel{}
+	diags := assignPatchPolicyResourceModel(context.Background(), state, p, true)
+	if diags.HasError() {
+		t.Fatalf("assign diags: %v", diags)
+	}
+
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllComputers.ValueBool() {
+		t.Fatal("expected all_computers hydrated true")
+	}
+	if got := setStrings(t, state.Scope.Targets.ComputerGroupIDs); len(got) != 2 {
+		t.Fatalf("expected 2 computer_group_ids, got %v", got)
+	}
+	if state.Scope.Exclusions == nil || len(setStrings(t, state.Scope.Exclusions.IbeaconIDs)) != 1 {
+		t.Fatalf("expected exclusions ibeacon hydrated; got %+v", state.Scope.Exclusions)
+	}
+	if state.Scope.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Scope.Limitations)
+	}
+	if state.UserInteraction == nil || state.UserInteraction.InstallButtonText.ValueString() != "Update" {
+		t.Fatalf("expected user_interaction hydrated; got %+v", state.UserInteraction)
+	}
+	if state.UserInteraction.Notifications == nil || !state.UserInteraction.Notifications.Enabled.ValueBool() {
+		t.Fatalf("expected notifications hydrated; got %+v", state.UserInteraction.Notifications)
+	}
+	if state.UserInteraction.Notifications.Reminders == nil || state.UserInteraction.Notifications.Reminders.Frequency.ValueInt64() != 24 {
+		t.Fatalf("expected reminders hydrated; got %+v", state.UserInteraction.Notifications.Reminders)
+	}
+	if state.UserInteraction.Deadlines == nil || state.UserInteraction.Deadlines.Period.ValueInt64() != 7 {
+		t.Fatalf("expected deadlines hydrated; got %+v", state.UserInteraction.Deadlines)
+	}
+	if state.UserInteraction.GracePeriod != nil {
+		t.Fatalf("expected grace_period nil when wire-absent; got %+v", state.UserInteraction.GracePeriod)
 	}
 }
 

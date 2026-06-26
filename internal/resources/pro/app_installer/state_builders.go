@@ -16,7 +16,13 @@ import (
 // an unmanaged block would violate the framework's "produced inconsistent result
 // after apply" check (plan said null, we'd return a populated object). See
 // feedback_optional_computed_nested_object.
-func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.AppInstallerDeployment) {
+//
+// includeUnmanaged inverts those block gates for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present block is refreshed,
+// yielding a complete exported config rather than a scalar-only one. CRUD
+// callers pass false.
+func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.AppInstallerDeployment, includeUnmanaged bool) {
 	if d == nil {
 		return
 	}
@@ -37,10 +43,10 @@ func assignAppInstallerResourceModel(state *AppInstallerResourceModel, d *pro.Ap
 	state.InstallPredefinedConfigProfiles = types.BoolValue(d.InstallPredefinedConfigProfiles)
 	state.TriggerAdminNotifications = types.BoolValue(d.TriggerAdminNotifications)
 
-	if state.NotificationSettings != nil && d.NotificationSettings != nil {
+	if (includeUnmanaged || state.NotificationSettings != nil) && d.NotificationSettings != nil {
 		state.NotificationSettings = flattenNotificationSettings(d.NotificationSettings)
 	}
-	if state.SelfServiceSettings != nil && d.SelfServiceSettings != nil {
+	if (includeUnmanaged || state.SelfServiceSettings != nil) && d.SelfServiceSettings != nil {
 		state.SelfServiceSettings = flattenSelfServiceSettings(state.SelfServiceSettings, d.SelfServiceSettings)
 	}
 }

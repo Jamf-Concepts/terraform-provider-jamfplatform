@@ -21,7 +21,15 @@ import (
 // optional scope block is refreshed only when state.Scope is non-nil (mirrors the
 // content opt-out + the vpp_invitation precedent). Item names are discarded
 // (only adam_id round-trips).
-func assignVPPAssignmentResourceModel(ctx context.Context, state *VPPAssignmentResourceModel, api *proclassic.VppAssignment) {
+//
+// includeUnmanaged inverts the content-set and scope gates for the list
+// resource's config-generation path (terraform query -generate-config-out):
+// there is no plan to stay consistent with, so every wire-present content set
+// and the scope block are hydrated from the server, yielding a complete exported
+// config rather than an identity-only one. CRUD callers pass false. The scope
+// flattener adopts the wire value verbatim, so allocating an empty section is
+// sufficient for it to fully hydrate.
+func assignVPPAssignmentResourceModel(ctx context.Context, state *VPPAssignmentResourceModel, api *proclassic.VppAssignment, includeUnmanaged bool) {
 	if api == nil || api.General == nil {
 		return
 	}
@@ -36,19 +44,23 @@ func assignVPPAssignmentResourceModel(ctx context.Context, state *VPPAssignmentR
 	// Content: refresh only managed (non-null) sets. The flatten returns a known
 	// (possibly empty) Set so a managed-but-now-empty collection reconciles to []
 	// rather than null (these are plain Optional attrs — a null after an empty
-	// config is a "provider produced inconsistent result" error).
-	if !state.IosAppAdamIDs.IsNull() {
+	// config is a "provider produced inconsistent result" error). Config
+	// generation hydrates all three regardless of prior management.
+	if includeUnmanaged || !state.IosAppAdamIDs.IsNull() {
 		state.IosAppAdamIDs = flattenAdamSet(ctx, iosAppAdamIDs(api.IosApps))
 	}
-	if !state.MacAppAdamIDs.IsNull() {
+	if includeUnmanaged || !state.MacAppAdamIDs.IsNull() {
 		state.MacAppAdamIDs = flattenAdamSet(ctx, macAppAdamIDs(api.MacApps))
 	}
-	if !state.EbookAdamIDs.IsNull() {
+	if includeUnmanaged || !state.EbookAdamIDs.IsNull() {
 		state.EbookAdamIDs = flattenAdamSet(ctx, ebookAdamIDs(api.Ebooks))
 	}
 
+	if includeUnmanaged && state.Scope == nil && api.Scope != nil {
+		state.Scope = &scope.UserScopeModel{}
+	}
 	if state.Scope != nil && api.Scope != nil {
-		flattenScope(ctx, api.Scope, state.Scope)
+		flattenScope(ctx, api.Scope, state.Scope, includeUnmanaged)
 	}
 }
 
@@ -76,11 +88,27 @@ func assignVPPAssignmentDataSourceModel(ctx context.Context, state *VPPAssignmen
 		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}
 	if api.Scope != nil {
-		flattenScope(ctx, api.Scope, state.Scope)
+		flattenScope(ctx, api.Scope, state.Scope, false)
 	}
 }
 
-func flattenScope(ctx context.Context, s *proclassic.VppAssignmentScope, state *scope.UserScopeModel) {
+// flattenScope refreshes the scope sub-blocks the caller already manages. When
+// includeUnmanaged is set (config generation) every wire-present sub-block is
+// first allocated so the from-scratch read hydrates the full scope rather than
+// leaving unmanaged targets/limitations/exclusions null.
+func flattenScope(ctx context.Context, s *proclassic.VppAssignmentScope, state *scope.UserScopeModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &scope.UserScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &scope.UserScopeLimitationsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &scope.UserScopeExclusionsModel{}
+		}
+	}
+
 	if state.Targets != nil {
 		state.Targets.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
 		state.Targets.JssUserIDs = scope.FlattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))

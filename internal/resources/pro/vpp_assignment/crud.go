@@ -73,7 +73,7 @@ func (r *VPPAssignmentResource) Create(ctx context.Context, req resource.CreateR
 		resp.Diagnostics.AddError("Error reading created Jamf Pro VPP assignment", err.Error())
 		return
 	}
-	assignVPPAssignmentResourceModel(createCtx, &plan, got)
+	assignVPPAssignmentResourceModel(createCtx, &plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppAssignmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -137,7 +137,7 @@ func (r *VPPAssignmentResource) Read(ctx context.Context, req resource.ReadReque
 		resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment", err.Error())
 		return
 	}
-	assignVPPAssignmentResourceModel(readCtx, &state, got)
+	assignVPPAssignmentResourceModel(readCtx, &state, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppAssignmentIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -180,7 +180,7 @@ func (r *VPPAssignmentResource) Update(ctx context.Context, req resource.UpdateR
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro VPP assignment", err.Error())
 		return
 	}
-	assignVPPAssignmentResourceModel(updateCtx, &plan, got)
+	assignVPPAssignmentResourceModel(updateCtx, &plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppAssignmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

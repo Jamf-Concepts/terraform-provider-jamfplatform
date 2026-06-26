@@ -82,7 +82,7 @@ func TestFlattenScope_NilSubBlocksProduceEmptySets(t *testing.T) {
 	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{AllComputers: types.BoolValue(false)}}
 	diags := flattenScope(context.Background(), &proclassic.OsXConfigurationProfileScope{
 		AllComputers: new(true),
-	}, state)
+	}, state, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -111,7 +111,7 @@ func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{}}
 	flattenScope(context.Background(), &proclassic.OsXConfigurationProfileScope{
 		AllComputers: new(true),
-	}, state)
+	}, state, false)
 	if !state.Targets.AllComputers.IsNull() {
 		t.Fatalf("expected AllComputers to stay null for unconfigured state, got %v", state.Targets.AllComputers)
 	}
@@ -128,7 +128,7 @@ func TestFlattenScope_ComputerIDsPopulated(t *testing.T) {
 			},
 		},
 	}
-	diags := flattenScope(context.Background(), src, state)
+	diags := flattenScope(context.Background(), src, state, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -303,7 +303,7 @@ func TestAssignResourceModel_TopLevelIDFromGeneral(t *testing.T) {
 	state := &ResourceModel{}
 	diags := assignResourceModel(context.Background(), state, &proclassic.OsXConfigurationProfile{
 		General: &proclassic.OsXConfigurationProfileGeneral{ID: new(99), Name: new("X")},
-	})
+	}, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -324,7 +324,7 @@ func TestAssignResourceModel_OptionalSubBlocksSkippedWhenStateNil(t *testing.T) 
 		SelfService: &proclassic.OsXConfigurationProfileSelfService{
 			InstallButtonText: new("Install"),
 		},
-	})
+	}, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -351,7 +351,7 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 		SelfService: &proclassic.OsXConfigurationProfileSelfService{
 			InstallButtonText: new("Install"),
 		},
-	})
+	}, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -360,6 +360,46 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	}
 	if state.SelfService.InstallButtonText.ValueString() != "Install" {
 		t.Fatalf("SelfService.InstallButtonText: got %q", state.SelfService.InstallButtonText.ValueString())
+	}
+}
+
+// TestAssignResourceModel_IncludeUnmanagedHydratesFromScratch pins the
+// config-generation contract: with includeUnmanaged set and an empty starting
+// model, every wire-present optional section is allocated and hydrated.
+func TestAssignResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	t.Parallel()
+	state := &ResourceModel{}
+	diags := assignResourceModel(context.Background(), state, &proclassic.OsXConfigurationProfile{
+		ID:      new(7),
+		General: &proclassic.OsXConfigurationProfileGeneral{Name: new("X")},
+		Scope: &proclassic.OsXConfigurationProfileScope{
+			AllComputers: new(true),
+			Computers: &proclassic.OsXConfigurationProfileScopeComputers{
+				Computer: &[]proclassic.OsXConfigurationProfileScopeComputersComputerItem{{ID: new(5)}},
+			},
+			Exclusions: &proclassic.OsXConfigurationProfileScopeExclusions{},
+		},
+		SelfService: &proclassic.OsXConfigurationProfileSelfService{
+			InstallButtonText: new("Install"),
+		},
+	}, true)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected Scope.Targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllComputers.ValueBool() {
+		t.Fatal("expected all_computers hydrated true")
+	}
+	if state.Scope.Exclusions == nil {
+		t.Fatal("expected Exclusions allocated when wire-present")
+	}
+	if state.Scope.Limitations != nil {
+		t.Fatalf("expected Limitations to stay nil when wire-absent; got %+v", state.Scope.Limitations)
+	}
+	if state.SelfService == nil || state.SelfService.InstallButtonText.ValueString() != "Install" {
+		t.Fatalf("expected SelfService hydrated; got %+v", state.SelfService)
 	}
 }
 

@@ -67,7 +67,7 @@ func TestAssignResourceModel_General(t *testing.T) {
 		MacAppAdamIDs: types.SetNull(types.Int64Type),
 		EbookAdamIDs:  types.SetNull(types.Int64Type),
 	}
-	assignVPPAssignmentResourceModel(context.Background(), state, sampleAPI())
+	assignVPPAssignmentResourceModel(context.Background(), state, sampleAPI(), false)
 
 	if state.ID.ValueString() != "2" {
 		t.Errorf("id = %q", state.ID.ValueString())
@@ -89,7 +89,7 @@ func TestAssignResourceModel_ContentOptOut(t *testing.T) {
 		MacAppAdamIDs: types.SetNull(types.Int64Type),
 		EbookAdamIDs:  types.SetNull(types.Int64Type),
 	}
-	assignVPPAssignmentResourceModel(context.Background(), unmanaged, sampleAPI())
+	assignVPPAssignmentResourceModel(context.Background(), unmanaged, sampleAPI(), false)
 	if !unmanaged.IosAppAdamIDs.IsNull() {
 		t.Error("unmanaged ios_app_adam_ids must stay null (don't fabricate management)")
 	}
@@ -100,7 +100,7 @@ func TestAssignResourceModel_ContentOptOut(t *testing.T) {
 		MacAppAdamIDs: types.SetNull(types.Int64Type),
 		EbookAdamIDs:  types.SetNull(types.Int64Type),
 	}
-	assignVPPAssignmentResourceModel(context.Background(), managed, sampleAPI())
+	assignVPPAssignmentResourceModel(context.Background(), managed, sampleAPI(), false)
 	if managed.IosAppAdamIDs.IsNull() || len(managed.IosAppAdamIDs.Elements()) != 1 {
 		t.Errorf("managed ios_app_adam_ids should be refreshed: %v", managed.IosAppAdamIDs)
 	}
@@ -137,7 +137,7 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 		MacAppAdamIDs: types.SetNull(types.Int64Type),
 		EbookAdamIDs:  types.SetNull(types.Int64Type),
 	}
-	assignVPPAssignmentResourceModel(context.Background(), state, sampleAPI())
+	assignVPPAssignmentResourceModel(context.Background(), state, sampleAPI(), false)
 	if state.Scope != nil {
 		t.Error("unmanaged scope block must stay nil")
 	}
@@ -152,7 +152,7 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 			Exclusions:  &scope.UserScopeExclusionsModel{},
 		},
 	}
-	assignVPPAssignmentResourceModel(context.Background(), managed, sampleAPI())
+	assignVPPAssignmentResourceModel(context.Background(), managed, sampleAPI(), false)
 	if managed.Scope.Targets.JssUserGroupIDs.IsNull() || len(managed.Scope.Targets.JssUserGroupIDs.Elements()) != 1 {
 		t.Errorf("jss_user_group_ids = %v", managed.Scope.Targets.JssUserGroupIDs)
 	}
@@ -179,6 +179,37 @@ func TestAssignDataSourceModel_PopulatesContentAndScope(t *testing.T) {
 	}
 	if state.Ebooks.IsNull() || len(state.Ebooks.Elements()) != 0 {
 		t.Errorf("DS ebooks must be a known empty list when absent, got %v", state.Ebooks)
+	}
+}
+
+// TestAssignVPPAssignmentResourceModel_IncludeUnmanagedHydratesFromScratch pins
+// the config-generation contract: with includeUnmanaged set and an empty
+// starting model, the content sets and the wire-present scope are hydrated from
+// the server.
+func TestAssignVPPAssignmentResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	state := &VPPAssignmentResourceModel{}
+	assignVPPAssignmentResourceModel(context.Background(), state, sampleAPI(), true)
+
+	if state.IosAppAdamIDs.IsNull() || len(state.IosAppAdamIDs.Elements()) != 1 {
+		t.Errorf("expected ios_app_adam_ids hydrated; got %v", state.IosAppAdamIDs)
+	}
+	if state.MacAppAdamIDs.IsNull() || len(state.MacAppAdamIDs.Elements()) != 1 {
+		t.Errorf("expected mac_app_adam_ids hydrated; got %v", state.MacAppAdamIDs)
+	}
+	if state.EbookAdamIDs.IsNull() {
+		t.Error("expected ebook_adam_ids hydrated to a known (empty) set")
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if state.Scope.Targets.JssUserGroupIDs.IsNull() || len(state.Scope.Targets.JssUserGroupIDs.Elements()) != 1 {
+		t.Errorf("expected jss_user_group_ids hydrated; got %v", state.Scope.Targets.JssUserGroupIDs)
+	}
+	if state.Scope.Limitations == nil || state.Scope.Limitations.DirectoryServiceUserGroupNames.IsNull() {
+		t.Fatalf("expected limitations hydrated when wire-present; got %+v", state.Scope.Limitations)
+	}
+	if state.Scope.Exclusions == nil || state.Scope.Exclusions.DirectoryServiceUserGroupNames.IsNull() {
+		t.Fatalf("expected exclusions hydrated when wire-present; got %+v", state.Scope.Exclusions)
 	}
 }
 

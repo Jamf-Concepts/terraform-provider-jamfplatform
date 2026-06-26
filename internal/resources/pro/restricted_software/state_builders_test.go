@@ -70,6 +70,48 @@ func TestFlattenGeneral_PrefersConfigured(t *testing.T) {
 	}
 }
 
+// TestAssignRestrictedSoftwareResourceModel_IncludeUnmanagedHydratesFromScratch
+// pins the config-generation contract: with includeUnmanaged set and an empty
+// starting model, the wire-present scope is allocated and hydrated from the
+// server.
+func TestAssignRestrictedSoftwareResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	state := &RestrictedSoftwareResourceModel{}
+	src := &proclassic.RestrictedSoftware{
+		ID:      new(9),
+		General: &proclassic.RestrictedSoftwareGeneral{Name: new("blocked"), ProcessName: new("evil.app")},
+		Scope: &proclassic.RestrictedSoftwareScope{
+			AllComputers: new(true),
+			ComputerGroups: &proclassic.RestrictedSoftwareScopeComputerGroups{
+				ComputerGroup: &[]proclassic.IDName{{ID: new(11)}, {ID: new(22)}},
+			},
+			Exclusions: &proclassic.RestrictedSoftwareScopeExclusions{
+				Users: &proclassic.RestrictedSoftwareScopeExclusionsUsers{
+					User: &[]proclassic.IDName{{Name: new("alice")}},
+				},
+			},
+		},
+	}
+	diags := assignRestrictedSoftwareResourceModel(context.Background(), state, src, true)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllComputers.ValueBool() {
+		t.Fatal("expected all_computers hydrated true")
+	}
+	if got := len(state.Scope.Targets.ComputerGroupIDs.Elements()); got != 2 {
+		t.Fatalf("expected 2 computer_group_ids, got %d", got)
+	}
+	if state.Scope.Exclusions == nil {
+		t.Fatal("expected exclusions allocated when wire-present")
+	}
+	if got := len(state.Scope.Exclusions.DirectoryServiceOrLocalUserNames.Elements()); got != 1 {
+		t.Fatalf("expected 1 excluded user, got %d", got)
+	}
+}
+
 func TestFlattenScope_TargetsAndNameKeyedExclusions(t *testing.T) {
 	ctx := context.Background()
 	s := &proclassic.RestrictedSoftwareScope{
@@ -87,7 +129,7 @@ func TestFlattenScope_TargetsAndNameKeyedExclusions(t *testing.T) {
 		Targets:    &RestrictedSoftwareScopeTargetsModel{},
 		Exclusions: &RestrictedSoftwareScopeExclusionsModel{},
 	}
-	flattenScope(ctx, s, state)
+	flattenScope(ctx, s, state, false)
 
 	if state.Targets.AllComputers.ValueBool() {
 		t.Errorf("all_computers should be false")

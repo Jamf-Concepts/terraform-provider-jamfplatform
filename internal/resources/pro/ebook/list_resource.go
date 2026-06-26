@@ -43,7 +43,9 @@ func NewEbookListResource() list.ListResource {
 // client-side via filters.ApplyClassicFilter. List items carry only id + name
 // on the wire, so when IncludeResource is requested (config generation) each
 // ebook is fetched individually and hydrated through the shared Read
-// state-builder — matching the resource's import fidelity.
+// state-builder with includeUnmanaged=true, populating every wire-present
+// section (general, scope, self_service) so the generated config is complete
+// rather than general-only.
 type EbookListResource struct {
 	client *proclassic.Client
 }
@@ -151,7 +153,7 @@ func (r *EbookListResource) List(ctx context.Context, req list.ListRequest, stre
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(ebookTimeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignEbookResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(assignEbookResourceModel(ctx, &state, got, true)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

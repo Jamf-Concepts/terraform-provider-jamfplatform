@@ -22,7 +22,15 @@ import (
 // an unmanaged section would violate the framework's "produced inconsistent
 // result after apply" check. See feedback_server_derived_echo_attrs at block
 // granularity.
-func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceModel, a *proclassic.MobileDeviceApplication) diag.Diagnostics {
+//
+// includeUnmanaged inverts those section gates for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present optional section is
+// allocated and hydrated, yielding a complete exported config rather than a
+// general-only one. CRUD callers pass false. The mobile-app flatteners use the
+// PreferCurrent* helpers (which adopt the wire value when the current state is
+// null), so allocating an empty section is sufficient for it to fully hydrate.
+func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceModel, a *proclassic.MobileDeviceApplication, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if a == nil {
 		return diags
@@ -37,14 +45,26 @@ func assignMobileAppResourceModel(ctx context.Context, state *MobileAppResourceM
 	}
 	flattenMobileAppGeneral(a.General, state.General)
 
+	if includeUnmanaged && state.Scope == nil && a.Scope != nil {
+		state.Scope = &scope.MobileScopeModelNoIbeacons{}
+	}
 	if state.Scope != nil && a.Scope != nil {
-		flattenMobileAppScope(ctx, a.Scope, state.Scope)
+		flattenMobileAppScope(ctx, a.Scope, state.Scope, includeUnmanaged)
+	}
+	if includeUnmanaged && state.SelfService == nil && a.SelfService != nil {
+		state.SelfService = &MobileAppSelfServiceModel{}
 	}
 	if state.SelfService != nil && a.SelfService != nil {
 		flattenMobileAppSelfService(a.SelfService, state.SelfService)
 	}
+	if includeUnmanaged && state.Vpp == nil && a.Vpp != nil {
+		state.Vpp = &MobileAppVppModel{}
+	}
 	if state.Vpp != nil && a.Vpp != nil {
 		flattenMobileAppVpp(a.Vpp, state.Vpp)
+	}
+	if includeUnmanaged && state.AppConfiguration == nil && a.AppConfiguration != nil {
+		state.AppConfiguration = &MobileAppAppConfigurationModel{}
 	}
 	if state.AppConfiguration != nil && a.AppConfiguration != nil {
 		// Preserve the configured value when the server differs only by newline
@@ -113,7 +133,23 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 	}
 }
 
-func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplicationScope, state *scope.MobileScopeModelNoIbeacons) {
+// flattenMobileAppScope refreshes the scope sub-blocks the caller already
+// manages. When includeUnmanaged is set (config generation) every wire-present
+// sub-block is first allocated so the from-scratch read hydrates the full scope
+// rather than leaving unmanaged targets/limitations/exclusions null.
+func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplicationScope, state *scope.MobileScopeModelNoIbeacons, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &scope.MobileScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &scope.MobileScopeLimitationsModelNoIbeacons{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &scope.MobileScopeExclusionsModelNoIbeacons{}
+		}
+	}
+
 	if state.Targets != nil {
 		state.Targets.AllMobileDevices = helpers.PreferCurrentBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices)
 		state.Targets.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)

@@ -44,8 +44,9 @@ func NewRestrictedSoftwareListResource() list.ListResource {
 // — the optional `filter` block is applied client-side via
 // filters.ApplyClassicFilter. List items carry only id + name on the wire, so
 // when IncludeResource is requested (config generation) each record is fetched
-// individually and hydrated through the shared Read state-builder — matching
-// the resource's import fidelity.
+// individually and hydrated through the shared Read state-builder with
+// includeUnmanaged=true, populating every wire-present section (general, scope)
+// so the generated config is complete rather than general-only.
 type RestrictedSoftwareListResource struct {
 	client *proclassic.Client
 }
@@ -153,7 +154,7 @@ func (r *RestrictedSoftwareListResource) List(ctx context.Context, req list.List
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(restrictedSoftwareTimeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignRestrictedSoftwareResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(assignRestrictedSoftwareResourceModel(ctx, &state, got, true)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

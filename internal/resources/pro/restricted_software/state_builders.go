@@ -21,7 +21,15 @@ import (
 // default values, so populating an unmanaged block would violate the
 // framework's "produced inconsistent result after apply" check (plan said null,
 // we'd return a populated object). See feedback_server_derived_echo_attrs.
-func assignRestrictedSoftwareResourceModel(ctx context.Context, state *RestrictedSoftwareResourceModel, rs *proclassic.RestrictedSoftware) diag.Diagnostics {
+//
+// includeUnmanaged inverts that gate for the list resource's config-generation
+// path (terraform query -generate-config-out): there is no plan to stay
+// consistent with, so a wire-present scope is allocated and hydrated, yielding a
+// complete exported config rather than a general-only one. CRUD callers pass
+// false. The flatteners use the PreferCurrent* helpers (which adopt the wire
+// value when the current state is null), so allocating an empty section is
+// sufficient for it to fully hydrate.
+func assignRestrictedSoftwareResourceModel(ctx context.Context, state *RestrictedSoftwareResourceModel, rs *proclassic.RestrictedSoftware, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if rs == nil {
 		return diags
@@ -36,8 +44,11 @@ func assignRestrictedSoftwareResourceModel(ctx context.Context, state *Restricte
 	}
 	flattenGeneral(rs.General, state.General)
 
+	if includeUnmanaged && state.Scope == nil && rs.Scope != nil {
+		state.Scope = &RestrictedSoftwareScopeModel{}
+	}
 	if state.Scope != nil && rs.Scope != nil {
-		flattenScope(ctx, rs.Scope, state.Scope)
+		flattenScope(ctx, rs.Scope, state.Scope, includeUnmanaged)
 	}
 
 	return diags
@@ -65,7 +76,21 @@ func flattenGeneral(g *proclassic.RestrictedSoftwareGeneral, state *RestrictedSo
 	}
 }
 
-func flattenScope(ctx context.Context, s *proclassic.RestrictedSoftwareScope, state *RestrictedSoftwareScopeModel) {
+// flattenScope refreshes the scope sub-blocks the caller already manages. When
+// includeUnmanaged is set (config generation) every wire-present sub-block is
+// first allocated so the from-scratch read hydrates the full scope rather than
+// leaving unmanaged targets/exclusions null. Restricted software has no
+// limitations tab.
+func flattenScope(ctx context.Context, s *proclassic.RestrictedSoftwareScope, state *RestrictedSoftwareScopeModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &RestrictedSoftwareScopeTargetsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &RestrictedSoftwareScopeExclusionsModel{}
+		}
+	}
+
 	if state.Targets != nil {
 		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
 		state.Targets.ComputerIDs = scope.FlattenIDNameSet(ctx, computerSlice(s.Computers))

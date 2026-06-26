@@ -83,7 +83,7 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Error reading created Jamf Pro policy", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignPolicyResourceModel(createCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignPolicyResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -159,7 +159,7 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	resp.Diagnostics.Append(assignPolicyResourceModel(readCtx, &state, got)...)
+	resp.Diagnostics.Append(assignPolicyResourceModel(readCtx, &state, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -216,7 +216,7 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro policy", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignPolicyResourceModel(updateCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignPolicyResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

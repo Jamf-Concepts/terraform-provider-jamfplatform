@@ -275,6 +275,20 @@ func ReconcileOptionalBoolPointer(apiValue *bool, current types.Bool) types.Bool
 	return ReconcileOptionalBool(*apiValue, current)
 }
 
+// ReconcileOrAdoptBoolPointer applies the Optional+Computed reconcile rule for
+// CRUD reads (adopt is false) and adopts the wire value verbatim for the list
+// resource's config-generation path (adopt is true). The reconcile rule keeps
+// an Optional+Computed bool null when the caller never authored it so a refresh
+// does not snap it to the server default; config generation has no plan to
+// reconcile against, so the server value is authoritative and a value-carrying
+// flag (e.g. all_computers) must survive into the exported config.
+func ReconcileOrAdoptBoolPointer(apiValue *bool, current types.Bool, adopt bool) types.Bool {
+	if adopt {
+		return BoolPointerValueOrNull(apiValue)
+	}
+	return ReconcileOptionalBoolPointer(apiValue, current)
+}
+
 // ReconcileOptionalStringPointer behaves like ReconcileOptionalString but accepts a *string API value.
 func ReconcileOptionalStringPointer(apiValue *string, current types.String) types.String {
 	return ReconcileOptionalString(DerefString(apiValue), current)
