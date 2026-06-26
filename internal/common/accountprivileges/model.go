@@ -105,14 +105,21 @@ func (m *Model) IsEmpty() bool {
 	return true
 }
 
-// newStringSet builds a types.Set of strings from a slice (sorted for stable
-// output). A nil slice yields an empty (non-null) set.
+// newStringSet builds a types.Set of strings from a slice (sorted and
+// de-duplicated for stable output). A nil slice yields an empty (non-null) set.
+// Deduping is required because the classic /accounts endpoint can echo the same
+// privilege string more than once within a category (wire-probed 2026-06-12);
+// types.SetValue rejects duplicate elements with a hard "Duplicate Set Element"
+// error, which previously aborted import / terraform query hydration.
 func newStringSet(vals []string) (types.Set, diag.Diagnostics) {
 	sorted := append([]string(nil), vals...)
 	sort.Strings(sorted)
-	elems := make([]attr.Value, len(sorted))
+	elems := make([]attr.Value, 0, len(sorted))
 	for i, v := range sorted {
-		elems[i] = types.StringValue(v)
+		if i > 0 && v == sorted[i-1] {
+			continue
+		}
+		elems = append(elems, types.StringValue(v))
 	}
 	return types.SetValue(types.StringType, elems)
 }

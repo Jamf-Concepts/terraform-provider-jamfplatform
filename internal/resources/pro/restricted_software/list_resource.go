@@ -23,6 +23,13 @@ import (
 // /restrictedsoftware endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &RestrictedSoftwareListResource{}
 var _ list.ListResourceWithConfigure = &RestrictedSoftwareListResource{}
 
@@ -35,8 +42,10 @@ func NewRestrictedSoftwareListResource() list.ListResource {
 // RestrictedSoftwareListResource implements Terraform query list support for
 // Jamf Pro restricted software records. Classic /restrictedsoftware has no RSQL
 // — the optional `filter` block is applied client-side via
-// filters.ApplyClassicFilter. List items carry only id + name on the wire;
-// identity-only is the canonical list output.
+// filters.ApplyClassicFilter. List items carry only id + name on the wire, so
+// when IncludeResource is requested (config generation) each record is fetched
+// individually and hydrated through the shared Read state-builder — matching
+// the resource's import fidelity.
 type RestrictedSoftwareListResource struct {
 	client *proclassic.Client
 }
@@ -127,6 +136,29 @@ func (r *RestrictedSoftwareListResource) List(ctx context.Context, req list.List
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetRestrictedSoftwareByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping restricted software from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
+			state := RestrictedSoftwareResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(restrictedSoftwareTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignRestrictedSoftwareResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

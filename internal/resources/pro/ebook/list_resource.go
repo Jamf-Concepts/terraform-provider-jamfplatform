@@ -23,6 +23,13 @@ import (
 // /ebooks endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &EbookListResource{}
 var _ list.ListResourceWithConfigure = &EbookListResource{}
 
@@ -34,7 +41,9 @@ func NewEbookListResource() list.ListResource {
 // EbookListResource implements Terraform query list support for Jamf Pro
 // ebooks. Classic /ebooks has no RSQL — the optional `filter` block is applied
 // client-side via filters.ApplyClassicFilter. List items carry only id + name
-// on the wire (no ebook detail); identity-only is the canonical list output.
+// on the wire, so when IncludeResource is requested (config generation) each
+// ebook is fetched individually and hydrated through the shared Read
+// state-builder — matching the resource's import fidelity.
 type EbookListResource struct {
 	client *proclassic.Client
 }
@@ -125,6 +134,29 @@ func (r *EbookListResource) List(ctx context.Context, req list.ListRequest, stre
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetEbookByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping e-book from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
+			state := EbookResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(ebookTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignEbookResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

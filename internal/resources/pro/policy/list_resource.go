@@ -23,6 +23,13 @@ import (
 // /policies endpoint.
 const defaultListTimeout = 120 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &PolicyListResource{}
 var _ list.ListResourceWithConfigure = &PolicyListResource{}
 
@@ -34,8 +41,10 @@ func NewPolicyListResource() list.ListResource {
 // PolicyListResource implements Terraform query list support for Jamf Pro
 // policies. Classic /policies has no RSQL — the optional `filter` block is
 // applied client-side via filters.ApplyClassicFilter. List items carry only
-// id + name on the wire (no policy detail); identity-only is the canonical
-// list output.
+// id + name on the wire, so when IncludeResource is requested (config
+// generation) each policy is fetched individually and hydrated through the
+// shared Read state-builder, which populates the general section and leaves
+// optional sections null — matching the resource's import fidelity.
 type PolicyListResource struct {
 	client *proclassic.Client
 }
@@ -131,6 +140,29 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetPolicyByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping Jamf Pro policy from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
+			state := PolicyResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(policyTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignPolicyResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

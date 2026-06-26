@@ -23,6 +23,13 @@ import (
 // endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &AppInstallerListResource{}
 var _ list.ListResourceWithConfigure = &AppInstallerListResource{}
 
@@ -35,8 +42,10 @@ func NewAppInstallerListResource() list.ListResource {
 // AppInstallerListResource implements Terraform query list support for App
 // Installer deployments. The deployments endpoint has no server-side filter, so
 // the optional `filter` block is applied client-side as a case-insensitive name
-// substring. List items carry identity (id) + display name only; full detail
-// requires a per-deployment read.
+// substring. List items carry identity (id) + display name only, so when
+// IncludeResource is requested (config generation) each deployment is fetched
+// individually and hydrated through the shared Read state-builder — matching
+// the resource's import fidelity.
 type AppInstallerListResource struct {
 	client *pro.Client
 }
@@ -121,6 +130,29 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetAppInstallerDeploymentV1(itemCtx, e.ID)
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping app installer deployment from generated config after per-item read failure", map[string]any{
+					"id":    e.ID,
+					"error": err.Error(),
+				})
+				continue
+			}
+			state := AppInstallerResourceModel{
+				ID:       helpers.StringPointerValueOrNull(&e.ID),
+				Timeouts: helpers.NewResourceTimeoutsNullValue(appInstallerTimeoutAttributeTypes),
+			}
+			assignAppInstallerResourceModel(&state, got)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)
