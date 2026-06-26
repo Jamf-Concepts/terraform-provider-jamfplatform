@@ -167,8 +167,8 @@ func TestAccResource_ProComputerInvitation_Basic(t *testing.T) {
 }
 
 // TestAccResource_ProComputerInvitation_InvalidType asserts the OneOf validator
-// rejects an invitation_type outside the user-creatable set (DEP_CUSTOM_ENROLL
-// is DEP-system-generated and excluded).
+// rejects an invitation_type Jamf Pro does not recognise (PRESTAGE 409s on the
+// wire, unlike the recognised types).
 func TestAccResource_ProComputerInvitation_InvalidType(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 
@@ -179,7 +179,7 @@ func TestAccResource_ProComputerInvitation_InvalidType(t *testing.T) {
 			{
 				Config: `
 					resource "jamfplatform_pro_computer_invitation" "test" {
-						invitation_type = "DEP_CUSTOM_ENROLL"
+						invitation_type = "PRESTAGE"
 						ssh_username    = "jamfmgmt"
 					}
 				`,

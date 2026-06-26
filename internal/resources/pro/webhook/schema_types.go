@@ -4,6 +4,8 @@
 package webhook
 
 import (
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -63,18 +65,32 @@ func isSmartGroupEvent(event string) bool {
 	return ok
 }
 
-// webhookAuthTypes is the set of accepted <authentication_type> values exposed
-// by this provider. The Jamf UI also offers "Mutual TLS Authentication"
-// (wire: MTLS), but its certificate material is settable only through the
-// legacy admin web form (HAR-proven) — not via any supported API — so a
-// Terraform-managed MTLS webhook would be non-functional. MTLS is therefore
-// intentionally excluded from the writable enum. (Reading/listing a
-// pre-existing MTLS webhook still works: OneOf gates config, not state.)
+// webhookAuthTypes is the set of accepted <authentication_type> values,
+// wire-probed against a live tenant. NONE, BASIC, HEADER and HASH_SIGNATURE are
+// fully managed here. MTLS ("Mutual TLS Authentication" in the admin UI) is
+// settable through the API — the server accepts it on create and update — so it
+// is included; a faithfully-imported MTLS webhook would otherwise fail to
+// validate. The client certificate MTLS relies on can only be supplied through
+// the Jamf Pro admin UI, so a webhook created here with MTLS is inert until that
+// certificate is added out of band.
 var webhookAuthTypes = []string{
 	"NONE",
 	"BASIC",
 	"HEADER",
 	"HASH_SIGNATURE",
+	"MTLS",
+}
+
+// markdownValueList renders a slice of enum values as a backticked,
+// comma-separated list for MarkdownDescription strings. Deriving the documented
+// values from the same slice the OneOf validator uses keeps the docs and the
+// validator from drifting apart.
+func markdownValueList(vals []string) string {
+	quoted := make([]string, len(vals))
+	for i, v := range vals {
+		quoted[i] = "`" + v + "`"
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // webhookContentTypes is the accepted <content_type> set. The server silently

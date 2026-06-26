@@ -115,7 +115,7 @@ func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Validators:          []validator.String{stringvalidator.LengthAtLeast(1)},
 			},
 			"authentication_type": schema.StringAttribute{
-				MarkdownDescription: "**\"Authentication type\"** in the Jamf Pro admin UI. One of `NONE`, `BASIC` (then set `username`/`password`), `HEADER` (then set `header` to a JSON object), or `HASH_SIGNATURE` (then set `password` as the signing secret and optionally `hash_algorithm`). The UI's \"Mutual TLS Authentication\" is not supported here. Defaults to `NONE`; because this attribute is computed, switching authentication off again requires explicitly setting `authentication_type = \"NONE\"` (removing the attribute retains the last applied value).",
+				MarkdownDescription: "**\"Authentication type\"** in the Jamf Pro admin UI. One of " + markdownValueList(webhookAuthTypes) + ": `BASIC` (then set `username`/`password`), `HEADER` (then set `header` to a JSON object), `HASH_SIGNATURE` (then set `password` as the signing secret and optionally `hash_algorithm`), or `MTLS` (\"Mutual TLS Authentication\" — accepted so existing webhooks import, but the client certificate it needs can only be supplied through the Jamf Pro admin UI, so an MTLS webhook created here is inert until that certificate is added). Defaults to `NONE`; because this attribute is computed, switching authentication off again requires explicitly setting `authentication_type = \"NONE\"` (removing the attribute retains the last applied value).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},

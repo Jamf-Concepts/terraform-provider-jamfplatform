@@ -20,7 +20,7 @@ func invitationTypeOneOf() validator.String {
 }
 
 func TestInvitationTypeOneOf_Accepts(t *testing.T) {
-	for _, in := range []string{"USER_INITIATED_URL", "USER_INITIATED_EMAIL"} {
+	for _, in := range []string{"USER_INITIATED_URL", "USER_INITIATED_EMAIL", "DEP_CUSTOM_ENROLL"} {
 		t.Run(in, func(t *testing.T) {
 			req := validator.StringRequest{Path: path.Root("invitation_type"), ConfigValue: types.StringValue(in)}
 			var resp validator.StringResponse
@@ -33,9 +33,9 @@ func TestInvitationTypeOneOf_Accepts(t *testing.T) {
 }
 
 func TestInvitationTypeOneOf_Rejects(t *testing.T) {
-	// DEP_CUSTOM_ENROLL is observed on the wire but is DEP-system-generated and
-	// not user-creatable, so it must be rejected.
-	for _, in := range []string{"DEP_CUSTOM_ENROLL", "", "user_initiated_url", "RANDOM"} {
+	// Values Jamf Pro does not recognise (wire-probed: PRESTAGE/DEP/garbage all
+	// 409, unlike the recognised types) plus a case-mismatched spelling.
+	for _, in := range []string{"PRESTAGE", "DEP", "", "user_initiated_url", "RANDOM"} {
 		t.Run(in, func(t *testing.T) {
 			req := validator.StringRequest{Path: path.Root("invitation_type"), ConfigValue: types.StringValue(in)}
 			var resp validator.StringResponse
