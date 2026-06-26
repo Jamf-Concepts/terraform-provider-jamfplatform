@@ -3,7 +3,8 @@
 
 // SDK endpoints used:
 //   proclassic.ListUserExtensionAttributes   (id+name only)
-// Status: current. Last reviewed 2026-06-02.
+//   proclassic.GetUserExtensionAttributeByID (per-item hydration on include_resource)
+// Status: current. Last reviewed 2026-06-26.
 
 package user_extension_attribute
 
@@ -28,6 +29,10 @@ import (
 // /userextensionattributes endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout caps each per-item GET issued to hydrate a list result,
+// decoupled from the overall list budget so one slow record cannot stall the list.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &UserExtensionAttributeListResource{}
 var _ list.ListResourceWithConfigure = &UserExtensionAttributeListResource{}
 
@@ -38,9 +43,11 @@ func NewUserExtensionAttributeListResource() list.ListResource {
 }
 
 // UserExtensionAttributeListResource implements Terraform query list support.
-// The Classic list endpoint returns id + name only, so `include_resource`
-// hydrates just those two attributes; every other attribute is null on list
-// results (mirrors advanced_user_search).
+// The Classic list endpoint returns id + name only, so when `include_resource`
+// is requested each item is re-fetched by id to hydrate data_type, input_type,
+// description and popup_menu_choices — otherwise generated config would drop
+// those Required fields and fail validation. A per-item read failure drops just
+// that item (logged), not the whole list.
 type UserExtensionAttributeListResource struct {
 	client *proclassic.Client
 }
@@ -135,16 +142,26 @@ func (r *UserExtensionAttributeListResource) List(ctx context.Context, req list.
 		}
 
 		if req.IncludeResource {
-			// List response carries id and name only. Every other attribute is
-			// null on list results.
+			itemCtx, cancelItem := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, getErr := r.client.GetUserExtensionAttributeByID(itemCtx, id.ValueString())
+			cancelItem()
+			if getErr != nil {
+				tflog.Warn(ctx, "Skipping user extension attribute hydration after per-item read failed", map[string]any{
+					"id":    id.ValueString(),
+					"error": getErr.Error(),
+				})
+				continue
+			}
+
 			state := UserExtensionAttributeResourceModel{
 				ID:               id,
-				Name:             helpers.StringPointerValueOrNull(item.Name),
-				Description:      types.StringNull(),
-				DataType:         types.StringNull(),
-				InputType:        types.StringNull(),
 				PopupMenuChoices: types.ListNull(types.StringType),
 				Timeouts:         helpers.NewResourceTimeoutsNullValue(userExtensionAttributeTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignUserExtensionAttributeResourceModel(ctx, &state, got)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
 			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {

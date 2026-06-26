@@ -34,6 +34,18 @@ func StringPointerValueOrNull(value *string) types.String {
 	return types.StringValue(*value)
 }
 
+// StringPointerValueOrEmpty unwraps a *string to a Terraform string, returning an
+// empty string (never null) when the pointer is nil. Use for a Required attribute
+// the server may return absent or empty but which must round-trip as a present
+// value — e.g. ssh_username on a DEP-created computer invitation, where the create
+// endpoint requires the <ssh_username> element present but accepts it empty.
+func StringPointerValueOrEmpty(value *string) types.String {
+	if value == nil {
+		return types.StringValue("")
+	}
+	return types.StringValue(*value)
+}
+
 // OptionalStringPointer converts a Terraform string into a *string for API payloads.
 // Returns nil for both Null and Unknown values — the Null/Unknown distinction matters
 // for Optional+Computed attributes, where the framework reports Unknown until the
