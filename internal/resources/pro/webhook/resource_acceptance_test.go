@@ -7,8 +7,10 @@
 // has known concurrency issues when multiple writes hit the same resource type
 // — keep these tests serial with any future classic acceptance work here.
 //
-// Coverage (maintainer ask): every supported authentication_type (NONE, BASIC,
-// HEADER, HASH_SIGNATURE) with in-place transitions between them; every one of
+// Coverage (maintainer ask): the apply-managed authentication_type values (NONE,
+// BASIC, HEADER, HASH_SIGNATURE) with in-place transitions between them — MTLS is
+// enum-valid (covered by the schema test) but not apply-tested as it needs a
+// client certificate supplied through the admin UI; every one of
 // the 23 events walked in-place; a smart-group fixture (jamfplatform_device_group)
 // driving SmartGroupComputerMembershipChange + smart_group_id, including the
 // clear-on-event-change path; password (WriteOnly) rotation; one ExpectError per
@@ -483,7 +485,7 @@ func TestAccResource_ProWebhook_ValidatorErrors(t *testing.T) {
 					name = %q
 					url = "https://e.com/x"
 					event = "ComputerAdded"
-					authentication_type = "MTLS"
+					authentication_type = "OAUTH"
 				}`, base+"-a"),
 			expect: regexp.MustCompile(`authentication_type`),
 		},

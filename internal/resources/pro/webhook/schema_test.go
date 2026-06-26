@@ -111,22 +111,23 @@ func TestWebhookResource_Schema(t *testing.T) {
 	}
 }
 
-// TestWebhookResource_AuthEnumExcludesMTLS asserts MTLS is not a writable auth
-// type (its certificate is legacy-UI-only — WEBHOOK_SPIKE.md §5 invariant 8).
-func TestWebhookResource_AuthEnumExcludesMTLS(t *testing.T) {
-	for _, v := range webhookAuthTypes {
-		if v == "MTLS" {
-			t.Fatalf("MTLS must be excluded from the writable authentication_type enum")
-		}
-	}
-	want := map[string]bool{"NONE": true, "BASIC": true, "HEADER": true, "HASH_SIGNATURE": true}
+// TestWebhookResource_AuthEnumIncludesMTLS pins the wire-probed writable set.
+// MTLS is included: the server accepts it on create and update, so a
+// faithfully-imported MTLS webhook must validate.
+func TestWebhookResource_AuthEnumIncludesMTLS(t *testing.T) {
+	want := map[string]bool{"NONE": true, "BASIC": true, "HEADER": true, "HASH_SIGNATURE": true, "MTLS": true}
 	if len(webhookAuthTypes) != len(want) {
 		t.Fatalf("expected %d auth types, got %d (%v)", len(want), len(webhookAuthTypes), webhookAuthTypes)
 	}
+	seen := map[string]bool{}
 	for _, v := range webhookAuthTypes {
 		if !want[v] {
 			t.Errorf("unexpected auth type %q", v)
 		}
+		seen[v] = true
+	}
+	if !seen["MTLS"] {
+		t.Errorf("MTLS must be present in the writable authentication_type enum")
 	}
 }
 
