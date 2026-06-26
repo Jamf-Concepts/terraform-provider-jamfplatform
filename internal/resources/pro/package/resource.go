@@ -249,7 +249,7 @@ func (r *PackageResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"hash_type": schema.StringAttribute{
-				MarkdownDescription: "Hash algorithm for the package. Values you can set: `\"MD5\"`, `\"SHA_256\"`, `\"SHA3_512\"`. Jamf Pro may also return the legacy default `\"SHA_512\"` on records that have never had a file uploaded — that value is accepted on read but cannot be set. Cannot be combined with `package_file_source` (a cloud distribution point upload sets this to `\"SHA3_512\"`).",
+				MarkdownDescription: "Hash algorithm for the package. One of " + markdownValueList(AllowedHashTypeValues) + ". A record that has never had a file uploaded reads back `SHA_512`. Cannot be combined with `package_file_source` (a cloud distribution point upload sets this to `SHA3_512`).",
 				Optional:            true,
 				Computed:            true,
 				Validators: []validator.String{

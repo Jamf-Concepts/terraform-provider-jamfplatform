@@ -21,6 +21,13 @@ import (
 
 const defaultListTimeout = 120 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &ListResource{}
 var _ list.ListResourceWithConfigure = &ListResource{}
 
@@ -29,7 +36,12 @@ func NewListResource() list.ListResource {
 	return &ListResource{}
 }
 
-// ListResource queries mobile device configuration profiles.
+// ListResource queries mobile device configuration profiles. List items carry
+// only id + name, so when IncludeResource is requested (config generation) each
+// profile is fetched individually and hydrated through the shared Read
+// state-builder, which populates the general section (including the payloads
+// plist) and leaves optional sections null — matching the resource's import
+// fidelity.
 type ListResource struct {
 	client *proclassic.Client
 }
@@ -122,6 +134,30 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
 		}
+
+		if req.IncludeResource {
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetMobileDeviceConfigurationProfileByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping mobile device configuration profile from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
+			state := ResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+		}
+
 		results = append(results, result)
 	}
 

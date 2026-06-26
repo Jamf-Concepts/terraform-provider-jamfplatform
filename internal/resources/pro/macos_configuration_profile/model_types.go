@@ -5,10 +5,21 @@ package macos_configuration_profile
 
 import (
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
+
+// timeoutAttributeTypes defines the timeout attribute types for the macOS
+// configuration profile resource operations. Used to build a null timeouts
+// value when hydrating list results (terraform query -generate-config-out).
+var timeoutAttributeTypes = map[string]attr.Type{
+	"create": types.StringType,
+	"read":   types.StringType,
+	"update": types.StringType,
+	"delete": types.StringType,
+}
 
 // ResourceModel is the Terraform model for jamfplatform_pro_macos_configuration_profile.
 // Mirrors proclassic.OsXConfigurationProfile field-for-field with the

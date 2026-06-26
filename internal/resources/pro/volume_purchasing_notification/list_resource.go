@@ -22,6 +22,13 @@ import (
 // defaultListTimeout caps how long the list operation waits on the endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var (
 	_ list.ListResource              = &VolumePurchasingNotificationListResource{}
 	_ list.ListResourceWithConfigure = &VolumePurchasingNotificationListResource{}
@@ -35,7 +42,9 @@ func NewVolumePurchasingNotificationListResource() list.ListResource {
 // VolumePurchasingNotificationListResource implements Terraform query list support.
 // The endpoint has no server-side name filter, so the optional `filter` block is
 // applied client-side as a case-insensitive name substring. List items carry
-// identity (id) + display name only; full detail requires a per-notification read.
+// identity (id) + display name only, so when IncludeResource is requested (config
+// generation) each notification is fetched individually and hydrated through the
+// shared Read state-builder — matching the resource's import fidelity.
 type VolumePurchasingNotificationListResource struct {
 	client *pro.Client
 }
@@ -120,6 +129,29 @@ func (r *VolumePurchasingNotificationListResource) List(ctx context.Context, req
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetVolumePurchasingSubscriptionV1(itemCtx, e.ID)
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping volume purchasing notification from generated config after per-item read failure", map[string]any{
+					"id":    e.ID,
+					"error": err.Error(),
+				})
+				continue
+			}
+			state := VolumePurchasingNotificationResourceModel{
+				ID:       helpers.StringPointerValueOrNull(&e.ID),
+				Timeouts: helpers.NewResourceTimeoutsNullValue(volumePurchasingNotificationTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignVolumePurchasingNotificationResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

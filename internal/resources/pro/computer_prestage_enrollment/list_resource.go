@@ -27,6 +27,10 @@ import (
 
 const defaultListTimeout = 60 * time.Second
 
+// defaultItemReadTimeout caps each per-item scope read performed during config
+// generation, independent of the list-fetch budget.
+const defaultItemReadTimeout = 30 * time.Second
+
 var (
 	_ list.ListResource              = &ComputerPrestageEnrollmentListResource{}
 	_ list.ListResourceWithConfigure = &ComputerPrestageEnrollmentListResource{}
@@ -38,8 +42,15 @@ var (
 // client-side after the full list is fetched. The list response carries the
 // full `GetComputerPrestageV3` shape per row, so when IncludeResource=true
 // the row is populated from the same response — no N+1 follow-up GET is
-// required. Scope assignments are NOT included on list results — request the
-// scope via the parent resource Read if needed.
+// required, except scope: the list response omits scope assignments, so when
+// IncludeResource is requested (config generation) each row's scope is fetched
+// with GetComputerPrestageScopeV2 and ScopeSerialNumbers is populated from it
+// (an empty set when no serials are assigned). This captures the real serials
+// for a faithful import and gives the set a defined element type — an
+// uninitialised types.Set has none and fails config generation with a value
+// conversion error. The per-item scope read uses its own timeout, decoupled
+// from the list-fetch budget; a row whose scope read fails is dropped from the
+// generated config rather than aborting the whole type.
 type ComputerPrestageEnrollmentListResource struct {
 	client *pro.Client
 }
@@ -141,6 +152,17 @@ func (r *ComputerPrestageEnrollmentListResource) List(ctx context.Context, req l
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 				return
 			}
+			scopeCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			scope, err := r.client.GetComputerPrestageScopeV2(scopeCtx, item.ID)
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping computer prestage enrollment from generated config after scope read failure", map[string]any{
+					"id":    item.ID,
+					"error": err.Error(),
+				})
+				continue
+			}
+			state.ScopeSerialNumbers = scopeSerialsToSet(scope)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

@@ -136,6 +136,24 @@ func TestIntersectIntoState_ImportMaterialisesFullGrid(t *testing.T) {
 	}
 }
 
+// TestIntersectIntoState_ImportDedupesServerDuplicates guards the genconfig /
+// import path: the classic /accounts endpoint can echo the same privilege
+// string more than once within a category, and types.SetValue rejects duplicate
+// elements with a hard "Duplicate Set Element" error. newStringSet must collapse
+// the duplicates so hydration succeeds.
+func TestIntersectIntoState_ImportDedupesServerDuplicates(t *testing.T) {
+	server := map[string][]string{
+		"jss_objects": {"Create/Read/Update Cloud Distribution Point", "Create/Read/Update Cloud Distribution Point", "Read Buildings"},
+	}
+	out, diags := IntersectIntoState(context.Background(), nil, server)
+	if diags.HasError() {
+		t.Fatalf("IntersectIntoState with duplicate server values: %v", diags)
+	}
+	if got, want := setStrings(t, out.JamfProServerObjects), []string{"Create/Read/Update Cloud Distribution Point", "Read Buildings"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("duplicate server privileges should collapse, got %v want %v", got, want)
+	}
+}
+
 func TestModelToMap_OmitsNullCategories(t *testing.T) {
 	m := &Model{JamfProServerObjects: mustSet(t, "Read Computers")}
 	got, diags := m.ToMap(context.Background())
