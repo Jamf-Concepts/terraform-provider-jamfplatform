@@ -154,10 +154,14 @@ func flattenCriteria(wrapper *proclassic.UserGroupCriteria) []UserGroupCriterion
 			searchType = types.StringNull()
 		}
 
-		// criterion.value is Required — server is authoritative. Direct copy
-		// (no Reconcile) so the import path lands the same value as the
-		// post-apply refresh path.
-		value := helpers.StringPointerValueOrNull(c.Value)
+		// criterion.value is Required and the server always returns the element,
+		// empty for criteria like an unset "before (yyyy-mm-dd)" date. Copy it
+		// verbatim (mapping a nil/empty echo to "" rather than null) so Required
+		// stays satisfied and import lands the same value as a post-apply refresh.
+		value := types.StringValue("")
+		if c.Value != nil {
+			value = types.StringValue(*c.Value)
+		}
 
 		var andOr types.String
 		if c.AndOr != nil && *c.AndOr != "" {
