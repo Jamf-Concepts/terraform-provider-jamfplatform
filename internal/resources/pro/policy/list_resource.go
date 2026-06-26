@@ -34,8 +34,10 @@ func NewPolicyListResource() list.ListResource {
 // PolicyListResource implements Terraform query list support for Jamf Pro
 // policies. Classic /policies has no RSQL — the optional `filter` block is
 // applied client-side via filters.ApplyClassicFilter. List items carry only
-// id + name on the wire (no policy detail); identity-only is the canonical
-// list output.
+// id + name on the wire, so when IncludeResource is requested (config
+// generation) each policy is fetched individually and hydrated through the
+// shared Read state-builder, which populates the general section and leaves
+// optional sections null — matching the resource's import fidelity.
 type PolicyListResource struct {
 	client *proclassic.Client
 }
@@ -131,6 +133,25 @@ func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, str
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			got, err := r.client.GetPolicyByID(listCtx, id.ValueString())
+			if err != nil {
+				result.Diagnostics.AddError("Unable to read Jamf Pro policy", err.Error())
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+			state := PolicyResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(policyTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignPolicyResourceModel(listCtx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

@@ -35,8 +35,10 @@ func NewAppInstallerListResource() list.ListResource {
 // AppInstallerListResource implements Terraform query list support for App
 // Installer deployments. The deployments endpoint has no server-side filter, so
 // the optional `filter` block is applied client-side as a case-insensitive name
-// substring. List items carry identity (id) + display name only; full detail
-// requires a per-deployment read.
+// substring. List items carry identity (id) + display name only, so when
+// IncludeResource is requested (config generation) each deployment is fetched
+// individually and hydrated through the shared Read state-builder — matching
+// the resource's import fidelity.
 type AppInstallerListResource struct {
 	client *pro.Client
 }
@@ -121,6 +123,25 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			got, err := r.client.GetAppInstallerDeploymentV1(listCtx, e.ID)
+			if err != nil {
+				result.Diagnostics.AddError("Unable to read app installer deployment", err.Error())
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+			state := AppInstallerResourceModel{
+				ID:       helpers.StringPointerValueOrNull(&e.ID),
+				Timeouts: helpers.NewResourceTimeoutsNullValue(appInstallerTimeoutAttributeTypes),
+			}
+			assignAppInstallerResourceModel(&state, got)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

@@ -35,7 +35,9 @@ func NewVolumePurchasingNotificationListResource() list.ListResource {
 // VolumePurchasingNotificationListResource implements Terraform query list support.
 // The endpoint has no server-side name filter, so the optional `filter` block is
 // applied client-side as a case-insensitive name substring. List items carry
-// identity (id) + display name only; full detail requires a per-notification read.
+// identity (id) + display name only, so when IncludeResource is requested (config
+// generation) each notification is fetched individually and hydrated through the
+// shared Read state-builder — matching the resource's import fidelity.
 type VolumePurchasingNotificationListResource struct {
 	client *pro.Client
 }
@@ -120,6 +122,25 @@ func (r *VolumePurchasingNotificationListResource) List(ctx context.Context, req
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			got, err := r.client.GetVolumePurchasingSubscriptionV1(listCtx, e.ID)
+			if err != nil {
+				result.Diagnostics.AddError("Unable to read volume purchasing notification", err.Error())
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+			state := VolumePurchasingNotificationResourceModel{
+				ID:       helpers.StringPointerValueOrNull(&e.ID),
+				Timeouts: helpers.NewResourceTimeoutsNullValue(volumePurchasingNotificationTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignVolumePurchasingNotificationResourceModel(listCtx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

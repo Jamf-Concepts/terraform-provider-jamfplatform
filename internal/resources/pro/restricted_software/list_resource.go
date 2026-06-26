@@ -35,8 +35,10 @@ func NewRestrictedSoftwareListResource() list.ListResource {
 // RestrictedSoftwareListResource implements Terraform query list support for
 // Jamf Pro restricted software records. Classic /restrictedsoftware has no RSQL
 // — the optional `filter` block is applied client-side via
-// filters.ApplyClassicFilter. List items carry only id + name on the wire;
-// identity-only is the canonical list output.
+// filters.ApplyClassicFilter. List items carry only id + name on the wire, so
+// when IncludeResource is requested (config generation) each record is fetched
+// individually and hydrated through the shared Read state-builder — matching
+// the resource's import fidelity.
 type RestrictedSoftwareListResource struct {
 	client *proclassic.Client
 }
@@ -127,6 +129,25 @@ func (r *RestrictedSoftwareListResource) List(ctx context.Context, req list.List
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			got, err := r.client.GetRestrictedSoftwareByID(listCtx, id.ValueString())
+			if err != nil {
+				result.Diagnostics.AddError("Unable to read restricted software", err.Error())
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+			state := RestrictedSoftwareResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(restrictedSoftwareTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignRestrictedSoftwareResourceModel(listCtx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

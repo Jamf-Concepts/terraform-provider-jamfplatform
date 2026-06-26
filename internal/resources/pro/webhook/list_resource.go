@@ -36,7 +36,9 @@ func NewWebhookListResource() list.ListResource {
 // WebhookListResource implements Terraform query list support for Jamf Pro
 // webhooks. Classic /webhooks has no RSQL — the optional `filter` block is
 // applied client-side via filters.ApplyClassicFilter. List items carry only
-// id + name on the wire; identity-only is the canonical list output.
+// id + name on the wire, so when IncludeResource is requested (config
+// generation) each webhook is fetched individually and hydrated through the
+// shared Read state-builder — matching the resource's import fidelity.
 type WebhookListResource struct {
 	client *proclassic.Client
 }
@@ -127,6 +129,25 @@ func (r *WebhookListResource) List(ctx context.Context, req list.ListRequest, st
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			got, err := r.client.GetWebhookByID(listCtx, id.ValueString())
+			if err != nil {
+				result.Diagnostics.AddError("Unable to read webhook", err.Error())
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+			state := WebhookResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(webhookTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignWebhookResourceModel(listCtx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)

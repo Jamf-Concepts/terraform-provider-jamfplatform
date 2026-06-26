@@ -31,7 +31,12 @@ func NewListResource() list.ListResource {
 
 // ListResource queries macOS configuration profiles. Classic
 // /osxconfigurationprofiles has no RSQL — the optional name_substring filter
-// runs client-side after the full list is fetched.
+// runs client-side after the full list is fetched. List items carry only
+// id + name, so when IncludeResource is requested (config generation) each
+// profile is fetched individually and hydrated through the shared Read
+// state-builder, which populates the general section (including the payloads
+// plist) and leaves optional sections null — matching the resource's import
+// fidelity.
 type ListResource struct {
 	client *proclassic.Client
 }
@@ -124,6 +129,26 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
 		}
+
+		if req.IncludeResource {
+			got, err := r.client.GetOSXConfigurationProfileByID(listCtx, id.ValueString())
+			if err != nil {
+				result.Diagnostics.AddError("Unable to read macOS configuration profile", err.Error())
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+			state := ResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignResourceModel(listCtx, &state, got)...)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+		}
+
 		results = append(results, result)
 	}
 

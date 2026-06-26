@@ -37,7 +37,10 @@ func NewJSONWebTokenConfigurationListResource() list.ListResource {
 // JSONWebTokenConfigurationListResource implements Terraform query list support
 // for Jamf Pro JSON Web Token configurations. The classic endpoint has no
 // server-side filtering — the optional `filter` block is applied client-side
-// via filters.ApplyClassicFilter.
+// via filters.ApplyClassicFilter. List items carry only id + name on the wire,
+// so when IncludeResource is requested (config generation) each configuration
+// is fetched individually and hydrated through the shared Read state-builder —
+// matching the resource's import fidelity.
 type JSONWebTokenConfigurationListResource struct {
 	client *proclassic.Client
 }
@@ -128,6 +131,25 @@ func (r *JSONWebTokenConfigurationListResource) List(ctx context.Context, req li
 		if result.Diagnostics.HasError() {
 			stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 			return
+		}
+
+		if req.IncludeResource {
+			got, err := r.client.GetJsonWebTokenConfigurationByID(listCtx, id.ValueString())
+			if err != nil {
+				result.Diagnostics.AddError("Unable to read JSON web token configuration", err.Error())
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
+			state := JSONWebTokenConfigurationResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(jsonWebTokenConfigurationTimeoutAttributeTypes),
+			}
+			assignJSONWebTokenConfigurationResourceModel(&state, got)
+			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
+			}
 		}
 
 		results = append(results, result)
