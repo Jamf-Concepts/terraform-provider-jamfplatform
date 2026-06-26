@@ -21,6 +21,13 @@ import (
 
 const defaultListTimeout = 120 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &ListResource{}
 var _ list.ListResourceWithConfigure = &ListResource{}
 
@@ -131,17 +138,21 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 		}
 
 		if req.IncludeResource {
-			got, err := r.client.GetOSXConfigurationProfileByID(listCtx, id.ValueString())
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetOSXConfigurationProfileByID(itemCtx, id.ValueString())
+			cancel()
 			if err != nil {
-				result.Diagnostics.AddError("Unable to read macOS configuration profile", err.Error())
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
+				tflog.Warn(ctx, "Skipping macOS configuration profile from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
 			state := ResourceModel{
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignResourceModel(listCtx, &state, got)...)
+			result.Diagnostics.Append(assignResourceModel(ctx, &state, got)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

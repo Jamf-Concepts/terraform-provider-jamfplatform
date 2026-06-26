@@ -23,6 +23,13 @@ import (
 // endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &AppInstallerListResource{}
 var _ list.ListResourceWithConfigure = &AppInstallerListResource{}
 
@@ -126,11 +133,15 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 		}
 
 		if req.IncludeResource {
-			got, err := r.client.GetAppInstallerDeploymentV1(listCtx, e.ID)
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetAppInstallerDeploymentV1(itemCtx, e.ID)
+			cancel()
 			if err != nil {
-				result.Diagnostics.AddError("Unable to read app installer deployment", err.Error())
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
+				tflog.Warn(ctx, "Skipping app installer deployment from generated config after per-item read failure", map[string]any{
+					"id":    e.ID,
+					"error": err.Error(),
+				})
+				continue
 			}
 			state := AppInstallerResourceModel{
 				ID:       helpers.StringPointerValueOrNull(&e.ID),

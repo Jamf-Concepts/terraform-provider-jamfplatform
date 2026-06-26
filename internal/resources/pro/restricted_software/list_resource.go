@@ -23,6 +23,13 @@ import (
 // /restrictedsoftware endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &RestrictedSoftwareListResource{}
 var _ list.ListResourceWithConfigure = &RestrictedSoftwareListResource{}
 
@@ -132,17 +139,21 @@ func (r *RestrictedSoftwareListResource) List(ctx context.Context, req list.List
 		}
 
 		if req.IncludeResource {
-			got, err := r.client.GetRestrictedSoftwareByID(listCtx, id.ValueString())
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetRestrictedSoftwareByID(itemCtx, id.ValueString())
+			cancel()
 			if err != nil {
-				result.Diagnostics.AddError("Unable to read restricted software", err.Error())
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
+				tflog.Warn(ctx, "Skipping restricted software from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
 			state := RestrictedSoftwareResourceModel{
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(restrictedSoftwareTimeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignRestrictedSoftwareResourceModel(listCtx, &state, got)...)
+			result.Diagnostics.Append(assignRestrictedSoftwareResourceModel(ctx, &state, got)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
