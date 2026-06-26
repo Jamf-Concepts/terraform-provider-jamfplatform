@@ -17,7 +17,16 @@ import (
 // assignPolicyResourceModel populates a resource model from the SDK Policy
 // response. Server is authoritative for every Optional+Computed field — the
 // helper reconciles against the current state so unmanaged fields stay null.
-func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, p *proclassic.Policy) diag.Diagnostics {
+//
+// includeUnmanaged inverts the section gates for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present optional section is
+// allocated and hydrated from the server, yielding a complete exported config
+// rather than a general-only one. CRUD callers pass false. Because the policy
+// flatteners use the PreferCurrent* helpers (which adopt the wire value when
+// the current state is null), allocating an empty section is sufficient for it
+// to fully hydrate.
+func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, p *proclassic.Policy, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
 		return diags
@@ -32,27 +41,47 @@ func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, 
 	if state.General == nil {
 		state.General = &PolicyGeneralModel{}
 	}
-	flattenPolicyGeneral(ctx, p.General, state.General)
+	flattenPolicyGeneral(ctx, p.General, state.General, includeUnmanaged)
 
 	// Optional sections are only refreshed when the caller (plan or current
 	// state) already manages them. Server returns every section in GET with
 	// default values — populating an unmanaged section would violate the
 	// framework's "produced inconsistent result after apply" check, because
-	// plan said null and we'd return a populated object.
+	// plan said null and we'd return a populated object. includeUnmanaged
+	// allocates each wire-present section first so config generation hydrates
+	// the whole policy.
+	if includeUnmanaged && state.Scope == nil && p.Scope != nil {
+		state.Scope = &scope.ComputerScopeModel{}
+	}
 	if state.Scope != nil && p.Scope != nil {
-		diags.Append(flattenPolicyScope(ctx, p.Scope, state.Scope)...)
+		diags.Append(flattenPolicyScope(ctx, p.Scope, state.Scope, includeUnmanaged)...)
+	}
+	if includeUnmanaged && state.SelfService == nil && p.SelfService != nil {
+		state.SelfService = &PolicySelfServiceModel{}
 	}
 	if state.SelfService != nil && p.SelfService != nil {
-		flattenPolicySelfService(p.SelfService, state.SelfService)
+		flattenPolicySelfService(p.SelfService, state.SelfService, includeUnmanaged)
+	}
+	if includeUnmanaged && state.Packages == nil && p.PackageConfiguration != nil {
+		state.Packages = &PolicyPackagesModel{}
 	}
 	if state.Packages != nil && p.PackageConfiguration != nil {
 		flattenPolicyPackageConfiguration(p.PackageConfiguration, state.Packages)
 	}
+	if includeUnmanaged && state.Scripts == nil && p.Scripts != nil {
+		state.Scripts = &PolicyScriptsModel{}
+	}
 	if state.Scripts != nil && p.Scripts != nil {
 		flattenPolicyScripts(p.Scripts, state.Scripts)
 	}
+	if includeUnmanaged && state.Printers == nil && p.Printers != nil {
+		state.Printers = &PolicyPrintersModel{}
+	}
 	if state.Printers != nil && p.Printers != nil {
 		flattenPolicyPrinters(p.Printers, state.Printers)
+	}
+	if includeUnmanaged && state.DockItems == nil && p.DockItems != nil {
+		state.DockItems = &PolicyDockItemsModel{}
 	}
 	if state.DockItems != nil && p.DockItems != nil {
 		flattenPolicyDockItems(p.DockItems, state.DockItems)
@@ -62,19 +91,34 @@ func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, 
 	// caller already manages it (per-section gate), mirroring the optional
 	// section discipline above.
 	if p.AccountMaintenance != nil {
-		flattenPolicyAccountMaintenance(p.AccountMaintenance, state)
+		flattenPolicyAccountMaintenance(p.AccountMaintenance, state, includeUnmanaged)
+	}
+	if includeUnmanaged && state.RestartOptions == nil && p.Reboot != nil {
+		state.RestartOptions = &PolicyRestartOptionsModel{}
 	}
 	if state.RestartOptions != nil && p.Reboot != nil {
 		flattenPolicyReboot(p.Reboot, state.RestartOptions)
 	}
+	if includeUnmanaged && state.Maintenance == nil && p.Maintenance != nil {
+		state.Maintenance = &PolicyMaintenanceModel{}
+	}
 	if state.Maintenance != nil && p.Maintenance != nil {
 		flattenPolicyMaintenance(p.Maintenance, state.Maintenance)
+	}
+	if includeUnmanaged && state.FilesAndProcesses == nil && p.FilesProcesses != nil {
+		state.FilesAndProcesses = &PolicyFilesAndProcessesModel{}
 	}
 	if state.FilesAndProcesses != nil && p.FilesProcesses != nil {
 		flattenPolicyFilesProcesses(p.FilesProcesses, state.FilesAndProcesses)
 	}
+	if includeUnmanaged && state.UserInteraction == nil && p.UserInteraction != nil {
+		state.UserInteraction = &PolicyUserInteractionModel{}
+	}
 	if state.UserInteraction != nil && p.UserInteraction != nil {
 		flattenPolicyUserInteraction(p.UserInteraction, state.UserInteraction)
+	}
+	if includeUnmanaged && state.DiskEncryption == nil && p.DiskEncryption != nil {
+		state.DiskEncryption = &PolicyDiskEncryptionModel{}
 	}
 	if state.DiskEncryption != nil && p.DiskEncryption != nil {
 		flattenPolicyDiskEncryption(p.DiskEncryption, state.DiskEncryption)
@@ -83,9 +127,21 @@ func assignPolicyResourceModel(ctx context.Context, state *PolicyResourceModel, 
 	return diags
 }
 
-func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, state *PolicyGeneralModel) {
+func flattenPolicyGeneral(ctx context.Context, g *proclassic.PolicyGeneral, state *PolicyGeneralModel, includeUnmanaged bool) {
 	if g == nil {
 		return
+	}
+
+	if includeUnmanaged {
+		if state.DateTimeLimitations == nil && g.DateTimeLimitations != nil {
+			state.DateTimeLimitations = &PolicyGeneralDateTimeLimitationsModel{}
+		}
+		if state.NetworkLimitations == nil && g.NetworkLimitations != nil {
+			state.NetworkLimitations = &PolicyGeneralNetworkLimitationsModel{}
+		}
+		if state.OverrideDefaultSettings == nil && g.OverrideDefaultSettings != nil {
+			state.OverrideDefaultSettings = &PolicyGeneralOverrideDefaultsModel{}
+		}
 	}
 	state.ID = helpers.StringValueFromIntPtr(g.ID)
 	state.Name = helpers.StringPointerValueOrNull(g.Name)
@@ -169,8 +225,20 @@ func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyG
 	}
 }
 
-func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *scope.ComputerScopeModel) diag.Diagnostics {
+func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *scope.ComputerScopeModel, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
+
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &scope.ComputerScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &scope.ComputerScopeLimitationsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &scope.ComputerScopeExclusionsModel{}
+		}
+	}
 
 	// Targets are gated on caller management, mirroring the limitations /
 	// exclusions sub-blocks below: populating a targets block the user did not
@@ -363,7 +431,15 @@ func flattenExclUsersNameSet(ctx context.Context, u *proclassic.PolicyScopeExclu
 
 // ---- self_service / packages / scripts / printers / dock_items / etc. ----------
 
-func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySelfServiceModel) {
+func flattenPolicySelfService(ss *proclassic.PolicySelfService, state *PolicySelfServiceModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.SelfServiceIcon == nil && ss.SelfServiceIcon != nil {
+			state.SelfServiceIcon = &PolicySelfServiceIconModel{}
+		}
+		if state.Categories == nil {
+			state.Categories = []PolicySelfServiceCategoryItemModel{}
+		}
+	}
 	state.UseForSelfService = helpers.PreferCurrentBoolPointer(ss.UseForSelfService, state.UseForSelfService)
 	state.SelfServiceDisplayName = helpers.PreferCurrentStringPointer(ss.SelfServiceDisplayName, state.SelfServiceDisplayName)
 	state.InstallButtonText = helpers.PreferCurrentStringPointer(ss.InstallButtonText, state.InstallButtonText)
@@ -515,7 +591,21 @@ func flattenPolicyDockItems(d *proclassic.PolicyDockItems, state *PolicyDockItem
 // DirectoryBindings non-nil, ManagementAccount / EfiPassword non-nil) —
 // populating an unmanaged section would violate the framework's "produced
 // inconsistent result after apply" check.
-func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, state *PolicyResourceModel) {
+func flattenPolicyAccountMaintenance(am *proclassic.PolicyAccountMaintenance, state *PolicyResourceModel, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.LocalAccounts == nil && am.Accounts != nil && am.Accounts.Account != nil {
+			state.LocalAccounts = []PolicyAccountItemModel{}
+		}
+		if state.DirectoryBindings == nil && am.DirectoryBindings != nil && am.DirectoryBindings.Binding != nil {
+			state.DirectoryBindings = []PolicyDirectoryBindingItemModel{}
+		}
+		if state.ManagementAccount == nil && am.ManagementAccount != nil {
+			state.ManagementAccount = &PolicyManagementAccountModel{}
+		}
+		if state.EfiPassword == nil && am.OpenFirmwareEfiPassword != nil {
+			state.EfiPassword = &PolicyOpenFirmwareEfiPasswordModel{}
+		}
+	}
 	if state.LocalAccounts != nil && am.Accounts != nil && am.Accounts.Account != nil {
 		// Reorder wire accounts to match the plan's declared username
 		// order. The Jamf classic /policies endpoint does not preserve

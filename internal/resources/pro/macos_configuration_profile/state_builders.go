@@ -21,7 +21,13 @@ import (
 // Optional sub-blocks are only refreshed when the caller (plan or prior
 // state) already manages them — otherwise a server-populated block would
 // trip the framework's "produced inconsistent result after apply" check.
-func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassic.OsXConfigurationProfile) diag.Diagnostics {
+//
+// includeUnmanaged inverts that gate for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present optional section is
+// allocated and hydrated, yielding a complete exported config rather than a
+// general-only one. CRUD callers pass false.
+func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassic.OsXConfigurationProfile, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
 		return diags
@@ -38,8 +44,14 @@ func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassi
 	}
 	flattenGeneral(p.General, state.General)
 
+	if includeUnmanaged && state.Scope == nil && p.Scope != nil {
+		state.Scope = &scope.ComputerScopeModel{}
+	}
 	if state.Scope != nil && p.Scope != nil {
-		diags.Append(flattenScope(ctx, p.Scope, state.Scope)...)
+		diags.Append(flattenScope(ctx, p.Scope, state.Scope, includeUnmanaged)...)
+	}
+	if includeUnmanaged && state.SelfService == nil && p.SelfService != nil {
+		state.SelfService = &SelfServiceModel{}
 	}
 	if state.SelfService != nil && p.SelfService != nil {
 		flattenSelfService(p.SelfService, state.SelfService)
@@ -114,10 +126,26 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 	}
 }
 
-func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScope, state *scope.ComputerScopeModel) diag.Diagnostics {
+// flattenScope refreshes the scope sub-blocks the caller already manages.
+// When includeUnmanaged is set (config generation) every wire-present
+// sub-block is first allocated so the from-scratch read hydrates the full
+// scope rather than leaving unmanaged targets/limitations/exclusions null.
+func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScope, state *scope.ComputerScopeModel, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
+	}
+
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &scope.ComputerScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &scope.ComputerScopeLimitationsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &scope.ComputerScopeExclusionsModel{}
+		}
 	}
 
 	// Targets are gated on caller management, mirroring the limitations /
@@ -125,8 +153,8 @@ func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScop
 	// declare would violate the framework's "produced inconsistent result after
 	// apply" check (plan said null, we would return a populated object).
 	if state.Targets != nil {
-		state.Targets.AllComputers = helpers.ReconcileOptionalBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.AllJssUsers = helpers.ReconcileOptionalBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+		state.Targets.AllComputers = helpers.ReconcileOrAdoptBoolPointer(s.AllComputers, state.Targets.AllComputers, includeUnmanaged)
+		state.Targets.AllJssUsers = helpers.ReconcileOrAdoptBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers, includeUnmanaged)
 
 		if s.Computers != nil {
 			v, d := scope.FlattenIDSlice(ctx, s.Computers.Computer, func(c proclassic.OsXConfigurationProfileScopeComputersComputerItem) *int {

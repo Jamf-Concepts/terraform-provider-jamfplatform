@@ -99,7 +99,7 @@ func TestFlattenScope_NilSubBlocksProduceEmptySets(t *testing.T) {
 	state := &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{AllMobileDevices: types.BoolValue(false)}}
 	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: new(true),
-	}, state)
+	}, state, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -125,7 +125,7 @@ func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 	state := &scope.MobileScopeModel{}
 	flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: new(true),
-	}, state)
+	}, state, false)
 	if state.Targets != nil {
 		t.Fatalf("expected Targets to stay nil for unconfigured state, got %v", state.Targets)
 	}
@@ -141,7 +141,7 @@ func TestFlattenScope_MobileDeviceIDsPopulated(t *testing.T) {
 				{ID: new(31)},
 			},
 		},
-	}, state)
+	}, state, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -266,7 +266,7 @@ func TestAssignResourceModel_TopLevelIDFromGeneral(t *testing.T) {
 	state := &ResourceModel{}
 	diags := assignResourceModel(context.Background(), state, &proclassic.MobileDeviceConfigurationProfile{
 		General: &proclassic.MobileDeviceConfigurationProfileGeneral{ID: new(99), Name: new("X")},
-	})
+	}, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -287,7 +287,7 @@ func TestAssignResourceModel_OptionalSubBlocksSkippedWhenStateNil(t *testing.T) 
 		SelfService: &proclassic.MobileDeviceConfigurationProfileSelfService{
 			SelfServiceDescription: new("desc"),
 		},
-	})
+	}, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -314,7 +314,7 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 				RemovalDisallowed: new(removalDisallowedNever),
 			},
 		},
-	})
+	}, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -323,5 +323,42 @@ func TestAssignResourceModel_PopulatedSubBlocksRefreshed(t *testing.T) {
 	}
 	if state.SelfService.RemovalDisallowed.ValueString() != removalDisallowedNever {
 		t.Fatalf("SelfService.RemovalDisallowed: got %q", state.SelfService.RemovalDisallowed.ValueString())
+	}
+}
+
+// TestAssignResourceModel_IncludeUnmanagedHydratesFromScratch pins the
+// config-generation contract: with includeUnmanaged set and an empty starting
+// model, every wire-present optional section is allocated and hydrated.
+func TestAssignResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	t.Parallel()
+	state := &ResourceModel{}
+	diags := assignResourceModel(context.Background(), state, &proclassic.MobileDeviceConfigurationProfile{
+		ID:      new(7),
+		General: &proclassic.MobileDeviceConfigurationProfileGeneral{Name: new("X")},
+		Scope: &proclassic.MobileDeviceConfigurationProfileScope{
+			AllMobileDevices: new(true),
+			Exclusions:       &proclassic.MobileDeviceConfigurationProfileScopeExclusions{},
+		},
+		SelfService: &proclassic.MobileDeviceConfigurationProfileSelfService{
+			SelfServiceDescription: new("desc"),
+		},
+	}, true)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected Scope.Targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllMobileDevices.ValueBool() {
+		t.Fatal("expected all_mobile_devices hydrated true")
+	}
+	if state.Scope.Exclusions == nil {
+		t.Fatal("expected Exclusions allocated when wire-present")
+	}
+	if state.Scope.Limitations != nil {
+		t.Fatalf("expected Limitations to stay nil when wire-absent; got %+v", state.Scope.Limitations)
+	}
+	if state.SelfService == nil {
+		t.Fatalf("expected SelfService hydrated; got nil")
 	}
 }

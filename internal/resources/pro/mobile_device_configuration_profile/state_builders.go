@@ -17,7 +17,17 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
-func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassic.MobileDeviceConfigurationProfile) diag.Diagnostics {
+// assignResourceModel populates a ResourceModel from the SDK response.
+// Optional sub-blocks are only refreshed when the caller (plan or prior
+// state) already manages them — otherwise a server-populated block would
+// trip the framework's "produced inconsistent result after apply" check.
+//
+// includeUnmanaged inverts that gate for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present optional section is
+// allocated and hydrated, yielding a complete exported config rather than a
+// general-only one. CRUD callers pass false.
+func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassic.MobileDeviceConfigurationProfile, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if p == nil {
 		return diags
@@ -34,8 +44,14 @@ func assignResourceModel(ctx context.Context, state *ResourceModel, p *proclassi
 	}
 	flattenGeneral(p.General, state.General)
 
+	if includeUnmanaged && state.Scope == nil && p.Scope != nil {
+		state.Scope = &scope.MobileScopeModel{}
+	}
 	if state.Scope != nil && p.Scope != nil {
-		diags.Append(flattenScope(ctx, p.Scope, state.Scope)...)
+		diags.Append(flattenScope(ctx, p.Scope, state.Scope, includeUnmanaged)...)
+	}
+	if includeUnmanaged && state.SelfService == nil && p.SelfService != nil {
+		state.SelfService = &SelfServiceModel{}
 	}
 	if state.SelfService != nil && p.SelfService != nil {
 		flattenSelfService(p.SelfService, state.SelfService)
@@ -97,10 +113,26 @@ func flattenGeneral(g *proclassic.MobileDeviceConfigurationProfileGeneral, state
 	}
 }
 
-func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationProfileScope, state *scope.MobileScopeModel) diag.Diagnostics {
+// flattenScope refreshes the scope sub-blocks the caller already manages.
+// When includeUnmanaged is set (config generation) every wire-present
+// sub-block is first allocated so the from-scratch read hydrates the full
+// scope rather than leaving unmanaged targets/limitations/exclusions null.
+func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationProfileScope, state *scope.MobileScopeModel, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
 		return diags
+	}
+
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &scope.MobileScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &scope.MobileScopeLimitationsModel{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &scope.MobileScopeExclusionsModel{}
+		}
 	}
 
 	// Targets are gated on caller management, mirroring the limitations /
@@ -108,8 +140,8 @@ func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationPr
 	// declare would violate the framework's "produced inconsistent result after
 	// apply" check (plan said null, we would return a populated object).
 	if state.Targets != nil {
-		state.Targets.AllMobileDevices = helpers.ReconcileOptionalBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices)
-		state.Targets.AllJssUsers = helpers.ReconcileOptionalBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+		state.Targets.AllMobileDevices = helpers.ReconcileOrAdoptBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices, includeUnmanaged)
+		state.Targets.AllJssUsers = helpers.ReconcileOrAdoptBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers, includeUnmanaged)
 
 		if s.MobileDevices != nil {
 			v, d := scope.FlattenIDSlice(ctx, s.MobileDevices.MobileDevice, func(c proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem) *int {
