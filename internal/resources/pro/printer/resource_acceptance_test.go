@@ -49,8 +49,10 @@ func testAccCheckPrinterDestroy(t *testing.T) resource.TestCheckFunc {
 }
 
 // TestAccResource_ProPrinter_Generic covers the simplest configuration —
-// use_generic is left unset (defaults to true) and the server auto-fills
-// ppd_path with the bundled Generic.ppd path. The update step exercises
+// use_generic is left unset (defaults to true). The server echoes the bundled
+// Generic.ppd path even in generic mode, but the cross-field validator forbids
+// the PPD trio there, so the state builder collapses ppd/ppd_path/ppd_contents
+// to null — the asserts below verify that round-trip. The update step exercises
 // PUT partial-merge: rename + populate optional fields without touching the
 // PPD trio.
 func TestAccResource_ProPrinter_Generic(t *testing.T) {
@@ -74,8 +76,10 @@ func TestAccResource_ProPrinter_Generic(t *testing.T) {
 					resource.TestCheckResourceAttrSet("jamfplatform_pro_printer.test", "id"),
 					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "name", original),
 					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "use_generic", "true"),
-					// Server auto-fills ppd_path under use_generic=true.
-					resource.TestCheckResourceAttrSet("jamfplatform_pro_printer.test", "ppd_path"),
+					// Server echoes the bundled Generic.ppd path under
+					// use_generic=true, but the validator forbids the PPD trio
+					// there — the state builder collapses it to null.
+					resource.TestCheckNoResourceAttr("jamfplatform_pro_printer.test", "ppd_path"),
 					// shared defaults to false (schema Default).
 					resource.TestCheckResourceAttr("jamfplatform_pro_printer.test", "shared", "false"),
 				),

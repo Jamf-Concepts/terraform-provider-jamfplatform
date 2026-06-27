@@ -34,6 +34,18 @@ func StringPointerValueOrNull(value *string) types.String {
 	return types.StringValue(*value)
 }
 
+// StringPointerValueOrEmpty unwraps a *string to a Terraform string, returning an
+// empty string (never null) when the pointer is nil. Use for a Required attribute
+// the server may return absent or empty but which must round-trip as a present
+// value — e.g. ssh_username on a DEP-created computer invitation, where the create
+// endpoint requires the <ssh_username> element present but accepts it empty.
+func StringPointerValueOrEmpty(value *string) types.String {
+	if value == nil {
+		return types.StringValue("")
+	}
+	return types.StringValue(*value)
+}
+
 // OptionalStringPointer converts a Terraform string into a *string for API payloads.
 // Returns nil for both Null and Unknown values — the Null/Unknown distinction matters
 // for Optional+Computed attributes, where the framework reports Unknown until the
@@ -261,6 +273,20 @@ func ReconcileOptionalBoolPointer(apiValue *bool, current types.Bool) types.Bool
 		return types.BoolNull()
 	}
 	return ReconcileOptionalBool(*apiValue, current)
+}
+
+// ReconcileOrAdoptBoolPointer applies the Optional+Computed reconcile rule for
+// CRUD reads (adopt is false) and adopts the wire value verbatim for the list
+// resource's config-generation path (adopt is true). The reconcile rule keeps
+// an Optional+Computed bool null when the caller never authored it so a refresh
+// does not snap it to the server default; config generation has no plan to
+// reconcile against, so the server value is authoritative and a value-carrying
+// flag (e.g. all_computers) must survive into the exported config.
+func ReconcileOrAdoptBoolPointer(apiValue *bool, current types.Bool, adopt bool) types.Bool {
+	if adopt {
+		return BoolPointerValueOrNull(apiValue)
+	}
+	return ReconcileOptionalBoolPointer(apiValue, current)
 }
 
 // ReconcileOptionalStringPointer behaves like ReconcileOptionalString but accepts a *string API value.

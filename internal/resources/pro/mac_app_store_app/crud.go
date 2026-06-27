@@ -82,7 +82,7 @@ func (r *MacAppResource) Create(ctx context.Context, req resource.CreateRequest,
 		resp.Diagnostics.AddError("Error reading created Jamf Pro Mac App Store app", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignMacAppResourceModel(createCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignMacAppResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -158,7 +158,7 @@ func (r *MacAppResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	resp.Diagnostics.Append(assignMacAppResourceModel(readCtx, &state, got)...)
+	resp.Diagnostics.Append(assignMacAppResourceModel(readCtx, &state, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -205,7 +205,7 @@ func (r *MacAppResource) Update(ctx context.Context, req resource.UpdateRequest,
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro Mac App Store app", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignMacAppResourceModel(updateCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignMacAppResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

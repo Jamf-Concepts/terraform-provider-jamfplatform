@@ -195,14 +195,13 @@ func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"ssh_username": schema.StringAttribute{
-				// Required on the wire: a create without an SSH username is rejected
-				// by /computerinvitations with HTTP 500, for both invitation types
-				// (wire-probed 2026-06-04). Hence schema-Required, not Optional.
-				MarkdownDescription: "Username of the SSH management account to provision on the enrolled computer. Required by Jamf Pro on every computer invitation. Changing this forces replacement.",
+				// Wire-probed 2026-06-26: /computerinvitations rejects a create with
+				// the <ssh_username> element absent (HTTP 500) for both invitation
+				// types, but accepts it empty. Hence Required (the element must be
+				// present) with no min-length validator — empty is valid, and a
+				// DEP-created invitation reads back empty.
+				MarkdownDescription: "Username of the SSH management account to provision on the enrolled computer. Required by Jamf Pro on every computer invitation, but may be empty. Changing this forces replacement.",
 				Required:            true,
-				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

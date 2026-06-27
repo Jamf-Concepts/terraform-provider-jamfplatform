@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	listschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
@@ -21,6 +20,11 @@ import (
 )
 
 const defaultListTimeout = 90 * time.Second
+
+// defaultItemReadTimeout bounds each per-item GET issued when IncludeResource is
+// requested (config generation). A single slow item is skipped from the
+// generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
 
 var (
 	_ list.ListResource              = &VPPAssignmentListResource{}
@@ -116,16 +120,21 @@ func (r *VPPAssignmentListResource) List(ctx context.Context, req list.ListReque
 		}
 
 		if req.IncludeResource {
-			state := VPPAssignmentResourceModel{
-				ID:                  id,
-				Name:                helpers.StringPointerValueOrNull(p.Name),
-				VPPAdminAccountID:   intStringOrNull(p.VppAdminAccountID),
-				VPPAdminAccountName: types.StringNull(),
-				IosAppAdamIDs:       types.SetNull(types.Int64Type),
-				MacAppAdamIDs:       types.SetNull(types.Int64Type),
-				EbookAdamIDs:        types.SetNull(types.Int64Type),
-				Timeouts:            helpers.NewResourceTimeoutsNullValue(vppAssignmentTimeoutAttributeTypes),
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetVPPAssignmentByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping Jamf Pro VPP assignment from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
+			state := VPPAssignmentResourceModel{
+				ID:       id,
+				Timeouts: helpers.NewResourceTimeoutsNullValue(vppAssignmentTimeoutAttributeTypes),
+			}
+			assignVPPAssignmentResourceModel(ctx, &state, got, true)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

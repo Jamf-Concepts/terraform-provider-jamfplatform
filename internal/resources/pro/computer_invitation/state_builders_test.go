@@ -84,3 +84,26 @@ func TestAssignComputerInvitationResourceModel_DriftAndSentinels(t *testing.T) {
 		t.Errorf("multiple_uses_allowed not mapped")
 	}
 }
+
+// TestAssignComputerInvitationResourceModel_SSHUsernameCoalesced asserts that an
+// absent/empty ssh_username (as a DEP_CUSTOM_ENROLL invitation reads back)
+// coalesces to "" rather than null. ssh_username is Required, so null would make
+// a faithfully-imported invitation fail validation ("Missing Configuration for
+// Required Attribute").
+func TestAssignComputerInvitationResourceModel_SSHUsernameCoalesced(t *testing.T) {
+	for name, src := range map[string]*proclassic.ComputerInvitation{
+		"absent": {ID: new(2), InvitationType: new("DEP_CUSTOM_ENROLL")},
+		"empty":  {ID: new(3), InvitationType: new("DEP_CUSTOM_ENROLL"), SshUsername: new("")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var state ComputerInvitationResourceModel
+			assignComputerInvitationResourceModel(&state, src)
+			if state.SSHUsername.IsNull() {
+				t.Errorf("ssh_username must not be null (Required); want empty string")
+			}
+			if state.SSHUsername.ValueString() != "" {
+				t.Errorf("ssh_username: got %q, want \"\"", state.SSHUsername.ValueString())
+			}
+		})
+	}
+}

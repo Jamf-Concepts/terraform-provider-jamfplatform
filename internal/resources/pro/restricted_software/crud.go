@@ -83,7 +83,7 @@ func (r *RestrictedSoftwareResource) Create(ctx context.Context, req resource.Cr
 		resp.Diagnostics.AddError("Error reading created Jamf Pro restricted software", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(createCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -159,7 +159,7 @@ func (r *RestrictedSoftwareResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
-	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(readCtx, &state, got)...)
+	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(readCtx, &state, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -205,7 +205,7 @@ func (r *RestrictedSoftwareResource) Update(ctx context.Context, req resource.Up
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro restricted software", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(updateCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

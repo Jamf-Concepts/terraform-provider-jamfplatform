@@ -29,7 +29,7 @@ func TestAssignPolicyResourceModel_MinimalPolicy(t *testing.T) {
 			Enabled: new(true),
 		},
 	}
-	diags := assignPolicyResourceModel(context.Background(), state, src)
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -65,7 +65,7 @@ func TestAssignPolicyResourceModel_FlattensScopeIDs(t *testing.T) {
 			},
 		},
 	}
-	diags := assignPolicyResourceModel(context.Background(), state, src)
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -99,7 +99,7 @@ func TestAssignPolicyResourceModel_RoundTripNotification(t *testing.T) {
 			NotificationType: new("Self Service"),
 		},
 	}
-	diags := assignPolicyResourceModel(context.Background(), state, src)
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -123,7 +123,7 @@ func TestAssignPolicyResourceModel_PackageConfigurationDistributionPoint(t *test
 			DistributionPoint: new("Dummy DP"),
 		},
 	}
-	diags := assignPolicyResourceModel(context.Background(), state, src)
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
@@ -149,11 +149,67 @@ func TestAssignPolicyResourceModel_PackageConfigurationConfiguredWins(t *testing
 			DistributionPoint: new("Server DP"),
 		},
 	}
-	diags := assignPolicyResourceModel(context.Background(), state, src)
+	diags := assignPolicyResourceModel(context.Background(), state, src, false)
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
 	if got := state.Packages.DistributionPoint.ValueString(); got != "Configured DP" {
 		t.Fatalf("preferCurrentStringPointer should keep configured value, got %q", got)
+	}
+}
+
+// TestAssignPolicyResourceModel_IncludeUnmanagedHydratesFromScratch pins the
+// config-generation contract: with includeUnmanaged set and an empty starting
+// model, every wire-present section is allocated and hydrated from the server.
+func TestAssignPolicyResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	t.Parallel()
+	state := &PolicyResourceModel{}
+	src := &proclassic.Policy{
+		ID:      new(9),
+		General: &proclassic.PolicyGeneral{Name: new("tf-acc"), Enabled: new(true)},
+		Scope: &proclassic.PolicyScope{
+			AllComputers: new(true),
+			ComputerGroups: &proclassic.PolicyScopeComputerGroups{
+				ComputerGroup: &[]proclassic.IDName{{ID: new(11)}, {ID: new(22)}},
+			},
+			Exclusions: &proclassic.PolicyScopeExclusions{},
+		},
+		Scripts: &proclassic.PolicyScripts{
+			Script: &[]proclassic.PolicyScriptsScriptItem{{ID: new(3), Priority: new("After")}},
+		},
+		PackageConfiguration: &proclassic.PolicyPackageConfiguration{
+			Packages: &proclassic.PolicyPackageConfigurationPackages{
+				Package: &[]proclassic.PolicyPackageConfigurationPackagesPackageItem{{ID: new(4)}},
+			},
+		},
+		SelfService: &proclassic.PolicySelfService{UseForSelfService: new(true)},
+	}
+	diags := assignPolicyResourceModel(context.Background(), state, src, true)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllComputers.ValueBool() {
+		t.Fatal("expected all_computers hydrated true")
+	}
+	if got := len(state.Scope.Targets.ComputerGroupIDs.Elements()); got != 2 {
+		t.Fatalf("expected 2 computer_group_ids, got %d", got)
+	}
+	if state.Scope.Exclusions == nil {
+		t.Fatal("expected exclusions allocated when wire-present")
+	}
+	if state.Scope.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Scope.Limitations)
+	}
+	if state.Scripts == nil || len(state.Scripts.Scripts) != 1 {
+		t.Fatalf("expected scripts hydrated; got %+v", state.Scripts)
+	}
+	if state.Packages == nil || len(state.Packages.Packages) != 1 {
+		t.Fatalf("expected packages hydrated; got %+v", state.Packages)
+	}
+	if state.SelfService == nil || !state.SelfService.UseForSelfService.ValueBool() {
+		t.Fatalf("expected self_service hydrated; got %+v", state.SelfService)
 	}
 }

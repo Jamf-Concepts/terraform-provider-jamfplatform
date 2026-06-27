@@ -43,8 +43,10 @@ func NewMobileAppListResource() list.ListResource {
 // optional `filter` block is applied client-side via filters.ApplyClassicFilter.
 // List items carry only id + name on the wire, so when IncludeResource is
 // requested (config generation) each app is fetched individually and hydrated
-// through the shared Read state-builder — matching the resource's import
-// fidelity.
+// through the shared Read state-builder with includeUnmanaged=true, populating
+// every wire-present section (general, scope, self_service, vpp,
+// app_configuration) so the generated config is complete rather than
+// general-only.
 type MobileAppListResource struct {
 	client *proclassic.Client
 }
@@ -152,7 +154,7 @@ func (r *MobileAppListResource) List(ctx context.Context, req list.ListRequest, 
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(mobileAppTimeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignMobileAppResourceModel(ctx, &state, got)...)
+			result.Diagnostics.Append(assignMobileAppResourceModel(ctx, &state, got, true)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

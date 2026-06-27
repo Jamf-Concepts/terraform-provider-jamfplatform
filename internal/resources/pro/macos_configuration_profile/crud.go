@@ -98,7 +98,7 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 	if got != nil && got.General != nil && got.General.Payloads != nil {
 		rawServerPayload = []byte(string(*got.General.Payloads))
 	}
-	resp.Diagnostics.Append(assignResourceModel(createCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -142,6 +142,7 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 			return
 		}
 		state.ID = identity.ID
+		state.Timeouts = helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
@@ -174,7 +175,7 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 	if got != nil && got.General != nil && got.General.Payloads != nil {
 		rawServerPayload = []byte(string(*got.General.Payloads))
 	}
-	resp.Diagnostics.Append(assignResourceModel(readCtx, &state, got)...)
+	resp.Diagnostics.Append(assignResourceModel(readCtx, &state, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -260,7 +261,7 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if got != nil && got.General != nil && got.General.Payloads != nil {
 		rawServerPayload = []byte(string(*got.General.Payloads))
 	}
-	resp.Diagnostics.Append(assignResourceModel(updateCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

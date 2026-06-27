@@ -22,7 +22,15 @@ import (
 // section would violate the framework's "produced inconsistent result after
 // apply" check (plan said null, we'd return a populated object). See
 // feedback_server_derived_echo_attrs at block granularity.
-func assignMacAppResourceModel(ctx context.Context, state *MacAppResourceModel, a *proclassic.MacApplication) diag.Diagnostics {
+//
+// includeUnmanaged inverts those section gates for the list resource's
+// config-generation path (terraform query -generate-config-out): there is no
+// plan to stay consistent with, so every wire-present optional section is
+// allocated and hydrated, yielding a complete exported config rather than a
+// general-only one. CRUD callers pass false. The mac-app flatteners use the
+// PreferCurrent* helpers (which adopt the wire value when the current state is
+// null), so allocating an empty section is sufficient for it to fully hydrate.
+func assignMacAppResourceModel(ctx context.Context, state *MacAppResourceModel, a *proclassic.MacApplication, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if a == nil {
 		return diags
@@ -37,11 +45,20 @@ func assignMacAppResourceModel(ctx context.Context, state *MacAppResourceModel, 
 	}
 	flattenMacAppGeneral(a.General, state.General)
 
+	if includeUnmanaged && state.Scope == nil && a.Scope != nil {
+		state.Scope = &scope.ComputerScopeModelNoIbeacons{}
+	}
 	if state.Scope != nil && a.Scope != nil {
-		flattenMacAppScope(ctx, a.Scope, state.Scope)
+		flattenMacAppScope(ctx, a.Scope, state.Scope, includeUnmanaged)
+	}
+	if includeUnmanaged && state.SelfService == nil && a.SelfService != nil {
+		state.SelfService = &MacAppSelfServiceModel{}
 	}
 	if state.SelfService != nil && a.SelfService != nil {
 		flattenMacAppSelfService(a.SelfService, state.SelfService)
+	}
+	if includeUnmanaged && state.Vpp == nil && a.Vpp != nil {
+		state.Vpp = &MacAppVppModel{}
 	}
 	if state.Vpp != nil && a.Vpp != nil {
 		flattenMacAppVpp(a.Vpp, state.Vpp)
@@ -79,7 +96,23 @@ func flattenMacAppGeneral(g *proclassic.MacApplicationGeneral, state *MacAppGene
 	}
 }
 
-func flattenMacAppScope(ctx context.Context, s *proclassic.MacApplicationScope, state *scope.ComputerScopeModelNoIbeacons) {
+// flattenMacAppScope refreshes the scope sub-blocks the caller already manages.
+// When includeUnmanaged is set (config generation) every wire-present sub-block
+// is first allocated so the from-scratch read hydrates the full scope rather
+// than leaving unmanaged targets/limitations/exclusions null.
+func flattenMacAppScope(ctx context.Context, s *proclassic.MacApplicationScope, state *scope.ComputerScopeModelNoIbeacons, includeUnmanaged bool) {
+	if includeUnmanaged {
+		if state.Targets == nil {
+			state.Targets = &scope.ComputerScopeTargetsModel{}
+		}
+		if state.Limitations == nil && s.Limitations != nil {
+			state.Limitations = &scope.ComputerScopeLimitationsModelNoIbeacons{}
+		}
+		if state.Exclusions == nil && s.Exclusions != nil {
+			state.Exclusions = &scope.ComputerScopeExclusionsModelNoIbeacons{}
+		}
+	}
+
 	// Targets are gated on caller management, mirroring the limitations /
 	// exclusions sub-blocks below: populating a targets block the user did not
 	// declare would violate the framework's "produced inconsistent result after

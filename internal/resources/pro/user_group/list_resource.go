@@ -24,6 +24,10 @@ import (
 // /usergroups endpoint.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout caps each per-item GET issued to hydrate a list result,
+// decoupled from the overall list budget so one slow record cannot stall the list.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &UserGroupListResource{}
 var _ list.ListResourceWithConfigure = &UserGroupListResource{}
 
@@ -35,9 +39,14 @@ func NewUserGroupListResource() list.ListResource {
 // UserGroupListResource implements Terraform query list support for Jamf Pro
 // user groups. Classic /usergroups has no RSQL — the optional `filter` block
 // is applied client-side via filters.ApplyClassicFilter after the full list
-// is fetched. List items carry only id, name, is_smart, is_notify_on_change
-// on the wire (surfaced as group_type and notify_on_membership_change);
-// every other resource attribute is set to null on list results.
+// is fetched. List items carry only id, name, is_smart, is_notify_on_change on
+// the wire, so on `include_resource` each item is re-fetched by id to hydrate
+// site, criteria and member_count — otherwise smart groups export with null
+// criteria and fail the "smart groups require a criterion" validator. Members
+// stay null (mirroring import; membership is managed only when configured), and
+// directory-service / group-ref criteria are not value-resolved here (the
+// managed resource does that on first Read). A per-item read failure drops just
+// that item (logged).
 type UserGroupListResource struct {
 	client *proclassic.Client
 }
@@ -136,19 +145,26 @@ func (r *UserGroupListResource) List(ctx context.Context, req list.ListRequest, 
 		}
 
 		if req.IncludeResource {
-			// List response carries id, name, is_smart, is_notify_on_change.
-			// Every other Optional/Computed attribute is null on list results.
+			itemCtx, cancelItem := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, getErr := r.client.GetUserGroupByID(itemCtx, id.ValueString())
+			cancelItem()
+			if getErr != nil {
+				tflog.Warn(ctx, "Skipping user group hydration after per-item read failed", map[string]any{
+					"id":    id.ValueString(),
+					"error": getErr.Error(),
+				})
+				continue
+			}
+
 			state := UserGroupResourceModel{
-				ID:                       id,
-				Name:                     helpers.StringPointerValueOrNull(u.Name),
-				GroupType:                groupTypeFromIsSmart(u.IsSmart),
-				NotifyOnMembershipChange: helpers.BoolPointerValueOrNull(u.IsNotifyOnChange),
-				SiteID:                   types.StringNull(),
-				SiteName:                 types.StringNull(),
-				Criteria:                 nil,
-				Members:                  types.SetNull(types.StringType),
-				MemberCount:              types.Int64Null(),
-				Timeouts:                 helpers.NewResourceTimeoutsNullValue(userGroupTimeoutAttributeTypes),
+				ID:       id,
+				Members:  types.SetNull(types.StringType),
+				Timeouts: helpers.NewResourceTimeoutsNullValue(userGroupTimeoutAttributeTypes),
+			}
+			result.Diagnostics.Append(assignUserGroupResourceModel(ctx, &state, got, false)...)
+			if result.Diagnostics.HasError() {
+				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
+				return
 			}
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {

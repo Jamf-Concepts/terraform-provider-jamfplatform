@@ -32,7 +32,7 @@ func sampleDeployment() *pro.AppInstallerDeployment {
 
 func TestAssignAppInstallerResourceModel_FlatScalars(t *testing.T) {
 	state := AppInstallerResourceModel{}
-	assignAppInstallerResourceModel(&state, sampleDeployment())
+	assignAppInstallerResourceModel(&state, sampleDeployment(), false)
 
 	if state.ID.ValueString() != "177" {
 		t.Errorf("id: got %q", state.ID.ValueString())
@@ -59,7 +59,7 @@ func TestAssignAppInstallerResourceModel_NestedBlocksGated(t *testing.T) {
 	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Description: new("desc")}
 
 	state := AppInstallerResourceModel{} // both blocks nil (unmanaged)
-	assignAppInstallerResourceModel(&state, d)
+	assignAppInstallerResourceModel(&state, d, false)
 	if state.NotificationSettings != nil {
 		t.Errorf("unmanaged notification_settings must stay nil")
 	}
@@ -93,7 +93,7 @@ func TestAssignAppInstallerResourceModel_NestedBlocksManaged(t *testing.T) {
 			},
 		},
 	}
-	assignAppInstallerResourceModel(&state, d)
+	assignAppInstallerResourceModel(&state, d, false)
 
 	if state.NotificationSettings == nil {
 		t.Fatalf("managed notification_settings must be refreshed")
@@ -128,7 +128,7 @@ func TestAssignAppInstallerResourceModel_CategoriesOmittedStaysNil(t *testing.T)
 	d := sampleDeployment()
 	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Categories: nil}
 	state := AppInstallerResourceModel{SelfServiceSettings: &SelfServiceSettingsModel{}} // Categories nil
-	assignAppInstallerResourceModel(&state, d)
+	assignAppInstallerResourceModel(&state, d, false)
 	if state.SelfServiceSettings.Categories != nil {
 		t.Errorf("omitted categories must stay nil, got %v", state.SelfServiceSettings.Categories)
 	}
@@ -140,7 +140,7 @@ func TestAssignAppInstallerResourceModel_CategoriesEmptyConfigStaysEmpty(t *test
 	d := sampleDeployment()
 	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{Categories: nil}
 	state := AppInstallerResourceModel{SelfServiceSettings: &SelfServiceSettingsModel{Categories: []SelfServiceCategoryModel{}}}
-	assignAppInstallerResourceModel(&state, d)
+	assignAppInstallerResourceModel(&state, d, false)
 	if state.SelfServiceSettings.Categories == nil {
 		t.Errorf("config-supplied empty categories must stay non-nil empty")
 	}
@@ -149,9 +149,43 @@ func TestAssignAppInstallerResourceModel_CategoriesEmptyConfigStaysEmpty(t *test
 	}
 }
 
+// TestAssignAppInstallerResourceModel_IncludeUnmanagedHydratesFromScratch pins
+// the config-generation contract: with includeUnmanaged set and an empty
+// starting model, every wire-present block is allocated and hydrated from the
+// server even though no prior state manages them. (categories stays nil because
+// a nil prior cannot disambiguate omitted-vs-empty membership; the block's
+// scalar fields hydrate regardless.)
+func TestAssignAppInstallerResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	d := sampleDeployment()
+	d.NotificationSettings = &pro.AppInstallerNotificationSettings{
+		NotificationMessage: new("hi"),
+		Deadline:            new(48),
+	}
+	d.SelfServiceSettings = &pro.AppInstallerSelfServiceSettings{
+		Description:               new("desc"),
+		IncludeInFeaturedCategory: new(true),
+	}
+
+	state := AppInstallerResourceModel{} // both blocks nil (unmanaged)
+	assignAppInstallerResourceModel(&state, d, true)
+
+	if state.NotificationSettings == nil {
+		t.Fatal("expected notification_settings allocated when wire-present")
+	}
+	if state.NotificationSettings.NotificationMessage.ValueString() != "hi" || state.NotificationSettings.Deadline.ValueInt64() != 48 {
+		t.Errorf("notification_settings not hydrated: %+v", state.NotificationSettings)
+	}
+	if state.SelfServiceSettings == nil {
+		t.Fatal("expected self_service_settings allocated when wire-present")
+	}
+	if state.SelfServiceSettings.Description.ValueString() != "desc" || !state.SelfServiceSettings.IncludeInFeaturedCategory.ValueBool() {
+		t.Errorf("self_service_settings not hydrated: %+v", state.SelfServiceSettings)
+	}
+}
+
 func TestAssignAppInstallerResourceModel_NilSafe(t *testing.T) {
 	state := AppInstallerResourceModel{ID: types.StringValue("keep")}
-	assignAppInstallerResourceModel(&state, nil)
+	assignAppInstallerResourceModel(&state, nil, false)
 	if state.ID.ValueString() != "keep" {
 		t.Errorf("nil response must not clobber state")
 	}

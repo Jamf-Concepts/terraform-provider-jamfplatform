@@ -44,8 +44,10 @@ func NewAppInstallerListResource() list.ListResource {
 // the optional `filter` block is applied client-side as a case-insensitive name
 // substring. List items carry identity (id) + display name only, so when
 // IncludeResource is requested (config generation) each deployment is fetched
-// individually and hydrated through the shared Read state-builder — matching
-// the resource's import fidelity.
+// individually and hydrated through the shared Read state-builder with
+// includeUnmanaged=true, populating every wire-present block (scalars,
+// notification_settings, self_service_settings) so the generated config is
+// complete rather than scalar-only.
 type AppInstallerListResource struct {
 	client *pro.Client
 }
@@ -147,7 +149,7 @@ func (r *AppInstallerListResource) List(ctx context.Context, req list.ListReques
 				ID:       helpers.StringPointerValueOrNull(&e.ID),
 				Timeouts: helpers.NewResourceTimeoutsNullValue(appInstallerTimeoutAttributeTypes),
 			}
-			assignAppInstallerResourceModel(&state, got)
+			assignAppInstallerResourceModel(&state, got, true)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

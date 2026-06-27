@@ -82,7 +82,7 @@ func TestAssignMobileApp_GuardedBlocks(t *testing.T) {
 		AppConfiguration: &proclassic.MobileDeviceApplicationAppConfiguration{Preferences: new("<dict/>")},
 	}
 
-	diags := assignMobileAppResourceModel(context.Background(), state, server)
+	diags := assignMobileAppResourceModel(context.Background(), state, server, false)
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
@@ -100,6 +100,59 @@ func TestAssignMobileApp_GuardedBlocks(t *testing.T) {
 	}
 	if state.ID.ValueString() != "42" {
 		t.Errorf("id not set: %q", state.ID.ValueString())
+	}
+}
+
+// TestAssignMobileAppResourceModel_IncludeUnmanagedHydratesFromScratch pins the
+// config-generation contract: with includeUnmanaged set and an empty starting
+// model, every wire-present section is allocated and hydrated from the server.
+func TestAssignMobileAppResourceModel_IncludeUnmanagedHydratesFromScratch(t *testing.T) {
+	state := &MobileAppResourceModel{}
+	server := &proclassic.MobileDeviceApplication{
+		ID:      new(42),
+		General: &proclassic.MobileDeviceApplicationGeneral{ID: new(42), Name: new("Maps"), OsType: new(osTypeIOS)},
+		Scope: &proclassic.MobileDeviceApplicationScope{
+			AllMobileDevices: new(true),
+			MobileDeviceGroups: &proclassic.MobileDeviceApplicationScopeMobileDeviceGroups{
+				MobileDeviceGroup: &[]proclassic.IDName{{ID: new(5)}, {ID: new(6)}},
+			},
+			Exclusions: &proclassic.MobileDeviceApplicationScopeExclusions{
+				Users: &proclassic.MobileDeviceApplicationScopeExclusionsUsers{
+					User: &[]proclassic.MobileDeviceApplicationScopeExclusionsUsersUserItem{{Name: new("alice")}},
+				},
+			},
+		},
+		SelfService:      &proclassic.MobileDeviceApplicationSelfService{SelfServiceInstallButtonText: new("Install")},
+		Vpp:              &proclassic.MobileDeviceApplicationVpp{AssignVppDeviceBasedLicenses: new(true)},
+		AppConfiguration: &proclassic.MobileDeviceApplicationAppConfiguration{Preferences: new("<dict/>")},
+	}
+	diags := assignMobileAppResourceModel(context.Background(), state, server, true)
+	if diags.HasError() {
+		t.Fatalf("unexpected diags: %v", diags)
+	}
+	if state.Scope == nil || state.Scope.Targets == nil {
+		t.Fatalf("expected scope.targets hydrated from scratch; got %+v", state.Scope)
+	}
+	if !state.Scope.Targets.AllMobileDevices.ValueBool() {
+		t.Fatal("expected all_mobile_devices hydrated true")
+	}
+	if got := len(state.Scope.Targets.MobileDeviceGroupIDs.Elements()); got != 2 {
+		t.Fatalf("expected 2 mobile_device_group_ids, got %d", got)
+	}
+	if state.Scope.Exclusions == nil {
+		t.Fatal("expected exclusions allocated when wire-present")
+	}
+	if state.Scope.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Scope.Limitations)
+	}
+	if state.SelfService == nil || state.SelfService.InstallButtonText.ValueString() != "Install" {
+		t.Fatalf("expected self_service hydrated; got %+v", state.SelfService)
+	}
+	if state.Vpp == nil || !state.Vpp.AssignVppDeviceBasedLicenses.ValueBool() {
+		t.Fatalf("expected vpp hydrated; got %+v", state.Vpp)
+	}
+	if state.AppConfiguration == nil || state.AppConfiguration.Preferences.ValueString() != "<dict/>" {
+		t.Fatalf("expected app_configuration hydrated; got %+v", state.AppConfiguration)
 	}
 }
 
@@ -129,7 +182,7 @@ func TestFlattenMobileAppScope_RoundTrip(t *testing.T) {
 			},
 		},
 	}
-	flattenMobileAppScope(ctx, s, state)
+	flattenMobileAppScope(ctx, s, state, false)
 
 	var mdIDs []string
 	state.Targets.MobileDeviceIDs.ElementsAs(ctx, &mdIDs, false)

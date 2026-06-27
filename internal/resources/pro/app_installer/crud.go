@@ -76,7 +76,7 @@ func (r *AppInstallerResource) Create(ctx context.Context, req resource.CreateRe
 		resp.Diagnostics.AddError("Error reading created App Installer deployment", err.Error())
 		return
 	}
-	assignAppInstallerResourceModel(&plan, got)
+	assignAppInstallerResourceModel(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, appInstallerIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -149,7 +149,7 @@ func (r *AppInstallerResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	assignAppInstallerResourceModel(&state, got)
+	assignAppInstallerResourceModel(&state, got, false)
 
 	// Reverse-resolve app_title_id → app_title_name. The deployment GET returns
 	// only the ID; on import there is no prior config to echo, so the name must
@@ -200,7 +200,7 @@ func (r *AppInstallerResource) Update(ctx context.Context, req resource.UpdateRe
 		resp.Diagnostics.AddError("Error reading updated App Installer deployment", err.Error())
 		return
 	}
-	assignAppInstallerResourceModel(&plan, got)
+	assignAppInstallerResourceModel(&plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, appInstallerIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {

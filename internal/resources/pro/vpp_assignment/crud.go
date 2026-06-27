@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -73,7 +74,7 @@ func (r *VPPAssignmentResource) Create(ctx context.Context, req resource.CreateR
 		resp.Diagnostics.AddError("Error reading created Jamf Pro VPP assignment", err.Error())
 		return
 	}
-	assignVPPAssignmentResourceModel(createCtx, &plan, got)
+	assignVPPAssignmentResourceModel(createCtx, &plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppAssignmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -103,6 +104,9 @@ func (r *VPPAssignmentResource) Read(ctx context.Context, req resource.ReadReque
 		}
 		state.ID = identity.ID
 		state.Timeouts = helpers.NewResourceTimeoutsNullValue(vppAssignmentTimeoutAttributeTypes)
+		state.IosAppAdamIDs = types.SetNull(types.Int64Type)
+		state.MacAppAdamIDs = types.SetNull(types.Int64Type)
+		state.EbookAdamIDs = types.SetNull(types.Int64Type)
 	} else {
 		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 		if resp.Diagnostics.HasError() {
@@ -137,7 +141,7 @@ func (r *VPPAssignmentResource) Read(ctx context.Context, req resource.ReadReque
 		resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment", err.Error())
 		return
 	}
-	assignVPPAssignmentResourceModel(readCtx, &state, got)
+	assignVPPAssignmentResourceModel(readCtx, &state, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppAssignmentIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -180,7 +184,7 @@ func (r *VPPAssignmentResource) Update(ctx context.Context, req resource.UpdateR
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro VPP assignment", err.Error())
 		return
 	}
-	assignVPPAssignmentResourceModel(updateCtx, &plan, got)
+	assignVPPAssignmentResourceModel(updateCtx, &plan, got, false)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppAssignmentIdentityModel{ID: plan.ID})...)
 	if resp.Diagnostics.HasError() {
