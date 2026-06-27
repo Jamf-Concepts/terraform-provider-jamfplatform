@@ -115,3 +115,45 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
     }]
   }
 }
+
+# Activation Conditions Blueprint
+#
+# Activation conditions further restrict which scoped devices a blueprint applies
+# to. The expression is authored most easily in the Jamf UI ("Activation conditions"
+# editor -> Text view) and copied here verbatim. See the syntax reference:
+# https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference
+#
+# Device groups in the expression are referenced by their Platform UUID, so a
+# managed device group can be referenced by its `id` with ordinary Terraform
+# interpolation — keeping the condition in sync with the group it points at.
+resource "jamfplatform_device_group" "shared_ipads" {
+  name        = "Shared iPads"
+  group_type  = "smart"
+  device_type = "mobile"
+  description = "Managed by Terraform"
+  criteria = [
+    {
+      criteria = "Model"
+      operator = "like"
+      value    = "iPad"
+    },
+  ]
+}
+
+resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
+  name        = "Shared iPad Software Updates"
+  description = "Managed by Terraform"
+  deployed    = true
+
+  device_groups = [jamfplatform_device_group.shared_ipads.id]
+
+  # Only activate on supervised iPads that belong to the managed device group above.
+  # The group ID is interpolated from the resource, so the condition tracks the group.
+  activation_conditions = "ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.shared_ipads.id}'} AND @status(device.model.family) == 'iPad'"
+
+  software_update = {
+    ignore_major_versions = true
+    deployment_time       = "02:00"
+    enforce_after_days    = 7
+  }
+}

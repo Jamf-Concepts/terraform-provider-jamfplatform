@@ -8,6 +8,8 @@ package blueprint_test
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -125,6 +127,125 @@ func TestAccResource_Blueprint_CreateAndUpdate(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_blueprints_blueprint.test_update", "name", nameRenamed),
 					resource.TestCheckResourceAttr("jamfplatform_blueprints_blueprint.test_update", "description", "Updated description"),
+				),
+			},
+		},
+	})
+}
+
+// checkActivationConditionsContainGroupID verifies the blueprint's
+// activation_conditions expression embeds the managed device group's ID verbatim,
+// proving Terraform interpolation of a device-group reference round-trips through
+// the API.
+func checkActivationConditionsContainGroupID(blueprintRes, groupRes string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		group, ok := s.RootModule().Resources[groupRes]
+		if !ok {
+			return fmt.Errorf("device group resource %q not found in state", groupRes)
+		}
+		blueprint, ok := s.RootModule().Resources[blueprintRes]
+		if !ok {
+			return fmt.Errorf("blueprint resource %q not found in state", blueprintRes)
+		}
+		groupID := group.Primary.ID
+		conditions := blueprint.Primary.Attributes["activation_conditions"]
+		if !strings.Contains(conditions, groupID) {
+			return fmt.Errorf("activation_conditions %q does not contain device group id %q", conditions, groupID)
+		}
+		return nil
+	}
+}
+
+func TestAccResource_Blueprint_ActivationConditions(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-activation-conditions-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			// Step 1: activation_conditions references the managed device group by id via
+			// Terraform interpolation; the resolved expression must round-trip with the
+			// group's UUID embedded verbatim.
+			{
+				Config: testBlueprintConfig(smartGroupHCL("activation"), fmt.Sprintf(`
+					resource "jamfplatform_blueprints_blueprint" "test_activation" {
+						name          = %q
+						description   = "Acceptance test — safe to delete"
+						deployed      = false
+						device_groups = [jamfplatform_device_group.scope.id]
+
+						activation_conditions = "ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.scope.id}'} AND @status(device.model.family) == 'iPad'"
+
+						software_update = {
+							ignore_major_versions = true
+							deployment_time       = "02:00"
+							enforce_after_days    = 7
+						}
+					}
+				`, name)),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_blueprints_blueprint.test_activation", "id"),
+					resource.TestMatchResourceAttr(
+						"jamfplatform_blueprints_blueprint.test_activation",
+						"activation_conditions",
+						regexp.MustCompile(`^ANY @property\(jamf\.device\.groups\) IN \{'[0-9a-fA-F-]{36}'\} AND @status\(device\.model\.family\) == 'iPad'$`),
+					),
+					checkActivationConditionsContainGroupID(
+						"jamfplatform_blueprints_blueprint.test_activation",
+						"jamfplatform_device_group.scope",
+					),
+				),
+			},
+			// Step 2: replace with a static expression; verifies the update path round-trips
+			// the value byte-for-byte (no server-side normalization).
+			{
+				Config: testBlueprintConfig(smartGroupHCL("activation"), fmt.Sprintf(`
+					resource "jamfplatform_blueprints_blueprint" "test_activation" {
+						name          = %q
+						description   = "Acceptance test — safe to delete"
+						deployed      = false
+						device_groups = [jamfplatform_device_group.scope.id]
+
+						activation_conditions = "@status(device.model.family) == 'iPad'"
+
+						software_update = {
+							ignore_major_versions = true
+							deployment_time       = "02:00"
+							enforce_after_days    = 7
+						}
+					}
+				`, name)),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"jamfplatform_blueprints_blueprint.test_activation",
+						"activation_conditions",
+						"@status(device.model.family) == 'iPad'",
+					),
+				),
+			},
+			// Step 3: drop activation_conditions entirely; it must clear back to null.
+			{
+				Config: testBlueprintConfig(smartGroupHCL("activation"), fmt.Sprintf(`
+					resource "jamfplatform_blueprints_blueprint" "test_activation" {
+						name          = %q
+						description   = "Acceptance test — safe to delete"
+						deployed      = false
+						device_groups = [jamfplatform_device_group.scope.id]
+
+						software_update = {
+							ignore_major_versions = true
+							deployment_time       = "02:00"
+							enforce_after_days    = 7
+						}
+					}
+				`, name)),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckNoResourceAttr(
+						"jamfplatform_blueprints_blueprint.test_activation",
+						"activation_conditions",
+					),
 				),
 			},
 		},

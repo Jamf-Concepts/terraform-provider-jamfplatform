@@ -44,6 +44,12 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 	deviceGroupsSet, _ := types.SetValueFrom(context.Background(), types.StringType, scopeDeviceGroups(blueprint.Scope))
 	model.DeviceGroups = deviceGroupsSet
 
+	var activationPredicate *string
+	if len(blueprint.Steps) > 0 {
+		activationPredicate = blueprint.Steps[0].ActivationPredicate
+	}
+	model.ActivationConditions = helpers.ReconcileOptionalStringPointer(activationPredicate, model.ActivationConditions)
+
 	apiComponentsByID := make(map[string]blueprints.Component)
 	var rawComponents []ComponentModel
 

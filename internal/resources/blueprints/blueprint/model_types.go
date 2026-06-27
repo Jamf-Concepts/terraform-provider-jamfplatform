@@ -17,6 +17,7 @@ type BlueprintResourceModel struct {
 	Description               types.String                                   `tfsdk:"description"`
 	Deployed                  types.Bool                                     `tfsdk:"deployed"`
 	DeviceGroups              types.Set                                      `tfsdk:"device_groups"`
+	ActivationConditions      types.String                                   `tfsdk:"activation_conditions"`
 	Components                []ComponentModel                               `tfsdk:"raw_component"`
 	AudioAccessorySettings    *components.AudioAccessorySettingsComponent    `tfsdk:"audio_accessory_settings"`
 	CustomDeclarations        *components.CustomDeclarationsComponent        `tfsdk:"custom_declarations"`
@@ -39,16 +40,17 @@ type BlueprintResourceModel struct {
 
 // BlueprintDataSourceModel defines the data structure for the blueprint data source.
 type BlueprintDataSourceModel struct {
-	ID              types.String             `tfsdk:"id"`
-	Name            types.String             `tfsdk:"name"`
-	BlueprintID     types.String             `tfsdk:"blueprint_id"`
-	Description     types.String             `tfsdk:"description"`
-	Created         types.String             `tfsdk:"created"`
-	Updated         types.String             `tfsdk:"updated"`
-	DeploymentState types.String             `tfsdk:"deployment_state"`
-	DeviceGroups    types.List               `tfsdk:"device_groups"`
-	Components      []ComponentModel         `tfsdk:"component"`
-	Timeouts        datasourceTimeouts.Value `tfsdk:"timeouts"`
+	ID                   types.String             `tfsdk:"id"`
+	Name                 types.String             `tfsdk:"name"`
+	BlueprintID          types.String             `tfsdk:"blueprint_id"`
+	Description          types.String             `tfsdk:"description"`
+	Created              types.String             `tfsdk:"created"`
+	Updated              types.String             `tfsdk:"updated"`
+	DeploymentState      types.String             `tfsdk:"deployment_state"`
+	DeviceGroups         types.List               `tfsdk:"device_groups"`
+	ActivationConditions types.String             `tfsdk:"activation_conditions"`
+	Components           []ComponentModel         `tfsdk:"component"`
+	Timeouts             datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // ComponentModel defines the data structure for a blueprint component.
