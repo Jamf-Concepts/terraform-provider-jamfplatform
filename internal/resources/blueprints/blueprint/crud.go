@@ -45,8 +45,9 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 	stepName := "Declaration group"
 	steps := []blueprints.BlueprintStep{
 		{
-			Name:       &stepName,
-			Components: allComponents,
+			Name:                &stepName,
+			Components:          allComponents,
+			ActivationPredicate: data.ActivationConditions.ValueStringPointer(),
 		},
 	}
 
@@ -207,8 +208,9 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 	stepName := "Declaration group"
 	steps := []blueprints.BlueprintStep{
 		{
-			Name:       &stepName,
-			Components: allComponents,
+			Name:                &stepName,
+			Components:          allComponents,
+			ActivationPredicate: data.ActivationConditions.ValueStringPointer(),
 		},
 	}
 

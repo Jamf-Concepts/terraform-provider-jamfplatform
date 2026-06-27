@@ -92,6 +92,20 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 					)),
 				},
 			},
+			"activation_conditions": schema.StringAttribute{
+				MarkdownDescription: "Optional activation condition expression that further restricts which scoped devices the blueprint applies to. " +
+					"An expression combines a status item, an operator, and a value — using terms such as `@status(...)` and `@property(jamf.device.groups)` " +
+					"with operators like `==`, `!=`, `IN {…}`, `ANY`, `NONE`, `AND`, `OR`, and `NOT`. " +
+					"See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the full syntax. " +
+					"The simplest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. " +
+					"Device groups are referenced by their Platform UUID, so ordinary Terraform interpolation works — reference a managed `jamfplatform_device_group` by its `id` " +
+					"to keep conditions in sync, e.g. `\"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}\"`. " +
+					"When omitted, the blueprint applies to all devices in the targeted device groups.",
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtMost(10000),
+				},
+			},
 			"created": schema.StringAttribute{
 				MarkdownDescription: "Creation timestamp.",
 				Computed:            true,

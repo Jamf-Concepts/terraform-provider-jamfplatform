@@ -35,6 +35,7 @@ output "blueprint_example_all" {
 
 ### Read-Only
 
+- `activation_conditions` (String) Activation condition expression that further restricts which scoped devices the blueprint applies to. Empty when the blueprint applies to all devices in the targeted device groups.
 - `blueprint_id` (String) Blueprint ID.
 - `component` (Attributes List) Blueprint components. (see [below for nested schema](#nestedatt--component))
 - `created` (String) Created at (RFC3339).

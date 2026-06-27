@@ -77,6 +77,10 @@ func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				ElementType:         types.StringType,
 				Computed:            true,
 			},
+			"activation_conditions": schema.StringAttribute{
+				MarkdownDescription: "Activation condition expression that further restricts which scoped devices the blueprint applies to. Empty when the blueprint applies to all devices in the targeted device groups.",
+				Computed:            true,
+			},
 			"component": schema.ListNestedAttribute{
 				MarkdownDescription: "Blueprint components.",
 				Computed:            true,
@@ -170,6 +174,11 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	deviceGroupsList, _ := types.ListValueFrom(context.Background(), types.StringType, scopeDeviceGroups(bp.Scope))
 
+	var activationConditions types.String
+	if len(bp.Steps) > 0 {
+		activationConditions = types.StringValue(helpers.DerefString(bp.Steps[0].ActivationPredicate))
+	}
+
 	var components []ComponentModel
 	if len(bp.Steps) > 0 {
 		step := bp.Steps[0]
@@ -198,16 +207,17 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	timeoutsValue := data.Timeouts
 	data = BlueprintDataSourceModel{
-		ID:              data.ID,
-		Name:            types.StringValue(bp.Name),
-		BlueprintID:     types.StringValue(bp.ID),
-		Description:     types.StringValue(helpers.DerefString(bp.Description)),
-		Created:         types.StringValue(bp.Created.Format(time.RFC3339)),
-		Updated:         types.StringValue(bp.Updated.Format(time.RFC3339)),
-		DeploymentState: types.StringValue(deployState),
-		DeviceGroups:    deviceGroupsList,
-		Components:      components,
-		Timeouts:        timeoutsValue,
+		ID:                   data.ID,
+		Name:                 types.StringValue(bp.Name),
+		BlueprintID:          types.StringValue(bp.ID),
+		Description:          types.StringValue(helpers.DerefString(bp.Description)),
+		Created:              types.StringValue(bp.Created.Format(time.RFC3339)),
+		Updated:              types.StringValue(bp.Updated.Format(time.RFC3339)),
+		DeploymentState:      types.StringValue(deployState),
+		DeviceGroups:         deviceGroupsList,
+		ActivationConditions: activationConditions,
+		Components:           components,
+		Timeouts:             timeoutsValue,
 	}
 
 	tflog.Trace(ctx, "read a data source")
