@@ -45,7 +45,7 @@ func (d *MacAppDataSource) Metadata(ctx context.Context, req datasource.Metadata
 // Schema returns the data source schema.
 func (d *MacAppDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro App Store Mac app by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the app as a resource for full detail.",
+		MarkdownDescription: "Look up a Jamf Pro App Store Mac app by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the app as a resource for full detail." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App ID. Mutually exclusive with `name`.",

@@ -70,7 +70,7 @@ func (r *SiteResource) IdentitySchema(ctx context.Context, req resource.Identity
 // Schema returns the Terraform schema for the site resource.
 func (r *SiteResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes.",
+		MarkdownDescription: "Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Site ID assigned by Jamf Pro.",

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_re_enrollment_settings Data Source - terraform-pro
 subcategory: ""
 description: |-
   Read the current Jamf Pro Re-enrollment settings (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Re-enrollment | `read:pro:re-enrollment` |
 ---
 
 # jamfplatform_pro_re_enrollment_settings (Data Source)
 
 Read the current Jamf Pro Re-enrollment settings (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Re-enrollment | `read:pro:re-enrollment` |
 
 ## Example Usage
 

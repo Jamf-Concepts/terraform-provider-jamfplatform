@@ -40,7 +40,7 @@ func (a *RestartAction) Metadata(ctx context.Context, req action.MetadataRequest
 
 func (a *RestartAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Requests that a device restart. Requires **Device Management Actions API access**.",
+		MarkdownDescription: "Requests that a device restart. Requires **Device Management Actions API access**." + restartDevicePrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
 				Optional:            true,

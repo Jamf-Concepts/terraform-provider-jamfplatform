@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_ebook List Resource - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Lists Jamf Pro ebooks. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-ebook read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:ebooks` |
 ---
 
 # jamfplatform_pro_ebook (List Resource)
 
 Lists Jamf Pro ebooks. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-ebook read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:ebooks` |
 
 ## Example Usage
 

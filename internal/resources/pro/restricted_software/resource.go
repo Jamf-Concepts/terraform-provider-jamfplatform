@@ -109,7 +109,7 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 	}
 
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro restricted software record — the \"Restricted software\" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations.",
+		MarkdownDescription: "Manages a Jamf Pro restricted software record — the \"Restricted software\" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Restricted software ID assigned by Jamf Pro.",

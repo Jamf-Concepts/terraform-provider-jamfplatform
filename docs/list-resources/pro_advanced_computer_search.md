@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_advanced_computer_search List Resource - terraform
 subcategory: ""
 description: |-
   Lists Jamf Pro advanced computer searches. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:advanced-computer-searches` |
 ---
 
 # jamfplatform_pro_advanced_computer_search (List Resource)
 
 Lists Jamf Pro advanced computer searches. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:advanced-computer-searches` |
 
 ## Example Usage
 

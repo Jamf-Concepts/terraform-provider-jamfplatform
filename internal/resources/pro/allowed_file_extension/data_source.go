@@ -44,7 +44,7 @@ func (d *AllowedFileExtensionDataSource) Metadata(ctx context.Context, req datas
 // Schema returns the data source schema.
 func (d *AllowedFileExtensionDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro allowed file extension by ID or by extension. Exactly one of `id` or `extension` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro allowed file extension by ID or by extension. Exactly one of `id` or `extension` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Allowed file extension ID. Mutually exclusive with `extension`.",

@@ -75,7 +75,7 @@ func (r *PrinterResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the printer resource.
 func (r *PrinterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro printer. Printers are reusable definitions Jamf policies use to map an IPP / LPD / SMB printer (and its PPD) onto Mac computers. The `use_generic` toggle is bound to the PPD trio (`ppd`, `ppd_path`, `ppd_contents`) by cross-field rules enforced at plan time — see each attribute for details.",
+		MarkdownDescription: "Manages a Jamf Pro printer. Printers are reusable definitions Jamf policies use to map an IPP / LPD / SMB printer (and its PPD) onto Mac computers. The `use_generic` toggle is bound to the PPD trio (`ppd`, `ppd_path`, `ppd_contents`) by cross-field rules enforced at plan time — see each attribute for details." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Printer ID assigned by Jamf Pro.",

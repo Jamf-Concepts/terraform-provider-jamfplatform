@@ -61,7 +61,7 @@ func (d *DataSource) Metadata(_ context.Context, req datasource.MetadataRequest,
 // Schema returns the data source schema.
 func (d *DataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a macOS configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied. Returns a flat Computed projection of the most-frequently looked-up fields. To manage the full payload, use the `jamfplatform_pro_macos_configuration_profile` resource.",
+		MarkdownDescription: "Look up a macOS configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied. Returns a flat Computed projection of the most-frequently looked-up fields. To manage the full payload, use the `jamfplatform_pro_macos_configuration_profile` resource." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":                  schema.StringAttribute{MarkdownDescription: "Profile ID. Mutually exclusive with `name`.", Optional: true, Computed: true},
 			"name":                schema.StringAttribute{MarkdownDescription: "Profile display name (exact match). Mutually exclusive with `id`.", Optional: true, Computed: true},

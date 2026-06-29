@@ -86,7 +86,7 @@ func (r *LocalAdminPasswordSettingsResource) Schema(ctx context.Context, req res
 		MarkdownDescription: "Manages the Jamf Pro **local administrator password (LAPS)** settings (UI: Settings → Computer Management → Security → \"Password settings for managed local administrator accounts\"). Singleton — one record per tenant. These settings apply to all managed local administrator accounts configured in User-initiated enrollment settings and computer PreStage enrollments.\n\n" +
 			"**Omit = preserve** — each control you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the controls you declare. Each control you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset and leave the rest as configured in the admin console.\n\n" +
 			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The LAPS settings are left intact on the tenant; they cannot be deleted.\n\n" +
-			"Import with `terraform import jamfplatform_pro_local_admin_password_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_local_admin_password_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

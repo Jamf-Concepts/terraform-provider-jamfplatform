@@ -52,7 +52,7 @@ func (a *DeviceLockAction) Schema(ctx context.Context, req action.SchemaRequest,
 		MarkdownDescription: "Six-digit PIN required to unlock a computer. Applies to computers only.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Locks a computer or mobile device.",
+		MarkdownDescription: "Locks a computer or mobile device." + deviceLockPrivileges,
 		Attributes:          attrs,
 	}
 }

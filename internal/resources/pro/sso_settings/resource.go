@@ -95,7 +95,7 @@ func (r *SsoSettingsResource) Schema(ctx context.Context, req resource.SchemaReq
 			"**Account-Driven Enrollment dependency** — `enrollment_sso_for_account_driven_enrollment_enabled = true` requires Account-Driven Device Enrollment to be enabled on the tenant. Jamf Pro will reject the apply with a field-named error if the prerequisite is missing.\n\n" +
 			"**Concurrency** — Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.\n\n" +
 			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set `sso_enabled = false` explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.\n\n" +
-			"Import with `terraform import jamfplatform_pro_sso_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_sso_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

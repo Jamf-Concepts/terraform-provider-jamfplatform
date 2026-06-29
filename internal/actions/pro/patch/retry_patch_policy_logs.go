@@ -39,7 +39,7 @@ func (a *RetryPatchPolicyLogsAction) Metadata(ctx context.Context, req action.Me
 
 func (a *RetryPatchPolicyLogsAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Retries failed patch policy installation attempts, optionally for specific computers.",
+		MarkdownDescription: "Retries failed patch policy installation attempts, optionally for specific computers." + retryPatchPolicyLogsPrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"patch_policy_id": actionschema.StringAttribute{
 				Required:            true,

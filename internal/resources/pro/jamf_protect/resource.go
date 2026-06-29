@@ -89,7 +89,7 @@ func (r *JamfProtectResource) Schema(ctx context.Context, req resource.SchemaReq
 		MarkdownDescription: "Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). Singleton — one registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. " +
 			"Changing `api_url`, `client_id`, or bumping `password_wo_version` re-registers in place — the server overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. " +
 			"**Unregistering note:** destroying this resource removes the registration only — configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the `jamfplatform_pro_jamf_protect_plans` data source). " +
-			"Import with `terraform import jamfplatform_pro_jamf_protect.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_jamf_protect.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

@@ -4,11 +4,32 @@ page_title: "jamfplatform_pro_self_service_branding_macos Resource - terraform-p
 subcategory: ""
 description: |-
   Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it (the Self Service app reverts to default branding). All fields are optional; removing a field from configuration clears it on the tenant. Reference branding images by ID from jamfplatform_pro_self_service_branding_image (the branding image store is separate from jamfplatform_pro_icon). Import with terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
+  | Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
+  | Read Self Service | `read:pro:self-service` |
+  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+  | Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
 ---
 
 # jamfplatform_pro_self_service_branding_macos (Resource)
 
 Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it (the Self Service app reverts to default branding). All fields are optional; removing a field from configuration clears it on the tenant. Reference branding images by ID from `jamfplatform_pro_self_service_branding_image` (the branding image store is separate from `jamfplatform_pro_icon`). Import with `terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
+| Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
+| Read Self Service | `read:pro:self-service` |
+| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+| Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
 
 ## Example Usage
 

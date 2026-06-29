@@ -4,11 +4,26 @@ page_title: "jamfplatform_blueprints_blueprint List Resource - terraform-provide
 subcategory: ""
 description: |-
   Searches for Jamf Blueprints with an optional case-insensitive substring filter.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:blueprints` |
+  | `read:school:blueprints` |
 ---
 
 # jamfplatform_blueprints_blueprint (List Resource)
 
 Searches for Jamf Blueprints with an optional case-insensitive substring filter.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:blueprints` |
+| `read:school:blueprints` |
 
 ## Example Usage
 

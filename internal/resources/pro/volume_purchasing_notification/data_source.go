@@ -45,7 +45,7 @@ func (d *VolumePurchasingNotificationDataSource) Metadata(ctx context.Context, r
 // Schema returns the data source schema.
 func (d *VolumePurchasingNotificationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a single Volume Purchasing notification by ID or by exact name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a single Volume Purchasing notification by ID or by exact name. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Notification ID. Mutually exclusive with `name`.",

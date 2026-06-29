@@ -81,7 +81,7 @@ func (d *DirectoryBindingDataSource) Metadata(ctx context.Context, req datasourc
 // Schema returns the data source schema.
 func (d *DirectoryBindingDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.",
+		MarkdownDescription: "Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Directory binding ID. Mutually exclusive with `name`.",

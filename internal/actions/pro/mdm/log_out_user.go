@@ -36,7 +36,7 @@ func (a *LogOutUserAction) Metadata(ctx context.Context, req action.MetadataRequ
 
 func (a *LogOutUserAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Logs out the current user on a Shared iPad.",
+		MarkdownDescription: "Logs out the current user on a Shared iPad." + logOutUserPrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
 }

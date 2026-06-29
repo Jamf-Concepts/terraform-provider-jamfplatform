@@ -74,7 +74,7 @@ func (r *SelfServicePlusSettingsResource) IdentitySchema(ctx context.Context, re
 func (r *SelfServicePlusSettingsResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro Self Service Plus settings. Singleton — one record per tenant. " +
-			"Import with `terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

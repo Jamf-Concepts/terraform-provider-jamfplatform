@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_mobile_device_invitation Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation cannot be updated in place — changing any attribute forces Terraform to destroy and recreate it, which mints a new invitation code.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:mobile-device-enrollment-invitations` |
+  | `delete:pro:mobile-device-enrollment-invitations` |
+  | `read:pro:mobile-device-enrollment-invitations` |
 ---
 
 # jamfplatform_pro_mobile_device_invitation (Resource)
 
 Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:mobile-device-enrollment-invitations` |
+| `delete:pro:mobile-device-enrollment-invitations` |
+| `read:pro:mobile-device-enrollment-invitations` |
 
 ## Example Usage
 

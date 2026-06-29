@@ -38,7 +38,7 @@ func (d *ApiClientDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Jamf Pro never returns it on read.
 func (d *ApiClientDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro API client by ID. The client secret is never exposed — Jamf Pro does not return it on read.",
+		MarkdownDescription: "Look up a Jamf Pro API client by ID. The client secret is never exposed — Jamf Pro does not return it on read." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "API client ID to look up.",

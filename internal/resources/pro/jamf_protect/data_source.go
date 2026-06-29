@@ -44,7 +44,7 @@ func (d *JamfProtectPlansDataSource) Schema(ctx context.Context, req datasource.
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns the Jamf Protect plans previously synced into Jamf Pro (Settings → Jamf apps → Jamf Protect → Plans), with each plan's associated configuration profile. " +
 			"The catalog reflects the most recent plans sync, not the live Protect instance — manage the registration with `jamfplatform_pro_jamf_protect` (which syncs on every apply) or trigger Sync Plans in the Jamf Pro UI to refresh it. " +
-			"The catalog persists after unregistering, so this data source also works on an unregistered tenant (the rows may then be stale). An empty result is not an error.",
+			"The catalog persists after unregistering, so this data source also works on an unregistered tenant (the rows may then be stale). An empty result is not an error." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

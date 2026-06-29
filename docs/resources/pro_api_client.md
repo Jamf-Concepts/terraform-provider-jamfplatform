@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro API client (Settings → System → API roles and clients). An API client authenticates to the Jamf Pro API using the OAuth client-credentials grant; its privileges come from the jamfplatform_pro_api_roles assigned in api_roles.
   Client secret lifecycle: Jamf Pro generates the client secret and returns it only once, at generation time — it can never be read back afterwards. Set credential_rotation to generate a secret (the client must be enabled); change that value to rotate it. The generated client_secret is stored — Sensitive — in Terraform state so dependent resources can consume it. Disabling the client (enabled = false) revokes its credentials in Jamf Pro.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create API Integrations | `create:pro:api-integrations` |
+  | Delete API Integrations | `delete:pro:api-integrations` |
+  | Read API Integrations | `read:pro:api-integrations` |
+  | Update API Integrations | `update:pro:api-integrations` |
 ---
 
 # jamfplatform_pro_api_client (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro API client (Settings → System → API roles and clients). An API client authenticates to the Jamf Pro API using the OAuth client-credentials grant; its privileges come from the `jamfplatform_pro_api_role`s assigned in `api_roles`.
 
 **Client secret lifecycle:** Jamf Pro generates the client secret and returns it only once, at generation time — it can never be read back afterwards. Set `credential_rotation` to generate a secret (the client must be `enabled`); change that value to rotate it. The generated `client_secret` is stored — `Sensitive` — in Terraform state so dependent resources can consume it. Disabling the client (`enabled = false`) revokes its credentials in Jamf Pro.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create API Integrations | `create:pro:api-integrations` |
+| Delete API Integrations | `delete:pro:api-integrations` |
+| Read API Integrations | `read:pro:api-integrations` |
+| Update API Integrations | `update:pro:api-integrations` |
 
 ## Example Usage
 

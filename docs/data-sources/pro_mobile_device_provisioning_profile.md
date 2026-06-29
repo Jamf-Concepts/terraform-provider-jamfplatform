@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_provisioning_profile Data Source - t
 subcategory: ""
 description: |-
   Look up a Jamf Pro mobile device provisioning profile by ID, name, or UUID. Exactly one of id, name, or uuid must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:provisioning-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_provisioning_profile (Data Source)
 
 Look up a Jamf Pro mobile device provisioning profile by ID, name, or UUID. Exactly one of `id`, `name`, or `uuid` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:provisioning-profiles` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_sites Data Source - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   List Jamf Pro sites. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every site.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:sites` |
 ---
 
 # jamfplatform_pro_sites (Data Source)
 
 List Jamf Pro sites. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every site.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:sites` |
 
 ## Example Usage
 

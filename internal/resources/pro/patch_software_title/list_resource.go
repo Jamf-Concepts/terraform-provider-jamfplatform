@@ -61,7 +61,8 @@ func (r *PatchSoftwareTitleListResource) Configure(ctx context.Context, req reso
 // ListResourceConfigSchema describes the supported list filters.
 func (r *PatchSoftwareTitleListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro patch software titles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. NOTE: the classic list response surfaces no display name through the SDK, so the filter matches each title's `name_id` (catalog key), not its display name.",
+		Description: "Lists Jamf Pro patch software titles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. NOTE: the classic list response surfaces no display name through the SDK, so the filter matches each title's `name_id` (catalog key), not its display name." +
+			listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

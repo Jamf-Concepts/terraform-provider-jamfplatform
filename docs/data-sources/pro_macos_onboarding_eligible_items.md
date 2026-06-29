@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_macos_onboarding_eligible_items Data Source - terr
 subcategory: ""
 description: |-
   Returns the Self Service objects eligible to be referenced from jamfplatform_pro_macos_onboarding.onboarding_items, for the given entity_type. Use the returned id as entity_id, paired with the matching self_service_entity_type (policies → OS_X_POLICY, configuration_profiles → OS_X_CONFIG_PROFILE, apps → OS_X_MAC_APP / OS_X_APP_INSTALLER).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
 ---
 
 # jamfplatform_pro_macos_onboarding_eligible_items (Data Source)
 
 Returns the Self Service objects eligible to be referenced from `jamfplatform_pro_macos_onboarding.onboarding_items`, for the given `entity_type`. Use the returned `id` as `entity_id`, paired with the matching `self_service_entity_type` (`policies` → `OS_X_POLICY`, `configuration_profiles` → `OS_X_CONFIG_PROFILE`, `apps` → `OS_X_MAC_APP` / `OS_X_APP_INSTALLER`).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
 
 ## Example Usage
 

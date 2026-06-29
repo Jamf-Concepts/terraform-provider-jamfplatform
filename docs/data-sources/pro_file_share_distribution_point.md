@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_file_share_distribution_point Data Source - terraf
 subcategory: ""
 description: |-
   Look up a Jamf Pro file share distribution point by id or by name. Provide exactly one.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Distribution Points | `read:pro:distribution-points` |
 ---
 
 # jamfplatform_pro_file_share_distribution_point (Data Source)
 
 Look up a Jamf Pro file share distribution point by `id` or by `name`. Provide exactly one.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Distribution Points | `read:pro:distribution-points` |
 
 ## Example Usage
 

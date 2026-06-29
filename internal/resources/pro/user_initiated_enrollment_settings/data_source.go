@@ -39,7 +39,7 @@ func (d *UserInitiatedEnrollmentSettingsDataSource) Metadata(ctx context.Context
 // style guide it is kept inline and flat — no attribute-returning helpers.
 func (d *UserInitiatedEnrollmentSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant.",
+		MarkdownDescription: "Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{Computed: true, MarkdownDescription: "Fixed singleton identifier. Always `singleton`."},
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_devices Data Source - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   List Jamf devices via the Device Inventory API. Requires Device Inventory API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_devices (Data Source)
 
 List Jamf devices via the Device Inventory API. Requires **Device Inventory API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:devices` |
 
 ## Example Usage
 

@@ -82,7 +82,7 @@ func (r *AppInstallerResource) Schema(ctx context.Context, req resource.SchemaRe
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via `app_title_name` (list available titles with the `jamfplatform_pro_app_installer_titles` data source). " +
 			"`update_behavior` controls when updates apply (`AUTOMATIC` tracks the latest catalog version, `MANUAL` updates on your schedule); the version itself is always the latest available and is reported in `selected_version`. " +
-			"Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means \"none\".",
+			"Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means \"none\"." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Deployment ID assigned by Jamf Pro.",

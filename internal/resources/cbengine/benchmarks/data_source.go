@@ -37,7 +37,7 @@ const defaultReadTimeout = 90 * time.Second
 // Schema defines the Terraform schema for listing CBEngine benchmarks.
 func (d *BenchmarksDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns all Compliance Benchmarks from Jamf Pro. Requires **Compliance Benchmarks API** access.",
+		MarkdownDescription: "Returns all Compliance Benchmarks from Jamf Pro. Requires **Compliance Benchmarks API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"timeouts": timeouts.Attributes(ctx),
 			"id": schema.StringAttribute{

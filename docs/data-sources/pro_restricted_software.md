@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_restricted_software Data Source - terraform-provid
 subcategory: ""
 description: |-
   Look up a Jamf Pro restricted software record by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection; manage the record as a resource for full detail.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:restricted-software` |
 ---
 
 # jamfplatform_pro_restricted_software (Data Source)
 
 Look up a Jamf Pro restricted software record by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the record as a resource for full detail.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:restricted-software` |
 
 ## Example Usage
 

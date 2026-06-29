@@ -54,7 +54,7 @@ func (d *AppInstallerTitleDataSource) Schema(ctx context.Context, req datasource
 		Required:            true,
 	}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Looks up a single App Installer catalog title by ID. Titles are published by Jamf and cannot be created or modified; this data source surfaces a title's metadata so you can reference its `id` from `jamfplatform_pro_app_installer.app_title_id`.",
+		MarkdownDescription: "Looks up a single App Installer catalog title by ID. Titles are published by Jamf and cannot be created or modified; this data source surfaces a title's metadata so you can reference its `id` from `jamfplatform_pro_app_installer.app_title_id`." + dataSourcePrivileges,
 		Attributes:          attrs,
 	}
 }

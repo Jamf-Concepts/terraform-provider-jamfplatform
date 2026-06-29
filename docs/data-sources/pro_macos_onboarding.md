@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_macos_onboarding Data Source - terraform-provider-
 subcategory: ""
 description: |-
   Reads the current Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Items are returned in priority order.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
 ---
 
 # jamfplatform_pro_macos_onboarding (Data Source)
 
 Reads the current Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Items are returned in priority order.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
 
 ## Example Usage
 

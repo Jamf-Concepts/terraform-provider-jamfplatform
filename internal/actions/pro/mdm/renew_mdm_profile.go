@@ -38,7 +38,7 @@ func (a *RenewMdmProfileAction) Metadata(ctx context.Context, req action.Metadat
 
 func (a *RenewMdmProfileAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Renews the MDM enrollment profile on one or more mobile devices.",
+		MarkdownDescription: "Renews the MDM enrollment profile on one or more mobile devices." + renewMdmProfilePrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"udids": actionschema.ListAttribute{
 				Required:            true,

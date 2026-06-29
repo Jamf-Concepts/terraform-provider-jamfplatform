@@ -95,7 +95,7 @@ func (r *SelfServiceBrandingIosResource) Schema(ctx context.Context, req resourc
 		MarkdownDescription: "Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). " +
 			"Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. " +
 			"`main_header` and the three colour codes are required by the API. " +
-			"Import with `terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

@@ -105,7 +105,7 @@ func (r *GsxConnectionSettingsResource) Schema(ctx context.Context, req resource
 			"Singleton — one record per tenant. " +
 			"**Requires a valid Apple-registered GSX certificate.** Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. " +
 			"**Secrets are re-sent on every apply** — `token_wo`, `keystore_bytes_wo`, and `keystore_password_wo` are `Required` + `WriteOnly` (never stored in state); the GSX API mandates them on every write, so they must always be present in config. " +
-			"Import with `terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

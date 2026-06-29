@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_local_admin_password_settings Data Source - terraf
 subcategory: ""
 description: |-
   Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `update:pro:local-admin-password-settings` |
 ---
 
 # jamfplatform_pro_local_admin_password_settings (Data Source)
 
 Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `update:pro:local-admin-password-settings` |
 
 ## Example Usage
 

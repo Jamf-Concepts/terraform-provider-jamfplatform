@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_script Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via parameter_4 through parameter_11.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Scripts | `create:pro:scripts` |
+  | Delete Scripts | `delete:pro:scripts` |
+  | Read Scripts | `read:pro:scripts` |
+  | Update Scripts | `update:pro:scripts` |
 ---
 
 # jamfplatform_pro_script (Resource)
 
 Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Scripts | `create:pro:scripts` |
+| Delete Scripts | `delete:pro:scripts` |
+| Read Scripts | `read:pro:scripts` |
+| Update Scripts | `update:pro:scripts` |
 
 ## Example Usage
 

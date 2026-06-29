@@ -76,7 +76,7 @@ func (r *DigicertResource) Schema(ctx context.Context, req resource.SchemaReques
 			"**Client certificate:** the certificate (a `.p12`/`.pfx` keystore) authenticates Jamf Pro to DigiCert One. It is supplied through the `client_certificate` block as `data_wo` (base64 of the keystore — use `filebase64(\"cert.p12\")`) plus `password_wo`; both are `WriteOnly` and never persisted in Terraform state, and Jamf Pro never returns them on read. " +
 			"DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump `client_certificate.wo_version` (editing `data_wo`/`password_wo` without bumping the version is intentionally a no-op). " +
 			"Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only `client_certificate_details` block.\n\n" +
-			"Import with `terraform import jamfplatform_pro_pki_digicert.<name> <id>`.",
+			"Import with `terraform import jamfplatform_pro_pki_digicert.<name> <id>`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Integration ID assigned by Jamf Pro.",

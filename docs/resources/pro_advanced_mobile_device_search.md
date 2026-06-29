@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_advanced_mobile_device_search Resource - terraform
 subcategory: ""
 description: |-
   Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Advanced Mobile Device Searches | `create:pro:advanced-mobile-device-searches` |
+  | Delete Advanced Mobile Device Searches | `delete:pro:advanced-mobile-device-searches` |
+  | Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
+  | Update Advanced Mobile Device Searches | `update:pro:advanced-mobile-device-searches` |
 ---
 
 # jamfplatform_pro_advanced_mobile_device_search (Resource)
 
 Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Advanced Mobile Device Searches | `create:pro:advanced-mobile-device-searches` |
+| Delete Advanced Mobile Device Searches | `delete:pro:advanced-mobile-device-searches` |
+| Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
+| Update Advanced Mobile Device Searches | `update:pro:advanced-mobile-device-searches` |
 
 ## Example Usage
 

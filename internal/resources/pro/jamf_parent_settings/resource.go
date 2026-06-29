@@ -94,7 +94,7 @@ func (r *JamfParentSettingsResource) Schema(ctx context.Context, req resource.Sc
 		MarkdownDescription: "Manages the Jamf Pro **Jamf Parent** settings page (UI: Settings → Jamf apps → Jamf Parent). Singleton — one record per tenant. These options control limited management of students' devices by parents or guardians using the Jamf Parent app.\n\n" +
 			"**Omit = preserve** — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. `timezone`, `device_group_id`, and `restricted_times` must always be set — the Jamf Pro API requires them on every write.\n\n" +
 			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.\n\n" +
-			"Import with `terraform import jamfplatform_pro_jamf_parent_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_jamf_parent_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

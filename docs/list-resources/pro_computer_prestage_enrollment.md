@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_computer_prestage_enrollment List Resource - terra
 subcategory: ""
 description: |-
   Lists Jamf Pro Computer PreStage Enrollments. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so include_resource = true does not require a follow-up read per item.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (List Resource)
 
 Lists Jamf Pro Computer PreStage Enrollments. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so `include_resource = true` does not require a follow-up read per item.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
 
 ## Example Usage
 

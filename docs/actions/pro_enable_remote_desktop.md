@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_enable_remote_desktop Action - terraform-provider-
 subcategory: ""
 description: |-
   Enables Remote Desktop (remote management) on a computer.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_pro_enable_remote_desktop (Action)
 
 Enables Remote Desktop (remote management) on a computer.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:devices` |
 
 ## Example Usage
 

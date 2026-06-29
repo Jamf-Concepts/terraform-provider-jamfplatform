@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_jamf_connect Data Source - terraform-provider-jamf
 subcategory: ""
 description: |-
   Looks up the Jamf Connect deployment and update settings for a configuration profile that is linked to Jamf Connect (Settings → Jamf apps → Jamf Connect). Supply exactly one of config_profile_uuid, profile_id, or profile_name.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Jamf Connect Deployments | `read:pro:jamf-connect-deployments` |
 ---
 
 # jamfplatform_pro_jamf_connect (Data Source)
 
 Looks up the Jamf Connect deployment and update settings for a configuration profile that is linked to Jamf Connect (Settings → Jamf apps → Jamf Connect). Supply exactly one of `config_profile_uuid`, `profile_id`, or `profile_name`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Jamf Connect Deployments | `read:pro:jamf-connect-deployments` |
 
 ## Example Usage
 

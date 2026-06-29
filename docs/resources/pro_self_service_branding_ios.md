@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_self_service_branding_ios Resource - terraform-pro
 subcategory: ""
 description: |-
   Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. main_header and the three colour codes are required by the API. Import with terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
+  | Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
+  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+  | Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
 ---
 
 # jamfplatform_pro_self_service_branding_ios (Resource)
 
 Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. `main_header` and the three colour codes are required by the API. Import with `terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
+| Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
+| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+| Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
 
 ## Example Usage
 

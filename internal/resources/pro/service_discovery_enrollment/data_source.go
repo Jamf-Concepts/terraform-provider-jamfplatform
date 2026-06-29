@@ -44,7 +44,7 @@ func (d *ServiceDiscoveryEnrollmentDataSource) Schema(ctx context.Context, req d
 			"enrollment. Returns one row per synced Apple Business/School Manager (AxM) organization, with its " +
 			"`server_uuid`, display name, and current `enrollment_type`. Useful for discovering the `server_uuid` values to " +
 			"manage with `jamfplatform_pro_service_discovery_enrollment`. Requires Jamf Pro 11.25.0 or later. Singleton — " +
-			"one record per tenant.",
+			"one record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

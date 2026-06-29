@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_extension_attribute List Resource - 
 subcategory: ""
 description: |-
   Lists Jamf Pro mobile device extension attributes. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
 ---
 
 # jamfplatform_pro_mobile_device_extension_attribute (List Resource)
 
 Lists Jamf Pro mobile device extension attributes. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
 
 ## Example Usage
 

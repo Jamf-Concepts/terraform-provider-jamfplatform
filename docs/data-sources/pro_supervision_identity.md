@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_supervision_identity Data Source - terraform-provi
 subcategory: ""
 description: |-
   Look up a Jamf Pro supervision identity by ID or display name. Exactly one of id or display_name must be supplied. Display names are not required to be unique; a lookup by display_name errors if more than one identity shares the name — use id to disambiguate.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Apple Configurator Enrollment | `read:pro:apple-configurator-enrollment` |
 ---
 
 # jamfplatform_pro_supervision_identity (Data Source)
 
 Look up a Jamf Pro supervision identity by ID or display name. Exactly one of `id` or `display_name` must be supplied. Display names are not required to be unique; a lookup by `display_name` errors if more than one identity shares the name — use `id` to disambiguate.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Apple Configurator Enrollment | `read:pro:apple-configurator-enrollment` |
 
 ## Example Usage
 

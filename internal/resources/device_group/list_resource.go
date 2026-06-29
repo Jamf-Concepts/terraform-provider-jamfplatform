@@ -68,7 +68,7 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 // ListResourceConfigSchema describes the supported list filters.
 func (r *DeviceGroupListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf device groups using the same filter clauses as the device_groups data source.",
+		Description: "Searches for Jamf device groups using the same filter clauses as the device_groups data source." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(device_groups.DeviceGroupFilterSelectors),

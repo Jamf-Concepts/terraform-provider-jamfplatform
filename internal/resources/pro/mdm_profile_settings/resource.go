@@ -77,7 +77,7 @@ func (r *MDMProfileSettingsResource) Schema(ctx context.Context, req resource.Sc
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). " +
 			"Singleton — one record per tenant. " +
-			"Import with `terraform import jamfplatform_pro_mdm_profile_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_mdm_profile_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

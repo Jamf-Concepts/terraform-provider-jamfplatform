@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_automated_device_enrollment Data Source - terrafor
 subcategory: ""
 description: |-
   Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded server token — Jamf Pro never returns it on reads. Use the jamfplatform_pro_automated_device_enrollment resource to manage the token.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
 ---
 
 # jamfplatform_pro_automated_device_enrollment (Data Source)
 
 Look up a Jamf Pro Automated Device Enrollment (ADE) instance by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded server token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_automated_device_enrollment` resource to manage the token.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
 
 ## Example Usage
 

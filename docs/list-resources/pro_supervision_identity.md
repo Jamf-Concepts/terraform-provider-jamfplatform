@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_supervision_identity List Resource - terraform-pro
 subcategory: ""
 description: |-
   Lists Jamf Pro supervision identities. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Apple Configurator Enrollment | `read:pro:apple-configurator-enrollment` |
 ---
 
 # jamfplatform_pro_supervision_identity (List Resource)
 
 Lists Jamf Pro supervision identities. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Apple Configurator Enrollment | `read:pro:apple-configurator-enrollment` |
 
 ## Example Usage
 

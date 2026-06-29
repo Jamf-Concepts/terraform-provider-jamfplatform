@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_ldap_server Data Source - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of id or name must be supplied. The data source never returns the bind password — Jamf Pro does not return it on read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:ldap-servers` |
 ---
 
 # jamfplatform_pro_ldap_server (Data Source)
 
 Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The data source never returns the bind password — Jamf Pro does not return it on read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:ldap-servers` |
 
 ## Example Usage
 

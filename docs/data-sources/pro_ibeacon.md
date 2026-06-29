@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_ibeacon Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Look up a Jamf Pro iBeacon by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:ibeacon` |
 ---
 
 # jamfplatform_pro_ibeacon (Data Source)
 
 Look up a Jamf Pro iBeacon by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:ibeacon` |
 
 ## Example Usage
 

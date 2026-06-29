@@ -7,6 +7,11 @@ description: |-
   Omit = preserve — each control you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the controls you declare. Each control you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset and leave the rest as configured in the admin console.
   Destroy — terraform destroy removes the resource from Terraform state only. The LAPS settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_local_admin_password_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Update Local Admin Password Settings | `update:pro:local-admin-password-settings` |
 ---
 
 # jamfplatform_pro_local_admin_password_settings (Resource)
@@ -18,6 +23,14 @@ Manages the Jamf Pro **local administrator password (LAPS)** settings (UI: Setti
 **Destroy** — `terraform destroy` removes the resource from Terraform state only. The LAPS settings are left intact on the tenant; they cannot be deleted.
 
 Import with `terraform import jamfplatform_pro_local_admin_password_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Update Local Admin Password Settings | `update:pro:local-admin-password-settings` |
 
 ## Example Usage
 

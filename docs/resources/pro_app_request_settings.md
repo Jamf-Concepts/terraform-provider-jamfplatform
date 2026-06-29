@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_app_request_settings Resource - terraform-provider
 subcategory: ""
 description: |-
   Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. Singleton — one record per tenant. This resource adopts the existing settings on first apply. Omit = preserve for enabled, app_store_locale, and requester_user_group_id: a field you omit keeps its current Jamf Pro value. approver_emails is required and always reflects exactly the addresses you declare. Import with terraform import jamfplatform_pro_app_request_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read App Request Settings | `read:pro:app-request-settings` |
+  | Update App Request Settings | `update:pro:app-request-settings` |
 ---
 
 # jamfplatform_pro_app_request_settings (Resource)
 
 Manages Jamf Pro App Request settings (Settings → Self Service → App Request). App Request lets Self Service users on iOS request apps that admins then approve. Singleton — one record per tenant. This resource adopts the existing settings on first apply. **Omit = preserve** for `enabled`, `app_store_locale`, and `requester_user_group_id`: a field you omit keeps its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare. Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read App Request Settings | `read:pro:app-request-settings` |
+| Update App Request Settings | `update:pro:app-request-settings` |
 
 ## Example Usage
 

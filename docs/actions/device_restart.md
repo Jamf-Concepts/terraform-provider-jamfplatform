@@ -4,11 +4,24 @@ page_title: "jamfplatform_device_restart Action - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Requests that a device restart. Requires Device Management Actions API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:device-actions` |
 ---
 
 # jamfplatform_device_restart (Action)
 
 Requests that a device restart. Requires **Device Management Actions API access**.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:device-actions` |
 
 ## Example Usage
 

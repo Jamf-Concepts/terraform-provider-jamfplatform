@@ -46,7 +46,7 @@ func (a *EraseAction) Metadata(ctx context.Context, req action.MetadataRequest, 
 
 func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Requests that a device erase its content and settings. Requires **Device Management Actions API access**.",
+		MarkdownDescription: "Requests that a device erase its content and settings. Requires **Device Management Actions API access**." + eraseDevicePrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
 				Optional:            true,

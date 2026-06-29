@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_user Data Source - terraform-provider-jamfplatform
 subcategory: ""
 description: |-
   Look up a Jamf Pro inventory user record (a person in Users → User Inventory) by ID or by exact username. Exactly one of id or username must be supplied. This is the user record that devices and groups are scoped against — it is not a Jamf Pro admin account (see jamfplatform_pro_account for those).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read User | `read:pro:user` |
 ---
 
 # jamfplatform_pro_user (Data Source)
 
 Look up a Jamf Pro **inventory user** record (a person in *Users → User Inventory*) by ID or by exact username. Exactly one of `id` or `username` must be supplied. This is the user record that devices and groups are scoped against — it is **not** a Jamf Pro admin account (see `jamfplatform_pro_account` for those).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read User | `read:pro:user` |
 
 ## Example Usage
 

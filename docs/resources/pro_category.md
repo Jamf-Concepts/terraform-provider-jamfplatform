@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_category Resource - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Manages a Jamf Pro category. Categories group policies, scripts, packages, and other Jamf Pro objects.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Categories | `create:pro:categories` |
+  | Delete Categories | `delete:pro:categories` |
+  | Read Categories | `read:pro:categories` |
+  | Update Categories | `update:pro:categories` |
 ---
 
 # jamfplatform_pro_category (Resource)
 
 Manages a Jamf Pro category. Categories group policies, scripts, packages, and other Jamf Pro objects.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Categories | `create:pro:categories` |
+| Delete Categories | `delete:pro:categories` |
+| Read Categories | `read:pro:categories` |
+| Update Categories | `update:pro:categories` |
 
 ## Example Usage
 

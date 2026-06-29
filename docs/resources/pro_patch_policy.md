@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro patch policy, found in the UI under Computers → Patch management on a software title's Patch Policies tab (the New Patch Policy form). A patch policy is created against a patch software title configuration (software_title_configuration_id, a jamfplatform_pro_patch_software_title ID) and deploys a single target_version of that title. Only versions that have a package assigned on the title can be targeted.
   The form spans three tabs: General (name, enabled, target_version, distribution_method, allow_downgrade, patch_unknown), Scope (scope), and User Interaction (user_interaction). Several General-tab fields are server-derived from the selected target_version's patch definition and are read-only: release_date, incremental_update, reboot, minimum_os, and kill_apps.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:patch-policies` |
+  | `delete:pro:patch-policies` |
+  | `read:pro:patch-policies` |
+  | `update:pro:patch-policies` |
 ---
 
 # jamfplatform_pro_patch_policy (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch management** on a software title's **Patch Policies** tab (the **New Patch Policy** form). A patch policy is created against a patch software title configuration (`software_title_configuration_id`, a `jamfplatform_pro_patch_software_title` ID) and deploys a single `target_version` of that title. Only versions that have a package assigned on the title can be targeted.
 
 The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`), and **User Interaction** (`user_interaction`). Several **General**-tab fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:patch-policies` |
+| `delete:pro:patch-policies` |
+| `read:pro:patch-policies` |
+| `update:pro:patch-policies` |
 
 ## Example Usage
 

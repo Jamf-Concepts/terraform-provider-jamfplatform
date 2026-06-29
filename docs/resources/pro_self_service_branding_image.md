@@ -11,6 +11,11 @@ description: |-
   Recommended dimensions (from the Jamf Pro UI): icon 180×180, Home page banner image 1500×235. PNG or GIF.
   Destroy behaviour: Jamf Pro has no API to delete a branding image. terraform destroy and replacements both remove the resource from Terraform state only; the image record persists on the tenant.
   Import (terraform import jamfplatform_pro_self_service_branding_image.example 81): the provider downloads the image bytes via the API and stores their SHA-256. Because Jamf Pro may re-encode uploaded images, point image_file_source at the API-downloaded copy (not your original upload) to avoid a spurious replacement on the next plan.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
 ---
 
 # jamfplatform_pro_self_service_branding_image (Resource)
@@ -30,6 +35,14 @@ The Self Service branding image store is **separate** from the general Jamf Pro 
 **Destroy behaviour**: Jamf Pro has no API to delete a branding image. `terraform destroy` and replacements both remove the resource from Terraform state only; the image record persists on the tenant.
 
 **Import** (`terraform import jamfplatform_pro_self_service_branding_image.example 81`): the provider downloads the image bytes via the API and stores their SHA-256. Because Jamf Pro may re-encode uploaded images, point `image_file_source` at the API-downloaded copy (not your original upload) to avoid a spurious replacement on the next plan.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
 
 ## Example Usage
 

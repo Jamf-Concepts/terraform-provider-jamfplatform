@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_dock_item Data Source - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Look up a Jamf Pro dock item by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:dock-items` |
 ---
 
 # jamfplatform_pro_dock_item (Data Source)
 
 Look up a Jamf Pro dock item by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:dock-items` |
 
 ## Example Usage
 

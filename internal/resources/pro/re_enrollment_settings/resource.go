@@ -93,7 +93,7 @@ func (r *ReEnrollmentSettingsResource) Schema(ctx context.Context, req resource.
 		MarkdownDescription: "Manages the Jamf Pro **Re-enrollment** settings page (UI: Settings → Global → Re-enrollment). Singleton — one record per tenant. These options decide which data Jamf Pro clears from a computer or mobile device when it re-enrolls after previously being managed.\n\n" +
 			"**Omit = preserve** — each `clear_*` toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. `clear_management_history` must always be set (the dropdown always has a selection).\n\n" +
 			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.\n\n" +
-			"Import with `terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

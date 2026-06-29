@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_departments Data Source - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Search Jamf Pro departments using optional RSQL filters.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Departments | `read:pro:departments` |
 ---
 
 # jamfplatform_pro_departments (Data Source)
 
 Search Jamf Pro departments using optional RSQL filters.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Departments | `read:pro:departments` |
 
 ## Example Usage
 

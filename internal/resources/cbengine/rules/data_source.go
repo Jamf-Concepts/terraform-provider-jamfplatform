@@ -38,7 +38,7 @@ const defaultReadTimeout = 90 * time.Second
 // Schema sets the Terraform schema for the data source.
 func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns list of rules for a given mSCP baseline. Requires **Compliance Benchmarks API** access.",
+		MarkdownDescription: "Returns list of rules for a given mSCP baseline. Requires **Compliance Benchmarks API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"timeouts": timeouts.Attributes(ctx),
 			"baseline_id": schema.StringAttribute{

@@ -11,6 +11,12 @@ description: |-
   Concurrency — Jamf Pro applies SSO changes last-writer-wins with no conflict detection. Use Terraform state-locking to serialise applies that touch this resource.
   Destroy — terraform destroy removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set sso_enabled = false explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.
   Import with terraform import jamfplatform_pro_sso_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read SSO Settings | `read:pro:sso-settings` |
+  | Update SSO Settings | `update:pro:sso-settings` |
 ---
 
 # jamfplatform_pro_sso_settings (Resource)
@@ -37,6 +43,15 @@ Manages Jamf Pro **Single Sign-On (SSO)** settings (UI: Settings → System → 
 **Destroy** — `terraform destroy` removes the resource from Terraform state only. The SSO configuration is left intact on the tenant. To actually disable SSO, set `sso_enabled = false` explicitly and apply before destroy. This protects shared tenants where the Platform API depends on SSO remaining enabled.
 
 Import with `terraform import jamfplatform_pro_sso_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read SSO Settings | `read:pro:sso-settings` |
+| Update SSO Settings | `update:pro:sso-settings` |
 
 ## Example Usage
 

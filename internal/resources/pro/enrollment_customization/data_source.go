@@ -49,7 +49,7 @@ func (d *EnrollmentCustomizationDataSource) Metadata(ctx context.Context, req da
 // URL) — managing the panes is the resource's responsibility.
 func (d *EnrollmentCustomizationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro enrollment customization by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not enforced unique by Jamf Pro; the lookup surfaces an error when more than one customization matches.",
+		MarkdownDescription: "Look up a Jamf Pro enrollment customization by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not enforced unique by Jamf Pro; the lookup surfaces an error when more than one customization matches." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Enrollment customization ID. Mutually exclusive with `display_name`.",

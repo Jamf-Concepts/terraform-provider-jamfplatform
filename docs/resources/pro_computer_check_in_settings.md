@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_computer_check_in_settings Resource - terraform-pr
 subcategory: ""
 description: |-
   Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. Omit = preserve — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set true/false to change it. check_in_frequency is required. Import with terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Computer Check-In | `read:pro:computer-check-in` |
+  | Update Computer Check-In | `update:pro:computer-check-in` |
 ---
 
 # jamfplatform_pro_computer_check_in_settings (Resource)
 
 Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. **Omit = preserve** — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set `true`/`false` to change it. `check_in_frequency` is required. Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Computer Check-In | `read:pro:computer-check-in` |
+| Update Computer Check-In | `update:pro:computer-check-in` |
 
 ## Example Usage
 

@@ -46,7 +46,7 @@ func (d *ComputerInvitationDataSource) Metadata(ctx context.Context, req datasou
 // Schema returns the data source schema.
 func (d *ComputerInvitationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro computer enrollment invitation by numeric `id` or by its Jamf Pro-generated `invitation` code (the admin UI \"Invitation ID\"). Exactly one of `id` or `invitation` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro computer enrollment invitation by numeric `id` or by its Jamf Pro-generated `invitation` code (the admin UI \"Invitation ID\"). Exactly one of `id` or `invitation` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Numeric computer invitation ID. Mutually exclusive with `invitation`.",

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_inventory_preload_record List Resource - terraform
 subcategory: ""
 description: |-
   Searches for Jamf Pro Inventory Preload records using RSQL filter clauses.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Inventory Preload Records | `read:pro:inventory-preload-records` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (List Resource)
 
 Searches for Jamf Pro Inventory Preload records using RSQL filter clauses.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Inventory Preload Records | `read:pro:inventory-preload-records` |
 
 ## Example Usage
 

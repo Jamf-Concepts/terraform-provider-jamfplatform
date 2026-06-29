@@ -81,7 +81,7 @@ func (r *LoginPageSettingsResource) Schema(ctx context.Context, req resource.Sch
 			"Singleton — one record per tenant. " +
 			"**The three disclaimer text fields (`disclaimer_heading`, `disclaimer_main_text`, `action_text`) are required on every write, regardless of `include_custom_disclaimer`** — Jamf Pro rejects a write that omits any of them or sends an empty string (wire-probed 2026-06-09). The custom disclaimer is only *shown* to users when `include_custom_disclaimer = true`, but the text must always be present. " +
 			"**Omit = preserve** — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. " +
-			"Import with `terraform import jamfplatform_pro_login_page_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_login_page_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

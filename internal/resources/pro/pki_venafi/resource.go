@@ -81,7 +81,7 @@ func (r *PkiVenafiResource) Schema(ctx context.Context, req resource.SchemaReque
 			"**Preview feature:** Jamf Pro's Venafi integration is a preview and may change in a future Jamf Pro release.\n\n" +
 			"**Refresh token:** `refresh_token_wo` is `WriteOnly` — it is sent to Jamf Pro on writes but never stored in Terraform state, and Jamf Pro never returns it on read. Pair it with `refresh_token_wo_version` to rotate: bump the integer to re-send the current token; leave it unchanged to preserve the stored token. `refresh_token_configured` reports whether Jamf Pro currently holds a token.\n\n" +
 			"**Jamf public key:** `jamf_public_key` is the PEM public key Jamf Pro mints for this CA — read-only, populated on create and every read. Bump `jamf_public_key_rotation` to regenerate it (the old key is invalidated).\n\n" +
-			"**Proxy trust store:** `proxy_trust_store` is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value (not write-only). Set it to upload; set it to `\"\"` to remove it.",
+			"**Proxy trust store:** `proxy_trust_store` is the PKI proxy server's public PEM. It round-trips byte-for-byte through Jamf Pro, so it is a plain managed value (not write-only). Set it to upload; set it to `\"\"` to remove it." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Venafi CA ID assigned by Jamf Pro.",

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_configuration_profile List Resource 
 subcategory: ""
 description: |-
   Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive name_substring filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the jamfplatform_pro_mobile_device_configuration_profile data source to fetch per-profile detail.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:ios-configuration-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_configuration_profile (List Resource)
 
 Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive `name_substring` filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the `jamfplatform_pro_mobile_device_configuration_profile` data source to fetch per-profile detail.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:ios-configuration-profiles` |
 
 ## Example Usage
 

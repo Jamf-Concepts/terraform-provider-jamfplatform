@@ -91,7 +91,7 @@ func (r *WebhookResource) ConfigValidators(ctx context.Context) []resource.Confi
 // admin UI labels (STYLE_GUIDE §Attribute names mirror the admin UI).
 func (r *WebhookResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro webhook — the \"Webhooks\" entry under Settings → Global in the Jamf Pro admin UI. A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. Note: \"Mutual TLS Authentication\" is intentionally unsupported — its certificate material is settable only through the legacy admin web UI, not any API.",
+		MarkdownDescription: "Manages a Jamf Pro webhook — the \"Webhooks\" entry under Settings → Global in the Jamf Pro admin UI. A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. Note: \"Mutual TLS Authentication\" is intentionally unsupported — its certificate material is settable only through the legacy admin web UI, not any API." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Webhook ID assigned by Jamf Pro.",

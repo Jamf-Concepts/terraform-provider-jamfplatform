@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_vpp_invitation List Resource - terraform-provider-
 subcategory: ""
 description: |-
   Lists Jamf Pro VPP invitations. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:vpp-invitations` |
 ---
 
 # jamfplatform_pro_vpp_invitation (List Resource)
 
 Lists Jamf Pro VPP invitations. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:vpp-invitations` |
 
 ## Example Usage
 

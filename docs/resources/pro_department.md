@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_department Resource - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Manages a Jamf Pro department. Departments represent organisational units and can be assigned to inventory records for reporting and scoping.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Departments | `create:pro:departments` |
+  | Delete Departments | `delete:pro:departments` |
+  | Read Departments | `read:pro:departments` |
+  | Update Departments | `update:pro:departments` |
 ---
 
 # jamfplatform_pro_department (Resource)
 
 Manages a Jamf Pro department. Departments represent organisational units and can be assigned to inventory records for reporting and scoping.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Departments | `create:pro:departments` |
+| Delete Departments | `delete:pro:departments` |
+| Read Departments | `read:pro:departments` |
+| Update Departments | `update:pro:departments` |
 
 ## Example Usage
 

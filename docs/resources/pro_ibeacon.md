@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_ibeacon Resource - terraform-provider-jamfplatform
 subcategory: ""
 description: |-
   Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set include_any_major_value = true and leave major unset — same for include_any_minor_value and minor. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:ibeacon` |
+  | `delete:pro:ibeacon` |
+  | `read:pro:ibeacon` |
+  | `update:pro:ibeacon` |
 ---
 
 # jamfplatform_pro_ibeacon (Resource)
 
 Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set `include_any_major_value = true` and leave `major` unset — same for `include_any_minor_value` and `minor`. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:ibeacon` |
+| `delete:pro:ibeacon` |
+| `read:pro:ibeacon` |
+| `update:pro:ibeacon` |
 
 ## Example Usage
 

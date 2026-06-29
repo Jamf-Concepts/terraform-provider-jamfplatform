@@ -74,7 +74,7 @@ func (r *PatchExternalSourceResource) IdentitySchema(ctx context.Context, req re
 // Schema returns the Terraform schema for the patch external source resource.
 func (r *PatchExternalSourceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management** in the **Patch External Source** section (the **New External Patch Source** form). External patch sources host third-party software title definitions consumed by patch management.",
+		MarkdownDescription: "Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management** in the **Patch External Source** section (the **New External Patch Source** form). External patch sources host third-party software title definitions consumed by patch management." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch external source ID assigned by Jamf Pro.",

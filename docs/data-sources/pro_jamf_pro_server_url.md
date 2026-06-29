@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_jamf_pro_server_url Data Source - terraform-provid
 subcategory: ""
 description: |-
   Reads the Jamf Pro server URL (Settings > Jamf Pro Server URL) — the URL devices check in against. Singleton: one value per tenant. Read-only; reference the returned url elsewhere in your configuration, such as enrollment URLs, webhooks, or scripts.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read JSS URL | `read:pro:jss-url` |
 ---
 
 # jamfplatform_pro_jamf_pro_server_url (Data Source)
 
 Reads the Jamf Pro server URL (Settings > Jamf Pro Server URL) — the URL devices check in against. Singleton: one value per tenant. Read-only; reference the returned `url` elsewhere in your configuration, such as enrollment URLs, webhooks, or scripts.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read JSS URL | `read:pro:jss-url` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_account_group Data Source - terraform-provider-jam
 subcategory: ""
 description: |-
   Look up a Jamf Pro administrator account group by id or display_name. Values use the same spellings as the jamfplatform_pro_account_group resource; the privileges attribute is the flattened union of the group's privilege grid.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:accounts` |
 ---
 
 # jamfplatform_pro_account_group (Data Source)
 
 Look up a Jamf Pro administrator account group by `id` or `display_name`. Values use the same spellings as the `jamfplatform_pro_account_group` resource; the `privileges` attribute is the flattened union of the group's privilege grid.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:accounts` |
 
 ## Example Usage
 

@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_advanced_volume_purchasing_content_search Resource
 subcategory: ""
 description: |-
   Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's Content Name is Name, Price is Cost, Location is Account.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Advanced User Content Searches | `create:pro:advanced-user-content-searches` |
+  | Delete Advanced User Content Searches | `delete:pro:advanced-user-content-searches` |
+  | Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
+  | Update Advanced User Content Searches | `update:pro:advanced-user-content-searches` |
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (Resource)
 
 Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's `Content Name` is `Name`, `Price` is `Cost`, `Location` is `Account`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Advanced User Content Searches | `create:pro:advanced-user-content-searches` |
+| Delete Advanced User Content Searches | `delete:pro:advanced-user-content-searches` |
+| Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
+| Update Advanced User Content Searches | `update:pro:advanced-user-content-searches` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_self_service_macos_settings Data Source - terrafor
 subcategory: ""
 description: |-
   Read the current Self Service for macOS app settings (Settings > Self Service > macOS). Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Self Service | `read:pro:self-service` |
 ---
 
 # jamfplatform_pro_self_service_macos_settings (Data Source)
 
 Read the current Self Service for macOS app settings (Settings > Self Service > macOS). Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Self Service | `read:pro:self-service` |
 
 ## Example Usage
 

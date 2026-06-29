@@ -55,7 +55,7 @@ func (r *AccountListResource) Configure(ctx context.Context, req resource.Config
 // ListResourceConfigSchema describes the supported list filters.
 func (r *AccountListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro administrator accounts. Supply an optional case-insensitive `name_substring` filter on the username; filtering is applied client-side after the full list is fetched.",
+		Description: "Lists Jamf Pro administrator accounts. Supply an optional case-insensitive `name_substring` filter on the username; filtering is applied client-side after the full list is fetched." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

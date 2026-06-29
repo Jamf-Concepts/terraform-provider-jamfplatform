@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_script Data Source - terraform-provider-jamfplatfo
 subcategory: ""
 description: |-
   Look up a Jamf Pro script by ID.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Scripts | `read:pro:scripts` |
 ---
 
 # jamfplatform_pro_script (Data Source)
 
 Look up a Jamf Pro script by ID.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Scripts | `read:pro:scripts` |
 
 ## Example Usage
 

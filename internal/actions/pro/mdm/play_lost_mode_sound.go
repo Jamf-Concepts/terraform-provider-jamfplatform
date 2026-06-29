@@ -36,7 +36,7 @@ func (a *PlayLostModeSoundAction) Metadata(ctx context.Context, req action.Metad
 
 func (a *PlayLostModeSoundAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Plays a sound on a mobile device that is in Lost Mode.",
+		MarkdownDescription: "Plays a sound on a mobile device that is in Lost Mode." + playLostModeSoundPrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
 }

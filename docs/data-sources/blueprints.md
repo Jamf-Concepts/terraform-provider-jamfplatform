@@ -4,11 +4,26 @@ page_title: "jamfplatform_blueprints Data Source - terraform-provider-jamfplatfo
 subcategory: ""
 description: |-
   Returns all Jamf blueprints from Jamf Pro with an optional case-insensitive search filter. Requires Blueprints API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:blueprints` |
+  | `read:school:blueprints` |
 ---
 
 # jamfplatform_blueprints (Data Source)
 
 Returns all Jamf blueprints from Jamf Pro with an optional case-insensitive search filter. Requires **Blueprints API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:blueprints` |
+| `read:school:blueprints` |
 
 ## Example Usage
 

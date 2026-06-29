@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_sso_failover_url Data Source - terraform-provider-
 subcategory: ""
 description: |-
   Read the Jamf Pro SSO failover URL for the current tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read SSO Settings | `read:pro:sso-settings` |
 ---
 
 # jamfplatform_pro_sso_failover_url (Data Source)
 
 Read the Jamf Pro SSO failover URL for the current tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read SSO Settings | `read:pro:sso-settings` |
 
 ## Example Usage
 

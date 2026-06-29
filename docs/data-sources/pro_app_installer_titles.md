@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_app_installer_titles Data Source - terraform-provi
 subcategory: ""
 description: |-
   Returns the App Installer catalog — every title published to the tenant. Titles are managed by Jamf and cannot be created or modified. Use the optional name_substring to narrow the result; matching is case-insensitive and applied after the full catalog is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mac Applications | `read:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_app_installer_titles (Data Source)
 
 Returns the App Installer catalog — every title published to the tenant. Titles are managed by Jamf and cannot be created or modified. Use the optional `name_substring` to narrow the result; matching is case-insensitive and applied after the full catalog is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mac Applications | `read:pro:mac-applications` |
 
 ## Example Usage
 

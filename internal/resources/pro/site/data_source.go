@@ -44,7 +44,7 @@ func (d *SiteDataSource) Metadata(ctx context.Context, req datasource.MetadataRe
 // Schema returns the data source schema.
 func (d *SiteDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro site by ID or by exact name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro site by ID or by exact name. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Site ID. Mutually exclusive with `name`.",

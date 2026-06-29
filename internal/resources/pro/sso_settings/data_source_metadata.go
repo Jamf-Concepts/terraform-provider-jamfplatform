@@ -46,7 +46,7 @@ func (d *SsoSpMetadataDataSource) Metadata(ctx context.Context, req datasource.M
 func (d *SsoSpMetadataDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Download the Jamf Pro **Service Provider** SAML metadata XML for the current tenant. Typically consumed by the IdP administrator to register Jamf Pro as a relying party. " +
-			"Returns an empty `xml` and a warning when the tenant is configured for pure OIDC (no SAML metadata to publish).",
+			"Returns an empty `xml` and a warning when the tenant is configured for pure OIDC (no SAML metadata to publish)." + metadataDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

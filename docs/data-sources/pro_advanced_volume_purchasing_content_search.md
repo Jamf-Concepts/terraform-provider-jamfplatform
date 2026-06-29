@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_advanced_volume_purchasing_content_search Data Sou
 subcategory: ""
 description: |-
   Look up a Jamf Pro advanced volume purchasing content search by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (Data Source)
 
 Look up a Jamf Pro advanced volume purchasing content search by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
 
 ## Example Usage
 

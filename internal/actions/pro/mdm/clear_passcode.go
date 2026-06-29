@@ -43,7 +43,7 @@ func (a *ClearPasscodeAction) Schema(ctx context.Context, req action.SchemaReque
 		MarkdownDescription: "Unlock token for the mobile device. Required for unsupervised devices and looked up automatically when omitted; supervised devices do not need one.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Clears the passcode on a mobile device.",
+		MarkdownDescription: "Clears the passcode on a mobile device." + clearPasscodePrivileges,
 		Attributes:          attrs,
 	}
 }

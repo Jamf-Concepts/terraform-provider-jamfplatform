@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_send_blank_push Action - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Sends a blank push notification to one or more devices to prompt them to check in.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_pro_send_blank_push (Action)
 
 Sends a blank push notification to one or more devices to prompt them to check in.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:devices` |
 
 ## Example Usage
 

@@ -61,7 +61,7 @@ func (r *AppRequestFormFieldListResource) Configure(ctx context.Context, req res
 // ListResourceConfigSchema describes the supported list filters.
 func (r *AppRequestFormFieldListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro App Request form fields. Supply an optional case-insensitive `name_substring` filter (matched against the field title); filtering is applied client-side after the full list is fetched.",
+		Description: "Lists Jamf Pro App Request form fields. Supply an optional case-insensitive `name_substring` filter (matched against the field title); filtering is applied client-side after the full list is fetched." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

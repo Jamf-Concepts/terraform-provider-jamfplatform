@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_patch_internal_source Data Source - terraform-prov
 subcategory: ""
 description: |-
   Look up a Jamf Pro patch internal source by ID or by exact name, and read the catalog of software titles it publishes. Internal sources are managed by Jamf (the built-in "Jamf" definition source) and cannot be created or modified. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:patch-internal-source` |
+  | `read:pro:patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_internal_source (Data Source)
 
 Look up a Jamf Pro patch internal source by ID or by exact name, and read the catalog of software titles it publishes. Internal sources are managed by Jamf (the built-in "Jamf" definition source) and cannot be created or modified. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:patch-internal-source` |
+| `read:pro:patch-management-software-titles` |
 
 ## Example Usage
 

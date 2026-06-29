@@ -81,7 +81,7 @@ func (r *ComputerExtensionAttributeResource) ConfigValidators(ctx context.Contex
 // Schema returns the Terraform schema for the computer extension attribute.
 func (r *ComputerExtensionAttributeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro computer extension attribute — a custom inventory field collected from managed computers. Mirrors the Settings → Computer management → Extension Attributes UI. The `input_type` acts as a discriminator: `script` is required for (and only valid with) `SCRIPT`; `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; and only `SCRIPT` EAs may be disabled. A plan-time validator enforces these rules before apply.",
+		MarkdownDescription: "Manages a Jamf Pro computer extension attribute — a custom inventory field collected from managed computers. Mirrors the Settings → Computer management → Extension Attributes UI. The `input_type` acts as a discriminator: `script` is required for (and only valid with) `SCRIPT`; `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; and only `SCRIPT` EAs may be disabled. A plan-time validator enforces these rules before apply." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Computer extension attribute ID assigned by Jamf Pro.",

@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_advanced_user_search Resource - terraform-provider
 subcategory: ""
 description: |-
   Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no view_as or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:advanced-user-searches` |
+  | `delete:pro:advanced-user-searches` |
+  | `read:pro:advanced-user-searches` |
+  | `update:pro:advanced-user-searches` |
 ---
 
 # jamfplatform_pro_advanced_user_search (Resource)
 
 Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:advanced-user-searches` |
+| `delete:pro:advanced-user-searches` |
+| `read:pro:advanced-user-searches` |
+| `update:pro:advanced-user-searches` |
 
 ## Example Usage
 

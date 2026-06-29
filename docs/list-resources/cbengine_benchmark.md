@@ -4,11 +4,24 @@ page_title: "jamfplatform_cbengine_benchmark List Resource - terraform-provider-
 subcategory: ""
 description: |-
   Searches for Jamf Compliance Benchmarks with an optional case-insensitive substring filter.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:compliance-benchmarks` |
 ---
 
 # jamfplatform_cbengine_benchmark (List Resource)
 
 Searches for Jamf Compliance Benchmarks with an optional case-insensitive substring filter.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:compliance-benchmarks` |
 
 ## Example Usage
 

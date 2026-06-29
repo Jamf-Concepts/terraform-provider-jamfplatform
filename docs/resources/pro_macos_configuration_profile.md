@@ -9,6 +9,14 @@ description: |-
   A small set of profile-level fields (PayloadDisplayName, PayloadIdentifier, PayloadUUID, PayloadOrganization, PayloadDescription, PayloadEnabled) are managed entirely by Jamf Pro — any value you supply for them inside payloads is replaced on the server, so the provider ignores them in the diff. Use general.name, general.description, and the other top-level attributes to control the equivalent fields.
   Scope blocks mirror jamfplatform_pro_policy: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). all_computers and all_jss_users conflict with their per-ID siblings.
   Profile identity on update — the provider re-applies the existing top-level PayloadUUID and PayloadIdentifier from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled Macs and the OS would treat it as a fresh installation.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:macos-configuration-profiles` |
+  | `delete:pro:macos-configuration-profiles` |
+  | `read:pro:macos-configuration-profiles` |
+  | `update:pro:macos-configuration-profiles` |
 ---
 
 # jamfplatform_pro_macos_configuration_profile (Resource)
@@ -25,6 +33,17 @@ A small set of profile-level fields (`PayloadDisplayName`, `PayloadIdentifier`, 
 **Scope** blocks mirror `jamfplatform_pro_policy`: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). `all_computers` and `all_jss_users` conflict with their per-ID siblings.
 
 **Profile identity on update** — the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled Macs and the OS would treat it as a fresh installation.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:macos-configuration-profiles` |
+| `delete:pro:macos-configuration-profiles` |
+| `read:pro:macos-configuration-profiles` |
+| `update:pro:macos-configuration-profiles` |
 
 ## Example Usage
 

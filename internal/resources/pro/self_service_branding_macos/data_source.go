@@ -37,7 +37,7 @@ func (d *SelfServiceBrandingMacosDataSource) Metadata(ctx context.Context, req d
 // Schema returns the data source schema — a read mirror of the resource.
 func (d *SelfServiceBrandingMacosDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured.",
+		MarkdownDescription: "Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":                   schema.StringAttribute{MarkdownDescription: "Fixed singleton identifier. Always `singleton`.", Computed: true},
 			"application_header":   schema.StringAttribute{MarkdownDescription: "UI: **Application Header**.", Computed: true},

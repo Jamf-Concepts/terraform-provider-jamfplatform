@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_location List Resource - terrafo
 subcategory: ""
 description: |-
   Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting include_resource = true triggers a follow-up read per row to populate the content catalog. Identity-only listing stays a single round trip.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_location (List Resource)
 
 Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting `include_resource = true` triggers a follow-up read per row to populate the `content` catalog. Identity-only listing stays a single round trip.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_device_group Data Source - terraform-provider-jamfplat
 subcategory: ""
 description: |-
   Lookup a Jamf device group by ID. Requires Device Group Inventory API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:device-groups` |
 ---
 
 # jamfplatform_device_group (Data Source)
 
 Lookup a Jamf device group by ID. Requires **Device Group Inventory API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:device-groups` |
 
 ## Example Usage
 

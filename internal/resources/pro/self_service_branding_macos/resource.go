@@ -99,7 +99,7 @@ func (r *SelfServiceBrandingMacosResource) Schema(ctx context.Context, req resou
 			"Singleton — one configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it (the Self Service app reverts to default branding). " +
 			"All fields are optional; removing a field from configuration clears it on the tenant. " +
 			"Reference branding images by ID from `jamfplatform_pro_self_service_branding_image` (the branding image store is separate from `jamfplatform_pro_icon`). " +
-			"Import with `terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

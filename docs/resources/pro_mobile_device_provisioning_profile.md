@@ -5,6 +5,13 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device provisioning profile — the signed .mobileprovision profile that authorises in-house (enterprise) apps to run on managed devices.
   An uploaded profile cannot be modified in place: changing name or profile_data replaces the profile (Terraform deletes and recreates it).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:provisioning-profiles` |
+  | `delete:pro:provisioning-profiles` |
+  | `read:pro:provisioning-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_provisioning_profile (Resource)
@@ -12,6 +19,16 @@ description: |-
 Manages a Jamf Pro mobile device provisioning profile — the signed `.mobileprovision` profile that authorises in-house (enterprise) apps to run on managed devices.
 
 An uploaded profile cannot be modified in place: changing `name` or `profile_data` replaces the profile (Terraform deletes and recreates it).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:provisioning-profiles` |
+| `delete:pro:provisioning-profiles` |
+| `read:pro:provisioning-profiles` |
 
 ## Example Usage
 

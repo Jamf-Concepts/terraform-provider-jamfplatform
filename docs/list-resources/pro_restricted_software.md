@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_restricted_software List Resource - terraform-prov
 subcategory: ""
 description: |-
   Lists Jamf Pro restricted software records. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-record read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:restricted-software` |
 ---
 
 # jamfplatform_pro_restricted_software (List Resource)
 
 Lists Jamf Pro restricted software records. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-record read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:restricted-software` |
 
 ## Example Usage
 

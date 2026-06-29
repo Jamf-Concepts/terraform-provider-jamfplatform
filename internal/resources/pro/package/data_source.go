@@ -45,7 +45,7 @@ func (d *PackageDataSource) Metadata(ctx context.Context, req datasource.Metadat
 // (apart from the id/display_name selectors, which are Optional+Computed).
 func (d *PackageDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and cloud distribution point transfer status.",
+		MarkdownDescription: "Look up a Jamf Pro package by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Returns the full record including manifest body, every hash populated by Jamf Pro, and cloud distribution point transfer status." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Package ID. Mutually exclusive with `display_name`.",

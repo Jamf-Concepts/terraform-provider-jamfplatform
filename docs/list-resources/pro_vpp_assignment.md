@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_vpp_assignment List Resource - terraform-provider-
 subcategory: ""
 description: |-
   Lists Jamf Pro VPP assignments. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:vpp-assignment` |
 ---
 
 # jamfplatform_pro_vpp_assignment (List Resource)
 
 Lists Jamf Pro VPP assignments. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:vpp-assignment` |
 
 ## Example Usage
 

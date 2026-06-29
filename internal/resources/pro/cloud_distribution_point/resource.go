@@ -90,7 +90,7 @@ func (r *CloudDistributionPointResource) Schema(ctx context.Context, req resourc
 		MarkdownDescription: "Manages the Jamf Pro cloud distribution point. Singleton — one record per tenant. Configuring this resource enables the selected content delivery network (`cdn_type`); destroying it disables the cloud distribution point (resets the tenant to `NONE`). " +
 			"**Warning:** destroying this resource — or changing `cdn_type`, which forces replacement — disables the Jamf Cloud distribution point and **permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud**. This cannot be undone. " +
 			"`JAMF_CLOUD` (Jamf Cloud Distribution Service / JCDS) needs no credentials; the other types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`) require the credential / endpoint fields and are **not** acceptance-tested by the provider. " +
-			"Import with `terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

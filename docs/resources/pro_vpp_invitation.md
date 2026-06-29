@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
   Related: device-based Apps & Books locations are managed by jamfplatform_pro_volume_purchasing_location.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:vpp-invitations` |
+  | `delete:pro:vpp-invitations` |
+  | `read:pro:vpp-invitations` |
+  | `update:pro:vpp-invitations` |
 ---
 
 # jamfplatform_pro_vpp_invitation (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
 
 Related: device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:vpp-invitations` |
+| `delete:pro:vpp-invitations` |
+| `read:pro:vpp-invitations` |
+| `update:pro:vpp-invitations` |
 
 ## Example Usage
 

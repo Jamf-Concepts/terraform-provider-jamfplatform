@@ -51,7 +51,7 @@ func (r *CategoryListResource) Configure(ctx context.Context, req resource.Confi
 // ListResourceConfigSchema describes the supported list filters.
 func (r *CategoryListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Pro categories using the same filter clauses as the categories data source.",
+		Description: "Searches for Jamf Pro categories using the same filter clauses as the categories data source." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(CategoryFilterSelectors),

@@ -45,7 +45,7 @@ func (d *JamfConnectDataSource) Metadata(ctx context.Context, req datasource.Met
 // Schema returns the data source schema.
 func (d *JamfConnectDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Looks up the Jamf Connect deployment and update settings for a configuration profile that is linked to Jamf Connect (Settings → Jamf apps → Jamf Connect). Supply exactly one of `config_profile_uuid`, `profile_id`, or `profile_name`.",
+		MarkdownDescription: "Looks up the Jamf Connect deployment and update settings for a configuration profile that is linked to Jamf Connect (Settings → Jamf apps → Jamf Connect). Supply exactly one of `config_profile_uuid`, `profile_id`, or `profile_name`." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"config_profile_uuid": schema.StringAttribute{
 				MarkdownDescription: "Jamf Connect profile UUID. Supply this, `profile_id`, or `profile_name`.",

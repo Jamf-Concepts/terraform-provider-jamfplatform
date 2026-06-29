@@ -80,7 +80,7 @@ func (r *AppInstallerSettingsResource) IdentitySchema(_ context.Context, _ resou
 func (r *AppInstallerSettingsResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Jamf Pro App Installer global settings. Singleton — one record per tenant.\n\n" +
-			"Import with `terraform import jamfplatform_pro_app_installer_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_app_installer_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

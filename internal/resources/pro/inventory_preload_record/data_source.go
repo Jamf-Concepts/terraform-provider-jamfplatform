@@ -48,7 +48,7 @@ func (d *InventoryPreloadRecordDataSource) Metadata(ctx context.Context, req dat
 // Schema returns the data source schema.
 func (d *InventoryPreloadRecordDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro Inventory Preload record by ID or by serial number. Exactly one of `id` or `serial_number` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro Inventory Preload record by ID or by serial number. Exactly one of `id` or `serial_number` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]dsschema.Attribute{
 			"id": dsschema.StringAttribute{
 				MarkdownDescription: "Inventory Preload record ID. Mutually exclusive with `serial_number`.",

@@ -119,7 +119,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 			"**`connector_mode` is immutable** — changing it forces resource replacement (Jamf Pro rejects an in-place mode flip).\n\n" +
 			"**Certificate write semantics:** certificate bytes (`data_wo`) and the client certificate `password_wo` are `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state and never returned on read. Bump a block's `wo_version` to re-send that certificate (Jamf Pro accepts a certificate in full or not at all). On update, an omitted certificate is left unchanged.\n\n" +
 			"**Validator footgun:** the `connector_mode` cross-field validator only sees what is *declared* in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.\n\n" +
-			"Import with `terraform import jamfplatform_pro_pki_adcs.<name> <id>`.",
+			"Import with `terraform import jamfplatform_pro_pki_adcs.<name> <id>`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "AD CS Settings ID assigned by Jamf Pro.",

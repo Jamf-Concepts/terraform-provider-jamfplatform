@@ -41,7 +41,7 @@ func (d *BlueprintDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema sets the Terraform schema for the data source.
 func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns a blueprint by ID or name. Requires **Blueprints API** access.",
+		MarkdownDescription: "Returns a blueprint by ID or name. Requires **Blueprints API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The blueprint ID to fetch. Optional if name is set.",

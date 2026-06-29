@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_app_request_form_field Resource - terraform-provid
 subcategory: ""
 description: |-
   Manages a Jamf Pro App Request form field (Settings → Self Service → App Request → App Request Form). Form fields are the custom input prompts shown to users on the App Request form in Self Service. Each field is an independent record ordered by priority. Titles are not required to be unique.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read App Request Settings | `read:pro:app-request-settings` |
+  | Update App Request Settings | `update:pro:app-request-settings` |
 ---
 
 # jamfplatform_pro_app_request_form_field (Resource)
 
 Manages a Jamf Pro App Request form field (Settings → Self Service → App Request → App Request Form). Form fields are the custom input prompts shown to users on the App Request form in Self Service. Each field is an independent record ordered by `priority`. Titles are not required to be unique.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read App Request Settings | `read:pro:app-request-settings` |
+| Update App Request Settings | `update:pro:app-request-settings` |
 
 ## Example Usage
 

@@ -58,7 +58,7 @@ func (r *BenchmarkListResource) Configure(ctx context.Context, req resource.Conf
 // ListResourceConfigSchema declares the supported filter attributes.
 func (r *BenchmarkListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Compliance Benchmarks with an optional case-insensitive substring filter.",
+		Description: "Searches for Jamf Compliance Benchmarks with an optional case-insensitive substring filter." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"search": listschema.StringAttribute{
 				Optional:    true,

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_retry_patch_policy_logs Action - terraform-provide
 subcategory: ""
 description: |-
   Retries failed patch policy installation attempts, optionally for specific computers.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Update Patch Policies | `update:pro:patch-policies` |
 ---
 
 # jamfplatform_pro_retry_patch_policy_logs (Action)
 
 Retries failed patch policy installation attempts, optionally for specific computers.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Update Patch Policies | `update:pro:patch-policies` |
 
 ## Example Usage
 

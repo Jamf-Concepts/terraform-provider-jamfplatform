@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_return_to_service Data Source - terraform-provider
 subcategory: ""
 description: |-
   Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of id or display_name must be supplied. Display names are not guaranteed unique — a name that matches more than one configuration returns an error.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | View Return To Service Configurations | `read:pro:return-to-service-configurations` |
 ---
 
 # jamfplatform_pro_return_to_service (Data Source)
 
 Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not guaranteed unique — a name that matches more than one configuration returns an error.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| View Return To Service Configurations | `read:pro:return-to-service-configurations` |
 
 ## Example Usage
 

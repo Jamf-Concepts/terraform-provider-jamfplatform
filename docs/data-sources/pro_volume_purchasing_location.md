@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_location Data Source - terraform
 subcategory: ""
 description: |-
   Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the uploaded service token — Jamf Pro never returns it on reads. Use the jamfplatform_pro_volume_purchasing_location resource to manage the token.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_location (Data Source)
 
 Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded service token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_volume_purchasing_location` resource to manage the token.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 
 ## Example Usage
 

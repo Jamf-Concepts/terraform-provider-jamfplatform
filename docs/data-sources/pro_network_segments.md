@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_network_segments Data Source - terraform-provider-
 subcategory: ""
 description: |-
   List Jamf Pro network segments. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular jamfplatform_pro_network_segment data source lookup.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:network-segments` |
 ---
 
 # jamfplatform_pro_network_segments (Data Source)
 
 List Jamf Pro network segments. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular `jamfplatform_pro_network_segment` data source lookup.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:network-segments` |
 
 ## Example Usage
 

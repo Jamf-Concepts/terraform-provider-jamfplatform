@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_dock_item List Resource - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Lists Jamf Pro dock items. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. The list returns id and name per row by default — setting include_resource = true fetches the full record for each item (type, path, and the Jamf-computed contents).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:dock-items` |
 ---
 
 # jamfplatform_pro_dock_item (List Resource)
 
 Lists Jamf Pro dock items. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — setting `include_resource = true` fetches the full record for each item (`type`, `path`, and the Jamf-computed `contents`).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:dock-items` |
 
 ## Example Usage
 

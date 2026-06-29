@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_disable_lost_mode Action - terraform-provider-jamf
 subcategory: ""
 description: |-
   Turns off Lost Mode on a supervised mobile device.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_pro_disable_lost_mode (Action)
 
 Turns off Lost Mode on a supervised mobile device.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:devices` |
 
 ## Example Usage
 

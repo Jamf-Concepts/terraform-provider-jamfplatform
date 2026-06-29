@@ -46,7 +46,7 @@ func (d *ComputerExtensionAttributeDataSource) Metadata(ctx context.Context, req
 // Schema returns the data source schema.
 func (d *ComputerExtensionAttributeDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro computer extension attribute by ID or by exact name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro computer extension attribute by ID or by exact name. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Computer extension attribute ID. Mutually exclusive with `name`.",

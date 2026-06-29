@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_pki_adcs Data Source - terraform-provider-jamfplat
 subcategory: ""
 description: |-
   Read a Jamf Pro AD CS (Active Directory Certificate Services) integration by ID (Settings > Global > PKI certificates > Certificate Authorities). The certificate bytes and password are never returned by Jamf Pro and are not exposed here.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read AD CS Settings | `read:pro:ad-cs-settings` |
 ---
 
 # jamfplatform_pro_pki_adcs (Data Source)
 
 Read a Jamf Pro AD CS (Active Directory Certificate Services) integration by ID (Settings > Global > PKI certificates > Certificate Authorities). The certificate bytes and password are never returned by Jamf Pro and are not exposed here.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read AD CS Settings | `read:pro:ad-cs-settings` |
 
 
 

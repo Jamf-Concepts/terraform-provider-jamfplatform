@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_scripts Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Search Jamf Pro scripts using optional RSQL filters.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Scripts | `read:pro:scripts` |
 ---
 
 # jamfplatform_pro_scripts (Data Source)
 
 Search Jamf Pro scripts using optional RSQL filters.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Scripts | `read:pro:scripts` |
 
 ## Example Usage
 

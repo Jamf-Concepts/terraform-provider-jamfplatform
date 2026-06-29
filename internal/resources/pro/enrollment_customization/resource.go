@@ -82,7 +82,7 @@ func (r *EnrollmentCustomizationResource) Schema(ctx context.Context, req resour
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. " +
 			"At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. " +
-			"The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive.",
+			"The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Enrollment customization ID assigned by Jamf Pro.",

@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_clear_passcode Action - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Clears the passcode on a mobile device.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | — | `execute:pro:computer-commands` |
+  | — | `execute:pro:mobile-device-commands` |
+  | — | `read:pro:devices` |
+  | Read Mobile Devices | `read:pro:mobile-devices` |
 ---
 
 # jamfplatform_pro_clear_passcode (Action)
 
 Clears the passcode on a mobile device.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| — | `execute:pro:computer-commands` |
+| — | `execute:pro:mobile-device-commands` |
+| — | `read:pro:devices` |
+| Read Mobile Devices | `read:pro:mobile-devices` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_notification Data Source - terra
 subcategory: ""
 description: |-
   Look up a single Volume Purchasing notification by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (Data Source)
 
 Look up a single Volume Purchasing notification by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 
 ## Example Usage
 

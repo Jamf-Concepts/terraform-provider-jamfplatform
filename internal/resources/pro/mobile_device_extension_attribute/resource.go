@@ -80,7 +80,7 @@ func (r *MobileDeviceExtensionAttributeResource) ConfigValidators(ctx context.Co
 // Schema returns the Terraform schema for the mobile device extension attribute.
 func (r *MobileDeviceExtensionAttributeResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro mobile device extension attribute — a custom inventory field collected from managed mobile devices. Mirrors the Settings → Mobile device management → Extension Attributes UI. Mobile-device EAs cannot run scripts, so there is no script/enabled field. The `input_type` acts as a discriminator: `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. A plan-time validator enforces these rules before apply.",
+		MarkdownDescription: "Manages a Jamf Pro mobile device extension attribute — a custom inventory field collected from managed mobile devices. Mirrors the Settings → Mobile device management → Extension Attributes UI. Mobile-device EAs cannot run scripts, so there is no script/enabled field. The `input_type` acts as a discriminator: `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. A plan-time validator enforces these rules before apply." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Mobile device extension attribute ID assigned by Jamf Pro.",

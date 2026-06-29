@@ -63,7 +63,7 @@ func (d *PolicyDataSource) Metadata(ctx context.Context, req datasource.Metadata
 // Schema returns the data source schema.
 func (d *PolicyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro policy by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the most-frequently looked-up fields; manage the policy as a resource for full detail.",
+		MarkdownDescription: "Look up a Jamf Pro policy by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the most-frequently looked-up fields; manage the policy as a resource for full detail." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Policy ID. Mutually exclusive with `name`.",

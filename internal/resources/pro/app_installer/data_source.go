@@ -46,7 +46,7 @@ func (d *AppInstallerDataSource) Metadata(ctx context.Context, req datasource.Me
 // Schema returns the data source schema.
 func (d *AppInstallerDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a single App Installer deployment by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the deployment as a resource for the nested presentation blocks.",
+		MarkdownDescription: "Look up a single App Installer deployment by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the deployment as a resource for the nested presentation blocks." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Deployment ID. Mutually exclusive with `name`.",

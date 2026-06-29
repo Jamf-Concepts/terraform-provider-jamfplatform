@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mac_app_store_app Data Source - terraform-provider
 subcategory: ""
 description: |-
   Look up a Jamf Pro App Store Mac app by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection; manage the app as a resource for full detail.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_mac_app_store_app (Data Source)
 
 Look up a Jamf Pro App Store Mac app by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the app as a resource for full detail.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:mac-applications` |
 
 ## Example Usage
 

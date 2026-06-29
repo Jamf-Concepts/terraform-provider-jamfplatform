@@ -58,7 +58,7 @@ func (d *ApiRolePrivilegesDataSource) Metadata(ctx context.Context, req datasour
 // Schema returns the data source schema.
 func (d *ApiRolePrivilegesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads the set of valid Jamf Pro API role privilege strings for the tenant — the values accepted by `jamfplatform_pro_api_role.privileges`. The valid set varies by Jamf Pro version. Use `search` to narrow the result to privileges whose name contains a substring.",
+		MarkdownDescription: "Reads the set of valid Jamf Pro API role privilege strings for the tenant — the values accepted by `jamfplatform_pro_api_role.privileges`. The valid set varies by Jamf Pro version. Use `search` to narrow the result to privileges whose name contains a substring." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

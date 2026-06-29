@@ -55,7 +55,7 @@ func (r *PackageListResource) Configure(ctx context.Context, req resource.Config
 // whitelist mirrors §13.1 — the server rejects everything else with 400.
 func (r *PackageListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the `selector` attribute for the allowed values.",
+		Description: "Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the `selector` attribute for the allowed values." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(PackageFilterSelectors),

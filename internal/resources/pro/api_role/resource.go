@@ -73,7 +73,7 @@ func (r *ApiRoleResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the API role resource.
 func (r *ApiRoleResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro API role (Settings → System → API roles and clients). An API role is a named set of privileges; assign roles to a `jamfplatform_pro_api_client` (by `display_name`) to grant it those privileges.\n\nJamf Pro refuses to delete a role while it is still assigned to an API client. If you are both removing a role from a client and deleting the role, remove it from the client's `api_roles` first (a separate apply) so the role is no longer in use when it is destroyed.",
+		MarkdownDescription: "Manages a Jamf Pro API role (Settings → System → API roles and clients). An API role is a named set of privileges; assign roles to a `jamfplatform_pro_api_client` (by `display_name`) to grant it those privileges.\n\nJamf Pro refuses to delete a role while it is still assigned to an API client. If you are both removing a role from a client and deleting the role, remove it from the client's `api_roles` first (a separate apply) so the role is no longer in use when it is destroyed." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "API role ID assigned by Jamf Pro.",

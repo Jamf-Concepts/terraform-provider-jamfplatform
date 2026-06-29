@@ -70,7 +70,7 @@ func (r *DepartmentResource) IdentitySchema(ctx context.Context, req resource.Id
 // Schema returns the Terraform schema for the department resource.
 func (r *DepartmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro department. Departments represent organisational units and can be assigned to inventory records for reporting and scoping.",
+		MarkdownDescription: "Manages a Jamf Pro department. Departments represent organisational units and can be assigned to inventory records for reporting and scoping." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Department ID assigned by Jamf Pro.",

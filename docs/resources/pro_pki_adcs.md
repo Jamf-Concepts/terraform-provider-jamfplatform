@@ -9,6 +9,14 @@ description: |-
   Certificate write semantics: certificate bytes (data_wo) and the client certificate password_wo are WriteOnly — sent to Jamf Pro on writes but never persisted in Terraform state and never returned on read. Bump a block's wo_version to re-send that certificate (Jamf Pro accepts a certificate in full or not at all). On update, an omitted certificate is left unchanged.
   Validator footgun: the connector_mode cross-field validator only sees what is declared in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.
   Import with terraform import jamfplatform_pro_pki_adcs.<name> <id>.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create AD CS Settings | `create:pro:ad-cs-settings` |
+  | Delete AD CS Settings | `delete:pro:ad-cs-settings` |
+  | Read AD CS Settings | `read:pro:ad-cs-settings` |
+  | Update AD CS Settings | `update:pro:ad-cs-settings` |
 ---
 
 # jamfplatform_pro_pki_adcs (Resource)
@@ -25,6 +33,17 @@ Manages a Jamf Pro AD CS (Active Directory Certificate Services) integration (Se
 **Validator footgun:** the `connector_mode` cross-field validator only sees what is *declared* in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.
 
 Import with `terraform import jamfplatform_pro_pki_adcs.<name> <id>`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create AD CS Settings | `create:pro:ad-cs-settings` |
+| Delete AD CS Settings | `delete:pro:ad-cs-settings` |
+| Read AD CS Settings | `read:pro:ad-cs-settings` |
+| Update AD CS Settings | `update:pro:ad-cs-settings` |
 
 ## Example Usage
 

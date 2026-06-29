@@ -89,7 +89,7 @@ func (r *LicensedSoftwareResource) IdentitySchema(ctx context.Context, req resou
 // UI); differing wire element names are noted in the attribute descriptions.
 func (r *LicensedSoftwareResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro licensed software record — the \"Licensed software\" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. `software_definitions` and `licenses` are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.",
+		MarkdownDescription: "Manages a Jamf Pro licensed software record — the \"Licensed software\" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. `software_definitions` and `licenses` are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Licensed software ID assigned by Jamf Pro.",

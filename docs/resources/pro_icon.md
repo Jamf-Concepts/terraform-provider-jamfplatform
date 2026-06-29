@@ -11,6 +11,8 @@ description: |-
   Import workflow (no spurious replacement):
   terraform import jamfplatform_pro_icon.example 42. Provider downloads the icon bytes via the CDN URL and stores the SHA-256 in state.Download the icon locally from the URL stored in state (e.g. curl -o ./icon.png "$(terraform state show jamfplatform_pro_icon.example | awk '/^[[:space:]]*url/{print $3}' | tr -d '\"')"). You must download from the URL — do NOT reuse the file you originally uploaded. Jamf Pro re-encodes uploaded PNGs (different zlib compression and/or metadata), so the bytes served back from the CDN are not byte-identical to what you uploaded.Add icon_file_source = "./icon.png" to your config.terraform plan shows an in-place update on icon_file_source (null → path). No replacement because the local bytes now match what was stored on import.
   If you skip step 2 and point icon_file_source at your original upload file instead of the CDN-downloaded copy, the first plan after import will show a replacement — the local bytes' hash will not match the import-stored hash (Jamf transformed them).
+  Required Jamf privileges
+  None — any authenticated Jamf Platform API integration may call the underlying endpoints.
 ---
 
 # jamfplatform_pro_icon (Resource)
@@ -33,6 +35,10 @@ Manages a Jamf Pro icon. Icons are uploaded to Jamf Pro and referenced by ID fro
 4. `terraform plan` shows an in-place update on `icon_file_source` (null → path). No replacement because the local bytes now match what was stored on import.
 
 If you skip step 2 and point `icon_file_source` at your original upload file instead of the CDN-downloaded copy, the first plan after import will show a **replacement** — the local bytes' hash will not match the import-stored hash (Jamf transformed them).
+
+**Required Jamf privileges**
+
+None — any authenticated Jamf Platform API integration may call the underlying endpoints.
 
 ## Example Usage
 

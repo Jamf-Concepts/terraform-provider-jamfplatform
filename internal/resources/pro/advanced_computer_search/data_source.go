@@ -45,7 +45,7 @@ func (d *AdvancedComputerSearchDataSource) Metadata(ctx context.Context, req dat
 // Schema returns the data source schema.
 func (d *AdvancedComputerSearchDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro advanced computer search by ID or by exact name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro advanced computer search by ID or by exact name. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced computer search ID. Mutually exclusive with `name`.",

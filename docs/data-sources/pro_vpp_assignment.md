@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_vpp_assignment Data Source - terraform-provider-ja
 subcategory: ""
 description: |-
   Look up a Jamf Pro VPP assignment by ID or name. Exactly one selector must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:vpp-assignment` |
 ---
 
 # jamfplatform_pro_vpp_assignment (Data Source)
 
 Look up a Jamf Pro VPP assignment by ID or name. Exactly one selector must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:vpp-assignment` |
 
 ## Example Usage
 

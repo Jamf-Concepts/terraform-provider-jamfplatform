@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_enrollment_customization Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (icon_source, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (branding_settings.icon_url); the two are mutually exclusive.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Enrollment Customizations | `create:pro:enrollment-customizations` |
+  | Delete Enrollment Customizations | `delete:pro:enrollment-customizations` |
+  | Read Enrollment Customizations | `read:pro:enrollment-customizations` |
+  | Update Enrollment Customizations | `update:pro:enrollment-customizations` |
 ---
 
 # jamfplatform_pro_enrollment_customization (Resource)
 
 Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Enrollment Customizations | `create:pro:enrollment-customizations` |
+| Delete Enrollment Customizations | `delete:pro:enrollment-customizations` |
+| Read Enrollment Customizations | `read:pro:enrollment-customizations` |
+| Update Enrollment Customizations | `update:pro:enrollment-customizations` |
 
 ## Example Usage
 

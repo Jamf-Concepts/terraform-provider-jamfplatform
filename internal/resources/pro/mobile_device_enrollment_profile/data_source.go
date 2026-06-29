@@ -42,7 +42,7 @@ func dsComputedString(desc string) dsschema.StringAttribute {
 
 func (d *EnrollmentProfileDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro mobile device enrollment profile by ID, name, or invitation. Exactly one selector must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro mobile device enrollment profile by ID, name, or invitation. Exactly one selector must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]dsschema.Attribute{
 			"id":          dsschema.StringAttribute{MarkdownDescription: "Profile ID. Mutually exclusive with `name`/`invitation`.", Optional: true, Computed: true},
 			"name":        dsschema.StringAttribute{MarkdownDescription: "Profile name (exact match). Mutually exclusive with `id`/`invitation`.", Optional: true, Computed: true},

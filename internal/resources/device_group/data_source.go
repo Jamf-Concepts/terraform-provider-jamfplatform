@@ -45,7 +45,7 @@ func (d *DeviceGroupDataSource) Metadata(ctx context.Context, req datasource.Met
 // Schema sets the Terraform schema for the data source.
 func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lookup a Jamf device group by ID. Requires **Device Group Inventory API** access.",
+		MarkdownDescription: "Lookup a Jamf device group by ID. Requires **Device Group Inventory API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Device group Platform ID to query.",

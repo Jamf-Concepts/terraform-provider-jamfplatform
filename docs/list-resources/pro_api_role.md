@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_api_role List Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Searches for Jamf Pro API roles using the same filter clauses as the api_roles data source.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read API Roles | `read:pro:api-roles` |
 ---
 
 # jamfplatform_pro_api_role (List Resource)
 
 Searches for Jamf Pro API roles using the same filter clauses as the api_roles data source.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read API Roles | `read:pro:api-roles` |
 
 ## Example Usage
 

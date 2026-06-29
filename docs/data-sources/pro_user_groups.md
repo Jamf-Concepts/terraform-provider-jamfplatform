@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_user_groups Data Source - terraform-provider-jamfp
 subcategory: ""
 description: |-
   List Jamf Pro user groups. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular jamfplatform_pro_user_group lookup.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:user-groups` |
 ---
 
 # jamfplatform_pro_user_groups (Data Source)
 
 List Jamf Pro user groups. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. Per-item criteria, users, and site require a singular `jamfplatform_pro_user_group` lookup.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:user-groups` |
 
 ## Example Usage
 

@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_jamf_connect Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). This resource adopts an existing configuration profile — one that already contains a Jamf Connect payload — and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with jamfplatform_pro_macos_configuration_profile (or in the Jamf Pro UI) first and reference the profile's id as profile_id. Adopting a profile applies the configured deployment settings immediately — a profile left at the default auto_deployment_type = "NONE" turns automatic deployment off. Destroying this resource does not remove Jamf Connect from the configuration profile and does not change the profile itself — it only stops Terraform from managing the deployment and update settings (the settings already applied remain in place). Import with terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Jamf Connect Deployments | `read:pro:jamf-connect-deployments` |
+  | Update Jamf Connect Deployments | `update:pro:jamf-connect-deployments` |
 ---
 
 # jamfplatform_pro_jamf_connect (Resource)
 
 Manages the Jamf Connect deployment and update settings for a single macOS configuration profile (Settings → Jamf apps → Jamf Connect). This resource **adopts an existing configuration profile** — one that already contains a Jamf Connect payload — and controls how Jamf Connect is installed and kept up to date on the computers in that profile's scope. It does not create the configuration profile or the Jamf Connect payload; create those with `jamfplatform_pro_macos_configuration_profile` (or in the Jamf Pro UI) first and reference the profile's `id` as `profile_id`. **Adopting a profile applies the configured deployment settings immediately** — a profile left at the default `auto_deployment_type = "NONE"` turns automatic deployment off. **Destroying this resource does not remove Jamf Connect from the configuration profile** and does not change the profile itself — it only stops Terraform from managing the deployment and update settings (the settings already applied remain in place). Import with `terraform import jamfplatform_pro_jamf_connect.<name> <profile_id>`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Jamf Connect Deployments | `read:pro:jamf-connect-deployments` |
+| Update Jamf Connect Deployments | `update:pro:jamf-connect-deployments` |
 
 ## Example Usage
 

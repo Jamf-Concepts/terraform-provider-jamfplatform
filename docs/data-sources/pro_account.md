@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_account Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Look up a Jamf Pro administrator login account by id or username. Surfaces base account fields; the Custom privilege grid is not included (use the jamfplatform_pro_account resource or jamfplatform_pro_account_privileges data source).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Accounts | `read:pro:accounts` |
 ---
 
 # jamfplatform_pro_account (Data Source)
 
 Look up a Jamf Pro administrator login account by `id` or `username`. Surfaces base account fields; the Custom privilege grid is not included (use the `jamfplatform_pro_account` resource or `jamfplatform_pro_account_privileges` data source).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Accounts | `read:pro:accounts` |
 
 ## Example Usage
 

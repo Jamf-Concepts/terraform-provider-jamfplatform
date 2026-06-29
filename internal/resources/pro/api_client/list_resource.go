@@ -51,7 +51,7 @@ func (r *ApiClientListResource) Configure(ctx context.Context, req resource.Conf
 // ListResourceConfigSchema describes the supported list filters.
 func (r *ApiClientListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Pro API clients using the same filter clauses as the api_clients data source.",
+		Description: "Searches for Jamf Pro API clients using the same filter clauses as the api_clients data source." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(ApiClientFilterSelectors),

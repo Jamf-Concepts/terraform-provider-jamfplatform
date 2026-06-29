@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_users Data Source - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Search Jamf Pro inventory users (people in Users → User Inventory) using optional RSQL filters. Filter selectors use the API-native field names id, username, realname, email, phone, position, and managedAppleId — which map to the UI-aligned output attributes full_name, email_address, and phone_number respectively. These are inventory user records, not Jamf Pro admin accounts.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read User | `read:pro:user` |
 ---
 
 # jamfplatform_pro_users (Data Source)
 
 Search Jamf Pro **inventory users** (people in *Users → User Inventory*) using optional RSQL filters. Filter selectors use the API-native field names `id`, `username`, `realname`, `email`, `phone`, `position`, and `managedAppleId` — which map to the UI-aligned output attributes `full_name`, `email_address`, and `phone_number` respectively. These are inventory user records, **not** Jamf Pro admin accounts.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read User | `read:pro:user` |
 
 ## Example Usage
 

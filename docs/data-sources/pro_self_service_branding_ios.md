@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_self_service_branding_ios Data Source - terraform-
 subcategory: ""
 description: |-
   Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Errors if no iOS branding is configured.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
 ---
 
 # jamfplatform_pro_self_service_branding_ios (Data Source)
 
 Read the current Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Errors if no iOS branding is configured.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
 
 ## Example Usage
 

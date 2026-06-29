@@ -4,11 +4,24 @@ page_title: "jamfplatform_device_groups Data Source - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Search Jamf device groups using optional filters. Requires Device Group Inventory API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:device-groups` |
 ---
 
 # jamfplatform_device_groups (Data Source)
 
 Search Jamf device groups using optional filters. Requires **Device Group Inventory API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:device-groups` |
 
 ## Example Usage
 

@@ -59,7 +59,7 @@ func (r *BlueprintResource) Metadata(ctx context.Context, req resource.MetadataR
 func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:             3,
-		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.",
+		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The unique identifier for the blueprint.",

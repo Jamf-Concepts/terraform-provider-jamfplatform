@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_computer_check_in_settings Data Source - terraform
 subcategory: ""
 description: |-
   Read the current Jamf Pro Client Check-In settings. Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Computer Check-In | `read:pro:computer-check-in` |
 ---
 
 # jamfplatform_pro_computer_check_in_settings (Data Source)
 
 Read the current Jamf Pro Client Check-In settings. Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Computer Check-In | `read:pro:computer-check-in` |
 
 
 

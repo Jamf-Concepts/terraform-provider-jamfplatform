@@ -105,7 +105,7 @@ func (r *ComputerInventoryCollectionSettingsResource) Schema(ctx context.Context
 		MarkdownDescription: "Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). " +
 			"Singleton — one record per tenant. Backed by the V2 API. " +
 			"`application_search_paths` covers custom **application** search paths only; the Jamf Pro V2 API does not expose Fonts or Plug-ins custom paths (scope is fixed to `APP`). " +
-			"Import with `terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_activation_code Resource - terraform-provider-jamf
 subcategory: ""
 description: |-
   Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. Import with terraform import jamfplatform_pro_activation_code.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:activation-code` |
+  | `update:pro:activation-code` |
 ---
 
 # jamfplatform_pro_activation_code (Resource)
 
 Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. Import with `terraform import jamfplatform_pro_activation_code.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:activation-code` |
+| `update:pro:activation-code` |
 
 ## Example Usage
 

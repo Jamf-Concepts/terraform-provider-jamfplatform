@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_impact_alert_notification_settings Data Source - t
 subcategory: ""
 description: |-
   Read the current Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Impact Alert Notification Settings | `read:pro:impact-alert-notification-settings` |
 ---
 
 # jamfplatform_pro_impact_alert_notification_settings (Data Source)
 
 Read the current Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Impact Alert Notification Settings | `read:pro:impact-alert-notification-settings` |
 
 ## Example Usage
 

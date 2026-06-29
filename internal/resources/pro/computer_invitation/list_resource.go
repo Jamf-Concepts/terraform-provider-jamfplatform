@@ -64,7 +64,7 @@ func (r *ComputerInvitationListResource) Configure(ctx context.Context, req reso
 // ListResourceConfigSchema describes the (empty) list configuration.
 func (r *ComputerInvitationListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists all Jamf Pro computer enrollment invitations. Invitations carry no name and Jamf Pro exposes no filter parameters for them, so this list resource takes no filter configuration.",
+		Description: "Lists all Jamf Pro computer enrollment invitations. Invitations carry no name and Jamf Pro exposes no filter parameters for them, so this list resource takes no filter configuration." + listResourcePrivileges,
 		Attributes:  map[string]listschema.Attribute{},
 	}
 }

@@ -75,7 +75,7 @@ func (r *CloudIdentityProviderListResource) ListResourceConfigSchema(ctx context
 		Description: "Lists Jamf Pro Cloud Identity Providers (Google Secure LDAP and Microsoft Entra ID). " +
 			"Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. " +
 			"The list response includes all summary fields (id, display_name, provider_name, enabled, provider_description); " +
-			"setting `include_resource = true` populates the managed-resource state from those same fields without an extra round trip.",
+			"setting `include_resource = true` populates the managed-resource state from those same fields without an extra round trip." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

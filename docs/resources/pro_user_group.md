@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_user_group Resource - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Manages a Jamf Pro user group (smart or static). For smart groups, supply criteria; Jamf Pro resolves the user list. For static groups, supply members (user IDs as strings); criteria is forbidden. The group_type field acts as the discriminator and triggers a replace if changed — mirrors jamfplatform_device_group.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:user-groups` |
+  | `delete:pro:user-groups` |
+  | `read:pro:user-groups` |
+  | `update:pro:user-groups` |
 ---
 
 # jamfplatform_pro_user_group (Resource)
 
 Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; Jamf Pro resolves the user list. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field acts as the discriminator and triggers a replace if changed — mirrors `jamfplatform_device_group`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:user-groups` |
+| `delete:pro:user-groups` |
+| `read:pro:user-groups` |
+| `update:pro:user-groups` |
 
 ## Example Usage
 

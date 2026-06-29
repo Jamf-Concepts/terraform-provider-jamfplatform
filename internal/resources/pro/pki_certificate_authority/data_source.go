@@ -51,7 +51,7 @@ func (d *CertificateAuthorityDataSource) Schema(ctx context.Context, req datasou
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads X.509 details of a Jamf Pro Certificate Authority (Settings > Global > PKI certificates > Certificate Authorities). " +
 			"Omit `id` to read the **active** CA (the Jamf Pro built-in CA on most tenants); set `id` to read a specific CA. " +
-			"Read-only — Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed `pem`.",
+			"Read-only — Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed `pem`." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The Certificate Authority id to read. Omit to read the **active** CA — in that case `id` is set to `active` in state.",

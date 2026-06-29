@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_advanced_computer_search Data Source - terraform-p
 subcategory: ""
 description: |-
   Look up a Jamf Pro advanced computer search by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:advanced-computer-searches` |
 ---
 
 # jamfplatform_pro_advanced_computer_search (Data Source)
 
 Look up a Jamf Pro advanced computer search by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:advanced-computer-searches` |
 
 ## Example Usage
 

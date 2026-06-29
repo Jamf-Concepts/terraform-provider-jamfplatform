@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_set_auto_admin_password Action - terraform-provide
 subcategory: ""
 description: |-
   Sets the automatic administrator password on a computer.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_pro_set_auto_admin_password (Action)
 
 Sets the automatic administrator password on a computer.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:devices` |
 
 ## Example Usage
 

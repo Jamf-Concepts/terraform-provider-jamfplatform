@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_sso_settings Data Source - terraform-provider-jamf
 subcategory: ""
 description: |-
   Read the current Jamf Pro Single Sign-On configuration. Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read SSO Settings | `read:pro:sso-settings` |
 ---
 
 # jamfplatform_pro_sso_settings (Data Source)
 
 Read the current Jamf Pro Single Sign-On configuration. Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read SSO Settings | `read:pro:sso-settings` |
 
 ## Example Usage
 

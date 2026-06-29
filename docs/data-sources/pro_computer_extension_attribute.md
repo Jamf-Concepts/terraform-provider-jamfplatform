@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_computer_extension_attribute Data Source - terrafo
 subcategory: ""
 description: |-
   Look up a Jamf Pro computer extension attribute by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Computer Extension Attributes | `read:pro:computer-extension-attributes` |
 ---
 
 # jamfplatform_pro_computer_extension_attribute (Data Source)
 
 Look up a Jamf Pro computer extension attribute by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Computer Extension Attributes | `read:pro:computer-extension-attributes` |
 
 ## Example Usage
 

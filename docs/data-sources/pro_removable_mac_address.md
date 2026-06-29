@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_removable_mac_address Data Source - terraform-prov
 subcategory: ""
 description: |-
   Look up a Jamf Pro removable MAC address by ID or by exact MAC address. Exactly one of id or mac_address must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:removable-mac-address` |
 ---
 
 # jamfplatform_pro_removable_mac_address (Data Source)
 
 Look up a Jamf Pro removable MAC address by ID or by exact MAC address. Exactly one of `id` or `mac_address` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:removable-mac-address` |
 
 ## Example Usage
 

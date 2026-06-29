@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_app_installer Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via app_title_name (list available titles with the jamfplatform_pro_app_installer_titles data source). update_behavior controls when updates apply (AUTOMATIC tracks the latest catalog version, MANUAL updates on your schedule); the version itself is always the latest available and is reported in selected_version. Setting category_id, site_id, or smart_group_id to -1 means "none".
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Mac Applications | `create:pro:mac-applications` |
+  | Delete Mac Applications | `delete:pro:mac-applications` |
+  | Read Mac Applications | `read:pro:mac-applications` |
+  | Update Mac Applications | `update:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_app_installer (Resource)
 
 Manages a Jamf Pro App Installer — an automatically-built, signed installer for a title published to the Jamf App Catalog. Choose the catalog title by name via `app_title_name` (list available titles with the `jamfplatform_pro_app_installer_titles` data source). `update_behavior` controls when updates apply (`AUTOMATIC` tracks the latest catalog version, `MANUAL` updates on your schedule); the version itself is always the latest available and is reported in `selected_version`. Setting `category_id`, `site_id`, or `smart_group_id` to `-1` means "none".
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Mac Applications | `create:pro:mac-applications` |
+| Delete Mac Applications | `delete:pro:mac-applications` |
+| Read Mac Applications | `read:pro:mac-applications` |
+| Update Mac Applications | `update:pro:mac-applications` |
 
 ## Example Usage
 

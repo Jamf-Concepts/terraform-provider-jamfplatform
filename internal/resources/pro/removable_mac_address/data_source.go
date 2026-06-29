@@ -44,7 +44,7 @@ func (d *RemovableMacAddressDataSource) Metadata(ctx context.Context, req dataso
 // Schema returns the data source schema.
 func (d *RemovableMacAddressDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro removable MAC address by ID or by exact MAC address. Exactly one of `id` or `mac_address` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro removable MAC address by ID or by exact MAC address. Exactly one of `id` or `mac_address` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Removable MAC address ID. Mutually exclusive with `mac_address`.",

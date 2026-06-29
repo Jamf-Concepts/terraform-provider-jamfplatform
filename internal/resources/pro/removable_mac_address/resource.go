@@ -72,7 +72,7 @@ func (r *RemovableMacAddressResource) IdentitySchema(ctx context.Context, req re
 // Schema returns the Terraform schema for the removable MAC address resource.
 func (r *RemovableMacAddressResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro removable MAC address. Removable MAC addresses are the tenant-wide list of hardware addresses Jamf Pro ignores when matching a computer to its inventory record — useful when a USB or Thunderbolt Ethernet adapter is shared across machines and would otherwise cause inventory mis-matches.",
+		MarkdownDescription: "Manages a Jamf Pro removable MAC address. Removable MAC addresses are the tenant-wide list of hardware addresses Jamf Pro ignores when matching a computer to its inventory record — useful when a USB or Thunderbolt Ethernet adapter is shared across machines and would otherwise cause inventory mis-matches." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Removable MAC address ID assigned by Jamf Pro.",

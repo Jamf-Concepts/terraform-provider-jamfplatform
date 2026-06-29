@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_volume_purchasing_location Resource - terraform-pr
 subcategory: ""
 description: |-
   Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a .vpptoken file (already base64-encoded by Apple — supply the file contents directly via file("/path/to/vpp.vpptoken")). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates last_sync_time before committing the resource. The default create timeout is 30 minutes — increase via timeouts { create = "60m" } if your tenant has a large catalog.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
+  | Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
+  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+  | Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_location (Resource)
 
 Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a `.vpptoken` file (already base64-encoded by Apple — supply the file contents directly via `file("/path/to/vpp.vpptoken")`). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates `last_sync_time` before committing the resource. The default create timeout is 30 minutes — increase via `timeouts { create = "60m" }` if your tenant has a large catalog.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
+| Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
+| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+| Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
 
 ## Example Usage
 

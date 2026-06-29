@@ -8,6 +8,12 @@ description: |-
   Third-party MDM signing certificate — set signing_mdm_profile_enabled = true and supply the mdm_signing_certificate block to upload a keystore. Leaving the block absent on a later apply preserves the existing certificate. Setting signing_mdm_profile_enabled = false removes the stored certificate. When signing_mdm_profile_enabled = true, the mdm_signing_certificate block is required (plan-time validated).
   Destroy — terraform destroy removes the resource from Terraform state only. The settings, certificates and Access Groups are left intact on the tenant. To reset options, set them explicitly and apply before destroy.
   Import with terraform import jamfplatform_pro_user_initiated_enrollment_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
+  | Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
 ---
 
 # jamfplatform_pro_user_initiated_enrollment_settings (Resource)
@@ -21,6 +27,15 @@ Manages the Jamf Pro **User-Initiated Enrollment** settings page (UI: Settings �
 **Destroy** — `terraform destroy` removes the resource from Terraform state only. The settings, certificates and Access Groups are left intact on the tenant. To reset options, set them explicitly and apply before destroy.
 
 Import with `terraform import jamfplatform_pro_user_initiated_enrollment_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
+| Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
 
 ## Example Usage
 

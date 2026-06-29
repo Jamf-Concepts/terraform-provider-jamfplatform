@@ -7,6 +7,12 @@ description: |-
   Omit = preserve — each clear_* toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. Each toggle you set is managed by Terraform and will be restored if it is edited in the Jamf Pro UI, so you can manage a subset of the toggles and leave the rest as configured in the admin console. A boolean has no "unset" — omit to preserve, or set true/false to change it. clear_management_history must always be set (the dropdown always has a selection).
   Destroy — terraform destroy removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Re-enrollment | `read:pro:re-enrollment` |
+  | Update Re-enrollment | `update:pro:re-enrollment` |
 ---
 
 # jamfplatform_pro_re_enrollment_settings (Resource)
@@ -18,6 +24,15 @@ Manages the Jamf Pro **Re-enrollment** settings page (UI: Settings → Global �
 **Destroy** — `terraform destroy` removes the resource from Terraform state only. The Re-enrollment settings are left intact on the tenant; they cannot be deleted.
 
 Import with `terraform import jamfplatform_pro_re_enrollment_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Re-enrollment | `read:pro:re-enrollment` |
+| Update Re-enrollment | `update:pro:re-enrollment` |
 
 ## Example Usage
 

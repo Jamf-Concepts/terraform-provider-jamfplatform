@@ -70,7 +70,7 @@ func (r *CategoryResource) IdentitySchema(ctx context.Context, req resource.Iden
 // Schema returns the Terraform schema for the category resource.
 func (r *CategoryResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro category. Categories group policies, scripts, packages, and other Jamf Pro objects.",
+		MarkdownDescription: "Manages a Jamf Pro category. Categories group policies, scripts, packages, and other Jamf Pro objects." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Category ID assigned by Jamf Pro.",

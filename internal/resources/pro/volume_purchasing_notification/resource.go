@@ -85,7 +85,7 @@ func (r *VolumePurchasingNotificationResource) Schema(ctx context.Context, req r
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Volume Purchasing notification — the **\"Notifications\"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. " +
 			"A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. " +
-			"Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site.",
+			"Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Notification ID assigned by Jamf Pro.",

@@ -5,6 +5,12 @@ subcategory: ""
 description: |-
   Manages Jamf Pro App Installer global settings. Singleton — one record per tenant.
   Import with terraform import jamfplatform_pro_app_installer_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mac Applications | `read:pro:mac-applications` |
+  | Update Mac Applications | `update:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_app_installer_settings (Resource)
@@ -12,6 +18,15 @@ description: |-
 Manages Jamf Pro App Installer global settings. Singleton — one record per tenant.
 
 Import with `terraform import jamfplatform_pro_app_installer_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mac Applications | `read:pro:mac-applications` |
+| Update Mac Applications | `update:pro:mac-applications` |
 
 ## Example Usage
 

@@ -50,7 +50,7 @@ func (d *AppInstallerTitlesDataSource) Metadata(ctx context.Context, req datasou
 func (d *AppInstallerTitlesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	titleAttrs := TitleDataSourceAttributes()
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns the App Installer catalog — every title published to the tenant. Titles are managed by Jamf and cannot be created or modified. Use the optional `name_substring` to narrow the result; matching is case-insensitive and applied after the full catalog is fetched.",
+		MarkdownDescription: "Returns the App Installer catalog — every title published to the tenant. Titles are managed by Jamf and cannot be created or modified. Use the optional `name_substring` to narrow the result; matching is case-insensitive and applied after the full catalog is fetched." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

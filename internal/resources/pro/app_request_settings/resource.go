@@ -81,7 +81,7 @@ func (r *AppRequestSettingsResource) Schema(ctx context.Context, req resource.Sc
 		MarkdownDescription: "Manages Jamf Pro App Request settings (Settings → Self Service → App Request). " +
 			"App Request lets Self Service users on iOS request apps that admins then approve. Singleton — one record per tenant. " +
 			"This resource adopts the existing settings on first apply. **Omit = preserve** for `enabled`, `app_store_locale`, and `requester_user_group_id`: a field you omit keeps its current Jamf Pro value. `approver_emails` is required and always reflects exactly the addresses you declare. " +
-			"Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_app_request_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

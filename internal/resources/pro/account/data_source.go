@@ -50,7 +50,7 @@ func (d *AccountDataSource) ConfigValidators(ctx context.Context) []datasource.C
 // translated from the Pro wire values.
 func (d *AccountDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro administrator login account by `id` or `username`. Surfaces base account fields; the Custom privilege grid is not included (use the `jamfplatform_pro_account` resource or `jamfplatform_pro_account_privileges` data source).",
+		MarkdownDescription: "Look up a Jamf Pro administrator login account by `id` or `username`. Surfaces base account fields; the Custom privilege grid is not included (use the `jamfplatform_pro_account` resource or `jamfplatform_pro_account_privileges` data source)." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":             schema.StringAttribute{MarkdownDescription: "Account ID. Provide this or `username`.", Optional: true, Computed: true},
 			"username":       schema.StringAttribute{MarkdownDescription: "Account username. Provide this or `id`.", Optional: true, Computed: true},

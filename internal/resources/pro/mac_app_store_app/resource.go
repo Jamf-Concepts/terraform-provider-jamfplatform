@@ -86,7 +86,7 @@ func (r *MacAppResource) IdentitySchema(ctx context.Context, req resource.Identi
 // attribute descriptions.
 func (r *MacAppResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro App Store Mac app (the classic `/macapplications` endpoint — the \"App Store App\" entry under the \"Mac Apps\" sidebar). `general.name`, `general.version`, `general.bundle_id`, and `general.url` are required on create and stored verbatim — there is **no** App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.",
+		MarkdownDescription: "Manages a Jamf Pro App Store Mac app (the classic `/macapplications` endpoint — the \"App Store App\" entry under the \"Mac Apps\" sidebar). `general.name`, `general.version`, `general.bundle_id`, and `general.url` are required on create and stored verbatim — there is **no** App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App ID assigned by Jamf Pro.",

@@ -94,7 +94,7 @@ func (r *SmtpServerResource) Schema(ctx context.Context, req resource.SchemaRequ
 			"**Full-replace** — every apply replaces the whole configuration; omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching `authentication_type` clears the previous method's credentials. " +
 			"Plaintext secrets (`basic_auth_credentials.password`, `graph_api_credentials.client_secret`, `google_mail_credentials.client_secret`) are `WriteOnly`: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its `*_wo_version` rotation trigger. " +
 			"**Google Workspace** sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI (\"Add an email address via Google\"); Terraform configures the client credentials but does not drive that grant — `google_mail_credentials.authentications` is read-only. " +
-			"Import with `terraform import jamfplatform_pro_smtp_server.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_smtp_server.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

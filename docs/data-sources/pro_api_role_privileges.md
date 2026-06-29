@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_api_role_privileges Data Source - terraform-provid
 subcategory: ""
 description: |-
   Reads the set of valid Jamf Pro API role privilege strings for the tenant — the values accepted by jamfplatform_pro_api_role.privileges. The valid set varies by Jamf Pro version. Use search to narrow the result to privileges whose name contains a substring.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read API Roles | `read:pro:api-roles` |
 ---
 
 # jamfplatform_pro_api_role_privileges (Data Source)
 
 Reads the set of valid Jamf Pro API role privilege strings for the tenant — the values accepted by `jamfplatform_pro_api_role.privileges`. The valid set varies by Jamf Pro version. Use `search` to narrow the result to privileges whose name contains a substring.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read API Roles | `read:pro:api-roles` |
 
 ## Example Usage
 

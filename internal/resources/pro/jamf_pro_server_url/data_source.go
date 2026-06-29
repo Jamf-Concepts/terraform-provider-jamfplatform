@@ -68,7 +68,7 @@ func (d *JamfProServerURLDataSource) Metadata(ctx context.Context, req datasourc
 // Schema returns the data source schema.
 func (d *JamfProServerURLDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads the Jamf Pro server URL (Settings > Jamf Pro Server URL) — the URL devices check in against. Singleton: one value per tenant. Read-only; reference the returned `url` elsewhere in your configuration, such as enrollment URLs, webhooks, or scripts.",
+		MarkdownDescription: "Reads the Jamf Pro server URL (Settings > Jamf Pro Server URL) — the URL devices check in against. Singleton: one value per tenant. Read-only; reference the returned `url` elsewhere in your configuration, such as enrollment URLs, webhooks, or scripts." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

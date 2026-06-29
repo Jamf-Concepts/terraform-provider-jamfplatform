@@ -74,7 +74,7 @@ func (d *AppStoreCountryCodesDataSource) Metadata(ctx context.Context, req datas
 // Schema returns the data source schema.
 func (d *AppStoreCountryCodesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Reads the set of valid App Store country/region codes for the tenant — the values accepted by `jamfplatform_pro_app_request_settings.app_store_locale` (alongside the literal `deviceLocale`). The valid set varies by tenant/version. Use `search` to narrow the result to entries whose code or name contains a substring.",
+		MarkdownDescription: "Reads the set of valid App Store country/region codes for the tenant — the values accepted by `jamfplatform_pro_app_request_settings.app_store_locale` (alongside the literal `deviceLocale`). The valid set varies by tenant/version. Use `search` to narrow the result to entries whose code or name contains a substring." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

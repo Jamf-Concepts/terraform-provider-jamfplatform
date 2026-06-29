@@ -57,7 +57,7 @@ func (r *DepartmentListResource) Configure(ctx context.Context, req resource.Con
 // ListResourceConfigSchema describes the supported list filters.
 func (r *DepartmentListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Pro departments using the same filter clauses as the departments data source.",
+		Description: "Searches for Jamf Pro departments using the same filter clauses as the departments data source." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(DepartmentFilterSelectors),

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_inventory_preload_record Data Source - terraform-p
 subcategory: ""
 description: |-
   Look up a Jamf Pro Inventory Preload record by ID or by serial number. Exactly one of id or serial_number must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Inventory Preload Records | `read:pro:inventory-preload-records` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (Data Source)
 
 Look up a Jamf Pro Inventory Preload record by ID or by serial number. Exactly one of `id` or `serial_number` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Inventory Preload Records | `read:pro:inventory-preload-records` |
 
 ## Example Usage
 

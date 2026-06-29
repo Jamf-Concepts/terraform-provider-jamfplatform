@@ -41,7 +41,7 @@ func (d *AppInstallersDataSource) Metadata(ctx context.Context, req datasource.M
 // Schema returns the data source schema.
 func (d *AppInstallersDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns every App Installer deployment for the tenant in expanded form, including the resolved app, site, category, and smart-group references and per-deployment computer status counts. Use the optional `name_substring` to narrow the result; matching is case-insensitive and applied after the full list is fetched.",
+		MarkdownDescription: "Returns every App Installer deployment for the tenant in expanded form, including the resolved app, site, category, and smart-group references and per-deployment computer status counts. Use the optional `name_substring` to narrow the result; matching is case-insensitive and applied after the full list is fetched." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

@@ -35,7 +35,7 @@ func (a *RedeployManagementFrameworkAction) Metadata(ctx context.Context, req ac
 
 func (a *RedeployManagementFrameworkAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Redeploys the Jamf management framework (binary and MDM management profile) to a computer.",
+		MarkdownDescription: "Redeploys the Jamf management framework (binary and MDM management profile) to a computer." + redeployManagementFrameworkPrivileges,
 		Attributes:          computerTargetAttributes(),
 	}
 }

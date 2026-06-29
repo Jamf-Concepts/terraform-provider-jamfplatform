@@ -34,7 +34,7 @@ func (d *ComponentsDataSource) Metadata(ctx context.Context, req datasource.Meta
 // Schema sets the Terraform schema for the data source.
 func (d *ComponentsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns all available blueprint components. Requires **Blueprints API** access.",
+		MarkdownDescription: "Returns all available blueprint components. Requires **Blueprints API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"components": schema.ListNestedAttribute{
 				MarkdownDescription: "List of all blueprint components.",

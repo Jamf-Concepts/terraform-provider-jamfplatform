@@ -38,7 +38,7 @@ func (a *UnmanageAction) Metadata(ctx context.Context, req action.MetadataReques
 
 func (a *UnmanageAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Removes remote management from a device. Requires **Device Management Actions API access**.",
+		MarkdownDescription: "Removes remote management from a device. Requires **Device Management Actions API access**." + unmanageDevicePrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"device_id": actionschema.StringAttribute{
 				Optional:            true,

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_advanced_mobile_device_search List Resource - terr
 subcategory: ""
 description: |-
   Lists Jamf Pro advanced mobile device searches. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
 ---
 
 # jamfplatform_pro_advanced_mobile_device_search (List Resource)
 
 Lists Jamf Pro advanced mobile device searches. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
 
 ## Example Usage
 

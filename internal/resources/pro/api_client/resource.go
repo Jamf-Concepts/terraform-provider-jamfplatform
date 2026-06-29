@@ -79,7 +79,7 @@ func (r *ApiClientResource) IdentitySchema(ctx context.Context, req resource.Ide
 func (r *ApiClientResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro API client (Settings → System → API roles and clients). An API client authenticates to the Jamf Pro API using the OAuth client-credentials grant; its privileges come from the `jamfplatform_pro_api_role`s assigned in `api_roles`.\n\n" +
-			"**Client secret lifecycle:** Jamf Pro generates the client secret and returns it only once, at generation time — it can never be read back afterwards. Set `credential_rotation` to generate a secret (the client must be `enabled`); change that value to rotate it. The generated `client_secret` is stored — `Sensitive` — in Terraform state so dependent resources can consume it. Disabling the client (`enabled = false`) revokes its credentials in Jamf Pro.",
+			"**Client secret lifecycle:** Jamf Pro generates the client secret and returns it only once, at generation time — it can never be read back afterwards. Set `credential_rotation` to generate a secret (the client must be `enabled`); change that value to rotate it. The generated `client_secret` is stored — `Sensitive` — in Terraform state so dependent resources can consume it. Disabling the client (`enabled = false`) revokes its credentials in Jamf Pro." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "API client ID assigned by Jamf Pro.",

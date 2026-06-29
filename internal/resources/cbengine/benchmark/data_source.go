@@ -37,7 +37,7 @@ func (d *BenchmarkDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema sets the Terraform schema for the data source.
 func (d *BenchmarkDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns a benchmark by ID or title. Requires **Compliance Benchmarks API** access.",
+		MarkdownDescription: "Returns a benchmark by ID or title. Requires **Compliance Benchmarks API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The benchmark ID to fetch. Optional if title is set.",

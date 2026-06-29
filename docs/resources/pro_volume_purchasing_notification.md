@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_volume_purchasing_notification Resource - terrafor
 subcategory: ""
 description: |-
   Manages a Volume Purchasing notification — the "Notifications" tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set site_id to -1 for no site.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
+  | Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
+  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+  | Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (Resource)
 
 Manages a Volume Purchasing notification — the **"Notifications"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
+| Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
+| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+| Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
 
 ## Example Usage
 

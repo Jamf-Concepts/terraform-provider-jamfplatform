@@ -76,7 +76,7 @@ func (r *ClassResource) IdentitySchema(ctx context.Context, req resource.Identit
 // the Jamf Pro admin UI labels; user-facing descriptions are UI-aligned.
 func (r *ClassResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro class — the \"Classes\" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers (by username) and student/teacher/mobile-device groups (by ID). Membership is authoritative: each set is applied in full on every change. Classes synchronised from a roster (Apple School Manager) are managed by the sync and should not be managed with this resource.",
+		MarkdownDescription: "Manages a Jamf Pro class — the \"Classes\" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers (by username) and student/teacher/mobile-device groups (by ID). Membership is authoritative: each set is applied in full on every change. Classes synchronised from a roster (Apple School Manager) are managed by the sync and should not be managed with this resource." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Class ID assigned by Jamf Pro.",

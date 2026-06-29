@@ -89,7 +89,7 @@ func (r *AccessManagementSettingsResource) Schema(ctx context.Context, req resou
 			"The ADE server object must belong to the same ABM/ASM tenant the Managed Apple Accounts originate from; only one tenant can be configured at a time. " +
 			"Requires Jamf Pro 11.18.0 or later and an ADE (MDM server) token configured in Jamf Pro. " +
 			"**Omit = preserve** — omitting `automated_device_enrollment_server_uuid` keeps the value currently set on the tenant (including on the first apply: this resource adopts the existing setting). **To clear the setting, set `automated_device_enrollment_server_uuid = \"\"`** — omitting it does not clear it. " +
-			"Import with `terraform import jamfplatform_pro_access_management_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_access_management_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

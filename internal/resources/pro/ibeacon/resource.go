@@ -83,7 +83,7 @@ func (r *IbeaconResource) IdentitySchema(ctx context.Context, req resource.Ident
 // Schema returns the Terraform schema for the iBeacon resource.
 func (r *IbeaconResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set `include_any_major_value = true` and leave `major` unset — same for `include_any_minor_value` and `minor`. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.",
+		MarkdownDescription: "Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set `include_any_major_value = true` and leave `major` unset — same for `include_any_minor_value` and `minor`. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "iBeacon ID assigned by Jamf Pro.",

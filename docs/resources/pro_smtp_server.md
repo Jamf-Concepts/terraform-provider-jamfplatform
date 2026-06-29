@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_smtp_server Resource - terraform-provider-jamfplat
 subcategory: ""
 description: |-
   Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server) — the outbound mail relay Jamf Pro uses to send notifications, enrollment invitations, and other email. Singleton — one record per tenant. authentication_type selects the authentication method and which blocks apply: NONE and BASIC use connection_settings (SMTP host/port/encryption); BASIC adds basic_auth_credentials; GRAPH_API uses graph_api_credentials (Microsoft Graph); GOOGLE_MAIL uses google_mail_credentials (Google Workspace). A plan-time validator enforces that the block matching authentication_type is present and the others absent. Full-replace — every apply replaces the whole configuration; omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching authentication_type clears the previous method's credentials. Plaintext secrets (basic_auth_credentials.password, graph_api_credentials.client_secret, google_mail_credentials.client_secret) are WriteOnly: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its *_wo_version rotation trigger. Google Workspace sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI ("Add an email address via Google"); Terraform configures the client credentials but does not drive that grant — google_mail_credentials.authentications is read-only. Import with terraform import jamfplatform_pro_smtp_server.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read SMTP Server | `read:pro:smtp-server` |
+  | Update SMTP Server | `update:pro:smtp-server` |
 ---
 
 # jamfplatform_pro_smtp_server (Resource)
 
 Manages Jamf Pro SMTP Server settings (Settings → System → SMTP Server) — the outbound mail relay Jamf Pro uses to send notifications, enrollment invitations, and other email. Singleton — one record per tenant. `authentication_type` selects the authentication method and which blocks apply: `NONE` and `BASIC` use `connection_settings` (SMTP host/port/encryption); `BASIC` adds `basic_auth_credentials`; `GRAPH_API` uses `graph_api_credentials` (Microsoft Graph); `GOOGLE_MAIL` uses `google_mail_credentials` (Google Workspace). A plan-time validator enforces that the block matching `authentication_type` is present and the others absent. **Full-replace** — every apply replaces the whole configuration; omitted scalars are preserved by carrying the current value forward (Optional+Computed). Switching `authentication_type` clears the previous method's credentials. Plaintext secrets (`basic_auth_credentials.password`, `graph_api_credentials.client_secret`, `google_mail_credentials.client_secret`) are `WriteOnly`: sent to Jamf Pro on writes but never persisted in state and never returned on read. Pair each with its `*_wo_version` rotation trigger. **Google Workspace** sender accounts are linked through an interactive Google OAuth grant in the Jamf Pro admin UI ("Add an email address via Google"); Terraform configures the client credentials but does not drive that grant — `google_mail_credentials.authentications` is read-only. Import with `terraform import jamfplatform_pro_smtp_server.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read SMTP Server | `read:pro:smtp-server` |
+| Update SMTP Server | `update:pro:smtp-server` |
 
 ## Example Usage
 
