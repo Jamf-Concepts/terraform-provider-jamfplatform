@@ -75,7 +75,7 @@ func (r *ActivationCodeResource) Schema(ctx context.Context, req resource.Schema
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). " +
 			"Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. " +
-			"Import with `terraform import jamfplatform_pro_activation_code.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_activation_code.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

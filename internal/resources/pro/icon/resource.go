@@ -96,7 +96,7 @@ func (r *IconResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 3. Add ` + "`icon_file_source = \"./icon.png\"`" + ` to your config.
 4. ` + "`terraform plan`" + ` shows an in-place update on ` + "`icon_file_source`" + ` (null → path). No replacement because the local bytes now match what was stored on import.
 
-If you skip step 2 and point ` + "`icon_file_source`" + ` at your original upload file instead of the CDN-downloaded copy, the first plan after import will show a **replacement** — the local bytes' hash will not match the import-stored hash (Jamf transformed them).`,
+If you skip step 2 and point ` + "`icon_file_source`" + ` at your original upload file instead of the CDN-downloaded copy, the first plan after import will show a **replacement** — the local bytes' hash will not match the import-stored hash (Jamf transformed them).` + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Jamf Pro icon ID assigned on upload. Changes when the resource is replaced.",

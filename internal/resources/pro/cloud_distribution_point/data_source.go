@@ -39,7 +39,7 @@ func (d *CloudDistributionPointDataSource) Metadata(ctx context.Context, req dat
 // `NONE` is surfaced as-is, indicating no cloud distribution point is configured.
 func (d *CloudDistributionPointDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. `cdn_type` is `NONE` when no cloud distribution point is configured.",
+		MarkdownDescription: "Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. `cdn_type` is `NONE` when no cloud distribution point is configured." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

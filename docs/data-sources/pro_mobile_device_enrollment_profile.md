@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_enrollment_profile Data Source - ter
 subcategory: ""
 description: |-
   Look up a Jamf Pro mobile device enrollment profile by ID, name, or invitation. Exactly one selector must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:enrollment-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_enrollment_profile (Data Source)
 
 Look up a Jamf Pro mobile device enrollment profile by ID, name, or invitation. Exactly one selector must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:enrollment-profiles` |
 
 ## Example Usage
 

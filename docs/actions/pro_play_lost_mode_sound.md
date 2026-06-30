@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_play_lost_mode_sound Action - terraform-provider-j
 subcategory: ""
 description: |-
   Plays a sound on a mobile device that is in Lost Mode.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_pro_play_lost_mode_sound (Action)
 
 Plays a sound on a mobile device that is in Lost Mode.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:devices` |
 
 ## Example Usage
 

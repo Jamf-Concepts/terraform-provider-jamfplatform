@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_return_to_service Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Manages a Jamf Pro Return to Service configuration — a named pairing of a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol into Jamf Pro without manual setup.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Delete Return To Service Configurations | `delete:pro:return-to-service-configurations` |
+  | View Return To Service Configurations | `read:pro:return-to-service-configurations` |
+  | Edit Return To Service Configurations | `update:pro:return-to-service-configurations` |
 ---
 
 # jamfplatform_pro_return_to_service (Resource)
 
 Manages a Jamf Pro Return to Service configuration — a named pairing of a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol into Jamf Pro without manual setup.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Delete Return To Service Configurations | `delete:pro:return-to-service-configurations` |
+| View Return To Service Configurations | `read:pro:return-to-service-configurations` |
+| Edit Return To Service Configurations | `update:pro:return-to-service-configurations` |
 
 ## Example Usage
 

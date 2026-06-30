@@ -36,7 +36,7 @@ func (a *DisableLostModeAction) Metadata(ctx context.Context, req action.Metadat
 
 func (a *DisableLostModeAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Turns off Lost Mode on a supervised mobile device.",
+		MarkdownDescription: "Turns off Lost Mode on a supervised mobile device." + disableLostModePrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
 }

@@ -47,7 +47,7 @@ func (d *JSONWebTokenConfigurationDataSource) Metadata(ctx context.Context, req 
 // Schema returns the data source schema.
 func (d *JSONWebTokenConfigurationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro JSON Web Token configuration by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The encryption key is never surfaced.",
+		MarkdownDescription: "Look up a Jamf Pro JSON Web Token configuration by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The encryption key is never surfaced." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "JSON Web Token configuration ID. Mutually exclusive with `name`.",

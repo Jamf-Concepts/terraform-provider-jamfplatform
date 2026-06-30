@@ -37,7 +37,7 @@ func (a *FlushPolicyLogsAction) Metadata(ctx context.Context, req action.Metadat
 
 func (a *FlushPolicyLogsAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Flushes the logs for a policy older than the given interval.",
+		MarkdownDescription: "Flushes the logs for a policy older than the given interval." + flushPolicyLogsPrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"policy_id": actionschema.StringAttribute{
 				Required:            true,

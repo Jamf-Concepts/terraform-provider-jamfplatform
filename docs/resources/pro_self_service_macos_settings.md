@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_self_service_macos_settings Resource - terraform-p
 subcategory: ""
 description: |-
   Manages the Self Service for macOS app settings (Settings > Self Service > macOS). Singleton — one record per tenant. Omit = preserve — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. default_home_category_id only applies when default_landing_page = "BROWSE" — under any other landing page Jamf Pro silently resets it to -1 (All Items), so the provider rejects that combination at plan time. Import with terraform import jamfplatform_pro_self_service_macos_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Self Service | `read:pro:self-service` |
+  | Update Self Service | `update:pro:self-service` |
 ---
 
 # jamfplatform_pro_self_service_macos_settings (Resource)
 
 Manages the Self Service for macOS app settings (Settings > Self Service > macOS). Singleton — one record per tenant. **Omit = preserve** — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. `default_home_category_id` only applies when `default_landing_page = "BROWSE"` — under any other landing page Jamf Pro silently resets it to `-1` (All Items), so the provider rejects that combination at plan time. Import with `terraform import jamfplatform_pro_self_service_macos_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Self Service | `read:pro:self-service` |
+| Update Self Service | `update:pro:self-service` |
 
 ## Example Usage
 

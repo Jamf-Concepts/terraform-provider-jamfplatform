@@ -38,7 +38,7 @@ func (a *FlushMdmCommandsAction) Metadata(ctx context.Context, req action.Metada
 
 func (a *FlushMdmCommandsAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Cancels (flushes) pending or failed management commands for a device or group.",
+		MarkdownDescription: "Cancels (flushes) pending or failed management commands for a device or group." + flushMdmCommandsPrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"id_type": actionschema.StringAttribute{
 				Required:            true,

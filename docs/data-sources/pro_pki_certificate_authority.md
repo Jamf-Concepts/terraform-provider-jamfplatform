@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_pki_certificate_authority Data Source - terraform-
 subcategory: ""
 description: |-
   Reads X.509 details of a Jamf Pro Certificate Authority (Settings > Global > PKI certificates > Certificate Authorities). Omit id to read the active CA (the Jamf Pro built-in CA on most tenants); set id to read a specific CA. Read-only — Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed pem.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read PKI | `read:pro:pki` |
 ---
 
 # jamfplatform_pro_pki_certificate_authority (Data Source)
 
 Reads X.509 details of a Jamf Pro Certificate Authority (Settings > Global > PKI certificates > Certificate Authorities). Omit `id` to read the **active** CA (the Jamf Pro built-in CA on most tenants); set `id` to read a specific CA. Read-only — Jamf Pro exposes only read and certificate-download operations for Certificate Authorities, so there is no resource counterpart. The certificate is surfaced as a Computed `pem`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read PKI | `read:pro:pki` |
 
 ## Example Usage
 

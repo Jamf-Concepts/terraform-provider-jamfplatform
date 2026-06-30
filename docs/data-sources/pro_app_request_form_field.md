@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_app_request_form_field Data Source - terraform-pro
 subcategory: ""
 description: |-
   Look up a Jamf Pro App Request form field by ID or by title. Exactly one of id or title must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error — use id to disambiguate.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read App Request Settings | `read:pro:app-request-settings` |
 ---
 
 # jamfplatform_pro_app_request_form_field (Data Source)
 
 Look up a Jamf Pro App Request form field by ID or by title. Exactly one of `id` or `title` must be supplied. Titles are not unique, so a by-title lookup that matches more than one field returns an error — use `id` to disambiguate.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read App Request Settings | `read:pro:app-request-settings` |
 
 ## Example Usage
 

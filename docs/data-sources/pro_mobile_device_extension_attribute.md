@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_extension_attribute Data Source - te
 subcategory: ""
 description: |-
   Look up a Jamf Pro mobile device extension attribute by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
 ---
 
 # jamfplatform_pro_mobile_device_extension_attribute (Data Source)
 
 Look up a Jamf Pro mobile device extension attribute by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
 
 ## Example Usage
 

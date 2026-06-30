@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_licensed_software Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Manages a Jamf Pro licensed software record — the "Licensed software" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. software_definitions and licenses are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:licensed-software` |
+  | `delete:pro:licensed-software` |
+  | `read:pro:licensed-software` |
+  | `update:pro:licensed-software` |
 ---
 
 # jamfplatform_pro_licensed_software (Resource)
 
 Manages a Jamf Pro licensed software record — the "Licensed software" entry under the Computers sidebar in the Jamf Pro admin UI. Tracks software licences and matches installed copies against software definitions. `software_definitions` and `licenses` are ordered lists matched by position, so keep their ordering stable across changes. Only software definitions are supported; legacy font and plug-in definitions are not exposed because Jamf Pro does not retain them.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:licensed-software` |
+| `delete:pro:licensed-software` |
+| `read:pro:licensed-software` |
+| `update:pro:licensed-software` |
 
 ## Example Usage
 

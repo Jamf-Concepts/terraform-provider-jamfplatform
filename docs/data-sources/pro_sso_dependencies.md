@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_sso_dependencies Data Source - terraform-provider-
 subcategory: ""
 description: |-
   List Jamf Pro objects (typically Enrollment Customizations) currently consuming the tenant's SSO configuration.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read SSO Settings | `read:pro:sso-settings` |
 ---
 
 # jamfplatform_pro_sso_dependencies (Data Source)
 
 List Jamf Pro objects (typically Enrollment Customizations) currently consuming the tenant's SSO configuration.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read SSO Settings | `read:pro:sso-settings` |
 
 ## Example Usage
 

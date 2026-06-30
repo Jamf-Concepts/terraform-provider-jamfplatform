@@ -70,7 +70,7 @@ func (r *AppInstallerListResource) Configure(ctx context.Context, req resource.C
 // ListResourceConfigSchema describes the supported list filters.
 func (r *AppInstallerListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists App Installer deployments. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-deployment read.",
+		Description: "Lists App Installer deployments. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-deployment read." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

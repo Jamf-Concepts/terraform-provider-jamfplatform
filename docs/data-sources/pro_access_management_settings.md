@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_access_management_settings Data Source - terraform
 subcategory: ""
 description: |-
   Read the current Jamf Pro Access Management settings for Managed Apple Accounts (/v4/enrollment/access-management). Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Access Management Setting Read | `read:pro:access-management-setting` |
 ---
 
 # jamfplatform_pro_access_management_settings (Data Source)
 
 Read the current Jamf Pro Access Management settings for Managed Apple Accounts (`/v4/enrollment/access-management`). Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Access Management Setting Read | `read:pro:access-management-setting` |
 
 ## Example Usage
 

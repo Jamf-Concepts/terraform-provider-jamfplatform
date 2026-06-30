@@ -97,7 +97,7 @@ func (r *ServiceDiscoveryEnrollmentResource) Schema(ctx context.Context, req res
 			"not declare are left untouched. **Removing a `well_known_setting` block stops managing that org and leaves its " +
 			"current Jamf Pro value unchanged — it does NOT reset it. To turn off Jamf-hosted service discovery for an org, " +
 			"set its `enrollment_type = \"none\"` (do not delete the block).**\n\n" +
-			"Import with `terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

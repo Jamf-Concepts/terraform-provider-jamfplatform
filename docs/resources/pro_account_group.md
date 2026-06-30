@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_account_group Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Manages a Jamf Pro administrator account group — a permission group whose members can sign in to Jamf Pro. This is NOT the jamfplatform_pro_user_group inventory construct (which groups end-user/device records).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:accounts` |
+  | `delete:pro:accounts` |
+  | `read:pro:accounts` |
+  | `update:pro:accounts` |
 ---
 
 # jamfplatform_pro_account_group (Resource)
 
 Manages a Jamf Pro **administrator account group** — a permission group whose members can sign in to Jamf Pro. This is NOT the `jamfplatform_pro_user_group` inventory construct (which groups end-user/device records).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:accounts` |
+| `delete:pro:accounts` |
+| `read:pro:accounts` |
+| `update:pro:accounts` |
 
 ## Example Usage
 

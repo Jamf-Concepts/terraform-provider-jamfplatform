@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_computer_invitation Resource - terraform-provider-
 subcategory: ""
 description: |-
   Manages a Jamf Pro computer enrollment invitation. A computer invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of Mac computers, carrying an SSH management account to provision on the target machine and an expiration. The invitation cannot be updated in place — changing any attribute forces Terraform to destroy and recreate it, which mints a new invitation code. The plaintext ssh_password is a Terraform WriteOnly attribute — sent to Jamf Pro when the invitation is created but never persisted in Terraform state.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:computer-enrollment-invitations` |
+  | `delete:pro:computer-enrollment-invitations` |
+  | `read:pro:computer-enrollment-invitations` |
 ---
 
 # jamfplatform_pro_computer_invitation (Resource)
 
 Manages a Jamf Pro computer enrollment invitation. A computer invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of Mac computers, carrying an SSH management account to provision on the target machine and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code. The plaintext `ssh_password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro when the invitation is created but never persisted in Terraform state.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:computer-enrollment-invitations` |
+| `delete:pro:computer-enrollment-invitations` |
+| `read:pro:computer-enrollment-invitations` |
 
 ## Example Usage
 

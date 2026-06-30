@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_notification List Resource - ter
 subcategory: ""
 description: |-
   Lists Volume Purchasing notifications. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-notification read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (List Resource)
 
 Lists Volume Purchasing notifications. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-notification read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
 
 ## Example Usage
 

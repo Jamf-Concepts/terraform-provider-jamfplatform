@@ -74,7 +74,7 @@ func (r *AppRequestFormFieldResource) Schema(ctx context.Context, req resource.S
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro App Request form field (Settings → Self Service → App Request → App Request Form). " +
 			"Form fields are the custom input prompts shown to users on the App Request form in Self Service. Each field is an independent record ordered by `priority`. " +
-			"Titles are not required to be unique.",
+			"Titles are not required to be unique." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "App Request form field ID assigned by Jamf Pro.",

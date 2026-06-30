@@ -71,7 +71,7 @@ func (r *NetworkSegmentResource) IdentitySchema(ctx context.Context, req resourc
 // Schema returns the Terraform schema for the network segment resource.
 func (r *NetworkSegmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro network segment. Network segments are IP ranges used to scope Jamf Pro policies, configuration profiles, and other objects to clients whose IP falls within the segment. Optionally a network segment can override the building/department assignment of devices that join it.",
+		MarkdownDescription: "Manages a Jamf Pro network segment. Network segments are IP ranges used to scope Jamf Pro policies, configuration profiles, and other objects to clients whose IP falls within the segment. Optionally a network segment can override the building/department assignment of devices that join it." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Network segment ID assigned by Jamf Pro.",

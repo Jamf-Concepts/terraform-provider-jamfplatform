@@ -87,7 +87,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 		MarkdownDescription: "Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pro look up users and groups in a cloud directory. " +
 			"One resource type covers both supported providers; set `provider_name` to choose, and supply the matching nested block (`google` for Google Secure LDAP, `entra_id` for Microsoft Entra ID). " +
 			"Changing `provider_name` forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. " +
-			"**Microsoft Entra ID:** after the first apply you must complete the manual **\"refresh consent\"** step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra.",
+			"**Microsoft Entra ID:** after the first apply you must complete the manual **\"refresh consent\"** step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Cloud Identity Provider ID assigned by Jamf Pro.",

@@ -53,7 +53,7 @@ func dsContentList(desc string) dsschema.ListNestedAttribute {
 
 func (d *VPPAssignmentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro VPP assignment by ID or name. Exactly one selector must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro VPP assignment by ID or name. Exactly one selector must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]dsschema.Attribute{
 			"id":                     dsschema.StringAttribute{MarkdownDescription: "Assignment ID. Mutually exclusive with `name`.", Optional: true, Computed: true},
 			"name":                   dsschema.StringAttribute{MarkdownDescription: "Assignment name (exact match). Mutually exclusive with `id`.", Optional: true, Computed: true},

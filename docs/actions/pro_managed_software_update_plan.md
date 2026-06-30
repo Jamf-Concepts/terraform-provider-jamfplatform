@@ -4,11 +4,36 @@ page_title: "jamfplatform_pro_managed_software_update_plan Action - terraform-pr
 subcategory: ""
 description: |-
   Submits a Managed Software Updates plan that enforces a target OS version on the members of a smart or static group. This is a fire-once directive: each invocation submits a new plan (there is nothing to update, and nothing to destroy). The Managed Software Updates feature must be enabled first (see jamfplatform_pro_managed_software_update).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:managed-software-updates` |
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:computer-groups` |
+  | `read:pro:computers` |
+  | `read:pro:mobile-device-groups` |
+  | `read:pro:mobile-devices` |
 ---
 
 # jamfplatform_pro_managed_software_update_plan (Action)
 
 Submits a Managed Software Updates plan that enforces a target OS version on the members of a smart or static group. This is a fire-once directive: each invocation submits a new plan (there is nothing to update, and nothing to destroy). The Managed Software Updates feature must be enabled first (see `jamfplatform_pro_managed_software_update`).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:managed-software-updates` |
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:computer-groups` |
+| `read:pro:computers` |
+| `read:pro:mobile-device-groups` |
+| `read:pro:mobile-devices` |
 
 ## Example Usage
 

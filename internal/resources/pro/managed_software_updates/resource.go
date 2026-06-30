@@ -79,7 +79,7 @@ func (r *ManagedSoftwareUpdateResource) Schema(ctx context.Context, req resource
 			"Singleton — one record per tenant. When enabled, Jamf Pro uses Apple's Declarative Device Management to enforce software update plans; when disabled, those plans are turned off. " +
 			"**Omit = preserve** — if you omit `enabled`, the resource adopts the current Jamf Pro value rather than changing it. " +
 			"Turning the feature on or off happens in the background, so applying this resource waits for the change to take effect before completing. " +
-			"Import with `terraform import jamfplatform_pro_managed_software_update.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_managed_software_update.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

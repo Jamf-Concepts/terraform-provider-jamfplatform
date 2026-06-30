@@ -83,7 +83,7 @@ func (r *ComputerInvitationResource) IdentitySchema(ctx context.Context, req res
 // code.
 func (r *ComputerInvitationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro computer enrollment invitation. A computer invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of Mac computers, carrying an SSH management account to provision on the target machine and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code. The plaintext `ssh_password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro when the invitation is created but never persisted in Terraform state.",
+		MarkdownDescription: "Manages a Jamf Pro computer enrollment invitation. A computer invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of Mac computers, carrying an SSH management account to provision on the target machine and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code. The plaintext `ssh_password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro when the invitation is created but never persisted in Terraform state." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Numeric computer invitation ID assigned by Jamf Pro. This is the Terraform state ID and the import key.",

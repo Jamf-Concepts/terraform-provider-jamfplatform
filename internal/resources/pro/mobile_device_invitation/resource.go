@@ -82,7 +82,7 @@ func (r *MobileDeviceInvitationResource) IdentitySchema(ctx context.Context, req
 // forces a destroy + recreate, which mints a new `invitation` code.
 func (r *MobileDeviceInvitationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code.",
+		MarkdownDescription: "Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Numeric mobile device invitation ID assigned by Jamf Pro. This is the Terraform state ID and the import key.",

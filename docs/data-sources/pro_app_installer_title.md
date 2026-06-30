@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_app_installer_title Data Source - terraform-provid
 subcategory: ""
 description: |-
   Looks up a single App Installer catalog title by ID. Titles are published by Jamf and cannot be created or modified; this data source surfaces a title's metadata so you can reference its id from jamfplatform_pro_app_installer.app_title_id.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mac Applications | `read:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_app_installer_title (Data Source)
 
 Looks up a single App Installer catalog title by ID. Titles are published by Jamf and cannot be created or modified; this data source surfaces a title's metadata so you can reference its `id` from `jamfplatform_pro_app_installer.app_title_id`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mac Applications | `read:pro:mac-applications` |
 
 ## Example Usage
 

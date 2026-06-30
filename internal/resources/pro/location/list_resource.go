@@ -74,7 +74,7 @@ func (r *VolumePurchasingLocationListResource) Configure(ctx context.Context, re
 // ListResourceConfigSchema describes the supported list filters.
 func (r *VolumePurchasingLocationListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting `include_resource = true` triggers a follow-up read per row to populate the `content` catalog. Identity-only listing stays a single round trip.",
+		Description: "Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting `include_resource = true` triggers a follow-up read per row to populate the `content` catalog. Identity-only listing stays a single round trip." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

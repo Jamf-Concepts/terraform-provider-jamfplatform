@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_computer_invitation Data Source - terraform-provid
 subcategory: ""
 description: |-
   Look up a Jamf Pro computer enrollment invitation by numeric id or by its Jamf Pro-generated invitation code (the admin UI "Invitation ID"). Exactly one of id or invitation must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:computer-enrollment-invitations` |
 ---
 
 # jamfplatform_pro_computer_invitation (Data Source)
 
 Look up a Jamf Pro computer enrollment invitation by numeric `id` or by its Jamf Pro-generated `invitation` code (the admin UI "Invitation ID"). Exactly one of `id` or `invitation` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:computer-enrollment-invitations` |
 
 ## Example Usage
 

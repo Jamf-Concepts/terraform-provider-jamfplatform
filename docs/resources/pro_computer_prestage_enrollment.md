@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_computer_prestage_enrollment Resource - terraform-
 subcategory: ""
 description: |-
   Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at Settings → Computer Management → PreStage Enrollments in the Jamf Pro admin UI. Device scope (scope_serial_numbers) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Computer PreStage Enrollments | `create:pro:computer-prestage-enrollments` |
+  | Delete Computer PreStage Enrollments | `delete:pro:computer-prestage-enrollments` |
+  | Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
+  | Update Computer PreStage Enrollments | `update:pro:computer-prestage-enrollments` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (Resource)
 
 Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at *Settings → Computer Management → PreStage Enrollments* in the Jamf Pro admin UI. Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Computer PreStage Enrollments | `create:pro:computer-prestage-enrollments` |
+| Delete Computer PreStage Enrollments | `delete:pro:computer-prestage-enrollments` |
+| Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
+| Update Computer PreStage Enrollments | `update:pro:computer-prestage-enrollments` |
 
 ## Example Usage
 

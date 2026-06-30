@@ -73,7 +73,7 @@ func (r *ScriptResource) IdentitySchema(ctx context.Context, req resource.Identi
 // Schema returns the Terraform schema for the script resource.
 func (r *ScriptResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`.",
+		MarkdownDescription: "Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Script ID assigned by Jamf Pro.",

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_advanced_volume_purchasing_content_search List Res
 subcategory: ""
 description: |-
   Lists Jamf Pro advanced volume purchasing content searches. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (List Resource)
 
 Lists Jamf Pro advanced volume purchasing content searches. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
 
 ## Example Usage
 

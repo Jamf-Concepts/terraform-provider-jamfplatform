@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_app_installer_settings Data Source - terraform-pro
 subcategory: ""
 description: |-
   Read the current Jamf Pro App Installer global settings. Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mac Applications | `read:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_app_installer_settings (Data Source)
 
 Read the current Jamf Pro App Installer global settings. Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mac Applications | `read:pro:mac-applications` |
 
 ## Example Usage
 

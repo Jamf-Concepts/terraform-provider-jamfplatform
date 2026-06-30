@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_gsx_connection_settings Resource - terraform-provi
 subcategory: ""
 description: |-
   Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. Singleton — one record per tenant. Requires a valid Apple-registered GSX certificate. Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. Secrets are re-sent on every apply — token_wo, keystore_bytes_wo, and keystore_password_wo are Required + WriteOnly (never stored in state); the GSX API mandates them on every write, so they must always be present in config. Import with terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Push Certificates | `read:pro:gsx-connection` |
+  | Read GSX Connection | `read:pro:push-certificates` |
+  | Update GSX Connection | `update:pro:gsx-connection` |
+  | Update Push Certificates | `update:pro:push-certificates` |
 ---
 
 # jamfplatform_pro_gsx_connection_settings (Resource)
 
 Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. Singleton — one record per tenant. **Requires a valid Apple-registered GSX certificate.** Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. **Secrets are re-sent on every apply** — `token_wo`, `keystore_bytes_wo`, and `keystore_password_wo` are `Required` + `WriteOnly` (never stored in state); the GSX API mandates them on every write, so they must always be present in config. Import with `terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Push Certificates | `read:pro:gsx-connection` |
+| Read GSX Connection | `read:pro:push-certificates` |
+| Update GSX Connection | `update:pro:gsx-connection` |
+| Update Push Certificates | `update:pro:push-certificates` |
 
 ## Example Usage
 

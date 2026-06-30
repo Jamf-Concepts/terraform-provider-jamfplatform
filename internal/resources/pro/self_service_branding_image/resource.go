@@ -97,7 +97,7 @@ The Self Service branding image store is **separate** from the general Jamf Pro 
 
 **Destroy behaviour**: Jamf Pro has no API to delete a branding image. ` + "`terraform destroy`" + ` and replacements both remove the resource from Terraform state only; the image record persists on the tenant.
 
-**Import** (` + "`terraform import jamfplatform_pro_self_service_branding_image.example 81`" + `): the provider downloads the image bytes via the API and stores their SHA-256. Because Jamf Pro may re-encode uploaded images, point ` + "`image_file_source`" + ` at the API-downloaded copy (not your original upload) to avoid a spurious replacement on the next plan.`,
+**Import** (` + "`terraform import jamfplatform_pro_self_service_branding_image.example 81`" + `): the provider downloads the image bytes via the API and stores their SHA-256. Because Jamf Pro may re-encode uploaded images, point ` + "`image_file_source`" + ` at the API-downloaded copy (not your original upload) to avoid a spurious replacement on the next plan.` + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Jamf Pro Self Service branding image ID, derived from the upload URL. Changes when the resource is replaced.",

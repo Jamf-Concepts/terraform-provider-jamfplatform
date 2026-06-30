@@ -44,7 +44,7 @@ func (d *PrinterDataSource) Metadata(ctx context.Context, req datasource.Metadat
 // Schema returns the data source schema.
 func (d *PrinterDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro printer by ID or by exact name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro printer by ID or by exact name. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Printer ID. Mutually exclusive with `name`.",

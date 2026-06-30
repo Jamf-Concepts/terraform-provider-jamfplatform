@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mac_app_store_app List Resource - terraform-provid
 subcategory: ""
 description: |-
   Lists Jamf Pro App Store Mac apps. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-app read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_mac_app_store_app (List Resource)
 
 Lists Jamf Pro App Store Mac apps. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-app read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:mac-applications` |
 
 ## Example Usage
 

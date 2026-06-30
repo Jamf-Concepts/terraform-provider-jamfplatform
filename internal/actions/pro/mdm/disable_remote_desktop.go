@@ -36,7 +36,7 @@ func (a *DisableRemoteDesktopAction) Metadata(ctx context.Context, req action.Me
 
 func (a *DisableRemoteDesktopAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Disables Remote Desktop (remote management) on a computer.",
+		MarkdownDescription: "Disables Remote Desktop (remote management) on a computer." + disableRemoteDesktopPrivileges,
 		Attributes:          targetAttributes("computer"),
 	}
 }

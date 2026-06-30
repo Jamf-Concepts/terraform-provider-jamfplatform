@@ -4,11 +4,24 @@ page_title: "jamfplatform_device_group List Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Searches for Jamf device groups using the same filter clauses as the device_groups data source.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:device-groups` |
 ---
 
 # jamfplatform_device_group (List Resource)
 
 Searches for Jamf device groups using the same filter clauses as the device_groups data source.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:device-groups` |
 
 ## Example Usage
 

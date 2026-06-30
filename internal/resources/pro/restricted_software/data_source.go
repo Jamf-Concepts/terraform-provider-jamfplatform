@@ -45,7 +45,7 @@ func (d *RestrictedSoftwareDataSource) Metadata(ctx context.Context, req datasou
 // Schema returns the data source schema.
 func (d *RestrictedSoftwareDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro restricted software record by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the record as a resource for full detail.",
+		MarkdownDescription: "Look up a Jamf Pro restricted software record by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the record as a resource for full detail." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Record ID. Mutually exclusive with `name`.",

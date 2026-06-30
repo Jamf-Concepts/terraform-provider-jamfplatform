@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_advanced_mobile_device_search Data Source - terraf
 subcategory: ""
 description: |-
   Look up a Jamf Pro advanced mobile device search by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
 ---
 
 # jamfplatform_pro_advanced_mobile_device_search (Data Source)
 
 Look up a Jamf Pro advanced mobile device search by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
 
 ## Example Usage
 

@@ -69,7 +69,7 @@ func (r *AutomatedDeviceEnrollmentListResource) Configure(ctx context.Context, r
 // ListResourceConfigSchema describes the supported list filters.
 func (r *AutomatedDeviceEnrollmentListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro Automated Device Enrollment instances. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so `include_resource = true` does not require a follow-up read per item.",
+		Description: "Lists Jamf Pro Automated Device Enrollment instances. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so `include_resource = true` does not require a follow-up read per item." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

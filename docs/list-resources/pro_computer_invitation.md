@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_computer_invitation List Resource - terraform-prov
 subcategory: ""
 description: |-
   Lists all Jamf Pro computer enrollment invitations. Invitations carry no name and Jamf Pro exposes no filter parameters for them, so this list resource takes no filter configuration.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:computer-enrollment-invitations` |
 ---
 
 # jamfplatform_pro_computer_invitation (List Resource)
 
 Lists all Jamf Pro computer enrollment invitations. Invitations carry no name and Jamf Pro exposes no filter parameters for them, so this list resource takes no filter configuration.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:computer-enrollment-invitations` |
 
 ## Example Usage
 

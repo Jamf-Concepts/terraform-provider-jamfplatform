@@ -44,7 +44,7 @@ func (d *ProvisioningProfileDataSource) Metadata(ctx context.Context, req dataso
 // Schema returns the data source schema.
 func (d *ProvisioningProfileDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro mobile device provisioning profile by ID, name, or UUID. Exactly one of `id`, `name`, or `uuid` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro mobile device provisioning profile by ID, name, or UUID. Exactly one of `id`, `name`, or `uuid` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Provisioning profile ID. Mutually exclusive with `name` and `uuid`.",

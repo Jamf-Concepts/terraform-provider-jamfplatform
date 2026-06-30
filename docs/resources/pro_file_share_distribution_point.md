@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_file_share_distribution_point Resource - terraform
 subcategory: ""
 description: |-
   Manages a Jamf Pro file share distribution point — an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use jamfplatform_pro_cloud_distribution_point. The three plaintext passwords (read_write_password, read_only_password, https_password) are Terraform WriteOnly attributes — sent to Jamf Pro but never stored in state. Pair each with its *_wo_version companion to rotate the stored password: bump the integer to force an update that re-sends the current password.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Distribution Points | `create:pro:distribution-points` |
+  | Delete Distribution Points | `delete:pro:distribution-points` |
+  | Read Distribution Points | `read:pro:distribution-points` |
+  | Update Distribution Points | `update:pro:distribution-points` |
 ---
 
 # jamfplatform_pro_file_share_distribution_point (Resource)
 
 Manages a Jamf Pro file share distribution point — an on-premises SMB or AFP file server (optionally with HTTPS downloads) that Jamf Pro distributes packages from (Settings → Server → File share distribution points). This is a multi-instance resource; for the hosted Jamf Cloud distribution point use `jamfplatform_pro_cloud_distribution_point`. The three plaintext passwords (`read_write_password`, `read_only_password`, `https_password`) are Terraform `WriteOnly` attributes — sent to Jamf Pro but never stored in state. Pair each with its `*_wo_version` companion to rotate the stored password: bump the integer to force an update that re-sends the current password.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Distribution Points | `create:pro:distribution-points` |
+| Delete Distribution Points | `delete:pro:distribution-points` |
+| Read Distribution Points | `read:pro:distribution-points` |
+| Update Distribution Points | `update:pro:distribution-points` |
 
 ## Example Usage
 

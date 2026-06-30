@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_mac_app_store_app Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Manages a Jamf Pro App Store Mac app (the classic /macapplications endpoint — the "App Store App" entry under the "Mac Apps" sidebar). general.name, general.version, general.bundle_id, and general.url are required on create and stored verbatim — there is no App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:mac-applications` |
+  | `delete:pro:mac-applications` |
+  | `read:pro:mac-applications` |
+  | `update:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_mac_app_store_app (Resource)
 
 Manages a Jamf Pro App Store Mac app (the classic `/macapplications` endpoint — the "App Store App" entry under the "Mac Apps" sidebar). `general.name`, `general.version`, `general.bundle_id`, and `general.url` are required on create and stored verbatim — there is **no** App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:mac-applications` |
+| `delete:pro:mac-applications` |
+| `read:pro:mac-applications` |
+| `update:pro:mac-applications` |
 
 ## Example Usage
 

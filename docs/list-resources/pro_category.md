@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_category List Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Searches for Jamf Pro categories using the same filter clauses as the categories data source.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Categories | `read:pro:categories` |
+  | Read Self Service | `read:pro:self-service` |
 ---
 
 # jamfplatform_pro_category (List Resource)
 
 Searches for Jamf Pro categories using the same filter clauses as the categories data source.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Categories | `read:pro:categories` |
+| Read Self Service | `read:pro:self-service` |
 
 ## Example Usage
 

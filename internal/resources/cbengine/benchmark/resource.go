@@ -73,7 +73,7 @@ func (r *BenchmarkResource) IdentitySchema(ctx context.Context, req resource.Ide
 func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:             0,
-		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access.",
+		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Unique identifier assigned by the API (maps to benchmarkId).",

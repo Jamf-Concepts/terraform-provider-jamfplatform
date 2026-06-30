@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_site Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:sites` |
+  | `delete:pro:sites` |
+  | `read:pro:sites` |
+  | `update:pro:sites` |
 ---
 
 # jamfplatform_pro_site (Resource)
 
 Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:sites` |
+| `delete:pro:sites` |
+| `read:pro:sites` |
+| `update:pro:sites` |
 
 ## Example Usage
 

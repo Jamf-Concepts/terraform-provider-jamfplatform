@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_printer Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Look up a Jamf Pro printer by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:printers` |
 ---
 
 # jamfplatform_pro_printer (Data Source)
 
 Look up a Jamf Pro printer by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:printers` |
 
 ## Example Usage
 

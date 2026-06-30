@@ -4,11 +4,24 @@ page_title: "jamfplatform_cbengine_benchmark Data Source - terraform-provider-ja
 subcategory: ""
 description: |-
   Returns a benchmark by ID or title. Requires Compliance Benchmarks API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:compliance-benchmarks` |
 ---
 
 # jamfplatform_cbengine_benchmark (Data Source)
 
 Returns a benchmark by ID or title. Requires **Compliance Benchmarks API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:compliance-benchmarks` |
 
 ## Example Usage
 

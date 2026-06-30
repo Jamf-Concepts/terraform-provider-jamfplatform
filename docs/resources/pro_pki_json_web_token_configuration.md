@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_pki_json_web_token_configuration Resource - terraf
 subcategory: ""
 description: |-
   Manages a Jamf Pro JSON Web Token configuration — the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:json-web-token-configuration` |
+  | `delete:pro:json-web-token-configuration` |
+  | `read:pro:json-web-token-configuration` |
+  | `update:pro:json-web-token-configuration` |
 ---
 
 # jamfplatform_pro_pki_json_web_token_configuration (Resource)
 
 Manages a Jamf Pro JSON Web Token configuration — the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:json-web-token-configuration` |
+| `delete:pro:json-web-token-configuration` |
+| `read:pro:json-web-token-configuration` |
+| `update:pro:json-web-token-configuration` |
 
 ## Example Usage
 

@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_computer_inventory_collection_settings Resource - 
 subcategory: ""
 description: |-
   Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). Singleton — one record per tenant. Backed by the V2 API. application_search_paths covers custom application search paths only; the Jamf Pro V2 API does not expose Fonts or Plug-ins custom paths (scope is fixed to APP). Import with terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Custom Paths | `create:pro:custom-paths` |
+  | Delete Custom Paths | `delete:pro:custom-paths` |
+  | Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
+  | Update Computer Inventory Collection Settings | `update:pro:computer-inventory-collection-settings` |
 ---
 
 # jamfplatform_pro_computer_inventory_collection_settings (Resource)
 
 Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). Singleton — one record per tenant. Backed by the V2 API. `application_search_paths` covers custom **application** search paths only; the Jamf Pro V2 API does not expose Fonts or Plug-ins custom paths (scope is fixed to `APP`). Import with `terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Custom Paths | `create:pro:custom-paths` |
+| Delete Custom Paths | `delete:pro:custom-paths` |
+| Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
+| Update Computer Inventory Collection Settings | `update:pro:computer-inventory-collection-settings` |
 
 ## Example Usage
 

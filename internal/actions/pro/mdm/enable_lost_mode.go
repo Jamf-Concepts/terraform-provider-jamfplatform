@@ -52,7 +52,7 @@ func (a *EnableLostModeAction) Schema(ctx context.Context, req action.SchemaRequ
 		MarkdownDescription: "Phone number to display on the Lost Mode lock screen.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Turns on Lost Mode on a supervised mobile device.",
+		MarkdownDescription: "Turns on Lost Mode on a supervised mobile device." + enableLostModePrivileges,
 		Attributes:          attrs,
 	}
 }

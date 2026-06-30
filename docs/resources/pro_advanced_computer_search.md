@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_advanced_computer_search Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a Jamf Pro advanced computer search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-computer result set is server-computed report data and is intentionally not modelled. Mirrors the Computers → Search Inventory → Advanced Computer Search UI.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:advanced-computer-searches` |
+  | `delete:pro:advanced-computer-searches` |
+  | `read:pro:advanced-computer-searches` |
+  | `update:pro:advanced-computer-searches` |
 ---
 
 # jamfplatform_pro_advanced_computer_search (Resource)
 
 Manages a Jamf Pro advanced computer search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-computer result set is server-computed report data and is intentionally not modelled. Mirrors the Computers → Search Inventory → Advanced Computer Search UI.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:advanced-computer-searches` |
+| `delete:pro:advanced-computer-searches` |
+| `read:pro:advanced-computer-searches` |
+| `update:pro:advanced-computer-searches` |
 
 ## Example Usage
 

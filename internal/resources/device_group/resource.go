@@ -87,7 +87,7 @@ func (r *DeviceGroupResource) IdentitySchema(ctx context.Context, req resource.I
 func (r *DeviceGroupResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Version:             1,
-		MarkdownDescription: "Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access.",
+		MarkdownDescription: "Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Unique identifier assigned by the API.",

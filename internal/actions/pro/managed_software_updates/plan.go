@@ -88,7 +88,8 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "Submits a Managed Software Updates plan that enforces a target OS version on the members of a smart or static group. " +
 			"This is a fire-once directive: each invocation submits a new plan (there is nothing to update, and nothing to destroy). " +
-			"The Managed Software Updates feature must be enabled first (see `jamfplatform_pro_managed_software_update`).",
+			"The Managed Software Updates feature must be enabled first (see `jamfplatform_pro_managed_software_update`)." +
+			planPrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"group_id": actionschema.StringAttribute{
 				Required:            true,

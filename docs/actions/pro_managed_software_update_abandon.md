@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_managed_software_update_abandon Action - terraform
 subcategory: ""
 description: |-
   Force-stops a stuck Managed Software Updates enable/disable process. Break-glass only — use this when jamfplatform_pro_managed_software_update reports that the feature did not finish turning on or off. Takes no input.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Managed Software Updates | `create:pro:managed-software-updates` |
+  | Read Managed Software Updates | `read:pro:managed-software-updates` |
+  | Update Managed Software Updates | `update:pro:managed-software-updates` |
 ---
 
 # jamfplatform_pro_managed_software_update_abandon (Action)
 
 Force-stops a stuck Managed Software Updates enable/disable process. Break-glass only — use this when `jamfplatform_pro_managed_software_update` reports that the feature did not finish turning on or off. Takes no input.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Managed Software Updates | `create:pro:managed-software-updates` |
+| Read Managed Software Updates | `read:pro:managed-software-updates` |
+| Update Managed Software Updates | `update:pro:managed-software-updates` |
 
 ## Example Usage
 

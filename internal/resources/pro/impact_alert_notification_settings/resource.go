@@ -92,7 +92,7 @@ func (r *ImpactAlertNotificationSettingsResource) Schema(ctx context.Context, re
 			"Singleton — one record per tenant. " +
 			"**Omit = preserve** — each toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. " +
 			"**Dependency:** a confirmation-code toggle requires its matching alert toggle to be `true` — Jamf Pro rejects `*_confirmation_code_enabled = true` while the matching `*_alert_enabled` is `false`. **To turn an alert off, set its matching `*_confirmation_code_enabled = false` in the same apply** — omitting the confirmation-code toggle preserves the prior `true` and the apply fails with a 400. " +
-			"Import with `terraform import jamfplatform_pro_impact_alert_notification_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_impact_alert_notification_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

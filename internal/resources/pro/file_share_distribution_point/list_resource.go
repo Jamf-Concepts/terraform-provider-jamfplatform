@@ -61,7 +61,7 @@ func (r *FileShareDistributionPointListResource) Configure(ctx context.Context, 
 // ListResourceConfigSchema describes the supported list filters.
 func (r *FileShareDistributionPointListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Pro file share distribution points using the same filter clauses as the data source.",
+		Description: "Searches for Jamf Pro file share distribution points using the same filter clauses as the data source." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(fileShareDistributionPointFilterSelectors),

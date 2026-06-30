@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_script List Resource - terraform-provider-jamfplat
 subcategory: ""
 description: |-
   Lists Jamf Pro scripts. Supply an optional filter block to narrow results — the supported selectors match the scripts data source.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Scripts | `read:pro:scripts` |
 ---
 
 # jamfplatform_pro_script (List Resource)
 
 Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results — the supported selectors match the scripts data source.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Scripts | `read:pro:scripts` |
 
 ## Example Usage
 

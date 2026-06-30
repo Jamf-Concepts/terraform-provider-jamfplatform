@@ -51,7 +51,7 @@ func (r *ApiRoleListResource) Configure(ctx context.Context, req resource.Config
 // ListResourceConfigSchema describes the supported list filters.
 func (r *ApiRoleListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Pro API roles using the same filter clauses as the api_roles data source.",
+		Description: "Searches for Jamf Pro API roles using the same filter clauses as the api_roles data source." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(ApiRoleFilterSelectors),

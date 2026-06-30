@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_self_service_plus_settings Resource - terraform-pr
 subcategory: ""
 description: |-
   Manages Jamf Pro Self Service Plus settings. Singleton — one record per tenant. Import with terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Self Service | `read:pro:self-service` |
+  | Update Self Service | `update:pro:self-service` |
 ---
 
 # jamfplatform_pro_self_service_plus_settings (Resource)
 
 Manages Jamf Pro Self Service Plus settings. Singleton — one record per tenant. Import with `terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Self Service | `read:pro:self-service` |
+| Update Self Service | `update:pro:self-service` |
 
 ## Example Usage
 

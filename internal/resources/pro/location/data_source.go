@@ -54,7 +54,7 @@ func (d *VolumePurchasingLocationDataSource) Metadata(ctx context.Context, req d
 // Schema returns the data source schema.
 func (d *VolumePurchasingLocationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded service token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_volume_purchasing_location` resource to manage the token.",
+		MarkdownDescription: "Look up a Jamf Pro Volume Purchasing (VPP) location by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the uploaded service token — Jamf Pro never returns it on reads. Use the `jamfplatform_pro_volume_purchasing_location` resource to manage the token." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Volume Purchasing location ID. Mutually exclusive with `name`.",

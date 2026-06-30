@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_webhook Resource - terraform-provider-jamfplatform
 subcategory: ""
 description: |-
   Manages a Jamf Pro webhook — the "Webhooks" entry under Settings → Global in the Jamf Pro admin UI. A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. Note: "Mutual TLS Authentication" is intentionally unsupported — its certificate material is settable only through the legacy admin web UI, not any API.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:webhooks` |
+  | `delete:pro:webhooks` |
+  | `read:pro:webhooks` |
+  | `update:pro:webhooks` |
 ---
 
 # jamfplatform_pro_webhook (Resource)
 
 Manages a Jamf Pro webhook — the "Webhooks" entry under Settings → Global in the Jamf Pro admin UI. A webhook posts an event payload to an external URL when the selected Jamf Pro event fires. Note: "Mutual TLS Authentication" is intentionally unsupported — its certificate material is settable only through the legacy admin web UI, not any API.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:webhooks` |
+| `delete:pro:webhooks` |
+| `read:pro:webhooks` |
+| `update:pro:webhooks` |
 
 ## Example Usage
 

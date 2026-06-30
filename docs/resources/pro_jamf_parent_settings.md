@@ -7,6 +7,12 @@ description: |-
   Omit = preserve — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. timezone, device_group_id, and restricted_times must always be set — the Jamf Pro API requires them on every write.
   Destroy — terraform destroy removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_jamf_parent_settings.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Parent App Settings | `read:pro:parent-app-settings` |
+  | Update Parent App Settings | `update:pro:parent-app-settings` |
 ---
 
 # jamfplatform_pro_jamf_parent_settings (Resource)
@@ -18,6 +24,15 @@ Manages the Jamf Pro **Jamf Parent** settings page (UI: Settings → Jamf apps �
 **Destroy** — `terraform destroy` removes the resource from Terraform state only. The Jamf Parent settings are left intact on the tenant; they cannot be deleted.
 
 Import with `terraform import jamfplatform_pro_jamf_parent_settings.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Parent App Settings | `read:pro:parent-app-settings` |
+| Update Parent App Settings | `update:pro:parent-app-settings` |
 
 ## Example Usage
 

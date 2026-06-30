@@ -10,6 +10,14 @@ description: |-
   package_file_source_checksum (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading — useful for catching on-disk corruption.size is read-only — Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.Changing only metadata (info, notes, priority, ...) updates the record without re-uploading the file; the file is re-uploaded only when its contents change.
   Manifest: manifest_file_source (optional) uploads a .plist manifest for the package. Setting it uploads the manifest; clearing it removes the manifest from Jamf Pro. The manifest is re-uploaded only when its contents change.
   URL sources: both package_file_source and manifest_file_source accept http(s):// URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Packages | `create:pro:packages` |
+  | Delete Packages | `delete:pro:packages` |
+  | Read Packages | `read:pro:packages` |
+  | Update Packages | `update:pro:packages` |
 ---
 
 # jamfplatform_pro_package (Resource)
@@ -31,6 +39,17 @@ Manages a Jamf Pro package. A package record carries the metadata (name, categor
 **Manifest**: `manifest_file_source` (optional) uploads a `.plist` manifest for the package. Setting it uploads the manifest; clearing it removes the manifest from Jamf Pro. The manifest is re-uploaded only when its contents change.
 
 **URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Packages | `create:pro:packages` |
+| Delete Packages | `delete:pro:packages` |
+| Read Packages | `read:pro:packages` |
+| Update Packages | `update:pro:packages` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_webhook List Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Lists Jamf Pro webhooks. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-record read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:webhooks` |
 ---
 
 # jamfplatform_pro_webhook (List Resource)
 
 Lists Jamf Pro webhooks. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-record read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:webhooks` |
 
 ## Example Usage
 

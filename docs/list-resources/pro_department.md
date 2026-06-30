@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_department List Resource - terraform-provider-jamf
 subcategory: ""
 description: |-
   Searches for Jamf Pro departments using the same filter clauses as the departments data source.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Departments | `read:pro:departments` |
 ---
 
 # jamfplatform_pro_department (List Resource)
 
 Searches for Jamf Pro departments using the same filter clauses as the departments data source.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Departments | `read:pro:departments` |
 
 ## Example Usage
 

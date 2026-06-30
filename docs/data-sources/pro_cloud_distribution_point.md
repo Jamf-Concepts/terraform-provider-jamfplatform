@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_cloud_distribution_point Data Source - terraform-p
 subcategory: ""
 description: |-
   Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. cdn_type is NONE when no cloud distribution point is configured.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
 ---
 
 # jamfplatform_pro_cloud_distribution_point (Data Source)
 
 Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. `cdn_type` is `NONE` when no cloud distribution point is configured.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
 
 ## Example Usage
 

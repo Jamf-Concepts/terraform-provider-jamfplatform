@@ -42,7 +42,7 @@ func (d *OnboardingEligibleItemsDataSource) Metadata(ctx context.Context, req da
 func (d *OnboardingEligibleItemsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Returns the Self Service objects eligible to be referenced from `jamfplatform_pro_macos_onboarding.onboarding_items`, for the given `entity_type`. " +
-			"Use the returned `id` as `entity_id`, paired with the matching `self_service_entity_type` (`policies` → `OS_X_POLICY`, `configuration_profiles` → `OS_X_CONFIG_PROFILE`, `apps` → `OS_X_MAC_APP` / `OS_X_APP_INSTALLER`).",
+			"Use the returned `id` as `entity_id`, paired with the matching `self_service_entity_type` (`policies` → `OS_X_POLICY`, `configuration_profiles` → `OS_X_CONFIG_PROFILE`, `apps` → `OS_X_MAC_APP` / `OS_X_APP_INSTALLER`)." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read (the queried `entity_type`).",

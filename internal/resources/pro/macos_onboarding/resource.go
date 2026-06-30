@@ -82,7 +82,7 @@ func (r *OnboardingResource) Schema(ctx context.Context, req resource.SchemaRequ
 			"Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. " +
 			"The `onboarding_items` list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and `onboarding_items = []` clears all items. " +
 			"`priority` follows the list order automatically. " +
-			"Import with `terraform import jamfplatform_pro_macos_onboarding.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_macos_onboarding.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_patch_software_title Data Source - terraform-provi
 subcategory: ""
 description: |-
   Look up a Jamf Pro patch software title by ID. (The classic list endpoint exposes no display name through the SDK, so name lookup is not supported.)
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_software_title (Data Source)
 
 Look up a Jamf Pro patch software title by ID. (The classic list endpoint exposes no display name through the SDK, so name lookup is not supported.)
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:patch-management-software-titles` |
 
 ## Example Usage
 

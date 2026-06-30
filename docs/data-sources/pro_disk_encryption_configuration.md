@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_disk_encryption_configuration Data Source - terraf
 subcategory: ""
 description: |-
   Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext IRK password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:disk-encryption-configurations` |
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Data Source)
 
 Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext IRK password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:disk-encryption-configurations` |
 
 ## Example Usage
 

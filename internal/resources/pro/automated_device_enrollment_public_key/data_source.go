@@ -66,7 +66,7 @@ func (d *AutomatedDeviceEnrollmentPublicKeyDataSource) Metadata(ctx context.Cont
 // endpoint returns a single public key per tenant.
 func (d *AutomatedDeviceEnrollmentPublicKeyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob; the data source base64-encodes the bytes into the `public_key` attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required.",
+		MarkdownDescription: "Retrieves the Jamf Pro Automated Device Enrollment (ADE) public key for the current tenant. Jamf Pro returns a binary blob; the data source base64-encodes the bytes into the `public_key` attribute so it can be safely embedded in Terraform configuration (for example, supplied to Apple Business Manager / Apple School Manager during MDM server registration). This is a tenant-wide singleton — no input selector is required." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Stable synthetic identifier for the singleton public key (`\"singleton\"`).",

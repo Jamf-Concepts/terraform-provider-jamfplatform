@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_categories Data Source - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Search Jamf Pro categories using optional RSQL filters on name and priority.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Categories | `read:pro:categories` |
+  | Read Self Service | `read:pro:self-service` |
 ---
 
 # jamfplatform_pro_categories (Data Source)
 
 Search Jamf Pro categories using optional RSQL filters on `name` and `priority`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Categories | `read:pro:categories` |
+| Read Self Service | `read:pro:self-service` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_app_request_form_field List Resource - terraform-p
 subcategory: ""
 description: |-
   Lists Jamf Pro App Request form fields. Supply an optional case-insensitive name_substring filter (matched against the field title); filtering is applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read App Request Settings | `read:pro:app-request-settings` |
 ---
 
 # jamfplatform_pro_app_request_form_field (List Resource)
 
 Lists Jamf Pro App Request form fields. Supply an optional case-insensitive `name_substring` filter (matched against the field title); filtering is applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read App Request Settings | `read:pro:app-request-settings` |
 
 ## Example Usage
 

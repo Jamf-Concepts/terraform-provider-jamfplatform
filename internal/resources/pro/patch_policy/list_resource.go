@@ -66,7 +66,7 @@ func (r *PatchPolicyListResource) Configure(ctx context.Context, req resource.Co
 // ListResourceConfigSchema describes the supported list filters.
 func (r *PatchPolicyListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro patch policies. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched against the policy display name.",
+		Description: "Lists Jamf Pro patch policies. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched against the policy display name." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

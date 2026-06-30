@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_printer Resource - terraform-provider-jamfplatform
 subcategory: ""
 description: |-
   Manages a Jamf Pro printer. Printers are reusable definitions Jamf policies use to map an IPP / LPD / SMB printer (and its PPD) onto Mac computers. The use_generic toggle is bound to the PPD trio (ppd, ppd_path, ppd_contents) by cross-field rules enforced at plan time — see each attribute for details.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:printers` |
+  | `delete:pro:printers` |
+  | `read:pro:printers` |
+  | `update:pro:printers` |
 ---
 
 # jamfplatform_pro_printer (Resource)
 
 Manages a Jamf Pro printer. Printers are reusable definitions Jamf policies use to map an IPP / LPD / SMB printer (and its PPD) onto Mac computers. The `use_generic` toggle is bound to the PPD trio (`ppd`, `ppd_path`, `ppd_contents`) by cross-field rules enforced at plan time — see each attribute for details.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:printers` |
+| `delete:pro:printers` |
+| `read:pro:printers` |
+| `update:pro:printers` |
 
 ## Example Usage
 

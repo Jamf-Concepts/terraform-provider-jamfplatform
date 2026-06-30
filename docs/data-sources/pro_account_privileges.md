@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_account_privileges Data Source - terraform-provide
 subcategory: ""
 description: |-
   Lists the privilege strings grantable on this Jamf Pro tenant, categorised into the seven privilege buckets. The catalog is read from an existing account group or account whose privilege set is Administrator (which holds every grantable privilege). Use it to look up exact privilege strings for the privileges block of jamfplatform_pro_account and jamfplatform_pro_account_group.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:accounts` |
 ---
 
 # jamfplatform_pro_account_privileges (Data Source)
 
 Lists the privilege strings grantable on this Jamf Pro tenant, categorised into the seven privilege buckets. The catalog is read from an existing account group or account whose privilege set is `Administrator` (which holds every grantable privilege). Use it to look up exact privilege strings for the `privileges` block of `jamfplatform_pro_account` and `jamfplatform_pro_account_group`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:accounts` |
 
 ## Example Usage
 

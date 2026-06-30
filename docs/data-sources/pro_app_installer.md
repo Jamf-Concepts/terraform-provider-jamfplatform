@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_app_installer Data Source - terraform-provider-jam
 subcategory: ""
 description: |-
   Look up a single App Installer deployment by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection; manage the deployment as a resource for the nested presentation blocks.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mac Applications | `read:pro:mac-applications` |
 ---
 
 # jamfplatform_pro_app_installer (Data Source)
 
 Look up a single App Installer deployment by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the deployment as a resource for the nested presentation blocks.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mac Applications | `read:pro:mac-applications` |
 
 ## Example Usage
 

@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_clear_restrictions_password Action - terraform-pro
 subcategory: ""
 description: |-
   Clears the Screen Time (restrictions) passcode on a mobile device.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_pro_clear_restrictions_password (Action)
 
 Clears the Screen Time (restrictions) passcode on a mobile device.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:devices` |
 
 ## Example Usage
 

@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_ebook Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro ebook (the classic /ebooks endpoint — the "eBooks" entry under the Users sidebar). Distributes either an in-house file (PDF / EPUB / iBook hosted at general.url) or an Apple Books title (an books.apple.com URL). For App-Store ebooks the server derives general.file_type and general.version from the URL, so leave them unset. Scope is the dual-target union (computers + mobile devices + users) plus class_ids; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:ebooks` |
+  | `delete:pro:ebooks` |
+  | `read:pro:ebooks` |
+  | `update:pro:ebooks` |
 ---
 
 # jamfplatform_pro_ebook (Resource)
 
 Manages a Jamf Pro ebook (the classic `/ebooks` endpoint — the "eBooks" entry under the Users sidebar). Distributes either an in-house file (PDF / EPUB / iBook hosted at `general.url`) or an Apple Books title (an `books.apple.com` URL). For App-Store ebooks the server derives `general.file_type` and `general.version` from the URL, so leave them unset. Scope is the dual-target union (computers + mobile devices + users) plus `class_ids`; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:ebooks` |
+| `delete:pro:ebooks` |
+| `read:pro:ebooks` |
+| `update:pro:ebooks` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_computer_prestage_enrollment Data Source - terrafo
 subcategory: ""
 description: |-
   Look up a Jamf Pro Computer PreStage Enrollment by ID or by exact display name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (Data Source)
 
 Look up a Jamf Pro Computer PreStage Enrollment by ID or by exact display name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
 
 ## Example Usage
 

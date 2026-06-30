@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mdm_profile_settings Data Source - terraform-provi
 subcategory: ""
 description: |-
   Read the current Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Automatically Renew MDM Profile Settings | `read:pro:automatically-renew-mdm-profile-settings` |
 ---
 
 # jamfplatform_pro_mdm_profile_settings (Data Source)
 
 Read the current Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Automatically Renew MDM Profile Settings | `read:pro:automatically-renew-mdm-profile-settings` |
 
 
 

@@ -67,7 +67,7 @@ func dsCertDetailsAttributes(which string) map[string]schema.Attribute {
 // Schema returns the data source schema.
 func (d *AdcsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read a Jamf Pro AD CS (Active Directory Certificate Services) integration by ID (Settings > Global > PKI certificates > Certificate Authorities). The certificate bytes and password are never returned by Jamf Pro and are not exposed here.",
+		MarkdownDescription: "Read a Jamf Pro AD CS (Active Directory Certificate Services) integration by ID (Settings > Global > PKI certificates > Certificate Authorities). The certificate bytes and password are never returned by Jamf Pro and are not exposed here." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "AD CS Settings ID assigned by Jamf Pro.",

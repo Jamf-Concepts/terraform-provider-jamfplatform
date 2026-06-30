@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro VPP assignment — a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.
   Related: jamfplatform_pro_vpp_invitation registers users with a VPP account; device-based Apps & Books locations are managed by jamfplatform_pro_volume_purchasing_location.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:vpp-assignment` |
+  | `delete:pro:vpp-assignment` |
+  | `read:pro:vpp-assignment` |
+  | `update:pro:vpp-assignment` |
 ---
 
 # jamfplatform_pro_vpp_assignment (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro VPP assignment — a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.
 
 Related: `jamfplatform_pro_vpp_invitation` registers users with a VPP account; device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:vpp-assignment` |
+| `delete:pro:vpp-assignment` |
+| `read:pro:vpp-assignment` |
+| `update:pro:vpp-assignment` |
 
 ## Example Usage
 

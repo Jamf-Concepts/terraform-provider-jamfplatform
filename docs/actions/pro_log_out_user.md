@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_log_out_user Action - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Logs out the current user on a Shared iPad.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `execute:pro:mobile-device-commands` |
+  | `read:pro:devices` |
 ---
 
 # jamfplatform_pro_log_out_user (Action)
 
 Logs out the current user on a Shared iPad.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `execute:pro:mobile-device-commands` |
+| `read:pro:devices` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_allowed_file_extension Data Source - terraform-pro
 subcategory: ""
 description: |-
   Look up a Jamf Pro allowed file extension by ID or by extension. Exactly one of id or extension must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:allowed-file-extension` |
 ---
 
 # jamfplatform_pro_allowed_file_extension (Data Source)
 
 Look up a Jamf Pro allowed file extension by ID or by extension. Exactly one of `id` or `extension` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:allowed-file-extension` |
 
 ## Example Usage
 

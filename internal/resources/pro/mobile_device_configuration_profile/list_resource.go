@@ -69,7 +69,7 @@ func (r *ListResource) Configure(ctx context.Context, req resource.ConfigureRequ
 // ListResourceConfigSchema describes the supported list filters.
 func (r *ListResource) ListResourceConfigSchema(_ context.Context, _ list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive `name_substring` filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the `jamfplatform_pro_mobile_device_configuration_profile` data source to fetch per-profile detail.",
+		Description: "Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive `name_substring` filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the `jamfplatform_pro_mobile_device_configuration_profile` data source to fetch per-profile detail." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

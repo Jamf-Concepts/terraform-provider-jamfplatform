@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_managed_software_update Resource - terraform-provi
 subcategory: ""
 description: |-
   Manages the Jamf Pro Managed Software Updates feature (Computers > Software updates and Mobile devices > Software updates — the "Use new feature" toggle). Singleton — one record per tenant. When enabled, Jamf Pro uses Apple's Declarative Device Management to enforce software update plans; when disabled, those plans are turned off. Omit = preserve — if you omit enabled, the resource adopts the current Jamf Pro value rather than changing it. Turning the feature on or off happens in the background, so applying this resource waits for the change to take effect before completing. Import with terraform import jamfplatform_pro_managed_software_update.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Managed Software Updates | `create:pro:managed-software-updates` |
+  | Read Managed Software Updates | `read:pro:managed-software-updates` |
+  | Update Managed Software Updates | `update:pro:managed-software-updates` |
 ---
 
 # jamfplatform_pro_managed_software_update (Resource)
 
 Manages the Jamf Pro Managed Software Updates feature (Computers > Software updates and Mobile devices > Software updates — the "Use new feature" toggle). Singleton — one record per tenant. When enabled, Jamf Pro uses Apple's Declarative Device Management to enforce software update plans; when disabled, those plans are turned off. **Omit = preserve** — if you omit `enabled`, the resource adopts the current Jamf Pro value rather than changing it. Turning the feature on or off happens in the background, so applying this resource waits for the change to take effect before completing. Import with `terraform import jamfplatform_pro_managed_software_update.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Managed Software Updates | `create:pro:managed-software-updates` |
+| Read Managed Software Updates | `read:pro:managed-software-updates` |
+| Update Managed Software Updates | `update:pro:managed-software-updates` |
 
 ## Example Usage
 

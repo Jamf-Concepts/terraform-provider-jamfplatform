@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_cloud_identity_provider Resource - terraform-provi
 subcategory: ""
 description: |-
   Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pro look up users and groups in a cloud directory. One resource type covers both supported providers; set provider_name to choose, and supply the matching nested block (google for Google Secure LDAP, entra_id for Microsoft Entra ID). Changing provider_name forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. Microsoft Entra ID: after the first apply you must complete the manual "refresh consent" step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create LDAP Servers | `create:pro:ldap-servers` |
+  | Delete LDAP Servers | `delete:pro:ldap-servers` |
+  | Read LDAP Servers | `read:pro:ldap-servers` |
+  | Update LDAP Servers | `update:pro:ldap-servers` |
 ---
 
 # jamfplatform_pro_cloud_identity_provider (Resource)
 
 Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pro look up users and groups in a cloud directory. One resource type covers both supported providers; set `provider_name` to choose, and supply the matching nested block (`google` for Google Secure LDAP, `entra_id` for Microsoft Entra ID). Changing `provider_name` forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. **Microsoft Entra ID:** after the first apply you must complete the manual **"refresh consent"** step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create LDAP Servers | `create:pro:ldap-servers` |
+| Delete LDAP Servers | `delete:pro:ldap-servers` |
+| Read LDAP Servers | `read:pro:ldap-servers` |
+| Update LDAP Servers | `update:pro:ldap-servers` |
 
 ## Example Usage
 

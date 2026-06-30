@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_enrollment_customization List Resource - terraform
 subcategory: ""
 description: |-
   Lists Jamf Pro enrollment customizations. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The list response carries the parent record (display name, description, site, branding palette + icon URL); panes are not included — read them via the singular resource per ID.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Enrollment Customizations | `read:pro:enrollment-customizations` |
 ---
 
 # jamfplatform_pro_enrollment_customization (List Resource)
 
 Lists Jamf Pro enrollment customizations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The list response carries the parent record (display name, description, site, branding palette + icon URL); panes are not included — read them via the singular resource per ID.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Enrollment Customizations | `read:pro:enrollment-customizations` |
 
 ## Example Usage
 

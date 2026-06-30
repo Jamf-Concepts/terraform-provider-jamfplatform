@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_computer_inventory_collection_settings Data Source
 subcategory: ""
 description: |-
   Read the current Jamf Pro computer inventory collection settings (V2). Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
 ---
 
 # jamfplatform_pro_computer_inventory_collection_settings (Data Source)
 
 Read the current Jamf Pro computer inventory collection settings (V2). Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
 
 
 

@@ -1,0 +1,67 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package cloud_identity_provider
+
+import (
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
+)
+
+// resourceSDKMethods lists the SDK methods the Cloud Identity Provider
+// resource's CRUD and plan-time paths call. The CRUD path is split across
+// crud.go (provider discovery on import), crud_azure.go (Entra ID branch),
+// crud_google.go (Google Secure LDAP branch), and the keystore verify in
+// plan_modifiers.go. This list drives the "Required Jamf privileges" table
+// appended to the resource MarkdownDescription. permissions_test.go asserts it
+// stays in sync with the actual client.<Method> calls across those files and
+// with the SDK privilege registry.
+var resourceSDKMethods = []string{
+	"GetCloudIdpV1",
+	"CreateCloudAzureV1",
+	"GetCloudAzureV1",
+	"UpdateCloudAzureV1",
+	"DeleteCloudAzureV1",
+	"CreateCloudLdapV2",
+	"GetCloudLdapV2",
+	"UpdateCloudLdapV2",
+	"DeleteCloudLdapV2",
+	"VerifyLdapKeystoreV1",
+}
+
+// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// section for the Cloud Identity Provider resource, appended to its
+// MarkdownDescription.
+var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
+
+// dataSourceSDKMethods lists the SDK methods the singular Cloud Identity
+// Provider data source calls. It looks up by id or display_name, both served
+// client-side from a single ListCloudIdpV1 call.
+var dataSourceSDKMethods = []string{
+	"ListCloudIdpV1",
+}
+
+// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// section for the singular data source.
+var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
+
+// pluralDataSourceSDKMethods lists the SDK methods the plural Cloud Identity
+// Provider data source calls.
+var pluralDataSourceSDKMethods = []string{
+	"ListCloudIdpV1",
+}
+
+// pluralDataSourcePrivileges is the rendered "Required Jamf privileges"
+// Markdown section for the plural data source.
+var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
+
+// listResourceSDKMethods lists the SDK methods the Cloud Identity Provider
+// list resource calls.
+var listResourceSDKMethods = []string{
+	"ListCloudIdpV1",
+}
+
+// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// section for the list resource.
+var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

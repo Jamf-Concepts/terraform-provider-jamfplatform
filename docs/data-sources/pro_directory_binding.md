@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_directory_binding Data Source - terraform-provider
 subcategory: ""
 description: |-
   Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:directory-bindings` |
 ---
 
 # jamfplatform_pro_directory_binding (Data Source)
 
 Look up a Jamf Pro directory binding by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext bind password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:directory-bindings` |
 
 ## Example Usage
 

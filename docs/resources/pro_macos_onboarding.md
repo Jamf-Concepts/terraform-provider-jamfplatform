@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_macos_onboarding Resource - terraform-provider-jam
 subcategory: ""
 description: |-
   Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. The onboarding_items list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and onboarding_items = [] clears all items. priority follows the list order automatically. Import with terraform import jamfplatform_pro_macos_onboarding.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+  | Update Onboarding Configuration | `update:pro:onboarding-configuration` |
 ---
 
 # jamfplatform_pro_macos_onboarding (Resource)
 
 Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. The `onboarding_items` list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and `onboarding_items = []` clears all items. `priority` follows the list order automatically. Import with `terraform import jamfplatform_pro_macos_onboarding.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+| Update Onboarding Configuration | `update:pro:onboarding-configuration` |
 
 ## Example Usage
 

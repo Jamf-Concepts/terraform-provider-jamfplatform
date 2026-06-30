@@ -107,7 +107,7 @@ func (r *AutomatedDeviceEnrollmentResource) Schema(ctx context.Context, req reso
 			"Apple ADE sync as `SUCCESSFUL` — until that completes the device list is not known " +
 			"to Jamf and downstream resources (e.g. `jamfplatform_pro_computer_prestage_enrollment` " +
 			"scope assignments) will fail. Default create/update timeout is 5 minutes; override " +
-			"via the `timeouts` block when Apple's round-trip is slower on a particular tenant.",
+			"via the `timeouts` block when Apple's round-trip is slower on a particular tenant." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Automated Device Enrollment instance ID assigned by Jamf Pro.",

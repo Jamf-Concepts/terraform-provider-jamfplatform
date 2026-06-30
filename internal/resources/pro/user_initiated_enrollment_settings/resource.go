@@ -103,7 +103,7 @@ func (r *UserInitiatedEnrollmentSettingsResource) Schema(ctx context.Context, re
 			"**Shared backing record** — the User-Initiated Enrollment settings and the Re-enrollment settings (`jamfplatform_pro_re_enrollment_settings`) are two views of one tenant record. This resource preserves the Re-enrollment options untouched on every apply; manage those with the dedicated re-enrollment resource. Within a single Terraform run the provider serializes writes to the shared record, but two separate `terraform apply` processes against the same tenant can still race.\n\n" +
 			"**Third-party MDM signing certificate** — set `signing_mdm_profile_enabled = true` and supply the `mdm_signing_certificate` block to upload a keystore. Leaving the block absent on a later apply preserves the existing certificate. Setting `signing_mdm_profile_enabled = false` removes the stored certificate. When `signing_mdm_profile_enabled = true`, the `mdm_signing_certificate` block is required (plan-time validated).\n\n" +
 			"**Destroy** — `terraform destroy` removes the resource from Terraform state only. The settings, certificates and Access Groups are left intact on the tenant. To reset options, set them explicitly and apply before destroy.\n\n" +
-			"Import with `terraform import jamfplatform_pro_user_initiated_enrollment_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_user_initiated_enrollment_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

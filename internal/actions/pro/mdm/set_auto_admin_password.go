@@ -47,7 +47,7 @@ func (a *SetAutoAdminPasswordAction) Schema(ctx context.Context, req action.Sche
 		MarkdownDescription: "New automatic administrator password.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Sets the automatic administrator password on a computer.",
+		MarkdownDescription: "Sets the automatic administrator password on a computer." + setAutoAdminPasswordPrivileges,
 		Attributes:          attrs,
 	}
 }

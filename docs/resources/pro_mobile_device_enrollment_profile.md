@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator / over-the-air enrollment profile that devices use to enrol into Jamf Pro. Carries enrolment metadata plus user/location and purchasing information.
   Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:enrollment-profiles` |
+  | `delete:pro:enrollment-profiles` |
+  | `read:pro:enrollment-profiles` |
+  | `update:pro:enrollment-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_enrollment_profile (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator / over-the-air enrollment profile that devices use to enrol into Jamf Pro. Carries enrolment metadata plus user/location and purchasing information.
 
 Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:enrollment-profiles` |
+| `delete:pro:enrollment-profiles` |
+| `read:pro:enrollment-profiles` |
+| `update:pro:enrollment-profiles` |
 
 ## Example Usage
 

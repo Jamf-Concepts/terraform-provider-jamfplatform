@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_app List Resource - terraform-provid
 subcategory: ""
 description: |-
   Lists Jamf Pro mobile device apps. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-app read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:mobile-device-applications` |
 ---
 
 # jamfplatform_pro_mobile_device_app (List Resource)
 
 Lists Jamf Pro mobile device apps. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-app read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:mobile-device-applications` |
 
 ## Example Usage
 

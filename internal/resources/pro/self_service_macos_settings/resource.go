@@ -134,7 +134,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 			"this resource adopts the existing settings and only changes the fields you declare. " +
 			"`default_home_category_id` only applies when `default_landing_page = \"BROWSE\"` — under any other landing " +
 			"page Jamf Pro silently resets it to `-1` (All Items), so the provider rejects that combination at plan time. " +
-			"Import with `terraform import jamfplatform_pro_self_service_macos_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_self_service_macos_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

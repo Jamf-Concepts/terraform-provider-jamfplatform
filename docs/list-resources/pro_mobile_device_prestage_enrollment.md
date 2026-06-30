@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_prestage_enrollment List Resource - 
 subcategory: ""
 description: |-
   Lists Jamf Pro Mobile Device PreStage Enrollments. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so include_resource = true does not require a follow-up read per item.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
 ---
 
 # jamfplatform_pro_mobile_device_prestage_enrollment (List Resource)
 
 Lists Jamf Pro Mobile Device PreStage Enrollments. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so `include_resource = true` does not require a follow-up read per item.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
 
 ## Example Usage
 

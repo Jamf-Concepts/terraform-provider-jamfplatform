@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_configuration_profile Data Source - 
 subcategory: ""
 description: |-
   Look up a mobile device configuration profile by ID or by exact name. Exactly one of id or name must be supplied. Returns a flat read-only projection of the most-frequently looked-up fields; to manage the full payload, use the jamfplatform_pro_mobile_device_configuration_profile resource.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:ios-configuration-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_configuration_profile (Data Source)
 
 Look up a mobile device configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied. Returns a flat read-only projection of the most-frequently looked-up fields; to manage the full payload, use the `jamfplatform_pro_mobile_device_configuration_profile` resource.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:ios-configuration-profiles` |
 
 ## Example Usage
 

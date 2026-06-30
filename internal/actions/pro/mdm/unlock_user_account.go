@@ -42,7 +42,7 @@ func (a *UnlockUserAccountAction) Schema(ctx context.Context, req action.SchemaR
 		MarkdownDescription: "Local user account to unlock.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Unlocks a local user account on a computer.",
+		MarkdownDescription: "Unlocks a local user account on a computer." + unlockUserAccountPrivileges,
 		Attributes:          attrs,
 	}
 }

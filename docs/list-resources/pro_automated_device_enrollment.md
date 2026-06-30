@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_automated_device_enrollment List Resource - terraf
 subcategory: ""
 description: |-
   Lists Jamf Pro Automated Device Enrollment instances. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so include_resource = true does not require a follow-up read per item.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
 ---
 
 # jamfplatform_pro_automated_device_enrollment (List Resource)
 
 Lists Jamf Pro Automated Device Enrollment instances. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so `include_resource = true` does not require a follow-up read per item.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
 
 ## Example Usage
 

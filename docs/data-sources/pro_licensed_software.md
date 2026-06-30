@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_licensed_software Data Source - terraform-provider
 subcategory: ""
 description: |-
   Look up a Jamf Pro licensed software record by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection of the general header; manage the record as a resource for the nested software definitions and licences.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:licensed-software` |
 ---
 
 # jamfplatform_pro_licensed_software (Data Source)
 
 Look up a Jamf Pro licensed software record by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the general header; manage the record as a resource for the nested software definitions and licences.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:licensed-software` |
 
 ## Example Usage
 

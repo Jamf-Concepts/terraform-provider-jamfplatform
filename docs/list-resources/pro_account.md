@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_account List Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Lists Jamf Pro administrator accounts. Supply an optional case-insensitive name_substring filter on the username; filtering is applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Accounts | `read:pro:accounts` |
 ---
 
 # jamfplatform_pro_account (List Resource)
 
 Lists Jamf Pro administrator accounts. Supply an optional case-insensitive `name_substring` filter on the username; filtering is applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Accounts | `read:pro:accounts` |
 
 ## Example Usage
 

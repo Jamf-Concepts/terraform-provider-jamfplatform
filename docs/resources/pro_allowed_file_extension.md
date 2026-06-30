@@ -4,11 +4,28 @@ page_title: "jamfplatform_pro_allowed_file_extension Resource - terraform-provid
 subcategory: ""
 description: |-
   Manages a Jamf Pro allowed file extension. Allowed file extensions are the tenant-wide list of file extensions Jamf Pro permits for attachments uploaded to inventory records (computers, mobile devices, and users).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:allowed-file-extension` |
+  | `delete:pro:allowed-file-extension` |
+  | `read:pro:allowed-file-extension` |
 ---
 
 # jamfplatform_pro_allowed_file_extension (Resource)
 
 Manages a Jamf Pro allowed file extension. Allowed file extensions are the tenant-wide list of file extensions Jamf Pro permits for attachments uploaded to inventory records (computers, mobile devices, and users).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:allowed-file-extension` |
+| `delete:pro:allowed-file-extension` |
+| `read:pro:allowed-file-extension` |
 
 ## Example Usage
 

@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_ebook Data Source - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Look up a Jamf Pro ebook by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection; manage the ebook as a resource for full detail.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:ebooks` |
 ---
 
 # jamfplatform_pro_ebook (Data Source)
 
 Look up a Jamf Pro ebook by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the ebook as a resource for full detail.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:ebooks` |
 
 ## Example Usage
 

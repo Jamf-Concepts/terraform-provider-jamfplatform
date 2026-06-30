@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_api_clients Data Source - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Search Jamf Pro API clients using optional RSQL filters on id and displayName. The client secret is never exposed.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read API Integrations | `read:pro:api-integrations` |
 ---
 
 # jamfplatform_pro_api_clients (Data Source)
 
 Search Jamf Pro API clients using optional RSQL filters on `id` and `displayName`. The client secret is never exposed.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read API Integrations | `read:pro:api-integrations` |
 
 ## Example Usage
 

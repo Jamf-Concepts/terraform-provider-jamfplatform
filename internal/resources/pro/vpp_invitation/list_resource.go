@@ -54,7 +54,7 @@ func (r *VPPInvitationListResource) Configure(ctx context.Context, req resource.
 
 func (r *VPPInvitationListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro VPP invitations. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.",
+		Description: "Lists Jamf Pro VPP invitations. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
 		},

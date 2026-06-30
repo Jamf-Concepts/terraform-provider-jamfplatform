@@ -90,7 +90,7 @@ func (r *InventoryPreloadRecordListResource) Configure(ctx context.Context, req 
 // ListResourceConfigSchema describes the supported list filters.
 func (r *InventoryPreloadRecordListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Pro Inventory Preload records using RSQL filter clauses.",
+		Description: "Searches for Jamf Pro Inventory Preload records using RSQL filter clauses." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ListFilterAttribute(
 				filters.SelectorDescription(inventoryPreloadRecordFilterSelectors)+

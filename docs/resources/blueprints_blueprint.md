@@ -4,11 +4,38 @@ page_title: "jamfplatform_blueprints_blueprint Resource - terraform-provider-jam
 subcategory: ""
 description: |-
   Resource schema for creating and managing Jamf Blueprints. Requires Blueprints API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:blueprints` |
+  | `create:school:blueprints` |
+  | `delete:pro:blueprints` |
+  | `delete:school:blueprints` |
+  | `read:pro:blueprints` |
+  | `read:school:blueprints` |
+  | `update:pro:blueprints` |
+  | `update:school:blueprints` |
 ---
 
 # jamfplatform_blueprints_blueprint (Resource)
 
 Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:blueprints` |
+| `create:school:blueprints` |
+| `delete:pro:blueprints` |
+| `delete:school:blueprints` |
+| `read:pro:blueprints` |
+| `read:school:blueprints` |
+| `update:pro:blueprints` |
+| `update:school:blueprints` |
 
 ## Example Usage
 

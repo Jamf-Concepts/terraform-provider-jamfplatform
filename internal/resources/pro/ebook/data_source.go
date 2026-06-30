@@ -45,7 +45,7 @@ func (d *EbookDataSource) Metadata(ctx context.Context, req datasource.MetadataR
 // Schema returns the data source schema.
 func (d *EbookDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro ebook by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the ebook as a resource for full detail.",
+		MarkdownDescription: "Look up a Jamf Pro ebook by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection; manage the ebook as a resource for full detail." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Ebook ID. Mutually exclusive with `name`.",

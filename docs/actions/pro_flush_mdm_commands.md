@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_flush_mdm_commands Action - terraform-provider-jam
 subcategory: ""
 description: |-
   Cancels (flushes) pending or failed management commands for a device or group.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `delete:pro:computer-commands` |
 ---
 
 # jamfplatform_pro_flush_mdm_commands (Action)
 
 Cancels (flushes) pending or failed management commands for a device or group.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `delete:pro:computer-commands` |
 
 ## Example Usage
 

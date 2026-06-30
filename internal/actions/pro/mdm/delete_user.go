@@ -52,7 +52,7 @@ func (a *DeleteUserAction) Schema(ctx context.Context, req action.SchemaRequest,
 		MarkdownDescription: "Force removal even when the account has unsynced data.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Removes a user account from a Shared iPad.",
+		MarkdownDescription: "Removes a user account from a Shared iPad." + deleteUserPrivileges,
 		Attributes:          attrs,
 	}
 }

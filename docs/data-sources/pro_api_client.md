@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_api_client Data Source - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Look up a Jamf Pro API client by ID. The client secret is never exposed — Jamf Pro does not return it on read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read API Integrations | `read:pro:api-integrations` |
 ---
 
 # jamfplatform_pro_api_client (Data Source)
 
 Look up a Jamf Pro API client by ID. The client secret is never exposed — Jamf Pro does not return it on read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read API Integrations | `read:pro:api-integrations` |
 
 ## Example Usage
 

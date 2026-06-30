@@ -49,7 +49,7 @@ func (d *CloudIdentityProvidersDataSource) Schema(ctx context.Context, req datas
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists all Jamf Pro Cloud Identity Provider registry entries (Google Secure LDAP and Microsoft Entra ID). " +
 			"Returns a computed `cloud_identity_providers` list with summary fields for each provider. " +
-			"To look up a specific provider by `id` or `display_name`, use the singular `jamfplatform_pro_cloud_identity_provider` data source.",
+			"To look up a specific provider by `id` or `display_name`, use the singular `jamfplatform_pro_cloud_identity_provider` data source." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"cloud_identity_providers": schema.ListNestedAttribute{
 				MarkdownDescription: "All Cloud Identity Providers registered on this Jamf Pro tenant.",

@@ -81,7 +81,7 @@ func (r *MobileDevicePrestageEnrollmentResource) IdentitySchema(ctx context.Cont
 func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro Mobile Device PreStage Enrollment — the iOS/iPadOS/tvOS Automated Device Enrollment (ADE) record exposed at *Devices → PreStage Enrollments* in the Jamf Pro admin UI. " +
-			"Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.",
+			"Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Mobile device PreStage enrollment ID assigned by Jamf Pro.",

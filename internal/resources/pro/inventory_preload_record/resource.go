@@ -97,7 +97,8 @@ func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resourc
 			"this resource manages individual records through the API instead. " +
 			"Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, " +
 			"and overwrites manual inventory edits each time it is applied. " +
-			"Records persist after a device enrolls — they are consumed, not deleted.",
+			"Records persist after a device enrolls — they are consumed, not deleted." +
+			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Inventory Preload record ID assigned by Jamf Pro.",

@@ -74,7 +74,7 @@ func (r *SsoFailoverURLResource) Schema(ctx context.Context, req resource.Schema
 		MarkdownDescription: "Manages the Jamf Pro **SSO failover URL** — a tenant-scoped sign-in URL administrators can use when the upstream SSO identity provider is unreachable.\n\n" +
 			"The URL is rotated by changing `regeneration_trigger`. Any change to that attribute causes the next Update to call the failover regenerate endpoint and replace the URL.\n\n" +
 			"**Destroy** is state-only — `terraform destroy` removes the resource from Terraform state but leaves the failover URL live on the tenant (the Jamf Pro API has no clear/disable endpoint for the failover URL).\n\n" +
-			"Import with `terraform import jamfplatform_pro_sso_failover_url.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_sso_failover_url.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

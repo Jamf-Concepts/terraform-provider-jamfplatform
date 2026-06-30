@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_network_segment Resource - terraform-provider-jamf
 subcategory: ""
 description: |-
   Manages a Jamf Pro network segment. Network segments are IP ranges used to scope Jamf Pro policies, configuration profiles, and other objects to clients whose IP falls within the segment. Optionally a network segment can override the building/department assignment of devices that join it.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:network-segments` |
+  | `delete:pro:network-segments` |
+  | `read:pro:network-segments` |
+  | `update:pro:network-segments` |
 ---
 
 # jamfplatform_pro_network_segment (Resource)
 
 Manages a Jamf Pro network segment. Network segments are IP ranges used to scope Jamf Pro policies, configuration profiles, and other objects to clients whose IP falls within the segment. Optionally a network segment can override the building/department assignment of devices that join it.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:network-segments` |
+| `delete:pro:network-segments` |
+| `read:pro:network-segments` |
+| `update:pro:network-segments` |
 
 ## Example Usage
 

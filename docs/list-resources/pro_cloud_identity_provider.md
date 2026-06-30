@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_cloud_identity_provider List Resource - terraform-
 subcategory: ""
 description: |-
   Lists Jamf Pro Cloud Identity Providers (Google Secure LDAP and Microsoft Entra ID). Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The list response includes all summary fields (id, display_name, provider_name, enabled, provider_description); setting include_resource = true populates the managed-resource state from those same fields without an extra round trip.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read LDAP Servers | `read:pro:ldap-servers` |
 ---
 
 # jamfplatform_pro_cloud_identity_provider (List Resource)
 
 Lists Jamf Pro Cloud Identity Providers (Google Secure LDAP and Microsoft Entra ID). Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The list response includes all summary fields (id, display_name, provider_name, enabled, provider_description); setting `include_resource = true` populates the managed-resource state from those same fields without an extra round trip.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read LDAP Servers | `read:pro:ldap-servers` |
 
 ## Example Usage
 

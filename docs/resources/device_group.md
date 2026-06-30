@@ -4,11 +4,30 @@ page_title: "jamfplatform_device_group Resource - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Manages Jamf device groups (static or smart) via the Platform API. Requires Device Group Inventory API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:device-groups` |
+  | `delete:pro:device-groups` |
+  | `read:pro:device-groups` |
+  | `update:pro:device-groups` |
 ---
 
 # jamfplatform_device_group (Resource)
 
 Manages Jamf device groups (static or smart) via the Platform API. Requires **Device Group Inventory API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:device-groups` |
+| `delete:pro:device-groups` |
+| `read:pro:device-groups` |
+| `update:pro:device-groups` |
 
 ## Example Usage
 

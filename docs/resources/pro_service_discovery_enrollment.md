@@ -7,6 +7,12 @@ description: |-
   The set of rows is server-keyed and fixed. Each row corresponds to a synced Apple Business/School Manager (AxM) organization, identified by the Server UUID of its Automated Device Enrollment token (Settings > Automated Device Enrollment > Server UUID). You can only set enrollment_type on a server_uuid Jamf Pro already knows — a server_uuid that does not match a synced AxM org is silently ignored by Jamf Pro (the provider emits a warning when this happens).
   This resource manages only the rows you declare (merge semantics, wire-probed). Rows for AxM orgs you do not declare are left untouched. Removing a well_known_setting block stops managing that org and leaves its current Jamf Pro value unchanged — it does NOT reset it. To turn off Jamf-hosted service discovery for an org, set its enrollment_type = "none" (do not delete the block).
   Import with terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
+  | Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
 ---
 
 # jamfplatform_pro_service_discovery_enrollment (Resource)
@@ -18,6 +24,15 @@ Manages Jamf Pro's hosted service-discovery ("well-known") settings for Account-
 **This resource manages only the rows you declare (merge semantics, wire-probed).** Rows for AxM orgs you do not declare are left untouched. **Removing a `well_known_setting` block stops managing that org and leaves its current Jamf Pro value unchanged — it does NOT reset it. To turn off Jamf-hosted service discovery for an org, set its `enrollment_type = "none"` (do not delete the block).**
 
 Import with `terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
+| Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
 
 ## Example Usage
 

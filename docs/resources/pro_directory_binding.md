@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_directory_binding Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by type. A plan-time cross-field validator enforces that the supplied nested block matches type. The plaintext password is a Terraform WriteOnly attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with password_wo_version to trigger rotation: bump the integer to force a new update carrying the current password value.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:directory-bindings` |
+  | `delete:pro:directory-bindings` |
+  | `read:pro:directory-bindings` |
+  | `update:pro:directory-bindings` |
 ---
 
 # jamfplatform_pro_directory_binding (Resource)
 
 Manages a Jamf Pro directory binding. Directory bindings are reusable definitions Jamf policies use to join Mac computers to an Active Directory / Open Directory / PowerBroker / ADmitMac / Centrify directory service. The resource carries flat top-level fields (name, priority, type, domain, username, password, computer_ou) plus exactly one of five per-type nested blocks selected by `type`. A plan-time cross-field validator enforces that the supplied nested block matches `type`. The plaintext `password` is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro but never persisted in Terraform state. Pair it with `password_wo_version` to trigger rotation: bump the integer to force a new update carrying the current `password` value.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:directory-bindings` |
+| `delete:pro:directory-bindings` |
+| `read:pro:directory-bindings` |
+| `update:pro:directory-bindings` |
 
 ## Example Usage
 

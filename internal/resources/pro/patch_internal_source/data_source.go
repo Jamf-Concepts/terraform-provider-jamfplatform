@@ -62,7 +62,7 @@ func (d *PatchInternalSourceDataSource) Metadata(ctx context.Context, req dataso
 // SDK response.
 func (d *PatchInternalSourceDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro patch internal source by ID or by exact name, and read the catalog of software titles it publishes. Internal sources are managed by Jamf (the built-in \"Jamf\" definition source) and cannot be created or modified. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro patch internal source by ID or by exact name, and read the catalog of software titles it publishes. Internal sources are managed by Jamf (the built-in \"Jamf\" definition source) and cannot be created or modified. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch internal source ID. Mutually exclusive with `name`.",

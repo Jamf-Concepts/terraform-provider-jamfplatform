@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_inventory_preload_record Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (Settings > Global > Inventory Preload) manages these records via CSV upload; this resource manages individual records through the API instead. Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls — they are consumed, not deleted.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Inventory Preload Records | `create:pro:inventory-preload-records` |
+  | Delete Inventory Preload Records | `delete:pro:inventory-preload-records` |
+  | Read Inventory Preload Records | `read:pro:inventory-preload-records` |
+  | Update Inventory Preload Records | `update:pro:inventory-preload-records` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (Resource)
 
 Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records via CSV upload; this resource manages individual records through the API instead. Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls — they are consumed, not deleted.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Inventory Preload Records | `create:pro:inventory-preload-records` |
+| Delete Inventory Preload Records | `delete:pro:inventory-preload-records` |
+| Read Inventory Preload Records | `read:pro:inventory-preload-records` |
+| Update Inventory Preload Records | `update:pro:inventory-preload-records` |
 
 ## Example Usage
 

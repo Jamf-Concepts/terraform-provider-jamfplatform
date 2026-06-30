@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_dock_item Resource - terraform-provider-jamfplatfo
 subcategory: ""
 description: |-
   Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST contents field is derived from name, type, and path by Jamf Pro and exposed read-only.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:dock-items` |
+  | `delete:pro:dock-items` |
+  | `read:pro:dock-items` |
+  | `update:pro:dock-items` |
 ---
 
 # jamfplatform_pro_dock_item (Resource)
 
 Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST `contents` field is derived from `name`, `type`, and `path` by Jamf Pro and exposed read-only.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:dock-items` |
+| `delete:pro:dock-items` |
+| `read:pro:dock-items` |
+| `update:pro:dock-items` |
 
 ## Example Usage
 

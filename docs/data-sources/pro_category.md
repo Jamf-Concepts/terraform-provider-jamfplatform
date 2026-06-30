@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_category Data Source - terraform-provider-jamfplat
 subcategory: ""
 description: |-
   Look up a Jamf Pro category by ID.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Categories | `read:pro:categories` |
 ---
 
 # jamfplatform_pro_category (Data Source)
 
 Look up a Jamf Pro category by ID.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Categories | `read:pro:categories` |
 
 ## Example Usage
 

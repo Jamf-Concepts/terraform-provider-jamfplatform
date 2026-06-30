@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_invitation Data Source - terraform-p
 subcategory: ""
 description: |-
   Look up a Jamf Pro mobile device enrollment invitation by numeric id or by its Jamf Pro-generated invitation code (the admin UI "Invitation ID"). Exactly one of id or invitation must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:mobile-device-enrollment-invitations` |
 ---
 
 # jamfplatform_pro_mobile_device_invitation (Data Source)
 
 Look up a Jamf Pro mobile device enrollment invitation by numeric `id` or by its Jamf Pro-generated `invitation` code (the admin UI "Invitation ID"). Exactly one of `id` or `invitation` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:mobile-device-enrollment-invitations` |
 
 ## Example Usage
 

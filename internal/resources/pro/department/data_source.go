@@ -39,7 +39,7 @@ func (d *DepartmentDataSource) Metadata(ctx context.Context, req datasource.Meta
 // Schema returns the data source schema.
 func (d *DepartmentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro department by ID.",
+		MarkdownDescription: "Look up a Jamf Pro department by ID." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Department ID to look up.",

@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_cloud_distribution_point Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages the Jamf Pro cloud distribution point. Singleton — one record per tenant. Configuring this resource enables the selected content delivery network (cdn_type); destroying it disables the cloud distribution point (resets the tenant to NONE). Warning: destroying this resource — or changing cdn_type, which forces replacement — disables the Jamf Cloud distribution point and permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud. This cannot be undone. JAMF_CLOUD (Jamf Cloud Distribution Service / JCDS) needs no credentials; the other types (AMAZON_S3, AKAMAI, RACKSPACE_CLOUD_FILES) require the credential / endpoint fields and are not acceptance-tested by the provider. Import with terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
+  | Update Cloud Distribution Point | `update:pro:cloud-distribution-point` |
 ---
 
 # jamfplatform_pro_cloud_distribution_point (Resource)
 
 Manages the Jamf Pro cloud distribution point. Singleton — one record per tenant. Configuring this resource enables the selected content delivery network (`cdn_type`); destroying it disables the cloud distribution point (resets the tenant to `NONE`). **Warning:** destroying this resource — or changing `cdn_type`, which forces replacement — disables the Jamf Cloud distribution point and **permanently deletes all packages, in-house apps, and eBooks hosted in Jamf Cloud**. This cannot be undone. `JAMF_CLOUD` (Jamf Cloud Distribution Service / JCDS) needs no credentials; the other types (`AMAZON_S3`, `AKAMAI`, `RACKSPACE_CLOUD_FILES`) require the credential / endpoint fields and are **not** acceptance-tested by the provider. Import with `terraform import jamfplatform_pro_cloud_distribution_point.<name> singleton`.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
+| Update Cloud Distribution Point | `update:pro:cloud-distribution-point` |
 
 ## Example Usage
 

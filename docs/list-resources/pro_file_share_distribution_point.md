@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_file_share_distribution_point List Resource - terr
 subcategory: ""
 description: |-
   Searches for Jamf Pro file share distribution points using the same filter clauses as the data source.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read Distribution Points | `read:pro:distribution-points` |
 ---
 
 # jamfplatform_pro_file_share_distribution_point (List Resource)
 
 Searches for Jamf Pro file share distribution points using the same filter clauses as the data source.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read Distribution Points | `read:pro:distribution-points` |
 
 ## Example Usage
 

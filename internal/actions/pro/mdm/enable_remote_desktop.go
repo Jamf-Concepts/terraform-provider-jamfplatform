@@ -36,7 +36,7 @@ func (a *EnableRemoteDesktopAction) Metadata(ctx context.Context, req action.Met
 
 func (a *EnableRemoteDesktopAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Enables Remote Desktop (remote management) on a computer.",
+		MarkdownDescription: "Enables Remote Desktop (remote management) on a computer." + enableRemoteDesktopPrivileges,
 		Attributes:          targetAttributes("computer"),
 	}
 }

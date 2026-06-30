@@ -51,7 +51,7 @@ func (d *AccountGroupDataSource) ConfigValidators(ctx context.Context) []datasou
 // Schema returns the data source schema.
 func (d *AccountGroupDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro administrator account group by `id` or `display_name`. Values use the same spellings as the `jamfplatform_pro_account_group` resource; the `privileges` attribute is the flattened union of the group's privilege grid.",
+		MarkdownDescription: "Look up a Jamf Pro administrator account group by `id` or `display_name`. Values use the same spellings as the `jamfplatform_pro_account_group` resource; the `privileges` attribute is the flattened union of the group's privilege grid." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":               schema.StringAttribute{MarkdownDescription: "Account group ID. Provide this or `display_name`.", Optional: true, Computed: true},
 			"display_name":     schema.StringAttribute{MarkdownDescription: "Group display name. Provide this or `id`.", Optional: true, Computed: true},

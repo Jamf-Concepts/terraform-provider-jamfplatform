@@ -83,7 +83,7 @@ func (r *JSONWebTokenConfigurationResource) IdentitySchema(ctx context.Context, 
 // admin UI labels (STYLE_GUIDE §Attribute names mirror the admin UI).
 func (r *JSONWebTokenConfigurationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro JSON Web Token configuration — the \"JSON Web Token Configuration\" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails.",
+		MarkdownDescription: "Manages a Jamf Pro JSON Web Token configuration — the \"JSON Web Token Configuration\" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "JSON Web Token configuration ID assigned by Jamf Pro.",

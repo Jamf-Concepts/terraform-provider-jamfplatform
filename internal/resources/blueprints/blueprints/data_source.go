@@ -34,7 +34,7 @@ func (d *BlueprintsDataSource) Metadata(ctx context.Context, req datasource.Meta
 // Schema sets the Terraform schema for listing blueprints.
 func (d *BlueprintsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns all Jamf blueprints from Jamf Pro with an optional case-insensitive search filter. Requires **Blueprints API** access.",
+		MarkdownDescription: "Returns all Jamf blueprints from Jamf Pro with an optional case-insensitive search filter. Requires **Blueprints API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

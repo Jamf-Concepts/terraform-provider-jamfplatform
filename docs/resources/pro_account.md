@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_account Resource - terraform-provider-jamfplatform
 subcategory: ""
 description: |-
   Manages a Jamf Pro administrator login account — a person who signs in to Jamf Pro. This is NOT the jamfplatform_pro_user inventory construct (end-user/device records). A Custom privilege grid can be assigned via the privileges block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing account_type forces the account to be replaced.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Accounts | `create:pro:accounts` |
+  | Delete Accounts | `delete:pro:accounts` |
+  | Read Accounts | `read:pro:accounts` |
+  | Update Accounts | `update:pro:accounts` |
 ---
 
 # jamfplatform_pro_account (Resource)
 
 Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing `account_type` forces the account to be replaced.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Accounts | `create:pro:accounts` |
+| Delete Accounts | `delete:pro:accounts` |
+| Read Accounts | `read:pro:accounts` |
+| Update Accounts | `update:pro:accounts` |
 
 ## Example Usage
 

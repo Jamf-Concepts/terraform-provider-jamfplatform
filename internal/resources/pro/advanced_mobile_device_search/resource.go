@@ -79,7 +79,7 @@ func (r *AdvancedMobileDeviceSearchResource) IdentitySchema(ctx context.Context,
 // resource.
 func (r *AdvancedMobileDeviceSearchResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.",
+		MarkdownDescription: "Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced mobile device search ID assigned by Jamf Pro.",

@@ -4,11 +4,26 @@ page_title: "jamfplatform_blueprints_blueprint Data Source - terraform-provider-
 subcategory: ""
 description: |-
   Returns a blueprint by ID or name. Requires Blueprints API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:blueprints` |
+  | `read:school:blueprints` |
 ---
 
 # jamfplatform_blueprints_blueprint (Data Source)
 
 Returns a blueprint by ID or name. Requires **Blueprints API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:blueprints` |
+| `read:school:blueprints` |
 
 ## Example Usage
 

@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_patch_external_source Data Source - terraform-prov
 subcategory: ""
 description: |-
   Look up a Jamf Pro patch external source by ID or by exact name. Exactly one of id or name must be supplied.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:patch-external-source` |
+  | `read:pro:patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_external_source (Data Source)
 
 Look up a Jamf Pro patch external source by ID or by exact name. Exactly one of `id` or `name` must be supplied.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:patch-external-source` |
+| `read:pro:patch-management-software-titles` |
 
 ## Example Usage
 

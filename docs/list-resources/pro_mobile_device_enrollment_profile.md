@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_enrollment_profile List Resource - t
 subcategory: ""
 description: |-
   Lists Jamf Pro mobile device enrollment profiles. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:enrollment-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_enrollment_profile (List Resource)
 
 Lists Jamf Pro mobile device enrollment profiles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:enrollment-profiles` |
 
 ## Example Usage
 

@@ -37,7 +37,7 @@ func (a *SendBlankPushAction) Metadata(ctx context.Context, req action.MetadataR
 
 func (a *SendBlankPushAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Sends a blank push notification to one or more devices to prompt them to check in.",
+		MarkdownDescription: "Sends a blank push notification to one or more devices to prompt them to check in." + sendBlankPushPrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"management_ids": actionschema.ListAttribute{
 				Optional:            true,

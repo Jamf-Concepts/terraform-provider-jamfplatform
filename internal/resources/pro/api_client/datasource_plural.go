@@ -48,7 +48,7 @@ func (d *ApiClientsDataSource) Metadata(ctx context.Context, req datasource.Meta
 // Schema returns the plural data source schema.
 func (d *ApiClientsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Search Jamf Pro API clients using optional RSQL filters on `id` and `displayName`. The client secret is never exposed.",
+		MarkdownDescription: "Search Jamf Pro API clients using optional RSQL filters on `id` and `displayName`. The client secret is never exposed." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

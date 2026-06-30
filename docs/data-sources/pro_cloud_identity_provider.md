@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_cloud_identity_provider Data Source - terraform-pr
 subcategory: ""
 description: |-
   Look up a Jamf Pro Cloud Identity Provider registry entry by id or by exact display_name. Exactly one of the two must be supplied. Covers both Google (Secure LDAP) and Microsoft Entra ID providers. To retrieve the full provider-specific configuration (LDAP server settings, mappings, etc.), use the managed resource instead.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read LDAP Servers | `read:pro:ldap-servers` |
 ---
 
 # jamfplatform_pro_cloud_identity_provider (Data Source)
 
 Look up a Jamf Pro Cloud Identity Provider registry entry by `id` or by exact `display_name`. Exactly one of the two must be supplied. Covers both Google (Secure LDAP) and Microsoft Entra ID providers. To retrieve the full provider-specific configuration (LDAP server settings, mappings, etc.), use the managed resource instead.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read LDAP Servers | `read:pro:ldap-servers` |
 
 ## Example Usage
 

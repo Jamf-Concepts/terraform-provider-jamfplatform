@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata; uploading an in-house binary (IPA) is not supported. general.name, general.version, and general.bundle_id are required. general.os_type is required only for in-house apps; App Store apps (with an itunes_store_url) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.
   Updates are merged, not replaced: removing an entire optional block (scope / self_service / vpp / app_configuration) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:mobile-device-applications` |
+  | `delete:pro:mobile-device-applications` |
+  | `read:pro:mobile-device-applications` |
+  | `update:pro:mobile-device-applications` |
 ---
 
 # jamfplatform_pro_mobile_device_app (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's **metadata**; uploading an in-house binary (IPA) is not supported. `general.name`, `general.version`, and `general.bundle_id` are required. `general.os_type` is required only for in-house apps; App Store apps (with an `itunes_store_url`) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.
 
 **Updates are merged, not replaced**: removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:mobile-device-applications` |
+| `delete:pro:mobile-device-applications` |
+| `read:pro:mobile-device-applications` |
+| `update:pro:mobile-device-applications` |
 
 ## Example Usage
 

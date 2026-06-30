@@ -93,7 +93,7 @@ func (r *VPPInvitationResource) IdentitySchema(ctx context.Context, req resource
 func (r *VPPInvitationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.\n\n" +
-			"Related: device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`.",
+			"Related: device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "VPP invitation ID assigned by Jamf Pro.",

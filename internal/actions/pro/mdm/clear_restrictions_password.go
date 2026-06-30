@@ -36,7 +36,7 @@ func (a *ClearRestrictionsPasswordAction) Metadata(ctx context.Context, req acti
 
 func (a *ClearRestrictionsPasswordAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Clears the Screen Time (restrictions) passcode on a mobile device.",
+		MarkdownDescription: "Clears the Screen Time (restrictions) passcode on a mobile device." + clearRestrictionsPasswordPrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
 }

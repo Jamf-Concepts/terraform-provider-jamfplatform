@@ -38,7 +38,7 @@ func (d *MDMProfileSettingsDataSource) Metadata(ctx context.Context, req datasou
 // Schema returns the data source schema.
 func (d *MDMProfileSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). Singleton — one record per tenant.",
+		MarkdownDescription: "Read the current Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). Singleton — one record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

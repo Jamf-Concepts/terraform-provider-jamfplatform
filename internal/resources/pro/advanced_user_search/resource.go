@@ -81,7 +81,7 @@ func (r *AdvancedUserSearchResource) IdentitySchema(ctx context.Context, req res
 // Schema returns the Terraform schema for the advanced user search resource.
 func (r *AdvancedUserSearchResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.",
+		MarkdownDescription: "Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Advanced user search ID assigned by Jamf Pro.",

@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro patch software title, found in the UI under Computers → Patch management. A configured title spans the tabs of that interface: the Software Title Settings tab (name, category_id, site_id, notifications), the Definition tab (per-version package assignments), and the Extension Attribute tab (extension_attributes / accept_extension_attributes). A title is defined by its name_id (catalog key) and source_id (patch source); the server populates the full catalog of available_versions. Assign packages to specific versions via version_packages (the Definition tab's per-version Package column) so patch policies can target them.
   **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | — | `create:pro:patch-management-software-titles` |
+  | — | `delete:pro:patch-management-software-titles` |
+  | Read Patch Management Software Titles | `read:pro:patch-management-software-titles` |
+  | Update Patch Management Software Titles | `update:pro:patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_software_title (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro patch software title, found in the UI under **Computers → Patch management**. A configured title spans the tabs of that interface: the **Software Title Settings** tab (`name`, `category_id`, `site_id`, notifications), the **Definition** tab (per-version package assignments), and the **Extension Attribute** tab (`extension_attributes` / `accept_extension_attributes`). A title is defined by its `name_id` (catalog key) and `source_id` (patch source); the server populates the full catalog of `available_versions`. Assign packages to specific versions via `version_packages` (the **Definition** tab's per-version **Package** column) so patch policies can target them.
 
 > **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| — | `create:pro:patch-management-software-titles` |
+| — | `delete:pro:patch-management-software-titles` |
+| Read Patch Management Software Titles | `read:pro:patch-management-software-titles` |
+| Update Patch Management Software Titles | `update:pro:patch-management-software-titles` |
 
 ## Example Usage
 

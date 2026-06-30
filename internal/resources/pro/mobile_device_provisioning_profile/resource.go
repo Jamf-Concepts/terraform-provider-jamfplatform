@@ -80,7 +80,7 @@ func (r *ProvisioningProfileResource) IdentitySchema(ctx context.Context, req re
 func (r *ProvisioningProfileResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro mobile device provisioning profile — the signed `.mobileprovision` profile that authorises in-house (enterprise) apps to run on managed devices.\n\n" +
-			"An uploaded profile cannot be modified in place: changing `name` or `profile_data` replaces the profile (Terraform deletes and recreates it).",
+			"An uploaded profile cannot be modified in place: changing `name` or `profile_data` replaces the profile (Terraform deletes and recreates it)." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Provisioning profile ID assigned by Jamf Pro.",

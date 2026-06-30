@@ -58,7 +58,7 @@ func (d *CloudIdentityProviderDataSource) Schema(ctx context.Context, req dataso
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Look up a Jamf Pro Cloud Identity Provider registry entry by `id` or by exact `display_name`. " +
 			"Exactly one of the two must be supplied. Covers both Google (Secure LDAP) and Microsoft Entra ID providers. " +
-			"To retrieve the full provider-specific configuration (LDAP server settings, mappings, etc.), use the managed resource instead.",
+			"To retrieve the full provider-specific configuration (LDAP server settings, mappings, etc.), use the managed resource instead." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Cloud Identity Provider ID assigned by Jamf Pro. Mutually exclusive with `display_name`.",

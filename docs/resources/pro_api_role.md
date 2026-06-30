@@ -5,6 +5,14 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro API role (Settings → System → API roles and clients). An API role is a named set of privileges; assign roles to a jamfplatform_pro_api_client (by display_name) to grant it those privileges.
   Jamf Pro refuses to delete a role while it is still assigned to an API client. If you are both removing a role from a client and deleting the role, remove it from the client's api_roles first (a separate apply) so the role is no longer in use when it is destroyed.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create API Roles | `create:pro:api-roles` |
+  | Delete API Roles | `delete:pro:api-roles` |
+  | Read API Roles | `read:pro:api-roles` |
+  | Update API Roles | `update:pro:api-roles` |
 ---
 
 # jamfplatform_pro_api_role (Resource)
@@ -12,6 +20,17 @@ description: |-
 Manages a Jamf Pro API role (Settings → System → API roles and clients). An API role is a named set of privileges; assign roles to a `jamfplatform_pro_api_client` (by `display_name`) to grant it those privileges.
 
 Jamf Pro refuses to delete a role while it is still assigned to an API client. If you are both removing a role from a client and deleting the role, remove it from the client's `api_roles` first (a separate apply) so the role is no longer in use when it is destroyed.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create API Roles | `create:pro:api-roles` |
+| Delete API Roles | `delete:pro:api-roles` |
+| Read API Roles | `read:pro:api-roles` |
+| Update API Roles | `update:pro:api-roles` |
 
 ## Example Usage
 

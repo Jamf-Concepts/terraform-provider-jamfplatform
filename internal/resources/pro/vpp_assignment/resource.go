@@ -93,7 +93,7 @@ func (r *VPPAssignmentResource) IdentitySchema(ctx context.Context, req resource
 func (r *VPPAssignmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Pro VPP assignment — a user-based Volume Purchasing assignment that assigns account-owned apps and books to Jamf Pro users and user groups.\n\n" +
-			"Related: `jamfplatform_pro_vpp_invitation` registers users with a VPP account; device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`.",
+			"Related: `jamfplatform_pro_vpp_invitation` registers users with a VPP account; device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "VPP assignment ID assigned by Jamf Pro.",

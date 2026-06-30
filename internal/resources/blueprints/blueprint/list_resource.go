@@ -58,7 +58,7 @@ func (r *BlueprintListResource) Configure(ctx context.Context, req resource.Conf
 // ListResourceConfigSchema describes the supported list filters.
 func (r *BlueprintListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Searches for Jamf Blueprints with an optional case-insensitive substring filter.",
+		Description: "Searches for Jamf Blueprints with an optional case-insensitive substring filter." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"search": listschema.StringAttribute{
 				Optional:    true,

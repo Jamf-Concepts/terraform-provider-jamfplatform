@@ -44,7 +44,7 @@ func dsComputedString(desc string) dsschema.StringAttribute {
 
 func (d *VPPInvitationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro VPP invitation by ID or name. Exactly one selector must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro VPP invitation by ID or name. Exactly one selector must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]dsschema.Attribute{
 			"id":                          dsschema.StringAttribute{MarkdownDescription: "Invitation ID. Mutually exclusive with `name`.", Optional: true, Computed: true},
 			"name":                        dsschema.StringAttribute{MarkdownDescription: "Invitation name (exact match). Mutually exclusive with `id`.", Optional: true, Computed: true},

@@ -4,11 +4,26 @@ page_title: "jamfplatform_pro_flush_policy_logs Action - terraform-provider-jamf
 subcategory: ""
 description: |-
   Flushes the logs for a policy older than the given interval.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `delete:pro:policies` |
+  | `execute:pro:flush-policy-logs` |
 ---
 
 # jamfplatform_pro_flush_policy_logs (Action)
 
 Flushes the logs for a policy older than the given interval.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `delete:pro:policies` |
+| `execute:pro:flush-policy-logs` |
 
 ## Example Usage
 

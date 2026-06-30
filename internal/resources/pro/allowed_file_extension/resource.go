@@ -81,7 +81,7 @@ func (r *AllowedFileExtensionResource) IdentitySchema(ctx context.Context, req r
 // Schema returns the Terraform schema for the allowed file extension resource.
 func (r *AllowedFileExtensionResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro allowed file extension. Allowed file extensions are the tenant-wide list of file extensions Jamf Pro permits for attachments uploaded to inventory records (computers, mobile devices, and users).",
+		MarkdownDescription: "Manages a Jamf Pro allowed file extension. Allowed file extensions are the tenant-wide list of file extensions Jamf Pro permits for attachments uploaded to inventory records (computers, mobile devices, and users)." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Allowed file extension ID assigned by Jamf Pro.",

@@ -47,7 +47,8 @@ func (d *PatchSoftwareTitleDataSource) Metadata(ctx context.Context, req datasou
 // attributes are populated from the SDK response.
 func (d *PatchSoftwareTitleDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro patch software title by ID. (The classic list endpoint exposes no display name through the SDK, so name lookup is not supported.)",
+		MarkdownDescription: "Look up a Jamf Pro patch software title by ID. (The classic list endpoint exposes no display name through the SDK, so name lookup is not supported.)" +
+			dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Patch software title ID.",

@@ -95,7 +95,7 @@ func (r *VolumePurchasingLocationResource) Schema(ctx context.Context, req resou
 			"inherited from a previously shared token, then polls until Apple's content " +
 			"sync populates `last_sync_time` before committing the resource. The default " +
 			"create timeout is 30 minutes — increase via `timeouts { create = \"60m\" }` " +
-			"if your tenant has a large catalog.",
+			"if your tenant has a large catalog." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Volume Purchasing location ID assigned by Jamf Pro.",

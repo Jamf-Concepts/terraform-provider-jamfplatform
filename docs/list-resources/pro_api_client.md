@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_api_client List Resource - terraform-provider-jamf
 subcategory: ""
 description: |-
   Searches for Jamf Pro API clients using the same filter clauses as the api_clients data source.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read API Integrations | `read:pro:api-integrations` |
 ---
 
 # jamfplatform_pro_api_client (List Resource)
 
 Searches for Jamf Pro API clients using the same filter clauses as the api_clients data source.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read API Integrations | `read:pro:api-integrations` |
 
 ## Example Usage
 

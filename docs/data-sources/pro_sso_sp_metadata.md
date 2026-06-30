@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_sso_sp_metadata Data Source - terraform-provider-j
 subcategory: ""
 description: |-
   Download the Jamf Pro Service Provider SAML metadata XML for the current tenant. Typically consumed by the IdP administrator to register Jamf Pro as a relying party. Returns an empty xml and a warning when the tenant is configured for pure OIDC (no SAML metadata to publish).
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read SSO Settings | `read:pro:sso-settings` |
 ---
 
 # jamfplatform_pro_sso_sp_metadata (Data Source)
 
 Download the Jamf Pro **Service Provider** SAML metadata XML for the current tenant. Typically consumed by the IdP administrator to register Jamf Pro as a relying party. Returns an empty `xml` and a warning when the tenant is configured for pure OIDC (no SAML metadata to publish).
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read SSO Settings | `read:pro:sso-settings` |
 
 ## Example Usage
 

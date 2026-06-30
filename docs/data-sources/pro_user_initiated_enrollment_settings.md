@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_user_initiated_enrollment_settings Data Source - t
 subcategory: ""
 description: |-
   Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
 ---
 
 # jamfplatform_pro_user_initiated_enrollment_settings (Data Source)
 
 Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
 
 ## Example Usage
 

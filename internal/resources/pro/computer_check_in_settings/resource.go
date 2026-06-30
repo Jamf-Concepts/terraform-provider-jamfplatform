@@ -79,7 +79,7 @@ func (r *ComputerCheckInSettingsResource) Schema(ctx context.Context, req resour
 		MarkdownDescription: "Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). " +
 			"Singleton — one record per tenant. " +
 			"**Omit = preserve** — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no \"unset\" — omit to preserve, or set `true`/`false` to change it. `check_in_frequency` is required. " +
-			"Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`.",
+			"Import with `terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton`." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

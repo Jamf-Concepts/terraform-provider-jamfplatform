@@ -4,11 +4,28 @@ page_title: "jamfplatform_cbengine_benchmark Resource - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches SYNCED or a terminal failure. Requires Compliance Benchmarks API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:compliance-benchmarks` |
+  | `delete:pro:compliance-benchmarks` |
+  | `read:pro:compliance-benchmarks` |
 ---
 
 # jamfplatform_cbengine_benchmark (Resource)
 
 Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:compliance-benchmarks` |
+| `delete:pro:compliance-benchmarks` |
+| `read:pro:compliance-benchmarks` |
 
 ## Example Usage
 

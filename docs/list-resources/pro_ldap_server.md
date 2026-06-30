@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_ldap_server List Resource - terraform-provider-jam
 subcategory: ""
 description: |-
   Lists Jamf Pro on-premises LDAP servers. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. The list returns id and name per row by default — set include_resource = true to fetch the full record for each item.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:ldap-servers` |
 ---
 
 # jamfplatform_pro_ldap_server (List Resource)
 
 Lists Jamf Pro on-premises LDAP servers. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — set `include_resource = true` to fetch the full record for each item.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:ldap-servers` |
 
 ## Example Usage
 

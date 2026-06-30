@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_pki_digicert Data Source - terraform-provider-jamf
 subcategory: ""
 description: |-
   Look up a Jamf Pro DigiCert Trust Lifecycle Manager integration by ID. The certificate bytes and password are never exposed — Jamf Pro does not return them on read.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read DigiCert Settings | `read:pro:digicert-settings` |
 ---
 
 # jamfplatform_pro_pki_digicert (Data Source)
 
 Look up a Jamf Pro DigiCert Trust Lifecycle Manager integration by ID. The certificate bytes and password are never exposed — Jamf Pro does not return them on read.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read DigiCert Settings | `read:pro:digicert-settings` |
 
 
 

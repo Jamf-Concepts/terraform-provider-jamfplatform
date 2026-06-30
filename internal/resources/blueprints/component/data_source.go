@@ -34,7 +34,7 @@ func (d *ComponentDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema sets the Terraform schema for the data source.
 func (d *ComponentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Returns a blueprint component by identifier. Requires **Blueprints API** access.",
+		MarkdownDescription: "Returns a blueprint component by identifier. Requires **Blueprints API** access." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The component identifier to fetch.",

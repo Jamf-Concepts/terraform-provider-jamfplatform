@@ -52,7 +52,7 @@ func (d *MobileDevicePrestageEnrollmentDataSource) Metadata(ctx context.Context,
 // Schema returns the data source schema.
 func (d *MobileDevicePrestageEnrollmentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro Mobile Device PreStage Enrollment by ID or by exact display name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro Mobile Device PreStage Enrollment by ID or by exact display name. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Mobile device PreStage enrollment ID. Mutually exclusive with `name`.",

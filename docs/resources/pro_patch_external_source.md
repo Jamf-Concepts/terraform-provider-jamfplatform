@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_patch_external_source Resource - terraform-provide
 subcategory: ""
 description: |-
   Manages a Jamf Pro patch external source, configured in the UI under Settings → Computer management → Patch management in the Patch External Source section (the New External Patch Source form). External patch sources host third-party software title definitions consumed by patch management.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `create:pro:patch-external-source` |
+  | `delete:pro:patch-external-source` |
+  | `read:pro:patch-external-source` |
+  | `update:pro:patch-external-source` |
 ---
 
 # jamfplatform_pro_patch_external_source (Resource)
 
 Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management** in the **Patch External Source** section (the **New External Patch Source** form). External patch sources host third-party software title definitions consumed by patch management.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `create:pro:patch-external-source` |
+| `delete:pro:patch-external-source` |
+| `read:pro:patch-external-source` |
+| `update:pro:patch-external-source` |
 
 ## Example Usage
 

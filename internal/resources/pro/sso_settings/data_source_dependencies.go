@@ -56,7 +56,7 @@ func (d *SsoDependenciesDataSource) Metadata(ctx context.Context, req datasource
 // Schema returns the data source schema.
 func (d *SsoDependenciesDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "List Jamf Pro objects (typically Enrollment Customizations) currently consuming the tenant's SSO configuration.",
+		MarkdownDescription: "List Jamf Pro objects (typically Enrollment Customizations) currently consuming the tenant's SSO configuration." + dependenciesDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

@@ -91,7 +91,7 @@ func (r *SupervisionIdentityResource) Schema(ctx context.Context, req resource.S
 		MarkdownDescription: "Manages a Jamf Pro supervision identity — the certificate used to supervise and enroll devices through Apple Configurator (Settings > Apple Configurator Enrollment).\n\n" +
 			"Provide `certificate_data` to import an existing `.p12` identity, or omit it to have Jamf Pro generate a new identity for you. " +
 			"The password and certificate are write-only: they are sent to Jamf Pro but never stored in Terraform state, and Jamf Pro never returns them. " +
-			"Only `display_name` can be changed in place; changing the password or certificate replaces the identity.",
+			"Only `display_name` can be changed in place; changing the password or certificate replaces the identity." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Supervision identity ID assigned by Jamf Pro.",

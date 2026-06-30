@@ -70,7 +70,7 @@ func (r *BuildingResource) IdentitySchema(ctx context.Context, req resource.Iden
 // Schema returns the Terraform schema for the building resource.
 func (r *BuildingResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a Jamf Pro building. Buildings represent physical locations and can be assigned to inventory records for reporting and scoping.",
+		MarkdownDescription: "Manages a Jamf Pro building. Buildings represent physical locations and can be assigned to inventory records for reporting and scoping." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Building ID assigned by Jamf Pro.",

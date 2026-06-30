@@ -51,7 +51,7 @@ func (d *DepartmentsDataSource) Metadata(ctx context.Context, req datasource.Met
 // Schema returns the plural data source schema.
 func (d *DepartmentsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Search Jamf Pro departments using optional RSQL filters.",
+		MarkdownDescription: "Search Jamf Pro departments using optional RSQL filters." + pluralDataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Internal identifier for this data source read.",

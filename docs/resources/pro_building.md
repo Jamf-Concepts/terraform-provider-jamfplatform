@@ -4,11 +4,30 @@ page_title: "jamfplatform_pro_building Resource - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Manages a Jamf Pro building. Buildings represent physical locations and can be assigned to inventory records for reporting and scoping.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Buildings | `create:pro:buildings` |
+  | Delete Buildings | `delete:pro:buildings` |
+  | Read Buildings | `read:pro:buildings` |
+  | Update Buildings | `update:pro:buildings` |
 ---
 
 # jamfplatform_pro_building (Resource)
 
 Manages a Jamf Pro building. Buildings represent physical locations and can be assigned to inventory records for reporting and scoping.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Buildings | `create:pro:buildings` |
+| Delete Buildings | `delete:pro:buildings` |
+| Read Buildings | `read:pro:buildings` |
+| Update Buildings | `update:pro:buildings` |
 
 ## Example Usage
 

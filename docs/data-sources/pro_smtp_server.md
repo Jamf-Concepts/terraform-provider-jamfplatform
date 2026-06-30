@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_smtp_server Data Source - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Read the current Jamf Pro SMTP Server settings (Settings → System → SMTP Server). Singleton — one record per tenant. WriteOnly secrets are never returned.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Read SMTP Server | `read:pro:smtp-server` |
 ---
 
 # jamfplatform_pro_smtp_server (Data Source)
 
 Read the current Jamf Pro SMTP Server settings (Settings → System → SMTP Server). Singleton — one record per tenant. WriteOnly secrets are never returned.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Read SMTP Server | `read:pro:smtp-server` |
 
 ## Example Usage
 

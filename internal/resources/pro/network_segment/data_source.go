@@ -44,7 +44,7 @@ func (d *NetworkSegmentDataSource) Metadata(ctx context.Context, req datasource.
 // Schema returns the data source schema.
 func (d *NetworkSegmentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro network segment by ID or by exact name. Exactly one of `id` or `name` must be supplied.",
+		MarkdownDescription: "Look up a Jamf Pro network segment by ID or by exact name. Exactly one of `id` or `name` must be supplied." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Network segment ID. Mutually exclusive with `name`.",

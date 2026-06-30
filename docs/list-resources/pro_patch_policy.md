@@ -4,11 +4,24 @@ page_title: "jamfplatform_pro_patch_policy List Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Lists Jamf Pro patch policies. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched against the policy display name.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:patch-policies` |
 ---
 
 # jamfplatform_pro_patch_policy (List Resource)
 
 Lists Jamf Pro patch policies. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched against the policy display name.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:patch-policies` |
 
 ## Example Usage
 

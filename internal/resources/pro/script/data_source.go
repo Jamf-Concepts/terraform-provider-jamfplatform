@@ -39,7 +39,7 @@ func (d *ScriptDataSource) Metadata(ctx context.Context, req datasource.Metadata
 // Schema returns the data source schema.
 func (d *ScriptDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro script by ID.",
+		MarkdownDescription: "Look up a Jamf Pro script by ID." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Script ID to look up.",

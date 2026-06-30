@@ -4,11 +4,24 @@ page_title: "jamfplatform_cbengine_rules Data Source - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Returns list of rules for a given mSCP baseline. Requires Compliance Benchmarks API access.
+  Required Jamf privileges
+  The Jamf Platform API integration used by the provider must be granted the following privileges:
+  | Required privilege |
+  |---|
+  | `read:pro:compliance-benchmarks` |
 ---
 
 # jamfplatform_cbengine_rules (Data Source)
 
 Returns list of rules for a given mSCP baseline. Requires **Compliance Benchmarks API** access.
+
+**Required Jamf privileges**
+
+The Jamf Platform API integration used by the provider must be granted the following privileges:
+
+| Required privilege |
+|---|
+| `read:pro:compliance-benchmarks` |
 
 ## Example Usage
 

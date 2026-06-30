@@ -45,7 +45,7 @@ func (d *LicensedSoftwareDataSource) Metadata(ctx context.Context, req datasourc
 // Schema returns the data source schema.
 func (d *LicensedSoftwareDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro licensed software record by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the general header; manage the record as a resource for the nested software definitions and licences.",
+		MarkdownDescription: "Look up a Jamf Pro licensed software record by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the general header; manage the record as a resource for the nested software definitions and licences." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Record ID. Mutually exclusive with `name`.",

@@ -38,7 +38,7 @@ func (d *SelfServicePlusSettingsDataSource) Metadata(ctx context.Context, req da
 // Schema returns the data source schema.
 func (d *SelfServicePlusSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro Self Service Plus settings. Singleton — one record per tenant.",
+		MarkdownDescription: "Read the current Jamf Pro Self Service Plus settings. Singleton — one record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed singleton identifier. Always `singleton`.",

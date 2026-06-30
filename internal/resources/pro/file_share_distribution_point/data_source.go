@@ -36,7 +36,7 @@ func (d *FileShareDistributionPointDataSource) Metadata(ctx context.Context, req
 // Schema returns the data source schema. Look up by `id` or by `name`.
 func (d *FileShareDistributionPointDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro file share distribution point by `id` or by `name`. Provide exactly one.",
+		MarkdownDescription: "Look up a Jamf Pro file share distribution point by `id` or by `name`. Provide exactly one." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "ID of the distribution point to look up. Provide either `id` or `name`.",

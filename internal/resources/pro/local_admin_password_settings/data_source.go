@@ -38,7 +38,7 @@ func (d *LocalAdminPasswordSettingsDataSource) Metadata(ctx context.Context, req
 // Schema returns the data source schema. Every attribute is Computed.
 func (d *LocalAdminPasswordSettingsDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → \"Password settings for managed local administrator accounts\"). Singleton — one record per tenant.",
+		MarkdownDescription: "Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → \"Password settings for managed local administrator accounts\"). Singleton — one record per tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id":                                 schema.StringAttribute{Computed: true, MarkdownDescription: "Fixed singleton identifier. Always `singleton`."},
 			"laps_for_prestage_accounts_enabled": schema.BoolAttribute{Computed: true, MarkdownDescription: "Whether LAPS is enabled for managed local administrator accounts created via PreStage enrollment."},
