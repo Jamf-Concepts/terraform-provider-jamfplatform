@@ -61,7 +61,7 @@ func (r *PatchSoftwareTitleListResource) Configure(ctx context.Context, req reso
 // ListResourceConfigSchema describes the supported list filters.
 func (r *PatchSoftwareTitleListResource) ListResourceConfigSchema(ctx context.Context, req list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
 	resp.Schema = listschema.Schema{
-		Description: "Lists Jamf Pro patch software titles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. NOTE: the classic list response surfaces no display name through the SDK, so the filter matches each title's `name_id` (catalog key), not its display name." +
+		Description: "Lists Jamf Pro patch software titles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched, matching each title's display name." +
 			listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{
 			"filter": filters.ClassicListFilterAttribute(),
@@ -72,12 +72,12 @@ func (r *PatchSoftwareTitleListResource) ListResourceConfigSchema(ctx context.Co
 // List executes the query and streams patch software title identities back to
 // Terraform.
 //
-// The classic /patchsoftwaretitles list endpoint returns only id+name_id+source_id
-// per item (no display name). When include_resource is requested we therefore
-// hydrate only id, name_id, and source_id; the remaining attributes are set null
-// rather than issuing a per-item GET against this concurrency-sensitive classic
-// endpoint. A list preview does not require full hydration — consumers needing
-// the full object should use the singular data source or the managed resource.
+// The classic /patchsoftwaretitles list endpoint returns only id+name+name_id+
+// source_id per item. When include_resource is requested we therefore hydrate
+// only those four attributes; the remaining attributes are set null rather than
+// issuing a per-item GET against this concurrency-sensitive classic endpoint. A
+// list preview does not require full hydration — consumers needing the full
+// object should use the singular data source or the managed resource.
 func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
 	if r.client == nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{
@@ -116,7 +116,7 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 	if config.Filter != nil {
 		filter = *config.Filter
 	}
-	items = filters.ApplyClassicFilter(items, filter, patchSoftwareTitleNameID)
+	items = filters.ApplyClassicFilter(items, filter, patchSoftwareTitleDisplayName)
 
 	maxResults := req.Limit
 	if maxResults <= 0 || maxResults > int64(len(items)) {
@@ -131,7 +131,7 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 		}
 
 		result := req.NewListResult(ctx)
-		result.DisplayName = helpers.DerefString(s.NameID)
+		result.DisplayName = helpers.DerefString(s.Name)
 
 		id := helpers.StringValueFromIntPtr(s.ID)
 		result.Diagnostics.Append(helpers.SetIdentity(ctx, result.Identity, patchSoftwareTitleIdentityModel{ID: id})...)
@@ -141,11 +141,11 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 		}
 
 		if req.IncludeResource {
-			// The list endpoint exposes only id+name_id+source_id; the remaining
-			// attributes are left null (see method doc).
+			// The list endpoint exposes only id+name+name_id+source_id; the
+			// remaining attributes are left null (see method doc).
 			state := PatchSoftwareTitleResourceModel{
 				ID:                        id,
-				Name:                      types.StringNull(),
+				Name:                      helpers.StringPointerValueOrNull(s.Name),
 				NameID:                    helpers.StringPointerValueOrNull(s.NameID),
 				SourceID:                  int64PointerValueOrNull(s.SourceID),
 				CategoryID:                types.StringNull(),
@@ -192,11 +192,10 @@ func (r *PatchSoftwareTitleListResource) List(ctx context.Context, req list.List
 	}
 }
 
-// patchSoftwareTitleNameID is the name accessor passed to
-// filters.ApplyClassicFilter. The list item carries no display name, so the
-// filter matches name_id (the catalog key).
-func patchSoftwareTitleNameID(s proclassic.PatchSoftwareTitlesItemPatchSoftwareTitle) string {
-	return helpers.DerefString(s.NameID)
+// patchSoftwareTitleDisplayName is the name accessor passed to
+// filters.ApplyClassicFilter, matching each title's display name.
+func patchSoftwareTitleDisplayName(s proclassic.PatchSoftwareTitlesItemPatchSoftwareTitle) string {
+	return helpers.DerefString(s.Name)
 }
 
 // int64PointerValueOrNull maps an SDK *int onto a Terraform Int64, null for nil.

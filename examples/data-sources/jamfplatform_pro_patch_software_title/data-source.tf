@@ -1,7 +1,11 @@
-# Look up a patch software title by ID. (Name lookup is not supported — the
-# classic list endpoint exposes no display name through the SDK.)
+# Look up a patch software title by ID.
 data "jamfplatform_pro_patch_software_title" "example" {
   id = "6"
+}
+
+# Or by exact display name. Exactly one of id or name may be supplied.
+data "jamfplatform_pro_patch_software_title" "by_name" {
+  name = "8x8 Work"
 }
 
 output "patch_software_title_available_versions" {

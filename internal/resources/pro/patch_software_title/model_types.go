@@ -64,9 +64,8 @@ var patchSoftwareTitleEAAttrTypes = map[string]attr.Type{
 }
 
 // PatchSoftwareTitleDataSourceModel represents the Terraform data source model.
-// Lookup is by id only: the classic /patchsoftwaretitles list response surfaces
-// no display name through the SDK, and there is no GetByName / Resolve helper,
-// so a name selector would require an N-GET scan. See data_source.go.
+// Lookup is by ID or by exact display name — exactly one of the two must be
+// supplied. See data_source.go (lookupByName).
 type PatchSoftwareTitleDataSourceModel struct {
 	ID                types.String             `tfsdk:"id"`
 	Name              types.String             `tfsdk:"name"`
@@ -91,8 +90,7 @@ type patchSoftwareTitleIdentityModel struct {
 
 // PatchSoftwareTitleListResourceModel represents the config model for list
 // queries. Classic has no RSQL — the filter shape is the shared client-side
-// substring block. NOTE: the SDK list item exposes no display name, so the
-// filter matches name_id (the catalog key), not the display name.
+// substring block, matching each title's display name.
 type PatchSoftwareTitleListResourceModel struct {
 	Filter *filters.ClassicFilterModel `tfsdk:"filter"`
 }

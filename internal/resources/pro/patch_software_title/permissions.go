@@ -37,9 +37,11 @@ var resourcePrivileges = permissions.Section(
 )
 
 // dataSourceSDKMethods lists the SDK methods the patch software title data
-// source calls (data_source.go). Lookup is read-only by ID.
+// source calls (data_source.go). Lookup is read-only, by ID or by exact name
+// (lookupByName lists then gets by ID).
 var dataSourceSDKMethods = []string{
 	"GetPatchSoftwareTitleByID",
+	"ListPatchSoftwareTitles",
 }
 
 // dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown

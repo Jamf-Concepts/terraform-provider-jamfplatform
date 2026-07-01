@@ -113,14 +113,19 @@ func TestPatchSoftwareTitleDataSource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	// id is the sole selector — Required.
-	id := s.Attributes["id"]
-	if !id.IsRequired() {
-		t.Errorf("data source id must be required (sole selector)")
+	// id and name are the two mutually-exclusive selectors — Optional+Computed.
+	for _, sel := range []string{"id", "name"} {
+		a := s.Attributes[sel]
+		if !a.IsOptional() {
+			t.Errorf("%q must be optional (id-or-name selector)", sel)
+		}
+		if !a.IsComputed() {
+			t.Errorf("%q must be computed (populated from response)", sel)
+		}
 	}
 
 	// Everything else is Computed-only.
-	for _, c := range []string{"name", "name_id", "source_id", "category_id", "category_name", "site_id", "site_name", "web_notification", "email_notification", "version_packages", "available_versions"} {
+	for _, c := range []string{"name_id", "source_id", "category_id", "category_name", "site_id", "site_name", "web_notification", "email_notification", "version_packages", "available_versions"} {
 		a, ok := s.Attributes[c]
 		if !ok {
 			t.Errorf("missing attribute %q", c)
@@ -129,6 +134,14 @@ func TestPatchSoftwareTitleDataSource_Schema(t *testing.T) {
 		if a.IsOptional() || a.IsRequired() || !a.IsComputed() {
 			t.Errorf("%q must be computed-only, got optional=%v required=%v computed=%v", c, a.IsOptional(), a.IsRequired(), a.IsComputed())
 		}
+	}
+}
+
+func TestPatchSoftwareTitleDataSource_ConfigValidators_ExactlyOneSelector(t *testing.T) {
+	d := NewPatchSoftwareTitleDataSource().(*PatchSoftwareTitleDataSource)
+	got := d.ConfigValidators(context.Background())
+	if len(got) != 1 {
+		t.Fatalf("expected 1 config validator, got %d", len(got))
 	}
 }
 

@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_patch_software_title List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists Jamf Pro patch software titles. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. NOTE: the classic list response surfaces no display name through the SDK, so the filter matches each title's name_id (catalog key), not its display name.
+  Lists Jamf Pro patch software titles. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched, matching each title's display name.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_patch_software_title (List Resource)
 
-Lists Jamf Pro patch software titles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. NOTE: the classic list response surfaces no display name through the SDK, so the filter matches each title's `name_id` (catalog key), not its display name.
+Lists Jamf Pro patch software titles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched, matching each title's display name.
 
 **Required Jamf privileges**
 
