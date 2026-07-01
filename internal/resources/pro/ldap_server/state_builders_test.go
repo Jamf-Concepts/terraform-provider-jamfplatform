@@ -206,6 +206,72 @@ func TestAssignAccountModel_PreservesWoVersion(t *testing.T) {
 	}
 }
 
+func TestAssignConnectionModel_PreservesExplicitEmptyReferralResponse(t *testing.T) {
+	// "" is the meaningful "use default from LDAP service" value, not "unset".
+	// Classic echoes an empty <referral_response/> on every read regardless of
+	// what was configured, so a bare StringPointerValueOrNull would collapse
+	// this to Null and trip "Provider produced inconsistent result after
+	// apply" against the planned "" — masked at connection_settings because of
+	// the Sensitive account.password sibling (STYLE_GUIDE.md §4a).
+	existing := &ldapConnectionModel{ReferralResponse: types.StringValue("")}
+	out := assignConnectionModel(&proclassic.LdapServerConnection{
+		ReferralResponse: new(""),
+	}, existing)
+	if out == nil {
+		t.Fatal("expected connection model")
+	}
+	if out.ReferralResponse.IsNull() || out.ReferralResponse.ValueString() != "" {
+		t.Errorf("referral_response = %#v, want explicit empty string preserved", out.ReferralResponse)
+	}
+}
+
+func TestAssignConnectionModel_ReferralResponseWireValueWins(t *testing.T) {
+	// A real (non-empty) wire value always wins over whatever was previously
+	// known, regardless of what existing state held.
+	existing := &ldapConnectionModel{ReferralResponse: types.StringValue("")}
+	out := assignConnectionModel(&proclassic.LdapServerConnection{
+		ReferralResponse: new(referralFollow),
+	}, existing)
+	if out == nil {
+		t.Fatal("expected connection model")
+	}
+	if out.ReferralResponse.ValueString() != referralFollow {
+		t.Errorf("referral_response=%q, want %q", out.ReferralResponse.ValueString(), referralFollow)
+	}
+}
+
+func TestAssignConnectionModel_ReferralResponseUnknownExistingStaysNull(t *testing.T) {
+	// Create with referral_response omitted from config: the plan modifier has
+	// no prior state to fall back to, so the planned value carried into this
+	// function is Unknown. An empty wire echo must resolve to Null, never leak
+	// the Unknown through — that would fail apply with "unknown value after
+	// apply" instead of the inconsistent-value bug being fixed here.
+	existing := &ldapConnectionModel{ReferralResponse: types.StringUnknown()}
+	out := assignConnectionModel(&proclassic.LdapServerConnection{
+		ReferralResponse: new(""),
+	}, existing)
+	if out == nil {
+		t.Fatal("expected connection model")
+	}
+	if !out.ReferralResponse.IsNull() {
+		t.Errorf("referral_response=%#v, want Null (not leaked Unknown) when existing was Unknown", out.ReferralResponse)
+	}
+}
+
+func TestAssignConnectionModel_ReferralResponseNullOnImport(t *testing.T) {
+	// No prior state (import / data source): an empty wire echo has nothing to
+	// reconcile against, so it stays Null rather than fabricating "".
+	out := assignConnectionModel(&proclassic.LdapServerConnection{
+		ReferralResponse: new(""),
+	}, nil)
+	if out == nil {
+		t.Fatal("expected connection model")
+	}
+	if !out.ReferralResponse.IsNull() {
+		t.Errorf("referral_response=%#v, want Null with no prior state", out.ReferralResponse)
+	}
+}
+
 func TestAssignLdapServerDataSourceModel_SetsTopLevelNameAndID(t *testing.T) {
 	var ds LdapServerDataSourceModel
 	diags := assignLdapServerDataSourceModel(&ds, fullLdapServerResponse())

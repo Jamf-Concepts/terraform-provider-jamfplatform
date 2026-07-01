@@ -40,11 +40,7 @@ func assignLdapServerResourceModel(state *LdapServerResourceModel, s *proclassic
 		state.ID = helpers.StringValueFromIntPtr(s.Connection.ID)
 	}
 
-	var existingAccount *ldapAccountModel
-	if state.Connection != nil {
-		existingAccount = state.Connection.Account
-	}
-	state.Connection = assignConnectionModel(s.Connection, existingAccount)
+	state.Connection = assignConnectionModel(s.Connection, state.Connection)
 
 	full := assignMappingsModel(s.MappingsForUsers)
 	if gateMappingsToDeclared {
@@ -100,12 +96,37 @@ func assignLdapServerDataSourceModel(state *LdapServerDataSourceModel, s *procla
 	return diags
 }
 
-// assignConnectionModel decodes the connection block. `existingAccount`
-// carries the prior state's account model so password_wo_version survives a
-// refresh.
-func assignConnectionModel(c *proclassic.LdapServerConnection, existingAccount *ldapAccountModel) *ldapConnectionModel {
+// assignConnectionModel decodes the connection block. `existing` carries the
+// prior state's connection model (nil for the data source, which has no prior
+// value to reconcile against) so password_wo_version survives a refresh and
+// referral_response survives Classic's empty-string echo.
+//
+// referral_response is a user-authored field ("" is the meaningful "use
+// default from LDAP service" value) living in a block that also carries the
+// Sensitive account.password sibling. Classic echoes an empty <referral_response/>
+// on every read regardless of what was last written, so StringPointerValueOrNull
+// would collapse an explicitly-configured "" to Null and trip Terraform Core's
+// "Provider produced inconsistent result after apply" — masked at the
+// connection_settings block because of the Sensitive sibling. Per
+// STYLE_GUIDE.md §4a, use PreserveStringWhenWireEmpty instead.
+//
+// existing.ReferralResponse can itself be Unknown — on Create with the
+// attribute omitted there is no prior state for the UseNonNullStateForUnknown
+// plan modifier to fall back to, so the plan carries Unknown into this
+// function. PreserveStringWhenWireEmpty has no Unknown handling of its own
+// (it just returns whatever "current" it is given), so treat Unknown as "no
+// existing value" here rather than risk leaking Unknown into the final state.
+func assignConnectionModel(c *proclassic.LdapServerConnection, existing *ldapConnectionModel) *ldapConnectionModel {
 	if c == nil {
 		return nil
+	}
+	var existingAccount *ldapAccountModel
+	existingReferralResponse := types.StringNull()
+	if existing != nil {
+		existingAccount = existing.Account
+		if !existing.ReferralResponse.IsUnknown() {
+			existingReferralResponse = existing.ReferralResponse
+		}
 	}
 	return &ldapConnectionModel{
 		DisplayName:        helpers.StringPointerValueOrNull(c.Name),
@@ -117,7 +138,7 @@ func assignConnectionModel(c *proclassic.LdapServerConnection, existingAccount *
 		Account:            assignAccountModel(c.Account, existingAccount),
 		ConnectionTimeout:  helpers.Int64FromIntPtr(c.OpenCloseTimeout),
 		SearchTimeout:      helpers.Int64FromIntPtr(c.SearchTimeout),
-		ReferralResponse:   helpers.StringPointerValueOrNull(c.ReferralResponse),
+		ReferralResponse:   helpers.PreserveStringWhenWireEmpty(c.ReferralResponse, existingReferralResponse),
 		UseWildcards:       helpers.BoolPointerValueOrNull(c.UseWildcards),
 		IsEnabled:          helpers.BoolPointerValueOrNull(c.IsEnabled),
 		MigratedToID:       helpers.Int64FromIntPtr(c.MigratedToID),
