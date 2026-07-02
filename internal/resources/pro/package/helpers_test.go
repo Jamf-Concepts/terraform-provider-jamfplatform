@@ -104,6 +104,42 @@ func TestClassifyPollTick(t *testing.T) {
 			curSize:  expectSizeStr,
 			want:     pollDecisionContinue,
 		},
+		{
+			name:      "upload failed — size=0 with expected hash",
+			cur:       expectHash,
+			hashType:  "SHA3_512",
+			status:    "READY",
+			curSize:   "0",
+			want:      pollDecisionUploadFailed,
+			wantNotes: "definitive failed-upload signal, checked before the hash/size match branches",
+		},
+		{
+			name:      "upload failed — size=0 with a bogus hash",
+			cur:       corrupt,
+			hashType:  "SHA3_512",
+			status:    "IN_PROGRESS",
+			curSize:   "0",
+			want:      pollDecisionUploadFailed,
+			wantNotes: "size=0 wins over corruption — do not wait out the poll budget to report the wrong failure mode",
+		},
+		{
+			name:      "size=0 but hash has not changed yet — still warming up",
+			cur:       prevHash,
+			hashType:  "SHA3_512",
+			status:    "READY",
+			curSize:   "0",
+			want:      pollDecisionContinue,
+			wantNotes: "hash still equals previousHash — not yet a signal either way",
+		},
+		{
+			name:      "empty size is not zero size",
+			cur:       expectHash,
+			hashType:  "SHA3_512",
+			status:    "READY",
+			curSize:   "",
+			want:      pollDecisionContinue,
+			wantNotes: "\"\" means not-yet-computed, not a failed upload",
+		},
 	}
 
 	for _, tc := range cases {
@@ -114,6 +150,24 @@ func TestClassifyPollTick(t *testing.T) {
 				t.Fatalf("decision = %v, want %v (%s)", got, tc.want, tc.wantNotes)
 			}
 		})
+	}
+}
+
+// TestClassifyPollTick_ZeroByteUpload covers a genuinely empty
+// package_file_source (expectSize == 0), which the "upload failed" fast path
+// must NOT intercept — size "0" is the correct, converged value for a
+// zero-byte binary, not a failure signal.
+func TestClassifyPollTick_ZeroByteUpload(t *testing.T) {
+	t.Parallel()
+
+	const (
+		expectHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		prevHash   = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	)
+
+	got := classifyPollTick(expectHash, expectHash, prevHash, "SHA3_512", "READY", "0", 0)
+	if got != pollDecisionConverged {
+		t.Fatalf("decision = %v, want %v — a zero-byte upload must converge, not be flagged as a failed upload", got, pollDecisionConverged)
 	}
 }
 
@@ -216,5 +270,57 @@ func TestManifestBodiesEqual_EmptySrcVsNonEmptyStored(t *testing.T) {
 	}
 	if equal {
 		t.Errorf("empty src vs non-empty stored must not match")
+	}
+}
+
+func TestIsZeroSize(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		curSize string
+		want    bool
+	}{
+		{name: "literal zero", curSize: "0", want: true},
+		{name: "empty string is not zero", curSize: "", want: false},
+		{name: "nonzero size", curSize: "11806221", want: false},
+		{name: "unparseable is not zero", curSize: "not-a-number", want: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isZeroSize(tc.curSize); got != tc.want {
+				t.Errorf("isZeroSize(%q) = %v, want %v", tc.curSize, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRetryableUploadFailure(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		err         error
+		attempt     int
+		maxAttempts int
+		want        bool
+	}{
+		{name: "upload failed with attempts remaining", err: errUploadFailed, attempt: 1, maxAttempts: 5, want: true},
+		{name: "upload failed on last attempt", err: errUploadFailed, attempt: 5, maxAttempts: 5, want: false},
+		{name: "upload failed past budget", err: errUploadFailed, attempt: 6, maxAttempts: 5, want: false},
+		{name: "corruption is never retried", err: errCorruption, attempt: 1, maxAttempts: 5, want: false},
+		{name: "timeout is never retried", err: errVerificationTimeout, attempt: 1, maxAttempts: 5, want: false},
+		{name: "nil error is never retried", err: nil, attempt: 1, maxAttempts: 5, want: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := retryableUploadFailure(tc.err, tc.attempt, tc.maxAttempts); got != tc.want {
+				t.Errorf("retryableUploadFailure(%v, %d, %d) = %v, want %v", tc.err, tc.attempt, tc.maxAttempts, got, tc.want)
+			}
+		})
 	}
 }

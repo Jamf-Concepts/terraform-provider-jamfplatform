@@ -524,63 +524,117 @@ func openHashUploadVerify(ctx context.Context, client *pro.Client, plan *Package
 	return uploadAndPoll(ctx, client, plan.ID.ValueString(), fileName, file, sha, sz, previousHash)
 }
 
-// uploadAndPoll streams the supplied (already-rewound) file to
-// UploadPackageV1, then drives the verification poll. Splitting this from
-// the open/hash phase lets Update reuse the open handle from the hash
-// decision.
-func uploadAndPoll(ctx context.Context, client *pro.Client, id, fileName string, file io.Reader, localSha3 string, localSize int64, previousHash string) diag.Diagnostics {
-	tflog.Info(ctx, "package upload starting", map[string]any{
-		"id":            id,
-		"file_name":     fileName,
-		"local_sha3":    localSha3,
-		"local_size":    localSize,
-		"previous_hash": previousHash,
-	})
-	href, err := client.UploadPackageV1(ctx, id, fileName, file)
-	if err != nil {
-		tflog.Error(ctx, "package upload failed", map[string]any{"err": err.Error()})
-		return errorDiag("Error uploading Jamf Pro package binary", err.Error())
-	}
-	hrefStr := ""
-	if href != nil {
-		hrefStr = href.Href
-	}
-	tflog.Info(ctx, "package upload returned", map[string]any{"id": id, "href": hrefStr})
+// maxUploadAttempts bounds how many times uploadAndPoll re-uploads the same
+// binary after seeing errUploadFailed (server-reported size=0 immediately
+// after the hash changed). Matches jamf-cli/jamf-upload's default retry
+// ceiling for the same JCDS failure signal.
+const maxUploadAttempts = 5
 
-	convergedPkg, pollErr := PollPackageVerification(ctx, client, id, fileName, localSha3, localSize, previousHash)
-	if pollErr != nil {
-		tflog.Error(ctx, "package poll failed", map[string]any{"err": pollErr.Error()})
-		if errors.Is(pollErr, errCorruption) {
-			return errorDiag(
-				"Package binary verification failed (corruption)",
-				pollErr.Error(),
-			)
+// uploadAndPoll streams the supplied (already-rewound) file to
+// UploadPackageV1, then drives the verification poll, retrying the whole
+// upload up to maxUploadAttempts times when the poll reports errUploadFailed
+// (server size=0 — a failed upload, not a transient view). Splitting this
+// from the open/hash phase lets Update reuse the open handle from the hash
+// decision; file must be seekable so a retry can rewind and resend the same
+// bytes.
+func uploadAndPoll(ctx context.Context, client *pro.Client, id, fileName string, file io.ReadSeeker, localSha3 string, localSize int64, previousHash string) diag.Diagnostics {
+	for attempt := 1; ; attempt++ {
+		if attempt > 1 {
+			if _, seekErr := file.Seek(0, io.SeekStart); seekErr != nil {
+				return errorDiag("Error preparing package upload retry", seekErr.Error())
+			}
 		}
-		if errors.Is(pollErr, errVerificationTimeout) {
-			return errorDiag(
-				"Package binary verification timed out",
-				"JCDS did not converge on the expected hash before the timeout fired. Increase `timeouts.create` (or `timeouts.update`) to allow more time, or check the Jamf Pro admin console for CDP status.",
-			)
+
+		tflog.Info(ctx, "package upload starting", map[string]any{
+			"id":            id,
+			"file_name":     fileName,
+			"local_sha3":    localSha3,
+			"local_size":    localSize,
+			"previous_hash": previousHash,
+			"attempt":       attempt,
+		})
+		href, err := client.UploadPackageV1(ctx, id, fileName, file)
+		if err != nil {
+			tflog.Error(ctx, "package upload failed", map[string]any{"err": err.Error(), "attempt": attempt})
+			return errorDiag("Error uploading Jamf Pro package binary", err.Error())
 		}
-		return errorDiag("Error verifying Jamf Pro package upload", pollErr.Error())
+		hrefStr := ""
+		if href != nil {
+			hrefStr = href.Href
+		}
+		tflog.Info(ctx, "package upload returned", map[string]any{"id": id, "href": hrefStr, "attempt": attempt})
+
+		convergedPkg, pollErr := PollPackageVerification(ctx, client, id, fileName, localSha3, localSize, previousHash)
+		if pollErr == nil {
+			convergedHash := ""
+			convergedStatus := ""
+			if convergedPkg != nil {
+				if convergedPkg.HashValue != nil {
+					convergedHash = *convergedPkg.HashValue
+				}
+				if convergedPkg.CloudTransferStatus != nil {
+					convergedStatus = *convergedPkg.CloudTransferStatus
+				}
+			}
+			tflog.Info(ctx, "package poll converged", map[string]any{
+				"id":                  id,
+				"converged_hash":      convergedHash,
+				"converged_status":    convergedStatus,
+				"expected_local_sha3": localSha3,
+				"attempt":             attempt,
+			})
+			return nil
+		}
+
+		if retryableUploadFailure(pollErr, attempt, maxUploadAttempts) {
+			tflog.Warn(ctx, "package upload reported size=0 after hash changed; retrying upload", map[string]any{
+				"id":      id,
+				"attempt": attempt,
+				"max":     maxUploadAttempts,
+			})
+			// Baseline the next poll off whatever hash the server holds now
+			// (possibly this failed attempt's own transient value) so it is
+			// not mistaken for the pre-upload previousHash. A failed GET here
+			// is non-fatal — the retry proceeds with the stale baseline — but
+			// worth surfacing since it weakens the next attempt's ability to
+			// tell "still the old failed hash" apart from "genuinely new".
+			if cur, getErr := client.GetPackageV1(ctx, id); getErr == nil {
+				previousHash = strings.ToLower(helpers.DerefString(cur.HashValue))
+			} else {
+				tflog.Warn(ctx, "could not refresh previousHash baseline before upload retry", map[string]any{"id": id, "attempt": attempt, "err": getErr.Error()})
+			}
+			continue
+		}
+
+		tflog.Error(ctx, "package poll failed", map[string]any{"err": pollErr.Error(), "attempt": attempt})
+		return classifyUploadPollError(pollErr, attempt)
 	}
-	convergedHash := ""
-	convergedStatus := ""
-	if convergedPkg != nil {
-		if convergedPkg.HashValue != nil {
-			convergedHash = *convergedPkg.HashValue
-		}
-		if convergedPkg.CloudTransferStatus != nil {
-			convergedStatus = *convergedPkg.CloudTransferStatus
-		}
+}
+
+// classifyUploadPollError maps a terminal (non-retryable) PollPackageVerification
+// error to the diag.Diagnostics uploadAndPoll / streamURLUploadAndVerify return.
+// Shared so the two upload paths can't drift on error wording or the CDP-status
+// remediation hint. attempt is only used to report how many attempts ran.
+func classifyUploadPollError(pollErr error, attempt int) diag.Diagnostics {
+	if errors.Is(pollErr, errUploadFailed) {
+		return errorDiag(
+			"Package upload failed (server reported size=0)",
+			fmt.Sprintf("%v — gave up after %d attempt(s). Check the Jamf Pro admin console for Cloud Distribution Point status.", pollErr, attempt),
+		)
 	}
-	tflog.Info(ctx, "package poll converged", map[string]any{
-		"id":                  id,
-		"converged_hash":      convergedHash,
-		"converged_status":    convergedStatus,
-		"expected_local_sha3": localSha3,
-	})
-	return nil
+	if errors.Is(pollErr, errCorruption) {
+		return errorDiag(
+			"Package binary verification failed (corruption)",
+			pollErr.Error(),
+		)
+	}
+	if errors.Is(pollErr, errVerificationTimeout) {
+		return errorDiag(
+			"Package binary verification timed out",
+			"JCDS did not converge on the expected hash before the timeout fired. Increase `timeouts.create` (or `timeouts.update`) to allow more time, or check the Jamf Pro admin console for CDP status.",
+		)
+	}
+	return errorDiag("Error verifying Jamf Pro package upload", pollErr.Error())
 }
 
 // uploadPackageManifest streams the manifest source to the /manifest
@@ -621,10 +675,13 @@ func streamingURLEnabled(plan PackageResourceModel) bool {
 // streamURLUploadAndVerify wires up io.Pipe + io.MultiWriter so the URL
 // body flows simultaneously into the SHA-3 hasher and the multipart upload
 // pipe. The hash is known only AFTER the upload completes; the verification
-// poll then runs against the just-computed digest.
+// poll then runs against the just-computed digest. Retries the whole
+// upload — a fresh GET of the URL, since the exhausted io.Pipe from a prior
+// attempt cannot be replayed — up to maxUploadAttempts times when the poll
+// reports errUploadFailed (server size=0).
 //
 // Tradeoffs (versus the disk-staging path):
-//   - No 429 retry — the upload reader is not seekable.
+//   - No 429 retry mid-upload — the upload reader is not seekable.
 //   - No pre-upload checksum validation — bytes leave before the hash is known.
 //   - No Content-Length precompute — SDK transport falls back to chunked TE.
 //   - Mid-stream origin failure aborts the upload; a retry forces a fresh GET.
@@ -633,9 +690,46 @@ func streamingURLEnabled(plan PackageResourceModel) bool {
 // rationale. Caller has already enforced `package_file_source` is a URL
 // (streamingURLEnabled guards entry).
 func streamURLUploadAndVerify(ctx context.Context, client *pro.Client, plan *PackageResourceModel, previousHash string) diag.Diagnostics {
+	for attempt := 1; ; attempt++ {
+		diags, pollErr := streamURLUploadOnce(ctx, client, plan, previousHash, attempt)
+		if diags.HasError() {
+			return diags
+		}
+		if pollErr == nil {
+			return nil
+		}
+
+		if retryableUploadFailure(pollErr, attempt, maxUploadAttempts) {
+			tflog.Warn(ctx, "streamed package upload reported size=0 after hash changed; retrying upload", map[string]any{
+				"id":      plan.ID.ValueString(),
+				"attempt": attempt,
+				"max":     maxUploadAttempts,
+			})
+			// Baseline the next poll off whatever hash the server holds now
+			// so it is not mistaken for the pre-upload previousHash. See
+			// uploadAndPoll's matching rebaseline for why a failed GET here
+			// is logged rather than silently ignored.
+			if cur, getErr := client.GetPackageV1(ctx, plan.ID.ValueString()); getErr == nil {
+				previousHash = strings.ToLower(helpers.DerefString(cur.HashValue))
+			} else {
+				tflog.Warn(ctx, "could not refresh previousHash baseline before streamed upload retry", map[string]any{"id": plan.ID.ValueString(), "attempt": attempt, "err": getErr.Error()})
+			}
+			continue
+		}
+
+		return classifyUploadPollError(pollErr, attempt)
+	}
+}
+
+// streamURLUploadOnce performs a single upload+verify attempt of the
+// streaming-URL path documented on streamURLUploadAndVerify. Returns terminal
+// diagnostics for anything that fails before the poll (opening the URL,
+// streaming the upload itself); otherwise returns the poll's error (nil on
+// convergence) for the caller's retry decision.
+func streamURLUploadOnce(ctx context.Context, client *pro.Client, plan *PackageResourceModel, previousHash string, attempt int) (diag.Diagnostics, error) {
 	body, urlFilename, err := files.OpenURLStream(ctx, plan.PackageFileSource.ValueString(), files.DefaultMaxBytes)
 	if err != nil {
-		return errorDiag("Error opening package URL stream", err.Error())
+		return errorDiag("Error opening package URL stream", err.Error()), nil
 	}
 	defer func() { _ = body.Close() }()
 
@@ -660,28 +754,22 @@ func streamURLUploadAndVerify(ctx context.Context, client *pro.Client, plan *Pac
 	if fileName == "" {
 		fileName = urlFilename
 	}
+	tflog.Info(ctx, "streamed package upload starting", map[string]any{
+		"id":        plan.ID.ValueString(),
+		"file_name": fileName,
+		"attempt":   attempt,
+	})
 	if _, err := client.UploadPackageV1(ctx, plan.ID.ValueString(), fileName, pr); err != nil {
 		// Drain any remaining body so the goroutine exits cleanly.
 		_ = pr.CloseWithError(err)
-		return errorDiag("Error streaming Jamf Pro package upload", err.Error())
+		return errorDiag("Error streaming Jamf Pro package upload", err.Error()), nil
 	}
 
 	localSha3 := hex.EncodeToString(hasher.Sum(nil))
 	localSize := bytesStreamed
 
-	if _, err := PollPackageVerification(ctx, client, plan.ID.ValueString(), fileName, localSha3, localSize, previousHash); err != nil {
-		if errors.Is(err, errCorruption) {
-			return errorDiag("Package binary verification failed (corruption)", err.Error())
-		}
-		if errors.Is(err, errVerificationTimeout) {
-			return errorDiag(
-				"Package binary verification timed out",
-				"JCDS did not converge on the expected hash before the timeout fired. Increase `timeouts.create` (or `timeouts.update`) to allow more time, or check the Jamf Pro admin console for CDP status.",
-			)
-		}
-		return errorDiag("Error verifying Jamf Pro package upload", err.Error())
-	}
-	return nil
+	_, pollErr := PollPackageVerification(ctx, client, plan.ID.ValueString(), fileName, localSha3, localSize, previousHash)
+	return nil, pollErr
 }
 
 // reconcileManifestAndFinalise runs the manifest reconciliation and the

@@ -46,6 +46,16 @@ var errLocalChecksumMismatch = errors.New("package_file_source_checksum did not 
 // what we hashed locally.
 var errCorruption = errors.New("server-computed package hash did not match locally computed SHA-3-512")
 
+// errUploadFailed is returned when the verification poll observes a
+// server-reported `size` of "0" in the same tick the hash first changes away
+// from `previousHash`. JCDS occasionally starts recomputing a package's
+// metadata for an upload that never actually landed the binary; size=0 is
+// its signal for that failure, distinct from the transient "" while size
+// catches up (continue) or a hash that matches neither expectation
+// (errCorruption). Mirrors the `size_is_zero` check in jamf-cli/jamf-upload's
+// JCDS poll loop. uploadAndPoll retries the upload when it sees this error.
+var errUploadFailed = errors.New("server reported size=0 immediately after the uploaded package's hash changed")
+
 // errVerificationTimeout is returned when the verification poll's context
 // deadline fires before convergence.
 var errVerificationTimeout = errors.New("verification poll timed out waiting for JCDS hash convergence")
@@ -85,6 +95,11 @@ func HashStreamSHA3(r io.Reader) (string, int64, error) {
 // briefly returning a transient `hashValue` matching the new bytes while
 // `size` was still the old binary's, then reverting — a hash-only
 // convergence check would falsely declare success on that transient view.
+//
+// Returns errUploadFailed as soon as a server-reported `size` of "0" shows
+// up alongside a hash change — a definitive failed-upload signal that would
+// otherwise stall out the full poll budget before timing out. uploadAndPoll
+// retries the whole upload when it sees this error.
 //
 // expectSha3 / expectSize describe the locally-computed digest + byte
 // count of the file we just uploaded. previousHash is the SHA-3 digest
@@ -152,6 +167,8 @@ func PollPackageVerification(ctx context.Context, client *pro.Client, id, fileNa
 		switch decision {
 		case pollDecisionConverged:
 			return pkg, nil
+		case pollDecisionUploadFailed:
+			return nil, fmt.Errorf("%w: package %s", errUploadFailed, id)
 		case pollDecisionCorruption:
 			return nil, fmt.Errorf("%w: expected %s, server reported %s", errCorruption, expectLower, cur)
 		}
@@ -270,6 +287,16 @@ func readSourceBytes(ctx context.Context, src string) ([]byte, error) {
 	return data, nil
 }
 
+// retryableUploadFailure reports whether uploadAndPoll / streamURLUploadOnce
+// should re-run the whole upload after a failed poll: errUploadFailed
+// (server size=0) with attempts remaining. Every other poll outcome —
+// corruption, timeout, or errUploadFailed with the budget exhausted — is
+// terminal. Pure-function extraction so the retry boundary is unit-tested
+// without spinning up a Pro client.
+func retryableUploadFailure(err error, attempt, maxAttempts int) bool {
+	return errors.Is(err, errUploadFailed) && attempt < maxAttempts
+}
+
 // pollDecision summarises the convergence-check outcome for a single
 // poll tick. Pure-function extraction lets the decision logic be
 // unit-tested without spinning up a Pro client.
@@ -278,18 +305,42 @@ type pollDecision int
 const (
 	pollDecisionContinue pollDecision = iota
 	pollDecisionConverged
+	pollDecisionUploadFailed
 	pollDecisionCorruption
 )
+
+// isZeroSize reports whether curSize is the server's literal "0" — the
+// signal for a package binary that never actually landed on the cloud
+// distribution point, as opposed to "" (size not yet computed; not a
+// failure). An empty or unparseable curSize is not zero.
+func isZeroSize(curSize string) bool {
+	if curSize == "" {
+		return false
+	}
+	n, err := strconv.ParseInt(curSize, 10, 64)
+	return err == nil && n == 0
+}
 
 // classifyPollTick decides what to do with the server's response on a
 // single verification poll tick. expectHash + expectSize describe the
 // locally-known bytes; previousHash is the digest stored before the
 // upload (used to swallow the "still recomputing" transient view).
 //
+//   - UploadFailed: the hash just changed away from previousHash AND size
+//     reads back "0" while the upload itself is NOT actually zero bytes.
+//     Checked before anything else — a zero-byte binary is a definitive
+//     failed-upload signal regardless of what the hash looks like, and
+//     waiting out the rest of the poll budget only delays the retry.
+//     Mirrors jamf-cli/jamf-upload's `size_is_zero` check. Gated on
+//     expectSize != 0 so a genuinely empty `package_file_source` (size "0"
+//     really is correct) still converges normally below instead of being
+//     misread as a failed upload.
 //   - Converged: hash matches expected, hashType is SHA3_512, status is
 //     READY, AND size matches expected. The size gate catches the
 //     transient JCDS window where hash flips to new while size still
-//     shows the old binary.
+//     shows the old binary — also covers the "package being updated"
+//     case, where a lingering size only matches the previous package's
+//     byte count, never the new upload's.
 //   - Corruption: server reported a SHA3_512 hash that is neither
 //     expected nor previousHash AND size matches expected (corrupt bytes
 //     would still report their own size). Skip the corruption branch
@@ -297,6 +348,11 @@ const (
 //     not a real mismatch.
 //   - Continue: everything else.
 func classifyPollTick(cur, expectHash, previousHash, hashType, status, curSize string, expectSize int64) pollDecision {
+	hashChanged := cur != "" && cur != previousHash
+	if hashChanged && expectSize != 0 && isZeroSize(curSize) {
+		return pollDecisionUploadFailed
+	}
+
 	sizeMatch := curSize != "" && curSize == strconv.FormatInt(expectSize, 10)
 	hashMatch := cur != "" && cur == expectHash && hashType == hashTypeSHA3512 && status == cloudStatusReady
 	if hashMatch && sizeMatch {
