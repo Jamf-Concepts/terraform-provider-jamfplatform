@@ -256,6 +256,65 @@ func TestAccResource_ProLdapServer_SimpleUpdate(t *testing.T) {
 	})
 }
 
+// TestAccResource_ProLdapServer_ReferralResponseExplicitDefault pins the
+// regression behind https://github.com/Jamf-Concepts/terraform-provider-jamfplatform/issues/270:
+// `referral_response = ""` is the documented way to select "use default from
+// LDAP service," but Classic always echoes an empty <referral_response/> on
+// read regardless of what was configured. Before the fix, decoding that empty
+// echo with `StringPointerValueOrNull` collapsed the explicitly-configured ""
+// to Null, which failed apply with "Provider produced inconsistent result
+// after apply" — reported against the whole connection_settings block because
+// account.password is Sensitive, masking the real attribute. Step 1 sets ""
+// on Create; step 2 changes an unrelated field while keeping "" through
+// Update, so both write paths are covered and the implicit post-apply plan
+// check pins no permadiff.
+func TestAccResource_ProLdapServer_ReferralResponseExplicitDefault(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-ldap-referral-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckLdapServerDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Active Directory"
+							hostname            = "ldap.acc-referral.example.com"
+							authentication_type = "none"
+							referral_response   = "" # use default from LDAP service
+						}
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(ldapServerResource, "id"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.referral_response", ""),
+				),
+			},
+			{
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_pro_ldap_server" "test" {
+						connection_settings = {
+							display_name        = %q
+							directory_service   = "Active Directory"
+							hostname            = "ldap.acc-referral-2.example.com"
+							authentication_type = "none"
+							referral_response   = ""
+						}
+					}
+				`, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.hostname", "ldap.acc-referral-2.example.com"),
+					resource.TestCheckResourceAttr(ldapServerResource, "connection_settings.referral_response", ""),
+				),
+			},
+		},
+	})
+}
+
 // TestAccResource_ProLdapServer_PartialMappingsGating pins the mappings
 // gating: the server echoes all three mapping sub-blocks, but the provider
 // keeps only the ones the user declared. Step 1 declares only user_mappings
