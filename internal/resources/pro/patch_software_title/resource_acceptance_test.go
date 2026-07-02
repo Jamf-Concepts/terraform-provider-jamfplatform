@@ -282,9 +282,10 @@ func TestAccResource_ProPatchSoftwareTitle_InvalidPackageID(t *testing.T) {
 
 // TestAccDataSource_ProPatchSoftwareTitle_ByID looks up a freshly-created title
 // by ID.
-func TestAccDataSource_ProPatchSoftwareTitle_ByID(t *testing.T) {
+func TestAccDataSource_ProPatchSoftwareTitle_ByIDAndName(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
+	name := fmt.Sprintf("tf-acc 8x8 Work ds %s", suffix)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -293,19 +294,28 @@ func TestAccDataSource_ProPatchSoftwareTitle_ByID(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_patch_software_title" "src" {
-						name      = "tf-acc 8x8 Work ds %[1]s"
+						name      = %q
 						name_id   = %q
 						source_id = %d
 					}
 
-					data "jamfplatform_pro_patch_software_title" "lookup" {
+					data "jamfplatform_pro_patch_software_title" "by_id" {
 						id = jamfplatform_pro_patch_software_title.src.id
 					}
-				`, suffix, accTitleNameID, accTitleSourceID),
+
+					data "jamfplatform_pro_patch_software_title" "by_name" {
+						name = jamfplatform_pro_patch_software_title.src.name
+					}
+				`, name, accTitleNameID, accTitleSourceID),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_software_title.lookup", "name_id", "jamfplatform_pro_patch_software_title.src", "name_id"),
-					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_software_title.lookup", "name_id", accTitleNameID),
-					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_software_title.lookup", "available_versions.#"),
+					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_software_title.by_id", "name_id", "jamfplatform_pro_patch_software_title.src", "name_id"),
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_software_title.by_id", "name_id", accTitleNameID),
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_software_title.by_id", "name", name),
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_software_title.by_id", "available_versions.#"),
+
+					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_software_title.by_name", "id", "jamfplatform_pro_patch_software_title.src", "id"),
+					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_software_title.by_name", "name_id", accTitleNameID),
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_software_title.by_name", "available_versions.#"),
 				),
 			},
 		},
@@ -313,11 +323,12 @@ func TestAccDataSource_ProPatchSoftwareTitle_ByID(t *testing.T) {
 }
 
 // TestAccListResource_ProPatchSoftwareTitle_Basic exercises the list resource via
-// the `terraform query` workflow. The classic list endpoint surfaces no display
-// name through the SDK, so DisplayName / the filter match on name_id.
+// the `terraform query` workflow. DisplayName / the filter match on the title's
+// display name.
 func TestAccListResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
+	name := fmt.Sprintf("tf-acc 8x8 Work list %s", suffix)
 
 	resource.Test(t, resource.TestCase{
 		TerraformVersionChecks: []tfversion.TerraformVersionCheck{
@@ -329,11 +340,11 @@ func TestAccListResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 			{
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_pro_patch_software_title" "src" {
-						name      = "tf-acc 8x8 Work list %[1]s"
+						name      = %q
 						name_id   = %q
 						source_id = %d
 					}
-				`, suffix, accTitleNameID, accTitleSourceID),
+				`, name, accTitleNameID, accTitleSourceID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("jamfplatform_pro_patch_software_title.src", "id"),
 				),
@@ -353,12 +364,13 @@ func TestAccListResource_ProPatchSoftwareTitle_Basic(t *testing.T) {
 							}
 						}
 					}
-				`, accTitleNameID),
+				`, name),
 				QueryResultChecks: []querycheck.QueryResultCheck{
 					querycheck.ExpectResourceKnownValues(
 						"jamfplatform_pro_patch_software_title.test",
-						queryfilter.ByDisplayName(knownvalue.StringExact(accTitleNameID)),
+						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
+							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
 							{Path: tfjsonpath.New("name_id"), KnownValue: knownvalue.StringExact(accTitleNameID)},
 						},
 					),
