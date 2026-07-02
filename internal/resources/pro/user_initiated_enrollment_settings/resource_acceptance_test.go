@@ -32,11 +32,12 @@ import (
 // vice versa.
 //
 // Env-gated tests:
-//   - TestAccResource_..._AccessGroupLdap stands up the shared Okta LDAP server
-//     fixture (testhelpers.LdapServerFixture, labelled acc_ldap), references its id
-//     for ldap_server_id, and resolves JAMFPLATFORM_ACC_LDAP_GROUP_NAME against it.
-//     Gated on the Okta LDAP env vars (RequireOktaLdapEnv + RequireLdapGroupName);
-//     unset → t.Skipf.
+//   - TestAccResource_..._AccessGroupLdap pre-creates the shared Okta LDAP server
+//     fixture via the live API (testhelpers.EnsureLdapServerFixture), waits for its
+//     bind to come up (testhelpers.WaitForLdapGroupResolvable), then references its
+//     id for ldap_server_id and resolves JAMFPLATFORM_ACC_LDAP_GROUP_NAME against
+//     it at apply time. Gated on the Okta LDAP env vars (RequireOktaLdapEnv +
+//     RequireLdapGroupName); unset → t.Skipf.
 
 const uieResourceAddr = "jamfplatform_pro_user_initiated_enrollment_settings.test"
 
@@ -406,9 +407,13 @@ func TestAccResource_ProUserInitiatedEnrollmentSettings_AccessGroupLdap(t *testi
 	ldapEnv := testhelpers.RequireOktaLdapEnv(t)
 	groupName := testhelpers.RequireLdapGroupName(t)
 	suffix := testhelpers.RunSuffix()
-	// Apply-time resolution against a specific ldap_server_id, so the in-config TF
-	// fixture (created first via the implicit acc_ldap.id reference) is sufficient.
-	fixture := testhelpers.LdapServerFixture("tf-acc-uie-ldap-"+suffix, ldapEnv)
+	// Pre-create the LDAP server via the live API (not embedded HCL) and wait for
+	// its bind to come up before Terraform ever applies. Resolving the env group
+	// against a server created in the SAME apply races the backend's search
+	// fan-out picking up the brand-new server — see WaitForLdapGroupResolvable's
+	// other callers for the same pattern.
+	ldapServerID := testhelpers.EnsureLdapServerFixture(t, "tf-acc-uie-ldap-"+suffix, ldapEnv)
+	testhelpers.WaitForLdapGroupResolvable(t, groupName)
 
 	const builtinElem = `{
 			ldap_server_id                         = "-1"
@@ -419,20 +424,20 @@ func TestAccResource_ProUserInitiatedEnrollmentSettings_AccessGroupLdap(t *testi
 		}`
 
 	envElem := fmt.Sprintf(`{
-			ldap_server_id                         = jamfplatform_pro_ldap_server.acc_ldap.id
+			ldap_server_id                         = %q
 			name                                   = %q
 			enterprise_enrollment_enabled          = true
 			personal_enrollment_enabled            = false
 			account_driven_user_enrollment_enabled = false
-		}`, groupName)
+		}`, ldapServerID, groupName)
 
-	withEnvGroup := fixture + fmt.Sprintf(`
+	withEnvGroup := fmt.Sprintf(`
 		resource "jamfplatform_pro_user_initiated_enrollment_settings" "test" {
 			access_group = [%s, %s]
 		}
 	`, builtinElem, envElem)
 
-	builtinOnly := fixture + fmt.Sprintf(`
+	builtinOnly := fmt.Sprintf(`
 		resource "jamfplatform_pro_user_initiated_enrollment_settings" "test" {
 			access_group = [%s]
 		}
