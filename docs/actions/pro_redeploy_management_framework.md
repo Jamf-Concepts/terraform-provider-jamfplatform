@@ -30,8 +30,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ```terraform
 action "jamfplatform_pro_redeploy_management_framework" "redeploy" {
   config {
-    # Provide a management_id (the `id` from the jamfplatform_devices/
-    # jamfplatform_device data sources) or a serial_number.
+    # Provide exactly one of: serial_number, management_id (the `id` from the
+    # jamfplatform_devices/jamfplatform_device data sources), or udid.
     serial_number = "C02XXXXXXXXX"
   }
 }
@@ -42,5 +42,6 @@ action "jamfplatform_pro_redeploy_management_framework" "redeploy" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
-- `serial_number` (String) Serial number of the computer (case-sensitive). Provide this or `management_id`.
+- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this, `serial_number`, or `udid`.
+- `serial_number` (String) Serial number of the computer (case-sensitive). Provide this, `management_id`, or `udid`.
+- `udid` (String) Hardware UDID of the computer. Provide this, `management_id`, or `serial_number`.

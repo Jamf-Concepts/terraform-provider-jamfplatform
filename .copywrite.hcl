@@ -11,6 +11,8 @@ project {
     "testing/**",
     ".github/**",
     "tools/go.sum",
+    "local-testing/**",
+    "spike/**",
     "**/*.tf",
     "**/*.hcl",
     "**/*.yaml",

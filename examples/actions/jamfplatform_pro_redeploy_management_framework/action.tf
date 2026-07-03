@@ -1,7 +1,7 @@
 action "jamfplatform_pro_redeploy_management_framework" "redeploy" {
   config {
-    # Provide a management_id (the `id` from the jamfplatform_devices/
-    # jamfplatform_device data sources) or a serial_number.
+    # Provide exactly one of: serial_number, management_id (the `id` from the
+    # jamfplatform_devices/jamfplatform_device data sources), or udid.
     serial_number = "C02XXXXXXXXX"
   }
 }

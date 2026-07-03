@@ -20,7 +20,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/computertarget"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -90,82 +90,49 @@ func (a *maintenanceAction) ensureClassicClient(resp *action.InvokeResponse) boo
 	return false
 }
 
-// computerTargetAttributes returns the management_id / serial_number selector for
-// actions that target a single computer by its Jamf Pro inventory record.
+// computerTargetAttributes returns the management_id / serial_number / udid
+// selector for actions that target a single computer by its Jamf Pro inventory
+// record. Provide exactly one.
 func computerTargetAttributes() map[string]actionschema.Attribute {
 	return map[string]actionschema.Attribute{
 		"management_id": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.",
+			MarkdownDescription: "Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this, `serial_number`, or `udid`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
-				stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
+				stringvalidator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("serial_number"),
+					path.MatchRelative().AtParent().AtName("udid"),
+				),
 			},
 		},
 		"serial_number": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Serial number of the computer (case-sensitive). Provide this or `management_id`.",
+			MarkdownDescription: "Serial number of the computer (case-sensitive). Provide this, `management_id`, or `udid`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
-				stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("management_id")),
+				stringvalidator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("management_id"),
+					path.MatchRelative().AtParent().AtName("udid"),
+				),
+			},
+		},
+		"udid": actionschema.StringAttribute{
+			Optional:            true,
+			MarkdownDescription: "Hardware UDID of the computer. Provide this, `management_id`, or `serial_number`.",
+			Validators: []validator.String{
+				stringvalidator.LengthAtLeast(1),
+				stringvalidator.ConflictsWith(
+					path.MatchRelative().AtParent().AtName("management_id"),
+					path.MatchRelative().AtParent().AtName("serial_number"),
+				),
 			},
 		},
 	}
 }
 
-// resolveComputerID ensures exactly one computer identifier is provided and
-// returns the Jamf Pro computer id (an integer string). The device data sources
-// surface a management id (UUID), not the Jamf Pro id, so a management id is
-// mapped through the computer inventory; a serial number resolves directly.
-func (a *maintenanceAction) resolveComputerID(ctx context.Context, resp *action.InvokeResponse, managementIDAttr, serialNumberAttr types.String) (string, bool) {
-	hasID := helpers.IsConfiguredValue(managementIDAttr)
-	hasSerial := helpers.IsConfiguredValue(serialNumberAttr)
-
-	switch {
-	case hasID && hasSerial:
-		resp.Diagnostics.AddError(
-			"Multiple Device Identifiers Provided",
-			"Specify only one of management_id or serial_number when invoking this action.",
-		)
-		return "", false
-	case hasID:
-		managementID := managementIDAttr.ValueString()
-		resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Resolving management id %s", managementID)})
-
-		matches, err := a.client.ListComputersInventoryV3(ctx, []string{"GENERAL"}, nil, fmt.Sprintf("general.managementId==%q", managementID))
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Computer Lookup Failed",
-				fmt.Sprintf("Unable to look up computer for management id %s: %s", managementID, err),
-			)
-			return "", false
-		}
-		if len(matches) == 0 || matches[0].ID == "" {
-			resp.Diagnostics.AddError(
-				"Computer Not Found",
-				fmt.Sprintf("No computer matched management id %s.", managementID),
-			)
-			return "", false
-		}
-		return matches[0].ID, true
-	case hasSerial:
-		serial := serialNumberAttr.ValueString()
-		resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Resolving serial number %s", serial)})
-
-		id, err := a.client.ResolveComputerInventoryV3IDBySerialNumber(ctx, serial)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Computer Lookup Failed",
-				fmt.Sprintf("Unable to resolve serial number %s to a computer id: %s", serial, err),
-			)
-			return "", false
-		}
-		return id, true
-	default:
-		resp.Diagnostics.AddError(
-			"Missing Device Identifier",
-			"Specify either management_id or serial_number to select the computer.",
-		)
-		return "", false
-	}
+// resolveComputerID delegates to the shared computertarget resolver: exactly
+// one of management_id / serial_number / udid selects a Jamf Pro computer id.
+func (a *maintenanceAction) resolveComputerID(ctx context.Context, resp *action.InvokeResponse, managementIDAttr, serialNumberAttr, udidAttr types.String) (string, bool) {
+	return computertarget.ResolveComputerID(ctx, a.client, resp, managementIDAttr, serialNumberAttr, udidAttr)
 }
