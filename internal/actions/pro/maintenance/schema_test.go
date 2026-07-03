@@ -61,7 +61,7 @@ func TestRedeployManagementFrameworkAction_Metadata(t *testing.T) {
 
 func TestRedeployManagementFrameworkAction_Schema(t *testing.T) {
 	schema := NewRedeployManagementFrameworkAction().(*RedeployManagementFrameworkAction).Schema
-	assertAttrsPresent(t, schema, []string{"management_id", "serial_number"})
+	assertAttrsPresent(t, schema, []string{"management_id", "serial_number", "udid"})
 }
 
 // --- flush_policy_logs ---

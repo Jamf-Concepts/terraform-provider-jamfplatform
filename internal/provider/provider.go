@@ -22,6 +22,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	deviceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/device"
+	jamfprotectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/jamf_protect"
 	maintenanceactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/maintenance"
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
 	mdmactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/mdm"
@@ -653,6 +654,8 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		maintenanceactions.NewRedeployManagementFrameworkAction,
 		maintenanceactions.NewFlushPolicyLogsAction,
 		patchactions.NewRetryPatchPolicyLogsAction,
+		jamfprotectactions.NewSyncPlansAction,
+		jamfprotectactions.NewRetryDeploymentAction,
 	}
 }
 

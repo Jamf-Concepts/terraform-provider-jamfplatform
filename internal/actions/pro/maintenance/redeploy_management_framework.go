@@ -23,6 +23,7 @@ type RedeployManagementFrameworkAction struct {
 type RedeployManagementFrameworkActionModel struct {
 	ManagementID types.String `tfsdk:"management_id"`
 	SerialNumber types.String `tfsdk:"serial_number"`
+	UDID         types.String `tfsdk:"udid"`
 }
 
 func NewRedeployManagementFrameworkAction() action.Action {
@@ -55,7 +56,7 @@ func (a *RedeployManagementFrameworkAction) Invoke(ctx context.Context, req acti
 		return
 	}
 
-	computerID, ok := a.resolveComputerID(ctx, resp, data.ManagementID, data.SerialNumber)
+	computerID, ok := a.resolveComputerID(ctx, resp, data.ManagementID, data.SerialNumber, data.UDID)
 	if !ok {
 		return
 	}
