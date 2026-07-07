@@ -154,10 +154,15 @@ func TestAccResource_ProRestrictedSoftware_Basic(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:            restrictedSoftwareResourceAddr,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"timeouts"},
+				ResourceName:      restrictedSoftwareResourceAddr,
+				ImportState:       true,
+				ImportStateVerify: true,
+				// scope: an Optional state-gated block this general-only
+				// config never declares. Import hydrates it from the
+				// server's echoed defaults (correct — see the
+				// import-hydration fix), which legitimately differs from
+				// this config's null. Not verified here.
+				ImportStateVerifyIgnore: []string{"timeouts", "scope"},
 			},
 			{
 				// In-place update: flip every mutable general bool, change the

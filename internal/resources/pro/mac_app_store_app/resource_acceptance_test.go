@@ -139,8 +139,13 @@ func TestAccResource_ProMacApp_Basic(t *testing.T) {
 				ResourceName:      macAppResourceAddr,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Timeouts are not returned by the API; ignore on import.
-				ImportStateVerifyIgnore: []string{"timeouts"},
+				// timeouts: not returned by the API. scope / self_service /
+				// vpp: Optional state-gated blocks this general-only config
+				// never declares. Import hydrates them from the server's
+				// echoed defaults (correct — see the import-hydration fix),
+				// which legitimately differs from this config's null. Not
+				// verified here.
+				ImportStateVerifyIgnore: []string{"timeouts", "scope", "self_service", "vpp"},
 			},
 			{
 				// In-place update: bump version + flip the install method.
