@@ -183,7 +183,15 @@ func (r *PatchPolicyResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	resp.Diagnostics.Append(assignPatchPolicyResourceModel(readCtx, &state, got, false)...)
+	// firstHydration detects an unpopulated incoming model (see mac_app_store_app
+	// / policy for the full rationale): name is schema-Required (no nested
+	// general block on this resource) and always populated in genuinely
+	// managed state, so state.Name.IsNull() can only mean this Read call is
+	// doing first-time import hydration. Hydrate the wire-present optional
+	// scope/user_interaction sections in that case; subsequent Reads revert to
+	// only refreshing sections the current state already tracks.
+	firstHydration := state.Name.IsNull()
+	resp.Diagnostics.Append(assignPatchPolicyResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

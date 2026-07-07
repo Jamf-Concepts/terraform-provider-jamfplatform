@@ -158,7 +158,22 @@ func (r *MacAppResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	resp.Diagnostics.Append(assignMacAppResourceModel(readCtx, &state, got, false)...)
+	// firstHydration detects an unpopulated incoming model: true for identity-only
+	// import (the isImport branch above never sets General) AND for the far more
+	// common classic `terraform import <addr> <id>` path, where
+	// ImportStatePassthroughID leaves req.State as a non-null-but-sparse object
+	// (only "id" set) — so isImport is false, yet every optional section
+	// pointer, and General itself, decodes to nil. general is a schema-Required
+	// block that a genuinely managed resource's state always has populated
+	// (Create/Update always set it before any Read), so state.General == nil
+	// can only mean this Read call is doing first-time import hydration.
+	// Hydrate every wire-present optional section in that case — matching the
+	// list resource's config-generation path — so a freshly imported resource
+	// matches a config that already declares scope/self_service/vpp. On every
+	// subsequent Read (state.General != nil), the gate reverts to only
+	// refreshing sections the current state already tracks.
+	firstHydration := state.General == nil
+	resp.Diagnostics.Append(assignMacAppResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
