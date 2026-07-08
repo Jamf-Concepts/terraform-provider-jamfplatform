@@ -11,13 +11,23 @@
 //
 // Status: current. Last reviewed 2026-05-31.
 //
-// Update semantics: the classic /macapplications PUT is a partial-merge, not a
-// full-replace (wire-probed). The provider sends the full plan payload on every
-// Update, so in-place edits to managed sections converge cleanly. Removing an
-// entire optional block (scope / self_service / vpp) from config omits it from
-// the payload, so the server retains the previously-stored block — a known
-// limitation matching ProClassic precedent. To clear a block, null its
-// individual fields rather than deleting the block.
+// Update semantics: the classic /macapplications PUT is a partial-merge at
+// section level, not a full-replace (wire-probed). The provider sends the full
+// plan payload on every Update, so in-place edits to managed sections converge
+// cleanly. Removing an entire optional block (self_service / vpp) from config
+// omits it from the payload, so the server retains the previously-stored
+// block — a known limitation matching ProClassic precedent. To clear a block,
+// null its individual fields rather than deleting the block.
+//
+// Scope is the exception: within a sent <scope> the server replaces the whole
+// subtree (wire-probed 2026-07-08 — any category element present, even empty,
+// wipes every omitted category across targets/limitations/exclusions). Scope
+// therefore uses per-category granular ownership: when the plan declares a
+// scope block, Update GETs the live object first and overlays the declared
+// categories onto the server's current scope (scope-only merge — no other
+// section of the read is echoed back), emitting every merged category
+// explicitly. Omitted categories stay owned by the admin UI; declared `[]`
+// clears. See STYLE_GUIDE.md §Scope helper omission semantics.
 
 package mac_app_store_app
 
@@ -29,6 +39,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // Create creates a new Jamf Pro Mac App Store app. Classic POSTs to id="0"; the
@@ -202,7 +213,27 @@ func (r *MacAppResource) Update(ctx context.Context, req resource.UpdateRequest,
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	payload, buildDiags := buildMacAppInput(updateCtx, plan)
+	// Granular scope ownership: a scope PUT replaces the whole subtree, so
+	// undeclared (null) categories must be re-emitted from the live object to
+	// survive the write. Read-merge-write, scope-only — the wire plan carries
+	// the merged scope while `plan` (used for state) keeps only the declared
+	// categories. See the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetMacApplicationByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro Mac App Store app before update", err.Error())
+			return
+		}
+		var serverScope *scope.ComputerScopeModelNoIbeacons
+		if current != nil && current.Scope != nil {
+			serverScope = &scope.ComputerScopeModelNoIbeacons{}
+			flattenMacAppScope(updateCtx, current.Scope, serverScope, true)
+		}
+		wirePlan.Scope = scope.MergeComputerScopeNoIbeacons(plan.Scope, serverScope)
+	}
+
+	payload, buildDiags := buildMacAppInput(updateCtx, wirePlan)
 	resp.Diagnostics.Append(buildDiags...)
 	if resp.Diagnostics.HasError() {
 		return

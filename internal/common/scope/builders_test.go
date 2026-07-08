@@ -78,8 +78,15 @@ func TestBuildIDSlice_EmptySet(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
-	if got != nil {
-		t.Errorf("expected nil slice for empty set, got %+v", got)
+	// A declared `[]` must yield a non-nil empty slice so the caller emits an
+	// explicit empty wrapper element — the wire gesture that clears the
+	// category (omitting it would preserve it or, in an otherwise-empty scope
+	// body, silently no-op).
+	if got == nil {
+		t.Fatal("expected non-nil empty slice for empty set")
+	}
+	if len(*got) != 0 {
+		t.Errorf("expected 0 items, got %d", len(*got))
 	}
 }
 
@@ -197,8 +204,12 @@ func TestBuildNameSlice_EmptySet(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
-	if got != nil {
-		t.Errorf("expected nil slice for empty set, got %+v", got)
+	// See TestBuildIDSlice_EmptySet — declared `[]` emits the empty wrapper.
+	if got == nil {
+		t.Fatal("expected non-nil empty slice for empty set")
+	}
+	if len(*got) != 0 {
+		t.Errorf("expected 0 items, got %d", len(*got))
 	}
 }
 

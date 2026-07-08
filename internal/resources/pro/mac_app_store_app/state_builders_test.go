@@ -130,12 +130,20 @@ func TestAssignMacAppResourceModel_IncludeUnmanagedHydratesFromScratch(t *testin
 	}
 }
 
-func TestFlattenMacAppScope_RoundTrip(t *testing.T) {
+func TestFlattenMacAppScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
 	ctx := context.Background()
+	// Managed categories carry a non-null current value (declared in config);
+	// everything else is null = unmanaged and must stay null.
 	state := &scope.ComputerScopeModelNoIbeacons{
-		Targets:     &scope.ComputerScopeTargetsModel{},
-		Limitations: &scope.ComputerScopeLimitationsModelNoIbeacons{},
-		Exclusions:  &scope.ComputerScopeExclusionsModelNoIbeacons{},
+		Targets: &scope.ComputerScopeTargetsModel{
+			ComputerIDs: scope.EmptyStringSet(), // managed, refreshes from wire
+		},
+		Limitations: &scope.ComputerScopeLimitationsModelNoIbeacons{
+			NetworkSegmentIDs: idSet("9"), // managed, drift-refreshes
+		},
+		Exclusions: &scope.ComputerScopeExclusionsModelNoIbeacons{
+			DirectoryServiceOrLocalUserNames: scope.EmptyStringSet(), // managed
+		},
 	}
 	s := &proclassic.MacApplicationScope{
 		AllComputers: new(false),
@@ -161,17 +169,62 @@ func TestFlattenMacAppScope_RoundTrip(t *testing.T) {
 	var computerIDs []string
 	state.Targets.ComputerIDs.ElementsAs(ctx, &computerIDs, false)
 	if len(computerIDs) != 2 {
-		t.Errorf("computer_ids: got %v", computerIDs)
+		t.Errorf("managed computer_ids should refresh from wire: got %v", computerIDs)
+	}
+	if !state.Targets.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged computer_group_ids must stay null, got %v", state.Targets.ComputerGroupIDs)
+	}
+	if !state.Targets.AllComputers.IsNull() {
+		t.Errorf("unmanaged all_computers must stay null, got %v", state.Targets.AllComputers)
 	}
 	var segIDs []string
 	state.Limitations.NetworkSegmentIDs.ElementsAs(ctx, &segIDs, false)
 	if len(segIDs) != 1 || segIDs[0] != "2" {
-		t.Errorf("limitations network_segment_ids: got %v", segIDs)
+		t.Errorf("managed limitations network_segment_ids should drift-refresh: got %v", segIDs)
 	}
 	var exclUsers []string
 	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
 	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
-		t.Errorf("exclusion user names: got %v", exclUsers)
+		t.Errorf("managed exclusion user names should refresh: got %v", exclUsers)
+	}
+	if !state.Exclusions.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusion computer_group_ids must stay null, got %v", state.Exclusions.ComputerGroupIDs)
+	}
+}
+
+func TestFlattenMacAppScope_HydrateAllForMergeBase(t *testing.T) {
+	ctx := context.Background()
+	// includeUnmanaged=true hydrates every wire-present category into a zero
+	// model — the shape Update uses to build the read-merge-write base.
+	state := &scope.ComputerScopeModelNoIbeacons{}
+	s := &proclassic.MacApplicationScope{
+		AllComputers: new(false),
+		ComputerGroups: &proclassic.MacApplicationScopeComputerGroups{
+			ComputerGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Exclusions: &proclassic.MacApplicationScopeExclusions{
+			Users: &proclassic.MacApplicationScopeExclusionsUsers{
+				User: &[]proclassic.MacApplicationScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
+	}
+	flattenMacAppScope(ctx, s, state, true)
+
+	if state.Targets == nil || state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
+		t.Fatalf("expected all_computers hydrated false, got %+v", state.Targets)
+	}
+	var groupIDs []string
+	state.Targets.ComputerGroupIDs.ElementsAs(ctx, &groupIDs, false)
+	if len(groupIDs) != 1 || groupIDs[0] != "5" {
+		t.Errorf("expected computer_group_ids hydrated, got %v", groupIDs)
+	}
+	if state.Exclusions == nil {
+		t.Fatal("expected exclusions allocated")
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("expected exclusion user names hydrated, got %v", exclUsers)
 	}
 }
 

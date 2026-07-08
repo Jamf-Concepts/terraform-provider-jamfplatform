@@ -13,11 +13,12 @@ import (
 )
 
 // EmptyStringSet returns a known, empty Set<String>. It is the canonical
-// "no members" value for every classic scope target category: the schema
-// factories (IDSetAttribute / NameSetAttribute) are Optional+Computed and the
-// CanonicalEmptySet plan modifier settles both a null config and an `[]`
-// config to this value, so the read path must produce it too (rather than a
-// null set) to stay consistent with the plan. See scope/schema.go.
+// "no members" value for a MANAGED classic scope target category: a declared
+// `[]` config plans as `[]`, the read path flattens an empty wire result for a
+// managed category to `[]`, and the read-merge-write update path uses it to
+// normalise absent server sub-blocks. Unmanaged (omitted) categories are null,
+// never `[]` — the null/empty distinction carries the ownership semantics.
+// See scope/schema.go.
 func EmptyStringSet() types.Set {
 	return types.SetValueMust(types.StringType, []attr.Value{})
 }
@@ -27,9 +28,19 @@ func EmptyStringSet() types.Set {
 // the per-call constructor that wraps each parsed int ID in the resource's
 // SDK item type.
 //
-// Returns nil if the set is null, unknown, or empty so the SDK omits the
-// parent XML element entirely (matching the wire convention of "absent
-// block means no targets" — see STYLE_GUIDE.md §Scope helper omission semantics).
+// Ownership-preserving omission semantics (wire-probed — see STYLE_GUIDE.md
+// §Scope helper omission semantics):
+//
+//   - null / unknown → nil: the category is unmanaged, the SDK omits the
+//     parent XML element entirely.
+//   - empty (declared `[]`, or an empty merged value on the read-merge-write
+//     update path) → a non-nil pointer to an EMPTY slice: the caller assigns
+//     the parent wrapper, which marshals as an empty element (e.g.
+//     `<computer_groups></computer_groups>`). The empty element is what
+//     clears the category — a scope PUT replaces the whole subtree once any
+//     category element is present, and a body whose scope has no category
+//     elements at all is ignored by the server, so "clear the last member"
+//     only works via the explicit empty wrapper.
 //
 // Element parse errors do not short-circuit — every failure is collected
 // in one pass so the user sees them all at once. Returns (nil, diags) when
@@ -46,9 +57,6 @@ func BuildIDSlice[T any](
 	var elements []string
 	diags.Append(set.ElementsAs(ctx, &elements, false)...)
 	if diags.HasError() {
-		return nil, diags
-	}
-	if len(elements) == 0 {
 		return nil, diags
 	}
 	out := make([]T, 0, len(elements))
@@ -74,10 +82,11 @@ func BuildIDSlice[T any](
 // FlattenIDSlice projects an SDK pointer-slice into a Terraform Set<String>
 // of ID values. extract returns the int ID from the SDK item type. Returns an
 // empty Set<String> (EmptyStringSet) if items is nil or empty: empty is the
-// canonical "no members" value for these Optional+Computed scope sets, so an
-// absent sub-block reads back as `[]`, not null (see scope/schema.go and the
-// CanonicalEmptySet plan modifier). Items whose extract returns nil are
-// skipped — server should not return such items but defend.
+// canonical "no members" value for a managed category, so an absent wire
+// sub-block reads back as `[]`, not null. Ownership gating (unmanaged stays
+// null) happens at the call site via RefreshManagedSet, not here. Items whose
+// extract returns nil are skipped — server should not return such items but
+// defend.
 func FlattenIDSlice[T any](
 	ctx context.Context,
 	items *[]T,
@@ -106,8 +115,9 @@ func FlattenIDSlice[T any](
 // BuildNameSlice projects a Terraform Set<String> of names into the SDK
 // pointer-slice expected by name-only scope sub-blocks
 // (directory_service_or_local_user_names, directory_service_user_group_names,
-// limit_to_user_group_names). Same nil/empty handling as BuildIDSlice —
-// null, unknown, or empty input returns (nil, nil).
+// limit_to_user_group_names). Same omission semantics as BuildIDSlice —
+// null/unknown → nil (unmanaged, element omitted); empty → non-nil empty
+// slice (declared clear, empty element emitted).
 func BuildNameSlice[T any](
 	ctx context.Context,
 	set types.Set,
@@ -120,9 +130,6 @@ func BuildNameSlice[T any](
 	var elements []string
 	diags.Append(set.ElementsAs(ctx, &elements, false)...)
 	if diags.HasError() {
-		return nil, diags
-	}
-	if len(elements) == 0 {
 		return nil, diags
 	}
 	out := make([]T, 0, len(elements))
