@@ -75,11 +75,19 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 
 func TestFlattenScope_NilSubBlocksProduceEmptySets(t *testing.T) {
 	t.Parallel()
-	// Reconcile semantics: state.AllComputers stays null when the user did
-	// not author it, even if the server reports a value (Optional+Computed
-	// contract). Pre-populate to BoolValue(false) so reconcile substitutes
-	// the server value.
-	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{AllComputers: types.BoolValue(false)}}
+	// Managed (declared) categories flatten an absent SDK sub-block to an
+	// empty set, never null: a null would trip the post-apply consistency
+	// check on a declared `[]`. Undeclared categories are covered by
+	// TestFlattenScope_ManagedRefreshUnmanagedStaysNull.
+	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{
+		AllComputers:     types.BoolValue(false),
+		ComputerIDs:      scope.EmptyStringSet(),
+		ComputerGroupIDs: scope.EmptyStringSet(),
+		BuildingIDs:      scope.EmptyStringSet(),
+		DepartmentIDs:    scope.EmptyStringSet(),
+		UserIDs:          scope.EmptyStringSet(),
+		UserGroupIDs:     scope.EmptyStringSet(),
+	}}
 	diags := flattenScope(context.Background(), &proclassic.OsXConfigurationProfileScope{
 		AllComputers: new(true),
 	}, state, false)
@@ -103,9 +111,10 @@ func TestFlattenScope_NilSubBlocksProduceEmptySets(t *testing.T) {
 	}
 }
 
-// TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured pins the
-// Optional+Computed contract: a user who never authored `all_computers`
-// stays at null in state even when the server reports a value.
+// TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured pins the granular
+// ownership contract: a user who never declared `all_computers` stays at null
+// in state even when the server reports a value — the toggle is owned outside
+// Terraform.
 func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 	t.Parallel()
 	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{}}
@@ -119,7 +128,10 @@ func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 
 func TestFlattenScope_ComputerIDsPopulated(t *testing.T) {
 	t.Parallel()
-	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{}}
+	// computer_ids declared (managed) so the wire members refresh into state.
+	state := &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{
+		ComputerIDs: scope.EmptyStringSet(),
+	}}
 	src := &proclassic.OsXConfigurationProfileScope{
 		Computers: &proclassic.OsXConfigurationProfileScopeComputers{
 			Computer: &[]proclassic.OsXConfigurationProfileScopeComputersComputerItem{
@@ -147,7 +159,9 @@ func TestFlattenScope_ComputerIDsPopulated(t *testing.T) {
 
 func TestFlattenScopeLimitations_NetworkSegmentWithUID(t *testing.T) {
 	t.Parallel()
-	state := &scope.ComputerScopeLimitationsModel{}
+	state := &scope.ComputerScopeLimitationsModel{
+		NetworkSegmentIDs: scope.EmptyStringSet(), // managed
+	}
 	src := &proclassic.OsXConfigurationProfileScopeLimitations{
 		NetworkSegments: &proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegments{
 			NetworkSegment: &[]proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem{
@@ -155,10 +169,7 @@ func TestFlattenScopeLimitations_NetworkSegmentWithUID(t *testing.T) {
 			},
 		},
 	}
-	diags := flattenScopeLimitations(context.Background(), src, state)
-	if diags.HasError() {
-		t.Fatalf("diags: %v", diags)
-	}
+	flattenScopeLimitations(context.Background(), src, state, false)
 	var ids []string
 	if dd := state.NetworkSegmentIDs.ElementsAs(context.Background(), &ids, false); dd.HasError() {
 		t.Fatalf("ElementsAs: %v", dd)
@@ -170,15 +181,14 @@ func TestFlattenScopeLimitations_NetworkSegmentWithUID(t *testing.T) {
 
 func TestFlattenScopeLimitations_DSUserNames(t *testing.T) {
 	t.Parallel()
-	state := &scope.ComputerScopeLimitationsModel{}
-	diags := flattenScopeLimitations(context.Background(), &proclassic.OsXConfigurationProfileScopeLimitations{
+	state := &scope.ComputerScopeLimitationsModel{
+		DirectoryServiceOrLocalUserNames: scope.EmptyStringSet(), // managed
+	}
+	flattenScopeLimitations(context.Background(), &proclassic.OsXConfigurationProfileScopeLimitations{
 		Users: &proclassic.OsXConfigurationProfileScopeLimitationsUsers{
 			User: &[]proclassic.IDName{{Name: new("alice")}, {Name: new("bob")}},
 		},
-	}, state)
-	if diags.HasError() {
-		t.Fatalf("diags: %v", diags)
-	}
+	}, state, false)
 	var names []string
 	if dd := state.DirectoryServiceOrLocalUserNames.ElementsAs(context.Background(), &names, false); dd.HasError() {
 		t.Fatalf("ElementsAs: %v", dd)
@@ -190,7 +200,10 @@ func TestFlattenScopeLimitations_DSUserNames(t *testing.T) {
 
 func TestFlattenScopeExclusions_ComputersAndUserGroupsByName(t *testing.T) {
 	t.Parallel()
-	state := &scope.ComputerScopeExclusionsModel{}
+	state := &scope.ComputerScopeExclusionsModel{
+		ComputerIDs:                    scope.EmptyStringSet(), // managed
+		DirectoryServiceUserGroupNames: scope.EmptyStringSet(), // managed
+	}
 	src := &proclassic.OsXConfigurationProfileScopeExclusions{
 		Computers: &proclassic.OsXConfigurationProfileScopeExclusionsComputers{
 			Computer: &[]proclassic.OsXConfigurationProfileScopeExclusionsComputersComputerItem{
@@ -201,10 +214,7 @@ func TestFlattenScopeExclusions_ComputersAndUserGroupsByName(t *testing.T) {
 			UserGroup: &[]proclassic.IDName{{Name: new("DS-Group")}},
 		},
 	}
-	diags := flattenScopeExclusions(context.Background(), src, state)
-	if diags.HasError() {
-		t.Fatalf("diags: %v", diags)
-	}
+	flattenScopeExclusions(context.Background(), src, state, false)
 	var ids, names []string
 	state.ComputerIDs.ElementsAs(context.Background(), &ids, false)
 	state.DirectoryServiceUserGroupNames.ElementsAs(context.Background(), &names, false)
@@ -213,6 +223,112 @@ func TestFlattenScopeExclusions_ComputersAndUserGroupsByName(t *testing.T) {
 	}
 	if len(names) != 1 || names[0] != "DS-Group" {
 		t.Fatalf("expected DS-Group, got %v", names)
+	}
+}
+
+func TestFlattenScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// Managed categories carry a non-null current value (declared in config);
+	// everything else is null = unmanaged and must stay null.
+	state := &scope.ComputerScopeModel{
+		Targets: &scope.ComputerScopeTargetsModel{
+			ComputerIDs: scope.EmptyStringSet(), // managed, refreshes from wire
+		},
+		Limitations: &scope.ComputerScopeLimitationsModel{
+			NetworkSegmentIDs: stringSet(t, "9"), // managed, drift-refreshes
+		},
+		Exclusions: &scope.ComputerScopeExclusionsModel{
+			DirectoryServiceOrLocalUserNames: scope.EmptyStringSet(), // managed
+		},
+	}
+	src := &proclassic.OsXConfigurationProfileScope{
+		AllComputers: new(false),
+		Computers: &proclassic.OsXConfigurationProfileScopeComputers{
+			Computer: &[]proclassic.OsXConfigurationProfileScopeComputersComputerItem{{ID: new(11)}, {ID: new(12)}},
+		},
+		ComputerGroups: &proclassic.OsXConfigurationProfileScopeComputerGroups{
+			ComputerGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Limitations: &proclassic.OsXConfigurationProfileScopeLimitations{
+			NetworkSegments: &proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegments{
+				NetworkSegment: &[]proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem{{ID: new(2)}},
+			},
+		},
+		Exclusions: &proclassic.OsXConfigurationProfileScopeExclusions{
+			Users: &proclassic.OsXConfigurationProfileScopeExclusionsUsers{
+				User: &[]proclassic.OsXConfigurationProfileScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
+	}
+	flattenScope(ctx, src, state, false)
+
+	var computerIDs []string
+	state.Targets.ComputerIDs.ElementsAs(ctx, &computerIDs, false)
+	if len(computerIDs) != 2 {
+		t.Errorf("managed computer_ids should refresh from wire: got %v", computerIDs)
+	}
+	if !state.Targets.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged computer_group_ids must stay null, got %v", state.Targets.ComputerGroupIDs)
+	}
+	if !state.Targets.AllComputers.IsNull() {
+		t.Errorf("unmanaged all_computers must stay null, got %v", state.Targets.AllComputers)
+	}
+	var segIDs []string
+	state.Limitations.NetworkSegmentIDs.ElementsAs(ctx, &segIDs, false)
+	if len(segIDs) != 1 || segIDs[0] != "2" {
+		t.Errorf("managed limitations network_segment_ids should drift-refresh: got %v", segIDs)
+	}
+	if !state.Limitations.IbeaconIDs.IsNull() {
+		t.Errorf("unmanaged limitations ibeacon_ids must stay null, got %v", state.Limitations.IbeaconIDs)
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("managed exclusion user names should refresh: got %v", exclUsers)
+	}
+	if !state.Exclusions.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusion computer_group_ids must stay null, got %v", state.Exclusions.ComputerGroupIDs)
+	}
+}
+
+func TestFlattenScope_HydrateAllForMergeBase(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// includeUnmanaged=true hydrates every wire-present category into a zero
+	// model — the shape Update uses to build the read-merge-write base.
+	state := &scope.ComputerScopeModel{}
+	src := &proclassic.OsXConfigurationProfileScope{
+		AllComputers: new(false),
+		ComputerGroups: &proclassic.OsXConfigurationProfileScopeComputerGroups{
+			ComputerGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Exclusions: &proclassic.OsXConfigurationProfileScopeExclusions{
+			Users: &proclassic.OsXConfigurationProfileScopeExclusionsUsers{
+				User: &[]proclassic.OsXConfigurationProfileScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
+	}
+	flattenScope(ctx, src, state, true)
+
+	if state.Targets == nil || state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
+		t.Fatalf("expected all_computers hydrated false, got %+v", state.Targets)
+	}
+	var groupIDs []string
+	state.Targets.ComputerGroupIDs.ElementsAs(ctx, &groupIDs, false)
+	if len(groupIDs) != 1 || groupIDs[0] != "5" {
+		t.Errorf("expected computer_group_ids hydrated, got %v", groupIDs)
+	}
+	if state.Exclusions == nil {
+		t.Fatal("expected exclusions allocated")
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("expected exclusion user names hydrated, got %v", exclUsers)
+	}
+	if state.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Limitations)
 	}
 }
 

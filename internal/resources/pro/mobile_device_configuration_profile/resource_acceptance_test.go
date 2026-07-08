@@ -263,6 +263,26 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 `, name, payload, userID)
 }
 
+// configScopeJSSUserCleared declares user_ids = [] — the granular-ownership
+// clear gesture: a declared empty category is Terraform-owned and empties it,
+// where omitting the category would leave it as configured outside Terraform.
+func configScopeJSSUserCleared(name, payload string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
+  general = {
+    name     = %q
+    payloads = <<EOF
+%sEOF
+  }
+  scope = {
+    targets = {
+      user_ids = []
+    }
+  }
+}
+`, name, payload)
+}
+
 func configWithSelfServiceAuthPassword(name, payload, password string) string {
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
@@ -535,8 +555,11 @@ func TestAccResource_MobileDeviceConfigurationProfile_ScopeWithMobileDeviceGroup
 }
 
 // TestAccResource_MobileDeviceConfigurationProfile_ScopeJSSUserAddRemove —
-// adds a Jamf Pro user to scope, then removes it. Exercises the Set→null
-// teardown path. Uses the Exchange ActiveSync payload (profile_50).
+// adds a Jamf Pro user to scope, then clears the category by declaring `[]`.
+// Granular ownership: omitting the category would leave the user scoped
+// outside Terraform, so the clear must be an explicit empty set. The implicit
+// post-step empty-plan check enforces that the clear round-tripped.
+// Uses the Exchange ActiveSync payload (profile_50).
 func TestAccResource_MobileDeviceConfigurationProfile_ScopeJSSUserAddRemove(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -559,7 +582,14 @@ func TestAccResource_MobileDeviceConfigurationProfile_ScopeJSSUserAddRemove(t *t
 				},
 			},
 			{
-				Config: configMinimal(name, payload),
+				Config: configScopeJSSUserCleared(name, payload),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_mobile_device_configuration_profile.test",
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("user_ids"),
+						knownvalue.SetExact([]knownvalue.Check{}),
+					),
+				},
 			},
 		},
 	})
@@ -679,8 +709,9 @@ func TestAccResource_MobileDeviceConfigurationProfile_DistributionMethodChange(t
 }
 
 // TestAccResource_MobileDeviceConfigurationProfile_ImportState — import by ID.
-// No ImportStateVerify: importer only populates general; scope and self_service
-// stay null until authored (per feedback_acc_import_optional_sections.md).
+// No ImportStateVerify: import hydrates every wire-present section (scope with
+// all categories, self_service), which legitimately differs from the created
+// state of this general-only config, where those sections stay null/undeclared.
 // Uses the Wi-Fi payload (profile_70).
 func TestAccResource_MobileDeviceConfigurationProfile_ImportState(t *testing.T) {
 	testhelpers.AccPreCheck(t)
@@ -704,12 +735,11 @@ func TestAccResource_MobileDeviceConfigurationProfile_ImportState(t *testing.T) 
 }
 
 // TestAccResource_MobileDeviceConfigurationProfile_ScopeLimitationsClearWithEmptySet
-// verifies that an all-empty but declared `limitations` block clears its
-// members. /mobiledeviceconfigurationprofiles MERGES an omitted <limitations>
-// sub-block (wire-probed), so the build must emit an empty
-// <limitations></limitations>; otherwise the member is retained server-side and
-// the apply fails the post-apply consistency check. Uses a network-segment
-// fixture (no LDAP needed).
+// verifies that a declared-empty limitations category clears its members.
+// Granular ownership (wire-probed 2026-07-08): a scope write replaces the whole
+// subtree once any category element is present, and `[]` must be emitted as an
+// explicit empty element to clear — omitting the category instead preserves it
+// via the Update read-merge. Uses a network-segment fixture (no LDAP needed).
 func TestAccResource_MobileDeviceConfigurationProfile_ScopeLimitationsClearWithEmptySet(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -750,8 +780,8 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_mobile_device_configuration_profile.test", "scope.limitations.network_segment_ids.#", "1"),
 			},
 			{
-				// Clear to [] — declared-but-empty <limitations> must be emitted so
-				// the merge endpoint clears. Implicit post-step empty-plan enforces it.
+				// Clear via declared [] — Terraform owns the category and emits the
+				// explicit empty element. Implicit post-step empty-plan enforces it.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_mobile_device_configuration_profile.test", "scope.limitations.network_segment_ids.#", "0"),
 			},

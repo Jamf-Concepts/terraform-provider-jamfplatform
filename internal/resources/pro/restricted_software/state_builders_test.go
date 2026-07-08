@@ -112,46 +112,98 @@ func TestAssignRestrictedSoftwareResourceModel_IncludeUnmanagedHydratesFromScrat
 	}
 }
 
-func TestFlattenScope_TargetsAndNameKeyedExclusions(t *testing.T) {
+// TestFlattenScope_ManagedRefreshUnmanagedStaysNull pins the granular
+// ownership gate: a managed (non-null) category refreshes from the live scope;
+// an unmanaged (null) category stays null so members maintained in the admin
+// UI never enter state.
+func TestFlattenScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
 	ctx := context.Background()
 	s := &proclassic.RestrictedSoftwareScope{
 		AllComputers: new(false),
 		ComputerGroups: &proclassic.RestrictedSoftwareScopeComputerGroups{
 			ComputerGroup: &[]proclassic.IDName{{ID: new(11), Name: new("All Managed")}},
 		},
+		Departments: &proclassic.RestrictedSoftwareScopeDepartments{
+			Department: &[]proclassic.IDName{{ID: new(3)}},
+		},
 		Exclusions: &proclassic.RestrictedSoftwareScopeExclusions{
 			Users: &proclassic.RestrictedSoftwareScopeExclusionsUsers{
 				User: &[]proclassic.IDName{{Name: new("alice")}, {Name: new("bob")}},
 			},
+			ComputerGroups: &proclassic.RestrictedSoftwareScopeExclusionsComputerGroups{
+				ComputerGroup: &[]proclassic.IDName{{ID: new(7)}},
+			},
 		},
 	}
 	state := &RestrictedSoftwareScopeModel{
-		Targets:    &RestrictedSoftwareScopeTargetsModel{},
-		Exclusions: &RestrictedSoftwareScopeExclusionsModel{},
+		Targets: &RestrictedSoftwareScopeTargetsModel{
+			AllComputers:     types.BoolValue(true), // managed, drift-refreshes to false
+			ComputerGroupIDs: strSet(t, "99"),       // managed, drift-refreshes
+			BuildingIDs:      strSet(t),             // managed [], stays empty (never null)
+		},
+		Exclusions: &RestrictedSoftwareScopeExclusionsModel{
+			DirectoryServiceOrLocalUserNames: strSet(t), // managed
+		},
 	}
 	flattenScope(ctx, s, state, false)
 
-	if state.Targets.AllComputers.ValueBool() {
-		t.Errorf("all_computers should be false")
+	if state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
+		t.Errorf("managed all_computers should drift-refresh to false, got %v", state.Targets.AllComputers)
 	}
 	if l := len(state.Targets.ComputerGroupIDs.Elements()); l != 1 {
-		t.Errorf("expected 1 computer group ID, got %d", l)
+		t.Errorf("managed computer_group_ids should drift-refresh: got %d members", l)
 	}
-	// Empty target categories flatten to an empty set (the canonical "no
-	// members" value for these Optional+Computed scope sets), not null.
-	for _, tc := range []struct {
-		label string
-		set   types.Set
-	}{
-		{"BuildingIDs", state.Targets.BuildingIDs},
-		{"DepartmentIDs", state.Targets.DepartmentIDs},
-		{"ComputerIDs", state.Targets.ComputerIDs},
-	} {
-		if tc.set.IsNull() || len(tc.set.Elements()) != 0 {
-			t.Errorf("empty target %s must be an empty set, got %v", tc.label, tc.set)
-		}
+	if state.Targets.BuildingIDs.IsNull() || len(state.Targets.BuildingIDs.Elements()) != 0 {
+		t.Errorf("managed empty building_ids must stay an empty set, got %v", state.Targets.BuildingIDs)
+	}
+	// Unmanaged categories stay null even though the live scope has members.
+	if !state.Targets.DepartmentIDs.IsNull() {
+		t.Errorf("unmanaged department_ids must stay null, got %v", state.Targets.DepartmentIDs)
+	}
+	if !state.Targets.ComputerIDs.IsNull() {
+		t.Errorf("unmanaged computer_ids must stay null, got %v", state.Targets.ComputerIDs)
 	}
 	if l := len(state.Exclusions.DirectoryServiceOrLocalUserNames.Elements()); l != 2 {
-		t.Errorf("expected 2 excluded users, got %d", l)
+		t.Errorf("managed excluded users should refresh: got %d", l)
+	}
+	if !state.Exclusions.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusion computer_group_ids must stay null, got %v", state.Exclusions.ComputerGroupIDs)
+	}
+}
+
+// TestFlattenScope_HydrateAllForMergeBase pins the includeUnmanaged bypass:
+// every wire-present category hydrates into a zero model — the shape Update
+// uses to build the read-merge-write base.
+func TestFlattenScope_HydrateAllForMergeBase(t *testing.T) {
+	ctx := context.Background()
+	s := &proclassic.RestrictedSoftwareScope{
+		AllComputers: new(false),
+		ComputerGroups: &proclassic.RestrictedSoftwareScopeComputerGroups{
+			ComputerGroup: &[]proclassic.IDName{{ID: new(11)}},
+		},
+		Exclusions: &proclassic.RestrictedSoftwareScopeExclusions{
+			Users: &proclassic.RestrictedSoftwareScopeExclusionsUsers{
+				User: &[]proclassic.IDName{{Name: new("alice")}},
+			},
+		},
+	}
+	state := &RestrictedSoftwareScopeModel{}
+	flattenScope(ctx, s, state, true)
+
+	if state.Targets == nil || state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
+		t.Fatalf("expected all_computers hydrated false, got %+v", state.Targets)
+	}
+	if l := len(state.Targets.ComputerGroupIDs.Elements()); l != 1 {
+		t.Errorf("expected computer_group_ids hydrated, got %d members", l)
+	}
+	// Wire-absent categories hydrate to empty (never null) under hydrate-all.
+	if state.Targets.DepartmentIDs.IsNull() || len(state.Targets.DepartmentIDs.Elements()) != 0 {
+		t.Errorf("wire-absent department_ids must hydrate to an empty set, got %v", state.Targets.DepartmentIDs)
+	}
+	if state.Exclusions == nil {
+		t.Fatal("expected exclusions allocated")
+	}
+	if l := len(state.Exclusions.DirectoryServiceOrLocalUserNames.Elements()); l != 1 {
+		t.Errorf("expected excluded users hydrated, got %d", l)
 	}
 }

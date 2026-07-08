@@ -6,7 +6,6 @@ package scope
 import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
@@ -24,13 +23,12 @@ import (
 //	    Attributes:          scope.UserScopeAttributes(),
 //	}
 //
-// all_jss_users (inside the `targets` sub-block) is Optional+Computed with
-// booldefault.StaticBool(false) and the value-discriminated AllFlagConflictsWith
-// validator (relative paths, so they resolve against its siblings inside
-// `targets`). Unlike the computer/mobile flags it does NOT use a state-forwarding
-// plan modifier — the static default keeps the value known at plan time, so the
-// null→present transition on `targets` cannot surface a "was null, but now …"
-// consistency error here.
+// Every attribute in the block follows per-category granular ownership:
+// omitted means "not managed by Terraform" (preserved on the wire via
+// read-merge-write in the consuming resource's update), declared means owned.
+// all_jss_users (inside the `targets` sub-block) is Optional-only and carries
+// the value-discriminated AllFlagConflictsWith validator (relative paths, so
+// they resolve against its siblings inside `targets`).
 //
 // Consumed by vpp_invitation and vpp_assignment. The build/flatten glue stays
 // per-resource because VppInvitation* and VppAssignment* are distinct generated
@@ -38,10 +36,8 @@ import (
 func UserScopeAttributes() map[string]schema.Attribute {
 	targets := map[string]schema.Attribute{
 		"all_jss_users": schema.BoolAttribute{
-			MarkdownDescription: "Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Defaults to `false`.",
+			MarkdownDescription: "Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Omit to leave the toggle as configured outside Terraform.",
 			Optional:            true,
-			Computed:            true,
-			Default:             booldefault.StaticBool(false),
 			Validators: []validator.Bool{
 				AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("jss_user_ids"),

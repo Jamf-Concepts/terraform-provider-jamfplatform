@@ -220,11 +220,11 @@ func buildScopeLimitations(ctx context.Context, m *scope.ComputerScopeLimitation
 		l.UserGroups = &proclassic.OsXConfigurationProfileScopeLimitationsUserGroups{UserGroup: userGroups}
 	}
 
-	// Always emit the block when the user declared `limitations` (the caller's
-	// gate). The classic /osxconfigurationprofiles endpoint MERGES an omitted
-	// sub-block (wire-probed), so collapsing an all-empty block to nil would
-	// retain the server's existing members. An empty <limitations></limitations>
-	// clears every category, which is what `[]` / omission means.
+	// Always emit the block when the caller's model declares `limitations`. A
+	// scope PUT replaces the whole subtree, so an explicit empty element is the
+	// clear gesture for a declared-empty category; undeclared (null) categories
+	// are preserved upstream by the read-merge-write update, which hands this
+	// builder a fully non-null merged model.
 	return l, diags
 }
 

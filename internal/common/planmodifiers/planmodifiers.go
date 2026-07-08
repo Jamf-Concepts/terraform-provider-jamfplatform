@@ -8,7 +8,6 @@ package planmodifiers
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -105,51 +104,4 @@ func DecideResetForUnchangedString(sourceEqual bool, stateValue types.String) (t
 		return types.StringNull(), false
 	}
 	return stateValue, true
-}
-
-// CanonicalEmptySet returns a plan modifier for Optional+Computed
-// Set<String> attributes that makes an empty set the canonical "no members"
-// value: a null config (attribute omitted) plans as an empty set `[]`, the same
-// value an explicit `[]` config and the read path both produce. This lets
-// practitioners write `attr = []` as the natural "remove everything" gesture —
-// and equally omit the attribute — without tripping an "inconsistent result
-// after apply" error.
-//
-// Why null config must plan as `[]` rather than the reverse: Terraform requires
-// the planned value of an Optional+Computed attribute to equal the config value
-// whenever the config is known and non-null, and `[]` is non-null — so a `[]`
-// config must plan (and apply) as `[]`. The read path therefore canonicalises
-// an empty wire result to `[]` (not null), and this modifier brings the null
-// config into line so omission still clears (planning `[]` → the build path
-// omits the empty wrapper → the server clears the category) and stays stable
-// across plans (no perpetual "known after apply"). The attribute must be
-// Computed for the modifier to set a value when the config is null.
-//
-// A non-empty config flows through unchanged; an unknown config (interpolated
-// from another resource) is left to resolve at apply.
-func CanonicalEmptySet() planmodifier.Set { return canonicalEmptySet{} }
-
-type canonicalEmptySet struct{}
-
-func (m canonicalEmptySet) Description(_ context.Context) string {
-	return "Omitting the attribute clears all members, equivalent to setting []."
-}
-
-func (m canonicalEmptySet) MarkdownDescription(ctx context.Context) string {
-	return m.Description(ctx)
-}
-
-func (m canonicalEmptySet) PlanModifySet(_ context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
-	// Unknown config (e.g. interpolated from another resource): leave the
-	// planned value alone so it resolves during apply.
-	if req.ConfigValue.IsUnknown() {
-		return
-	}
-	// Null config (attribute omitted) settles to the canonical empty set so it
-	// matches the read path and clears the category. A known config — including
-	// an explicit empty `[]` — flows through unchanged (Terraform requires the
-	// plan to equal a known, non-null config).
-	if req.ConfigValue.IsNull() {
-		resp.PlanValue = types.SetValueMust(types.StringType, []attr.Value{})
-	}
 }

@@ -126,10 +126,12 @@ func flattenGeneral(g *proclassic.OsXConfigurationProfileGeneral, state *General
 	}
 }
 
-// flattenScope refreshes the scope sub-blocks the caller already manages.
-// When includeUnmanaged is set (config generation) every wire-present
-// sub-block is first allocated so the from-scratch read hydrates the full
-// scope rather than leaving unmanaged targets/limitations/exclusions null.
+// flattenScope refreshes the scope sub-blocks the caller already manages,
+// gating each category independently (see the in-body comment). When
+// includeUnmanaged is set (import / config generation / the Update merge base)
+// every wire-present sub-block is first allocated so the from-scratch read
+// hydrates the full scope rather than leaving unmanaged
+// targets/limitations/exclusions null.
 func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScope, state *scope.ComputerScopeModel, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if s == nil {
@@ -148,189 +150,218 @@ func flattenScope(ctx context.Context, s *proclassic.OsXConfigurationProfileScop
 		}
 	}
 
-	// Targets are gated on caller management, mirroring the limitations /
-	// exclusions sub-blocks below: populating a targets block the user did not
-	// declare would violate the framework's "produced inconsistent result after
-	// apply" check (plan said null, we would return a populated object).
+	// Sub-blocks are gated on caller management (typed-pointer models cannot
+	// hold categories without the block struct); within a managed sub-block
+	// each category refreshes independently via RefreshManagedSet — a category
+	// the caller did not declare (null) stays null, so members maintained in
+	// the admin UI never enter state. includeUnmanaged bypasses both gates for
+	// import / config-generation hydration and for building the server-side
+	// merge base in Update.
 	if state.Targets != nil {
-		state.Targets.AllComputers = helpers.ReconcileOrAdoptBoolPointer(s.AllComputers, state.Targets.AllComputers, includeUnmanaged)
-		state.Targets.AllJssUsers = helpers.ReconcileOrAdoptBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers, includeUnmanaged)
+		t := state.Targets
+		t.AllComputers = scope.RefreshManagedBool(t.AllComputers, s.AllComputers, includeUnmanaged)
+		t.AllJssUsers = scope.RefreshManagedBool(t.AllJssUsers, s.AllJssUsers, includeUnmanaged)
 
-		if s.Computers != nil {
-			v, d := scope.FlattenIDSlice(ctx, s.Computers.Computer, func(c proclassic.OsXConfigurationProfileScopeComputersComputerItem) *int {
-				return c.ID
-			})
-			diags.Append(d...)
-			state.Targets.ComputerIDs = v
-		} else {
-			state.Targets.ComputerIDs = scope.EmptyStringSet()
-		}
-		if s.ComputerGroups != nil {
-			v, d := scope.FlattenIDSlice(ctx, s.ComputerGroups.ComputerGroup, func(c proclassic.IDName) *int { return c.ID })
-			diags.Append(d...)
-			state.Targets.ComputerGroupIDs = v
-		} else {
-			state.Targets.ComputerGroupIDs = scope.EmptyStringSet()
-		}
-		if s.Buildings != nil {
-			v, d := scope.FlattenIDSlice(ctx, s.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
-			diags.Append(d...)
-			state.Targets.BuildingIDs = v
-		} else {
-			state.Targets.BuildingIDs = scope.EmptyStringSet()
-		}
-		if s.Departments != nil {
-			v, d := scope.FlattenIDSlice(ctx, s.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
-			diags.Append(d...)
-			state.Targets.DepartmentIDs = v
-		} else {
-			state.Targets.DepartmentIDs = scope.EmptyStringSet()
-		}
-		if s.JssUsers != nil {
-			v, d := scope.FlattenIDSlice(ctx, s.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
-			diags.Append(d...)
-			state.Targets.UserIDs = v
-		} else {
-			state.Targets.UserIDs = scope.EmptyStringSet()
-		}
-		if s.JssUserGroups != nil {
-			v, d := scope.FlattenIDSlice(ctx, s.JssUserGroups.JssUserGroup, func(c proclassic.IDName) *int { return c.ID })
-			diags.Append(d...)
-			state.Targets.UserGroupIDs = v
-		} else {
-			state.Targets.UserGroupIDs = scope.EmptyStringSet()
-		}
+		t.ComputerIDs = scope.RefreshManagedSet(t.ComputerIDs, flattenScopeComputerItemSet(ctx, s.Computers), includeUnmanaged)
+		t.ComputerGroupIDs = scope.RefreshManagedSet(t.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromComputerGroups(s.ComputerGroups)), includeUnmanaged)
+		t.BuildingIDs = scope.RefreshManagedSet(t.BuildingIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromBuildings(s.Buildings)), includeUnmanaged)
+		t.DepartmentIDs = scope.RefreshManagedSet(t.DepartmentIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromDepartments(s.Departments)), includeUnmanaged)
+		t.UserIDs = scope.RefreshManagedSet(t.UserIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromJssUsers(s.JssUsers)), includeUnmanaged)
+		t.UserGroupIDs = scope.RefreshManagedSet(t.UserGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromJssUserGroups(s.JssUserGroups)), includeUnmanaged)
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
-		diags.Append(flattenScopeLimitations(ctx, s.Limitations, state.Limitations)...)
+		flattenScopeLimitations(ctx, s.Limitations, state.Limitations, includeUnmanaged)
 	}
 	if state.Exclusions != nil && s.Exclusions != nil {
-		diags.Append(flattenScopeExclusions(ctx, s.Exclusions, state.Exclusions)...)
+		flattenScopeExclusions(ctx, s.Exclusions, state.Exclusions, includeUnmanaged)
 	}
 	return diags
 }
 
-func flattenScopeLimitations(ctx context.Context, l *proclassic.OsXConfigurationProfileScopeLimitations, state *scope.ComputerScopeLimitationsModel) diag.Diagnostics {
-	var diags diag.Diagnostics
+func flattenScopeLimitations(ctx context.Context, l *proclassic.OsXConfigurationProfileScopeLimitations, state *scope.ComputerScopeLimitationsModel, includeUnmanaged bool) {
 	if l == nil {
-		return diags
+		return
 	}
-	if l.NetworkSegments != nil {
-		v, d := scope.FlattenIDSlice(ctx, l.NetworkSegments.NetworkSegment, func(c proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem) *int {
-			return c.ID
-		})
-		diags.Append(d...)
-		state.NetworkSegmentIDs = v
-	} else {
-		state.NetworkSegmentIDs = scope.EmptyStringSet()
-	}
-	if l.Ibeacons != nil {
-		v, d := scope.FlattenIDSlice(ctx, l.Ibeacons.Ibeacon, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.IbeaconIDs = v
-	} else {
-		state.IbeaconIDs = scope.EmptyStringSet()
-	}
-	if l.Users != nil {
-		v, d := scope.FlattenNameSlice(ctx, l.Users.User, func(c proclassic.IDName) *string { return c.Name })
-		diags.Append(d...)
-		state.DirectoryServiceOrLocalUserNames = v
-	} else {
-		state.DirectoryServiceOrLocalUserNames = scope.EmptyStringSet()
-	}
-	if l.UserGroups != nil {
-		v, d := scope.FlattenNameSlice(ctx, l.UserGroups.UserGroup, func(c proclassic.IDName) *string { return c.Name })
-		diags.Append(d...)
-		state.DirectoryServiceUserGroupNames = v
-	} else {
-		state.DirectoryServiceUserGroupNames = scope.EmptyStringSet()
-	}
-	return diags
+	state.NetworkSegmentIDs = scope.RefreshManagedSet(state.NetworkSegmentIDs, flattenLimNetworkSegmentSet(ctx, l.NetworkSegments), includeUnmanaged)
+	state.IbeaconIDs = scope.RefreshManagedSet(state.IbeaconIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromLimIbeacons(l.Ibeacons)), includeUnmanaged)
+	state.DirectoryServiceOrLocalUserNames = scope.RefreshManagedSet(state.DirectoryServiceOrLocalUserNames, scope.FlattenNameSet(ctx, idNameSliceFromLimUsers(l.Users)), includeUnmanaged)
+	state.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(state.DirectoryServiceUserGroupNames, scope.FlattenNameSet(ctx, idNameSliceFromLimUserGroups(l.UserGroups)), includeUnmanaged)
 }
 
-func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationProfileScopeExclusions, state *scope.ComputerScopeExclusionsModel) diag.Diagnostics {
-	var diags diag.Diagnostics
+func flattenScopeExclusions(ctx context.Context, e *proclassic.OsXConfigurationProfileScopeExclusions, state *scope.ComputerScopeExclusionsModel, includeUnmanaged bool) {
 	if e == nil {
-		return diags
+		return
 	}
-	if e.Computers != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.Computers.Computer, func(c proclassic.OsXConfigurationProfileScopeExclusionsComputersComputerItem) *int {
-			return c.ID
-		})
-		diags.Append(d...)
-		state.ComputerIDs = v
-	} else {
-		state.ComputerIDs = scope.EmptyStringSet()
+	state.ComputerIDs = scope.RefreshManagedSet(state.ComputerIDs, flattenExclComputerItemSet(ctx, e.Computers), includeUnmanaged)
+	state.ComputerGroupIDs = scope.RefreshManagedSet(state.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclComputerGroups(e.ComputerGroups)), includeUnmanaged)
+	state.BuildingIDs = scope.RefreshManagedSet(state.BuildingIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclBuildings(e.Buildings)), includeUnmanaged)
+	state.DepartmentIDs = scope.RefreshManagedSet(state.DepartmentIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclDepartments(e.Departments)), includeUnmanaged)
+	state.UserIDs = scope.RefreshManagedSet(state.UserIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUsers(e.JssUsers)), includeUnmanaged)
+	state.UserGroupIDs = scope.RefreshManagedSet(state.UserGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUserGroups(e.JssUserGroups)), includeUnmanaged)
+	state.NetworkSegmentIDs = scope.RefreshManagedSet(state.NetworkSegmentIDs, flattenExclNetworkSegmentSet(ctx, e.NetworkSegments), includeUnmanaged)
+	state.IbeaconIDs = scope.RefreshManagedSet(state.IbeaconIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclIbeacons(e.Ibeacons)), includeUnmanaged)
+	state.DirectoryServiceOrLocalUserNames = scope.RefreshManagedSet(state.DirectoryServiceOrLocalUserNames, flattenExclUsersNameSet(ctx, e.Users), includeUnmanaged)
+	state.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(state.DirectoryServiceUserGroupNames, scope.FlattenNameSet(ctx, idNameSliceFromExclUserGroups(e.UserGroups)), includeUnmanaged)
+}
+
+// ---- scope sub-slice accessors -------------------------------------------------
+
+func idNameSliceFromComputerGroups(g *proclassic.OsXConfigurationProfileScopeComputerGroups) *[]proclassic.IDName {
+	if g == nil {
+		return nil
 	}
-	if e.ComputerGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.ComputerGroups.ComputerGroup, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.ComputerGroupIDs = v
-	} else {
-		state.ComputerGroupIDs = scope.EmptyStringSet()
+	return g.ComputerGroup
+}
+
+func idNameSliceFromBuildings(b *proclassic.OsXConfigurationProfileScopeBuildings) *[]proclassic.IDName {
+	if b == nil {
+		return nil
 	}
-	if e.Buildings != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.Buildings.Building, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.BuildingIDs = v
-	} else {
-		state.BuildingIDs = scope.EmptyStringSet()
+	return b.Building
+}
+
+func idNameSliceFromDepartments(d *proclassic.OsXConfigurationProfileScopeDepartments) *[]proclassic.IDName {
+	if d == nil {
+		return nil
 	}
-	if e.Departments != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.Departments.Department, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.DepartmentIDs = v
-	} else {
-		state.DepartmentIDs = scope.EmptyStringSet()
+	return d.Department
+}
+
+func idNameSliceFromJssUsers(u *proclassic.OsXConfigurationProfileScopeJssUsers) *[]proclassic.IDName {
+	if u == nil {
+		return nil
 	}
-	if e.JssUsers != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.JssUsers.User, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.UserIDs = v
-	} else {
-		state.UserIDs = scope.EmptyStringSet()
+	return u.User
+}
+
+func idNameSliceFromJssUserGroups(u *proclassic.OsXConfigurationProfileScopeJssUserGroups) *[]proclassic.IDName {
+	if u == nil {
+		return nil
 	}
-	if e.JssUserGroups != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.JssUserGroups.UserGroup, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.UserGroupIDs = v
-	} else {
-		state.UserGroupIDs = scope.EmptyStringSet()
+	return u.JssUserGroup
+}
+
+func idNameSliceFromLimIbeacons(i *proclassic.OsXConfigurationProfileScopeLimitationsIbeacons) *[]proclassic.IDName {
+	if i == nil {
+		return nil
 	}
-	if e.NetworkSegments != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.NetworkSegments.NetworkSegment, func(c proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int {
-			return c.ID
-		})
-		diags.Append(d...)
-		state.NetworkSegmentIDs = v
-	} else {
-		state.NetworkSegmentIDs = scope.EmptyStringSet()
+	return i.Ibeacon
+}
+
+func idNameSliceFromLimUsers(u *proclassic.OsXConfigurationProfileScopeLimitationsUsers) *[]proclassic.IDName {
+	if u == nil {
+		return nil
 	}
-	if e.Ibeacons != nil {
-		v, d := scope.FlattenIDSlice(ctx, e.Ibeacons.Ibeacon, func(c proclassic.IDName) *int { return c.ID })
-		diags.Append(d...)
-		state.IbeaconIDs = v
-	} else {
-		state.IbeaconIDs = scope.EmptyStringSet()
+	return u.User
+}
+
+func idNameSliceFromLimUserGroups(u *proclassic.OsXConfigurationProfileScopeLimitationsUserGroups) *[]proclassic.IDName {
+	if u == nil {
+		return nil
 	}
-	if e.Users != nil {
-		v, d := scope.FlattenNameSlice(ctx, e.Users.User, func(c proclassic.OsXConfigurationProfileScopeExclusionsUsersUserItem) *string {
-			return c.Name
-		})
-		diags.Append(d...)
-		state.DirectoryServiceOrLocalUserNames = v
-	} else {
-		state.DirectoryServiceOrLocalUserNames = scope.EmptyStringSet()
+	return u.UserGroup
+}
+
+func idNameSliceFromExclComputerGroups(g *proclassic.OsXConfigurationProfileScopeExclusionsComputerGroups) *[]proclassic.IDName {
+	if g == nil {
+		return nil
 	}
-	if e.UserGroups != nil {
-		v, d := scope.FlattenNameSlice(ctx, e.UserGroups.UserGroup, func(c proclassic.IDName) *string { return c.Name })
-		diags.Append(d...)
-		state.DirectoryServiceUserGroupNames = v
-	} else {
-		state.DirectoryServiceUserGroupNames = scope.EmptyStringSet()
+	return g.ComputerGroup
+}
+
+func idNameSliceFromExclBuildings(b *proclassic.OsXConfigurationProfileScopeExclusionsBuildings) *[]proclassic.IDName {
+	if b == nil {
+		return nil
 	}
-	return diags
+	return b.Building
+}
+
+func idNameSliceFromExclDepartments(d *proclassic.OsXConfigurationProfileScopeExclusionsDepartments) *[]proclassic.IDName {
+	if d == nil {
+		return nil
+	}
+	return d.Department
+}
+
+func idNameSliceFromExclJssUsers(u *proclassic.OsXConfigurationProfileScopeExclusionsJssUsers) *[]proclassic.IDName {
+	if u == nil {
+		return nil
+	}
+	return u.User
+}
+
+func idNameSliceFromExclJssUserGroups(u *proclassic.OsXConfigurationProfileScopeExclusionsJssUserGroups) *[]proclassic.IDName {
+	if u == nil {
+		return nil
+	}
+	return u.UserGroup
+}
+
+func idNameSliceFromExclIbeacons(i *proclassic.OsXConfigurationProfileScopeExclusionsIbeacons) *[]proclassic.IDName {
+	if i == nil {
+		return nil
+	}
+	return i.Ibeacon
+}
+
+func idNameSliceFromExclUserGroups(u *proclassic.OsXConfigurationProfileScopeExclusionsUserGroups) *[]proclassic.IDName {
+	if u == nil {
+		return nil
+	}
+	return u.UserGroup
+}
+
+// ---- set flatteners ------------------------------------------------------------
+
+// The wire flatteners below return EmptyStringSet (never null) for an absent
+// element: a null return would flow through RefreshManagedSet and null out a
+// managed category, tripping the post-apply consistency check. Empty is the
+// canonical "no members" value for a managed category; unmanaged categories
+// are kept null by the RefreshManagedSet gate itself.
+
+func flattenScopeComputerItemSet(ctx context.Context, c *proclassic.OsXConfigurationProfileScopeComputers) types.Set {
+	if c == nil {
+		return scope.EmptyStringSet()
+	}
+	out, _ := scope.FlattenIDSlice(ctx, c.Computer, func(i proclassic.OsXConfigurationProfileScopeComputersComputerItem) *int { return i.ID })
+	return out
+}
+
+func flattenLimNetworkSegmentSet(ctx context.Context, n *proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegments) types.Set {
+	if n == nil {
+		return scope.EmptyStringSet()
+	}
+	out, _ := scope.FlattenIDSlice(ctx, n.NetworkSegment, func(i proclassic.OsXConfigurationProfileScopeLimitationsNetworkSegmentsNetworkSegmentItem) *int {
+		return i.ID
+	})
+	return out
+}
+
+func flattenExclComputerItemSet(ctx context.Context, c *proclassic.OsXConfigurationProfileScopeExclusionsComputers) types.Set {
+	if c == nil {
+		return scope.EmptyStringSet()
+	}
+	out, _ := scope.FlattenIDSlice(ctx, c.Computer, func(i proclassic.OsXConfigurationProfileScopeExclusionsComputersComputerItem) *int { return i.ID })
+	return out
+}
+
+func flattenExclNetworkSegmentSet(ctx context.Context, n *proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegments) types.Set {
+	if n == nil {
+		return scope.EmptyStringSet()
+	}
+	out, _ := scope.FlattenIDSlice(ctx, n.NetworkSegment, func(i proclassic.OsXConfigurationProfileScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int {
+		return i.ID
+	})
+	return out
+}
+
+func flattenExclUsersNameSet(ctx context.Context, u *proclassic.OsXConfigurationProfileScopeExclusionsUsers) types.Set {
+	if u == nil {
+		return scope.EmptyStringSet()
+	}
+	out, _ := scope.FlattenNameSlice(ctx, u.User, func(i proclassic.OsXConfigurationProfileScopeExclusionsUsersUserItem) *string { return i.Name })
+	return out
 }
 
 func flattenSelfService(ss *proclassic.OsXConfigurationProfileSelfService, state *SelfServiceModel) {

@@ -26,6 +26,18 @@
 // block — a known limitation matching ProClassic precedent. To clear a block,
 // null its individual fields rather than deleting the block.
 //
+// Scope is the exception: within a sent <scope> the server replaces the whole
+// subtree (wire-probed 2026-07-08 — any category element present, even empty,
+// wipes every omitted category across targets/limitations/exclusions). Scope
+// therefore uses per-category granular ownership: when the plan declares a
+// scope block, Update GETs the live object first and overlays the declared
+// categories onto the server's current scope (scope-only merge — no other
+// section of the read is echoed back), emitting every merged category
+// explicitly. Omitted categories stay owned by the admin UI; declared `[]`
+// clears. Create needs no merge (nothing to preserve on a brand-new object) —
+// its POST→PUT sequence re-sends the same declared scope both times. See
+// STYLE_GUIDE.md §Scope helper omission semantics.
+//
 // Delete semantics: the classic /mobiledeviceapplications DELETE returns a
 // misleading HTTP 400 on an accepted removal (maintainer-confirmed server bug).
 // The SDK no longer retries 4xx, so that 400 surfaces here. Unlike /ebooks
@@ -44,6 +56,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // Create creates a new Jamf Pro mobile device app. Classic POSTs to id="0"; the
@@ -228,7 +241,27 @@ func (r *MobileAppResource) Update(ctx context.Context, req resource.UpdateReque
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	payload, buildDiags := buildMobileAppInput(updateCtx, plan)
+	// Granular scope ownership: a scope PUT replaces the whole subtree, so
+	// undeclared (null) categories must be re-emitted from the live object to
+	// survive the write. Read-merge-write, scope-only — the wire plan carries
+	// the merged scope while `plan` (used for state) keeps only the declared
+	// categories. See the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetMobileDeviceApplicationByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro mobile device app before update", err.Error())
+			return
+		}
+		var serverScope *scope.MobileScopeModelNoIbeacons
+		if current != nil && current.Scope != nil {
+			serverScope = &scope.MobileScopeModelNoIbeacons{}
+			flattenMobileAppScope(updateCtx, current.Scope, serverScope, true)
+		}
+		wirePlan.Scope = scope.MergeMobileScopeNoIbeacons(plan.Scope, serverScope)
+	}
+
+	payload, buildDiags := buildMobileAppInput(updateCtx, wirePlan)
 	resp.Diagnostics.Append(buildDiags...)
 	if resp.Diagnostics.HasError() {
 		return

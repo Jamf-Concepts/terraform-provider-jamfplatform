@@ -8,9 +8,12 @@
 // domain.
 //
 // Writes are a MERGE; content collections are opt-out (null retains, [] clears,
-// populated replaces) and scope is always-emitted (full-replace, empty=clear).
+// populated replaces) and scope follows per-category granular ownership: a
+// declared category (including explicit `[]`, which clears) is owned by
+// Terraform, an omitted category is preserved via read-merge-write on update.
 // The update steps mutate the name, grow/shrink a scope group set, and toggle
-// all_jss_users to exercise the always-emit clear path.
+// all_jss_users to exercise the all-flag precedence (the flag wipes its
+// conflicting target categories).
 //
 // Apply tests provision their own VPP account via a jamfplatform_pro_volume_-
 // purchasing_location fixture, so they are gated on JAMFPLATFORM_VPP_TOKEN (a real
@@ -174,18 +177,21 @@ func TestAccResource_ProVPPAssignment(t *testing.T) {
 				),
 			},
 			{
-				// Shrink the target set back to one (nested-set removal → always-emit clears).
+				// Shrink the target set back to one (nested-set removal — the declared
+				// category is owned, so its members full-replace).
 				Config: lifecycleConfig(token, suffix, renamed, 1, false),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
 				),
 			},
 			{
-				// Toggle all_jss_users on. The target groups clear via always-emit;
-				// resource.Test runs a post-step plan that fails on any residual
-				// diff, so the "groups cleared" invariant is enforced implicitly —
-				// no explicit count assertion (a cleared id set flattens to a null
-				// Set, whose "#" key is unreliable; mirrors vpp_invitation).
+				// Toggle all_jss_users on. The flag wipes the target group categories
+				// (all-flag precedence — the merge mirrors it); the now-undeclared
+				// jss_user_group_ids stays null in state (unmanaged), and resource.Test
+				// runs a post-step plan that fails on any residual diff, so the
+				// "groups cleared" invariant is enforced implicitly — no explicit
+				// count assertion (a null Set has no reliable "#" key; mirrors
+				// vpp_invitation).
 				Config: lifecycleConfig(token, suffix, renamed, 0, true),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resAddr, "scope.targets.all_jss_users", "true"),
@@ -195,8 +201,8 @@ func TestAccResource_ProVPPAssignment(t *testing.T) {
 				ResourceName:      resAddr,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Import refreshes only general — scope and the content sets are not
-				// reconstructed (state nil), so ignore them on verify.
+				// Import hydrates every scope category and content set; apply keeps
+				// declared-only, so verify against this subset config must ignore them.
 				ImportStateVerifyIgnore: []string{"timeouts", "scope", "ios_app_adam_ids", "mac_app_adam_ids", "ebook_adam_ids"},
 			},
 		},
@@ -381,9 +387,10 @@ resource "jamfplatform_pro_vpp_assignment" "test" {
 				// the framework destroys the assignment, via an empty set `[]` (the
 				// natural "remove all" gesture). Destroying while a DS group is still
 				// scoped can leave an orphaned scope->LDAP association that blocks the
-				// LDAP server's deletion (a server-side data-integrity bug). `[]`
-				// plans as null (CanonicalEmptySet); the post-step empty-plan
-				// check enforces the clear round-tripped.
+				// LDAP server's deletion (a server-side data-integrity bug). `[]` is
+				// the declared-clear gesture (plans as an empty set, emits an explicit
+				// empty element — omission would preserve the group); the post-step
+				// empty-plan check enforces the clear round-tripped.
 				Config: vppLocationFixture(token, suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_vpp_assignment" "test" {
   name                 = %[1]q

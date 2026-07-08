@@ -22,9 +22,14 @@ import (
 // software_title_configuration_id is set in the body in addition to being passed
 // on the Create path arg.
 //
-// Scope follows the omission rules in STYLE_GUIDE.md §Scope helper: nil-pointer
-// sub-blocks suppress wire emission; empty child collections collapse up to a
-// nil parent. user_interaction is emitted only when the caller declared the
+// Scope categories follow the granular-ownership omission rules in
+// STYLE_GUIDE.md §Scope helper: a null (unmanaged) category is omitted from
+// the body; a declared category — including `[]`, via BuildIDSlice returning a
+// non-nil empty slice — is emitted explicitly, empty wrapper and all, because
+// the scope subtree replaces wholesale once any category element is present.
+// On Update the caller passes a plan whose Scope is the read-merge-write
+// merged model, so every category is non-null and the full explicit skeleton
+// is emitted. user_interaction is emitted only when the caller declared the
 // block; nested blocks the caller omitted are not sent (the server retains /
 // defaults them).
 func buildPatchPolicyInput(ctx context.Context, plan PatchPolicyResourceModel) (*proclassic.PatchPolicy, diag.Diagnostics) {
@@ -131,12 +136,12 @@ func buildScopeLimitations(ctx context.Context, m *PatchPolicyScopeLimitationsMo
 	}
 
 	// Always emit the block when the user declared `limitations` (the caller's
-	// gate) so an all-empty declared block clears every category. /patchpolicies
-	// was wire-probed to REPLACE an omitted <limitations>/<exclusions> sub-block
-	// (so omission already clears here), but most classic scope endpoints MERGE
-	// it (retaining members) — emitting the empty block clears correctly under
-	// both, keeping the build uniform regardless of per-endpoint omit semantics.
-	// (Target categories are direct <scope> children and replace on omit.)
+	// gate): the scope subtree replaces wholesale once any category element is
+	// present (family law; see crud.go for the /patchpolicies probe status), so
+	// a declared-but-empty block must land as an explicit
+	// <limitations></limitations> — the clear gesture for `[]`. Undeclared
+	// (null) categories inside a declared block are handled by the Update
+	// merge, which re-emits the live members.
 	return l, diags
 }
 

@@ -11,10 +11,14 @@
 //   - Create: POST id/0 returns 201 with an id-only body — GET-after to populate.
 //   - Update: PUT returns 201 with NO body — GET-after. Writes MERGE (omitting a
 //     field/collection retains it; a present scope collection is full-replaced).
-//   - General scalars are always-emitted so a removed value clears. Scope is
-//     always-emitted as a full skeleton (empty elements clear) whenever the block
-//     is declared, so removing the last element of a collection actually clears
-//     it (omission alone would retain it).
+//   - General scalars are always-emitted so a removed value clears. Scope
+//     follows per-category granular ownership: a declared category (including
+//     `[]`, which clears) is owned by Terraform; an omitted (null) category is
+//     preserved via a scope-only read-merge-write in Update (a scope PUT
+//     replaces the whole subtree once any category element is present, even
+//     empty — same classic wire family as /vppassignments, probed 2026-07-08;
+//     this endpoint was not individually probed to avoid triggering real
+//     invitation emails).
 //   - distribution_method is one of three exact strings; "Send emails" requires
 //     sender_name / sender_email_address / subject / message, and only then are
 //     those fields (plus require_login) stored.
@@ -143,7 +147,7 @@ func (r *VPPInvitationResource) Schema(ctx context.Context, req resource.SchemaR
 				Optional:            true,
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "User-based scope. Declaring this block puts the entire scope under management — any user, user group, or directory-service group not listed here is removed from the invitation.",
+				MarkdownDescription: "User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it.",
 				Optional:            true,
 				Attributes:          scope.UserScopeAttributes(),
 			},

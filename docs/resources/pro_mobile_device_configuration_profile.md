@@ -114,7 +114,7 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "self_service" {
 
 ### Optional
 
-- `scope` (Attributes) Profile scope. `all_mobile_devices = true` forbids per-device / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's "Users" / "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Profile scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. `all_mobile_devices = true` forbids per-device / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's "Users" / "User Groups" lists. (see [below for nested schema](#nestedatt--scope))
 - `self_service` (Attributes) Self Service integration. Only meaningful when `general.distribution_method = "Make Available in Self Service"`. (see [below for nested schema](#nestedatt--self_service))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
@@ -162,16 +162,16 @@ Optional:
 
 Optional:
 
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
-- `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
-- `directory_service_user_group_names` (Set of String) Set of directory service user group names.
-- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
-- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs.
-- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
-- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `user_ids` (Set of String) Set of Jamf Pro user IDs.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `directory_service_user_group_names` (Set of String) Set of directory service user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -179,10 +179,10 @@ Optional:
 
 Optional:
 
-- `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
-- `directory_service_user_group_names` (Set of String) Set of directory service user group names.
-- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
+- `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `directory_service_user_group_names` (Set of String) Set of directory service user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--targets"></a>
@@ -190,14 +190,14 @@ Optional:
 
 Optional:
 
-- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle. Forbids per-user / per-user-group targets when true.
-- `all_mobile_devices` (Boolean) Scope to every mobile device in the tenant. Forbids per-device / per-group / per-building / per-department targets when true.
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
-- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs.
-- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs.
-- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `user_ids` (Set of String) Set of Jamf Pro user IDs.
+- `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's "All Users" toggle. Forbids per-user / per-user-group targets when true. Omit to leave the toggle as configured outside Terraform.
+- `all_mobile_devices` (Boolean) Scope to every mobile device in the tenant. Forbids per-device / per-group / per-building / per-department targets when true. Omit to leave the toggle as configured outside Terraform.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 

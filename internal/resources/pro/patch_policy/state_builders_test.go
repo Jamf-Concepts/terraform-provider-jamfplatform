@@ -104,8 +104,10 @@ func TestFlattenKillApps(t *testing.T) {
 	}
 }
 
-// TestFlattenScope_EntityByID confirms scope reads back by ID (id-only sets) when
-// the caller manages the scope block.
+// TestFlattenScope_EntityByID confirms managed scope categories read back by ID
+// (id-only sets — the server-augmented names/UDIDs are discarded), while
+// categories the caller did not declare stay null under the granular ownership
+// gate even though the live scope has members.
 func TestFlattenScope_EntityByID(t *testing.T) {
 	p := &proclassic.PatchPolicy{
 		ID:      new(1),
@@ -118,6 +120,9 @@ func TestFlattenScope_EntityByID(t *testing.T) {
 			},
 			ComputerGroups: &proclassic.PatchPolicyScopeComputerGroups{
 				ComputerGroup: &[]proclassic.IDName{{ID: new(20), Name: new("Group-20")}},
+			},
+			Buildings: &proclassic.PatchPolicyScopeBuildings{
+				Building: &[]proclassic.IDName{{ID: new(30), Name: new("HQ")}},
 			},
 			Limitations: &proclassic.PatchPolicyScopeLimitations{
 				NetworkSegments: &proclassic.PatchPolicyScopeLimitationsNetworkSegments{
@@ -132,12 +137,20 @@ func TestFlattenScope_EntityByID(t *testing.T) {
 		},
 	}
 
-	// Caller manages scope (including the targets + limitations + exclusions sub-blocks).
+	// Caller manages the specific categories below (non-null); building_ids and
+	// the exclusion computer categories are undeclared → must stay null.
 	state := &PatchPolicyResourceModel{
 		Scope: &PatchPolicyScopeModel{
-			Targets:     &PatchPolicyScopeTargetsModel{},
-			Limitations: &PatchPolicyScopeLimitationsModel{},
-			Exclusions:  &PatchPolicyScopeExclusionsModel{},
+			Targets: &PatchPolicyScopeTargetsModel{
+				ComputerIDs:      idSet(t),
+				ComputerGroupIDs: idSet(t, "999"),
+			},
+			Limitations: &PatchPolicyScopeLimitationsModel{
+				NetworkSegmentIDs: idSet(t),
+			},
+			Exclusions: &PatchPolicyScopeExclusionsModel{
+				IbeaconIDs: idSet(t),
+			},
 		},
 	}
 	diags := assignPatchPolicyResourceModel(context.Background(), state, p, false)
@@ -151,11 +164,23 @@ func TestFlattenScope_EntityByID(t *testing.T) {
 	if got := setStrings(t, state.Scope.Targets.ComputerGroupIDs); len(got) != 1 || got[0] != "20" {
 		t.Errorf("targets.computer_group_ids: got %v", got)
 	}
+	if !state.Scope.Targets.BuildingIDs.IsNull() {
+		t.Errorf("unmanaged targets.building_ids must stay null, got %v", state.Scope.Targets.BuildingIDs)
+	}
+	if !state.Scope.Targets.AllComputers.IsNull() {
+		t.Errorf("unmanaged targets.all_computers must stay null, got %v", state.Scope.Targets.AllComputers)
+	}
 	if got := setStrings(t, state.Scope.Limitations.NetworkSegmentIDs); len(got) != 1 || got[0] != "50" {
 		t.Errorf("limitations.network_segment_ids: got %v", got)
 	}
+	if !state.Scope.Limitations.IbeaconIDs.IsNull() {
+		t.Errorf("unmanaged limitations.ibeacon_ids must stay null, got %v", state.Scope.Limitations.IbeaconIDs)
+	}
 	if got := setStrings(t, state.Scope.Exclusions.IbeaconIDs); len(got) != 1 || got[0] != "75" {
 		t.Errorf("exclusions.ibeacon_ids: got %v", got)
+	}
+	if !state.Scope.Exclusions.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusions.computer_group_ids must stay null, got %v", state.Scope.Exclusions.ComputerGroupIDs)
 	}
 }
 

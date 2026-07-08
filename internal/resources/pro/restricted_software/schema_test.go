@@ -116,6 +116,11 @@ func TestRestrictedSoftwareResource_Schema(t *testing.T) {
 	if ac := targetsAttr.Attributes["all_computers"]; len(ac.(schema.BoolAttribute).Validators) == 0 {
 		t.Errorf("scope.targets.all_computers must carry the conflict validator")
 	}
+	// Optional-only — the null/false distinction carries the granular
+	// per-category ownership contract, so Computed is forbidden.
+	if ac := targetsAttr.Attributes["all_computers"]; !ac.IsOptional() || ac.IsComputed() {
+		t.Errorf("scope.targets.all_computers must be Optional-only (ownership contract), got optional=%v computed=%v", ac.IsOptional(), ac.IsComputed())
+	}
 
 	excl, ok := scopeAttr.Attributes["exclusions"].(schema.SingleNestedAttribute)
 	if !ok {

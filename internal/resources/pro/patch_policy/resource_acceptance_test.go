@@ -97,10 +97,10 @@ func fixtureTitle(suffix string) string {
 // TestAccResource_ProPatchPolicy_Basic exercises create, then a multi-attribute
 // in-place update mutating every non-RequiresReplace writable attribute:
 // enabled, distribution_method (selfservice→prompt), allow_downgrade,
-// patch_unknown, scope (add then remove a computer_group / building), and
-// several user_interaction fields (reminders / deadline / grace). It asserts the
-// computed server-derived fields populate throughout. Finally import with
-// justified ignores.
+// patch_unknown, scope (add a computer_group / building, then clear the
+// building with a declared `[]`), and several user_interaction fields
+// (reminders / deadline / grace). It asserts the computed server-derived
+// fields populate throughout. Finally import with justified ignores.
 func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -193,8 +193,11 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 		}
 	`, suffix, accTitleVersion, bld, grp)
 
-	// Step 3: remove the building from scope (keep the group) to exercise the
-	// scope-shrink path.
+	// Step 3: clear the building target with an explicit `[]` (keep the group)
+	// to exercise the declared-clear path. Under granular scope ownership,
+	// omitting building_ids instead would drop it from state and leave the
+	// category to the admin UI (preserved by the read-merge-write update), not
+	// clear it.
 	stepScopeShrink := fixtureTitle(suffix) + fmt.Sprintf(`
 		resource "jamfplatform_pro_building" "bld" {
 			name = %[3]q
@@ -222,6 +225,7 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 			scope = {
 				targets = {
 					computer_group_ids = [jamfplatform_device_group.grp.jamf_pro_id]
+					building_ids       = []
 				}
 			}
 
@@ -279,8 +283,8 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 				Config: stepScopeShrink,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.targets.computer_group_ids.#", "1"),
-					// A shrunk-away category flattens to an empty set (canonical
-					// "no members" for these Optional+Computed scope sets), not null.
+					// The declared `[]` clear round-trips as an empty set — the
+					// canonical "no members" value for a managed category.
 					resource.TestCheckResourceAttr(patchPolicyType+".test", "scope.targets.building_ids.#", "0"),
 				),
 			},
@@ -289,10 +293,11 @@ func TestAccResource_ProPatchPolicy_Basic(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				// timeouts: framework-only, never round-trips.
-				// scope / user_interaction: Optional state-gated blocks. On import
-				// there is no prior state, so Read does not refresh them (the
-				// importer populates only the general-level fields). Same gap as
-				// jamfplatform_pro_policy / restricted_software.
+				// scope: import hydrates every category; apply keeps
+				// declared-only, so the hydrated import state legitimately
+				// differs from this subset-scope config.
+				// user_interaction: Optional state-gated block — import hydrates
+				// it fully while this config declares a subset.
 				// software_title_configuration_id: GET does NOT echo it (it is a
 				// create-time-only path parameter, wire-probed); it cannot be
 				// reconstructed on import.

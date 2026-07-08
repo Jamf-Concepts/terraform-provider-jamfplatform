@@ -189,11 +189,11 @@ func buildMobileAppScopeLimitations(ctx context.Context, m *scope.MobileScopeLim
 		l.UserGroups = &proclassic.MobileDeviceApplicationScopeLimitationsUserGroups{UserGroup: userGroups}
 	}
 
-	// Always emit the block when the user declared `limitations` (the caller's
-	// gate). The classic application endpoint MERGES an omitted sub-block, so
-	// collapsing an all-empty block to nil would retain the server's existing
-	// members instead of clearing them. An empty <limitations></limitations>
-	// clears every category (wire-probed), which is what `[]` / omission means.
+	// Always emit the block when the caller's model declares `limitations`. A
+	// scope PUT replaces the whole subtree, so an explicit empty element is the
+	// clear gesture for a declared-empty category; undeclared (null) categories
+	// are preserved upstream by the read-merge-write update, which hands this
+	// builder a fully non-null merged model.
 	return l, diags
 }
 

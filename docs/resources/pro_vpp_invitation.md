@@ -98,7 +98,7 @@ output "vpp_invitation_usages" {
 Requires the referenced VPP location to have automatic registration enabled (`auto_register_managed_users = true` on `jamfplatform_pro_volume_purchasing_location`); otherwise Jamf Pro rejects `true` with "not enabled on Vpp Location". Set to `false` for locations without it.
 - `message` (String) Body of the invitation email. Use `%@` where the registration URL should be inserted. Required (and only used) when `distribution_method` is `Send emails`.
 - `require_login` (Boolean) Require users to log in with a directory-service or Jamf Pro account before enrolling. Only applies (and is only stored) when `distribution_method` is `Send emails`.
-- `scope` (Attributes) User-based scope. Declaring this block puts the entire scope under management — any user, user group, or directory-service group not listed here is removed from the invitation. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. (see [below for nested schema](#nestedatt--scope))
 - `sender_email_address` (String) Sender email address for the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
 - `sender_name` (String) Sender display name for the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
 - `subject` (String) Subject of the invitation email. Required (and only used) when `distribution_method` is `Send emails`.
@@ -123,9 +123,9 @@ Optional:
 
 Optional:
 
-- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names.
-- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs.
+- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -133,7 +133,7 @@ Optional:
 
 Optional:
 
-- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names.
+- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--targets"></a>
@@ -141,9 +141,9 @@ Optional:
 
 Optional:
 
-- `all_jss_users` (Boolean) Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Defaults to `false`.
-- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs.
+- `all_jss_users` (Boolean) Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Omit to leave the toggle as configured outside Terraform.
+- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 

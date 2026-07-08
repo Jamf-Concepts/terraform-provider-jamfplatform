@@ -90,7 +90,7 @@ resource "jamfplatform_pro_vpp_assignment" "books" {
 Note: un-assigning a book removes it from the assignment on the wire, but Apple does not return or refund the underlying book license to the account — book licenses are consumed irrevocably.
 - `ios_app_adam_ids` (Set of Number) Apple catalog adam IDs of the iOS apps to assign. Omit to leave the server's current iOS apps untouched; set to `[]` to clear all iOS apps; otherwise the listed apps replace the assignment's iOS apps. App names are resolved server-side.
 - `mac_app_adam_ids` (Set of Number) Apple catalog adam IDs of the Mac apps to assign. Omit to leave the server's current Mac apps untouched; set to `[]` to clear all Mac apps; otherwise the listed apps replace the assignment's Mac apps. App names are resolved server-side.
-- `scope` (Attributes) User-based scope. Declaring this block puts the entire scope under management — any user, user group, or directory-service group not listed here is removed from the assignment. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -112,9 +112,9 @@ Optional:
 
 Optional:
 
-- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names.
-- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs.
+- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -122,7 +122,7 @@ Optional:
 
 Optional:
 
-- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names.
+- `directory_service_user_group_names` (Set of String) Set of directory service (LDAP) user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--targets"></a>
@@ -130,9 +130,9 @@ Optional:
 
 Optional:
 
-- `all_jss_users` (Boolean) Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Defaults to `false`.
-- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs.
-- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs.
+- `all_jss_users` (Boolean) Target all Jamf Pro users. Conflicts with `jss_user_ids` / `jss_user_group_ids`. Omit to leave the toggle as configured outside Terraform.
+- `jss_user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `jss_user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 

@@ -28,13 +28,23 @@
 //   - target_version must be a version that has a package assigned on the title.
 //   - Scope round-trips by id (entity scope only); the empty <users/> element the
 //     wire emits is vestigial and is not modelled (write-only-unreadable).
-//   - Scope category clearing (wire-probed 2026-06-01): when <scope> is sent, the
-//     server CLEARS every category omitted from it (buildings/departments/
-//     computers/limitations/exclusions all came back empty after a PUT that sent
-//     only <computer_groups>). So the builder's omission semantics (a dropped
-//     category → omitted from PUT → cleared) converge correctly; no always-emit
-//     empty-element sentinel is needed. NB this is the OPPOSITE of the classic
-//     /restrictedsoftware retain-on-omit behaviour — probed per-endpoint.
+//   - Scope subtree replace (partially wire-probed): a 2026-06-01 probe showed
+//     that when <scope> is sent, the server CLEARS every category omitted from
+//     it (buildings/departments/computers/limitations/exclusions all came back
+//     empty after a PUT that sent only <computer_groups>) — consistent with the
+//     family-wide subtree-replace law probed 2026-07-08 on 8 sibling classic
+//     endpoints. NOTE: /patchpolicies was NOT among those 8 — the full law
+//     (empty <scope></scope> ignored, lone all-flag at its current value
+//     ignored, all-flag=true wipes conflicting targets but coexists with
+//     limitations/exclusions) is ASSUMED from the family here and must be
+//     wire-probed on /patchpolicies before release.
+//   - Because of the subtree replace, scope uses per-category granular
+//     ownership: when the plan declares a scope block, Update GETs the live
+//     object first and overlays the declared categories onto the live scope
+//     (scope-only merge — no other section of the read is echoed back),
+//     emitting every merged category explicitly. Omitted categories stay owned
+//     by the admin UI; declared `[]` clears. See STYLE_GUIDE.md §Scope helper
+//     omission semantics.
 //   - GET does NOT echo <software_title_configuration_id> (wire-probed): it is a
 //     create-time-only path parameter. Read therefore preserves the configured
 //     value (preferCurrent*); on import it cannot be reconstructed, so it lands
@@ -45,11 +55,12 @@
 //
 // Update semantics: like all classic endpoints the PUT is a partial-merge at
 // top-section granularity. The provider always sends the full writable plan
-// payload, so in-place edits to general/scope/user_interaction converge.
-// Removing the entire optional scope / user_interaction block from config omits
-// it from the payload, so the server retains the previously-stored values — a
-// known ProClassic limitation; null the individual fields rather than deleting
-// the block to clear them.
+// payload, so in-place edits to general/user_interaction converge. Removing
+// the entire optional scope / user_interaction block from config omits it from
+// the payload, so the server retains the previously-stored values — a known
+// ProClassic limitation; for user_interaction, null the individual fields
+// rather than deleting the block to clear them. Scope follows the granular
+// per-category ownership contract described above instead.
 
 package patch_policy
 
@@ -220,7 +231,28 @@ func (r *PatchPolicyResource) Update(ctx context.Context, req resource.UpdateReq
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	payload, buildDiags := buildPatchPolicyInput(updateCtx, plan)
+	// Granular scope ownership: a scope PUT replaces the whole subtree
+	// (family-assumed for /patchpolicies — see the header note), so undeclared
+	// (null) categories must be re-emitted from the live object to survive the
+	// write. Read-merge-write, scope-only — the wire plan carries the merged
+	// scope while `plan` (used for state) keeps only the declared categories.
+	// See the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetPatchPolicyByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro patch policy before update", err.Error())
+			return
+		}
+		var serverScope *PatchPolicyScopeModel
+		if current != nil && current.Scope != nil {
+			serverScope = &PatchPolicyScopeModel{}
+			flattenScope(updateCtx, current.Scope, serverScope, true)
+		}
+		wirePlan.Scope = mergePatchPolicyScope(plan.Scope, serverScope)
+	}
+
+	payload, buildDiags := buildPatchPolicyInput(updateCtx, wirePlan)
 	resp.Diagnostics.Append(buildDiags...)
 	if resp.Diagnostics.HasError() {
 		return

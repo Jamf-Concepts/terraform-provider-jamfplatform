@@ -157,11 +157,8 @@ func TestAccResource_ProRestrictedSoftware_Basic(t *testing.T) {
 				ResourceName:      restrictedSoftwareResourceAddr,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// scope: an Optional state-gated block this general-only
-				// config never declares. Import hydrates it from the
-				// server's echoed defaults (correct — see the
-				// import-hydration fix), which legitimately differs from
-				// this config's null. Not verified here.
+				// scope: import hydrates every category; apply keeps
+				// declared-only (this general-only config declares none).
 				ImportStateVerifyIgnore: []string{"timeouts", "scope"},
 			},
 			{
@@ -185,8 +182,11 @@ func TestAccResource_ProRestrictedSoftware_Basic(t *testing.T) {
 }
 
 // scopeAllComputersConfig keeps the department fixture declared (so it is not
-// destroyed mid-test) but switches the record scope to all_computers, dropping
-// the department target entirely. Used to test present→absent target clearing.
+// destroyed mid-test) but switches the record scope to all_computers with an
+// explicitly cleared department target. Under granular scope ownership the
+// explicit `[]` is the clear gesture — omitting department_ids instead would
+// drop it from state and leave the category to the admin UI (though here the
+// all_computers flag wipes the conflicting targets regardless).
 func scopeAllComputersConfig(name, processName, excludedUsers string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_department" "test" {
@@ -200,7 +200,8 @@ func scopeAllComputersConfig(name, processName, excludedUsers string) string {
 			}
 			scope = {
 				targets = {
-					all_computers = true
+					all_computers  = true
+					department_ids = []
 				}
 				exclusions = {
 					directory_service_or_local_user_names = [%s]
@@ -242,10 +243,10 @@ func TestAccResource_ProRestrictedSoftware_ScopeUpdate(t *testing.T) {
 				),
 			},
 			{
-				// Present→absent target clearing: drop department_ids, switch to
-				// all_computers. Verifies an omitted target category within a sent
-				// scope is cleared server-side (not retained → would trip the
-				// post-apply consistency check on department_ids).
+				// Declared-clear transition: switch to all_computers and clear
+				// department_ids with an explicit `[]` (under granular ownership,
+				// omitting the category would leave it unmanaged and preserved
+				// rather than cleared).
 				Config: scopeAllComputersConfig(name, "Solitaire.app", `"bob", "carol"`),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.targets.all_computers", "true"),
@@ -289,13 +290,13 @@ func TestAccResource_ProRestrictedSoftware_AllComputersConflict(t *testing.T) {
 	})
 }
 
-// TestAccResource_ProRestrictedSoftware_ScopeExclusionsClearWithEmptySet verifies
-// that an all-empty but declared `exclusions` block clears its members.
-// /restrictedsoftware MERGES an omitted <exclusions> sub-block (wire-probed), so
-// the build must emit an empty <exclusions></exclusions>; otherwise the excluded
-// user is retained server-side and the apply fails the post-apply consistency
-// check. Uses free-text local usernames (the same category the ScopeUpdate test
-// exercises), so no fixtures are required.
+// TestAccResource_ProRestrictedSoftware_ScopeExclusionsClearWithEmptySet
+// verifies the declared-`[]` clear gesture under granular scope ownership: an
+// explicitly empty directory_service_or_local_user_names must be emitted as an
+// empty element so the scope subtree replace clears it (omitting the category
+// instead would leave it unmanaged and preserved by the read-merge-write
+// update). Uses free-text local usernames (the same category the ScopeUpdate
+// test exercises), so no fixtures are required.
 func TestAccResource_ProRestrictedSoftware_ScopeExclusionsClearWithEmptySet(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -327,8 +328,9 @@ resource "jamfplatform_pro_restricted_software" "test" {
 				Check:  resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "1"),
 			},
 			{
-				// Clear to [] — declared-but-empty <exclusions> must be emitted so
-				// the merge endpoint clears. Implicit post-step empty-plan enforces it.
+				// Clear to [] — the declared empty category must be emitted as an
+				// explicit empty element (omission would preserve it under granular
+				// ownership). Implicit post-step empty-plan enforces the round-trip.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr(restrictedSoftwareResourceAddr, "scope.exclusions.directory_service_or_local_user_names.#", "0"),
 			},

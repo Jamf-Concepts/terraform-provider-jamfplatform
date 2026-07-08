@@ -143,6 +143,19 @@ func TestPatchPolicyResource_Schema(t *testing.T) {
 			t.Errorf("scope.targets must NOT model user-based attribute %q", forbidden)
 		}
 	}
+	// all_computers is Optional-only with the conflict validator — the
+	// null/false distinction carries the granular per-category ownership
+	// contract, so Computed is forbidden.
+	ac, ok := tgt.Attributes["all_computers"].(rschema.BoolAttribute)
+	if !ok {
+		t.Fatalf("scope.targets.all_computers is not a BoolAttribute")
+	}
+	if len(ac.Validators) == 0 {
+		t.Errorf("scope.targets.all_computers must carry the conflict validator")
+	}
+	if !ac.IsOptional() || ac.IsComputed() {
+		t.Errorf("scope.targets.all_computers must be Optional-only (ownership contract), got optional=%v computed=%v", ac.IsOptional(), ac.IsComputed())
+	}
 
 	lim, ok := sc.Attributes["limitations"].(rschema.SingleNestedAttribute)
 	if !ok {

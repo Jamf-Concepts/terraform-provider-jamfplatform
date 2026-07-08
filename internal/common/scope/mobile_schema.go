@@ -6,8 +6,6 @@ package scope
 import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
@@ -38,13 +36,13 @@ type MobileScopeOptions struct {
 //	    Attributes:          scope.MobileScopeAttributes(scope.MobileScopeOptions{IncludeIbeacons: true}),
 //	}
 //
-// all_mobile_devices / all_jss_users are Optional+Computed with
-// UseNonNullStateForUnknown and the value-discriminated AllFlagConflictsWith
-// validators (relative paths, so they resolve against their siblings inside
-// `targets`). UseNonNullStateForUnknown (not UseStateForUnknown) is mandatory:
-// the `targets` block can transition null→present, and carrying a null prior
-// state forward trips a "was null, but now …" consistency error at apply.
-// See STYLE_GUIDE.md §Scope helper.
+// Every attribute in the block — the per-category sets and the all-flags —
+// follows per-category granular ownership: omitted means "not managed by
+// Terraform" (preserved on the wire via read-merge-write in the consuming
+// resource's update), declared means owned. The all-flags carry the
+// value-discriminated AllFlagConflictsWith validators (relative paths, so they
+// resolve against their siblings inside `targets`). See STYLE_GUIDE.md
+// §Scope helper.
 func MobileScopeAttributes(opts MobileScopeOptions) map[string]schema.Attribute {
 	limitations := map[string]schema.Attribute{
 		"network_segment_ids":                   IDSetAttribute("network segment"),
@@ -69,10 +67,8 @@ func MobileScopeAttributes(opts MobileScopeOptions) map[string]schema.Attribute 
 
 	targets := map[string]schema.Attribute{
 		"all_mobile_devices": schema.BoolAttribute{
-			MarkdownDescription: "Scope to every mobile device in the tenant. Forbids per-device / per-group / per-building / per-department targets when true.",
+			MarkdownDescription: "Scope to every mobile device in the tenant. Forbids per-device / per-group / per-building / per-department targets when true. Omit to leave the toggle as configured outside Terraform.",
 			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("mobile_device_ids"),
@@ -83,10 +79,8 @@ func MobileScopeAttributes(opts MobileScopeOptions) map[string]schema.Attribute 
 			},
 		},
 		"all_jss_users": schema.BoolAttribute{
-			MarkdownDescription: "Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's \"All Users\" toggle. Forbids per-user / per-user-group targets when true.",
+			MarkdownDescription: "Scope to every Jamf Pro user in the tenant. Equivalent to the admin UI's \"All Users\" toggle. Forbids per-user / per-user-group targets when true. Omit to leave the toggle as configured outside Terraform.",
 			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("user_ids"),

@@ -80,11 +80,13 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 		t.Error("unmanaged scope block must stay nil")
 	}
 
-	// Managed scope (state.Scope non-nil) → refreshed, name-keyed groups by name.
+	// Managed scope (state.Scope non-nil) → managed (non-null) categories are
+	// refreshed, name-keyed groups by name; undeclared (null) categories inside
+	// a managed block must stay null.
 	managed := &VPPInvitationResourceModel{Scope: &scope.UserScopeModel{
-		Targets:     &scope.UserScopeTargetsModel{},
-		Limitations: &scope.UserScopeLimitationsModel{},
-		Exclusions:  &scope.UserScopeExclusionsModel{},
+		Targets:     &scope.UserScopeTargetsModel{JssUserGroupIDs: scope.EmptyStringSet()},
+		Limitations: &scope.UserScopeLimitationsModel{DirectoryServiceUserGroupNames: scope.EmptyStringSet()},
+		Exclusions:  &scope.UserScopeExclusionsModel{DirectoryServiceUserGroupNames: scope.EmptyStringSet()},
 	}}
 	assignVPPInvitationResourceModel(context.Background(), managed, sampleAPI(), false)
 	if managed.Scope.Targets.JssUserGroupIDs.IsNull() || len(managed.Scope.Targets.JssUserGroupIDs.Elements()) != 1 {
@@ -95,6 +97,85 @@ func TestAssignResourceModel_ScopeOnlyWhenManaged(t *testing.T) {
 	}
 	if managed.Scope.Exclusions.DirectoryServiceUserGroupNames.IsNull() {
 		t.Error("exclusions DS names should be populated by name")
+	}
+	if !managed.Scope.Targets.JssUserIDs.IsNull() {
+		t.Errorf("undeclared jss_user_ids must stay null, got %v", managed.Scope.Targets.JssUserIDs)
+	}
+	if !managed.Scope.Targets.AllJssUsers.IsNull() {
+		t.Errorf("undeclared all_jss_users must stay null, got %v", managed.Scope.Targets.AllJssUsers)
+	}
+}
+
+// TestFlattenScope_ManagedRefreshUnmanagedStaysNull pins the per-category
+// read gate: a managed (non-null) category drift-refreshes from the wire; an
+// unmanaged (null) sibling in the same sub-block stays null so members
+// maintained in the admin UI never enter state.
+func TestFlattenScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
+	ctx := context.Background()
+	state := &scope.UserScopeModel{
+		Targets: &scope.UserScopeTargetsModel{
+			JssUserGroupIDs: mustStringSet(t, "999"), // managed, drift-refreshes
+		},
+		Exclusions: &scope.UserScopeExclusionsModel{
+			DirectoryServiceUserGroupNames: scope.EmptyStringSet(), // managed
+		},
+	}
+	flattenScope(ctx, sampleAPI().Scope, state, false)
+
+	var groupIDs []string
+	state.Targets.JssUserGroupIDs.ElementsAs(ctx, &groupIDs, false)
+	if len(groupIDs) != 1 || groupIDs[0] != "1" {
+		t.Errorf("managed jss_user_group_ids should drift-refresh from wire: got %v", groupIDs)
+	}
+	if !state.Targets.JssUserIDs.IsNull() {
+		t.Errorf("unmanaged jss_user_ids must stay null, got %v", state.Targets.JssUserIDs)
+	}
+	if !state.Targets.AllJssUsers.IsNull() {
+		t.Errorf("unmanaged all_jss_users must stay null, got %v", state.Targets.AllJssUsers)
+	}
+	var exclNames []string
+	state.Exclusions.DirectoryServiceUserGroupNames.ElementsAs(ctx, &exclNames, false)
+	if len(exclNames) != 1 || exclNames[0] != "Excluded LDAP" {
+		t.Errorf("managed exclusion DS names should refresh: got %v", exclNames)
+	}
+	if !state.Exclusions.JssUserIDs.IsNull() {
+		t.Errorf("unmanaged exclusion jss_user_ids must stay null, got %v", state.Exclusions.JssUserIDs)
+	}
+	if state.Limitations != nil {
+		t.Errorf("undeclared limitations block must stay nil, got %+v", state.Limitations)
+	}
+}
+
+// TestFlattenScope_HydrateAllForMergeBase pins the includeUnmanaged path: a
+// zero model hydrates every wire-present category — the shape Update uses to
+// build the read-merge-write base (and import / config generation use for
+// full visibility).
+func TestFlattenScope_HydrateAllForMergeBase(t *testing.T) {
+	ctx := context.Background()
+	state := &scope.UserScopeModel{}
+	flattenScope(ctx, sampleAPI().Scope, state, true)
+
+	if state.Targets == nil || state.Targets.AllJssUsers.IsNull() || state.Targets.AllJssUsers.ValueBool() {
+		t.Fatalf("expected all_jss_users hydrated false, got %+v", state.Targets)
+	}
+	var groupIDs []string
+	state.Targets.JssUserGroupIDs.ElementsAs(ctx, &groupIDs, false)
+	if len(groupIDs) != 1 || groupIDs[0] != "1" {
+		t.Errorf("expected jss_user_group_ids hydrated, got %v", groupIDs)
+	}
+	if state.Targets.JssUserIDs.IsNull() || len(state.Targets.JssUserIDs.Elements()) != 0 {
+		t.Errorf("expected wire-absent jss_user_ids hydrated to a known empty set, got %v", state.Targets.JssUserIDs)
+	}
+	if state.Limitations == nil || state.Limitations.DirectoryServiceUserGroupNames.IsNull() {
+		t.Fatalf("expected limitations hydrated, got %+v", state.Limitations)
+	}
+	if state.Exclusions == nil {
+		t.Fatal("expected exclusions allocated")
+	}
+	var exclNames []string
+	state.Exclusions.DirectoryServiceUserGroupNames.ElementsAs(ctx, &exclNames, false)
+	if len(exclNames) != 1 || exclNames[0] != "Excluded LDAP" {
+		t.Errorf("expected exclusion DS names hydrated, got %v", exclNames)
 	}
 }
 

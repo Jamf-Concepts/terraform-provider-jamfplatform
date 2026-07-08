@@ -46,9 +46,15 @@ func TestAssignPolicyResourceModel_MinimalPolicy(t *testing.T) {
 
 func TestAssignPolicyResourceModel_FlattensScopeIDs(t *testing.T) {
 	t.Parallel()
+	// computer_group_ids and building_ids are declared (managed) so their
+	// wire members refresh into state; undeclared sibling categories stay
+	// null under granular ownership.
 	state := &PolicyResourceModel{
 		General: &PolicyGeneralModel{Name: types.StringValue("tf-acc")},
-		Scope:   &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{}},
+		Scope: &scope.ComputerScopeModel{Targets: &scope.ComputerScopeTargetsModel{
+			ComputerGroupIDs: scope.EmptyStringSet(),
+			BuildingIDs:      scope.EmptyStringSet(),
+		}},
 	}
 	src := &proclassic.Policy{
 		ID:      new(7),
@@ -80,6 +86,119 @@ func TestAssignPolicyResourceModel_FlattensScopeIDs(t *testing.T) {
 	}
 	if got := len(state.Scope.Targets.BuildingIDs.Elements()); got != 1 {
 		t.Fatalf("expected 1 building id, got %d", got)
+	}
+	if !state.Scope.Targets.ComputerIDs.IsNull() {
+		t.Fatalf("undeclared computer_ids must stay null, got %v", state.Scope.Targets.ComputerIDs)
+	}
+}
+
+func TestFlattenPolicyScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// Managed categories carry a non-null current value (declared in config);
+	// everything else is null = unmanaged and must stay null.
+	state := &scope.ComputerScopeModel{
+		Targets: &scope.ComputerScopeTargetsModel{
+			ComputerIDs: scope.EmptyStringSet(), // managed, refreshes from wire
+		},
+		Limitations: &scope.ComputerScopeLimitationsModel{
+			NetworkSegmentIDs: stringSet(t, "9"), // managed, drift-refreshes
+		},
+		Exclusions: &scope.ComputerScopeExclusionsModel{
+			DirectoryServiceOrLocalUserNames: scope.EmptyStringSet(), // managed
+		},
+	}
+	src := &proclassic.PolicyScope{
+		AllComputers: new(false),
+		Computers: &proclassic.PolicyScopeComputers{
+			Computer: &[]proclassic.PolicyScopeComputersComputerItem{{ID: new(11)}, {ID: new(12)}},
+		},
+		ComputerGroups: &proclassic.PolicyScopeComputerGroups{
+			ComputerGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Limitations: &proclassic.PolicyScopeLimitations{
+			NetworkSegments: &proclassic.PolicyScopeLimitationsNetworkSegments{
+				NetworkSegment: &[]proclassic.IDName{{ID: new(2)}},
+			},
+		},
+		Exclusions: &proclassic.PolicyScopeExclusions{
+			Users: &proclassic.PolicyScopeExclusionsUsers{
+				User: &[]proclassic.PolicyScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
+	}
+	if diags := flattenPolicyScope(ctx, src, state, false); diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	var computerIDs []string
+	state.Targets.ComputerIDs.ElementsAs(ctx, &computerIDs, false)
+	if len(computerIDs) != 2 {
+		t.Errorf("managed computer_ids should refresh from wire: got %v", computerIDs)
+	}
+	if !state.Targets.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged computer_group_ids must stay null, got %v", state.Targets.ComputerGroupIDs)
+	}
+	if !state.Targets.AllComputers.IsNull() {
+		t.Errorf("unmanaged all_computers must stay null, got %v", state.Targets.AllComputers)
+	}
+	var segIDs []string
+	state.Limitations.NetworkSegmentIDs.ElementsAs(ctx, &segIDs, false)
+	if len(segIDs) != 1 || segIDs[0] != "2" {
+		t.Errorf("managed limitations network_segment_ids should drift-refresh: got %v", segIDs)
+	}
+	if !state.Limitations.IbeaconIDs.IsNull() {
+		t.Errorf("unmanaged limitations ibeacon_ids must stay null, got %v", state.Limitations.IbeaconIDs)
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("managed exclusion user names should refresh: got %v", exclUsers)
+	}
+	if !state.Exclusions.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusion computer_group_ids must stay null, got %v", state.Exclusions.ComputerGroupIDs)
+	}
+}
+
+func TestFlattenPolicyScope_HydrateAllForMergeBase(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	// includeUnmanaged=true hydrates every wire-present category into a zero
+	// model — the shape Update uses to build the read-merge-write base.
+	state := &scope.ComputerScopeModel{}
+	src := &proclassic.PolicyScope{
+		AllComputers: new(false),
+		ComputerGroups: &proclassic.PolicyScopeComputerGroups{
+			ComputerGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Exclusions: &proclassic.PolicyScopeExclusions{
+			Users: &proclassic.PolicyScopeExclusionsUsers{
+				User: &[]proclassic.PolicyScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
+	}
+	if diags := flattenPolicyScope(ctx, src, state, true); diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	if state.Targets == nil || state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
+		t.Fatalf("expected all_computers hydrated false, got %+v", state.Targets)
+	}
+	var groupIDs []string
+	state.Targets.ComputerGroupIDs.ElementsAs(ctx, &groupIDs, false)
+	if len(groupIDs) != 1 || groupIDs[0] != "5" {
+		t.Errorf("expected computer_group_ids hydrated, got %v", groupIDs)
+	}
+	if state.Exclusions == nil {
+		t.Fatal("expected exclusions allocated")
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("expected exclusion user names hydrated, got %v", exclUsers)
+	}
+	if state.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Limitations)
 	}
 }
 

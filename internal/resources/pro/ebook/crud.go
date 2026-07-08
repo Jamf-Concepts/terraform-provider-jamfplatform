@@ -19,6 +19,18 @@
 // retains the previously-stored block — a known ProClassic limitation. To clear
 // a block, null its individual fields rather than deleting the block.
 //
+// Scope is the exception: within a sent <scope> the server replaces the whole
+// subtree (wire-probed 2026-07-08 on /ebooks — any category element present,
+// even an empty one, wipes every omitted category across targets/limitations/
+// exclusions). Ebook's computer+mobile union is ONE subtree: a body carrying
+// only computer categories also wipes the mobile categories (probed). Scope
+// therefore uses per-category granular ownership: when the plan declares a
+// scope block, Update GETs the live object first and overlays the declared
+// categories onto the live scope (scope-only merge — no other section of the
+// read is echoed back), emitting every merged category explicitly. Omitted
+// categories stay owned by the admin UI; declared `[]` clears. See
+// STYLE_GUIDE.md §Scope helper omission semantics.
+//
 // Delete semantics: FIRE-AND-TRUST. The classic /ebooks DELETE is asynchronous
 // behind a MISLEADING response — the server returns HTTP 400 with body
 // <ebook><id>N</id></ebook> (no error envelope) even though it has ACCEPTED the
@@ -215,7 +227,28 @@ func (r *EbookResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	payload, buildDiags := buildEbookInput(updateCtx, plan)
+	// Granular scope ownership: a scope PUT replaces the whole subtree (both
+	// halves of the computer+mobile union), so undeclared (null) categories
+	// must be re-emitted from the live object to survive the write.
+	// Read-merge-write, scope-only — the wire plan carries the merged scope
+	// while `plan` (used for state) keeps only the declared categories. See
+	// the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetEbookByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro ebook before update", err.Error())
+			return
+		}
+		var serverScope *EbookScopeModel
+		if current != nil && current.Scope != nil {
+			serverScope = &EbookScopeModel{}
+			flattenEbookScope(updateCtx, current.Scope, serverScope, true)
+		}
+		wirePlan.Scope = mergeEbookScope(plan.Scope, serverScope)
+	}
+
+	payload, buildDiags := buildEbookInput(updateCtx, wirePlan)
 	resp.Diagnostics.Append(buildDiags...)
 	if resp.Diagnostics.HasError() {
 		return

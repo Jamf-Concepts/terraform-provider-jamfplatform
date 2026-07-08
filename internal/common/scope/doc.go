@@ -8,10 +8,17 @@
 //
 // Each scope block mirrors the Jamf Pro admin UI's three Scope tabs:
 // the all-flags and every per-category target set live inside a `targets`
-// sub-block, with `limitations` and `exclusions` as its siblings. `targets`
-// is Optional-only; the all-flags inside are Optional+Computed and use
-// UseNonNullStateForUnknown so the null→present transition on `targets` does
-// not trip a post-apply consistency error.
+// sub-block, with `limitations` and `exclusions` as its siblings. Every
+// attribute is Optional-only and follows per-category granular ownership:
+// a declared category (including `[]`) is owned by Terraform, an omitted
+// (null) category is left to the admin UI. Because the classic wire replaces
+// the whole scope subtree once any category element is present in a PUT
+// (wire-probed — see STYLE_GUIDE.md §Scope helper omission semantics), the
+// "leave it alone" half is synthesised at apply time: the consuming
+// resource's Update GETs the live scope, overlays the declared categories
+// via the Merge* helpers in this package, and emits every merged category
+// explicitly (empty wrappers included). Read-side, the RefreshManaged*
+// helpers keep unmanaged categories out of state.
 //
 // Sub-block items are modelled as flat Set<String> of IDs (or names for the
 // directory-service categories), not nested objects. Server-augmented <name>

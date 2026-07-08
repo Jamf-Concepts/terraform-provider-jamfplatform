@@ -169,7 +169,7 @@ func (r *MobileAppResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "App scope. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are not supported for mobile device apps.",
+				MarkdownDescription: "App scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_mobile_devices = true` forbids `mobile_device_ids`, `mobile_device_group_ids`, `building_ids`, `department_ids`. Setting `all_jss_users = true` forbids `user_ids` and `user_group_ids`. iBeacon limitations/exclusions are not supported for mobile device apps.",
 				Optional:            true,
 				Attributes:          scope.MobileScopeAttributes(scope.MobileScopeOptions{IncludeIbeacons: false}),
 			},

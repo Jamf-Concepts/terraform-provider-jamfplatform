@@ -19,10 +19,13 @@
 //     are OPT-OUT: null omits the block (retain), empty clears it, populated
 //     full-replaces it. The three collections are independent. Content item name
 //     is server-resolved — only adam_id is sent.
-//   - Scope is always-emitted as a full skeleton (empty elements clear) whenever
-//     the block is declared. limitations / exclusions directory_service user
-//     groups are NAME-keyed and get the plan-time DS preflight; jss_users /
-//     jss_user_groups are id-keyed Jamf objects.
+//   - Scope follows per-category granular ownership: a declared category
+//     (including `[]`, which clears) is owned by Terraform; an omitted (null)
+//     category is preserved via a scope-only read-merge-write in Update
+//     (wire-probed 2026-07-08: a scope PUT replaces the whole subtree once any
+//     category element is present, even empty). limitations / exclusions
+//     directory_service user groups are NAME-keyed and get the plan-time DS
+//     preflight; jss_users / jss_user_groups are id-keyed Jamf objects.
 package vpp_assignment
 
 import (
@@ -131,7 +134,7 @@ func (r *VPPAssignmentResource) Schema(ctx context.Context, req resource.SchemaR
 				ElementType: types.Int64Type,
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "User-based scope. Declaring this block puts the entire scope under management — any user, user group, or directory-service group not listed here is removed from the assignment.",
+				MarkdownDescription: "User-based scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it.",
 				Optional:            true,
 				Attributes:          scope.UserScopeAttributes(),
 			},

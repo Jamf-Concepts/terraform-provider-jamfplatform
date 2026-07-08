@@ -12,12 +12,12 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 // (id-keyed) plus the all_jss_users flag; limitations and exclusions carry
 // directory-service (LDAP) user groups by NAME.
 //
-// Write semantics (wire-probed): scope is ALWAYS-EMIT — the server merges on
-// PUT (omitting a collection retains it), and within a present collection the
-// write is a full replace. To make scope declarative, the resource's input
-// builder emits the full <scope> skeleton (empty elements to clear) whenever
-// this block is declared. A nil *UserScopeModel omits <scope> entirely and
-// leaves the server's scope untouched.
+// Write semantics (wire-probed): a scope PUT replaces the entire subtree once
+// any category element is present, so per-category ownership is synthesised
+// via read-merge-write — the resource's Update overlays declared categories
+// onto the live server scope (MergeUserScope) and emits the full <scope>
+// skeleton (empty elements clear). A nil *UserScopeModel omits <scope>
+// entirely and leaves the server's scope untouched.
 //
 // Consumed by vpp_invitation and vpp_assignment. The build/flatten glue stays
 // per-resource because VppInvitation* and VppAssignment* are distinct generated

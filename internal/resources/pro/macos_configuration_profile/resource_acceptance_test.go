@@ -213,6 +213,23 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 `, name, payload, jssUserID)
 }
 
+func configScopeClearJSSUsers(name, payload string) string {
+	return fmt.Sprintf(`
+resource "jamfplatform_pro_macos_configuration_profile" "test" {
+  general = {
+    name     = %q
+    payloads = <<EOF
+%sEOF
+  }
+  scope = {
+    targets = {
+      user_ids = []
+    }
+  }
+}
+`, name, payload)
+}
+
 func createDummyComputer(t *testing.T, name string) string {
 	t.Helper()
 	c := testhelpers.NewProClassicClient(t)
@@ -497,8 +514,8 @@ func TestAccResource_MacOSConfigurationProfile_DistributionMethodChange(t *testi
 }
 
 // TestAccResource_MacOSConfigurationProfile_ScopeWithComputerIDs — pins a
-// specific per-computer target via classic ID. Asserts the ID round-trips
-// and that all_computers stays false when targets are specified.
+// specific per-computer target via classic ID. Asserts the ID round-trips;
+// the undeclared all_computers toggle stays null (owned outside Terraform).
 func TestAccResource_MacOSConfigurationProfile_ScopeWithComputerIDs(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -558,8 +575,10 @@ func TestAccResource_MacOSConfigurationProfile_ScopeWithExclusions(t *testing.T)
 }
 
 // TestAccResource_MacOSConfigurationProfile_ScopeJSSUserAddRemove — add a Jamf
-// Pro user to the scope on first apply, drop the targets on the second. Exercises
-// the scope sub-block teardown path (Set → null).
+// Pro user to the scope on first apply, clear the category with a declared `[]`
+// on the second (omitting it would leave the user scoped, as configured outside
+// Terraform), then release the whole scope block on the third (state → null;
+// the live scope is left untouched).
 func TestAccResource_MacOSConfigurationProfile_ScopeJSSUserAddRemove(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -582,6 +601,17 @@ func TestAccResource_MacOSConfigurationProfile_ScopeJSSUserAddRemove(t *testing.
 				},
 			},
 			{
+				// Declared [] clears the category on the wire.
+				Config: configScopeClearJSSUsers(name, payload),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"jamfplatform_pro_macos_configuration_profile.test",
+						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("user_ids"),
+						knownvalue.SetExact([]knownvalue.Check{}),
+					),
+				},
+			},
+			{
 				Config: configMinimal(name, payload),
 			},
 		},
@@ -589,9 +619,9 @@ func TestAccResource_MacOSConfigurationProfile_ScopeJSSUserAddRemove(t *testing.
 }
 
 // TestAccResource_MacOSConfigurationProfile_ImportState — import by ID
-// without ImportStateVerify (per memory feedback_acc_import_optional_sections.md
-// the importer only populates general; scope and self_service stay null
-// until the user authors them, so ImportStateVerify would diff on those).
+// without ImportStateVerify: import hydrates every wire-present optional
+// section (scope with every category, self_service), while this minimal
+// config declares none of them, so a verify would legitimately diff.
 func TestAccResource_MacOSConfigurationProfile_ImportState(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -951,11 +981,12 @@ func TestAccResource_MacOSConfigurationProfile_AdminUIRemove_SurfacesAsDrift(t *
 }
 
 // TestAccResource_MacOSConfigurationProfile_ScopeLimitationsClearWithEmptySet
-// verifies that an all-empty but declared `limitations` block clears its
-// members. /osxconfigurationprofiles MERGES an omitted <limitations> sub-block
-// (wire-probed), so the build must emit an empty <limitations></limitations>;
-// otherwise the member is retained server-side and the apply fails the
-// post-apply consistency check. Uses a network-segment fixture (no LDAP needed).
+// verifies that a declared-but-empty category clears its members. Under
+// granular per-category scope ownership a declared `[]` is the clear gesture:
+// the build emits an explicit empty element, and the update's read-merge-write
+// re-emits every undeclared category so only the declared one changes.
+// Omitting the category instead would leave it as configured outside
+// Terraform. Uses a network-segment fixture (no LDAP needed).
 func TestAccResource_MacOSConfigurationProfile_ScopeLimitationsClearWithEmptySet(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -996,8 +1027,9 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_macos_configuration_profile.test", "scope.limitations.network_segment_ids.#", "1"),
 			},
 			{
-				// Clear to [] — declared-but-empty <limitations> must be emitted so
-				// the merge endpoint clears. Implicit post-step empty-plan enforces it.
+				// Clear to [] — the declared-but-empty category must be emitted
+				// as an explicit empty element so the subtree replace clears it.
+				// Implicit post-step empty-plan enforces the round-trip.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_macos_configuration_profile.test", "scope.limitations.network_segment_ids.#", "0"),
 			},

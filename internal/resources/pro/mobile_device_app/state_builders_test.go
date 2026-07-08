@@ -156,12 +156,20 @@ func TestAssignMobileAppResourceModel_IncludeUnmanagedHydratesFromScratch(t *tes
 	}
 }
 
-func TestFlattenMobileAppScope_RoundTrip(t *testing.T) {
+func TestFlattenMobileAppScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
 	ctx := context.Background()
+	// Managed categories carry a non-null current value (declared in config);
+	// everything else is null = unmanaged and must stay null.
 	state := &scope.MobileScopeModelNoIbeacons{
-		Targets:     &scope.MobileScopeTargetsModel{},
-		Limitations: &scope.MobileScopeLimitationsModelNoIbeacons{},
-		Exclusions:  &scope.MobileScopeExclusionsModelNoIbeacons{},
+		Targets: &scope.MobileScopeTargetsModel{
+			MobileDeviceIDs: scope.EmptyStringSet(), // managed, refreshes from wire
+		},
+		Limitations: &scope.MobileScopeLimitationsModelNoIbeacons{
+			NetworkSegmentIDs: idSet("9"), // managed, drift-refreshes
+		},
+		Exclusions: &scope.MobileScopeExclusionsModelNoIbeacons{
+			DirectoryServiceOrLocalUserNames: scope.EmptyStringSet(), // managed
+		},
 	}
 	s := &proclassic.MobileDeviceApplicationScope{
 		AllMobileDevices: new(false),
@@ -187,17 +195,65 @@ func TestFlattenMobileAppScope_RoundTrip(t *testing.T) {
 	var mdIDs []string
 	state.Targets.MobileDeviceIDs.ElementsAs(ctx, &mdIDs, false)
 	if len(mdIDs) != 2 {
-		t.Errorf("mobile_device_ids: got %v", mdIDs)
+		t.Errorf("managed mobile_device_ids should refresh from wire: got %v", mdIDs)
+	}
+	if !state.Targets.MobileDeviceGroupIDs.IsNull() {
+		t.Errorf("unmanaged mobile_device_group_ids must stay null, got %v", state.Targets.MobileDeviceGroupIDs)
+	}
+	if !state.Targets.AllMobileDevices.IsNull() {
+		t.Errorf("unmanaged all_mobile_devices must stay null, got %v", state.Targets.AllMobileDevices)
 	}
 	var segIDs []string
 	state.Limitations.NetworkSegmentIDs.ElementsAs(ctx, &segIDs, false)
 	if len(segIDs) != 1 || segIDs[0] != "2" {
-		t.Errorf("limitations network_segment_ids: got %v", segIDs)
+		t.Errorf("managed limitations network_segment_ids should drift-refresh: got %v", segIDs)
 	}
 	var exclUsers []string
 	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
 	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
-		t.Errorf("exclusion user names: got %v", exclUsers)
+		t.Errorf("managed exclusion user names should refresh: got %v", exclUsers)
+	}
+	if !state.Exclusions.MobileDeviceGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusion mobile_device_group_ids must stay null, got %v", state.Exclusions.MobileDeviceGroupIDs)
+	}
+}
+
+func TestFlattenMobileAppScope_HydrateAllForMergeBase(t *testing.T) {
+	ctx := context.Background()
+	// includeUnmanaged=true hydrates every wire-present category into a zero
+	// model — the shape Update uses to build the read-merge-write base.
+	state := &scope.MobileScopeModelNoIbeacons{}
+	s := &proclassic.MobileDeviceApplicationScope{
+		AllMobileDevices: new(false),
+		MobileDeviceGroups: &proclassic.MobileDeviceApplicationScopeMobileDeviceGroups{
+			MobileDeviceGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Exclusions: &proclassic.MobileDeviceApplicationScopeExclusions{
+			Users: &proclassic.MobileDeviceApplicationScopeExclusionsUsers{
+				User: &[]proclassic.MobileDeviceApplicationScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
+	}
+	flattenMobileAppScope(ctx, s, state, true)
+
+	if state.Targets == nil || state.Targets.AllMobileDevices.IsNull() || state.Targets.AllMobileDevices.ValueBool() {
+		t.Fatalf("expected all_mobile_devices hydrated false, got %+v", state.Targets)
+	}
+	var groupIDs []string
+	state.Targets.MobileDeviceGroupIDs.ElementsAs(ctx, &groupIDs, false)
+	if len(groupIDs) != 1 || groupIDs[0] != "5" {
+		t.Errorf("expected mobile_device_group_ids hydrated, got %v", groupIDs)
+	}
+	if state.Exclusions == nil {
+		t.Fatal("expected exclusions allocated")
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("expected exclusion user names hydrated, got %v", exclUsers)
+	}
+	if state.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Limitations)
 	}
 }
 

@@ -106,31 +106,75 @@ func TestBuildInput_ContentOptOut(t *testing.T) {
 	}
 }
 
-// TestBuildScope_AlwaysEmitsSkeleton verifies the always-emit contract: when the
-// scope block is declared, every collection wrapper is present (empty inner slice
-// when the set is null/empty) so the server full-replaces and clears.
-func TestBuildScope_AlwaysEmitsSkeleton(t *testing.T) {
-	plan := VPPAssignmentResourceModel{
+// TestBuildScope_DeclaredCategoriesOnly pins the granular Create contract: an
+// undeclared (null) category leaves its element off the body entirely (the
+// admin-UI-owned members survive), while a declared `[]` emits an explicit
+// empty element (the clear gesture). A scope block with nothing declared at
+// all collapses to nil so <scope> is omitted.
+func TestBuildScope_DeclaredCategoriesOnly(t *testing.T) {
+	// Nothing declared → <scope> omitted entirely.
+	empty := VPPAssignmentResourceModel{
 		Name:              types.StringValue("x"),
 		VPPAdminAccountID: types.StringValue("3"),
 		Scope:             &scope.UserScopeModel{}, // empty block, all sets null
 	}
+	in, _ := buildVPPAssignmentInput(context.Background(), empty)
+	if in.Scope != nil {
+		t.Fatalf("scope with nothing declared must omit <scope>, got %+v", in.Scope)
+	}
+
+	// jss_user_ids declared `[]` (clear), jss_user_group_ids undeclared (null).
+	plan := VPPAssignmentResourceModel{
+		Name:              types.StringValue("x"),
+		VPPAdminAccountID: types.StringValue("3"),
+		Scope: &scope.UserScopeModel{
+			Targets: &scope.UserScopeTargetsModel{
+				JssUserIDs: scope.EmptyStringSet(),
+			},
+		},
+	}
+	in, _ = buildVPPAssignmentInput(context.Background(), plan)
+	if in.Scope == nil {
+		t.Fatal("declared category must emit <scope>")
+	}
+	if in.Scope.JssUsers == nil || in.Scope.JssUsers.User == nil || len(*in.Scope.JssUsers.User) != 0 {
+		t.Errorf("declared [] jss_user_ids must emit an explicit empty element, got %+v", in.Scope.JssUsers)
+	}
+	if in.Scope.JssUserGroups != nil {
+		t.Errorf("undeclared jss_user_group_ids must omit its element, got %+v", in.Scope.JssUserGroups)
+	}
+	if in.Scope.Limitations != nil || in.Scope.Exclusions != nil {
+		t.Errorf("undeclared limitations/exclusions must be omitted, got %+v / %+v", in.Scope.Limitations, in.Scope.Exclusions)
+	}
+}
+
+// TestBuildScope_MergedModelEmitsFullSkeleton verifies the Update wire path:
+// the scope.MergeUserScope output is fully non-null, so the builder emits
+// every category explicitly (empty elements for empty categories) without any
+// always-emit special-casing — the full skeleton emerges from the merge.
+func TestBuildScope_MergedModelEmitsFullSkeleton(t *testing.T) {
+	plan := VPPAssignmentResourceModel{
+		Name:              types.StringValue("x"),
+		VPPAdminAccountID: types.StringValue("3"),
+		Scope:             scope.MergeUserScope(&scope.UserScopeModel{}, nil),
+	}
 	in, _ := buildVPPAssignmentInput(context.Background(), plan)
 	if in.Scope == nil {
-		t.Fatal("declared scope must emit <scope>")
+		t.Fatal("merged scope must emit <scope>")
 	}
-	if in.Scope.JssUsers == nil || in.Scope.JssUserGroups == nil {
-		t.Error("target wrappers must always be present")
+	if in.Scope.AllJssUsers == nil {
+		t.Error("merged all_jss_users must be emitted")
 	}
-	if in.Scope.JssUsers.User != nil {
-		t.Error("empty jss_user_ids must yield an empty (nil-slice) wrapper")
+	if in.Scope.JssUsers == nil || in.Scope.JssUsers.User == nil ||
+		in.Scope.JssUserGroups == nil || in.Scope.JssUserGroups.UserGroup == nil {
+		t.Error("merged target categories must emit explicit (empty) elements")
 	}
 	if in.Scope.Limitations == nil || in.Scope.Limitations.UserGroups == nil {
-		t.Error("limitations wrapper must always be present")
+		t.Error("merged limitations must emit an explicit (empty) element")
 	}
 	if in.Scope.Exclusions == nil || in.Scope.Exclusions.JssUsers == nil ||
 		in.Scope.Exclusions.JssUserGroups == nil || in.Scope.Exclusions.UserGroups == nil {
-		t.Error("all exclusion wrappers must always be present")
+		t.Error("merged exclusions must emit explicit (empty) elements")
 	}
 }
 
@@ -173,6 +217,10 @@ func TestBuildScope_PopulatedTargetsAndNameKeyedGroups(t *testing.T) {
 	exDS := in.Scope.Exclusions.UserGroups.UserGroup
 	if exDS == nil || len(*exDS) != 1 || (*exDS)[0].Name == nil || *(*exDS)[0].Name != "Excluded LDAP Group" {
 		t.Errorf("exclusions DS group not name-carried: %+v", exDS)
+	}
+	// exclusions.jss_user_groups undeclared (null) → element omitted.
+	if in.Scope.Exclusions.JssUserGroups != nil {
+		t.Errorf("undeclared exclusions jss_user_group_ids must omit its element, got %+v", in.Scope.Exclusions.JssUserGroups)
 	}
 }
 

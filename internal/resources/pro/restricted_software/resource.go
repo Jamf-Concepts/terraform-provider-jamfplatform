@@ -82,17 +82,16 @@ func (r *RestrictedSoftwareResource) IdentitySchema(ctx context.Context, req res
 // UI); the differing wire element names are noted in the attribute descriptions.
 func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	// Scope > Targets sub-block: the all_computers flag plus the per-category
-	// ID sets. UseNonNullStateForUnknown (not UseStateForUnknown) is mandatory:
-	// the `targets` block can transition null→present, and carrying a null prior
-	// state forward trips a "was null, but now …" consistency error at apply.
-	// The AllFlagConflictsWith relative paths are unchanged — they resolve
-	// against their siblings inside `targets`.
+	// ID sets. Every attribute is Optional-only, matching the shared factories
+	// in internal/common/scope: the null/`[]` (or null/`false`) distinction
+	// carries the granular per-category ownership contract, so nothing here may
+	// be Computed or carry a state-forwarding plan modifier (see STYLE_GUIDE.md
+	// §Scope helper). The AllFlagConflictsWith relative paths resolve against
+	// their siblings inside `targets`.
 	targets := map[string]schema.Attribute{
 		"all_computers": schema.BoolAttribute{
-			MarkdownDescription: "Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.",
+			MarkdownDescription: "Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true. Omit to leave the toggle as configured outside Terraform.",
 			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				scope.AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("computer_ids"),
@@ -185,7 +184,7 @@ func (r *RestrictedSoftwareResource) Schema(ctx context.Context, req resource.Sc
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software.",
+				MarkdownDescription: "Scope — the \"Scope\" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software.",
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"targets": schema.SingleNestedAttribute{

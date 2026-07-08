@@ -14,9 +14,15 @@ import (
 )
 
 // buildRestrictedSoftwareInput projects a plan model into an SDK
-// *proclassic.RestrictedSoftware suitable for Create / Update. Scope follows
-// the omission rules in STYLE_GUIDE.md §Scope helper: nil-pointer sub-blocks
-// suppress wire emission; empty child collections collapse up to a nil parent.
+// *proclassic.RestrictedSoftware suitable for Create / Update. Scope
+// categories follow the granular-ownership omission rules in STYLE_GUIDE.md
+// §Scope helper: a null (unmanaged) category is omitted from the body; a
+// declared category — including `[]`, via BuildIDSlice/BuildNameSlice
+// returning a non-nil empty slice — is emitted explicitly, empty wrapper and
+// all, because the scope subtree replaces wholesale once any category element
+// is present. On Update the caller passes a plan whose Scope is the
+// read-merge-write merged model, so every category is non-null and the full
+// explicit skeleton is emitted.
 func buildRestrictedSoftwareInput(ctx context.Context, plan RestrictedSoftwareResourceModel) (*proclassic.RestrictedSoftware, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := &proclassic.RestrictedSoftware{}
@@ -140,11 +146,10 @@ func buildScopeExclusions(ctx context.Context, m *RestrictedSoftwareScopeExclusi
 	}
 
 	// Always emit the block when the user declared `exclusions` (the caller's
-	// gate). The classic /restrictedsoftware endpoint MERGES an omitted
-	// <exclusions> sub-block (wire-probed), so collapsing an all-empty block to
-	// nil would retain the server's existing members. An empty
-	// <exclusions></exclusions> clears every category, which is what `[]` /
-	// omission means. (Target categories are direct <scope> children and replace
-	// on omit — no such handling needed.)
+	// gate): a scope PUT replaces the whole subtree once any category element
+	// is present (wire-probed 2026-07-08), so a declared-but-empty block must
+	// land as an explicit <exclusions></exclusions> — the clear gesture for
+	// `[]`. Undeclared (null) categories inside a declared block are handled by
+	// the Update merge, which re-emits the live members.
 	return e, diags
 }

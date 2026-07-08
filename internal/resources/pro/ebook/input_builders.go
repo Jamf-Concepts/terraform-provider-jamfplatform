@@ -16,9 +16,14 @@ import (
 // buildEbookInput projects a plan EbookResourceModel into an SDK
 // *proclassic.EbookPost suitable for Create / Update. The full plan is sent on
 // every write (classic PUT is a partial-merge, so omission never clears — see
-// crud.go header). Scope sub-blocks follow the omission rules in STYLE_GUIDE.md
-// §Scope helper: nil-pointer sub-blocks suppress wire emission; empty child
-// collections collapse all the way up to a nil parent.
+// crud.go header). Scope categories follow the granular-ownership omission
+// rules in STYLE_GUIDE.md §Scope helper: a null (unmanaged) category is
+// omitted from the body; a declared category — including `[]`, via
+// BuildIDSlice/BuildNameSlice returning a non-nil empty slice — is emitted
+// explicitly, empty wrapper and all, because the scope subtree replaces
+// wholesale once any category element is present. On Update the caller passes
+// a plan whose Scope is the read-merge-write merged model, so every category
+// is non-null and the full explicit skeleton is emitted.
 func buildEbookInput(ctx context.Context, plan EbookResourceModel) (*proclassic.EbookPost, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	out := &proclassic.EbookPost{}
@@ -185,10 +190,11 @@ func buildEbookScopeLimitations(ctx context.Context, m *EbookScopeLimitationsMod
 	}
 
 	// Always emit the block when the user declared `limitations` (the caller's
-	// gate). The classic /ebooks endpoint MERGES an omitted sub-block (wire-
-	// probed), so collapsing an all-empty block to nil would retain the server's
-	// existing members instead of clearing them. An empty <limitations></limitations>
-	// clears every category, which is what `[]` / omission means.
+	// gate): a scope PUT replaces the whole subtree once any category element is
+	// present (wire-probed 2026-07-08), so a declared-but-empty block must land
+	// as an explicit <limitations></limitations> — the clear gesture for `[]`.
+	// Undeclared (null) categories inside a declared block are handled by the
+	// Update merge, which re-emits the live members.
 	return l, diags
 }
 

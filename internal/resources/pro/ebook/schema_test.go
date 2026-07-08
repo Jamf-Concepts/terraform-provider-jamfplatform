@@ -138,7 +138,9 @@ func TestEbookResource_ScopeIsDualTargetUnion(t *testing.T) {
 		}
 	}
 
-	// All three all-flags must carry a validator (the AllFlagConflictsWith guard).
+	// All three all-flags must carry a validator (the AllFlagConflictsWith
+	// guard) and be Optional-only — the null/false distinction carries the
+	// granular per-category ownership contract, so Computed is forbidden.
 	for _, name := range []string{"all_computers", "all_mobile_devices", "all_jss_users"} {
 		ba, ok := targetsAttr.Attributes[name].(schema.BoolAttribute)
 		if !ok {
@@ -147,6 +149,9 @@ func TestEbookResource_ScopeIsDualTargetUnion(t *testing.T) {
 		}
 		if len(ba.Validators) == 0 {
 			t.Errorf("scope.targets.%s must declare an all-flag conflict validator", name)
+		}
+		if !ba.IsOptional() || ba.IsComputed() {
+			t.Errorf("scope.targets.%s must be Optional-only (ownership contract), got optional=%v computed=%v", name, ba.IsOptional(), ba.IsComputed())
 		}
 	}
 }
