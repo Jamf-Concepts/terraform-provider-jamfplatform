@@ -87,7 +87,7 @@ func (r *LicensedSoftwareResource) Create(ctx context.Context, req resource.Crea
 		resp.Diagnostics.AddError("Error reading created Jamf Pro licensed software", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(createCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -163,7 +163,15 @@ func (r *LicensedSoftwareResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
-	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(readCtx, &state, got)...)
+	// firstHydration detects an unpopulated incoming model (see mac_app_store_app
+	// / policy for the full rationale): name is schema-Required (no nested
+	// general block on this resource) and always populated in genuinely
+	// managed state, so state.Name.IsNull() can only mean this Read call is
+	// doing first-time import hydration. Hydrate the wire-present optional
+	// software_definitions/licenses lists in that case; subsequent Reads
+	// revert to only refreshing lists the current state already tracks.
+	firstHydration := state.Name.IsNull()
+	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -209,7 +217,7 @@ func (r *LicensedSoftwareResource) Update(ctx context.Context, req resource.Upda
 		resp.Diagnostics.AddError("Error reading updated Jamf Pro licensed software", err.Error())
 		return
 	}
-	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(updateCtx, &plan, got)...)
+	resp.Diagnostics.Append(assignLicensedSoftwareResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

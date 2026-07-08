@@ -23,16 +23,16 @@ import (
 // when the incoming model already manages it (non-nil — plan on create/update,
 // prior state on read). When the user did not author the list (nil), it is left
 // null and the server's echo is ignored, so an unmanaged collection does not
-// surface as drift. This mirrors the scope-omission pattern; the trade-off is
-// that `terraform import` leaves both lists unmanaged (the importer has no prior
-// model), so they must be re-declared to take ownership.
+// surface as drift. This mirrors the scope-omission pattern.
 //
-// Within a managed list, user-authored strings adopt the configured value when
-// set, else the wire value with "" collapsed to null. The purchasing block is
-// only surfaced when the corresponding prior element already managed it — the
-// server echoes a default <purchasing> on every licence, so populating an
-// unmanaged one would violate the framework's "inconsistent result" check.
-func assignLicensedSoftwareResourceModel(ctx context.Context, state *LicensedSoftwareResourceModel, ls *proclassic.LicensedSoftware) diag.Diagnostics {
+// firstHydration is true only on a fresh import (see the Read caller): the
+// incoming model has no prior list to correlate against, but flattenDefinitions
+// / flattenLicenses already treat a positional index beyond the prior list's
+// length as "nothing to prefer, take the wire value" (see their `i < len(prior)`
+// bound checks) — so seeding an EMPTY (not nil) placeholder list is sufficient
+// to flip the managed gate on and let every element hydrate from the wire, with
+// no need to know the list's length up front.
+func assignLicensedSoftwareResourceModel(ctx context.Context, state *LicensedSoftwareResourceModel, ls *proclassic.LicensedSoftware, firstHydration bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if ls == nil {
 		return diags
@@ -42,6 +42,14 @@ func assignLicensedSoftwareResourceModel(ctx context.Context, state *LicensedSof
 	// both the managed/unmanaged signal and the positional correlation source.
 	priorDefs := state.SoftwareDefinitions
 	priorLicenses := state.Licenses
+	if firstHydration {
+		if priorDefs == nil && ls.SoftwareDefinitions != nil {
+			priorDefs = []LicensedSoftwareDefinitionModel{}
+		}
+		if priorLicenses == nil && ls.Licenses != nil {
+			priorLicenses = []LicensedSoftwareLicenseModel{}
+		}
+	}
 
 	if id := extractLicensedSoftwareID(ls); id != "" {
 		state.ID = types.StringValue(id)

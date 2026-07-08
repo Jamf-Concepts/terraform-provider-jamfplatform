@@ -127,7 +127,7 @@ func TestAssign_CreatePath_RoundTrip(t *testing.T) {
 		},
 	}
 
-	if diags := assignLicensedSoftwareResourceModel(context.Background(), plan, wireRecord()); diags.HasError() {
+	if diags := assignLicensedSoftwareResourceModel(context.Background(), plan, wireRecord(), false); diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
 
@@ -201,27 +201,56 @@ func TestAssign_CreatePath_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestAssign_ImportPath_LeavesListsUnmanaged exercises import (no prior model):
-// the opt-out gating leaves software_definitions and licenses unmanaged (null)
-// even though the server echoes them, so they must be re-declared to be managed.
-// The Computed computers echo is still surfaced.
-func TestAssign_ImportPath_LeavesListsUnmanaged(t *testing.T) {
+// TestAssign_ImportPath_HydratesLists exercises first-time import hydration (no
+// prior model, firstHydration=true — see the import-hydration fix): with no
+// prior list to correlate against, software_definitions and licenses must
+// still populate from the wire (an empty, non-nil placeholder list is enough to
+// flip the managed gate on; flattenDefinitions/flattenLicenses's `i < len(prior)`
+// bound check naturally falls through to the wire value for every element).
+// Before the fix, these stayed permanently null after any import regardless of
+// config, matching issue #278's root cause for the other 12 resources.
+func TestAssign_ImportPath_HydratesLists(t *testing.T) {
 	state := &LicensedSoftwareResourceModel{} // no prior nested lists (import)
 
-	if diags := assignLicensedSoftwareResourceModel(context.Background(), state, wireRecord()); diags.HasError() {
+	if diags := assignLicensedSoftwareResourceModel(context.Background(), state, wireRecord(), true); diags.HasError() {
 		t.Fatalf("unexpected diags: %v", diags)
 	}
 
-	if state.SoftwareDefinitions != nil {
-		t.Errorf("software_definitions = %+v on import, want nil (unmanaged)", state.SoftwareDefinitions)
-	}
-	if state.Licenses != nil {
-		t.Errorf("licenses = %+v on import, want nil (unmanaged)", state.Licenses)
-	}
-	// Header still flattens, and the Computed computers echo is surfaced.
 	if state.Name.ValueString() != "ZZ-Probe-LicSW" {
 		t.Errorf("name = %v, want ZZ-Probe-LicSW", state.Name)
 	}
+
+	if len(state.SoftwareDefinitions) != 1 {
+		t.Fatalf("software_definitions len = %d, want 1", len(state.SoftwareDefinitions))
+	}
+	if got := state.SoftwareDefinitions[0].Name.ValueString(); got != "SoftA" {
+		t.Errorf("software_definitions[0].name = %q, want SoftA", got)
+	}
+
+	if len(state.Licenses) != 2 {
+		t.Fatalf("licenses len = %d, want 2", len(state.Licenses))
+	}
+	a, b := state.Licenses[0], state.Licenses[1]
+	if got := a.SerialNumber1.ValueString(); got != "SER-A1" {
+		t.Errorf("license[0].serial_number_1 = %q, want SER-A1", got)
+	}
+	// No prior at all (import): the echoed <purchasing> on EVERY licence is
+	// surfaced faithfully, including the bare licence's default-shaped block —
+	// there is nothing declared yet to compare against, so there is no
+	// "unmanaged echo" to suppress.
+	if a.Purchasing == nil {
+		t.Fatal("license[0].purchasing = nil, want populated on import")
+	}
+	if a.Purchasing.LicenseTerm.ValueString() != "perpetual" {
+		t.Errorf("license[0].license_term = %v, want perpetual", a.Purchasing.LicenseTerm)
+	}
+	if b.Purchasing == nil {
+		t.Fatal("license[1].purchasing = nil, want populated on import (default-shaped echo, faithfully surfaced)")
+	}
+	if b.Purchasing.LicenseTerm.ValueString() != "perpetual" {
+		t.Errorf("license[1].license_term = %v, want perpetual", b.Purchasing.LicenseTerm)
+	}
+
 	if state.Computers.IsNull() || len(state.Computers.Elements()) != 1 {
 		t.Errorf("computers = %v, want one known entry", state.Computers)
 	}
