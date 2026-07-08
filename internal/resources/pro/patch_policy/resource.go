@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -55,7 +54,6 @@ type PatchPolicyResource struct {
 var _ resource.Resource = &PatchPolicyResource{}
 var _ resource.ResourceWithImportState = &PatchPolicyResource{}
 var _ resource.ResourceWithIdentity = &PatchPolicyResource{}
-var _ resource.ResourceWithModifyPlan = &PatchPolicyResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -384,42 +382,4 @@ func (r *PatchPolicyResource) Configure(ctx context.Context, req resource.Config
 // ImportState handles import by the Jamf Pro patch policy ID.
 func (r *PatchPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-}
-
-// ModifyPlan surfaces the granular-ownership co-managed scope check: undeclared
-// scope categories are preserved silently on apply (read-merge-write), so any
-// that currently have members configured outside Terraform are listed in one
-// plan-time warning. Update plans only (state exists), best-effort — a read
-// failure never blocks the plan. No-op on destroy (null plan) and when no scope
-// block is declared.
-func (r *PatchPolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if r.client == nil || req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {
-		return
-	}
-
-	var plan PatchPolicyResourceModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() || plan.Scope == nil {
-		return
-	}
-
-	var state PatchPolicyResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	if state.ID.IsNull() || state.ID.ValueString() == "" {
-		return
-	}
-	current, err := r.client.GetPatchPolicyByID(ctx, state.ID.ValueString())
-	if err != nil || current == nil || current.Scope == nil {
-		if err != nil {
-			tflog.Debug(ctx, "skipping co-managed scope check: read failed", map[string]any{"error": err.Error()})
-		}
-		return
-	}
-	serverScope := &PatchPolicyScopeModel{}
-	flattenScope(ctx, current.Scope, serverScope, true)
-	scope.WarnUnmanagedCategories(&resp.Diagnostics, path.Root("scope"),
-		unmanagedPatchPolicyScopeCategories(plan.Scope, serverScope))
 }

@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
@@ -639,35 +638,6 @@ func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 			ctx, r.ldapSearcher, plan.Scope.Exclusions.DirectoryServiceUserGroupNames,
 			scopeRoot.AtName("exclusions").AtName("directory_service_user_group_names"),
 		)...)
-	}
-
-	// Granular-ownership visibility: undeclared scope categories are preserved
-	// silently on apply (read-merge-write), so surface any that currently have
-	// members configured outside Terraform. Update plans only (state exists),
-	// best-effort — a read failure never blocks the plan.
-	if r.client != nil && !req.State.Raw.IsNull() {
-		var state PolicyResourceModel
-		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if state.ID.IsNull() || state.ID.ValueString() == "" {
-			return
-		}
-		current, err := r.client.GetPolicyByID(ctx, state.ID.ValueString())
-		if err != nil || current == nil || current.Scope == nil {
-			if err != nil {
-				tflog.Debug(ctx, "skipping co-managed scope check: read failed", map[string]any{"error": err.Error()})
-			}
-			return
-		}
-		serverScope := &scope.ComputerScopeModel{}
-		resp.Diagnostics.Append(flattenPolicyScope(ctx, current.Scope, serverScope, true)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		scope.WarnUnmanagedCategories(&resp.Diagnostics, scopeRoot,
-			scope.UnmanagedComputerScopeCategories(plan.Scope, serverScope))
 	}
 }
 

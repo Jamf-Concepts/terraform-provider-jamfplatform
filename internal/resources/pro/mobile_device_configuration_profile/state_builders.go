@@ -115,7 +115,7 @@ func flattenGeneral(g *proclassic.MobileDeviceConfigurationProfileGeneral, state
 
 // flattenScope refreshes the scope sub-blocks the caller already manages.
 // When includeUnmanaged is set (import hydration, config generation, the
-// co-managed-scope plan check, and the Update merge base) every wire-present
+// and the Update merge base) every wire-present
 // sub-block is first allocated so the from-scratch read hydrates the full
 // scope rather than leaving unmanaged targets/limitations/exclusions null.
 func flattenScope(ctx context.Context, s *proclassic.MobileDeviceConfigurationProfileScope, state *scope.MobileScopeModel, includeUnmanaged bool) diag.Diagnostics {

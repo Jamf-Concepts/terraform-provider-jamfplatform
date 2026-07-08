@@ -135,7 +135,7 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 
 // flattenMobileAppScope refreshes the scope sub-blocks the caller already
 // manages. When includeUnmanaged is set (import hydration, config generation,
-// the co-managed-scope plan check, and the Update merge base) every
+// and the Update merge base) every
 // wire-present sub-block is first allocated so the from-scratch read hydrates
 // the full scope rather than leaving unmanaged targets/limitations/exclusions
 // null.

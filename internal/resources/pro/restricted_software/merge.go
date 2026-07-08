@@ -102,37 +102,3 @@ func mergeRestrictedSoftwareScope(plan, server *RestrictedSoftwareScopeModel) *R
 		},
 	}
 }
-
-// appendUnmanagedFlag appends label to list when the declared plan flag is
-// null (unmanaged) and the live flag is true — co-managed state worth
-// surfacing. Local reimplement of the unexported shared-scope helper.
-func appendUnmanagedFlag(list []string, label string, declared, server types.Bool) []string {
-	if declared.IsNull() && server.ValueBool() {
-		return append(list, label)
-	}
-	return list
-}
-
-// unmanagedRestrictedSoftwareScopeCategories lists the categories of a live
-// restricted-software scope that the declared plan leaves unmanaged. plan must
-// be non-nil; server is the hydrate-all flatten of the live object's scope
-// (nil means an empty live scope — nothing to report).
-func unmanagedRestrictedSoftwareScopeCategories(plan, server *RestrictedSoftwareScopeModel) []string {
-	if plan == nil || server == nil {
-		return nil
-	}
-	var out []string
-	pt, st := plan.TargetsOrZero(), server.TargetsOrZero()
-	out = appendUnmanagedFlag(out, "targets.all_computers", pt.AllComputers, st.AllComputers)
-	out = scope.AppendUnmanagedCategory(out, "targets.computer_ids", pt.ComputerIDs, st.ComputerIDs)
-	out = scope.AppendUnmanagedCategory(out, "targets.computer_group_ids", pt.ComputerGroupIDs, st.ComputerGroupIDs)
-	out = scope.AppendUnmanagedCategory(out, "targets.building_ids", pt.BuildingIDs, st.BuildingIDs)
-	out = scope.AppendUnmanagedCategory(out, "targets.department_ids", pt.DepartmentIDs, st.DepartmentIDs)
-	pe, se := derefOrZero(plan.Exclusions), derefOrZero(server.Exclusions)
-	out = scope.AppendUnmanagedCategory(out, "exclusions.computer_ids", pe.ComputerIDs, se.ComputerIDs)
-	out = scope.AppendUnmanagedCategory(out, "exclusions.computer_group_ids", pe.ComputerGroupIDs, se.ComputerGroupIDs)
-	out = scope.AppendUnmanagedCategory(out, "exclusions.building_ids", pe.BuildingIDs, se.BuildingIDs)
-	out = scope.AppendUnmanagedCategory(out, "exclusions.department_ids", pe.DepartmentIDs, se.DepartmentIDs)
-	out = scope.AppendUnmanagedCategory(out, "exclusions.directory_service_or_local_user_names", pe.DirectoryServiceOrLocalUserNames, se.DirectoryServiceOrLocalUserNames)
-	return out
-}

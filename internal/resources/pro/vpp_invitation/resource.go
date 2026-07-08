@@ -43,7 +43,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
@@ -205,8 +204,7 @@ func (r *VPPInvitationResource) Configure(ctx context.Context, req resource.Conf
 // scope limitations / exclusions name sets — surfacing an unknown group as a
 // clear plan error instead of the apply-time 409. Best-effort: search errors /
 // unconfigured LDAP downgrade to a warning. No-op on destroy and when no scope
-// groups are declared. It also surfaces the co-managed-scope warning for
-// update plans.
+// groups are declared.
 func (r *VPPInvitationResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if r.ldapSearcher == nil || req.Plan.Raw.IsNull() {
 		return
@@ -228,32 +226,6 @@ func (r *VPPInvitationResource) ModifyPlan(ctx context.Context, req resource.Mod
 			ctx, r.ldapSearcher, plan.Scope.Exclusions.DirectoryServiceUserGroupNames,
 			scopeRoot.AtName("exclusions").AtName("directory_service_user_group_names"),
 		)...)
-	}
-
-	// Granular-ownership visibility: undeclared scope categories are preserved
-	// silently on apply (read-merge-write), so surface any that currently have
-	// members configured outside Terraform. Update plans only (state exists),
-	// best-effort — a read failure never blocks the plan.
-	if r.client != nil && !req.State.Raw.IsNull() {
-		var state VPPInvitationResourceModel
-		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		if state.ID.IsNull() || state.ID.ValueString() == "" {
-			return
-		}
-		current, err := r.client.GetVPPInvitationByID(ctx, state.ID.ValueString())
-		if err != nil || current == nil || current.Scope == nil {
-			if err != nil {
-				tflog.Debug(ctx, "skipping co-managed scope check: read failed", map[string]any{"error": err.Error()})
-			}
-			return
-		}
-		serverScope := &scope.UserScopeModel{}
-		flattenScope(ctx, current.Scope, serverScope, true)
-		scope.WarnUnmanagedCategories(&resp.Diagnostics, scopeRoot,
-			scope.UnmanagedUserScopeCategories(plan.Scope, serverScope))
 	}
 }
 
