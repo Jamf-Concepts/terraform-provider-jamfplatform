@@ -10,6 +10,16 @@
 //   proclassic.ListOSXConfigurationProfiles         (list resource)
 //
 // Status: current. Last reviewed 2026-05-24.
+//
+// Scope semantics: within a sent <scope> the server replaces the whole subtree
+// (wire-probed 2026-07-08 — any category element present, even empty, wipes
+// every omitted category across targets/limitations/exclusions). Scope
+// therefore uses per-category granular ownership: when the plan declares a
+// scope block, Update GETs the live object first and overlays the declared
+// categories onto the server's current scope (scope-only merge — no other
+// section of the read is echoed back), emitting every merged category
+// explicitly. Omitted categories stay owned by the admin UI; declared `[]`
+// clears. See STYLE_GUIDE.md §Scope helper omission semantics.
 
 package macos_configuration_profile
 
@@ -20,6 +30,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 // Create handles POST /api/proclassic/tenant/{tenantId}/osxconfigurationprofiles/id/0. Classic
@@ -238,7 +249,31 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if state.General != nil && !state.General.UUID.IsNull() && !state.General.UUID.IsUnknown() {
 		existingUUID = state.General.UUID.ValueString()
 	}
-	input, bd := buildInput(updateCtx, plan, existingUUID)
+
+	// Granular scope ownership: a scope PUT replaces the whole subtree, so
+	// undeclared (null) categories must be re-emitted from the live object to
+	// survive the write. Read-merge-write, scope-only — the wire plan carries
+	// the merged scope while `plan` (used for state) keeps only the declared
+	// categories. See the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetOSXConfigurationProfileByID(updateCtx, state.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading macOS configuration profile before update", err.Error())
+			return
+		}
+		var serverScope *scope.ComputerScopeModel
+		if current != nil && current.Scope != nil {
+			serverScope = &scope.ComputerScopeModel{}
+			resp.Diagnostics.Append(flattenScope(updateCtx, current.Scope, serverScope, true)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
+		wirePlan.Scope = scope.MergeComputerScope(plan.Scope, serverScope)
+	}
+
+	input, bd := buildInput(updateCtx, wirePlan, existingUUID)
 	resp.Diagnostics.Append(bd...)
 	if resp.Diagnostics.HasError() {
 		return

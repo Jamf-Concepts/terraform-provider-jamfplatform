@@ -227,6 +227,45 @@ func (r *Resource) preflightScopeGroups(ctx context.Context, req resource.Modify
 	}
 }
 
+// warnCoManagedScope surfaces granular-ownership visibility: undeclared scope
+// categories are preserved silently on apply (read-merge-write), so warn about
+// any that currently have members configured outside Terraform. Update plans
+// only (state exists), best-effort — a read failure never blocks the plan.
+// Runs BEFORE the payload-diff logic in ModifyPlan, whose early-returns would
+// otherwise skip it on scope-bearing update plans.
+func (r *Resource) warnCoManagedScope(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.client == nil || req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan ResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() || plan.Scope == nil {
+		return
+	}
+	var state ResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if state.ID.IsNull() || state.ID.ValueString() == "" {
+		return
+	}
+	current, err := r.client.GetOSXConfigurationProfileByID(ctx, state.ID.ValueString())
+	if err != nil || current == nil || current.Scope == nil {
+		if err != nil {
+			tflog.Debug(ctx, "skipping co-managed scope check: read failed", map[string]any{"error": err.Error()})
+		}
+		return
+	}
+	serverScope := &scope.ComputerScopeModel{}
+	resp.Diagnostics.Append(flattenScope(ctx, current.Scope, serverScope, true)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	scope.WarnUnmanagedCategories(&resp.Diagnostics, path.Root("scope"),
+		scope.UnmanagedComputerScopeCategories(plan.Scope, serverScope))
+}
+
 // ModifyPlan runs the payload-diff decision before the per-attribute
 // modifiers fire. When both private-state references are present
 // (post-first-Apply, non-imported), it runs the three-way compare to
@@ -245,6 +284,14 @@ func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanReques
 	// create-plans too (the payload compare below early-returns on create). It
 	// is skipped only on destroy (null plan).
 	r.preflightScopeGroups(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Co-managed-scope warning runs before the payload-diff logic: its
+	// early-returns (create, payload byte-equal, three-way NoOp) would
+	// otherwise skip the warning on scope-bearing update plans.
+	r.warnCoManagedScope(ctx, req, resp)
 	if resp.Diagnostics.HasError() {
 		return
 	}

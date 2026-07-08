@@ -91,21 +91,31 @@ func flattenScope(ctx context.Context, s *proclassic.RestrictedSoftwareScope, st
 		}
 	}
 
+	// Sub-blocks are gated on caller management (typed-pointer models cannot
+	// hold categories without the block struct); within a managed sub-block
+	// each category refreshes independently via RefreshManagedSet — a category
+	// the caller did not declare (null) stays null, so members maintained in
+	// the admin UI never enter state. includeUnmanaged bypasses both gates for
+	// import / config-generation hydration and for building the live-side
+	// merge base in Update. The FlattenIDNameSet/FlattenNameSet wire flatteners
+	// return an empty set (never null) for absent elements, so a managed empty
+	// category round-trips as `[]`.
 	if state.Targets != nil {
-		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.ComputerIDs = scope.FlattenIDNameSet(ctx, computerSlice(s.Computers))
-		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
+		t := state.Targets
+		t.AllComputers = scope.RefreshManagedBool(t.AllComputers, s.AllComputers, includeUnmanaged)
+		t.ComputerIDs = scope.RefreshManagedSet(t.ComputerIDs, scope.FlattenIDNameSet(ctx, computerSlice(s.Computers)), includeUnmanaged)
+		t.ComputerGroupIDs = scope.RefreshManagedSet(t.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups)), includeUnmanaged)
+		t.BuildingIDs = scope.RefreshManagedSet(t.BuildingIDs, scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings)), includeUnmanaged)
+		t.DepartmentIDs = scope.RefreshManagedSet(t.DepartmentIDs, scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments)), includeUnmanaged)
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
-		e := s.Exclusions
-		state.Exclusions.ComputerIDs = scope.FlattenIDNameSet(ctx, exclComputerSlice(e.Computers))
-		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, exclUsersSlice(e.Users))
+		x, e := state.Exclusions, s.Exclusions
+		x.ComputerIDs = scope.RefreshManagedSet(x.ComputerIDs, scope.FlattenIDNameSet(ctx, exclComputerSlice(e.Computers)), includeUnmanaged)
+		x.ComputerGroupIDs = scope.RefreshManagedSet(x.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups)), includeUnmanaged)
+		x.BuildingIDs = scope.RefreshManagedSet(x.BuildingIDs, scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings)), includeUnmanaged)
+		x.DepartmentIDs = scope.RefreshManagedSet(x.DepartmentIDs, scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments)), includeUnmanaged)
+		x.DirectoryServiceOrLocalUserNames = scope.RefreshManagedSet(x.DirectoryServiceOrLocalUserNames, scope.FlattenNameSet(ctx, exclUsersSlice(e.Users)), includeUnmanaged)
 	}
 }
 

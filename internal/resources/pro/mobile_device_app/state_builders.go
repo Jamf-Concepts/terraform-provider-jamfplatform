@@ -134,9 +134,11 @@ func flattenMobileAppGeneral(g *proclassic.MobileDeviceApplicationGeneral, state
 }
 
 // flattenMobileAppScope refreshes the scope sub-blocks the caller already
-// manages. When includeUnmanaged is set (config generation) every wire-present
-// sub-block is first allocated so the from-scratch read hydrates the full scope
-// rather than leaving unmanaged targets/limitations/exclusions null.
+// manages. When includeUnmanaged is set (import hydration, config generation,
+// the co-managed-scope plan check, and the Update merge base) every
+// wire-present sub-block is first allocated so the from-scratch read hydrates
+// the full scope rather than leaving unmanaged targets/limitations/exclusions
+// null.
 func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplicationScope, state *scope.MobileScopeModelNoIbeacons, includeUnmanaged bool) {
 	if includeUnmanaged {
 		if state.Targets == nil {
@@ -150,36 +152,44 @@ func flattenMobileAppScope(ctx context.Context, s *proclassic.MobileDeviceApplic
 		}
 	}
 
+	// Sub-blocks are gated on caller management (typed-pointer models cannot
+	// hold categories without the block struct); within a managed sub-block
+	// each category refreshes independently via RefreshManagedSet — a category
+	// the caller did not declare (null) stays null, so members maintained in
+	// the admin UI never enter state. includeUnmanaged bypasses both gates for
+	// import / config-generation hydration and for building the server-side
+	// merge base in Update.
 	if state.Targets != nil {
-		state.Targets.AllMobileDevices = helpers.PreferCurrentBoolPointer(s.AllMobileDevices, state.Targets.AllMobileDevices)
-		state.Targets.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+		t := state.Targets
+		t.AllMobileDevices = scope.RefreshManagedBool(t.AllMobileDevices, s.AllMobileDevices, includeUnmanaged)
+		t.AllJssUsers = scope.RefreshManagedBool(t.AllJssUsers, s.AllJssUsers, includeUnmanaged)
 
-		state.Targets.MobileDeviceIDs = flattenMobileDeviceItemSet(ctx, s.MobileDevices)
-		state.Targets.MobileDeviceGroupIDs = scope.FlattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups))
-		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
-		state.Targets.UserIDs = scope.FlattenIDNameSet(ctx, jssUserSlice(s.JssUsers))
-		state.Targets.UserGroupIDs = scope.FlattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups))
+		t.MobileDeviceIDs = scope.RefreshManagedSet(t.MobileDeviceIDs, flattenMobileDeviceItemSet(ctx, s.MobileDevices), includeUnmanaged)
+		t.MobileDeviceGroupIDs = scope.RefreshManagedSet(t.MobileDeviceGroupIDs, scope.FlattenIDNameSet(ctx, mobileDeviceGroupSlice(s.MobileDeviceGroups)), includeUnmanaged)
+		t.BuildingIDs = scope.RefreshManagedSet(t.BuildingIDs, scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings)), includeUnmanaged)
+		t.DepartmentIDs = scope.RefreshManagedSet(t.DepartmentIDs, scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments)), includeUnmanaged)
+		t.UserIDs = scope.RefreshManagedSet(t.UserIDs, scope.FlattenIDNameSet(ctx, jssUserSlice(s.JssUsers)), includeUnmanaged)
+		t.UserGroupIDs = scope.RefreshManagedSet(t.UserGroupIDs, scope.FlattenIDNameSet(ctx, jssUserGroupSlice(s.JssUserGroups)), includeUnmanaged)
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
-		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, limitationsSegmentSlice(l.NetworkSegments))
-		state.Limitations.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, limitationsUserSlice(l.Users))
-		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, limitationsUserGroupSlice(l.UserGroups))
+		l, sl := state.Limitations, s.Limitations
+		l.NetworkSegmentIDs = scope.RefreshManagedSet(l.NetworkSegmentIDs, scope.FlattenIDNameSet(ctx, limitationsSegmentSlice(sl.NetworkSegments)), includeUnmanaged)
+		l.DirectoryServiceOrLocalUserNames = scope.RefreshManagedSet(l.DirectoryServiceOrLocalUserNames, scope.FlattenNameSet(ctx, limitationsUserSlice(sl.Users)), includeUnmanaged)
+		l.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(l.DirectoryServiceUserGroupNames, scope.FlattenNameSet(ctx, limitationsUserGroupSlice(sl.UserGroups)), includeUnmanaged)
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
-		e := s.Exclusions
-		state.Exclusions.MobileDeviceIDs = flattenExclMobileDeviceItemSet(ctx, e.MobileDevices)
-		state.Exclusions.MobileDeviceGroupIDs = scope.FlattenIDNameSet(ctx, exclMobileDeviceGroupSlice(e.MobileDeviceGroups))
-		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.UserIDs = scope.FlattenIDNameSet(ctx, exclJssUserSlice(e.JssUsers))
-		state.Exclusions.UserGroupIDs = scope.FlattenIDNameSet(ctx, exclJssUserGroupSlice(e.JssUserGroups))
-		state.Exclusions.NetworkSegmentIDs = flattenExclNetworkSegmentSet(ctx, e.NetworkSegments)
-		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenExclUsersNameSet(ctx, e.Users)
-		state.Exclusions.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, exclUserGroupSlice(e.UserGroups))
+		x, se := state.Exclusions, s.Exclusions
+		x.MobileDeviceIDs = scope.RefreshManagedSet(x.MobileDeviceIDs, flattenExclMobileDeviceItemSet(ctx, se.MobileDevices), includeUnmanaged)
+		x.MobileDeviceGroupIDs = scope.RefreshManagedSet(x.MobileDeviceGroupIDs, scope.FlattenIDNameSet(ctx, exclMobileDeviceGroupSlice(se.MobileDeviceGroups)), includeUnmanaged)
+		x.BuildingIDs = scope.RefreshManagedSet(x.BuildingIDs, scope.FlattenIDNameSet(ctx, exclBuildingSlice(se.Buildings)), includeUnmanaged)
+		x.DepartmentIDs = scope.RefreshManagedSet(x.DepartmentIDs, scope.FlattenIDNameSet(ctx, exclDepartmentSlice(se.Departments)), includeUnmanaged)
+		x.UserIDs = scope.RefreshManagedSet(x.UserIDs, scope.FlattenIDNameSet(ctx, exclJssUserSlice(se.JssUsers)), includeUnmanaged)
+		x.UserGroupIDs = scope.RefreshManagedSet(x.UserGroupIDs, scope.FlattenIDNameSet(ctx, exclJssUserGroupSlice(se.JssUserGroups)), includeUnmanaged)
+		x.NetworkSegmentIDs = scope.RefreshManagedSet(x.NetworkSegmentIDs, flattenExclNetworkSegmentSet(ctx, se.NetworkSegments), includeUnmanaged)
+		x.DirectoryServiceOrLocalUserNames = scope.RefreshManagedSet(x.DirectoryServiceOrLocalUserNames, flattenExclUsersNameSet(ctx, se.Users), includeUnmanaged)
+		x.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(x.DirectoryServiceUserGroupNames, scope.FlattenNameSet(ctx, exclUserGroupSlice(se.UserGroups)), includeUnmanaged)
 	}
 }
 
@@ -340,9 +350,15 @@ func exclUserGroupSlice(u *proclassic.MobileDeviceApplicationScopeExclusionsUser
 
 // ---- set flatteners ------------------------------------------------------------
 
+// The wire flatteners below return EmptyStringSet (never null) for an absent
+// element: a null return would flow through RefreshManagedSet and null out a
+// managed category, tripping the post-apply consistency check. Empty is the
+// canonical "no members" value for a managed category; unmanaged categories
+// are kept null by the RefreshManagedSet gate itself.
+
 func flattenMobileDeviceItemSet(ctx context.Context, m *proclassic.MobileDeviceApplicationScopeMobileDevices) types.Set {
 	if m == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenIDSlice(ctx, m.MobileDevice, func(i proclassic.MobileDeviceApplicationScopeMobileDevicesMobileDeviceItem) *int { return i.ID })
 	return out
@@ -350,7 +366,7 @@ func flattenMobileDeviceItemSet(ctx context.Context, m *proclassic.MobileDeviceA
 
 func flattenExclMobileDeviceItemSet(ctx context.Context, m *proclassic.MobileDeviceApplicationScopeExclusionsMobileDevices) types.Set {
 	if m == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenIDSlice(ctx, m.MobileDevice, func(i proclassic.MobileDeviceApplicationScopeExclusionsMobileDevicesMobileDeviceItem) *int {
 		return i.ID
@@ -360,7 +376,7 @@ func flattenExclMobileDeviceItemSet(ctx context.Context, m *proclassic.MobileDev
 
 func flattenExclNetworkSegmentSet(ctx context.Context, n *proclassic.MobileDeviceApplicationScopeExclusionsNetworkSegments) types.Set {
 	if n == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenIDSlice(ctx, n.NetworkSegment, func(i proclassic.MobileDeviceApplicationScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int {
 		return i.ID
@@ -370,7 +386,7 @@ func flattenExclNetworkSegmentSet(ctx context.Context, n *proclassic.MobileDevic
 
 func flattenExclUsersNameSet(ctx context.Context, u *proclassic.MobileDeviceApplicationScopeExclusionsUsers) types.Set {
 	if u == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenNameSlice(ctx, u.User, func(i proclassic.MobileDeviceApplicationScopeExclusionsUsersUserItem) *string { return i.Name })
 	return out

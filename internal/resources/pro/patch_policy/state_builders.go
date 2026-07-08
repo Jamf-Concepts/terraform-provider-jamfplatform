@@ -132,28 +132,38 @@ func flattenScope(ctx context.Context, s *proclassic.PatchPolicyScope, state *Pa
 		}
 	}
 
+	// Sub-blocks are gated on caller management (typed-pointer models cannot
+	// hold categories without the block struct); within a managed sub-block
+	// each category refreshes independently via RefreshManagedSet — a category
+	// the caller did not declare (null) stays null, so members maintained in
+	// the admin UI never enter state. includeUnmanaged bypasses both gates for
+	// import / config-generation hydration and for building the live-side
+	// merge base in Update. The wire flatteners (FlattenIDNameSet and the
+	// FlattenIDSlice-backed helpers below) return an empty set (never null) for
+	// absent elements, so a managed empty category round-trips as `[]`.
 	if state.Targets != nil {
-		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.ComputerIDs = flattenComputerSet(ctx, computerSlice(s.Computers))
-		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups))
-		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings))
-		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments))
+		t := state.Targets
+		t.AllComputers = scope.RefreshManagedBool(t.AllComputers, s.AllComputers, includeUnmanaged)
+		t.ComputerIDs = scope.RefreshManagedSet(t.ComputerIDs, flattenComputerSet(ctx, computerSlice(s.Computers)), includeUnmanaged)
+		t.ComputerGroupIDs = scope.RefreshManagedSet(t.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, computerGroupSlice(s.ComputerGroups)), includeUnmanaged)
+		t.BuildingIDs = scope.RefreshManagedSet(t.BuildingIDs, scope.FlattenIDNameSet(ctx, buildingSlice(s.Buildings)), includeUnmanaged)
+		t.DepartmentIDs = scope.RefreshManagedSet(t.DepartmentIDs, scope.FlattenIDNameSet(ctx, departmentSlice(s.Departments)), includeUnmanaged)
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
-		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, limitationsNetworkSegmentSlice(l.NetworkSegments))
-		state.Limitations.IbeaconIDs = scope.FlattenIDNameSet(ctx, limitationsIbeaconSlice(l.Ibeacons))
+		l, sl := state.Limitations, s.Limitations
+		l.NetworkSegmentIDs = scope.RefreshManagedSet(l.NetworkSegmentIDs, scope.FlattenIDNameSet(ctx, limitationsNetworkSegmentSlice(sl.NetworkSegments)), includeUnmanaged)
+		l.IbeaconIDs = scope.RefreshManagedSet(l.IbeaconIDs, scope.FlattenIDNameSet(ctx, limitationsIbeaconSlice(sl.Ibeacons)), includeUnmanaged)
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
-		e := s.Exclusions
-		state.Exclusions.ComputerIDs = flattenExclComputerSet(ctx, exclComputerSlice(e.Computers))
-		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings))
-		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments))
-		state.Exclusions.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, exclNetworkSegmentSlice(e.NetworkSegments))
-		state.Exclusions.IbeaconIDs = scope.FlattenIDNameSet(ctx, exclIbeaconSlice(e.Ibeacons))
+		x, e := state.Exclusions, s.Exclusions
+		x.ComputerIDs = scope.RefreshManagedSet(x.ComputerIDs, flattenExclComputerSet(ctx, exclComputerSlice(e.Computers)), includeUnmanaged)
+		x.ComputerGroupIDs = scope.RefreshManagedSet(x.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, exclComputerGroupSlice(e.ComputerGroups)), includeUnmanaged)
+		x.BuildingIDs = scope.RefreshManagedSet(x.BuildingIDs, scope.FlattenIDNameSet(ctx, exclBuildingSlice(e.Buildings)), includeUnmanaged)
+		x.DepartmentIDs = scope.RefreshManagedSet(x.DepartmentIDs, scope.FlattenIDNameSet(ctx, exclDepartmentSlice(e.Departments)), includeUnmanaged)
+		x.NetworkSegmentIDs = scope.RefreshManagedSet(x.NetworkSegmentIDs, scope.FlattenIDNameSet(ctx, exclNetworkSegmentSlice(e.NetworkSegments)), includeUnmanaged)
+		x.IbeaconIDs = scope.RefreshManagedSet(x.IbeaconIDs, scope.FlattenIDNameSet(ctx, exclIbeaconSlice(e.Ibeacons)), includeUnmanaged)
 	}
 }
 

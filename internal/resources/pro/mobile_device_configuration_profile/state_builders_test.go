@@ -94,29 +94,121 @@ func TestFlattenGeneral_UUIDAndPayloadsExposed(t *testing.T) {
 	}
 }
 
-func TestFlattenScope_NilSubBlocksProduceEmptySets(t *testing.T) {
+// TestFlattenScope_ManagedRefreshUnmanagedStaysNull pins the per-category
+// ownership gate: a managed category (non-null current value) refreshes from
+// the wire — including to `[]` when the wire element is absent — while an
+// unmanaged (null) category stays null so members maintained in the admin UI
+// never enter state.
+func TestFlattenScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
 	t.Parallel()
-	state := &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{AllMobileDevices: types.BoolValue(false)}}
-	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
+	ctx := context.Background()
+	state := &scope.MobileScopeModel{
+		Targets: &scope.MobileScopeTargetsModel{
+			AllMobileDevices: types.BoolValue(false), // managed, refreshes from wire
+			MobileDeviceIDs:  scope.EmptyStringSet(), // managed, refreshes from wire
+		},
+		Limitations: &scope.MobileScopeLimitationsModel{
+			NetworkSegmentIDs: stringSet(t, "9"), // managed, drift-refreshes
+		},
+		Exclusions: &scope.MobileScopeExclusionsModel{
+			DirectoryServiceOrLocalUserNames: scope.EmptyStringSet(), // managed
+		},
+	}
+	diags := flattenScope(ctx, &proclassic.MobileDeviceConfigurationProfileScope{
 		AllMobileDevices: new(true),
+		MobileDevices: &proclassic.MobileDeviceConfigurationProfileScopeMobileDevices{
+			MobileDevice: &[]proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem{{ID: new(11)}, {ID: new(12)}},
+		},
+		MobileDeviceGroups: &proclassic.MobileDeviceConfigurationProfileScopeMobileDeviceGroups{
+			MobileDeviceGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Limitations: &proclassic.MobileDeviceConfigurationProfileScopeLimitations{
+			NetworkSegments: &proclassic.MobileDeviceConfigurationProfileScopeLimitationsNetworkSegments{
+				NetworkSegment: &[]proclassic.IDName{{ID: new(2)}},
+			},
+		},
+		Exclusions: &proclassic.MobileDeviceConfigurationProfileScopeExclusions{
+			Users: &proclassic.MobileDeviceConfigurationProfileScopeExclusionsUsers{
+				User: &[]proclassic.MobileDeviceConfigurationProfileScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
 	}, state, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
+
 	if !state.Targets.AllMobileDevices.ValueBool() {
-		t.Fatal("all_mobile_devices not propagated")
+		t.Fatal("managed all_mobile_devices should refresh from wire")
 	}
-	for label, s := range map[string]types.Set{
-		"MobileDeviceIDs":      state.Targets.MobileDeviceIDs,
-		"MobileDeviceGroupIDs": state.Targets.MobileDeviceGroupIDs,
-		"BuildingIDs":          state.Targets.BuildingIDs,
-		"DepartmentIDs":        state.Targets.DepartmentIDs,
-		"UserIDs":              state.Targets.UserIDs,
-		"UserGroupIDs":         state.Targets.UserGroupIDs,
-	} {
-		if s.IsNull() || len(s.Elements()) != 0 {
-			t.Fatalf("%s expected empty set when SDK sub-block absent, got %v", label, s)
-		}
+	var mdIDs []string
+	state.Targets.MobileDeviceIDs.ElementsAs(ctx, &mdIDs, false)
+	if len(mdIDs) != 2 {
+		t.Errorf("managed mobile_device_ids should refresh from wire: got %v", mdIDs)
+	}
+	if !state.Targets.MobileDeviceGroupIDs.IsNull() {
+		t.Errorf("unmanaged mobile_device_group_ids must stay null, got %v", state.Targets.MobileDeviceGroupIDs)
+	}
+	if !state.Targets.AllJssUsers.IsNull() {
+		t.Errorf("unmanaged all_jss_users must stay null, got %v", state.Targets.AllJssUsers)
+	}
+	var segIDs []string
+	state.Limitations.NetworkSegmentIDs.ElementsAs(ctx, &segIDs, false)
+	if len(segIDs) != 1 || segIDs[0] != "2" {
+		t.Errorf("managed limitations network_segment_ids should drift-refresh: got %v", segIDs)
+	}
+	if !state.Limitations.IbeaconIDs.IsNull() {
+		t.Errorf("unmanaged limitations ibeacon_ids must stay null, got %v", state.Limitations.IbeaconIDs)
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("managed exclusion user names should refresh: got %v", exclUsers)
+	}
+	if !state.Exclusions.MobileDeviceGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusion mobile_device_group_ids must stay null, got %v", state.Exclusions.MobileDeviceGroupIDs)
+	}
+}
+
+// TestFlattenScope_HydrateAllForMergeBase: includeUnmanaged=true hydrates every
+// wire-present category into a zero model — the shape Update uses to build the
+// read-merge-write base (and import / config generation use for full state).
+func TestFlattenScope_HydrateAllForMergeBase(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	state := &scope.MobileScopeModel{}
+	diags := flattenScope(ctx, &proclassic.MobileDeviceConfigurationProfileScope{
+		AllMobileDevices: new(false),
+		MobileDeviceGroups: &proclassic.MobileDeviceConfigurationProfileScopeMobileDeviceGroups{
+			MobileDeviceGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Exclusions: &proclassic.MobileDeviceConfigurationProfileScopeExclusions{
+			Users: &proclassic.MobileDeviceConfigurationProfileScopeExclusionsUsers{
+				User: &[]proclassic.MobileDeviceConfigurationProfileScopeExclusionsUsersUserItem{{Name: new("alice")}},
+			},
+		},
+	}, state, true)
+	if diags.HasError() {
+		t.Fatalf("diags: %v", diags)
+	}
+
+	if state.Targets == nil || state.Targets.AllMobileDevices.IsNull() || state.Targets.AllMobileDevices.ValueBool() {
+		t.Fatalf("expected all_mobile_devices hydrated false, got %+v", state.Targets)
+	}
+	var groupIDs []string
+	state.Targets.MobileDeviceGroupIDs.ElementsAs(ctx, &groupIDs, false)
+	if len(groupIDs) != 1 || groupIDs[0] != "5" {
+		t.Errorf("expected mobile_device_group_ids hydrated, got %v", groupIDs)
+	}
+	if state.Exclusions == nil {
+		t.Fatal("expected exclusions allocated")
+	}
+	var exclUsers []string
+	state.Exclusions.DirectoryServiceOrLocalUserNames.ElementsAs(ctx, &exclUsers, false)
+	if len(exclUsers) != 1 || exclUsers[0] != "alice" {
+		t.Errorf("expected exclusion user names hydrated, got %v", exclUsers)
+	}
+	if state.Limitations != nil {
+		t.Fatalf("expected limitations nil when wire-absent; got %+v", state.Limitations)
 	}
 }
 
@@ -133,7 +225,8 @@ func TestFlattenScope_ReconcileLeavesNullWhenStateUnconfigured(t *testing.T) {
 
 func TestFlattenScope_MobileDeviceIDsPopulated(t *testing.T) {
 	t.Parallel()
-	state := &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{}}
+	// Declared (managed) category: a non-null current value refreshes from wire.
+	state := &scope.MobileScopeModel{Targets: &scope.MobileScopeTargetsModel{MobileDeviceIDs: scope.EmptyStringSet()}}
 	diags := flattenScope(context.Background(), &proclassic.MobileDeviceConfigurationProfileScope{
 		MobileDevices: &proclassic.MobileDeviceConfigurationProfileScopeMobileDevices{
 			MobileDevice: &[]proclassic.MobileDeviceConfigurationProfileScopeMobileDevicesMobileDeviceItem{
@@ -159,7 +252,13 @@ func TestFlattenScope_MobileDeviceIDsPopulated(t *testing.T) {
 
 func TestFlattenScopeLimitations_DSUserNamesAndNetworkSegments(t *testing.T) {
 	t.Parallel()
-	state := &scope.MobileScopeLimitationsModel{}
+	// Declared (managed) categories carry a non-null current value and refresh
+	// from wire; ibeacon_ids / directory_service_user_group_names stay null
+	// (unmanaged).
+	state := &scope.MobileScopeLimitationsModel{
+		DirectoryServiceOrLocalUserNames: scope.EmptyStringSet(),
+		NetworkSegmentIDs:                scope.EmptyStringSet(),
+	}
 	diags := flattenScopeLimitations(context.Background(), &proclassic.MobileDeviceConfigurationProfileScopeLimitations{
 		Users: &proclassic.MobileDeviceConfigurationProfileScopeLimitationsUsers{
 			User: &[]proclassic.IDName{{Name: new("alice")}, {Name: new("bob")}},
@@ -167,7 +266,7 @@ func TestFlattenScopeLimitations_DSUserNamesAndNetworkSegments(t *testing.T) {
 		NetworkSegments: &proclassic.MobileDeviceConfigurationProfileScopeLimitationsNetworkSegments{
 			NetworkSegment: &[]proclassic.IDName{{ID: new(5)}},
 		},
-	}, state)
+	}, state, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -185,11 +284,18 @@ func TestFlattenScopeLimitations_DSUserNamesAndNetworkSegments(t *testing.T) {
 	if len(segIDs) != 1 || segIDs[0] != "5" {
 		t.Fatalf("expected [\"5\"], got %v", segIDs)
 	}
+	if !state.IbeaconIDs.IsNull() {
+		t.Fatalf("unmanaged ibeacon_ids must stay null, got %v", state.IbeaconIDs)
+	}
 }
 
 func TestFlattenScopeExclusions_MobileDevicesAndUserGroups(t *testing.T) {
 	t.Parallel()
-	state := &scope.MobileScopeExclusionsModel{}
+	// Declared (managed) categories refresh from wire; the rest stay null.
+	state := &scope.MobileScopeExclusionsModel{
+		MobileDeviceIDs:                scope.EmptyStringSet(),
+		DirectoryServiceUserGroupNames: scope.EmptyStringSet(),
+	}
 	diags := flattenScopeExclusions(context.Background(), &proclassic.MobileDeviceConfigurationProfileScopeExclusions{
 		MobileDevices: &proclassic.MobileDeviceConfigurationProfileScopeExclusionsMobileDevices{
 			MobileDevice: &[]proclassic.MobileDeviceConfigurationProfileScopeExclusionsMobileDevicesMobileDeviceItem{
@@ -199,7 +305,7 @@ func TestFlattenScopeExclusions_MobileDevicesAndUserGroups(t *testing.T) {
 		UserGroups: &proclassic.MobileDeviceConfigurationProfileScopeExclusionsUserGroups{
 			UserGroup: &[]proclassic.IDName{{Name: new("DS-Group")}},
 		},
-	}, state)
+	}, state, false)
 	if diags.HasError() {
 		t.Fatalf("diags: %v", diags)
 	}
@@ -212,6 +318,9 @@ func TestFlattenScopeExclusions_MobileDevicesAndUserGroups(t *testing.T) {
 	state.DirectoryServiceUserGroupNames.ElementsAs(context.Background(), &names, false)
 	if len(names) != 1 || names[0] != "DS-Group" {
 		t.Fatalf("expected DS-Group, got %v", names)
+	}
+	if !state.BuildingIDs.IsNull() {
+		t.Fatalf("unmanaged exclusion building_ids must stay null, got %v", state.BuildingIDs)
 	}
 }
 

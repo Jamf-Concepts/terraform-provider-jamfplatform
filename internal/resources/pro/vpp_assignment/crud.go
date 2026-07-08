@@ -10,10 +10,21 @@
 //
 // Writes are a MERGE (omit=retain). General scalars (name, vpp_admin_account_id)
 // are emitted as planned. Content collections are opt-out (null omits, empty
-// clears, populated replaces). Scope is always-emitted as a full skeleton so
-// collections full-replace and clear.
+// clears, populated replaces).
 //
-// Status: current. Last reviewed 2026-06-08.
+// Scope is the exception to the merge: within a sent <scope> the server
+// replaces the whole subtree (wire-probed 2026-07-08 on /vppassignments — any
+// category element present, even empty, wipes every omitted category across
+// targets/limitations/exclusions; a body without <scope> retains it). Scope
+// therefore uses per-category granular ownership: Create builds from the
+// declared plan only (undeclared categories are omitted from the body); when
+// the plan declares a scope block, Update GETs the live object first and
+// overlays the declared categories onto the server's current scope (scope-only
+// merge — no other section of the read is echoed back), emitting every merged
+// category explicitly. Omitted categories stay owned by the admin UI; declared
+// `[]` clears. See STYLE_GUIDE.md §Scope helper omission semantics.
+//
+// Status: current. Last reviewed 2026-07-08.
 
 package vpp_assignment
 
@@ -26,6 +37,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func (r *VPPAssignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -175,7 +187,27 @@ func (r *VPPAssignmentResource) Update(ctx context.Context, req resource.UpdateR
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	input, d := buildVPPAssignmentInput(updateCtx, plan)
+	// Granular scope ownership: a scope PUT replaces the whole subtree, so
+	// undeclared (null) categories must be re-emitted from the live object to
+	// survive the write. Read-merge-write, scope-only — the wire plan carries
+	// the merged scope while `plan` (used for state) keeps only the declared
+	// categories. See the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetVPPAssignmentByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment before update", err.Error())
+			return
+		}
+		var serverScope *scope.UserScopeModel
+		if current != nil && current.Scope != nil {
+			serverScope = &scope.UserScopeModel{}
+			flattenScope(updateCtx, current.Scope, serverScope, true)
+		}
+		wirePlan.Scope = scope.MergeUserScope(plan.Scope, serverScope)
+	}
+
+	input, d := buildVPPAssignmentInput(updateCtx, wirePlan)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return

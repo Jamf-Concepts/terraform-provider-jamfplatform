@@ -1,0 +1,149 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package patch_policy
+
+import (
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
+)
+
+// This file implements the read-merge-write overlay that gives the patch
+// policy scope its per-category granular ownership, following
+// internal/common/scope/merge.go (the LIMITED computer-scope shape is
+// resource-local, so the merge is too). Across the classic family a scope PUT
+// replaces the ENTIRE <scope> subtree the moment any category element is
+// present in the body (wire-probed 2026-07-08 on 8 sibling endpoints;
+// /patchpolicies itself was NOT probed for the full subtree-replace law —
+// same-family behaviour assumed, probe required before release; see crud.go).
+// Update therefore GETs the live object, flattens its scope hydrate-all,
+// overlays the declared plan categories here, and builds the wire scope from
+// the merged model. Every merged field is non-null so the builder emits every
+// category explicitly (empty wrappers for empty categories).
+//
+// All-flag precedence: a merged all_computers that is true empties exactly the
+// target categories its AllFlagConflictsWith validator names — never
+// limitations/exclusions, which coexist with a true flag and are preserved.
+
+// pickSet returns the declared plan set when the category is managed
+// (non-null), else the live value, else an empty set — merged output is always
+// non-null so the builder emits every category explicitly. Local reimplement
+// of the unexported shared-scope helper.
+func pickSet(declared, server types.Set) types.Set {
+	if !declared.IsNull() {
+		return declared
+	}
+	if !server.IsNull() {
+		return server
+	}
+	return scope.EmptyStringSet()
+}
+
+// pickBool is the all-flag sibling of pickSet: declared wins, else the live
+// value, else false.
+func pickBool(declared, server types.Bool) types.Bool {
+	if !declared.IsNull() {
+		return declared
+	}
+	if !server.IsNull() {
+		return server
+	}
+	return types.BoolValue(false)
+}
+
+// derefOrZero returns the pointed-to sub-block model, or its zero value when
+// the block is absent. Zero-value types.Set fields report null, which is
+// exactly the "unmanaged" signal pickSet keys on.
+func derefOrZero[T any](m *T) T {
+	if m != nil {
+		return *m
+	}
+	var zero T
+	return zero
+}
+
+// mergePatchPolicyScope overlays a declared patch-policy scope onto the live
+// scope. plan nil (scope unmanaged) returns nil — the caller must not send a
+// scope element at all. server nil is treated as an empty live scope.
+func mergePatchPolicyScope(plan, server *PatchPolicyScopeModel) *PatchPolicyScopeModel {
+	if plan == nil {
+		return nil
+	}
+	var srv PatchPolicyScopeModel
+	if server != nil {
+		srv = *server
+	}
+	pt, st := plan.TargetsOrZero(), srv.TargetsOrZero()
+	targets := &PatchPolicyScopeTargetsModel{
+		AllComputers:     pickBool(pt.AllComputers, st.AllComputers),
+		ComputerIDs:      pickSet(pt.ComputerIDs, st.ComputerIDs),
+		ComputerGroupIDs: pickSet(pt.ComputerGroupIDs, st.ComputerGroupIDs),
+		BuildingIDs:      pickSet(pt.BuildingIDs, st.BuildingIDs),
+		DepartmentIDs:    pickSet(pt.DepartmentIDs, st.DepartmentIDs),
+	}
+	// All-flag precedence — empty exactly the categories the flag's
+	// AllFlagConflictsWith validator names (see the resource schema).
+	if targets.AllComputers.ValueBool() {
+		targets.ComputerIDs = scope.EmptyStringSet()
+		targets.ComputerGroupIDs = scope.EmptyStringSet()
+		targets.BuildingIDs = scope.EmptyStringSet()
+		targets.DepartmentIDs = scope.EmptyStringSet()
+	}
+
+	pl, sl := derefOrZero(plan.Limitations), derefOrZero(srv.Limitations)
+	pe, se := derefOrZero(plan.Exclusions), derefOrZero(srv.Exclusions)
+	return &PatchPolicyScopeModel{
+		Targets: targets,
+		Limitations: &PatchPolicyScopeLimitationsModel{
+			NetworkSegmentIDs: pickSet(pl.NetworkSegmentIDs, sl.NetworkSegmentIDs),
+			IbeaconIDs:        pickSet(pl.IbeaconIDs, sl.IbeaconIDs),
+		},
+		Exclusions: &PatchPolicyScopeExclusionsModel{
+			ComputerIDs:       pickSet(pe.ComputerIDs, se.ComputerIDs),
+			ComputerGroupIDs:  pickSet(pe.ComputerGroupIDs, se.ComputerGroupIDs),
+			BuildingIDs:       pickSet(pe.BuildingIDs, se.BuildingIDs),
+			DepartmentIDs:     pickSet(pe.DepartmentIDs, se.DepartmentIDs),
+			NetworkSegmentIDs: pickSet(pe.NetworkSegmentIDs, se.NetworkSegmentIDs),
+			IbeaconIDs:        pickSet(pe.IbeaconIDs, se.IbeaconIDs),
+		},
+	}
+}
+
+// appendUnmanagedFlag appends label to list when the declared plan flag is
+// null (unmanaged) and the live flag is true — co-managed state worth
+// surfacing. Local reimplement of the unexported shared-scope helper.
+func appendUnmanagedFlag(list []string, label string, declared, server types.Bool) []string {
+	if declared.IsNull() && server.ValueBool() {
+		return append(list, label)
+	}
+	return list
+}
+
+// unmanagedPatchPolicyScopeCategories lists the categories of a live
+// patch-policy scope that the declared plan leaves unmanaged. plan must be
+// non-nil; server is the hydrate-all flatten of the live object's scope (nil
+// means an empty live scope — nothing to report).
+func unmanagedPatchPolicyScopeCategories(plan, server *PatchPolicyScopeModel) []string {
+	if plan == nil || server == nil {
+		return nil
+	}
+	var out []string
+	pt, st := plan.TargetsOrZero(), server.TargetsOrZero()
+	out = appendUnmanagedFlag(out, "targets.all_computers", pt.AllComputers, st.AllComputers)
+	out = scope.AppendUnmanagedCategory(out, "targets.computer_ids", pt.ComputerIDs, st.ComputerIDs)
+	out = scope.AppendUnmanagedCategory(out, "targets.computer_group_ids", pt.ComputerGroupIDs, st.ComputerGroupIDs)
+	out = scope.AppendUnmanagedCategory(out, "targets.building_ids", pt.BuildingIDs, st.BuildingIDs)
+	out = scope.AppendUnmanagedCategory(out, "targets.department_ids", pt.DepartmentIDs, st.DepartmentIDs)
+	pl, sl := derefOrZero(plan.Limitations), derefOrZero(server.Limitations)
+	out = scope.AppendUnmanagedCategory(out, "limitations.network_segment_ids", pl.NetworkSegmentIDs, sl.NetworkSegmentIDs)
+	out = scope.AppendUnmanagedCategory(out, "limitations.ibeacon_ids", pl.IbeaconIDs, sl.IbeaconIDs)
+	pe, se := derefOrZero(plan.Exclusions), derefOrZero(server.Exclusions)
+	out = scope.AppendUnmanagedCategory(out, "exclusions.computer_ids", pe.ComputerIDs, se.ComputerIDs)
+	out = scope.AppendUnmanagedCategory(out, "exclusions.computer_group_ids", pe.ComputerGroupIDs, se.ComputerGroupIDs)
+	out = scope.AppendUnmanagedCategory(out, "exclusions.building_ids", pe.BuildingIDs, se.BuildingIDs)
+	out = scope.AppendUnmanagedCategory(out, "exclusions.department_ids", pe.DepartmentIDs, se.DepartmentIDs)
+	out = scope.AppendUnmanagedCategory(out, "exclusions.network_segment_ids", pe.NetworkSegmentIDs, se.NetworkSegmentIDs)
+	out = scope.AppendUnmanagedCategory(out, "exclusions.ibeacon_ids", pe.IbeaconIDs, se.IbeaconIDs)
+	return out
+}

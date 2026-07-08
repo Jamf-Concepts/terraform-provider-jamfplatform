@@ -6,10 +6,13 @@
 // Tests talk to the Jamf ProClassic /vppinvitations endpoint (user-based VPP).
 // Keep serial with other classic acceptance work in this domain.
 //
-// Writes are a MERGE; scope is always-emitted (full-replace, empty=clear). The
-// update steps mutate scalars, toggle auto_register, and add/remove a scope group
-// to exercise the always-emit clear path. Email-mode fields only persist for
-// distribution_method = "Send emails"; a dedicated test toggles in and out.
+// Writes are a MERGE; scope follows per-category granular ownership: a declared
+// category (including explicit `[]`, which clears) is owned by Terraform, an
+// omitted category is preserved via read-merge-write on update. The update
+// steps mutate scalars, toggle auto_register, and add/remove a scope group to
+// exercise the declared-category full-replace path. Email-mode fields only
+// persist for distribution_method = "Send emails"; a dedicated test toggles in
+// and out.
 //
 // Apply tests provision their own VPP account via a jamfplatform_pro_volume_-
 // purchasing_location fixture, so they are gated on JAMFPLATFORM_VPP_TOKEN (a real
@@ -170,16 +173,19 @@ func TestAccResource_ProVPPInvitation(t *testing.T) {
 				),
 			},
 			{
-				// Shrink the target set back to one (nested-set removal → always-emit clears).
+				// Shrink the target set back to one (nested-set removal — the declared
+				// category is owned, so its members full-replace).
 				Config: lifecycleConfig(token, suffix, renamed, "Prompt users to accept/make available in Self Service", false, 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resAddr, "scope.targets.jss_user_group_ids.#", "1"),
 				),
 			},
 			{
-				ResourceName:            resAddr,
-				ImportState:             true,
-				ImportStateVerify:       true,
+				ResourceName:      resAddr,
+				ImportState:       true,
+				ImportStateVerify: true,
+				// Import hydrates every scope category; apply keeps declared-only, so
+				// verify against this subset-scope config must ignore scope.
 				ImportStateVerifyIgnore: []string{"timeouts", "scope"},
 			},
 		},
@@ -389,9 +395,10 @@ resource "jamfplatform_pro_vpp_invitation" "test" {
 				// the framework destroys the invitation, via an empty set `[]` (the
 				// natural "remove all" gesture). Destroying while a DS group is still
 				// scoped can leave an orphaned scope->LDAP association that blocks the
-				// LDAP server's deletion (a server-side data-integrity bug). `[]`
-				// plans as null (CanonicalEmptySet); the post-step empty-plan
-				// check enforces the clear round-tripped.
+				// LDAP server's deletion (a server-side data-integrity bug). `[]` is
+				// the declared-clear gesture (plans as an empty set, emits an explicit
+				// empty element — omission would preserve the group); the post-step
+				// empty-plan check enforces the clear round-tripped.
 				Config: vppLocationFixture(token, suffix) + fmt.Sprintf(`
 resource "jamfplatform_pro_vpp_invitation" "test" {
   name                = %[1]q

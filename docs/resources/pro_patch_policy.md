@@ -150,7 +150,7 @@ output "patch_policy_kill_apps" {
 - `distribution_method` (String) How the patch is delivered. `selfservice` = the admin UI "Make Available in Self Service"; `prompt` = "Install Automatically". Server-defaulted when omitted.
 - `enabled` (Boolean) Whether the patch policy is enabled. A policy can only be enabled when its scope resolves to at least one in-site smart group. Server-defaulted when omitted.
 - `patch_unknown` (Boolean) **"Patch Unknown Version"** in the Jamf Pro admin UI. Patch computers whose currently-installed version cannot be determined. Server-defaulted when omitted.
-- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Scope targets, limitations, and exclusions are addressed by computer, computer group, building, department, network segment, and iBeacon. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `all_computers = true` forbids the per-computer / per-group / per-building / per-department targets. Scope targets, limitations, and exclusions are addressed by computer, computer group, building, department, network segment, and iBeacon. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 - `user_interaction` (Attributes) User Interaction — the "User Interaction" tab in the Jamf Pro admin UI. Controls the Self Service description / button text / icon and the deferral notifications, deadlines, and grace period. The server applies full defaults when the block (or a nested field) is omitted; those defaults are not surfaced in state unless you declare the block. (see [below for nested schema](#nestedatt--user_interaction))
 
@@ -177,12 +177,12 @@ Optional:
 
 Optional:
 
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
-- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -190,8 +190,8 @@ Optional:
 
 Optional:
 
-- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs.
-- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs.
+- `ibeacon_ids` (Set of String) Set of Jamf Pro iBeacon IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--targets"></a>
@@ -199,11 +199,11 @@ Optional:
 
 Optional:
 
-- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
+- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true. Omit to leave the toggle as configured outside Terraform.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 

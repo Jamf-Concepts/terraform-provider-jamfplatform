@@ -223,18 +223,16 @@ resource "jamfplatform_pro_policy" "test" {
 }
 
 // TestAccPolicyResource_ScopeTargetsNullToPresentTransition is the load-bearing
-// regression test for the `targets` nesting: it exercises why the all-flags use
-// boolplanmodifier.UseNonNullStateForUnknown rather than UseStateForUnknown.
+// regression test for the `targets` nesting under granular per-category scope
+// ownership.
 //
 // Step 1 declares `scope` with only `exclusions`, so the `targets` block is
-// absent and the Computed all-flags have a NULL prior state. Step 2 adds
-// `targets { all_jss_users = true }` while leaving `all_computers` Computed
-// (omitted from config) — so `all_computers` undergoes the null→present block
-// transition as an unknown-at-plan value. Under the old UseStateForUnknown the
-// modifier would carry the null prior state into the plan and trip a
-// "produced an inconsistent result after apply … was null, but now <bool>"
-// error once the server echoes a concrete value; UseNonNullStateForUnknown
-// leaves it unknown so apply fills it cleanly. A green step 2 IS the assertion.
+// absent (unmanaged) and must stay null in state. Step 2 adds
+// `targets { all_jss_users = true }` while leaving `all_computers` undeclared —
+// the declared flag is owned by Terraform and lands true, while the undeclared
+// `all_computers` stays null (owned outside Terraform; the read-side gate must
+// not adopt the echoed value). A green step 2 plus the null assertion IS the
+// regression coverage.
 func TestAccPolicyResource_ScopeTargetsNullToPresentTransition(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -256,7 +254,8 @@ func TestAccPolicyResource_ScopeTargetsNullToPresentTransition(t *testing.T) {
 				},
 			},
 			{
-				// targets goes null→present; all_computers stays Computed.
+				// targets goes null→present; all_computers stays undeclared
+				// (unmanaged) and must remain null in state.
 				Config: policyConfigScopeExclusionsPlusTargets(name),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
@@ -267,7 +266,7 @@ func TestAccPolicyResource_ScopeTargetsNullToPresentTransition(t *testing.T) {
 					statecheck.ExpectKnownValue(
 						"jamfplatform_pro_policy.test",
 						tfjsonpath.New("scope").AtMapKey("targets").AtMapKey("all_computers"),
-						knownvalue.Bool(false),
+						knownvalue.Null(),
 					),
 				},
 			},
@@ -2428,12 +2427,13 @@ func TestAccPolicyResource_AccountMaintenanceOpenFirmwareEfiPasswordFullCoverage
 	})
 }
 
-// TestAccPolicyResource_ScopeLimitationsClearWithEmptySet verifies that an
-// all-empty but declared `limitations` block clears its members on the wire.
-// /policies MERGES an omitted <limitations> sub-block (wire-probed), so the
-// build must emit an empty <limitations></limitations> rather than omit it;
-// otherwise the member is retained server-side and the apply fails the
-// post-apply consistency check. Uses a network-segment fixture (no LDAP needed).
+// TestAccPolicyResource_ScopeLimitationsClearWithEmptySet verifies that a
+// declared-but-empty category clears its members on the wire. Under granular
+// per-category scope ownership a declared `[]` is the clear gesture: the build
+// emits an explicit empty element, and the update's read-merge-write re-emits
+// every undeclared category so only the declared one changes. Omitting the
+// category instead would leave it as configured outside Terraform.
+// Uses a network-segment fixture (no LDAP needed).
 func TestAccPolicyResource_ScopeLimitationsClearWithEmptySet(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -2471,9 +2471,10 @@ resource "jamfplatform_pro_policy" "test" {
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_policy.test", "scope.limitations.network_segment_ids.#", "1"),
 			},
 			{
-				// Clear to [] — the declared-but-empty <limitations> block must be
-				// emitted so the merge endpoint clears the segment. The implicit
-				// post-step empty-plan check enforces the clear round-tripped.
+				// Clear to [] — the declared-but-empty category must be emitted
+				// as an explicit empty element so the subtree replace clears the
+				// segment. The implicit post-step empty-plan check enforces the
+				// clear round-tripped.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_policy.test", "scope.limitations.network_segment_ids.#", "0"),
 			},

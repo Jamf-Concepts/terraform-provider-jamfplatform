@@ -225,6 +225,12 @@ func flattenPolicyNetworkLimitations(ctx context.Context, nl *proclassic.PolicyG
 	}
 }
 
+// flattenPolicyScope refreshes the scope sub-blocks the caller already manages,
+// gating each category independently (see the in-body comment). When
+// includeUnmanaged is set (import / config generation / the Update merge base)
+// every wire-present sub-block is first allocated so the from-scratch read
+// hydrates the full scope rather than leaving unmanaged
+// targets/limitations/exclusions null.
 func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *scope.ComputerScopeModel, includeUnmanaged bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -240,42 +246,46 @@ func flattenPolicyScope(ctx context.Context, s *proclassic.PolicyScope, state *s
 		}
 	}
 
-	// Targets are gated on caller management, mirroring the limitations /
-	// exclusions sub-blocks below: populating a targets block the user did not
-	// declare would violate the framework's "produced inconsistent result after
-	// apply" check (plan said null, we would return a populated object).
+	// Sub-blocks are gated on caller management (typed-pointer models cannot
+	// hold categories without the block struct); within a managed sub-block
+	// each category refreshes independently via RefreshManagedSet — a category
+	// the caller did not declare (null) stays null, so members maintained in
+	// the admin UI never enter state. includeUnmanaged bypasses both gates for
+	// import / config-generation hydration and for building the server-side
+	// merge base in Update.
 	if state.Targets != nil {
-		state.Targets.AllComputers = helpers.PreferCurrentBoolPointer(s.AllComputers, state.Targets.AllComputers)
-		state.Targets.AllJssUsers = helpers.PreferCurrentBoolPointer(s.AllJssUsers, state.Targets.AllJssUsers)
+		t := state.Targets
+		t.AllComputers = scope.RefreshManagedBool(t.AllComputers, s.AllComputers, includeUnmanaged)
+		t.AllJssUsers = scope.RefreshManagedBool(t.AllJssUsers, s.AllJssUsers, includeUnmanaged)
 
-		state.Targets.ComputerIDs = flattenComputerItemSet(ctx, s.Computers)
-		state.Targets.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups))
-		state.Targets.BuildingIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromBuildings(s.Buildings))
-		state.Targets.DepartmentIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromDepartments(s.Departments))
-		state.Targets.UserIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromJssUsers(s.JssUsers))
-		state.Targets.UserGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromJssUserGroups(s.JssUserGroups))
+		t.ComputerIDs = scope.RefreshManagedSet(t.ComputerIDs, flattenComputerItemSet(ctx, s.Computers), includeUnmanaged)
+		t.ComputerGroupIDs = scope.RefreshManagedSet(t.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromGroups(s.ComputerGroups)), includeUnmanaged)
+		t.BuildingIDs = scope.RefreshManagedSet(t.BuildingIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromBuildings(s.Buildings)), includeUnmanaged)
+		t.DepartmentIDs = scope.RefreshManagedSet(t.DepartmentIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromDepartments(s.Departments)), includeUnmanaged)
+		t.UserIDs = scope.RefreshManagedSet(t.UserIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromJssUsers(s.JssUsers)), includeUnmanaged)
+		t.UserGroupIDs = scope.RefreshManagedSet(t.UserGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromJssUserGroups(s.JssUserGroups)), includeUnmanaged)
 	}
 
 	if state.Limitations != nil && s.Limitations != nil {
-		l := s.Limitations
-		state.Limitations.NetworkSegmentIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromLimitationsSegments(l.NetworkSegments))
-		state.Limitations.IbeaconIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromLimitationsIbeacons(l.Ibeacons))
-		state.Limitations.DirectoryServiceOrLocalUserNames = scope.FlattenNameSet(ctx, idNameSliceFromLimitationsUsers(l.Users))
-		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, idNameSliceFromLimitationsUserGroups(l.UserGroups))
+		l, sl := state.Limitations, s.Limitations
+		l.NetworkSegmentIDs = scope.RefreshManagedSet(l.NetworkSegmentIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromLimitationsSegments(sl.NetworkSegments)), includeUnmanaged)
+		l.IbeaconIDs = scope.RefreshManagedSet(l.IbeaconIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromLimitationsIbeacons(sl.Ibeacons)), includeUnmanaged)
+		l.DirectoryServiceOrLocalUserNames = scope.RefreshManagedSet(l.DirectoryServiceOrLocalUserNames, scope.FlattenNameSet(ctx, idNameSliceFromLimitationsUsers(sl.Users)), includeUnmanaged)
+		l.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(l.DirectoryServiceUserGroupNames, scope.FlattenNameSet(ctx, idNameSliceFromLimitationsUserGroups(sl.UserGroups)), includeUnmanaged)
 	}
 
 	if state.Exclusions != nil && s.Exclusions != nil {
-		e := s.Exclusions
-		state.Exclusions.ComputerIDs = flattenExclComputerItemSet(ctx, e.Computers)
-		state.Exclusions.ComputerGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclComputerGroups(e.ComputerGroups))
-		state.Exclusions.BuildingIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclBuildings(e.Buildings))
-		state.Exclusions.DepartmentIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclDepartments(e.Departments))
-		state.Exclusions.UserIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUsers(e.JssUsers))
-		state.Exclusions.UserGroupIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUserGroups(e.JssUserGroups))
-		state.Exclusions.NetworkSegmentIDs = flattenExclNetworkSegmentSet(ctx, e.NetworkSegments)
-		state.Exclusions.IbeaconIDs = scope.FlattenIDNameSet(ctx, idNameSliceFromExclIbeacons(e.Ibeacons))
-		state.Exclusions.DirectoryServiceOrLocalUserNames = flattenExclUsersNameSet(ctx, e.Users)
-		state.Exclusions.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, idNameSliceFromExclUserGroups(e.UserGroups))
+		x, se := state.Exclusions, s.Exclusions
+		x.ComputerIDs = scope.RefreshManagedSet(x.ComputerIDs, flattenExclComputerItemSet(ctx, se.Computers), includeUnmanaged)
+		x.ComputerGroupIDs = scope.RefreshManagedSet(x.ComputerGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclComputerGroups(se.ComputerGroups)), includeUnmanaged)
+		x.BuildingIDs = scope.RefreshManagedSet(x.BuildingIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclBuildings(se.Buildings)), includeUnmanaged)
+		x.DepartmentIDs = scope.RefreshManagedSet(x.DepartmentIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclDepartments(se.Departments)), includeUnmanaged)
+		x.UserIDs = scope.RefreshManagedSet(x.UserIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUsers(se.JssUsers)), includeUnmanaged)
+		x.UserGroupIDs = scope.RefreshManagedSet(x.UserGroupIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclJssUserGroups(se.JssUserGroups)), includeUnmanaged)
+		x.NetworkSegmentIDs = scope.RefreshManagedSet(x.NetworkSegmentIDs, flattenExclNetworkSegmentSet(ctx, se.NetworkSegments), includeUnmanaged)
+		x.IbeaconIDs = scope.RefreshManagedSet(x.IbeaconIDs, scope.FlattenIDNameSet(ctx, idNameSliceFromExclIbeacons(se.Ibeacons)), includeUnmanaged)
+		x.DirectoryServiceOrLocalUserNames = scope.RefreshManagedSet(x.DirectoryServiceOrLocalUserNames, flattenExclUsersNameSet(ctx, se.Users), includeUnmanaged)
+		x.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(x.DirectoryServiceUserGroupNames, scope.FlattenNameSet(ctx, idNameSliceFromExclUserGroups(se.UserGroups)), includeUnmanaged)
 	}
 
 	return diags
@@ -397,9 +407,15 @@ func idNameSliceFromExclUserGroups(u *proclassic.PolicyScopeExclusionsUserGroups
 
 // ---- set flatteners ------------------------------------------------------------
 
+// The wire flatteners below return EmptyStringSet (never null) for an absent
+// element: a null return would flow through RefreshManagedSet and null out a
+// managed category, tripping the post-apply consistency check. Empty is the
+// canonical "no members" value for a managed category; unmanaged categories
+// are kept null by the RefreshManagedSet gate itself.
+
 func flattenComputerItemSet(ctx context.Context, c *proclassic.PolicyScopeComputers) types.Set {
 	if c == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenIDSlice(ctx, c.Computer, func(i proclassic.PolicyScopeComputersComputerItem) *int { return i.ID })
 	return out
@@ -407,7 +423,7 @@ func flattenComputerItemSet(ctx context.Context, c *proclassic.PolicyScopeComput
 
 func flattenExclComputerItemSet(ctx context.Context, c *proclassic.PolicyScopeExclusionsComputers) types.Set {
 	if c == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenIDSlice(ctx, c.Computer, func(i proclassic.PolicyScopeExclusionsComputersComputerItem) *int { return i.ID })
 	return out
@@ -415,7 +431,7 @@ func flattenExclComputerItemSet(ctx context.Context, c *proclassic.PolicyScopeEx
 
 func flattenExclNetworkSegmentSet(ctx context.Context, n *proclassic.PolicyScopeExclusionsNetworkSegments) types.Set {
 	if n == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenIDSlice(ctx, n.NetworkSegment, func(i proclassic.PolicyScopeExclusionsNetworkSegmentsNetworkSegmentItem) *int { return i.ID })
 	return out
@@ -423,7 +439,7 @@ func flattenExclNetworkSegmentSet(ctx context.Context, n *proclassic.PolicyScope
 
 func flattenExclUsersNameSet(ctx context.Context, u *proclassic.PolicyScopeExclusionsUsers) types.Set {
 	if u == nil {
-		return types.SetNull(types.StringType)
+		return scope.EmptyStringSet()
 	}
 	out, _ := scope.FlattenNameSlice(ctx, u.User, func(i proclassic.PolicyScopeExclusionsUsersUserItem) *string { return i.Name })
 	return out

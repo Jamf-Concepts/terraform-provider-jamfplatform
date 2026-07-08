@@ -19,13 +19,13 @@ import (
 // always-returned <scope> doesn't fabricate a block the user never declared.
 // invitation_usages (read-only) is always refreshed.
 //
-// includeUnmanaged inverts the scope gate for the list resource's
-// config-generation path (terraform query -generate-config-out): there is no
-// plan to stay consistent with, so the wire-present scope block is hydrated from
-// the server, yielding a complete exported config rather than an identity-only
-// one. CRUD callers pass false. The scope flattener adopts the wire value
-// verbatim, so allocating an empty section is sufficient for it to fully
-// hydrate.
+// includeUnmanaged inverts the scope gate for the hydrate-everything paths —
+// the list resource's config generation (terraform query -generate-config-out),
+// import, and the scope merge base built by Update: there is no plan to stay
+// consistent with, so every wire-present scope category is hydrated from the
+// server. CRUD refresh callers pass false; within a managed scope block the
+// per-category gate (scope.RefreshManagedSet) then keeps undeclared categories
+// null.
 func assignVPPInvitationResourceModel(ctx context.Context, state *VPPInvitationResourceModel, api *proclassic.VppInvitation, includeUnmanaged bool) {
 	if api == nil || api.General == nil {
 		return
@@ -83,15 +83,16 @@ func assignVPPInvitationDataSourceModel(ctx context.Context, state *VPPInvitatio
 		Exclusions:  &scope.UserScopeExclusionsModel{},
 	}
 	if api.Scope != nil {
-		flattenScope(ctx, api.Scope, state.Scope, false)
+		// Hydrate-all: a read-only lookup surfaces every category.
+		flattenScope(ctx, api.Scope, state.Scope, true)
 	}
 	state.InvitationUsages = flattenUsages(api.InvitationUsages)
 }
 
 // flattenScope refreshes the scope sub-blocks the caller already manages. When
-// includeUnmanaged is set (config generation) every wire-present sub-block is
-// first allocated so the from-scratch read hydrates the full scope rather than
-// leaving unmanaged targets/limitations/exclusions null.
+// includeUnmanaged is set every wire-present sub-block is first allocated so a
+// from-scratch read hydrates the full scope rather than leaving unmanaged
+// targets/limitations/exclusions null.
 func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *scope.UserScopeModel, includeUnmanaged bool) {
 	if includeUnmanaged {
 		if state.Targets == nil {
@@ -105,20 +106,31 @@ func flattenScope(ctx context.Context, s *proclassic.VppInvitationScope, state *
 		}
 	}
 
+	// Sub-blocks are gated on caller management (typed-pointer models cannot
+	// hold categories without the block struct); within a managed sub-block
+	// each category refreshes independently via RefreshManagedSet — a category
+	// the caller did not declare (null) stays null, so members maintained in
+	// the admin UI never enter state. includeUnmanaged bypasses both gates for
+	// import / config-generation / data-source hydration and for building the
+	// server-side merge base in Update. The wire flatteners feed it known
+	// (possibly empty) Sets — never null — so a managed-but-now-empty category
+	// reconciles to `[]` rather than null.
 	if state.Targets != nil {
-		state.Targets.AllJssUsers = helpers.BoolPointerValueOrNull(s.AllJssUsers)
-		state.Targets.JssUserIDs = scope.FlattenIDNameSet(ctx, jssUsersSlice(s.JssUsers))
-		state.Targets.JssUserGroupIDs = scope.FlattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups))
+		t := state.Targets
+		t.AllJssUsers = scope.RefreshManagedBool(t.AllJssUsers, s.AllJssUsers, includeUnmanaged)
+		t.JssUserIDs = scope.RefreshManagedSet(t.JssUserIDs, scope.FlattenIDNameSet(ctx, jssUsersSlice(s.JssUsers)), includeUnmanaged)
+		t.JssUserGroupIDs = scope.RefreshManagedSet(t.JssUserGroupIDs, scope.FlattenIDNameSet(ctx, jssUserGroupsSlice(s.JssUserGroups)), includeUnmanaged)
 	}
 
 	if state.Limitations != nil {
-		state.Limitations.DirectoryServiceUserGroupNames = scope.FlattenNameSet(ctx, limitationsUserGroupsSlice(s.Limitations))
+		l := state.Limitations
+		l.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(l.DirectoryServiceUserGroupNames, scope.FlattenNameSet(ctx, limitationsUserGroupsSlice(s.Limitations)), includeUnmanaged)
 	}
 	if state.Exclusions != nil && s.Exclusions != nil {
-		e := s.Exclusions
-		state.Exclusions.JssUserIDs = scope.FlattenIDNameSet(ctx, exclJssUsersSlice(e.JssUsers))
-		state.Exclusions.JssUserGroupIDs = scope.FlattenIDNameSet(ctx, exclJssUserGroupsSlice(e.JssUserGroups))
-		state.Exclusions.DirectoryServiceUserGroupNames = flattenExclDSGroupSet(ctx, exclDSGroupsSlice(e.UserGroups))
+		x, e := state.Exclusions, s.Exclusions
+		x.JssUserIDs = scope.RefreshManagedSet(x.JssUserIDs, scope.FlattenIDNameSet(ctx, exclJssUsersSlice(e.JssUsers)), includeUnmanaged)
+		x.JssUserGroupIDs = scope.RefreshManagedSet(x.JssUserGroupIDs, scope.FlattenIDNameSet(ctx, exclJssUserGroupsSlice(e.JssUserGroups)), includeUnmanaged)
+		x.DirectoryServiceUserGroupNames = scope.RefreshManagedSet(x.DirectoryServiceUserGroupNames, flattenExclDSGroupSet(ctx, exclDSGroupsSlice(e.UserGroups)), includeUnmanaged)
 	}
 }
 

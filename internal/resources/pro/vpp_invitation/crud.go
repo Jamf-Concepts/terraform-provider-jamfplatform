@@ -8,10 +8,24 @@
 //   proclassic.DeleteVPPInvitationByID  (→ 200)
 //   proclassic.ListVPPInvitations       (data source / list resource)
 //
-// Writes are a MERGE (omit=retain). General scalars are emitted as planned; scope
-// is always-emitted as a full skeleton so collections full-replace and clear.
+// Writes are a MERGE (omit=retain). General scalars are emitted as planned.
 //
-// Status: current. Last reviewed 2026-06-08.
+// Scope is the exception to the merge: within a sent <scope> the server
+// replaces the whole subtree — any category element present, even empty, wipes
+// every omitted category across targets/limitations/exclusions; a body without
+// <scope> retains it. /vppinvitations itself was not individually probed (a
+// write can trigger real invitation emails); the semantics come from the
+// 2026-07-08 probe of the same classic scope wire family, /vppassignments
+// included (8 endpoints, all identical). Scope therefore uses per-category
+// granular ownership: Create builds from the declared plan only (undeclared
+// categories are omitted from the body); when the plan declares a scope block,
+// Update GETs the live object first and overlays the declared categories onto
+// the server's current scope (scope-only merge — no other section of the read
+// is echoed back), emitting every merged category explicitly. Omitted
+// categories stay owned by the admin UI; declared `[]` clears. See
+// STYLE_GUIDE.md §Scope helper omission semantics.
+//
+// Status: current. Last reviewed 2026-07-08.
 
 package vpp_invitation
 
@@ -23,6 +37,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
 func (r *VPPInvitationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -166,7 +181,27 @@ func (r *VPPInvitationResource) Update(ctx context.Context, req resource.UpdateR
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	input, d := buildVPPInvitationInput(updateCtx, plan)
+	// Granular scope ownership: a scope PUT replaces the whole subtree, so
+	// undeclared (null) categories must be re-emitted from the live object to
+	// survive the write. Read-merge-write, scope-only — the wire plan carries
+	// the merged scope while `plan` (used for state) keeps only the declared
+	// categories. See the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetVPPInvitationByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro VPP invitation before update", err.Error())
+			return
+		}
+		var serverScope *scope.UserScopeModel
+		if current != nil && current.Scope != nil {
+			serverScope = &scope.UserScopeModel{}
+			flattenScope(updateCtx, current.Scope, serverScope, true)
+		}
+		wirePlan.Scope = scope.MergeUserScope(plan.Scope, serverScope)
+	}
+
+	input, d := buildVPPInvitationInput(updateCtx, wirePlan)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return

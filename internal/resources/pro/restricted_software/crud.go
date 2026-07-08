@@ -24,10 +24,21 @@
 //
 // Update semantics: like all classic endpoints the PUT is a partial-merge at
 // top-section granularity. The provider always sends the full plan payload, so
-// in-place edits to general/scope converge. Removing the entire optional scope
-// block from config omits it from the payload, so the server retains the
-// previously-stored scope — a known ProClassic limitation; null the individual
-// scope fields rather than deleting the block to clear it.
+// in-place edits to general converge; removing the entire optional scope block
+// from config omits it from the payload, so the server retains the
+// previously-stored scope.
+//
+// Scope is the exception to the partial-merge: within a sent <scope> the
+// server replaces the whole subtree (wire-probed 2026-07-08 on
+// /restrictedsoftware — any category element present, even an empty one, wipes
+// every omitted category across targets/exclusions). Scope therefore uses
+// per-category granular ownership: when the plan declares a scope block,
+// Update GETs the live object first and overlays the declared categories onto
+// the live scope (scope-only merge — no other section of the read is echoed
+// back), emitting every merged category explicitly. Omitted categories stay
+// owned by the admin UI; declared `[]` clears. There is no limitations block —
+// the endpoint rejects <limitations> outright with a conflict (wire-probed).
+// See STYLE_GUIDE.md §Scope helper omission semantics.
 
 package restricted_software
 
@@ -196,7 +207,27 @@ func (r *RestrictedSoftwareResource) Update(ctx context.Context, req resource.Up
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	payload, buildDiags := buildRestrictedSoftwareInput(updateCtx, plan)
+	// Granular scope ownership: a scope PUT replaces the whole subtree, so
+	// undeclared (null) categories must be re-emitted from the live object to
+	// survive the write. Read-merge-write, scope-only — the wire plan carries
+	// the merged scope while `plan` (used for state) keeps only the declared
+	// categories. See the header comment and STYLE_GUIDE.md §Scope helper.
+	wirePlan := plan
+	if plan.Scope != nil {
+		current, err := r.client.GetRestrictedSoftwareByID(updateCtx, plan.ID.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("Error reading Jamf Pro restricted software before update", err.Error())
+			return
+		}
+		var serverScope *RestrictedSoftwareScopeModel
+		if current != nil && current.Scope != nil {
+			serverScope = &RestrictedSoftwareScopeModel{}
+			flattenScope(updateCtx, current.Scope, serverScope, true)
+		}
+		wirePlan.Scope = mergeRestrictedSoftwareScope(plan.Scope, serverScope)
+	}
+
+	payload, buildDiags := buildRestrictedSoftwareInput(updateCtx, wirePlan)
 	resp.Diagnostics.Append(buildDiags...)
 	if resp.Diagnostics.HasError() {
 		return

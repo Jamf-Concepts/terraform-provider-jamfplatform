@@ -19,10 +19,13 @@ import (
 // for Create / Update.
 //
 // General scalars are emitted as the plan holds them; email-mode fields are
-// omitted when null (the server stores them only for "Send emails"). Scope, when
-// declared, is emitted as a FULL skeleton — every collection wrapper is present
-// (empty when its set is null/empty) so the server full-replaces it. A nil Scope
-// omits <scope> entirely and leaves the server's scope untouched.
+// omitted when null (the server stores them only for "Send emails"). Scope
+// follows per-category granular ownership: only declared categories are
+// emitted (see buildScope). A nil Scope omits <scope> entirely and leaves the
+// server's scope untouched.
+//
+// NOTE: the general section is field-order sensitive on the wire — do not
+// reorder the struct assignments below.
 func buildVPPInvitationInput(ctx context.Context, plan VPPInvitationResourceModel) (*proclassic.VppInvitation, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -51,9 +54,16 @@ func buildVPPInvitationInput(ctx context.Context, plan VPPInvitationResourceMode
 	return out, diags
 }
 
-// buildScope emits the full <scope> skeleton (always-emit). Every collection
-// wrapper is present so the server full-replaces it; a nil inner slice marshals
-// as an empty element, which clears that collection.
+// buildScope projects a declared scope model into the wire scope, emitting
+// only the categories the model declares: a null category leaves its wrapper
+// nil so the element is omitted entirely (members maintained in the admin UI
+// survive the write), while a declared `[]` yields a non-nil empty slice
+// (scope.BuildIDSlice / BuildNameSlice) whose wrapper marshals as an explicit
+// empty element — the clear gesture. Create passes the raw plan, so undeclared
+// categories never reach the wire; Update passes the scope.MergeUserScope
+// output, whose fields are all non-null, so the full skeleton emerges
+// naturally from the merge and the replace-the-whole-subtree write lands
+// exactly the merged model.
 func buildScope(ctx context.Context, m *scope.UserScopeModel) (*proclassic.VppInvitationScope, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	t := m.TargetsOrZero()
@@ -63,45 +73,62 @@ func buildScope(ctx context.Context, m *scope.UserScopeModel) (*proclassic.VppIn
 
 	jssUsers, d := scope.BuildIDSlice(ctx, t.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
-	s.JssUsers = &proclassic.VppInvitationScopeJssUsers{User: jssUsers}
+	if jssUsers != nil {
+		s.JssUsers = &proclassic.VppInvitationScopeJssUsers{User: jssUsers}
+	}
 
 	jssUserGroups, d := scope.BuildIDSlice(ctx, t.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
 	diags.Append(d...)
-	s.JssUserGroups = &proclassic.VppInvitationScopeJssUserGroups{UserGroup: jssUserGroups}
+	if jssUserGroups != nil {
+		s.JssUserGroups = &proclassic.VppInvitationScopeJssUserGroups{UserGroup: jssUserGroups}
+	}
 
-	// limitations.user_groups: directory-service groups, NAME-keyed (populate Name).
-	var limNames *[]proclassic.IDName
+	// limitations.user_groups: directory-service groups, NAME-keyed (populate
+	// Name). The block is emitted whenever declared; the category wrapper only
+	// when the category itself is declared.
 	if m.Limitations != nil {
-		limNames, d = scope.BuildNameSlice(ctx, m.Limitations.DirectoryServiceUserGroupNames, func(name string) proclassic.IDName {
+		limNames, ld := scope.BuildNameSlice(ctx, m.Limitations.DirectoryServiceUserGroupNames, func(name string) proclassic.IDName {
 			n := name
 			return proclassic.IDName{Name: &n}
 		})
-		diags.Append(d...)
-	}
-	s.Limitations = &proclassic.VppInvitationScopeLimitations{
-		UserGroups: &proclassic.VppInvitationScopeLimitationsUserGroups{UserGroup: limNames},
+		diags.Append(ld...)
+		l := &proclassic.VppInvitationScopeLimitations{}
+		if limNames != nil {
+			l.UserGroups = &proclassic.VppInvitationScopeLimitationsUserGroups{UserGroup: limNames}
+		}
+		s.Limitations = l
 	}
 
 	// exclusions: id-keyed jss_users / jss_user_groups + name-keyed user_groups.
-	excl := &proclassic.VppInvitationScopeExclusions{}
-	var exclJssUsers, exclJssUserGroups *[]proclassic.IDName
-	var exclDSGroups *[]proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem
 	if m.Exclusions != nil {
-		exclJssUsers, d = scope.BuildIDSlice(ctx, m.Exclusions.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
-		diags.Append(d...)
-		exclJssUserGroups, d = scope.BuildIDSlice(ctx, m.Exclusions.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
-		diags.Append(d...)
-		exclDSGroups, d = scope.BuildNameSlice(ctx, m.Exclusions.DirectoryServiceUserGroupNames, func(name string) proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem {
+		excl := &proclassic.VppInvitationScopeExclusions{}
+		exclJssUsers, ed := scope.BuildIDSlice(ctx, m.Exclusions.JssUserIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+		diags.Append(ed...)
+		if exclJssUsers != nil {
+			excl.JssUsers = &proclassic.VppInvitationScopeExclusionsJssUsers{User: exclJssUsers}
+		}
+		exclJssUserGroups, ed := scope.BuildIDSlice(ctx, m.Exclusions.JssUserGroupIDs, func(id int) proclassic.IDName { return proclassic.IDName{ID: &id} })
+		diags.Append(ed...)
+		if exclJssUserGroups != nil {
+			excl.JssUserGroups = &proclassic.VppInvitationScopeExclusionsJssUserGroups{UserGroup: exclJssUserGroups}
+		}
+		exclDSGroups, ed := scope.BuildNameSlice(ctx, m.Exclusions.DirectoryServiceUserGroupNames, func(name string) proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem {
 			n := name
 			return proclassic.VppInvitationScopeExclusionsUserGroupsUserGroupItem{Name: &n}
 		})
-		diags.Append(d...)
+		diags.Append(ed...)
+		if exclDSGroups != nil {
+			excl.UserGroups = &proclassic.VppInvitationScopeExclusionsUserGroups{UserGroup: exclDSGroups}
+		}
+		s.Exclusions = excl
 	}
-	excl.JssUsers = &proclassic.VppInvitationScopeExclusionsJssUsers{User: exclJssUsers}
-	excl.JssUserGroups = &proclassic.VppInvitationScopeExclusionsJssUserGroups{UserGroup: exclJssUserGroups}
-	excl.UserGroups = &proclassic.VppInvitationScopeExclusionsUserGroups{UserGroup: exclDSGroups}
-	s.Exclusions = excl
 
+	// Omission semantics (STYLE_GUIDE.md §Scope helper): collapse to nil when
+	// nothing at all is declared so the payload omits <scope> entirely.
+	if s.AllJssUsers == nil && s.JssUsers == nil && s.JssUserGroups == nil &&
+		s.Limitations == nil && s.Exclusions == nil {
+		return nil, diags
+	}
 	return s, diags
 }
 

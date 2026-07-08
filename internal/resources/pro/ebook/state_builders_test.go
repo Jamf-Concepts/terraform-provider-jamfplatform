@@ -47,6 +47,9 @@ func TestFlattenEbookGeneral_ServerDerivedAndCategory(t *testing.T) {
 	}
 }
 
+// TestFlattenEbookScope_DualTargetRoundTrip hydrates the full dual-target
+// union from a zero model (includeUnmanaged=true — the shape Update uses to
+// build the read-merge-write base and Read uses on first-time import).
 func TestFlattenEbookScope_DualTargetRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	s := &proclassic.EbookScope{
@@ -76,12 +79,8 @@ func TestFlattenEbookScope_DualTargetRoundTrip(t *testing.T) {
 		},
 	}
 
-	state := &EbookScopeModel{
-		Targets:     &EbookScopeTargetsModel{},
-		Limitations: &EbookScopeLimitationsModel{},
-		Exclusions:  &EbookScopeExclusionsModel{},
-	}
-	flattenEbookScope(ctx, s, state, false)
+	state := &EbookScopeModel{}
+	flattenEbookScope(ctx, s, state, true)
 
 	if setLen(state.Targets.ComputerIDs) != 2 {
 		t.Errorf("computer_ids: want 2, got %d", setLen(state.Targets.ComputerIDs))
@@ -106,6 +105,80 @@ func TestFlattenEbookScope_DualTargetRoundTrip(t *testing.T) {
 	}
 	if state.Targets.AllComputers.IsNull() || state.Targets.AllComputers.ValueBool() {
 		t.Errorf("all_computers should be false, got %v", state.Targets.AllComputers)
+	}
+	// Wire-absent categories hydrate to empty (never null) under hydrate-all.
+	if state.Targets.BuildingIDs.IsNull() || setLen(state.Targets.BuildingIDs) != 0 {
+		t.Errorf("wire-absent building_ids must hydrate to an empty set, got %v", state.Targets.BuildingIDs)
+	}
+}
+
+// TestFlattenEbookScope_ManagedRefreshUnmanagedStaysNull pins the granular
+// ownership gate: a managed (non-null) category refreshes from the live scope;
+// an unmanaged (null) category stays null so members maintained in the admin UI
+// never enter state.
+func TestFlattenEbookScope_ManagedRefreshUnmanagedStaysNull(t *testing.T) {
+	ctx := context.Background()
+	state := &EbookScopeModel{
+		Targets: &EbookScopeTargetsModel{
+			ComputerIDs:     idSet(),      // managed [], refreshes from the live scope
+			MobileDeviceIDs: idSet("999"), // managed, drift-refreshes
+		},
+		Limitations: &EbookScopeLimitationsModel{
+			DirectoryServiceOrLocalUserNames: idSetNames(), // managed
+		},
+		Exclusions: &EbookScopeExclusionsModel{
+			DirectoryServiceUserGroupNames: idSetNames(), // managed
+		},
+	}
+	s := &proclassic.EbookScope{
+		AllComputers: new(false),
+		Computers: &proclassic.EbookScopeComputers{
+			Computer: &[]proclassic.EbookScopeComputersComputerItem{{ID: new(11)}, {ID: new(12)}},
+		},
+		MobileDevices: &proclassic.EbookScopeMobileDevices{
+			MobileDevice: &[]proclassic.EbookScopeMobileDevicesMobileDeviceItem{{ID: new(21)}},
+		},
+		ComputerGroups: &proclassic.EbookScopeComputerGroups{
+			ComputerGroup: &[]proclassic.IDName{{ID: new(5)}},
+		},
+		Limitations: &proclassic.EbookScopeLimitations{
+			Users: &proclassic.EbookScopeLimitationsUsers{User: &[]proclassic.IDName{{Name: new("alice")}}},
+			NetworkSegments: &proclassic.EbookScopeLimitationsNetworkSegments{
+				NetworkSegment: &[]proclassic.IDName{{ID: new(2)}},
+			},
+		},
+		Exclusions: &proclassic.EbookScopeExclusions{
+			UserGroups: &proclassic.EbookScopeExclusionsUserGroups{UserGroup: &[]proclassic.IDName{{Name: new("Admins")}}},
+			ComputerGroups: &proclassic.EbookScopeExclusionsComputerGroups{
+				ComputerGroup: &[]proclassic.IDName{{ID: new(7)}},
+			},
+		},
+	}
+	flattenEbookScope(ctx, s, state, false)
+
+	if setLen(state.Targets.ComputerIDs) != 2 {
+		t.Errorf("managed computer_ids should refresh from the live scope: got %v", state.Targets.ComputerIDs)
+	}
+	if setLen(state.Targets.MobileDeviceIDs) != 1 {
+		t.Errorf("managed mobile_device_ids should drift-refresh: got %v", state.Targets.MobileDeviceIDs)
+	}
+	if !state.Targets.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged computer_group_ids must stay null, got %v", state.Targets.ComputerGroupIDs)
+	}
+	if !state.Targets.AllComputers.IsNull() {
+		t.Errorf("unmanaged all_computers must stay null, got %v", state.Targets.AllComputers)
+	}
+	if setLen(state.Limitations.DirectoryServiceOrLocalUserNames) != 1 {
+		t.Errorf("managed limitation user names should refresh: got %v", state.Limitations.DirectoryServiceOrLocalUserNames)
+	}
+	if !state.Limitations.NetworkSegmentIDs.IsNull() {
+		t.Errorf("unmanaged limitation network_segment_ids must stay null, got %v", state.Limitations.NetworkSegmentIDs)
+	}
+	if setLen(state.Exclusions.DirectoryServiceUserGroupNames) != 1 {
+		t.Errorf("managed exclusion user_group names should refresh: got %v", state.Exclusions.DirectoryServiceUserGroupNames)
+	}
+	if !state.Exclusions.ComputerGroupIDs.IsNull() {
+		t.Errorf("unmanaged exclusion computer_group_ids must stay null, got %v", state.Exclusions.ComputerGroupIDs)
 	}
 }
 

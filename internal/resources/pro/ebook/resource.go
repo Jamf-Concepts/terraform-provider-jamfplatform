@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
@@ -154,7 +155,7 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Ebook scope — the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets.",
+				MarkdownDescription: "Ebook scope — the dual-target union. Computer targets, mobile-device targets, user targets, and `class_ids` all coexist. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Setting `all_computers = true` forbids `computer_ids` / `computer_group_ids`; `all_mobile_devices = true` forbids `mobile_device_ids` / `mobile_device_group_ids`; `all_jss_users = true` forbids `user_ids` / `user_group_ids`. Targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. There are no iBeacon targets.",
 				Optional:            true,
 				Attributes:          ebookScopeAttributes(),
 			},
@@ -208,11 +209,13 @@ func (r *EbookResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 // deliberately does NOT reuse scope.ComputerScopeAttributes /
 // scope.MobileScopeAttributes (those are single-target sugar). The three
 // all-flags use value-discriminated AllFlagConflictsWith validators with
-// relative paths (so they resolve against their sibling sets inside `targets`)
-// and UseNonNullStateForUnknown (the server always echoes the flags; the
-// `targets` block can transition null→present, and pinning a null prior state
-// forward trips the post-apply consistency check — see feedback
-// all_computers_usestate_latent_bug).
+// relative paths (so they resolve against their sibling sets inside `targets`).
+//
+// Every attribute in the block — the per-category sets and the all-flags — is
+// Optional-only, matching the shared factories in internal/common/scope: the
+// null/`[]` (or null/`false`) distinction carries the granular per-category
+// ownership contract, so nothing here may be Computed or carry a
+// state-forwarding plan modifier (see STYLE_GUIDE.md §Scope helper).
 func ebookScopeAttributes() map[string]schema.Attribute {
 	limitations := map[string]schema.Attribute{
 		"network_segment_ids":                   scope.IDSetAttribute("network segment"),
@@ -235,10 +238,8 @@ func ebookScopeAttributes() map[string]schema.Attribute {
 
 	targets := map[string]schema.Attribute{
 		"all_computers": schema.BoolAttribute{
-			MarkdownDescription: "Scope to every computer in the tenant. Forbids `computer_ids` / `computer_group_ids` when true.",
+			MarkdownDescription: "Scope to every computer in the tenant. Forbids `computer_ids` / `computer_group_ids` when true. Omit to leave the toggle as configured outside Terraform.",
 			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				scope.AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("computer_ids"),
@@ -247,10 +248,8 @@ func ebookScopeAttributes() map[string]schema.Attribute {
 			},
 		},
 		"all_mobile_devices": schema.BoolAttribute{
-			MarkdownDescription: "Scope to every mobile device in the tenant. Forbids `mobile_device_ids` / `mobile_device_group_ids` when true.",
+			MarkdownDescription: "Scope to every mobile device in the tenant. Forbids `mobile_device_ids` / `mobile_device_group_ids` when true. Omit to leave the toggle as configured outside Terraform.",
 			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				scope.AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("mobile_device_ids"),
@@ -259,10 +258,8 @@ func ebookScopeAttributes() map[string]schema.Attribute {
 			},
 		},
 		"all_jss_users": schema.BoolAttribute{
-			MarkdownDescription: "Scope to every Jamf Pro user in the tenant. Forbids `user_ids` / `user_group_ids` when true.",
+			MarkdownDescription: "Scope to every Jamf Pro user in the tenant. Forbids `user_ids` / `user_group_ids` when true. Omit to leave the toggle as configured outside Terraform.",
 			Optional:            true,
-			Computed:            true,
-			PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseNonNullStateForUnknown()},
 			Validators: []validator.Bool{
 				scope.AllFlagConflictsWith(
 					path.MatchRelative().AtParent().AtName("user_ids"),
@@ -359,6 +356,32 @@ func (r *EbookResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanR
 			ctx, r.ldapSearcher, plan.Scope.Exclusions.DirectoryServiceUserGroupNames,
 			scopeRoot.AtName("exclusions").AtName("directory_service_user_group_names"),
 		)...)
+	}
+
+	// Granular-ownership visibility: undeclared scope categories are preserved
+	// silently on apply (read-merge-write), so surface any that currently have
+	// members configured outside Terraform. Update plans only (state exists),
+	// best-effort — a read failure never blocks the plan.
+	if r.client != nil && !req.State.Raw.IsNull() {
+		var state EbookResourceModel
+		resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if state.ID.IsNull() || state.ID.ValueString() == "" {
+			return
+		}
+		current, err := r.client.GetEbookByID(ctx, state.ID.ValueString())
+		if err != nil || current == nil || current.Scope == nil {
+			if err != nil {
+				tflog.Debug(ctx, "skipping co-managed scope check: read failed", map[string]any{"error": err.Error()})
+			}
+			return
+		}
+		serverScope := &EbookScopeModel{}
+		flattenEbookScope(ctx, current.Scope, serverScope, true)
+		scope.WarnUnmanagedCategories(&resp.Diagnostics, scopeRoot,
+			unmanagedEbookScopeCategories(plan.Scope, serverScope))
 	}
 }
 

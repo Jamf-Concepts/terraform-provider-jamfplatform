@@ -192,11 +192,56 @@ func (r *Resource) preflightScopeGroups(ctx context.Context, req resource.Modify
 	}
 }
 
+// warnCoManagedScope surfaces granular-ownership visibility: undeclared scope
+// categories are preserved silently on apply (read-merge-write), so list any
+// that currently have members configured outside Terraform as one plan
+// warning. Update plans only (state exists), best-effort — a read failure
+// never blocks the plan.
+func (r *Resource) warnCoManagedScope(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.client == nil || req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+	var plan ResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() || plan.Scope == nil {
+		return
+	}
+	var state ResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if state.ID.IsNull() || state.ID.ValueString() == "" {
+		return
+	}
+	current, err := r.client.GetMobileDeviceConfigurationProfileByID(ctx, state.ID.ValueString())
+	if err != nil || current == nil || current.Scope == nil {
+		if err != nil {
+			tflog.Debug(ctx, "skipping co-managed scope check: read failed", map[string]any{"error": err.Error()})
+		}
+		return
+	}
+	serverScope := &scope.MobileScopeModel{}
+	// Best-effort hydrate: flatten diagnostics are dropped so a malformed read
+	// can never block the plan.
+	flattenScope(ctx, current.Scope, serverScope, true)
+	scope.WarnUnmanagedCategories(&resp.Diagnostics, path.Root("scope"),
+		scope.UnmanagedMobileScopeCategories(plan.Scope, serverScope))
+}
+
 func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	// Scope directory-service user-group preflight runs first so it covers
 	// create-plans too (the payload compare below early-returns on create). It
 	// is skipped only on destroy (null plan).
 	r.preflightScopeGroups(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Co-managed scope warning runs before the payload compare: the compare's
+	// NoOp/Apply/Drift branches all return early and must not swallow the
+	// granular-ownership visibility on update plans.
+	r.warnCoManagedScope(ctx, req, resp)
 	if resp.Diagnostics.HasError() {
 		return
 	}

@@ -139,11 +139,12 @@ func TestAccResource_ProEbook_InHouseLifecycle(t *testing.T) {
 				ResourceName:      ebookResourceAddr,
 				ImportState:       true,
 				ImportStateVerify: true,
-				// scope / self_service: Optional state-gated blocks this
-				// general-only config never declares. Import hydrates them
-				// from the server's echoed defaults (correct — see the
-				// import-hydration fix), which legitimately differs from this
-				// config's null. Not verified here.
+				// scope: import hydrates every category; apply keeps
+				// declared-only (this config declares none).
+				// self_service: Optional state-gated block this general-only
+				// config never declares — import hydrates it from the echoed
+				// defaults, which legitimately differs from this config's
+				// null. Not verified here.
 				ImportStateVerifyIgnore: []string{"timeouts", "scope", "self_service"},
 			},
 			{
@@ -372,11 +373,11 @@ func TestAccResource_ProEbook_SelfServiceCategories(t *testing.T) {
 	})
 }
 
-// TestAccResource_ProEbook_ScopeLimitationsClearWithEmptySet verifies that an
-// all-empty but declared `limitations` block clears its members. /ebooks MERGES
-// an omitted <limitations> sub-block (wire-probed), so the build must emit an
-// empty <limitations></limitations>; otherwise the member is retained
-// server-side and the apply fails the post-apply consistency check. Uses a
+// TestAccResource_ProEbook_ScopeLimitationsClearWithEmptySet verifies the
+// declared-`[]` clear gesture under granular scope ownership: an explicitly
+// empty network_segment_ids must be emitted as an empty element so the scope
+// subtree replace clears it (omitting the category instead would leave it
+// unmanaged and preserved by the read-merge-write update). Uses a
 // network-segment fixture (no LDAP needed).
 func TestAccResource_ProEbook_ScopeLimitationsClearWithEmptySet(t *testing.T) {
 	testhelpers.AccPreCheck(t)
@@ -419,8 +420,9 @@ resource "jamfplatform_pro_ebook" "test" {
 				Check:  resource.TestCheckResourceAttr(ebookResourceAddr, "scope.limitations.network_segment_ids.#", "1"),
 			},
 			{
-				// Clear to [] — declared-but-empty <limitations> must be emitted so
-				// the merge endpoint clears. Implicit post-step empty-plan enforces it.
+				// Clear to [] — the declared empty category must be emitted as an
+				// explicit empty element (omission would preserve it under granular
+				// ownership). Implicit post-step empty-plan enforces the round-trip.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr(ebookResourceAddr, "scope.limitations.network_segment_ids.#", "0"),
 			},

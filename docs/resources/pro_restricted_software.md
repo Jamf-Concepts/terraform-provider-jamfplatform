@@ -97,7 +97,7 @@ resource "jamfplatform_pro_restricted_software" "scoped" {
 
 ### Optional
 
-- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software. (see [below for nested schema](#nestedatt--scope))
+- `scope` (Attributes) Scope — the "Scope" tab in the Jamf Pro admin UI. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. Targets nest under `targets` (mirroring the Targets sub-tab) as flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Setting `targets.all_computers = true` forbids the per-category target ID sets. Scope limitations are not supported for restricted software. (see [below for nested schema](#nestedatt--scope))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -140,11 +140,11 @@ Optional:
 
 Optional:
 
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
-- `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--targets"></a>
@@ -152,11 +152,11 @@ Optional:
 
 Optional:
 
-- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true.
-- `building_ids` (Set of String) Set of Jamf Pro building IDs.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs.
+- `all_computers` (Boolean) Scope to every computer in the tenant. Forbids per-computer / per-group / per-building / per-department targets when true. Omit to leave the toggle as configured outside Terraform.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 

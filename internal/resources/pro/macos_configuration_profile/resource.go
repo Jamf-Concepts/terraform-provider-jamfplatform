@@ -166,7 +166,7 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 				},
 			},
 			"scope": schema.SingleNestedAttribute{
-				MarkdownDescription: "Profile scope. `all_computers = true` forbids per-computer / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's \"Users\" / \"User Groups\" lists.",
+				MarkdownDescription: "Profile scope. Each category is independently owned: declare it (including `[]`, which clears it) and Terraform manages its members; omit it and it is left as configured outside Terraform — updates preserve it. `all_computers = true` forbids per-computer / per-group / per-building / per-department targets. `all_jss_users = true` forbids per-user / per-user-group targets. `user_ids` / `user_group_ids` map to the admin UI's \"Users\" / \"User Groups\" lists.",
 				Optional:            true,
 				Attributes:          scope.ComputerScopeAttributes(scope.ComputerScopeOptions{IncludeIbeacons: true}),
 			},
