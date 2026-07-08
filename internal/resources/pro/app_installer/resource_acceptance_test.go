@@ -111,6 +111,12 @@ func TestAccResource_ProAppInstaller_Basic(t *testing.T) {
 				ResourceName:      resourceAddr,
 				ImportState:       true,
 				ImportStateVerify: true,
+				// notification_settings / self_service_settings: Optional
+				// state-gated blocks this config never declares. Import
+				// hydrates them from the server's echoed defaults (correct —
+				// see the import-hydration fix), which legitimately differs
+				// from this config's null. Not verified here.
+				ImportStateVerifyIgnore: []string{"notification_settings", "self_service_settings"},
 			},
 		},
 	})

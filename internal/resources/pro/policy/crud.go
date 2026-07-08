@@ -159,7 +159,19 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	resp.Diagnostics.Append(assignPolicyResourceModel(readCtx, &state, got, false)...)
+	// firstHydration detects an unpopulated incoming model: general is a
+	// schema-Required block that a genuinely managed resource's state always
+	// has populated (Create/Update always set it before any Read), so
+	// state.General == nil can only mean this Read call is doing first-time
+	// import hydration (classic `terraform import` leaves state sparse-but-
+	// non-null via ImportStatePassthroughID, or identity-only import leaves it
+	// fully null — either way General was never set). Hydrate every
+	// wire-present optional section in that case so a freshly imported
+	// resource matches a config that already declares scope/self_service/
+	// packages. On every subsequent Read (state.General != nil), the gate
+	// reverts to only refreshing sections the current state already tracks.
+	firstHydration := state.General == nil
+	resp.Diagnostics.Append(assignPolicyResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

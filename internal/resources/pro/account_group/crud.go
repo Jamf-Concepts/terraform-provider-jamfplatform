@@ -137,7 +137,19 @@ func (r *AccountGroupResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	resp.Diagnostics.Append(assignAccountGroupResourceModel(readCtx, &state, got, isImport)...)
+	// firstHydration detects an unpopulated incoming model — NOT the same as
+	// isImport above. isImport (req.State.Raw.IsNull()) is only true for the
+	// newer identity-only import path; the classic `terraform import <addr>
+	// <id>` command (via ImportStatePassthroughID) leaves req.State
+	// sparse-but-non-null, so isImport is false there even though the model is
+	// just as unhydrated. display_name is schema-Required and always
+	// populated in genuinely managed state, so state.DisplayName.IsNull() can
+	// only mean this Read call is doing first-time import hydration (via
+	// either import path). Materialise the full server membership/privilege
+	// grid in that case; subsequent Reads revert to reconciling against only
+	// what the current state already manages.
+	firstHydration := state.DisplayName.IsNull()
+	resp.Diagnostics.Append(assignAccountGroupResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

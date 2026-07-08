@@ -141,7 +141,17 @@ func (r *VPPAssignmentResource) Read(ctx context.Context, req resource.ReadReque
 		resp.Diagnostics.AddError("Error reading Jamf Pro VPP assignment", err.Error())
 		return
 	}
-	assignVPPAssignmentResourceModel(readCtx, &state, got, false)
+	// firstHydration detects an unpopulated incoming model (see mac_app_store_app
+	// / policy for the full rationale): name is schema-Required and always
+	// populated in genuinely managed state, so state.Name.IsNull() can only
+	// mean this Read call is doing first-time import hydration (true for both
+	// the classic Get()-decoded sparse state and the identity-only branch's
+	// manually-seeded zero-value state above — attr.ValueStateNull is the
+	// zero value, so IsNull() is safe either way). Hydrate the wire-present
+	// optional scope section in that case; subsequent Reads revert to only
+	// refreshing sections the current state already tracks.
+	firstHydration := state.Name.IsNull()
+	assignVPPAssignmentResourceModel(readCtx, &state, got, firstHydration)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, vppAssignmentIdentityModel{ID: state.ID})...)
 	if resp.Diagnostics.HasError() {

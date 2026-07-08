@@ -136,10 +136,15 @@ func TestAccResource_ProEbook_InHouseLifecycle(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:            ebookResourceAddr,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"timeouts"},
+				ResourceName:      ebookResourceAddr,
+				ImportState:       true,
+				ImportStateVerify: true,
+				// scope / self_service: Optional state-gated blocks this
+				// general-only config never declares. Import hydrates them
+				// from the server's echoed defaults (correct — see the
+				// import-hydration fix), which legitimately differs from this
+				// config's null. Not verified here.
+				ImportStateVerifyIgnore: []string{"timeouts", "scope", "self_service"},
 			},
 			{
 				// In-place update: bump version + flip the distribution method.

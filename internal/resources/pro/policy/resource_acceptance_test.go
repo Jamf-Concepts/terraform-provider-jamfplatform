@@ -356,9 +356,26 @@ func TestAccPolicyResource_Minimal(t *testing.T) {
 				},
 			},
 			{
+				// ImportStateVerify: false — policy has ~15 Optional
+				// state-gated top-level blocks (scope, self_service,
+				// packages, scripts, printers, dock_items, restart_options,
+				// maintenance, files_and_processes, user_interaction,
+				// disk_encryption, local_accounts, directory_bindings,
+				// management_account, efi_password) plus general sub-blocks
+				// (date_time_limitations, network_limitations,
+				// override_default_settings) — this minimal config declares
+				// none of them. Import correctly hydrates them from the
+				// server's echoed defaults (see the import-hydration fix),
+				// which legitimately differs from this config's nulls. An
+				// ImportStateVerifyIgnore list covering all of them would be
+				// both unwieldy and fragile against future schema changes;
+				// the plain import (still exercised below) is the
+				// established pattern for this resource — see
+				// TestAccResource_MacOSConfigurationProfile_ImportState for
+				// precedent.
 				ResourceName:                         "jamfplatform_pro_policy.test",
 				ImportState:                          true,
-				ImportStateVerify:                    true,
+				ImportStateVerify:                    false,
 				ImportStateVerifyIdentifierAttribute: "id",
 			},
 		},

@@ -149,7 +149,15 @@ func (r *AppInstallerResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	assignAppInstallerResourceModel(&state, got, false)
+	// firstHydration detects an unpopulated incoming model (see mac_app_store_app
+	// / policy for the full rationale): name is schema-Required and always
+	// populated in genuinely managed state, so state.Name.IsNull() can only
+	// mean this Read call is doing first-time import hydration. Hydrate the
+	// wire-present optional notification_settings/self_service_settings
+	// sections in that case; subsequent Reads revert to only refreshing
+	// sections the current state already tracks.
+	firstHydration := state.Name.IsNull()
+	assignAppInstallerResourceModel(&state, got, firstHydration)
 
 	// Reverse-resolve app_title_id → app_title_name. The deployment GET returns
 	// only the ID; on import there is no prior config to echo, so the name must

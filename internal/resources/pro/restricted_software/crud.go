@@ -159,7 +159,14 @@ func (r *RestrictedSoftwareResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
-	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(readCtx, &state, got, false)...)
+	// firstHydration detects an unpopulated incoming model (see mac_app_store_app
+	// / policy for the full rationale): general is schema-Required and always
+	// populated in genuinely managed state, so state.General == nil can only
+	// mean this Read call is doing first-time import hydration. Hydrate the
+	// wire-present optional scope section in that case; subsequent Reads
+	// revert to only refreshing sections the current state already tracks.
+	firstHydration := state.General == nil
+	resp.Diagnostics.Append(assignRestrictedSoftwareResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

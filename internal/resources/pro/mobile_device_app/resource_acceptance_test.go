@@ -134,8 +134,13 @@ func TestAccResource_ProMobileApp_Basic(t *testing.T) {
 				ImportStateVerify: true,
 				// timeouts: not returned by the API. os_type IS verifiable here:
 				// Create issues a follow-up PUT that persists it, so the GET (incl.
-				// import's) echoes it for this in-house app.
-				ImportStateVerifyIgnore: []string{"timeouts"},
+				// import's) echoes it for this in-house app. scope /
+				// self_service / vpp / app_configuration: Optional state-gated
+				// blocks this general-only config never declares. Import
+				// hydrates them from the server's echoed defaults (correct —
+				// see the import-hydration fix), which legitimately differs
+				// from this config's null. Not verified here.
+				ImportStateVerifyIgnore: []string{"timeouts", "scope", "self_service", "vpp", "app_configuration"},
 			},
 			{
 				Config: mobileAppGeneralOnlyConfig(name, "2.0", "Install Automatically/Prompt Users to Install"),
