@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"testing"
 	"time"
 
@@ -689,7 +690,8 @@ func macAppScopeTargetsConfig(suffix string, limitationUserNames string) string 
 // TestAccResource_ProMacApp_ScopeTargets exercises the scope target / limitation
 // / exclusion ID round-trips against real sibling resources, and (step 2) a
 // set-shrink: the limitation directory-user name set goes from two entries to
-// one, verifying the nested set updates cleanly under the partial-merge PUT.
+// one, verifying the nested set updates cleanly under the scope
+// read-merge-write update.
 func TestAccResource_ProMacApp_ScopeTargets(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
@@ -860,13 +862,13 @@ func TestAccResource_ProMacApp_ScopeLdapGroup(t *testing.T) {
 	`, name, group)
 
 	// cleared removes the directory-service group from scope by assigning an
-	// empty set `[]` (the natural "remove all" gesture). Applied as a final step
-	// BEFORE the framework destroys the resource: destroying an app while a DS
-	// group is still scoped can leave an orphaned app->LDAP association that
-	// blocks the LDAP server's deletion (a server-side data-integrity bug). By
-	// clearing the reference first, teardown leaves nothing pinning the directory.
-	// `[]` round-trips because the scope set is Optional+Computed with the
-	// CanonicalEmptySet plan modifier.
+	// empty set `[]` — under granular scope ownership the explicit `[]` is the
+	// clear gesture (omitting the category would leave it unmanaged and
+	// preserved). Applied as a final step BEFORE the framework destroys the
+	// resource: destroying an app while a DS group is still scoped can leave an
+	// orphaned app->LDAP association that blocks the LDAP server's deletion (a
+	// server-side data-integrity bug). By clearing the reference first,
+	// teardown leaves nothing pinning the directory.
 	cleared := fmt.Sprintf(`
 		resource "jamfplatform_pro_mac_app_store_app" "test" {
 			general = {
@@ -902,11 +904,139 @@ func TestAccResource_ProMacApp_ScopeLdapGroup(t *testing.T) {
 			},
 			{
 				// Detach the DS group before destroy (see `cleared` above) via an
-				// empty set `[]`. The `[]` plans as null (CanonicalEmptySet),
-				// so no explicit count assertion — the implicit post-step empty-plan
-				// check enforces that the clear round-tripped server-side.
+				// empty set `[]`. Declared `[]` round-trips as `[]` under granular
+				// ownership, so the count is asserted directly; the implicit
+				// post-step empty-plan check enforces that the clear round-tripped.
 				Config: cleared,
-				Check:  resource.TestCheckResourceAttrSet(macAppResourceAddr, "id"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(macAppResourceAddr, "id"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.limitations.directory_service_user_group_names.#", "0"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResource_ProMacApp_ScopeSplitOwnership proves the granular scope
+// ownership contract: a category the config does not declare (departments) is
+// left to the admin UI — an out-of-band edit survives an unrelated Terraform
+// change instead of being wiped by the scope subtree replace — while a
+// declared category (buildings) stays owned, and declaring `[]` afterwards
+// clears the co-managed category, proving Terraform can still take over.
+func TestAccResource_ProMacApp_ScopeSplitOwnership(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+
+	var appID string
+	var deptID string
+
+	// addDepartmentOutOfBand simulates a UI scope edit: GET the app, add the
+	// department target, PUT the full object back (like the admin console).
+	addDepartmentOutOfBand := func() {
+		c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+		ctx := context.Background()
+		got, err := c.GetMacApplicationByID(ctx, appID)
+		if err != nil {
+			t.Fatalf("out-of-band GET: %v", err)
+		}
+		id, err := strconv.Atoi(deptID)
+		if err != nil {
+			t.Fatalf("department id %q: %v", deptID, err)
+		}
+		got.Scope.Departments = &proclassic.MacApplicationScopeDepartments{
+			Department: &[]proclassic.IDName{{ID: &id}},
+		}
+		if err := c.UpdateMacApplicationByID(ctx, appID, got); err != nil {
+			t.Fatalf("out-of-band PUT: %v", err)
+		}
+	}
+
+	checkServerDepartments := func(want int) resource.TestCheckFunc {
+		return func(*terraform.State) error {
+			c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+			got, err := c.GetMacApplicationByID(context.Background(), appID)
+			if err != nil {
+				return fmt.Errorf("verify GET: %w", err)
+			}
+			n := 0
+			if got.Scope != nil && got.Scope.Departments != nil && got.Scope.Departments.Department != nil {
+				n = len(*got.Scope.Departments.Department)
+			}
+			if n != want {
+				return fmt.Errorf("server departments = %d, want %d", n, want)
+			}
+			return nil
+		}
+	}
+
+	config := func(version, departmentIDs string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_pro_building" "b1" {
+				name = "tf-acc-macapp-split-bldg-%[1]s"
+			}
+
+			resource "jamfplatform_pro_department" "d1" {
+				name = "tf-acc-macapp-split-dept-%[1]s"
+			}
+
+			resource "jamfplatform_pro_mac_app_store_app" "test" {
+				general = {
+					name      = "tf-acc-pro-macapp-split-%[1]s"
+					version   = %[2]q
+					bundle_id = "com.example.tfacc.macapp.split"
+					url       = "https://apps.apple.com/app/id000000006"
+				}
+
+				scope = {
+					targets = {
+						building_ids = [jamfplatform_pro_building.b1.id]
+						%[3]s
+					}
+				}
+			}
+		`, suffix, version, departmentIDs)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckMacAppDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// department_ids undeclared from the start: unmanaged.
+				Config: config("1.0", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.building_ids.#", "1"),
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "scope.targets.department_ids"),
+					func(s *terraform.State) error {
+						appID = s.RootModule().Resources[macAppResourceAddr].Primary.ID
+						deptID = s.RootModule().Resources["jamfplatform_pro_department.d1"].Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				// Admin adds a department in the UI; config changes only the
+				// version. The read-merge-write update must re-emit the
+				// department so the subtree replace does not wipe it — and it
+				// must never enter Terraform state.
+				PreConfig: addDepartmentOutOfBand,
+				Config:    config("1.1", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(macAppResourceAddr, "general.version", "1.1"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.building_ids.#", "1"),
+					resource.TestCheckNoResourceAttr(macAppResourceAddr, "scope.targets.department_ids"),
+					checkServerDepartments(1),
+				),
+			},
+			{
+				// Declaring `[]` takes ownership and clears the category; the
+				// declared buildings remain intact.
+				Config: config("1.1", "department_ids = []"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.department_ids.#", "0"),
+					resource.TestCheckResourceAttr(macAppResourceAddr, "scope.targets.building_ids.#", "1"),
+					checkServerDepartments(0),
+				),
 			},
 		},
 	})
