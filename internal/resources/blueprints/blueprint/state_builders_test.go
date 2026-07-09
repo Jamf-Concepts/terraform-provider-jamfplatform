@@ -303,3 +303,83 @@ func TestUpdateModelFromAPIResponse_NoSteps(t *testing.T) {
 		t.Error("expected nil components when no steps")
 	}
 }
+
+// TestUpdateLegacyPayloadsFromAPI_PreservesConfigShapeOnMatch pins the issue
+// #282 fix: when the server response is semantically identical to the incoming
+// (configuration-shaped) value, the reader keeps that value verbatim so the
+// dynamic null-typing does not manufacture a diff.
+func TestUpdateLegacyPayloadsFromAPI_PreservesConfigShapeOnMatch(t *testing.T) {
+	ctx := t.Context()
+
+	prior, err := helpers.JSONToTerraformDynamic([]any{
+		map[string]any{
+			"payload_type": "com.apple.notificationsettings",
+			"settings": map[string]any{
+				"NotificationSettings": []any{
+					map[string]any{
+						"BundleIdentifier":     "com.apple.tips",
+						"AlertType":            float64(0),
+						"BadgesEnabled":        nil,
+						"NotificationsEnabled": false,
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to build prior value: %v", err)
+	}
+
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier:    "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadContent":[{"payloadType":"com.apple.notificationsettings","payloadIdentifier":"generated-uuid","NotificationSettings":[{"BundleIdentifier":"com.apple.tips","AlertType":0,"BadgesEnabled":null,"NotificationsEnabled":false}]}]}`),
+		},
+	}
+
+	model := &BlueprintResourceModel{LegacyPayloads: prior}
+	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, map[string]struct{}{})
+
+	if !model.LegacyPayloads.Equal(prior) {
+		t.Errorf("expected config-shaped prior value to be preserved on semantic match, got %#v", model.LegacyPayloads)
+	}
+}
+
+// TestUpdateLegacyPayloadsFromAPI_OverwritesOnMismatch verifies that a genuine
+// server-side difference is still surfaced rather than masked by the reconcile.
+func TestUpdateLegacyPayloadsFromAPI_OverwritesOnMismatch(t *testing.T) {
+	ctx := t.Context()
+
+	prior, err := helpers.JSONToTerraformDynamic([]any{
+		map[string]any{
+			"payload_type": "com.apple.notificationsettings",
+			"settings":     map[string]any{"BundleIdentifier": "com.apple.tips.old"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to build prior value: %v", err)
+	}
+
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier:    "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadContent":[{"payloadType":"com.apple.notificationsettings","BundleIdentifier":"com.apple.tips.new"}]}`),
+		},
+	}
+
+	model := &BlueprintResourceModel{LegacyPayloads: prior}
+	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, map[string]struct{}{})
+
+	if model.LegacyPayloads.Equal(prior) {
+		t.Fatal("expected differing server value to overwrite the prior value")
+	}
+
+	raw, err := helpers.TerraformDynamicToJSON(model.LegacyPayloads)
+	if err != nil {
+		t.Fatalf("failed to convert result: %v", err)
+	}
+	settings := raw.([]any)[0].(map[string]any)["settings"].(map[string]any)
+	if settings["BundleIdentifier"] != "com.apple.tips.new" {
+		t.Errorf("expected overwritten value 'com.apple.tips.new', got %v", settings["BundleIdentifier"])
+	}
+}

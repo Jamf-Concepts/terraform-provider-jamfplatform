@@ -34,6 +34,7 @@ type BlueprintResource struct {
 var _ resource.Resource = &BlueprintResource{}
 var _ resource.ResourceWithImportState = &BlueprintResource{}
 var _ resource.ResourceWithIdentity = &BlueprintResource{}
+var _ resource.ResourceWithModifyPlan = &BlueprintResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -239,6 +240,28 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 	}
 
 	r.client = blueprints.New(pd.Client)
+}
+
+// ModifyPlan marks the server-managed `updated` and `deployment_state`
+// attributes as unknown whenever a change is planned. The service re-stamps
+// `updated` on every write (and may transition `deployment_state` while a
+// deployment reconciles), so their post-apply values cannot be predicted from
+// prior state; without this, an in-place update fails with "Provider produced
+// inconsistent result after apply" on the `updated` attribute. Create (nil prior
+// state) and destroy (nil plan) are skipped — the attributes are already unknown
+// on create and there is no planned state to modify on destroy — and a plan with
+// no change is left untouched so the resource keeps showing an empty plan.
+func (r *BlueprintResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		return
+	}
+
+	if req.Plan.Raw.Equal(req.State.Raw) {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("updated"), types.StringUnknown())...)
+	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("deployment_state"), types.StringUnknown())...)
 }
 
 // ImportState handles the import of existing Blueprint resources.

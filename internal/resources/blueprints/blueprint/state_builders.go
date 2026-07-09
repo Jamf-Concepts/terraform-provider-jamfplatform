@@ -4,6 +4,7 @@
 package blueprint
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strings"
@@ -172,6 +173,11 @@ func parseComponentConfiguration(apiComponentsByID map[string]blueprints.Compone
 }
 
 // updateLegacyPayloadsFromAPI handles the special case of legacy payloads component.
+// Legacy payloads round-trip through a dynamic attribute, where a JSON null from
+// the server is typed as a string while the same null in configuration is untyped;
+// that mismatch alone would cause a perpetual diff. When the server response is
+// semantically identical to the incoming plan/state value it therefore preserves
+// that configuration-shaped value rather than overwriting it (see dynamicPayloadsMatchJSON).
 func updateLegacyPayloadsFromAPI(ctx context.Context, model *BlueprintResourceModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
 	if _, handledAsRaw := rawIdentifiers["com.jamf.ddm-configuration-profile"]; handledAsRaw {
 		return
@@ -228,17 +234,51 @@ func updateLegacyPayloadsFromAPI(ctx context.Context, model *BlueprintResourceMo
 		resultItems = append(resultItems, entry)
 	}
 
-	if len(resultItems) > 0 {
-		dynVal, err := helpers.JSONToTerraformDynamic(resultItems)
-		if err != nil {
-			tflog.Warn(ctx, "Failed to convert legacy payloads to dynamic", map[string]any{
-				"error": err.Error(),
-			})
-			model.LegacyPayloads = types.DynamicNull()
-			return
-		}
-		model.LegacyPayloads = dynVal
-	} else {
+	if len(resultItems) == 0 {
 		model.LegacyPayloads = types.DynamicNull()
+		return
 	}
+
+	if dynamicPayloadsMatchJSON(model.LegacyPayloads, resultItems) {
+		return
+	}
+
+	dynVal, err := helpers.JSONToTerraformDynamic(resultItems)
+	if err != nil {
+		tflog.Warn(ctx, "Failed to convert legacy payloads to dynamic", map[string]any{
+			"error": err.Error(),
+		})
+		model.LegacyPayloads = types.DynamicNull()
+		return
+	}
+	model.LegacyPayloads = dynVal
+}
+
+// dynamicPayloadsMatchJSON reports whether the prior dynamic value is
+// semantically identical to the server-derived payload items, comparing their
+// canonical JSON encodings. Numbers normalise to float64 on both sides and
+// json.Marshal sorts object keys, so the comparison is order-independent for
+// object keys and insensitive to the dynamic null-typing that otherwise causes
+// a perpetual diff.
+func dynamicPayloadsMatchJSON(prior types.Dynamic, apiItems []any) bool {
+	if prior.IsNull() || prior.IsUnknown() {
+		return false
+	}
+
+	priorJSON, err := helpers.TerraformDynamicToJSON(prior)
+	if err != nil {
+		return false
+	}
+
+	priorBytes, err := json.Marshal(priorJSON)
+	if err != nil {
+		return false
+	}
+
+	apiBytes, err := json.Marshal(apiItems)
+	if err != nil {
+		return false
+	}
+
+	return bytes.Equal(priorBytes, apiBytes)
 }
