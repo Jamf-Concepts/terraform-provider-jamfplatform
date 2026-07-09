@@ -8,7 +8,7 @@ description: |-
 
 # function: mcx_forced_payload
 
-Encodes a set of application preferences into a macOS managed (forced) preferences payload. Pass the result to a macOS configuration profile's `payloads` so the settings are delivered to enrolled Macs as non-overridable defaults. Preference values keep their natural types: whole numbers become integers, fractional numbers become reals, booleans and strings map directly, lists become arrays, and nested objects become dictionaries.
+Encodes a set of application preferences into a macOS managed (forced) preferences payload. Pass the result to a macOS configuration profile's `payloads` so the settings are delivered to enrolled Macs as non-overridable defaults. Preference values keep their natural types: whole numbers become integers, fractional numbers become reals, booleans and strings map directly, lists become arrays, and nested objects become dictionaries. Whole numbers above 2^53 lose integer precision (the provider carries numbers as floating point); this does not affect normal preference values.
 
 ## Example Usage
 

@@ -4,7 +4,7 @@
 
 Terraform provider for Jamf Platform APIs, built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) v1.19.0 with Protocol v6. Go module path: `github.com/Jamf-Concepts/terraform-provider-jamfplatform`.
 
-Four construct types: **resources** (CRUD), **data sources** (read-only lookups), **list resources** (RSQL-filtered streaming), **actions** (fire-and-forget device commands).
+Five construct types: **resources** (CRUD), **data sources** (read-only lookups), **list resources** (RSQL-filtered streaming), **actions** (fire-and-forget device commands), and **functions** (offline provider-defined functions under the `jamfplatform::` namespace — no API client, no provider config).
 
 The Jamf Platform API client is the external Go SDK `github.com/Jamf-Concepts/jamfplatform-go-sdk` (package `jamfplatform`). Not vendored.
 
@@ -36,6 +36,9 @@ internal/
 ├── actions/
 │   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
 │   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (13 MDM commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
+├── functions/         # Provider-defined functions (offline; no SDK client, no provider config)
+│   ├── mobileconfig/       # mobileconfig(profile) — build a full .mobileconfig from HCL payloads; also holds the shared Assemble core
+│   └── mcx_forced_payload/ # mcx_forced_payload(domain, prefs) — MCX "Custom Settings" envelope; thin wrapper over mobileconfig.Assemble
 ├── common/
 │   ├── availabletitles/ # Shared patch available-titles lookup (patch_external_source, patch_internal_source)
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
@@ -52,7 +55,7 @@ internal/
 └── testhelpers/       # Acceptance fixtures (provider factories, real client, mock server)
 tools/                 # go:generate entrypoint (copywrite, terraform fmt, tfplugindocs)
 local-testing/         # Manual API request workflows for development (gitignored)
-examples/{provider,resources,data-sources,list-resources,actions}/
+examples/{provider,resources,data-sources,list-resources,actions,functions}/
 docs/                  # Auto-generated provider documentation — do not hand-edit
 ```
 
@@ -74,6 +77,7 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 | Positional id-less nested lists + opt-out sub-collections (omit=retain/`[]`=clear) + Computed nested collections as `types.List` | `internal/resources/pro/licensed_software/` |
 | Create-only immutable upload (server rejects every PUT once the blob exists → all attrs RequiresReplace + no-PUT Update) | `internal/resources/pro/mobile_device_provisioning_profile/` |
 | Classic XML merge PUT where empty clears (always-emit scalars / clear-by-omission) + Location/Purchasing blocks + read-only attachments (bearer-auth-refused upload) | `internal/resources/pro/mobile_device_enrollment_profile/` |
+| Provider-defined function (offline; `types.Dynamic` decode + shared core) | `internal/functions/mobileconfig/` |
 
 ## Jamf Pro resources — one-paragraph orientation
 

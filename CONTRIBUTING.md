@@ -231,6 +231,20 @@ SDK audit — proclassic.UserGroup (types.go:11477)
 
 Follow the same pattern as resources, but implement `datasource.DataSource` instead of `resource.Resource`. Data source packages that are standalone (not part of a CRUD resource) use `model_types.go` for their model structs.
 
+## Adding a Provider Function
+
+Provider-defined functions are **offline** — they run before provider configuration, take no SDK client and no credentials, and expose pure `terraform` value transformations under the `jamfplatform::` namespace. Use this workflow.
+
+1. Create the package under `internal/functions/<function>/` following the [file conventions](STYLE_GUIDE.md#provider-function-file-conventions): `function.go` (the `function.Function`), a framework-free `<core>.go`, and their tests.
+2. Declare arguments as `function.DynamicParameter` and decode with `helpers.TerraformDynamicToJSON` (see the file conventions for why `DynamicParameter` over a typed parameter). Keep `Run` thin: decode → delegate to the core → set result.
+3. Register the function in `internal/provider/provider.go` via the `Functions()` method (add the method if this is the first function).
+4. Add unit tests for the core (with golden output where determinism matters) **and** `Run` seam tests that build a real `types.Dynamic` via `function.NewArgumentsData` — covering the happy path and at least one argument-error path.
+5. Add `function_acceptance_test.go` (`//go:build acceptance`) that invokes the function from a real Terraform config through an `output` and asserts the rendered string with `statecheck.ExpectKnownOutputValue` + `knownvalue.StringRegexp`. Because the function is offline, **do not** call `testhelpers.AccPreCheck` (it gates on tenant credentials) — use `AccTestProtoV6ProviderFactories` directly and gate on `tfversion.SkipBelow(tfversion.Version1_8_0)`.
+6. Add an example under `examples/functions/<function>/function.tf`.
+7. Run `make fix fmt lint test` (must be clean), then `make generate` (mandatory — rebuilds `docs/functions/<function>.md`). Commit the generated docs alongside the source.
+
+Reference implementation: `internal/functions/mobileconfig/` (and `internal/functions/mcx_forced_payload/`, a thin wrapper over the shared `mobileconfig.Assemble` core).
+
 ## Project Structure
 
 See `CLAUDE.md` for the full project structure and conventions. Key directories:
@@ -241,8 +255,9 @@ See `CLAUDE.md` for the full project structure and conventions. Key directories:
 | `internal/resources/` | Resource, data source, and list resource implementations |
 | `internal/common/` | Shared helpers and RSQL filter utilities |
 | `internal/actions/` | Fire-and-forget device management commands |
+| `internal/functions/` | Provider-defined functions (offline; no SDK client or provider config) |
 | `internal/testhelpers/` | Acceptance test utilities (provider factories, mock server, fixtures) |
-| `examples/` | Example `.tf` configurations (resources, data-sources, list-resources, actions, provider) |
+| `examples/` | Example `.tf` configurations (resources, data-sources, list-resources, actions, functions, provider) |
 | `docs/` | Auto-generated provider documentation |
 | `tools/` | `go:generate` entrypoint for `copywrite`, `terraform fmt`, and `tfplugindocs` |
 

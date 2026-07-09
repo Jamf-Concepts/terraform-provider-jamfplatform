@@ -39,3 +39,16 @@ func AccPreCheck(t *testing.T) {
 
 	os.Setenv("TF_ACC", "1")
 }
+
+// AccPreCheckOffline is the precheck for acceptance tests that need no tenant —
+// provider-defined functions, which run offline with no API client or provider
+// configuration. It sets TF_ACC (so terraform-plugin-testing actually runs the
+// test) without gating on the JAMFPLATFORM_* credentials that AccPreCheck
+// requires. Use this instead of AccPreCheck in function acceptance tests: it
+// keeps them runnable under the raw `go test -tags=acceptance ./...` command
+// (see TESTING.md), which does not set TF_ACC itself, so they neither skip
+// silently nor demand credentials they don't use.
+func AccPreCheckOffline(t *testing.T) {
+	t.Helper()
+	t.Setenv("TF_ACC", "1")
+}

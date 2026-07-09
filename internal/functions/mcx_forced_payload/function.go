@@ -34,7 +34,7 @@ func (f *mcxForcedPayloadFunction) Metadata(_ context.Context, _ function.Metada
 func (f *mcxForcedPayloadFunction) Definition(_ context.Context, _ function.DefinitionRequest, resp *function.DefinitionResponse) {
 	resp.Definition = function.Definition{
 		Summary:             "Builds a macOS managed (forced) preferences payload for a Custom Settings configuration profile.",
-		MarkdownDescription: "Encodes a set of application preferences into a macOS managed (forced) preferences payload. Pass the result to a macOS configuration profile's `payloads` so the settings are delivered to enrolled Macs as non-overridable defaults. Preference values keep their natural types: whole numbers become integers, fractional numbers become reals, booleans and strings map directly, lists become arrays, and nested objects become dictionaries.",
+		MarkdownDescription: "Encodes a set of application preferences into a macOS managed (forced) preferences payload. Pass the result to a macOS configuration profile's `payloads` so the settings are delivered to enrolled Macs as non-overridable defaults. Preference values keep their natural types: whole numbers become integers, fractional numbers become reals, booleans and strings map directly, lists become arrays, and nested objects become dictionaries. Whole numbers above 2^53 lose integer precision (the provider carries numbers as floating point); this does not affect normal preference values.",
 		Parameters: []function.Parameter{
 			function.StringParameter{
 				Name:                "preference_domain",
