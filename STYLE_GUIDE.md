@@ -59,6 +59,33 @@ A plural data source (`jamfplatform_pro_categories`) lives **in the same package
 - The plural read timeout const is `defaultPluralReadTimeout` to avoid colliding with the singular's `defaultReadTimeout`; `minJamfProVersion` is shared (declared once in the package).
 - Where the list endpoint returns a strict subset of the singular's fields, the plural carries its own result model (e.g. `UserGroupsDataSourceResultModel`) so the sparse shape is explicit in one package rather than implied across two directories.
 
+## Provider Function File Conventions
+
+Provider-defined functions live under `internal/functions/<function>/`. They are **offline**: called before provider configuration is evaluated, so they take no SDK client and no credentials (the framework does not expose provider config to a function). Each package uses function-agnostic filenames:
+
+| File | Purpose |
+|------|---------|
+| `function.go` | The `function.Function` implementation: `Metadata`, `Definition` (parameters + return), and `Run`. Also the argument decode + `Profile`/input mapping. |
+| `<core>.go` | The offline core that does the actual work (e.g. `assemble.go`, `render.go`) — pure Go, no framework types, independently unit-testable. |
+| `function_test.go` | Unit tests for `Definition`/`Metadata` and the input mapping. |
+| `<core>_test.go` | Unit tests for the core, including golden output where determinism matters. |
+| `function_acceptance_test.go` | `//go:build acceptance` — drives the function through real Terraform (see below). |
+
+Conventions:
+
+- **Decode `types.Dynamic` via `helpers.TerraformDynamicToJSON`.** Declare each argument as a `function.DynamicParameter` and decode with `req.Arguments.Get` → `helpers.TerraformDynamicToJSON` → a `map[string]any`. `DynamicParameter` (not a typed `ObjectParameter`/`ListParameter`) is deliberate: it lets a heterogeneous input (e.g. a `payloads` list whose objects have different key sets) decode as a cty tuple instead of being rejected for non-uniform element types. Guard the top-level type-assert and return `function.NewArgumentFuncError(argIndex, …)` on mismatch.
+- **Keep the core framework-free.** The `Run` method should decode, delegate to the offline core, and set the result — nothing else. The core returns `([]byte, error)` / a plain value so it can be unit-tested without the framework.
+- **Share a core between related functions** rather than duplicating the logic. Today `mcx_forced_payload` imports the `mobileconfig` package for `Assemble`/`Profile`, because `mcx` is conceptually a specialisation of `mobileconfig`. If a third function needs the same core, lift the neutral assembler into its own package (e.g. `internal/functions/profileassembler`) that each function package imports, rather than importing one function's package from another.
+- **Register** in `internal/provider/provider.go` via the `Functions()` method (add it if this is the first function).
+
+### Testing a provider function
+
+Cover both sides of the framework seam:
+
+- **Core unit tests** feed Go values directly to the core (`Assemble`, `render…`) — fast, exhaustive, and where golden-output pinning lives.
+- **`Run` seam tests** build a real `types.Dynamic` and call `Run` through `function.NewArgumentsData([]attr.Value{…})`, asserting both the happy path (result set, no error) and at least one argument-error path (e.g. a non-object argument yields a `FuncError`). This is the path Terraform actually invokes; core tests bypass it.
+- **Acceptance test** (`//go:build acceptance`) invokes the function from a real Terraform config through an `output`, and asserts the rendered string with `statecheck.ExpectKnownOutputValue` + `knownvalue.StringRegexp`. Because functions are offline, the function acceptance test **must not** call `testhelpers.AccPreCheck` (that gates on tenant credentials and would skip) — call `testhelpers.AccPreCheckOffline(t)` instead, which sets `TF_ACC` without the credential gate so the test runs (rather than silently skipping) under a raw `go test -tags=acceptance`. Use `ProtoV6ProviderFactories` directly and gate only on Terraform version with `tfversion.SkipBelow(tfversion.Version1_8_0)` (provider functions are GA from Terraform 1.8). Reference: `internal/functions/mobileconfig/`.
+
 ## Test File Conventions
 
 | File | Purpose |

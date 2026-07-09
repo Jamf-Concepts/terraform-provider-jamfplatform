@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -27,6 +28,8 @@ import (
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
 	mdmactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/mdm"
 	patchactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/patch"
+	mcxforcedpayload "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
@@ -328,6 +331,15 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	resp.ResourceData = pd
 	resp.ListResourceData = pd
 	resp.ActionData = pd
+}
+
+// Functions registers the provider-defined functions exposed under the
+// jamfplatform:: namespace.
+func (p *JamfPlatformProvider) Functions(_ context.Context) []func() function.Function {
+	return []func() function.Function{
+		mcxforcedpayload.NewFunction,
+		mobileconfig.NewFunction,
+	}
 }
 
 func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.Resource {

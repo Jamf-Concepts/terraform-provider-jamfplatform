@@ -10,6 +10,7 @@ This document covers the testing strategy and instructions for the Terraform Pro
 | Acceptance (all)       | `acceptance` | Yes          | `make testacc`                                                                                |
 | Acceptance (changed)   | `acceptance` | Yes          | `make testacc-changed` (changed packages + their transitive dependents)                       |
 | Acceptance (targeted)  | `acceptance` | Yes          | `make testacc-run RUN=<regex> PKG=<package>` (e.g. `RUN=TestAccResource_ProSite_Basic PKG=./internal/resources/pro/site/...`) |
+| Acceptance (functions) | `acceptance` | No           | `make testacc-run RUN=TestAccFunction PKG=./internal/functions/...` — provider functions are offline; their tests need a Terraform binary but no tenant (they call `testhelpers.AccPreCheckOffline`, which sets `TF_ACC` without the credential gate) |
 
 ### Unit Tests
 
@@ -78,6 +79,9 @@ internal/
 │   └── scope/                            # builders_test.go, schema_test.go, validators_test.go
 ├── testhelpers/                          # Acceptance fixtures (mock server, real-client builder, shared fixtures)
 ├── actions/device/schema_test.go
+├── functions/                            # Provider-defined functions (offline — no tenant needed)
+│   ├── mobileconfig/                     # assemble_test, function_test (Run seam via real types.Dynamic), function_acceptance_test
+│   └── mcx_forced_payload/               # render_test, function_test, function_acceptance_test
 ├── resources/
 │   ├── blueprints/blueprint/             # schema_test, helpers_test, input_builders_test, state_builders_test, state_upgrader_test, resource_acceptance_test
 │   ├── cbengine/benchmark/               # schema_test, input_builders_test, state_builders_test, resource_acceptance_test
