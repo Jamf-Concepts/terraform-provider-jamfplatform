@@ -86,3 +86,4 @@ Relates to #
 - [ ] Unit tests (and acceptance, where the `acceptance` gate is approved) pass in CI
 - [ ] Screenshots show expected behavior in Jamf Pro UI
 - [ ] No breaking changes (or properly documented)
+- [ ] For **fork PRs**, acceptance was validated via the maintainer re-push flow (see [CONTRIBUTING.md → Acceptance Tests on Fork PRs](../CONTRIBUTING.md#acceptance-tests-on-fork-prs-maintainers)) — the fork's own `Acceptance` check only self-skips

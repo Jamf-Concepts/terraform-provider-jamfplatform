@@ -282,6 +282,57 @@ Use [conventional commit](https://www.conventionalcommits.org/) style messages:
 - Run `make generate` if schema descriptions changed (to update docs and copyright headers).
 - CI must pass before merge.
 
+## Acceptance Tests on Fork PRs (Maintainers)
+
+Fork PRs never receive repository secrets — GitHub withholds them from every
+workflow triggered by a `pull_request` from a fork (the run log shows `Secret
+source: None`). So the `Acceptance` job on a fork PR runs credential-less and
+every suite self-skips: a green check there means "skipped", **not** "passed".
+
+Do **not** wire the tenant credentials into a fork run (e.g. via
+`pull_request_target`). The PR's test code executes with those creds and could
+exfiltrate them or mutate/erase the shared tenant, and `pull_request_target`
+is not covered by the "require approval for external contributors" gate that
+protects ordinary fork `pull_request` runs. Instead, a maintainer re-runs the
+PR's code from a branch **inside this repo**, where secrets resolve normally:
+
+1. **Review the entire diff first — including `.github/` and `go.mod`.** The
+   steps below run the PR's code (and its workflow files) against the live
+   tenant, so this review is the security gate. If anything looks untrustworthy,
+   stop here.
+
+2. Fetch the PR head into a throwaway, clearly-named branch and push it to this
+   repo (replace `283` with the PR number):
+
+   ```bash
+   git fetch origin pull/283/head:acc/pr-283
+   git push origin acc/pr-283
+   ```
+
+3. Open an internal PR from that branch to `main`. It is a *same-repo* PR, so
+   the pipeline gets secrets and the `Acceptance` job runs the scoped subset for
+   real:
+
+   ```bash
+   gh pr create --base main --head acc/pr-283 \
+     --title "[acc] validate #283" --draft \
+     --body "CI-only validation of fork PR #283. Do not merge."
+   ```
+
+4. Watch the `Acceptance` checks on the internal PR, then copy the outcome back
+   to the original fork PR.
+
+5. Clean up — **close (do not merge)** the internal PR and delete the branch:
+
+   ```bash
+   gh pr close acc/pr-283 --delete-branch
+   ```
+
+> A manual `workflow_dispatch` of *Integration Tests* does **not** work for this:
+> the acceptance scope is computed by diffing against the PR base branch, which a
+> dispatch run doesn't have, so the `Acceptance` job is skipped. The internal PR
+> above is the trigger that runs it.
+
 ## Tracking Work
 
 **The GitHub project board is the source of truth for project status.** Local docs hold the detail behind each status.
