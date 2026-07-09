@@ -161,10 +161,9 @@ func TestRender_RejectsEmptyDomainAndPrefs(t *testing.T) {
 }
 
 // Pin the identity the mcx envelope derives. This is the highest-blast-radius
-// path: existing deployed profiles are keyed on these exact identifiers, so a
-// change to the seed formula would churn every profile on next apply. The bare
-// structural tests above passed both before and after the shared-core refactor
-// and so could not catch such a change — this asserts the actual values.
+// path: deployed profiles are keyed on these exact identifiers, so a change to
+// the seed formula would churn every profile on next apply. The structural
+// tests above cannot catch such a change — this asserts the actual values.
 //
 //	top-level PayloadIdentifier = domain (verbatim)
 //	top-level PayloadUUID       = uuidv5(dns, domain)

@@ -16,9 +16,8 @@ import (
 //
 // It is a thin convenience wrapper over mobileconfig.Assemble: it constructs the
 // single ManagedClient.preferences payload and delegates identity injection,
-// number normalization, and plist encoding to the shared assembler. Validation
-// is off — ManagedClient.preferences carries free-form per-app settings that the
-// payload schemas do not describe.
+// number normalization, and plist encoding to the shared assembler. The
+// preference keys are free-form per-app settings, passed through verbatim.
 func renderMCXForcedPayload(domain string, prefs map[string]any) ([]byte, error) {
 	if strings.TrimSpace(domain) == "" {
 		return nil, fmt.Errorf("preference_domain must not be empty")

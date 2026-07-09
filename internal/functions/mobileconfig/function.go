@@ -34,7 +34,7 @@ func (f *mobileconfigFunction) Definition(_ context.Context, _ function.Definiti
 		Parameters: []function.Parameter{
 			function.DynamicParameter{
 				Name:                "profile",
-				MarkdownDescription: "An object with a `payloads` list and optional top-level metadata (`display_name`, `identifier`, `organization`, `description`, `scope`, `removal_disallowed`).",
+				MarkdownDescription: "An object with a required `identifier`, a `payloads` list, and optional top-level metadata (`display_name`, `organization`, `description`, `scope`, `removal_disallowed`).",
 			},
 		},
 		Return: function.StringReturn{},

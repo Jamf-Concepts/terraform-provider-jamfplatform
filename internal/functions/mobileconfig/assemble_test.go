@@ -130,10 +130,10 @@ func TestAssemble_Guards(t *testing.T) {
 	}
 }
 
-// Pin the exact injected identity values. Bare structural tests ("a PayloadUUID
-// exists") passed for both the pre- and post-refactor code and so could not
-// catch an identity-seed change that would churn every deployed profile. These
-// assert the actual derived UUIDs, locking the seed formula:
+// Pin the exact injected identity values. Structural checks alone ("a
+// PayloadUUID exists") cannot catch a change to the seed formula, and a seed
+// change would churn the identity of every deployed profile on its next apply.
+// These assert the actual derived UUIDs, locking the seed formula:
 //
 //	profile UUID / identifier  = uuidv5(dns, identifier)  [identifier verbatim]
 //	payload UUID / identifier  = uuidv5(dns, "<id>|<PayloadType>|<index>")
@@ -172,8 +172,8 @@ func TestAssemble_PinsDerivedIdentity(t *testing.T) {
 }
 
 // Distinct profiles that share a leading payload type must NOT collide on
-// identity (the B1 regression): different identifiers must yield different
-// top-level and payload UUIDs.
+// identity: different identifiers must yield different top-level and payload
+// UUIDs, or a Mac receiving both profiles would silently keep only one.
 func TestAssemble_DistinctIdentifiersDoNotCollide(t *testing.T) {
 	mk := func(id string) map[string]any {
 		out, err := Assemble(Profile{

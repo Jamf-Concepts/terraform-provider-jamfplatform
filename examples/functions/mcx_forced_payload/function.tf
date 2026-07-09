@@ -31,12 +31,17 @@ resource "jamfplatform_pro_macos_configuration_profile" "vscode_policies" {
   general = {
     name = "VS Code - Enterprise Policies"
     payloads = provider::jamfplatform::mcx_forced_payload("com.microsoft.VSCode", {
-      UpdateMode        = "none"
-      TelemetryLevel    = "off"
-      EnableFeedback    = false
-      ChatAgentMode     = false
-      ChatMCP           = "none"
-      AllowedExtensions = jsonencode(["ms-python.python", "golang.go"])
+      UpdateMode     = "none"
+      TelemetryLevel = "off"
+      EnableFeedback = false
+      ChatAgentMode  = false
+      ChatMCP        = "none"
+      # extensions.allowed is an object keyed by publisher or extension ID,
+      # passed to the policy as a JSON string.
+      AllowedExtensions = jsonencode({
+        "ms-python.python" = true
+        "golang.go"        = true
+      })
     })
   }
 
