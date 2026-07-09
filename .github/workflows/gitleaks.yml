@@ -2,13 +2,7 @@ name: Gitleaks
 
 on:
   push:
-  # pull_request_target (not pull_request) so GITLEAKS_LICENSE is available on
-  # fork PRs — GitHub withholds ALL secrets from a pull_request run triggered by
-  # a fork, which is why the licensed gitleaks-action fails there. This is safe
-  # ONLY because gitleaks reads files and never executes repo code; the checkout
-  # below pins the PR head with persist-credentials:false so the privileged
-  # token is never written to disk for a later step to pick up.
-  pull_request_target:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -18,17 +12,22 @@ permissions:
 jobs:
   gitleaks:
     name: Secret Scanning
+    # The licensed gitleaks-action requires GITLEAKS_LICENSE, but GitHub withholds
+    # ALL secrets from runs triggered by a fork PR or by Dependabot, so the action
+    # fails there with "missing gitleaks license". It also rejects
+    # pull_request_target outright ("event is not yet supported"), so no trigger
+    # both delivers the secret AND is accepted for those contexts. Skip them here
+    # and scan them the same way as the acceptance suite: a maintainer re-pushes
+    # the PR head to an internal branch (push scan) or runs this workflow via
+    # workflow_dispatch — both are trusted and receive the secret. See CONTRIBUTING.md.
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-          # pull_request_target checks out the BASE ref by default; scan the PR
-          # head instead so the fork's actual content is inspected. Falls back to
-          # github.ref for push / workflow_dispatch. persist-credentials:false
-          # keeps the elevated pull_request_target token out of .git/config.
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
-          persist-credentials: false
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
