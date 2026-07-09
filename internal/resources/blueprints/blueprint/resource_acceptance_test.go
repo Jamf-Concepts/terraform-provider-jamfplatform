@@ -18,6 +18,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -531,6 +532,117 @@ func TestAccResource_Blueprint_LegacyPayloads(t *testing.T) {
 					resource.TestCheckResourceAttrSet("jamfplatform_blueprints_blueprint.test_legacy", "id"),
 					resource.TestCheckResourceAttr("jamfplatform_blueprints_blueprint.test_legacy", "name", name),
 				),
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_LegacyPayloads_NullFields_PlanStability is a
+// regression test for issue #282. A legacy payload whose settings contain
+// explicit nulls (here com.apple.notificationsettings) previously produced a
+// perpetual in-place update, and applying that update failed with "Provider
+// produced inconsistent result after apply" on the server-stamped `updated`
+// attribute. Step 1 creates the blueprint; step 2 re-applies the identical
+// config and asserts an empty plan (the dynamic null-typing reconcile); step 3
+// makes a genuine metadata change (description) that forces an in-place update
+// and must apply without an inconsistent-result error (ModifyPlan marks
+// `updated` unknown); step 4 confirms plan stability after that update; step 5
+// makes a genuine change to the payload itself, proving the reconcile surfaces
+// real payload edits rather than masking them; step 6 confirms stability again.
+func TestAccResource_Blueprint_LegacyPayloads_NullFields_PlanStability(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-null-" + suffix
+	addr := "jamfplatform_blueprints_blueprint.test_legacy_null"
+
+	config := func(description string, firstNotificationsEnabled bool) string {
+		return testBlueprintConfig(smartGroupHCL("legacynull"), fmt.Sprintf(`
+			resource "jamfplatform_blueprints_blueprint" "test_legacy_null" {
+				name          = %q
+				description   = %q
+				deployed      = false
+				device_groups = [jamfplatform_device_group.scope.id]
+
+				legacy_payloads = [
+					{
+						payload_type = "com.apple.notificationsettings"
+						settings = {
+							NotificationSettings = [
+								{
+									AlertType                = 0
+									PreviewType              = null
+									GroupingType             = null
+									BadgesEnabled            = null
+									ShowInCarPlay            = null
+									SoundsEnabled            = null
+									BundleIdentifier         = "_SYSTEM_CENTER_:com.apple.followup.alert"
+									ShowInLockScreen         = false
+									CriticalAlertEnabled     = null
+									NotificationsEnabled     = %t
+									ShowInNotificationCenter = false
+								},
+								{
+									AlertType                = 2
+									PreviewType              = null
+									GroupingType             = null
+									BadgesEnabled            = true
+									ShowInCarPlay            = null
+									SoundsEnabled            = true
+									BundleIdentifier         = "au.bartreardon.dialog"
+									ShowInLockScreen         = false
+									CriticalAlertEnabled     = true
+									NotificationsEnabled     = true
+									ShowInNotificationCenter = true
+								},
+							]
+						}
+					},
+				]
+			}
+		`, name, description, firstNotificationsEnabled))
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: config("Acceptance test — safe to delete", false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(addr, "id"),
+					resource.TestCheckResourceAttr(addr, "name", name),
+					resource.TestCheckResourceAttrSet(addr, "updated"),
+				),
+			},
+			{
+				Config: config("Acceptance test — safe to delete", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: config("Updated description", false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(addr, "description", "Updated description"),
+				),
+			},
+			{
+				Config: config("Updated description", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				Config: config("Updated description", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectNonEmptyPlan()},
+				},
+			},
+			{
+				Config: config("Updated description", true),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
 			},
 		},
 	})
