@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/plisthelpers"
 )
 
 func TestFunction_Metadata(t *testing.T) {
@@ -84,6 +85,108 @@ func TestFunction_Run_RendersProfile(t *testing.T) {
 	// Whole number must render as <integer>, proving the decode→normalize path.
 	if !strings.Contains(out, "<integer>48</integer>") {
 		t.Fatalf("tilesize did not render as <integer>48</integer>:\n%s", out)
+	}
+}
+
+// TestFunction_Run_HeterogeneousMultiPayloadProfile covers the complex
+// real-world case the generic function exists for: one profile mixing three
+// payload types of entirely different shapes (a rules array, an array of
+// notification dicts, and a hand-built MCX Forced envelope with 4-deep
+// nesting). Because the three payload objects have different key sets, the
+// payloads list decodes as a cty tuple, not a uniform list — exactly the case
+// that forces DynamicParameter over a typed parameter, so it belongs at the
+// Run seam rather than only in core tests.
+func TestFunction_Run_HeterogeneousMultiPayloadProfile(t *testing.T) {
+	out, ferr := runMobileconfig(t, map[string]any{
+		"display_name":       "Privileges",
+		"identifier":         "com.example.privileges",
+		"scope":              "System",
+		"removal_disallowed": true,
+		"payloads": []any{
+			map[string]any{
+				"PayloadType": "com.apple.servicemanagement",
+				"Rules": []any{
+					map[string]any{
+						"RuleType":  "TeamIdentifier",
+						"RuleValue": "7R5ZEU67FQ",
+					},
+				},
+			},
+			map[string]any{
+				"PayloadType": "com.apple.notificationsettings",
+				"NotificationSettings": []any{
+					map[string]any{
+						"AlertType":            float64(1),
+						"BundleIdentifier":     "corp.sap.privileges",
+						"NotificationsEnabled": true,
+					},
+				},
+			},
+			map[string]any{
+				"PayloadType": "com.apple.ManagedClient.preferences",
+				"PayloadContent": map[string]any{
+					"corp.sap.privileges": map[string]any{
+						"Forced": []any{
+							map[string]any{
+								"mcx_preference_settings": map[string]any{
+									"DockToggleTimeout":     float64(10),
+									"RequireAuthentication": true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	if ferr != nil {
+		t.Fatalf("unexpected function error: %v", ferr)
+	}
+
+	parsed, _, err := plisthelpers.ParsePlist([]byte(out))
+	if err != nil {
+		t.Fatalf("output is not valid plist: %v", err)
+	}
+	payloads, ok := parsed["PayloadContent"].([]any)
+	if !ok || len(payloads) != 3 {
+		t.Fatalf("expected 3 payloads, got %T len %d", parsed["PayloadContent"], len(payloads))
+	}
+
+	// Each payload keeps its own shape and PayloadType.
+	for i, want := range []string{
+		"com.apple.servicemanagement",
+		"com.apple.notificationsettings",
+		"com.apple.ManagedClient.preferences",
+	} {
+		p := payloads[i].(map[string]any)
+		if p["PayloadType"] != want {
+			t.Fatalf("payload %d: PayloadType %v, want %s", i, p["PayloadType"], want)
+		}
+	}
+
+	// The 4-deep MCX Forced envelope survives the Dynamic decode intact.
+	mcx := payloads[2].(map[string]any)
+	domain, ok := mcx["PayloadContent"].(map[string]any)["corp.sap.privileges"].(map[string]any)
+	if !ok {
+		t.Fatalf("MCX PayloadContent missing domain dict: %#v", mcx["PayloadContent"])
+	}
+	settings, ok := domain["Forced"].([]any)[0].(map[string]any)["mcx_preference_settings"].(map[string]any)
+	if !ok {
+		t.Fatalf("MCX Forced envelope malformed: %#v", domain["Forced"])
+	}
+	// plist round-trip note: the value was rendered as <integer>10</integer>
+	// (ParsePlist decodes plist integers as uint64).
+	if settings["DockToggleTimeout"] != uint64(10) {
+		t.Fatalf("DockToggleTimeout: got %#v, want uint64(10) (whole number must stay <integer> at depth)", settings["DockToggleTimeout"])
+	}
+	if settings["RequireAuthentication"] != true {
+		t.Fatalf("RequireAuthentication: got %#v, want true", settings["RequireAuthentication"])
+	}
+
+	// The rules array inside payload 0 also survives.
+	rules := payloads[0].(map[string]any)["Rules"].([]any)
+	if rules[0].(map[string]any)["RuleValue"] != "7R5ZEU67FQ" {
+		t.Fatalf("Rules[0].RuleValue: got %#v", rules[0])
 	}
 }
 
