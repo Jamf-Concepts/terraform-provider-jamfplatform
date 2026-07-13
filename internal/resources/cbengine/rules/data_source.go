@@ -61,6 +61,22 @@ func (d *RulesDataSource) Schema(ctx context.Context, req datasource.SchemaReque
 					},
 				},
 			},
+			"available_os_versions": schema.ListNestedAttribute{
+				MarkdownDescription: "Operating system versions available for this baseline. Use these as values for `selected_os_versions` on `jamfplatform_cbengine_benchmark`.",
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"os_type": schema.StringAttribute{
+							MarkdownDescription: "Operating system type (e.g. `MAC_OS`).",
+							Computed:            true,
+						},
+						"os_version": schema.Int64Attribute{
+							MarkdownDescription: "Major operating system version (e.g. `26` = macOS Tahoe).",
+							Computed:            true,
+						},
+					},
+				},
+			},
 			"rules": schema.ListNestedAttribute{
 				MarkdownDescription: "List of rules for the baseline.",
 				Computed:            true,
@@ -253,6 +269,14 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		})
 	}
 
+	var availableOsVersions []OsVersionModel
+	for _, v := range rulesResp.AvailableOsVersions {
+		availableOsVersions = append(availableOsVersions, OsVersionModel{
+			OsType:    types.StringValue(v.OsType),
+			OsVersion: types.Int64Value(int64(v.OsVersion)),
+		})
+	}
+
 	var rules []RuleModel
 	for _, r := range rulesResp.Rules {
 		var references []types.String
@@ -359,10 +383,11 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	data = RulesDataSourceModel{
-		BaselineID: data.BaselineID,
-		Sources:    sources,
-		Rules:      rules,
-		Timeouts:   timeoutsValue,
+		BaselineID:          data.BaselineID,
+		Sources:             sources,
+		AvailableOsVersions: availableOsVersions,
+		Rules:               rules,
+		Timeouts:            timeoutsValue,
 	}
 
 	tflog.Trace(ctx, "read a data source")

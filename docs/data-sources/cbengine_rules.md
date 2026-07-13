@@ -50,6 +50,7 @@ output "rule_titles" {
 
 ### Read-Only
 
+- `available_os_versions` (Attributes List) Operating system versions available for this baseline. Use these as values for `selected_os_versions` on `jamfplatform_cbengine_benchmark`. (see [below for nested schema](#nestedatt--available_os_versions))
 - `rules` (Attributes List) List of rules for the baseline. (see [below for nested schema](#nestedatt--rules))
 - `sources` (Attributes List) List of sources for the rules baseline. (see [below for nested schema](#nestedatt--sources))
 
@@ -59,6 +60,15 @@ output "rule_titles" {
 Optional:
 
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
+
+
+<a id="nestedatt--available_os_versions"></a>
+### Nested Schema for `available_os_versions`
+
+Read-Only:
+
+- `os_type` (String) Operating system type (e.g. `MAC_OS`).
+- `os_version` (Number) Major operating system version (e.g. `26` = macOS Tahoe).
 
 
 <a id="nestedatt--rules"></a>

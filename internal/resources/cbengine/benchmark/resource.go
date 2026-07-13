@@ -19,7 +19,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -78,6 +81,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Unique identifier assigned by the API (maps to benchmarkId).",
 				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"title": schema.StringAttribute{
 				MarkdownDescription: "Benchmark title (max length 100). Required and replaces the resource when changed.",
@@ -105,23 +109,63 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"sources": schema.ListNestedAttribute{
-				MarkdownDescription: "Set of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources.",
-				Required:            true,
+				MarkdownDescription: "mSCP sources (branch + revision) included in the benchmark. Computed and read-only: the benchmark always spans the full source set of its baseline, so this cannot be configured. Use `selected_os_versions` to choose which operating system versions the benchmark applies to.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"branch": schema.StringAttribute{
 							MarkdownDescription: "Source branch name.",
-							Required:            true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.RequiresReplace(),
-							},
+							Computed:            true,
 						},
 						"revision": schema.StringAttribute{
 							MarkdownDescription: "Source revision identifier.",
+							Computed:            true,
+						},
+					},
+				},
+			},
+			"selected_os_versions": schema.SetNestedAttribute{
+				MarkdownDescription: "Operating system versions the benchmark applies to. Optional: when omitted, the benchmark targets every version available for the baseline. Supplying a subset scopes the benchmark to just those versions. Immutable (replace on change). Look up valid values via `available_os_versions` on the `jamfplatform_cbengine_rules` data source.",
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
+				},
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseStateForUnknown(),
+					setplanmodifier.RequiresReplace(),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"os_type": schema.StringAttribute{
+							MarkdownDescription: "Operating system type (e.g. `MAC_OS`).",
 							Required:            true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.RequiresReplace(),
-							},
+						},
+						"os_version": schema.Int64Attribute{
+							MarkdownDescription: "Major operating system version (e.g. `26` = macOS Tahoe, `15` = Sequoia, `14` = Sonoma, `13` = Ventura).",
+							Required:            true,
+						},
+					},
+				},
+			},
+			"available_os_versions": schema.ListNestedAttribute{
+				MarkdownDescription: "All operating system versions available for the benchmark's baseline. Computed.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"os_type": schema.StringAttribute{
+							MarkdownDescription: "Operating system type (e.g. `MAC_OS`).",
+							Computed:            true,
+						},
+						"os_version": schema.Int64Attribute{
+							MarkdownDescription: "Major operating system version.",
+							Computed:            true,
 						},
 					},
 				},
@@ -139,26 +183,47 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 							MarkdownDescription: "Whether the rule is enabled in this benchmark.",
 							Required:            true,
 						},
+						// Every field below is read-only server enrichment. Per
+						// STYLE_GUIDE §282 each carries a sticky UseStateForUnknown plan
+						// modifier so it holds its prior value on a non-refresh plan
+						// instead of going Unknown — otherwise the RequiresReplace on the
+						// rules list sees a difference and triggers a spurious replace.
+						//
+						// Deliberate deviation from §290 (which mandates
+						// UseNonNullStateForUnknown inside nested collections): §290 guards
+						// the append-during-in-place-update case, where a new element's
+						// prior state at its index is Null and copying it would trip the
+						// consistency check. This resource has NO in-place update — any
+						// rules change forces a full replace (fresh create, modifiers do not
+						// run) — so appends never occur in place. Plain UseStateForUnknown
+						// is therefore safe AND required: many of these fields (the odv_*
+						// values) are legitimately Null in state, and NonNull would leave
+						// them Unknown, churning the plan into a perpetual replace.
 						"section_name": schema.StringAttribute{
 							MarkdownDescription: "Section name of the rule from the baseline.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"title": schema.StringAttribute{
 							MarkdownDescription: "Rule title resolved from the baseline.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"references": schema.ListAttribute{
 							MarkdownDescription: "Reference URLs or identifiers for the rule.",
 							ElementType:         types.StringType,
 							Computed:            true,
+							PlanModifiers:       []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 						},
 						"description": schema.StringAttribute{
 							MarkdownDescription: "Rule description from the baseline.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"supported_os": schema.ListNestedAttribute{
 							MarkdownDescription: "Operating systems supported by the rule.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"os_type": schema.StringAttribute{
@@ -179,6 +244,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 						"os_specific_defaults": schema.MapNestedAttribute{
 							MarkdownDescription: "OS-specific defaults for the rule.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.Map{mapplanmodifier.UseStateForUnknown()},
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"title": schema.StringAttribute{
@@ -204,48 +270,59 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 							MarkdownDescription: "Optional organization-defined value to apply for this rule (if applicable).",
 							Optional:            true,
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"odv_hint": schema.StringAttribute{
 							MarkdownDescription: "Hint for ODV usage.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"odv_placeholder": schema.StringAttribute{
 							MarkdownDescription: "Placeholder for ODV input.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"odv_type": schema.StringAttribute{
 							MarkdownDescription: "ODV type (`INTEGER`, `STRING`, `ENUM`, `REGEX`) when applicable.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"odv_validation_min": schema.Int64Attribute{
 							MarkdownDescription: "Minimum validation for `INTEGER` ODV types.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 						},
 						"odv_validation_max": schema.Int64Attribute{
 							MarkdownDescription: "Maximum validation for `INTEGER` ODV types.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 						},
 						"odv_validation_enum_values": schema.ListAttribute{
 							MarkdownDescription: "Allowed enum values for `ENUM` ODV types.",
 							ElementType:         types.StringType,
 							Computed:            true,
+							PlanModifiers:       []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 						},
 						"odv_validation_regex": schema.StringAttribute{
 							MarkdownDescription: "Regex pattern for `REGEX` ODV types.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 						},
 						"depends_on": schema.ListAttribute{
 							MarkdownDescription: "Rule IDs this rule depends on.",
 							ElementType:         types.StringType,
 							Computed:            true,
+							PlanModifiers:       []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 						},
 						"reportable": schema.BoolAttribute{
 							MarkdownDescription: "Whether the rule produces reportable compliance data.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 						},
 						"smart_card": schema.BoolAttribute{
 							MarkdownDescription: "Whether the rule is related to smart card configuration.",
 							Computed:            true,
+							PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 						},
 					},
 				},
@@ -286,25 +363,35 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			// Read-only server-derived fields (STYLE_GUIDE §282): each carries
+			// UseStateForUnknown so it holds its prior value on a non-refresh plan
+			// rather than going Unknown and provoking a spurious in-place update
+			// (which this replace-only resource cannot service). A refresh still
+			// re-reads the live value, so drift is caught normally.
 			"tenant_id": schema.StringAttribute{
 				MarkdownDescription: "Identifier for the tenant that owns the benchmark.",
 				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"deleted": schema.BoolAttribute{
 				MarkdownDescription: "Whether the benchmark is marked deleted by the API.",
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"update_available": schema.BoolAttribute{
 				MarkdownDescription: "Whether an update is available for the benchmark relative to current mSCP sources.",
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"can_switch_to_enforce": schema.BoolAttribute{
 				MarkdownDescription: "Whether the benchmark can be switched to MONITOR_AND_ENFORCE enforcement mode.",
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"last_updated_at": schema.StringAttribute{
 				MarkdownDescription: "Timestamp (RFC3339) of the last update to the benchmark.",
 				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
 				Create: true,

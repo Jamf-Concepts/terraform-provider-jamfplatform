@@ -27,7 +27,9 @@ func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *comp
 	model.UpdateAvailable = types.BoolValue(bench.UpdateAvailable)
 	model.CanSwitchToEnforce = types.BoolValue(bench.CanSwitchToEnforce)
 	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format(time.RFC3339))
-	model.Sources = buildSourceModels(bench.Sources)
+	model.Sources = buildSourcesList(bench.Sources)
+	model.SelectedOsVersions = buildOsVersionsSet(bench.SelectedOsVersions)
+	model.AvailableOsVersions = buildOsVersionsList(bench.AvailableOsVersions)
 	model.Rules = buildRuleModels(bench.Rules)
 	assignTargetDeviceGroups(model, bench)
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
@@ -68,7 +70,9 @@ func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, benc
 	model.TenantID = types.StringValue(bench.TenantID)
 	model.Title = types.StringValue(bench.Title)
 	model.Description = types.StringValue(bench.Description)
-	model.Sources = buildSourceModels(bench.Sources)
+	model.Sources = buildSourcesList(bench.Sources)
+	model.SelectedOsVersions = buildOsVersionsSet(bench.SelectedOsVersions)
+	model.AvailableOsVersions = buildOsVersionsList(bench.AvailableOsVersions)
 	model.Rules = buildRuleModels(bench.Rules)
 	var apiGroups []string
 	if bench.Target != nil {
@@ -83,15 +87,61 @@ func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, benc
 	model.LastUpdatedAt = types.StringValue(bench.LastUpdatedAt.Format(time.RFC3339))
 }
 
-// buildSourceModels converts API source representations into Terraform source models.
-func buildSourceModels(sources []compliancebenchmarks.Source) []SourceModel {
-	result := make([]SourceModel, len(sources))
+// buildSourcesList converts API source representations into a computed Terraform
+// list of source objects. The server always returns the baseline's full source
+// set, so this is read-only state.
+func buildSourcesList(sources []compliancebenchmarks.Source) types.List {
+	vals := make([]attr.Value, len(sources))
 	for i, s := range sources {
-		result[i] = SourceModel{
-			Branch:   types.StringValue(s.Branch),
-			Revision: types.StringValue(s.Revision),
-		}
+		vals[i], _ = types.ObjectValue(
+			sourceObjectType.AttrTypes,
+			map[string]attr.Value{
+				"branch":   types.StringValue(s.Branch),
+				"revision": types.StringValue(s.Revision),
+			},
+		)
 	}
+	result, _ := types.ListValue(sourceObjectType, vals)
+	return result
+}
+
+// osVersionObjectValue builds a single {os_type, os_version} object value.
+func osVersionObjectValue(v compliancebenchmarks.OsVersion) attr.Value {
+	obj, _ := types.ObjectValue(
+		osVersionObjectType.AttrTypes,
+		map[string]attr.Value{
+			"os_type":    types.StringValue(v.OsType),
+			"os_version": types.Int64Value(int64(v.OsVersion)),
+		},
+	)
+	return obj
+}
+
+// buildOsVersionsSet converts API OS-version pairs into a Terraform set of
+// {os_type, os_version} objects, returning a null set when the API responded
+// with none. A set (not a list) is used because the server canonicalises the
+// ordering on echo, so a set keeps configured and returned values comparable
+// regardless of order.
+func buildOsVersionsSet(versions []compliancebenchmarks.OsVersion) types.Set {
+	if len(versions) == 0 {
+		return types.SetNull(osVersionObjectType)
+	}
+	vals := make([]attr.Value, len(versions))
+	for i, v := range versions {
+		vals[i] = osVersionObjectValue(v)
+	}
+	result, _ := types.SetValue(osVersionObjectType, vals)
+	return result
+}
+
+// buildOsVersionsList converts API OS-version pairs into a computed Terraform
+// list of {os_type, os_version} objects. Used for read-only available_os_versions.
+func buildOsVersionsList(versions []compliancebenchmarks.OsVersion) types.List {
+	vals := make([]attr.Value, len(versions))
+	for i, v := range versions {
+		vals[i] = osVersionObjectValue(v)
+	}
+	result, _ := types.ListValue(osVersionObjectType, vals)
 	return result
 }
 

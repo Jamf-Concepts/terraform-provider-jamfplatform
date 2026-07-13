@@ -40,7 +40,7 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 		t.Errorf("expected schema version 0, got %d", s.Version)
 	}
 
-	requiredAttrs := []string{"title", "sources", "rules", "enforcement_mode"}
+	requiredAttrs := []string{"title", "rules", "enforcement_mode"}
 	for _, name := range requiredAttrs {
 		attr, ok := s.Attributes[name]
 		if !ok {
@@ -52,7 +52,19 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 		}
 	}
 
-	computedAttrs := []string{"id", "tenant_id", "deleted", "update_available", "last_updated_at"}
+	// sources is now computed/read-only; selected_os_versions is optional+computed.
+	if src, ok := s.Attributes["sources"]; !ok {
+		t.Error("missing sources attribute")
+	} else if src.IsRequired() || !src.IsComputed() {
+		t.Error("sources should be computed and not required")
+	}
+	if sov, ok := s.Attributes["selected_os_versions"]; !ok {
+		t.Error("missing selected_os_versions attribute")
+	} else if !sov.IsOptional() || !sov.IsComputed() {
+		t.Error("selected_os_versions should be optional and computed")
+	}
+
+	computedAttrs := []string{"id", "tenant_id", "deleted", "update_available", "last_updated_at", "available_os_versions"}
 	for _, name := range computedAttrs {
 		attr, ok := s.Attributes[name]
 		if !ok {

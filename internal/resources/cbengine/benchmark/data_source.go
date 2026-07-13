@@ -60,7 +60,7 @@ func (d *BenchmarkDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				Computed:            true,
 			},
 			"sources": schema.ListNestedAttribute{
-				MarkdownDescription: "Sources.",
+				MarkdownDescription: "mSCP sources (branch + revision) spanned by the benchmark.",
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -70,6 +70,38 @@ func (d *BenchmarkDataSource) Schema(ctx context.Context, req datasource.SchemaR
 						},
 						"revision": schema.StringAttribute{
 							MarkdownDescription: "Revision.",
+							Computed:            true,
+						},
+					},
+				},
+			},
+			"selected_os_versions": schema.SetNestedAttribute{
+				MarkdownDescription: "Operating system versions the benchmark applies to.",
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"os_type": schema.StringAttribute{
+							MarkdownDescription: "Operating system type (e.g. `MAC_OS`).",
+							Computed:            true,
+						},
+						"os_version": schema.Int64Attribute{
+							MarkdownDescription: "Major operating system version (e.g. `26` = macOS Tahoe).",
+							Computed:            true,
+						},
+					},
+				},
+			},
+			"available_os_versions": schema.ListNestedAttribute{
+				MarkdownDescription: "All operating system versions available for the benchmark's baseline.",
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"os_type": schema.StringAttribute{
+							MarkdownDescription: "Operating system type (e.g. `MAC_OS`).",
+							Computed:            true,
+						},
+						"os_version": schema.Int64Attribute{
+							MarkdownDescription: "Major operating system version.",
 							Computed:            true,
 						},
 					},

@@ -15,6 +15,23 @@ var benchmarkTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
+// sourceObjectType defines the attribute types for the computed source nested objects.
+var sourceObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"branch":   types.StringType,
+		"revision": types.StringType,
+	},
+}
+
+// osVersionObjectType defines the attribute types for the operating-system
+// version nested objects used by selected_os_versions and available_os_versions.
+var osVersionObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"os_type":    types.StringType,
+		"os_version": types.Int64Type,
+	},
+}
+
 // osInfoObjectType defines the attribute types for OS info nested objects.
 var osInfoObjectType = types.ObjectType{
 	AttrTypes: map[string]attr.Type{
