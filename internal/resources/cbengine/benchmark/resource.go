@@ -105,23 +105,63 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"sources": schema.ListNestedAttribute{
-				MarkdownDescription: "Set of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources.",
-				Required:            true,
+				MarkdownDescription: "mSCP sources (branch + revision) included in the benchmark. Computed and read-only: the benchmark always spans the full source set of its baseline, so this cannot be configured. Use `selected_os_versions` to choose which operating system versions the benchmark applies to.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"branch": schema.StringAttribute{
 							MarkdownDescription: "Source branch name.",
-							Required:            true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.RequiresReplace(),
-							},
+							Computed:            true,
 						},
 						"revision": schema.StringAttribute{
 							MarkdownDescription: "Source revision identifier.",
+							Computed:            true,
+						},
+					},
+				},
+			},
+			"selected_os_versions": schema.SetNestedAttribute{
+				MarkdownDescription: "Operating system versions the benchmark applies to. Optional: when omitted, the benchmark targets every version available for the baseline. Supplying a subset scopes the benchmark to just those versions. Immutable (replace on change). Look up valid values via `available_os_versions` on the `jamfplatform_cbengine_rules` data source.",
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
+				},
+				PlanModifiers: []planmodifier.Set{
+					setplanmodifier.UseStateForUnknown(),
+					setplanmodifier.RequiresReplace(),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"os_type": schema.StringAttribute{
+							MarkdownDescription: "Operating system type (e.g. `MAC_OS`).",
 							Required:            true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.RequiresReplace(),
-							},
+						},
+						"os_version": schema.Int64Attribute{
+							MarkdownDescription: "Major operating system version (e.g. `26` = macOS Tahoe, `15` = Sequoia, `14` = Sonoma, `13` = Ventura).",
+							Required:            true,
+						},
+					},
+				},
+			},
+			"available_os_versions": schema.ListNestedAttribute{
+				MarkdownDescription: "All operating system versions available for the benchmark's baseline. Computed.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"os_type": schema.StringAttribute{
+							MarkdownDescription: "Operating system type (e.g. `MAC_OS`).",
+							Computed:            true,
+						},
+						"os_version": schema.Int64Attribute{
+							MarkdownDescription: "Major operating system version.",
+							Computed:            true,
 						},
 					},
 				},

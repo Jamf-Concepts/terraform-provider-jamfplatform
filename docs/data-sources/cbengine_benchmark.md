@@ -65,6 +65,7 @@ output "benchmark_by_title_rules" {
 
 ### Read-Only
 
+- `available_os_versions` (Attributes List) All operating system versions available for the benchmark's baseline. (see [below for nested schema](#nestedatt--available_os_versions))
 - `benchmark_id` (String) Benchmark ID.
 - `can_switch_to_enforce` (Boolean) Whether the benchmark can be switched to MONITOR_AND_ENFORCE enforcement mode.
 - `deleted` (Boolean) Deleted flag.
@@ -72,11 +73,21 @@ output "benchmark_by_title_rules" {
 - `enforcement_mode` (String) Enforcement mode.
 - `last_updated_at` (String) Last updated at (RFC3339).
 - `rules` (Attributes List) Rules. (see [below for nested schema](#nestedatt--rules))
-- `sources` (Attributes List) Sources. (see [below for nested schema](#nestedatt--sources))
+- `selected_os_versions` (Attributes Set) Operating system versions the benchmark applies to. (see [below for nested schema](#nestedatt--selected_os_versions))
+- `sources` (Attributes List) mSCP sources (branch + revision) spanned by the benchmark. (see [below for nested schema](#nestedatt--sources))
 - `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups`. First device group ID returned by the API, kept for backwards compatibility.
 - `target_device_groups` (Set of String) All device group Platform IDs targeted by this benchmark.
 - `tenant_id` (String) Tenant ID.
 - `update_available` (Boolean) Update available flag.
+
+<a id="nestedatt--available_os_versions"></a>
+### Nested Schema for `available_os_versions`
+
+Read-Only:
+
+- `os_type` (String) Operating system type (e.g. `MAC_OS`).
+- `os_version` (Number) Major operating system version.
+
 
 <a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`
@@ -123,6 +134,15 @@ Read-Only:
 - `os_type` (String) OS type (e.g. `MAC_OS`, `IOS`).
 - `os_version` (Number) OS version.
 
+
+
+<a id="nestedatt--selected_os_versions"></a>
+### Nested Schema for `selected_os_versions`
+
+Read-Only:
+
+- `os_type` (String) Operating system type (e.g. `MAC_OS`).
+- `os_version` (Number) Major operating system version (e.g. `26` = macOS Tahoe).
 
 
 <a id="nestedatt--sources"></a>

@@ -103,11 +103,6 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 		ruleBlocks = append(ruleBlocks, block)
 	}
 
-	var sourceBlocks []string
-	for _, s := range rules.Sources {
-		sourceBlocks = append(sourceBlocks, fmt.Sprintf(`{ branch = %q, revision = %q }`, s.Branch, s.Revision))
-	}
-
 	benchmarkTitle := "tf-acc-benchmark-all-rules-" + suffix
 	scopeNameA := "tf-acc-benchmark-scope-a-" + suffix
 	scopeNameB := "tf-acc-benchmark-scope-b-" + suffix
@@ -142,8 +137,7 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 			description        = "Acceptance test — safe to delete"
 			source_baseline_id = %q
 
-			sources = [%s]
-			rules   = [%s]
+			rules = [%s]
 
 			target_device_groups = [
 				jamfplatform_device_group.scope_a.id,
@@ -151,7 +145,7 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 			]
 			enforcement_mode    = "MONITOR"
 		}
-	`, scopeNameA, scopeNameB, benchmarkTitle, baselineID, strings.Join(sourceBlocks, ",\n"), strings.Join(ruleBlocks, ",\n"))
+	`, scopeNameA, scopeNameB, benchmarkTitle, baselineID, strings.Join(ruleBlocks, ",\n"))
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -165,6 +159,10 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "enforcement_mode", "MONITOR"),
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "target_device_groups.#", "2"),
 					resource.TestCheckNoResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "target_device_group"),
+					// selected_os_versions omitted → computed to the full available set (omit == all).
+					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "available_os_versions.#", fmt.Sprintf("%d", len(rules.AvailableOsVersions))),
+					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "selected_os_versions.#", fmt.Sprintf("%d", len(rules.AvailableOsVersions))),
+					resource.TestCheckResourceAttrSet("jamfplatform_cbengine_benchmark.test_all_rules", "sources.#"),
 				),
 			},
 		},
@@ -206,10 +204,18 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 		ruleBlocks = append(ruleBlocks, block)
 	}
 
-	var sourceBlocks []string
-	for _, s := range rules.Sources {
-		sourceBlocks = append(sourceBlocks, fmt.Sprintf(`{ branch = %q, revision = %q }`, s.Branch, s.Revision))
+	// Exercise selected_os_versions by scoping the benchmark to a single
+	// available OS version (the highest one the baseline offers).
+	if len(rules.AvailableOsVersions) == 0 {
+		t.Skip("baseline exposes no available OS versions")
 	}
+	selectedOs := rules.AvailableOsVersions[0]
+	for _, v := range rules.AvailableOsVersions {
+		if v.OsVersion > selectedOs.OsVersion {
+			selectedOs = v
+		}
+	}
+	selectedOsBlock := fmt.Sprintf(`{ os_type = %q, os_version = %d }`, selectedOs.OsType, selectedOs.OsVersion)
 
 	benchmarkTitle := "tf-acc-benchmark-custom-rules-" + suffix
 	scopeNameA := "tf-acc-benchmark-scope-custom-a-" + suffix
@@ -245,8 +251,9 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 			description        = "Acceptance test custom rules — safe to delete"
 			source_baseline_id = %q
 
-			sources = [%s]
-			rules   = [%s]
+			rules = [%s]
+
+			selected_os_versions = [%s]
 
 			target_device_groups = [
 				jamfplatform_device_group.scope_a.id,
@@ -254,7 +261,7 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 			]
 			enforcement_mode    = "MONITOR_AND_ENFORCE"
 		}
-	`, scopeNameA, scopeNameB, benchmarkTitle, baselineID, strings.Join(sourceBlocks, ",\n"), strings.Join(ruleBlocks, ",\n"))
+	`, scopeNameA, scopeNameB, benchmarkTitle, baselineID, strings.Join(ruleBlocks, ",\n"), selectedOsBlock)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -267,7 +274,100 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_custom", "title", benchmarkTitle),
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_custom", "enforcement_mode", "MONITOR_AND_ENFORCE"),
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_custom", "target_device_groups.#", "2"),
+					// selected_os_versions scoped to a single version; sources remain the full computed set.
+					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_custom", "selected_os_versions.#", "1"),
+					resource.TestCheckResourceAttrSet("jamfplatform_cbengine_benchmark.test_custom", "sources.#"),
+					resource.TestCheckResourceAttrSet("jamfplatform_cbengine_benchmark.test_custom", "available_os_versions.#"),
 				),
+			},
+		},
+	})
+}
+
+// TestAccResource_Benchmark_SelectedOsVersionsOrderIndependent guards the choice
+// of a Set (not a List) for selected_os_versions. The server canonicalises the
+// ordering of the versions it echoes back, so the same versions supplied in a
+// different order must NOT produce a diff (and therefore must not trigger the
+// RequiresReplace on this attribute). Step 2 re-plans the same set in reverse
+// order with PlanOnly, which fails if the plan is non-empty.
+func TestAccResource_Benchmark_SelectedOsVersionsOrderIndependent(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+
+	ctx := context.Background()
+	c := testhelpers.NewAcceptanceClient(t)
+	cbClient := cbSDK.New(c)
+	baselines, err := cbClient.ListBaselines(ctx)
+	if err != nil {
+		t.Fatalf("Failed to check baselines: %v", err)
+	}
+	if len(baselines.Baselines) == 0 {
+		t.Skip("No baselines available — CB Engine may not be enabled")
+	}
+	baselineID := baselines.Baselines[0].BaselineID
+	rules, err := cbClient.GetBaselineRules(ctx, baselineID)
+	if err != nil {
+		t.Fatalf("Failed to get rules: %v", err)
+	}
+	if len(rules.Rules) == 0 {
+		t.Skip("No rules found for baseline")
+	}
+	if len(rules.AvailableOsVersions) < 2 {
+		t.Skip("Need at least 2 available OS versions to test order independence")
+	}
+
+	r := rules.Rules[0]
+	ruleBlock := fmt.Sprintf(`{ id = %q, enabled = true }`, r.ID)
+
+	a, b := rules.AvailableOsVersions[0], rules.AvailableOsVersions[1]
+	osAB := fmt.Sprintf(`{ os_type = %q, os_version = %d }, { os_type = %q, os_version = %d }`, a.OsType, a.OsVersion, b.OsType, b.OsVersion)
+	osBA := fmt.Sprintf(`{ os_type = %q, os_version = %d }, { os_type = %q, os_version = %d }`, b.OsType, b.OsVersion, a.OsType, a.OsVersion)
+
+	benchmarkTitle := "tf-acc-benchmark-osorder-" + suffix
+	scopeName := "tf-acc-benchmark-scope-osorder-" + suffix
+	ensureBenchmarkCleanup(t, benchmarkTitle)
+
+	config := func(osBlock string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_device_group" "scope" {
+				name        = %q
+				group_type  = "smart"
+				device_type = "computer"
+				criteria = [{
+					criteria = "Serial Number"
+					operator = "like"
+					value    = ""
+				}]
+			}
+
+			resource "jamfplatform_cbengine_benchmark" "test_osorder" {
+				title                = %q
+				description          = "Acceptance test OS-version order independence — safe to delete"
+				source_baseline_id   = %q
+				rules                = [%s]
+				selected_os_versions = [%s]
+				target_device_group  = jamfplatform_device_group.scope.id
+				enforcement_mode     = "MONITOR"
+			}
+		`, scopeName, benchmarkTitle, baselineID, ruleBlock, osBlock)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBenchmarkResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: config(osAB),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_cbengine_benchmark.test_osorder", "id"),
+					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_osorder", "selected_os_versions.#", "2"),
+				),
+			},
+			{
+				// Same set, reversed order. A Set treats this as no change; a List
+				// would plan a replace here, failing the empty-plan assertion.
+				Config:   config(osBA),
+				PlanOnly: true,
 			},
 		},
 	})
@@ -311,11 +411,6 @@ func TestAccResource_Benchmark_DeprecatedSingularTarget(t *testing.T) {
 		ruleBlocks = append(ruleBlocks, block)
 	}
 
-	var sourceBlocks []string
-	for _, s := range rules.Sources {
-		sourceBlocks = append(sourceBlocks, fmt.Sprintf(`{ branch = %q, revision = %q }`, s.Branch, s.Revision))
-	}
-
 	benchmarkTitle := "tf-acc-benchmark-deprecated-singular-" + suffix
 	scopeName := "tf-acc-benchmark-scope-deprecated-" + suffix
 
@@ -338,13 +433,12 @@ func TestAccResource_Benchmark_DeprecatedSingularTarget(t *testing.T) {
 			description        = "Backwards-compatibility regression — uses deprecated singular target."
 			source_baseline_id = %q
 
-			sources = [%s]
-			rules   = [%s]
+			rules = [%s]
 
 			target_device_group = jamfplatform_device_group.scope.id
 			enforcement_mode    = "MONITOR"
 		}
-	`, scopeName, benchmarkTitle, baselineID, strings.Join(sourceBlocks, ",\n"), strings.Join(ruleBlocks, ",\n"))
+	`, scopeName, benchmarkTitle, baselineID, strings.Join(ruleBlocks, ",\n"))
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,

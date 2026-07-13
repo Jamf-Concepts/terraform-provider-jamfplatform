@@ -2,22 +2,21 @@
 #
 # Targeting accepts either a set of device group Platform IDs (preferred) via
 # target_device_groups, or the deprecated single-value target_device_group.
+#
+# The benchmark always spans the full source set of its baseline, so `sources`
+# is computed and read-only. To scope a benchmark to specific operating system
+# versions, set `selected_os_versions` (omit it to target every available
+# version). Look up the valid values via `available_os_versions` on the
+# jamfplatform_cbengine_rules data source.
 
 data "jamfplatform_cbengine_rules" "cis_lvl1" {
   baseline_id = "cis_lvl1"
 }
 
 resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
-  title              = "CIS Level 1 Benchmark - All Sources, All Rules"
+  title              = "CIS Level 1 Benchmark - All Rules, All OS Versions"
   description        = "Created by Terraform"
   source_baseline_id = "cis_lvl1"
-
-  sources = [
-    for s in data.jamfplatform_cbengine_rules.cis_lvl1.sources : {
-      branch   = s.branch
-      revision = s.revision
-    }
-  ]
 
   rules = [
     for r in data.jamfplatform_cbengine_rules.cis_lvl1.rules : {
@@ -25,6 +24,9 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
       enabled = r.enabled
     }
   ]
+
+  # selected_os_versions omitted → benchmark targets every OS version the
+  # baseline supports (see data.jamfplatform_cbengine_rules.available_os_versions).
 
   # Multiple device groups can be targeted simultaneously.
   target_device_groups = [
@@ -35,16 +37,9 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
 }
 
 resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
-  title              = "CIS Level 1 Benchmark - All Sources, Custom Rules"
+  title              = "CIS Level 1 Benchmark - Custom Rules, macOS Tahoe Only"
   description        = "Time Server and Critical Update Install"
   source_baseline_id = "cis_lvl1"
-
-  sources = [
-    for s in data.jamfplatform_cbengine_rules.cis_lvl1.sources : {
-      branch   = s.branch
-      revision = s.revision
-    }
-  ]
 
   rules = [
     {
@@ -56,6 +51,12 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
       id      = "system_settings_critical_update_install_enforce"
       enabled = true
     }
+  ]
+
+  # Scope this benchmark to a single OS version (macOS 26 = Tahoe). Each entry
+  # must match one of data.jamfplatform_cbengine_rules.cis_lvl1.available_os_versions.
+  selected_os_versions = [
+    { os_type = "MAC_OS", os_version = 26 },
   ]
 
   # target_device_group remains supported for backwards compatibility but is

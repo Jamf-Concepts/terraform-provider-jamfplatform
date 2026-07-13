@@ -33,6 +33,13 @@ func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 		Sources: []compliancebenchmarks.Source{
 			{Branch: "main", Revision: "abc123"},
 		},
+		SelectedOsVersions: []compliancebenchmarks.OsVersion{
+			{OsType: "MAC_OS", OsVersion: 26},
+		},
+		AvailableOsVersions: []compliancebenchmarks.OsVersion{
+			{OsType: "MAC_OS", OsVersion: 26},
+			{OsType: "MAC_OS", OsVersion: 15},
+		},
 		Target: &compliancebenchmarks.TargetV2{
 			DeviceGroups: []string{"group-1"},
 		},
@@ -105,14 +112,32 @@ func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 	if model.TargetDeviceGroup.ValueString() != "group-1" {
 		t.Errorf("expected TargetDeviceGroup 'group-1', got %q", model.TargetDeviceGroup.ValueString())
 	}
-	if len(model.Sources) != 1 {
-		t.Fatalf("expected 1 source, got %d", len(model.Sources))
+	if l := len(model.Sources.Elements()); l != 1 {
+		t.Fatalf("expected 1 source, got %d", l)
 	}
-	if model.Sources[0].Branch.ValueString() != "main" {
-		t.Errorf("expected source branch 'main', got %q", model.Sources[0].Branch.ValueString())
+	srcObj, ok := model.Sources.Elements()[0].(types.Object)
+	if !ok {
+		t.Fatalf("expected source element to be types.Object, got %T", model.Sources.Elements()[0])
 	}
-	if model.Sources[0].Revision.ValueString() != "abc123" {
-		t.Errorf("expected source revision 'abc123', got %q", model.Sources[0].Revision.ValueString())
+	if branch := srcObj.Attributes()["branch"].(types.String).ValueString(); branch != "main" {
+		t.Errorf("expected source branch 'main', got %q", branch)
+	}
+	if rev := srcObj.Attributes()["revision"].(types.String).ValueString(); rev != "abc123" {
+		t.Errorf("expected source revision 'abc123', got %q", rev)
+	}
+
+	if model.SelectedOsVersions.IsNull() || len(model.SelectedOsVersions.Elements()) != 1 {
+		t.Fatalf("expected 1 selected OS version, got %v", model.SelectedOsVersions)
+	}
+	selObj := model.SelectedOsVersions.Elements()[0].(types.Object)
+	if selObj.Attributes()["os_type"].(types.String).ValueString() != "MAC_OS" {
+		t.Errorf("expected selected os_type MAC_OS, got %v", selObj.Attributes()["os_type"])
+	}
+	if selObj.Attributes()["os_version"].(types.Int64).ValueInt64() != 26 {
+		t.Errorf("expected selected os_version 26, got %v", selObj.Attributes()["os_version"])
+	}
+	if model.AvailableOsVersions.IsNull() || len(model.AvailableOsVersions.Elements()) != 2 {
+		t.Errorf("expected 2 available OS versions, got %v", model.AvailableOsVersions)
 	}
 
 	if len(model.Rules) != 1 {
@@ -195,27 +220,84 @@ func TestAssignBenchmarkDataSourceFromResponse(t *testing.T) {
 	}
 }
 
-func TestBuildSourceModels(t *testing.T) {
+func TestBuildSourcesList(t *testing.T) {
 	sources := []compliancebenchmarks.Source{
 		{Branch: "main", Revision: "aaa"},
 		{Branch: "release", Revision: "bbb"},
 	}
-	result := buildSourceModels(sources)
-	if len(result) != 2 {
-		t.Fatalf("expected 2 sources, got %d", len(result))
+	result := buildSourcesList(sources)
+	if result.IsNull() {
+		t.Fatal("expected non-null list")
 	}
-	if result[0].Branch.ValueString() != "main" {
-		t.Errorf("expected branch 'main', got %q", result[0].Branch.ValueString())
+	if l := len(result.Elements()); l != 2 {
+		t.Fatalf("expected 2 sources, got %d", l)
 	}
-	if result[1].Revision.ValueString() != "bbb" {
-		t.Errorf("expected revision 'bbb', got %q", result[1].Revision.ValueString())
+	first := result.Elements()[0].(types.Object)
+	if first.Attributes()["branch"].(types.String).ValueString() != "main" {
+		t.Errorf("expected branch 'main', got %v", first.Attributes()["branch"])
+	}
+	second := result.Elements()[1].(types.Object)
+	if second.Attributes()["revision"].(types.String).ValueString() != "bbb" {
+		t.Errorf("expected revision 'bbb', got %v", second.Attributes()["revision"])
 	}
 }
 
-func TestBuildSourceModels_Empty(t *testing.T) {
-	result := buildSourceModels(nil)
-	if len(result) != 0 {
-		t.Errorf("expected 0 sources, got %d", len(result))
+func TestBuildSourcesList_Empty(t *testing.T) {
+	result := buildSourcesList(nil)
+	if result.IsNull() {
+		t.Error("expected an empty (non-null) list for no sources")
+	}
+	if len(result.Elements()) != 0 {
+		t.Errorf("expected 0 sources, got %d", len(result.Elements()))
+	}
+}
+
+func TestBuildOsVersionsSet(t *testing.T) {
+	result := buildOsVersionsSet([]compliancebenchmarks.OsVersion{
+		{OsType: "MAC_OS", OsVersion: 26},
+		{OsType: "MAC_OS", OsVersion: 15},
+	})
+	if result.IsNull() {
+		t.Fatal("expected non-null set")
+	}
+	if len(result.Elements()) != 2 {
+		t.Fatalf("expected 2 elements, got %d", len(result.Elements()))
+	}
+	obj := result.Elements()[0].(types.Object)
+	if obj.Attributes()["os_type"].(types.String).ValueString() != "MAC_OS" {
+		t.Errorf("expected os_type MAC_OS, got %v", obj.Attributes()["os_type"])
+	}
+}
+
+func TestBuildOsVersionsSet_Empty(t *testing.T) {
+	if !buildOsVersionsSet(nil).IsNull() {
+		t.Error("expected null set for empty OS versions")
+	}
+}
+
+func TestBuildOsVersionsList(t *testing.T) {
+	result := buildOsVersionsList([]compliancebenchmarks.OsVersion{
+		{OsType: "MAC_OS", OsVersion: 26},
+	})
+	if result.IsNull() {
+		t.Fatal("expected non-null list")
+	}
+	if len(result.Elements()) != 1 {
+		t.Fatalf("expected 1 element, got %d", len(result.Elements()))
+	}
+	obj := result.Elements()[0].(types.Object)
+	if obj.Attributes()["os_version"].(types.Int64).ValueInt64() != 26 {
+		t.Errorf("expected os_version 26, got %v", obj.Attributes()["os_version"])
+	}
+}
+
+func TestBuildOsVersionsList_Empty(t *testing.T) {
+	result := buildOsVersionsList(nil)
+	if result.IsNull() {
+		t.Error("expected an empty (non-null) list for no OS versions")
+	}
+	if len(result.Elements()) != 0 {
+		t.Errorf("expected 0 elements, got %d", len(result.Elements()))
 	}
 }
 

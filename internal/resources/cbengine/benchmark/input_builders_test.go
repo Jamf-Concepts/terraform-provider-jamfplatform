@@ -20,15 +20,27 @@ func setOfStrings(ids ...string) types.Set {
 	return out
 }
 
+// setOfOsVersions constructs a non-null types.Set of {os_type, os_version}
+// objects (all MAC_OS) for test setup.
+func setOfOsVersions(vs ...int64) types.Set {
+	vals := make([]attr.Value, len(vs))
+	for i, v := range vs {
+		obj, _ := types.ObjectValue(osVersionObjectType.AttrTypes, map[string]attr.Value{
+			"os_type":    types.StringValue("MAC_OS"),
+			"os_version": types.Int64Value(v),
+		})
+		vals[i] = obj
+	}
+	out, _ := types.SetValue(osVersionObjectType, vals)
+	return out
+}
+
 func TestBuildBenchmarkRequest_Full(t *testing.T) {
 	data := &BenchmarkResourceModel{
-		Title:            types.StringValue("My Benchmark"),
-		Description:      types.StringValue("My Description"),
-		SourceBaselineID: types.StringValue("baseline-1"),
-		Sources: []SourceModel{
-			{Branch: types.StringValue("main"), Revision: types.StringValue("rev-1")},
-			{Branch: types.StringValue("release"), Revision: types.StringValue("rev-2")},
-		},
+		Title:              types.StringValue("My Benchmark"),
+		Description:        types.StringValue("My Description"),
+		SourceBaselineID:   types.StringValue("baseline-1"),
+		SelectedOsVersions: setOfOsVersions(26, 15),
 		Rules: []RuleModel{
 			{
 				ID:       types.StringValue("rule-1"),
@@ -63,14 +75,19 @@ func TestBuildBenchmarkRequest_Full(t *testing.T) {
 	if len(req.Target.DeviceGroups) != 1 || req.Target.DeviceGroups[0] != "group-1" {
 		t.Errorf("expected target device group ['group-1'], got %v", req.Target.DeviceGroups)
 	}
-	if len(req.Sources) != 2 {
-		t.Fatalf("expected 2 sources, got %d", len(req.Sources))
+	if req.SelectedOsVersions == nil {
+		t.Fatal("expected SelectedOsVersions to be non-nil")
 	}
-	if req.Sources[0].Branch != "main" {
-		t.Errorf("expected source[0] branch 'main', got %q", req.Sources[0].Branch)
+	if len(*req.SelectedOsVersions) != 2 {
+		t.Fatalf("expected 2 selected OS versions, got %d", len(*req.SelectedOsVersions))
 	}
-	if req.Sources[1].Revision != "rev-2" {
-		t.Errorf("expected source[1] revision 'rev-2', got %q", req.Sources[1].Revision)
+	for _, v := range *req.SelectedOsVersions {
+		if v.OsType != "MAC_OS" {
+			t.Errorf("expected osType MAC_OS, got %q", v.OsType)
+		}
+		if v.OsVersion != 26 && v.OsVersion != 15 {
+			t.Errorf("unexpected osVersion %d", v.OsVersion)
+		}
 	}
 	if len(req.Rules) != 2 {
 		t.Fatalf("expected 2 rules, got %d", len(req.Rules))
@@ -95,12 +112,12 @@ func TestBuildBenchmarkRequest_Full(t *testing.T) {
 	}
 }
 
-func TestBuildBenchmarkRequest_EmptyRulesAndSources(t *testing.T) {
+func TestBuildBenchmarkRequest_EmptyRulesAndOmittedOsVersions(t *testing.T) {
 	data := &BenchmarkResourceModel{
 		Title:              types.StringValue("Empty"),
 		Description:        types.StringValue(""),
 		SourceBaselineID:   types.StringValue("bl-1"),
-		Sources:            nil,
+		SelectedOsVersions: types.SetNull(osVersionObjectType),
 		Rules:              nil,
 		TargetDeviceGroup:  types.StringValue("dg-1"),
 		TargetDeviceGroups: types.SetNull(types.StringType),
@@ -109,11 +126,28 @@ func TestBuildBenchmarkRequest_EmptyRulesAndSources(t *testing.T) {
 
 	req := buildBenchmarkRequest(data)
 
-	if len(req.Sources) != 0 {
-		t.Errorf("expected 0 sources, got %d", len(req.Sources))
+	if req.SelectedOsVersions != nil {
+		t.Errorf("expected nil SelectedOsVersions when attribute is null (server defaults to all), got %v", *req.SelectedOsVersions)
 	}
 	if len(req.Rules) != 0 {
 		t.Errorf("expected 0 rules, got %d", len(req.Rules))
+	}
+}
+
+func TestBuildSelectedOsVersionsRequest(t *testing.T) {
+	// Unknown → nil (omit; server defaults to all available versions).
+	unknown := &BenchmarkResourceModel{SelectedOsVersions: types.SetUnknown(osVersionObjectType)}
+	if got := buildSelectedOsVersionsRequest(unknown); got != nil {
+		t.Errorf("expected nil for unknown set, got %v", *got)
+	}
+	// Configured subset → pairs preserving os_type + os_version.
+	set := &BenchmarkResourceModel{SelectedOsVersions: setOfOsVersions(26)}
+	got := buildSelectedOsVersionsRequest(set)
+	if got == nil || len(*got) != 1 {
+		t.Fatalf("expected 1 selected OS version, got %v", got)
+	}
+	if (*got)[0].OsType != "MAC_OS" || (*got)[0].OsVersion != 26 {
+		t.Errorf("expected {MAC_OS,26}, got %+v", (*got)[0])
 	}
 }
 
@@ -168,7 +202,6 @@ func TestBuildBenchmarkRequest_PluralTargetDeviceGroups(t *testing.T) {
 		Title:              types.StringValue("Plural Scope"),
 		SourceBaselineID:   types.StringValue("bl-1"),
 		Rules:              nil,
-		Sources:            nil,
 		TargetDeviceGroup:  types.StringNull(),
 		TargetDeviceGroups: setOfStrings("group-a", "group-b", "group-c"),
 		EnforcementMode:    types.StringValue("audit"),

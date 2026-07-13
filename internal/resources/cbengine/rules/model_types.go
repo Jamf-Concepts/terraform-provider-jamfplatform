@@ -16,16 +16,23 @@ type RulesDataSource struct {
 
 // RulesDataSourceModel represents the Terraform data source model for mSCP rules.
 type RulesDataSourceModel struct {
-	BaselineID types.String   `tfsdk:"baseline_id"`
-	Sources    []SourceModel  `tfsdk:"sources"`
-	Rules      []RuleModel    `tfsdk:"rules"`
-	Timeouts   timeouts.Value `tfsdk:"timeouts"`
+	BaselineID          types.String     `tfsdk:"baseline_id"`
+	Sources             []SourceModel    `tfsdk:"sources"`
+	AvailableOsVersions []OsVersionModel `tfsdk:"available_os_versions"`
+	Rules               []RuleModel      `tfsdk:"rules"`
+	Timeouts            timeouts.Value   `tfsdk:"timeouts"`
 }
 
 // SourceModel represents a source branch and revision for a rule.
 type SourceModel struct {
 	Branch   types.String `tfsdk:"branch"`
 	Revision types.String `tfsdk:"revision"`
+}
+
+// OsVersionModel represents an operating-system type and major version pair.
+type OsVersionModel struct {
+	OsType    types.String `tfsdk:"os_type"`
+	OsVersion types.Int64  `tfsdk:"os_version"`
 }
 
 // RuleModel represents a rule in the data source, including ODV and computed fields.

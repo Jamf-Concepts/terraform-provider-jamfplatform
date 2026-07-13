@@ -34,22 +34,21 @@ The Jamf Platform API integration used by the provider must be granted the follo
 #
 # Targeting accepts either a set of device group Platform IDs (preferred) via
 # target_device_groups, or the deprecated single-value target_device_group.
+#
+# The benchmark always spans the full source set of its baseline, so `sources`
+# is computed and read-only. To scope a benchmark to specific operating system
+# versions, set `selected_os_versions` (omit it to target every available
+# version). Look up the valid values via `available_os_versions` on the
+# jamfplatform_cbengine_rules data source.
 
 data "jamfplatform_cbengine_rules" "cis_lvl1" {
   baseline_id = "cis_lvl1"
 }
 
 resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
-  title              = "CIS Level 1 Benchmark - All Sources, All Rules"
+  title              = "CIS Level 1 Benchmark - All Rules, All OS Versions"
   description        = "Created by Terraform"
   source_baseline_id = "cis_lvl1"
-
-  sources = [
-    for s in data.jamfplatform_cbengine_rules.cis_lvl1.sources : {
-      branch   = s.branch
-      revision = s.revision
-    }
-  ]
 
   rules = [
     for r in data.jamfplatform_cbengine_rules.cis_lvl1.rules : {
@@ -57,6 +56,9 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
       enabled = r.enabled
     }
   ]
+
+  # selected_os_versions omitted → benchmark targets every OS version the
+  # baseline supports (see data.jamfplatform_cbengine_rules.available_os_versions).
 
   # Multiple device groups can be targeted simultaneously.
   target_device_groups = [
@@ -67,16 +69,9 @@ resource "jamfplatform_cbengine_benchmark" "cis_lvl1" {
 }
 
 resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
-  title              = "CIS Level 1 Benchmark - All Sources, Custom Rules"
+  title              = "CIS Level 1 Benchmark - Custom Rules, macOS Tahoe Only"
   description        = "Time Server and Critical Update Install"
   source_baseline_id = "cis_lvl1"
-
-  sources = [
-    for s in data.jamfplatform_cbengine_rules.cis_lvl1.sources : {
-      branch   = s.branch
-      revision = s.revision
-    }
-  ]
 
   rules = [
     {
@@ -88,6 +83,12 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
       id      = "system_settings_critical_update_install_enforce"
       enabled = true
     }
+  ]
+
+  # Scope this benchmark to a single OS version (macOS 26 = Tahoe). Each entry
+  # must match one of data.jamfplatform_cbengine_rules.cis_lvl1.available_os_versions.
+  selected_os_versions = [
+    { os_type = "MAC_OS", os_version = 26 },
   ]
 
   # target_device_group remains supported for backwards compatibility but is
@@ -104,12 +105,12 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
 - `enforcement_mode` (String) Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).
 - `rules` (Attributes List) Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules. (see [below for nested schema](#nestedatt--rules))
-- `sources` (Attributes List) Set of mSCP sources (branch + revision) to include in the benchmark. Required; changing sources requires replace. Use the `jamfplatform_cbengine_rules` data source to look up available sources. (see [below for nested schema](#nestedatt--sources))
 - `title` (String) Benchmark title (max length 100). Required and replaces the resource when changed.
 
 ### Optional
 
 - `description` (String) Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.
+- `selected_os_versions` (Attributes Set) Operating system versions the benchmark applies to. Optional: when omitted, the benchmark targets every version available for the baseline. Supplying a subset scopes the benchmark to just those versions. Immutable (replace on change). Look up valid values via `available_os_versions` on the `jamfplatform_cbengine_rules` data source. (see [below for nested schema](#nestedatt--selected_os_versions))
 - `source_baseline_id` (String) mSCP baseline identifier used as the source for rules. Required on creation, but computed for imports. Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.
 - `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups` instead. Single device group Platform ID targeted by this benchmark, in UUID format. Mutually exclusive with `target_device_groups`. Immutable (replace on change).
 - `target_device_groups` (Set of String) Device group Platform IDs targeted by this benchmark. Specified as a set of UUID strings; Platform IDs can be sourced from the response body of the `/api/v1/groups` Jamf Pro API endpoint. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).
@@ -117,10 +118,12 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
 ### Read-Only
 
+- `available_os_versions` (Attributes List) All operating system versions available for the benchmark's baseline. Computed. (see [below for nested schema](#nestedatt--available_os_versions))
 - `can_switch_to_enforce` (Boolean) Whether the benchmark can be switched to MONITOR_AND_ENFORCE enforcement mode.
 - `deleted` (Boolean) Whether the benchmark is marked deleted by the API.
 - `id` (String) Unique identifier assigned by the API (maps to benchmarkId).
 - `last_updated_at` (String) Timestamp (RFC3339) of the last update to the benchmark.
+- `sources` (Attributes List) mSCP sources (branch + revision) included in the benchmark. Computed and read-only: the benchmark always spans the full source set of its baseline, so this cannot be configured. Use `selected_os_versions` to choose which operating system versions the benchmark applies to. (see [below for nested schema](#nestedatt--sources))
 - `tenant_id` (String) Identifier for the tenant that owns the benchmark.
 - `update_available` (Boolean) Whether an update is available for the benchmark relative to current mSCP sources.
 
@@ -177,13 +180,13 @@ Read-Only:
 
 
 
-<a id="nestedatt--sources"></a>
-### Nested Schema for `sources`
+<a id="nestedatt--selected_os_versions"></a>
+### Nested Schema for `selected_os_versions`
 
 Required:
 
-- `branch` (String) Source branch name.
-- `revision` (String) Source revision identifier.
+- `os_type` (String) Operating system type (e.g. `MAC_OS`).
+- `os_version` (Number) Major operating system version (e.g. `26` = macOS Tahoe, `15` = Sequoia, `14` = Sonoma, `13` = Ventura).
 
 
 <a id="nestedatt--timeouts"></a>
@@ -194,6 +197,24 @@ Optional:
 - `create` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
 - `delete` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Setting a timeout for a Delete operation is only applicable if changes are saved into state before the destroy operation occurs.
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.
+
+
+<a id="nestedatt--available_os_versions"></a>
+### Nested Schema for `available_os_versions`
+
+Read-Only:
+
+- `os_type` (String) Operating system type (e.g. `MAC_OS`).
+- `os_version` (Number) Major operating system version.
+
+
+<a id="nestedatt--sources"></a>
+### Nested Schema for `sources`
+
+Read-Only:
+
+- `branch` (String) Source branch name.
+- `revision` (String) Source revision identifier.
 
 ## Import
 
