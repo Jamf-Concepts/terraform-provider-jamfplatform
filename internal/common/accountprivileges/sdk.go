@@ -170,7 +170,7 @@ func IntersectIntoState(ctx context.Context, prior *Model, server map[string][]s
 				*out.setPtr(c.WireKey) = types.SetNull(types.StringType)
 				continue
 			}
-			set, d := newStringSet(serverVals)
+			set, d := NewStringSet(serverVals)
 			diags.Append(d...)
 			*out.setPtr(c.WireKey) = set
 			continue
@@ -189,7 +189,7 @@ func IntersectIntoState(ctx context.Context, prior *Model, server map[string][]s
 			return out, diags
 		}
 
-		set, d := newStringSet(intersect(declared, serverVals))
+		set, d := NewStringSet(intersect(declared, serverVals))
 		diags.Append(d...)
 		*out.setPtr(c.WireKey) = set
 	}
@@ -197,7 +197,7 @@ func IntersectIntoState(ctx context.Context, prior *Model, server map[string][]s
 }
 
 // intersect returns the elements of declared that are also present in server,
-// preserving declared's membership (order is normalised by newStringSet).
+// preserving declared's membership (order is normalised by NewStringSet).
 func intersect(declared, server []string) []string {
 	have := make(map[string]struct{}, len(server))
 	for _, s := range server {
@@ -210,4 +210,28 @@ func intersect(declared, server []string) []string {
 		}
 	}
 	return out
+}
+
+// CategorizedSets converts a wire-keyed catalog map into a per-category map of
+// string Sets (keyed by wire key) plus a flat union Set of every privilege
+// across all categories. Every returned Set is sorted and de-duplicated via
+// NewStringSet — mandatory because the classic Administrator grid echoes some
+// privilege strings more than once within a category, which types.SetValue
+// would otherwise reject with a "Duplicate Set Element" error (issue #290).
+// Used by the account_privileges data source to project the discovered catalog
+// into state.
+func CategorizedSets(catalog map[string][]string) (map[string]types.Set, types.Set, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	sets := make(map[string]types.Set, len(Categories))
+	var all []string
+	for _, c := range Categories {
+		vals := catalog[c.WireKey]
+		all = append(all, vals...)
+		s, d := NewStringSet(vals)
+		diags.Append(d...)
+		sets[c.WireKey] = s
+	}
+	allSet, d := NewStringSet(all)
+	diags.Append(d...)
+	return sets, allSet, diags
 }
