@@ -16,7 +16,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -122,26 +121,24 @@ func (d *AccountPrivilegesDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
-	var allElems []attr.Value
-	setFor := func(wireKey string) types.Set {
-		vals := catalog[wireKey]
-		elems := make([]attr.Value, 0, len(vals))
-		for _, v := range vals {
-			elems = append(elems, types.StringValue(v))
-			allElems = append(allElems, types.StringValue(v))
-		}
-		s, _ := types.SetValue(types.StringType, elems)
-		return s
+	// CategorizedSets sorts and de-duplicates every category and the union. The
+	// dedup is load-bearing: the classic Administrator grid echoes some privilege
+	// strings twice within a category (e.g. Create/Read/Update Cloud Distribution
+	// Point), which types.SetValue rejects as a "Duplicate Set Element" (#290).
+	sets, allSet, diags := accountprivileges.CategorizedSets(catalog)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
-	data.JamfProServerObjects = setFor("jss_objects")
-	data.JamfProServerSettings = setFor("jss_settings")
-	data.JamfProServerActions = setFor("jss_actions")
-	data.CasperAdmin = setFor("casper_admin")
-	data.CasperRemote = setFor("casper_remote")
-	data.CasperImaging = setFor("casper_imaging")
-	data.Recon = setFor("recon")
-	data.All, _ = types.SetValue(types.StringType, allElems)
+	data.JamfProServerObjects = sets["jss_objects"]
+	data.JamfProServerSettings = sets["jss_settings"]
+	data.JamfProServerActions = sets["jss_actions"]
+	data.CasperAdmin = sets["casper_admin"]
+	data.CasperRemote = sets["casper_remote"]
+	data.CasperImaging = sets["casper_imaging"]
+	data.Recon = sets["recon"]
+	data.All = allSet
 
-	tflog.Trace(ctx, "read Jamf Pro account privileges catalog", map[string]any{"count": len(allElems)})
+	tflog.Trace(ctx, "read Jamf Pro account privileges catalog", map[string]any{"count": len(allSet.Elements())})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -18,9 +18,9 @@ import (
 
 func mustSet(t *testing.T, vals ...string) types.Set {
 	t.Helper()
-	s, diags := newStringSet(vals)
+	s, diags := NewStringSet(vals)
 	if diags.HasError() {
-		t.Fatalf("newStringSet(%v): %v", vals, diags)
+		t.Fatalf("NewStringSet(%v): %v", vals, diags)
 	}
 	return s
 }
@@ -139,7 +139,7 @@ func TestIntersectIntoState_ImportMaterialisesFullGrid(t *testing.T) {
 // TestIntersectIntoState_ImportDedupesServerDuplicates guards the genconfig /
 // import path: the classic /accounts endpoint can echo the same privilege
 // string more than once within a category, and types.SetValue rejects duplicate
-// elements with a hard "Duplicate Set Element" error. newStringSet must collapse
+// elements with a hard "Duplicate Set Element" error. NewStringSet must collapse
 // the duplicates so hydration succeeds.
 func TestIntersectIntoState_ImportDedupesServerDuplicates(t *testing.T) {
 	server := map[string][]string{
@@ -151,6 +151,59 @@ func TestIntersectIntoState_ImportDedupesServerDuplicates(t *testing.T) {
 	}
 	if got, want := setStrings(t, out.JamfProServerObjects), []string{"Create/Read/Update Cloud Distribution Point", "Read Buildings"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("duplicate server privileges should collapse, got %v want %v", got, want)
+	}
+}
+
+// TestCategorizedSets_DedupesWithinCategoryAndUnion is the regression guard for
+// issue #290: the account_privileges data source projected the discovered
+// catalog into state with its own set builder that called types.SetValue
+// directly, so the classic Administrator grid's within-category duplicates
+// (Create/Read/Update Cloud Distribution Point, Read/Update Computer Check-In —
+// each echoed twice) produced a hard "Duplicate Set Element" error at apply and
+// the data source never landed in state. CategorizedSets must collapse the
+// duplicates in every category and in the flat union.
+func TestCategorizedSets_DedupesWithinCategoryAndUnion(t *testing.T) {
+	catalog := map[string][]string{
+		"jss_objects": {
+			"Create Cloud Distribution Point", "Create Cloud Distribution Point",
+			"Read Cloud Distribution Point", "Read Cloud Distribution Point",
+			"Update Cloud Distribution Point", "Update Cloud Distribution Point",
+			"Read Buildings",
+		},
+		"jss_settings": {
+			"Read Computer Check-In", "Read Computer Check-In",
+			"Update Computer Check-In", "Update Computer Check-In",
+		},
+	}
+	sets, all, diags := CategorizedSets(catalog)
+	if diags.HasError() {
+		t.Fatalf("CategorizedSets with duplicate wire values: %v", diags)
+	}
+
+	wantObjects := []string{
+		"Create Cloud Distribution Point",
+		"Read Buildings",
+		"Read Cloud Distribution Point",
+		"Update Cloud Distribution Point",
+	}
+	if got := setStrings(t, sets["jss_objects"]); !reflect.DeepEqual(got, wantObjects) {
+		t.Errorf("jss_objects: got %v want %v", got, wantObjects)
+	}
+	wantSettings := []string{"Read Computer Check-In", "Update Computer Check-In"}
+	if got := setStrings(t, sets["jss_settings"]); !reflect.DeepEqual(got, wantSettings) {
+		t.Errorf("jss_settings: got %v want %v", got, wantSettings)
+	}
+
+	// Absent categories still yield an empty (non-null) set.
+	if s := sets["recon"]; s.IsNull() || len(s.Elements()) != 0 {
+		t.Errorf("absent category recon should be empty non-null set, got %v", s)
+	}
+
+	// The flat union carries every distinct privilege exactly once.
+	wantAll := append(append([]string(nil), wantObjects...), wantSettings...)
+	sort.Strings(wantAll)
+	if got := setStrings(t, all); !reflect.DeepEqual(got, wantAll) {
+		t.Errorf("all union: got %v want %v", got, wantAll)
 	}
 }
 
