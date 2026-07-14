@@ -43,7 +43,7 @@ func (r *ComputerExtensionAttributeResource) Create(ctx context.Context, req res
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	input, inputDiags := buildComputerExtensionAttributeInput(createCtx, plan, cfg.ManageExistingData)
+	input, inputDiags := buildComputerExtensionAttributeInput(createCtx, plan, cfg.ManageExistingData, true)
 	resp.Diagnostics.Append(inputDiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -175,7 +175,7 @@ func (r *ComputerExtensionAttributeResource) Update(ctx context.Context, req res
 	updateCtx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	input, inputDiags := buildComputerExtensionAttributeInput(updateCtx, plan, cfg.ManageExistingData)
+	input, inputDiags := buildComputerExtensionAttributeInput(updateCtx, plan, cfg.ManageExistingData, false)
 	resp.Diagnostics.Append(inputDiags...)
 	if resp.Diagnostics.HasError() {
 		return
