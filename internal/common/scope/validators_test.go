@@ -169,3 +169,84 @@ func TestAllFlagConflictsWith_Describer(t *testing.T) {
 		t.Error("expected non-empty MarkdownDescription")
 	}
 }
+
+// runNumericIDs drives NumericIDs against a synthetic Set<String> request. Pass
+// nil for a null set; an empty slice for the zero-element set.
+func runNumericIDs(t *testing.T, values []string) validator.SetResponse {
+	t.Helper()
+	set, diags := types.SetValueFrom(context.Background(), types.StringType, values)
+	if diags.HasError() {
+		t.Fatalf("building set value: %v", diags)
+	}
+	if values == nil {
+		set = types.SetNull(types.StringType)
+	}
+	req := validator.SetRequest{
+		Path:        path.Root("computer_ids"),
+		ConfigValue: set,
+	}
+	var resp validator.SetResponse
+	NumericIDs().ValidateSet(context.Background(), req, &resp)
+	return resp
+}
+
+func TestNumericIDs_AllNumeric_NoError(t *testing.T) {
+	resp := runNumericIDs(t, []string{"1", "42", "1000"})
+	if resp.Diagnostics.HasError() {
+		t.Errorf("expected no diagnostics, got: %v", resp.Diagnostics)
+	}
+}
+
+func TestNumericIDs_NullSet_NoError(t *testing.T) {
+	resp := runNumericIDs(t, nil)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("expected no diagnostics for null set, got: %v", resp.Diagnostics)
+	}
+}
+
+func TestNumericIDs_EmptySet_NoError(t *testing.T) {
+	resp := runNumericIDs(t, []string{})
+	if resp.Diagnostics.HasError() {
+		t.Errorf("expected no diagnostics for empty set, got: %v", resp.Diagnostics)
+	}
+}
+
+func TestNumericIDs_UnknownSet_NoError(t *testing.T) {
+	req := validator.SetRequest{
+		Path:        path.Root("computer_ids"),
+		ConfigValue: types.SetUnknown(types.StringType),
+	}
+	var resp validator.SetResponse
+	NumericIDs().ValidateSet(context.Background(), req, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Errorf("expected no diagnostics for unknown set, got: %v", resp.Diagnostics)
+	}
+}
+
+func TestNumericIDs_UUID_OneError(t *testing.T) {
+	resp := runNumericIDs(t, []string{"f04ba6b4-943d-43d0-be87-d4a0df824e66"})
+	if resp.Diagnostics.ErrorsCount() != 1 {
+		t.Fatalf("expected exactly 1 error, got %d: %v", resp.Diagnostics.ErrorsCount(), resp.Diagnostics)
+	}
+}
+
+func TestNumericIDs_MixedValidAndUUID_OneErrorPerBadElement(t *testing.T) {
+	resp := runNumericIDs(t, []string{
+		"42",
+		"f04ba6b4-943d-43d0-be87-d4a0df824e66",
+		"794ff992-fce5-413a-878e-073930353f1c",
+	})
+	if resp.Diagnostics.ErrorsCount() != 2 {
+		t.Errorf("expected exactly 2 errors, got %d: %v", resp.Diagnostics.ErrorsCount(), resp.Diagnostics)
+	}
+}
+
+func TestNumericIDs_Describer(t *testing.T) {
+	v := NumericIDs()
+	if v.Description(context.Background()) == "" {
+		t.Error("expected non-empty Description")
+	}
+	if v.MarkdownDescription(context.Background()) == "" {
+		t.Error("expected non-empty MarkdownDescription")
+	}
+}

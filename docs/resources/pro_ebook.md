@@ -133,17 +133,17 @@ Optional:
 
 Optional:
 
-- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--limitations"></a>
@@ -153,7 +153,7 @@ Optional:
 
 - `directory_service_or_local_user_names` (Set of String) Set of directory service or local user names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 - `directory_service_user_group_names` (Set of String) Set of directory service user group names. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `network_segment_ids` (Set of String) Set of Jamf Pro network segment IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 <a id="nestedatt--scope--targets"></a>
@@ -164,15 +164,15 @@ Optional:
 - `all_computers` (Boolean) Scope to every computer in the tenant. Forbids `computer_ids` / `computer_group_ids` when true. Omit to leave the toggle as configured outside Terraform.
 - `all_jss_users` (Boolean) Scope to every Jamf Pro user in the tenant. Forbids `user_ids` / `user_group_ids` when true. Omit to leave the toggle as configured outside Terraform.
 - `all_mobile_devices` (Boolean) Scope to every mobile device in the tenant. Forbids `mobile_device_ids` / `mobile_device_group_ids` when true. Omit to leave the toggle as configured outside Terraform.
-- `building_ids` (Set of String) Set of Jamf Pro building IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `class_ids` (Set of String) Set of Jamf Pro class IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `computer_ids` (Set of String) Set of Jamf Pro computer IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `department_ids` (Set of String) Set of Jamf Pro department IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
-- `user_ids` (Set of String) Set of Jamf Pro user IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `building_ids` (Set of String) Set of Jamf Pro building IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `class_ids` (Set of String) Set of Jamf Pro class IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_group_ids` (Set of String) Set of Jamf Pro computer group IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `computer_ids` (Set of String) Set of Jamf Pro computer IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `department_ids` (Set of String) Set of Jamf Pro department IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_group_ids` (Set of String) Set of Jamf Pro mobile device group IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `mobile_device_ids` (Set of String) Set of Jamf Pro mobile device IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_group_ids` (Set of String) Set of Jamf Pro user group IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
+- `user_ids` (Set of String) Set of Jamf Pro user IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.
 
 
 

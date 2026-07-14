@@ -6,6 +6,7 @@ package scope
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -86,6 +87,63 @@ func (v allFlagConflictsWithValidator) ValidateBool(ctx context.Context, req val
 				p,
 				"Conflicts with all-flag",
 				fmt.Sprintf("%s must be null or empty when %s is true.", p, req.Path),
+			)
+		}
+	}
+}
+
+// NumericIDs is the element validator for the ID-bearing scope target
+// categories (IDSetAttribute). Every Jamf Pro object referenced by ID —
+// computers, groups, buildings, departments, users, network segments, iBeacons
+// — carries a numeric integer identifier. This catches the common footgun of
+// passing a UUID (or any other non-numeric handle) where a numeric ID is
+// required: without it the mistake surfaces only during apply as an opaque
+// `strconv.Atoi: parsing "…": invalid syntax` from the input builder, with no
+// attribute path. Here it is reported at plan time, pinned to the offending
+// element, with actionable guidance.
+//
+// The parse mirrors the input builder (BuildIDSlice → strconv.Atoi) exactly, so
+// the validator rejects precisely the values that would fail the write and
+// nothing more — no false rejects. Null/unknown elements are deferred per
+// STYLE_GUIDE §Config-time validators, so IDs sourced from other resources or
+// variables are not flagged before they resolve.
+func NumericIDs() validator.Set {
+	return numericIDsValidator{}
+}
+
+// numericIDsValidator is the concrete validator returned by NumericIDs.
+type numericIDsValidator struct{}
+
+var _ validator.Set = numericIDsValidator{}
+
+// Description returns a plain-text description of the validator's rule.
+func (numericIDsValidator) Description(_ context.Context) string {
+	return "every element must be a numeric Jamf Pro object ID"
+}
+
+// MarkdownDescription returns the markdown description of the validator's rule.
+func (v numericIDsValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+// ValidateSet implements validator.Set. It defers on a null/unknown set and on
+// null/unknown elements, and records one error per non-numeric element, pinned
+// to that element's path.
+func (numericIDsValidator) ValidateSet(_ context.Context, req validator.SetRequest, resp *validator.SetResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	for _, elem := range req.ConfigValue.Elements() {
+		str, ok := elem.(types.String)
+		if !ok || str.IsNull() || str.IsUnknown() {
+			continue
+		}
+		raw := str.ValueString()
+		if _, err := strconv.Atoi(raw); err != nil {
+			resp.Diagnostics.AddAttributeError(
+				req.Path.AtSetValue(elem),
+				"Invalid Jamf Pro object ID",
+				fmt.Sprintf("%q is not a valid ID. Jamf Pro object IDs are numeric (e.g. \"42\"); this looks like a UUID or other non-numeric handle. When referencing another resource, use its `.id` attribute, which is the numeric ID.", raw),
 			)
 		}
 	}

@@ -5,6 +5,7 @@ package scope
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -65,8 +66,8 @@ func BuildIDSlice[T any](
 		id, err := strconv.Atoi(raw)
 		if err != nil {
 			diags.AddError(
-				"Invalid ID in set",
-				err.Error(),
+				"Invalid Jamf Pro object ID",
+				fmt.Sprintf("%q is not a valid ID. Jamf Pro object IDs are numeric (e.g. \"42\"); this looks like a UUID or other non-numeric handle. When referencing another resource, use its `.id` attribute, which is the numeric ID.", raw),
 			)
 			parseFailed = true
 			continue
