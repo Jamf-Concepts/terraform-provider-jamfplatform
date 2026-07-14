@@ -25,8 +25,11 @@ import (
 // value into the plan, but the gate here drops it whenever input_type is no longer
 // POPUP, so a stale foreign value can never reach the wire (which would 400).
 // manageExistingData is the WriteOnly value, read from config by the caller (it
-// is null in plan/state, so it cannot come from `plan`).
-func buildComputerExtensionAttributeInput(ctx context.Context, plan ComputerExtensionAttributeResourceModel, manageExistingData types.String) (*pro.ComputerExtensionAttributes, diag.Diagnostics) {
+// is null in plan/state, so it cannot come from `plan`). isCreate must be true
+// only when building the Create payload: Jamf Pro 400s
+// ("This field should be blank for first time CEA creation.") if
+// manageExistingData is present on create, and only accepts it on update.
+func buildComputerExtensionAttributeInput(ctx context.Context, plan ComputerExtensionAttributeResourceModel, manageExistingData types.String, isCreate bool) (*pro.ComputerExtensionAttributes, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	inputType := plan.InputType.ValueString()
@@ -44,14 +47,18 @@ func buildComputerExtensionAttributeInput(ctx context.Context, plan ComputerExte
 	switch inputType {
 	case inputTypeScript:
 		ea.ScriptContents = helpers.OptionalStringPointer(plan.Script)
-		// manageExistingData is required (and only valid) for SCRIPT EAs: Jamf Pro
-		// 400s a SCRIPT update without it. Send the user's value, or RETAIN when
-		// omitted. Never send it for non-SCRIPT EAs.
-		mode := manageExistingDataDefault
-		if v := helpers.OptionalStringPointer(manageExistingData); v != nil {
-			mode = *v
+		// manageExistingData is required (and only valid) for SCRIPT EAs on
+		// update: Jamf Pro 400s a SCRIPT update without it, and 400s a SCRIPT
+		// create with it present. Send the user's value, or RETAIN when
+		// omitted, but only on update. Never send it for non-SCRIPT EAs or on
+		// create.
+		if !isCreate {
+			mode := manageExistingDataDefault
+			if v := helpers.OptionalStringPointer(manageExistingData); v != nil {
+				mode = *v
+			}
+			ea.ManageExistingData = &mode
 		}
-		ea.ManageExistingData = &mode
 	case inputTypeLDAP:
 		ea.LdapAttributeMapping = helpers.OptionalStringPointer(plan.DirectoryServiceAttribute)
 	case inputTypePopup:
