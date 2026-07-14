@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -35,7 +36,10 @@ func IDSetAttribute(attrLabel string) schema.SetAttribute {
 	return schema.SetAttribute{
 		ElementType:         types.StringType,
 		Optional:            true,
-		MarkdownDescription: fmt.Sprintf("Set of Jamf Pro %s IDs. Omit to leave this category as configured outside Terraform; set `[]` to clear it.", attrLabel),
+		MarkdownDescription: fmt.Sprintf("Set of Jamf Pro %s IDs (numeric). Omit to leave this category as configured outside Terraform; set `[]` to clear it.", attrLabel),
+		Validators: []validator.Set{
+			NumericIDs(),
+		},
 	}
 }
 
