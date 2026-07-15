@@ -734,6 +734,149 @@ func TestAccResource_MobileDeviceConfigurationProfile_ImportState(t *testing.T) 
 	})
 }
 
+// expectGeneralAttrKnown asserts that general.<attr> is NOT planned as
+// unknown ("known after apply"). plancheck.ExpectKnownValue cannot express
+// this: it reads Change.After, where an unknown value is serialised as null
+// and is therefore indistinguishable from a known null. This check reads the
+// parallel Change.AfterUnknown tree (the same source ExpectUnknownValue uses)
+// and fails when the attribute is flagged unknown.
+type expectGeneralAttrKnown struct {
+	resourceAddress string
+	attr            string
+}
+
+func (e expectGeneralAttrKnown) CheckPlan(_ context.Context, req plancheck.CheckPlanRequest, resp *plancheck.CheckPlanResponse) {
+	for _, rc := range req.Plan.ResourceChanges {
+		if rc.Address != e.resourceAddress {
+			continue
+		}
+		unknown, err := tfjsonpath.Traverse(rc.Change.AfterUnknown, tfjsonpath.New("general").AtMapKey(e.attr))
+		if err != nil {
+			// Path absent from the AfterUnknown tree ⇒ not flagged unknown ⇒ known.
+			return
+		}
+		if isUnknown, ok := unknown.(bool); ok && isUnknown {
+			resp.Error = fmt.Errorf(
+				"%s: general.%s is planned unknown (\"known after apply\") on the first post-import plan; "+
+					"it must stay known. Regression of the §886 derived-name restore in ModifyPlan's two-way "+
+					"fallback (0bfb64b follow-up).",
+				e.resourceAddress, e.attr)
+		}
+		return
+	}
+	resp.Error = fmt.Errorf("%s - resource not found in plan ResourceChanges", e.resourceAddress)
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_ImportThenPlan_DerivedNamesStayKnown
+// pins the fix for the phantom in-place update seen on the first plan after a
+// fresh import. On import the payload is stored in the server-canonical form,
+// which is byte-different from (but semantically equal to) the user's HCL, so
+// the next plan proposes an update on `general`; that marks category_name /
+// site_name Unknown (they are Computed without UseStateForUnknown per §886).
+// Import leaves the three-way payload private-state refs empty, so ModifyPlan
+// takes its two-way fallback — the branch that, before this fix, suppressed the
+// payload diff but forgot to restore the derived names, leaving them Unknown
+// and surfacing a spurious update (which for a config profile issues a PUT that
+// can re-deploy the profile). The names must stay known.
+func TestAccResource_MobileDeviceConfigurationProfile_ImportThenPlan_DerivedNamesStayKnown(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdcp-import-noop-" + suffix
+	fixture := freshPayload(t, "profile_44.mobileconfig")
+	const addr = "jamfplatform_pro_mobile_device_configuration_profile.test"
+
+	// Create the object out-of-band so import is the first Terraform action, as
+	// a user importing a pre-existing profile does. A Terraform-managed create
+	// step would populate the three-way payload private-state refs and route the
+	// next plan through the three-way compare (already correct since 0bfb64b) —
+	// the regression lives on the import-only two-way fallback path. The config
+	// uses the payload read back from the server so it is semantically equal to
+	// (but byte-different from) the form import canonicalises into state, which
+	// is what drives ModifyPlan into that fallback's suppression branch.
+	profileID, serverPayload := createOOBProfile(t, name, fixture)
+	cfg := configMinimal(name, serverPayload)
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			// 1. Import the out-of-band object and persist it into the working
+			//    state. Import's Read never writes payload_last_input /
+			//    payload_last_canonical, so the next plan takes the two-way
+			//    fallback.
+			{
+				Config:             cfg,
+				ResourceName:       addr,
+				ImportState:        true,
+				ImportStatePersist: true,
+				ImportStateVerify:  false,
+				ImportStateIdFunc:  func(*terraform.State) (string, error) { return profileID, nil },
+			},
+			// 2. Plan the imported state against the same HCL. The pre-apply plan
+			//    is legitimately non-empty — import hydrates scope / self_service
+			//    (includeUnmanaged) that this minimal config omits — but the two
+			//    derived names in `general` must NOT churn to "known after apply".
+			//    The plan checks run on that pre-apply plan; the apply then
+			//    reconciles the hydrated sections and the framework's built-in
+			//    post-apply idempotency check confirms the resource settles.
+			{
+				Config: cfg,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						expectGeneralAttrKnown{addr, "category_name"},
+						expectGeneralAttrKnown{addr, "site_name"},
+					},
+				},
+			},
+		},
+	})
+}
+
+// createOOBProfile creates a minimal mobile device configuration profile
+// directly via the SDK (no category, no site), then reads it back and returns
+// its ID plus the server-stored payload. A t.Cleanup deletes it so the object
+// never leaks if the import step fails before Terraform takes over management.
+func createOOBProfile(t *testing.T, name, payload string) (id, serverPayload string) {
+	t.Helper()
+	c := testhelpers.NewProClassicClient(t)
+	ctx := context.Background()
+	pl := proclassic.PayloadsXMLText(payload)
+	created, err := c.CreateMobileDeviceConfigurationProfileByID(ctx, "0", &proclassic.MobileDeviceConfigurationProfile{
+		General: &proclassic.MobileDeviceConfigurationProfileGeneral{Name: &name, Payloads: &pl},
+	})
+	if err != nil {
+		t.Fatalf("out-of-band create of mobile device configuration profile %q: %v", name, err)
+	}
+	switch {
+	case created != nil && created.ID != nil:
+		id = fmt.Sprintf("%d", *created.ID)
+	case created != nil && created.General != nil && created.General.ID != nil:
+		id = fmt.Sprintf("%d", *created.General.ID)
+	}
+	if id == "" {
+		t.Fatalf("out-of-band create of mobile device configuration profile %q returned no ID", name)
+	}
+	t.Cleanup(func() { _ = c.DeleteMobileDeviceConfigurationProfileByID(context.Background(), id) })
+
+	got, err := c.GetMobileDeviceConfigurationProfileByID(ctx, id)
+	if err != nil {
+		t.Fatalf("reading back out-of-band mobile device configuration profile %s: %v", id, err)
+	}
+	if got != nil && got.General != nil && got.General.Payloads != nil {
+		serverPayload = string(*got.General.Payloads)
+	}
+	if serverPayload == "" {
+		t.Fatalf("out-of-band mobile device configuration profile %s returned an empty payload on read-back", id)
+	}
+	// The server returns the payload as a single line with no trailing newline;
+	// configMinimal embeds it in a <<EOF heredoc, which needs the closing EOF on
+	// its own line.
+	if !strings.HasSuffix(serverPayload, "\n") {
+		serverPayload += "\n"
+	}
+	return id, serverPayload
+}
+
 // TestAccResource_MobileDeviceConfigurationProfile_ScopeLimitationsClearWithEmptySet
 // verifies that a declared-empty limitations category clears its members.
 // Granular ownership (wire-probed 2026-07-08): a scope write replaces the whole
