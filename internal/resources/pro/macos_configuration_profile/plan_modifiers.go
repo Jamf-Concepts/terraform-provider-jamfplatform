@@ -391,6 +391,22 @@ func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanReques
 				"state_bytes": len(stateBytes),
 			})
 		plan.General.Payloads = state.General.Payloads
+		// Same collateral-Unknown restore as the three-way NoOp branch above.
+		// The byte-only payload change made the framework propose an update on
+		// `general`, marking category_name / site_name Unknown (they lack
+		// UseStateForUnknown per §886). This fallback path runs on the first
+		// plan post-import — when private state has no last_input/last_canonical
+		// baseline — so without this restore the spurious Unknown keeps the plan
+		// a non-empty update and forces a PUT that re-issues the profile to every
+		// scoped device. A payload-only NoOp cannot have changed either id, so
+		// restore each derived name from state when its id is unchanged; when an
+		// id is genuinely changing, leave the name Unknown so §886 still holds.
+		if plan.General.CategoryID.Equal(state.General.CategoryID) {
+			plan.General.CategoryName = state.General.CategoryName
+		}
+		if plan.General.SiteID.Equal(state.General.SiteID) {
+			plan.General.SiteName = state.General.SiteName
+		}
 		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 	}
 }
