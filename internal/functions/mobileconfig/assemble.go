@@ -80,7 +80,16 @@ func Assemble(p Profile) ([]byte, error) {
 		setIfAbsent(norm, "PayloadUUID", payloadUUID)
 		setIfAbsent(norm, "PayloadIdentifier", payloadUUID)
 		setIfAbsent(norm, "PayloadVersion", 1)
-		setIfAbsent(norm, "PayloadEnabled", true)
+		// PayloadEnabled is intentionally not injected per sub-payload. It is not
+		// one of Apple's CommonPayloadKeys, so Jamf Pro keeps an author-supplied
+		// value but flags it as unrecognised in the profile UI. It is also not in
+		// the payload diff mask's per-payload drop-list, so the resource's
+		// three-way drift compare (payloadhelpers.ThreeWayCompare) strict-compares
+		// it: once an admin removes it via the UI, the server payload diverges
+		// from the last-applied canonical and every subsequent plan reports drift
+		// (wire-confirmed against Jamf Pro, 2026-07-15). Omitting the forced
+		// default avoids both. An author may still set it explicitly (e.g.
+		// PayloadEnabled=false to disable a single payload).
 
 		payloads = append(payloads, norm)
 	}

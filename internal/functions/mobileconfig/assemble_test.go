@@ -196,3 +196,43 @@ func TestAssemble_DistinctIdentifiersDoNotCollide(t *testing.T) {
 		t.Fatal("distinct identifiers produced the same payload PayloadUUID (collision)")
 	}
 }
+
+// TestAssemble_DoesNotForceSubPayloadEnabled verifies the forced-default
+// PayloadEnabled is no longer injected into sub-payloads (Jamf Pro flags it as
+// an unrecognised key and it drives plan drift once removed in the UI), while
+// the top-level PayloadEnabled is still set and an author-supplied per-payload
+// value is preserved.
+func TestAssemble_DoesNotForceSubPayloadEnabled(t *testing.T) {
+	out, err := Assemble(Profile{
+		Identifier: "com.example.enabledtest",
+		Payloads: []map[string]any{
+			{"PayloadType": "com.apple.dock", "tilesize": int64(48)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("assemble: %v", err)
+	}
+	doc := parseDoc(t, out)
+	if _, ok := doc["PayloadEnabled"]; !ok {
+		t.Error("top-level PayloadEnabled should still be set")
+	}
+	sub := payloadArray(t, doc)[0].(map[string]any)
+	if v, ok := sub["PayloadEnabled"]; ok {
+		t.Errorf("sub-payload PayloadEnabled should not be injected; got %v", v)
+	}
+
+	// An explicitly authored value must survive (e.g. disabling one payload).
+	out2, err := Assemble(Profile{
+		Identifier: "com.example.enabledtest",
+		Payloads: []map[string]any{
+			{"PayloadType": "com.apple.dock", "PayloadEnabled": false},
+		},
+	})
+	if err != nil {
+		t.Fatalf("assemble (author-supplied): %v", err)
+	}
+	sub2 := payloadArray(t, parseDoc(t, out2))[0].(map[string]any)
+	if v, ok := sub2["PayloadEnabled"].(bool); !ok || v != false {
+		t.Errorf("author-supplied sub-payload PayloadEnabled=false must be preserved; got %v (ok=%v)", sub2["PayloadEnabled"], ok)
+	}
+}
