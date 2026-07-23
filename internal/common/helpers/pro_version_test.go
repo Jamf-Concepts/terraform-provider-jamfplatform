@@ -75,6 +75,38 @@ func TestAtLeastJamfProVersion(t *testing.T) {
 	}
 }
 
+// TestJamfProVersionInRange pins the half-open window semantics against the
+// Jamf-group member-of workaround window [11.29.0, 11.30.1): the 11.29 regression,
+// fixed in 11.30.1 (PI-1394).
+func TestJamfProVersionInRange(t *testing.T) {
+	tests := []struct {
+		name string
+		lo   string
+		hi   string
+		in   string
+		want bool
+	}{
+		{"at lower bound (inclusive)", "11.29.0", "11.30.1", "11.29.0", true},
+		{"inside window (minor)", "11.29.0", "11.30.1", "11.29.5", true},
+		{"just below upper bound", "11.29.0", "11.30.1", "11.30.0", true},
+		{"at upper bound (exclusive) -> fixed", "11.29.0", "11.30.1", "11.30.1", false},
+		{"above upper bound -> fixed", "11.29.0", "11.30.1", "11.31.0", false},
+		{"below lower bound -> pre-regression", "11.29.0", "11.30.1", "11.28.0", false},
+		{"build suffix stripped, at lower bound", "11.29.0", "11.30.1", "11.29.0-t1700000000", true},
+		{"build suffix stripped, at fixed version", "11.29.0", "11.30.1", "11.30.1-t1784555528405", false},
+		{"actual unparseable fails open", "11.29.0", "11.30.1", "garbage", true},
+		{"lower bound unparseable fails open", "garbage", "11.30.1", "11.30.1", true},
+		{"upper bound unparseable fails open", "11.29.0", "garbage", "11.30.1", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := JamfProVersionInRange(tc.in, tc.lo, tc.hi); got != tc.want {
+				t.Fatalf("JamfProVersionInRange(%q, %q, %q) = %v, want %v", tc.in, tc.lo, tc.hi, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestWarnIfBelowProviderFloor(t *testing.T) {
 	tests := []struct {
 		name    string

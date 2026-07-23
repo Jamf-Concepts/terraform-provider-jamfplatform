@@ -33,6 +33,11 @@ import (
 //  2. Re-applying the same config is an empty plan (no perpetual name-vs-id diff).
 //  3. Swapping the config to the equivalent numeric id is an empty plan (ModifyPlan
 //     recognises the name<->id representation swap as a no-op).
+//
+// The id-echo occurs only in the regressed window [11.29.0, 11.30.1) (PI-1394);
+// 11.30.1 restored the name round-trip (wire-probed), so on 11.30.1+ the write-side
+// workaround is off and this test degrades to a plain round-trip + swap-no-op check.
+// All four assertions hold on both sides of the fix, so no version branch is needed.
 func TestAccResource_DeviceGroup_JamfGroupMemberOf(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	// The "member of" / "not member of" directory-service-group operators are

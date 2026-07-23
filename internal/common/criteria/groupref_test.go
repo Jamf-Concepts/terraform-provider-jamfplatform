@@ -85,6 +85,40 @@ func TestIsJamfGroupCriterion(t *testing.T) {
 	}
 }
 
+// TestGroupRefWorkaroundApplies pins the regressed-window boundary: every patch of
+// 11.29 and 11.30.0 must trigger the workaround (id echoed back), while 11.30.1 (the
+// fix, PI-1394) and later, and anything pre-11.29, must not. Unknown/unparseable
+// fails open to engaged.
+func TestGroupRefWorkaroundApplies(t *testing.T) {
+	tests := []struct {
+		version string
+		want    bool
+	}{
+		{"11.28.0", false},                // pre-regression
+		{"11.28.99", false},               // pre-regression, high patch
+		{"11.29.0", true},                 // window start (inclusive)
+		{"11.29.1", true},                 // inside window
+		{"11.29.2", true},                 // inside window
+		{"11.29.999", true},               // inside window, high patch
+		{"11.30.0", true},                 // inside window (last regressed minor.patch)
+		{"11.30.1", false},                // fix (window end, exclusive)
+		{"11.30.2", false},                // after fix
+		{"11.31.0", false},                // after fix
+		{"12.0.0", false},                 // after fix, next major
+		{"11.30.1-t1784555528405", false}, // fixed build (suffix stripped) — this tenant
+		{"11.29.0-t1700000000", true},     // regressed build (suffix stripped)
+		{"", true},                        // unknown -> fail open (engaged)
+		{"garbage", true},                 // unparseable -> fail open (engaged)
+	}
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			if got := GroupRefWorkaroundApplies(tt.version); got != tt.want {
+				t.Fatalf("GroupRefWorkaroundApplies(%q) = %v, want %v", tt.version, got, tt.want)
+			}
+		})
+	}
+}
+
 // TestReadGroupValue_BackwardCompatNoLookup is the load-bearing backward-compat
 // assertion: when the wire value already equals the configured value (a pre-11.29
 // server returning the name, or the steady state), the value is kept verbatim and

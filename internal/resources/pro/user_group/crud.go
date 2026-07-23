@@ -72,6 +72,28 @@ func fromCriterionModels(in []criteria.CriterionModel) []UserGroupCriterionModel
 	return out
 }
 
+// groupRefWorkaroundApplies reports whether the Jamf-group member-of name<->id
+// workaround should engage for this tenant. The classic /usergroups write is a pure
+// pass-through (the server accepts the group name and stores the id itself), so the
+// only workaround activity on the write path is building the id->name restore map
+// used by the post-create/update read-back; it is only needed inside the 11.29
+// regressed window [11.29.0, 11.30.1), where the server echoes the id back. 11.30.1+
+// restored the name round-trip (wire-probed live), so the map is skipped and the
+// authored name flows through untouched — no needless name->id lookups. Soft: an
+// unavailable/unparseable version keeps the workaround engaged (fail-open, matching
+// device_group). Version is read from the cached providerdata (no network after the
+// first lookup in a run); r.pd is nil only in unit tests that never set it.
+func (r *UserGroupResource) groupRefWorkaroundApplies(ctx context.Context) bool {
+	if r.pd == nil {
+		return true
+	}
+	v, err := r.pd.GetJamfProVersion(ctx)
+	if err != nil {
+		return true
+	}
+	return criteria.GroupRefWorkaroundApplies(v)
+}
+
 // ModifyPlan suppresses a no-op diff when a directory-service group criterion's
 // planned value is a different REPRESENTATION of the same group already in state
 // (a raw base64 value swapped for the equivalent group name, or vice versa).
@@ -162,11 +184,10 @@ func (r *UserGroupResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 	plan.Criteria = fromCriterionModels(resolved)
-	// Resolve Jamf-group "member of" criterion names to the ids the 11.29+ server
-	// will echo on read, so the post-write flatten can restore the authored name
-	// (reorder-safe; see RestoreAuthoredGroupRefCriteria). Built from the authored
-	// (pre-write) criteria; the write itself still sends the name (pass-through).
-	groupRefAuthored := criteria.ResolveAuthoredGroupRefMap(createCtx, r.groupRef, dsGroupObjectType, resolved)
+	var groupRefAuthored map[string]string
+	if r.groupRefWorkaroundApplies(createCtx) {
+		groupRefAuthored = criteria.ResolveAuthoredGroupRefMap(createCtx, r.groupRef, dsGroupObjectType, resolved)
+	}
 
 	input, inputDiags := buildUserGroupInput(createCtx, plan)
 	resp.Diagnostics.Append(inputDiags...)
@@ -324,7 +345,10 @@ func (r *UserGroupResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 	plan.Criteria = fromCriterionModels(resolved)
-	groupRefAuthored := criteria.ResolveAuthoredGroupRefMap(updateCtx, r.groupRef, dsGroupObjectType, resolved)
+	var groupRefAuthored map[string]string
+	if r.groupRefWorkaroundApplies(updateCtx) {
+		groupRefAuthored = criteria.ResolveAuthoredGroupRefMap(updateCtx, r.groupRef, dsGroupObjectType, resolved)
+	}
 
 	input, inputDiags := buildUserGroupInput(updateCtx, plan)
 	resp.Diagnostics.Append(inputDiags...)
