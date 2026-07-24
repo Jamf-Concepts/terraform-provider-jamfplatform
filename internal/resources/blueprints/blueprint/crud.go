@@ -36,19 +36,10 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	allComponents, diags := r.collectAllComponents(ctx, &data)
+	steps, diags := r.buildSteps(ctx, &data)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
-	}
-
-	stepName := "Declaration group"
-	steps := []blueprints.BlueprintStep{
-		{
-			Name:                &stepName,
-			Components:          allComponents,
-			ActivationPredicate: data.ActivationConditions.ValueStringPointer(),
-		},
 	}
 
 	reqBody := &blueprints.CreateBlueprintRequest{
@@ -87,7 +78,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	updateModelFromAPIResponse(ctx, &data, blueprint)
+	resp.Diagnostics.Append(updateModelFromAPIResponse(ctx, &data, blueprint)...)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -165,7 +156,7 @@ func (r *BlueprintResource) Read(ctx context.Context, req resource.ReadRequest, 
 		return
 	}
 
-	updateModelFromAPIResponse(ctx, &data, blueprint)
+	resp.Diagnostics.Append(updateModelFromAPIResponse(ctx, &data, blueprint)...)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
 	if resp.Diagnostics.HasError() {
@@ -199,19 +190,10 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	allComponents, diags := r.collectAllComponents(ctx, &data)
+	steps, diags := r.buildSteps(ctx, &data)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
-	}
-
-	stepName := "Declaration group"
-	steps := []blueprints.BlueprintStep{
-		{
-			Name:                &stepName,
-			Components:          allComponents,
-			ActivationPredicate: data.ActivationConditions.ValueStringPointer(),
-		},
 	}
 
 	updateReq := &blueprints.UpdateBlueprintRequest{
@@ -249,7 +231,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	updateModelFromAPIResponse(ctx, &data, blueprint)
+	resp.Diagnostics.Append(updateModelFromAPIResponse(ctx, &data, blueprint)...)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
 	if resp.Diagnostics.HasError() {

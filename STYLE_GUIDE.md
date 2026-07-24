@@ -656,6 +656,20 @@ The tenant version is fetched **only when** a Pro construct with non-empty `minJ
 
 **Out of scope: Platform Services SDK packages** — `blueprints/`, `compliancebenchmarks/`, `devicegroups/`, `devices/`, `deviceactions/`, `ddmreport/`. These are continuously-deployed Jamf Platform microservices, not customer-versioned Jamf Pro endpoints. Always track the latest stable function in the SDK; no deprecation buffer, no quarterly audit, no annotation block required. When a Platform Services SDK function is updated (e.g., a new V2 added), migrate the corresponding resource opportunistically — typically as part of the SDK dependency bump that introduces it.
 
+#### Platform Services *Terraform schema* deprecation — 90-day window
+
+The endpoint-version policy above governs *SDK/endpoint* moves and does not cover **Terraform schema** changes. When a Platform Services resource (`blueprints/*`, `cbengine/*`, `device_group`, …) must reshape its Terraform surface in a backward-incompatible way (rename/retype/supersede an attribute), ship it **additively first**, then remove after a short window:
+
+1. **Add** the new attribute; keep the old one working.
+2. **Mark the old attribute `Deprecated`** with a user-facing `DeprecationMessage` that names the replacement **and the earliest removal date**.
+3. **Annotate it in code** with a greppable marker so removals can be batched later:
+   ```go
+   // PLATFORM-DEPRECATED remove-after=YYYY-MM-DD replaced-by=<new_attr> — <one-line reason>
+   ```
+4. **Window: 90 days** from the release that ships the deprecation (Platform microservices move fast and users track the latest — no Pro-style 12-month buffer). On or after `remove-after`, the field is eligible for **batch removal**: `grep -rn "PLATFORM-DEPRECATED remove-after=" internal/resources/`, drop every field whose date has passed, and land the removal with the schema `Version` bump + `UpgradeState` that migrates old state (see [[feedback-no-state-upgraders]] — published state exists, so removals are breaking and need an upgrader).
+
+This applies only to Platform Services resources. Jamf Pro schema deprecations follow the [rename PR / major-version](#jamf-pro-resource-naming) convention instead.
+
 **ProClassic is unversioned**: `jamfplatform/proclassic/` functions do not carry V1/V2 suffixes. Migration timing (below) does not apply to ProClassic-backed resources. Annotation block is still recommended for documenting which SDK function is in use, but `Status:` simply tracks "current" against the SDK release in use.
 
 #### SDK side-by-side dependency

@@ -50,9 +50,10 @@ output "blueprint_example_all" {
 
 ### Read-Only
 
-- `activation_conditions` (String) Activation condition expression that further restricts which scoped devices the blueprint applies to. Empty when the blueprint applies to all devices in the targeted device groups.
+- `activation_conditions` (String, Deprecated) Activation condition expression that further restricts which scoped devices the blueprint applies to. Reflects the first component block only; read `component_blocks` for per-block conditions.
 - `blueprint_id` (String) Blueprint ID.
-- `component` (Attributes List) Blueprint components. (see [below for nested schema](#nestedatt--component))
+- `component` (Attributes List, Deprecated) Components of the first component block. Read `component_blocks` for the components of every block. (see [below for nested schema](#nestedatt--component))
+- `component_blocks` (Attributes List) Ordered component blocks of the blueprint. Each block has a name, an optional activation condition, and its own components. (see [below for nested schema](#nestedatt--component_blocks))
 - `created` (String) Created at (RFC3339).
 - `deployment_state` (String) Deployment state.
 - `description` (String) Description.
@@ -69,6 +70,24 @@ Optional:
 
 <a id="nestedatt--component"></a>
 ### Nested Schema for `component`
+
+Read-Only:
+
+- `configuration` (Map of String) Component configuration as a map of key-value pairs.
+- `identifier` (String) Component identifier.
+
+
+<a id="nestedatt--component_blocks"></a>
+### Nested Schema for `component_blocks`
+
+Read-Only:
+
+- `activation_conditions` (String) Activation condition applied to this block. Empty when the block applies to all devices in scope.
+- `component` (Attributes List) Components in this block. (see [below for nested schema](#nestedatt--component_blocks--component))
+- `name` (String) Component block name.
+
+<a id="nestedatt--component_blocks--component"></a>
+### Nested Schema for `component_blocks.component`
 
 Read-Only:
 
