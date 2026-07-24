@@ -40,7 +40,12 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ## Example Usage
 
 ```terraform
-# Software Update Settings Blueprint
+# Blueprints are authored with `component_blocks` — an ordered list where each block appears as a
+# step in the Jamf Blueprints editor, with its own name, its own optional activation condition, and
+# its own components. Blocks are applied in the order listed, and a block may contain more than one
+# component.
+
+# Single block — Software Update Settings
 resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
   name        = "Software Update Settings"
   description = "Managed by Terraform"
@@ -48,61 +53,97 @@ resource "jamfplatform_blueprints_blueprint" "software_update_settings" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update_settings = {
-    allow_standard_user_os_updates           = true
-    automatic_download                       = "AlwaysOn"
-    automatic_install_os_updates             = "AlwaysOn"
-    automatic_install_security_updates       = "AlwaysOn"
-    beta_program_enrollment                  = "Allowed"
-    deferral_combined_period_days            = 7
-    deferral_major_period_days               = 30
-    deferral_minor_period_days               = 14
-    deferral_system_period_days              = 3
-    notifications_enabled                    = true
-    rapid_security_response_enabled          = true
-    rapid_security_response_rollback_enabled = false
-    recommended_cadence                      = "Newest"
+  component_blocks = [
+    {
+      name = "Software Update Settings"
+      software_update_settings = {
+        allow_standard_user_os_updates           = true
+        automatic_download                       = "AlwaysOn"
+        automatic_install_os_updates             = "AlwaysOn"
+        automatic_install_security_updates       = "AlwaysOn"
+        beta_program_enrollment                  = "Allowed"
+        deferral_combined_period_days            = 7
+        deferral_major_period_days               = 30
+        deferral_minor_period_days               = 14
+        deferral_system_period_days              = 3
+        notifications_enabled                    = true
+        rapid_security_response_enabled          = true
+        rapid_security_response_rollback_enabled = false
+        recommended_cadence                      = "Newest"
 
-    beta_offer_programs = [{
-      token       = "beta-token-1"
-      description = "iOS 18 Beta Program"
-      }, {
-      token       = "beta-token-2"
-      description = "macOS Sequoia Beta Program"
-    }]
-  }
+        beta_offer_programs = [{
+          token       = "beta-token-1"
+          description = "iOS 18 Beta Program"
+          }, {
+          token       = "beta-token-2"
+          description = "macOS Sequoia Beta Program"
+        }]
+      }
+    },
+  ]
 }
 
-# Latest OS version Software Updates Blueprint
-resource "jamfplatform_blueprints_blueprint" "automatic_software_updates" {
-  name        = "Latest OS version Software Updates"
+# Two components in a single block — a block may carry more than one component.
+resource "jamfplatform_blueprints_blueprint" "baseline_restrictions" {
+  name        = "Baseline Restrictions"
   description = "Managed by Terraform"
   deployed    = true
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update = {
-    ignore_major_versions = true
-    deployment_time       = "02:00"
-    enforce_after_days    = 7
-  }
+  component_blocks = [
+    {
+      name = "Baseline Restrictions"
+      passcode_policy = {
+        require_passcode = true
+        minimum_length   = 6
+      }
+      math_settings = {
+        calculator_scientific_mode_enabled   = true
+        system_behavior_keyboard_suggestions = true
+        system_behavior_math_notes           = true
+      }
+    },
+  ]
 }
 
-# Specific OS version and time Software Updates Blueprint
-resource "jamfplatform_blueprints_blueprint" "manual_software_updates" {
-  name        = "Specific OS Version and time Software Updates"
+# Multiple blocks — each is a separate step, applied in order. The same component type may appear in
+# more than one block, and each block can carry its own activation condition.
+resource "jamfplatform_blueprints_blueprint" "multi_step" {
+  name        = "Multi-Step Components"
   description = "Managed by Terraform"
   deployed    = false
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  software_update = {
-    target_os_version      = "26.0.1"
-    target_local_date_time = "2025-10-10T12:00:00"
-  }
+  component_blocks = [
+    {
+      name = "Passcode Policy"
+      passcode_policy = {
+        require_passcode = true
+        minimum_length   = 6
+      }
+    },
+    {
+      name = "Latest OS Software Updates"
+      software_update = {
+        ignore_major_versions = true
+        deployment_time       = "02:00"
+        enforce_after_days    = 7
+      }
+    },
+    {
+      name = "Math Settings"
+      math_settings = {
+        calculator_scientific_mode_enabled   = true
+        system_behavior_keyboard_suggestions = true
+        system_behavior_math_notes           = true
+      }
+    },
+  ]
 }
 
-# Legacy Payloads Example Blueprint
+# Legacy configuration profile payloads inside a block.
 resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
   name        = "Restrictions for Safari"
   description = "Managed by Terraform"
@@ -110,18 +151,23 @@ resource "jamfplatform_blueprints_blueprint" "legacy_payloads_example" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  legacy_payloads = [
+  component_blocks = [
     {
-      payload_type = "com.apple.applicationaccess"
-      settings = {
-        allowSafariHistoryClearing = false
-        allowSafariPrivateBrowsing = false
-      }
-    }
+      name = "Safari Restrictions"
+      legacy_payloads = [
+        {
+          payload_type = "com.apple.applicationaccess"
+          settings = jsonencode({
+            allowSafariHistoryClearing = false
+            allowSafariPrivateBrowsing = false
+          })
+        }
+      ]
+    },
   ]
 }
 
-# Custom Declaration Example Blueprint
+# Custom declarations inside a block.
 resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
   name        = "Custom Declarations"
   description = "Managed by Terraform"
@@ -129,45 +175,49 @@ resource "jamfplatform_blueprints_blueprint" "customdeclaration" {
 
   device_groups = ["fce3d9a5-8660-42ff-a95e-625e7b53b48a"]
 
-  custom_declarations = {
-
-    declaration = [{
-      channel = "SYSTEM"
-      kind    = "CONFIGURATION"
-      type    = "com.apple.configuration.softwareupdate.settings"
-      payload = jsonencode({
-        Beta = {
-          RequireProgram = {
-            Token       = "<beta-token-here>",
-            Description = "AppleSeed for IT"
-          },
-          ProgramEnrollment = "AlwaysOn"
-        }
-      })
-      }, {
-      channel = "USER"
-      kind    = "ASSET"
-      type    = "com.apple.asset.credential.userpassword"
-      payload = jsonencode({
-        Reference = {
-          DataURL     = "https://somewhere.com/something.plist",
-          ContentType = "application/plist"
-        }
-      })
-    }]
-  }
+  component_blocks = [
+    {
+      name = "Custom Declarations"
+      custom_declarations = {
+        declaration = [{
+          channel = "SYSTEM"
+          kind    = "CONFIGURATION"
+          type    = "com.apple.configuration.softwareupdate.settings"
+          payload = jsonencode({
+            Beta = {
+              RequireProgram = {
+                Token       = "<beta-token-here>",
+                Description = "AppleSeed for IT"
+              },
+              ProgramEnrollment = "AlwaysOn"
+            }
+          })
+          }, {
+          channel = "USER"
+          kind    = "ASSET"
+          type    = "com.apple.asset.credential.userpassword"
+          payload = jsonencode({
+            Reference = {
+              DataURL     = "https://somewhere.com/something.plist",
+              ContentType = "application/plist"
+            }
+          })
+        }]
+      }
+    },
+  ]
 }
 
-# Activation Conditions Blueprint
+# Per-block activation conditions.
 #
-# Activation conditions further restrict which scoped devices a blueprint applies
-# to. The expression is authored most easily in the Jamf UI ("Activation conditions"
-# editor -> Text view) and copied here verbatim. See the syntax reference:
+# An activation condition further restricts which scoped devices a block applies to. Author it in
+# the Jamf UI ("Activation conditions" editor -> Text view) and copy it here verbatim. See the
+# syntax reference:
 # https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference
 #
-# Device groups in the expression are referenced by their Platform UUID, so a
-# managed device group can be referenced by its `id` with ordinary Terraform
-# interpolation — keeping the condition in sync with the group it points at.
+# Device groups in the expression are referenced by their Platform UUID, so a managed device group
+# can be referenced by its `id` with ordinary Terraform interpolation — keeping the condition in
+# sync with the group it points at.
 resource "jamfplatform_device_group" "shared_ipads" {
   name        = "Shared iPads"
   group_type  = "smart"
@@ -189,15 +239,19 @@ resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
 
   device_groups = [jamfplatform_device_group.shared_ipads.id]
 
-  # Only activate on supervised iPads that belong to the managed device group above.
-  # The group ID is interpolated from the resource, so the condition tracks the group.
-  activation_conditions = "ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.shared_ipads.id}'} AND @status(device.model.family) == 'iPad'"
-
-  software_update = {
-    ignore_major_versions = true
-    deployment_time       = "02:00"
-    enforce_after_days    = 7
-  }
+  component_blocks = [
+    {
+      name = "Shared iPad Software Updates"
+      # Only activate on supervised iPads that belong to the managed device group above.
+      # The group ID is interpolated from the resource, so the condition tracks the group.
+      activation_conditions = "ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.shared_ipads.id}'} AND @status(device.model.family) == 'iPad'"
+      software_update = {
+        ignore_major_versions = true
+        deployment_time       = "02:00"
+        enforce_after_days    = 7
+      }
+    },
+  ]
 }
 ```
 
@@ -212,22 +266,23 @@ resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
 
 ### Optional
 
-- `activation_conditions` (String) Optional activation condition expression that further restricts which scoped devices the blueprint applies to. An expression combines a status item, an operator, and a value — using terms such as `@status(...)` and `@property(jamf.device.groups)` with operators like `==`, `!=`, `IN {…}`, `ANY`, `NONE`, `AND`, `OR`, and `NOT`. See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the full syntax. The simplest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. Device groups are referenced by their Platform UUID, so ordinary Terraform interpolation works — reference a managed `jamfplatform_device_group` by its `id` to keep conditions in sync, e.g. `"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}"`. When omitted, the blueprint applies to all devices in the targeted device groups.
-- `audio_accessory_settings` (Attributes) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedatt--audio_accessory_settings))
-- `custom_declarations` (Attributes) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedatt--custom_declarations))
+- `activation_conditions` (String, Deprecated) Optional activation condition expression that further restricts which scoped devices the blueprint applies to. An expression combines a status item, an operator, and a value — using terms such as `@status(...)` and `@property(jamf.device.groups)` with operators like `==`, `!=`, `IN {…}`, `ANY`, `NONE`, `AND`, `OR`, and `NOT`. See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the full syntax. The simplest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. Device groups are referenced by their Platform UUID, so ordinary Terraform interpolation works — reference a managed `jamfplatform_device_group` by its `id` to keep conditions in sync, e.g. `"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}"`. When omitted, the blueprint applies to all devices in the targeted device groups. When using `component_blocks`, set the condition on each block instead of here.
+- `audio_accessory_settings` (Attributes, Deprecated) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedatt--audio_accessory_settings))
+- `component_blocks` (Attributes List) Ordered list of component blocks. Each block appears as a step in the Jamf Blueprints editor, with its own name, its own activation condition, and its own set of components. Blocks are applied in the order listed. Use `component_blocks` instead of the deprecated top-level component attributes; the two cannot be combined. (see [below for nested schema](#nestedatt--component_blocks))
+- `custom_declarations` (Attributes, Deprecated) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedatt--custom_declarations))
 - `description` (String) Blueprint description.
-- `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--disk_management_settings))
-- `legacy_payloads` (Dynamic) Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.
-- `math_settings` (Attributes) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedatt--math_settings))
-- `passcode_policy` (Attributes) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedatt--passcode_policy))
-- `raw_component` (Attributes Set) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedatt--raw_component))
-- `safari_bookmarks` (Attributes) Safari bookmarks component for managing Safari managed bookmarks and bookmark groups. (see [below for nested schema](#nestedatt--safari_bookmarks))
-- `safari_extensions` (Attributes) Safari extensions component for managing Safari extension permissions and states. (see [below for nested schema](#nestedatt--safari_extensions))
-- `safari_settings` (Attributes) Safari settings component for managing Safari browser behavior and security settings. (see [below for nested schema](#nestedatt--safari_settings))
-- `service_background_tasks` (Attributes) Service background tasks component for managing background service tasks and launchd configurations. (see [below for nested schema](#nestedatt--service_background_tasks))
-- `service_configuration_files` (Attributes) Service configuration files component for managing configuration files for system services. (see [below for nested schema](#nestedatt--service_configuration_files))
-- `software_update` (Attributes) Software update component for enforcing OS updates on devices. (see [below for nested schema](#nestedatt--software_update))
-- `software_update_settings` (Attributes) Software update settings component for configuring system update behavior and policies. (see [below for nested schema](#nestedatt--software_update_settings))
+- `disk_management_settings` (Attributes, Deprecated) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--disk_management_settings))
+- `legacy_payloads` (Dynamic, Deprecated) Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.
+- `math_settings` (Attributes, Deprecated) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedatt--math_settings))
+- `passcode_policy` (Attributes, Deprecated) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedatt--passcode_policy))
+- `raw_component` (Attributes Set, Deprecated) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedatt--raw_component))
+- `safari_bookmarks` (Attributes, Deprecated) Safari bookmarks component for managing Safari managed bookmarks and bookmark groups. (see [below for nested schema](#nestedatt--safari_bookmarks))
+- `safari_extensions` (Attributes, Deprecated) Safari extensions component for managing Safari extension permissions and states. (see [below for nested schema](#nestedatt--safari_extensions))
+- `safari_settings` (Attributes, Deprecated) Safari settings component for managing Safari browser behavior and security settings. (see [below for nested schema](#nestedatt--safari_settings))
+- `service_background_tasks` (Attributes, Deprecated) Service background tasks component for managing background service tasks and launchd configurations. (see [below for nested schema](#nestedatt--service_background_tasks))
+- `service_configuration_files` (Attributes, Deprecated) Service configuration files component for managing configuration files for system services. (see [below for nested schema](#nestedatt--service_configuration_files))
+- `software_update` (Attributes, Deprecated) Software update component for enforcing OS updates on devices. (see [below for nested schema](#nestedatt--software_update))
+- `software_update_settings` (Attributes, Deprecated) Software update settings component for configuring system update behavior and policies. (see [below for nested schema](#nestedatt--software_update_settings))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -248,6 +303,372 @@ Optional:
 
 - `unpairing_time_hour` (Number) The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is `Hour`. Range: `0`-`23`.
 - `unpairing_time_policy` (String) Device's unpairing policy. Valid values are `None`, `Hour`. When set to `Hour`, `unpairing_time_hour` must also be provided.
+
+
+<a id="nestedatt--component_blocks"></a>
+### Nested Schema for `component_blocks`
+
+Optional:
+
+- `activation_conditions` (String) Optional activation condition expression that further restricts which scoped devices this block applies to. An expression combines a status item, an operator, and a value — using terms such as `@status(...)` and `@property(jamf.device.groups)` with operators like `==`, `!=`, `IN {…}`, `ANY`, `NONE`, `AND`, `OR`, and `NOT`. See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the full syntax. The simplest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. Device groups are referenced by their Platform UUID, so ordinary Terraform interpolation works — reference a managed `jamfplatform_device_group` by its `id` to keep conditions in sync, e.g. `"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}"`. When omitted, this block applies to all devices in the targeted device groups.
+- `audio_accessory_settings` (Attributes) Audio accessory settings component for managing temporary pairing and unpairing policies. (see [below for nested schema](#nestedatt--component_blocks--audio_accessory_settings))
+- `custom_declarations` (Attributes) Custom declarations component for managing custom DDM declarations with system or user channel types. (see [below for nested schema](#nestedatt--component_blocks--custom_declarations))
+- `disk_management_settings` (Attributes) Disk management settings component for controlling external and network storage restrictions. (see [below for nested schema](#nestedatt--component_blocks--disk_management_settings))
+- `legacy_payloads` (Attributes List) Legacy configuration profile payloads in this block. The payload identifier is auto-generated and the display name uses the blueprint name. (see [below for nested schema](#nestedatt--component_blocks--legacy_payloads))
+- `math_settings` (Attributes) Math settings component for managing calculator modes and system behavior. (see [below for nested schema](#nestedatt--component_blocks--math_settings))
+- `name` (String) Name shown for this component block in the Jamf Blueprints editor (e.g. `Passcode Policy`). When omitted, Jamf assigns a default name.
+- `passcode_policy` (Attributes) Passcode policy component for managing device passcode requirements and restrictions. (see [below for nested schema](#nestedatt--component_blocks--passcode_policy))
+- `raw_component` (Attributes Set) Raw component configuration using key-value pairs. (see [below for nested schema](#nestedatt--component_blocks--raw_component))
+- `safari_bookmarks` (Attributes) Safari bookmarks component for managing Safari managed bookmarks and bookmark groups. (see [below for nested schema](#nestedatt--component_blocks--safari_bookmarks))
+- `safari_extensions` (Attributes) Safari extensions component for managing Safari extension permissions and states. (see [below for nested schema](#nestedatt--component_blocks--safari_extensions))
+- `safari_settings` (Attributes) Safari settings component for managing Safari browser behavior and security settings. (see [below for nested schema](#nestedatt--component_blocks--safari_settings))
+- `service_background_tasks` (Attributes) Service background tasks component for managing background service tasks and launchd configurations. (see [below for nested schema](#nestedatt--component_blocks--service_background_tasks))
+- `service_configuration_files` (Attributes) Service configuration files component for managing configuration files for system services. (see [below for nested schema](#nestedatt--component_blocks--service_configuration_files))
+- `software_update` (Attributes) Software update component for enforcing OS updates on devices. (see [below for nested schema](#nestedatt--component_blocks--software_update))
+- `software_update_settings` (Attributes) Software update settings component for configuring system update behavior and policies. (see [below for nested schema](#nestedatt--component_blocks--software_update_settings))
+
+<a id="nestedatt--component_blocks--audio_accessory_settings"></a>
+### Nested Schema for `component_blocks.audio_accessory_settings`
+
+Required:
+
+- `temporary_pairing_disabled` (Boolean) If true, temporary pairing of audio accessories is disabled.
+
+Optional:
+
+- `unpairing_time_hour` (Number) The local time hour (24-hour clock) when the device automatically unpairs temporarily paired audio accessories. Required when policy is `Hour`. Range: `0`-`23`.
+- `unpairing_time_policy` (String) Device's unpairing policy. Valid values are `None`, `Hour`. When set to `Hour`, `unpairing_time_hour` must also be provided.
+
+
+<a id="nestedatt--component_blocks--custom_declarations"></a>
+### Nested Schema for `component_blocks.custom_declarations`
+
+Optional:
+
+- `declaration` (Attributes Set) Custom DDM declaration. (see [below for nested schema](#nestedatt--component_blocks--custom_declarations--declaration))
+
+<a id="nestedatt--component_blocks--custom_declarations--declaration"></a>
+### Nested Schema for `component_blocks.custom_declarations.declaration`
+
+Required:
+
+- `channel` (String) The channel type for the declaration. Valid values are `SYSTEM`, `USER`.
+- `kind` (String) The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.
+- `payload` (String) JSON-encoded payload object for the declaration.
+- `type` (String) The declaration type identifier (e.g., `com.apple.configuration.softwareupdate.settings`).
+
+
+
+<a id="nestedatt--component_blocks--disk_management_settings"></a>
+### Nested Schema for `component_blocks.disk_management_settings`
+
+Optional:
+
+- `external_storage` (String) Storage mode for external storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.
+- `network_storage` (String) Storage mode for network storage. Valid values are `Allowed`, `Disallowed`, `ReadOnly`.
+
+
+<a id="nestedatt--component_blocks--legacy_payloads"></a>
+### Nested Schema for `component_blocks.legacy_payloads`
+
+Required:
+
+- `payload_type` (String) Apple reverse-domain payload identifier, e.g. `com.apple.applicationaccess`.
+
+Optional:
+
+- `settings` (String) Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`.
+
+
+<a id="nestedatt--component_blocks--math_settings"></a>
+### Nested Schema for `component_blocks.math_settings`
+
+Optional:
+
+- `calculator_basic_mode_add_square_root` (Boolean) Add the square root button to the basic calculator by replacing the +/- button.
+- `calculator_input_modes_rpn` (Boolean) Configures whether RPN input is enabled in Calculator. Also requires `calculator_input_modes_unit_conversion` to be set.
+- `calculator_input_modes_unit_conversion` (Boolean) Configures whether unit conversions are enabled in Calculator. Also requires `calculator_input_modes_rpn` to be set.
+- `calculator_math_notes_mode_enabled` (Boolean) Controls whether the Math Notes mode is enabled in Calculator.
+- `calculator_programmer_mode_enabled` (Boolean) Controls whether the programmer mode is enabled in Calculator.
+- `calculator_scientific_mode_enabled` (Boolean) Controls whether the scientific mode is enabled in Calculator.
+- `system_behavior_keyboard_suggestions` (Boolean) Controls whether keyboard suggestions include math solutions. Also requires `system_behavior_math_notes` to be set.
+- `system_behavior_math_notes` (Boolean) Controls whether Math Notes is allowed in other apps such as Notes. Also requires `system_behavior_keyboard_suggestions` to be set.
+
+
+<a id="nestedatt--component_blocks--passcode_policy"></a>
+### Nested Schema for `component_blocks.passcode_policy`
+
+Optional:
+
+- `change_at_next_auth` (Boolean) Change at next auth.
+- `custom_regex_description` (Map of String) Localized descriptions for the custom regex. Map of OS language ID to description string. Use the `default` key for languages not explicitly listed.
+- `custom_regex_pattern` (String) Custom regular expression for passcode validation. Maximum length: `2048`.
+- `failed_attempts_reset_in_minutes` (Number) Failed attempts reset in minutes. Minimum: `0`.
+- `maximum_failed_attempts` (Number) Maximum failed attempts. Range: `2`-`11`.
+- `maximum_grace_period_in_minutes` (Number) Maximum grace period in minutes. Minimum: `0`.
+- `maximum_inactivity_in_minutes` (Number) Maximum inactivity in minutes. Range: `0`-`15`.
+- `maximum_passcode_age_in_days` (Number) Maximum passcode age in days. Range: `0`-`730`.
+- `minimum_complex_characters` (Number) Minimum complex characters. Range: `0`-`4`.
+- `minimum_length` (Number) Minimum length. Range: `0`-`16`.
+- `passcode_reuse_limit` (Number) Passcode reuse limit. Range: `1`-`50`.
+- `require_alphanumeric_passcode` (Boolean) Require alphanumeric passcode.
+- `require_complex_passcode` (Boolean) Require complex passcode.
+- `require_passcode` (Boolean) Require passcode.
+
+
+<a id="nestedatt--component_blocks--raw_component"></a>
+### Nested Schema for `component_blocks.raw_component`
+
+Required:
+
+- `identifier` (String) Component identifier (e.g., `com.jamf.ddm.disk-management`).
+
+Optional:
+
+- `configuration` (Map of String) Component configuration as key-value pairs. Each component has its own unique configuration options.
+
+
+<a id="nestedatt--component_blocks--safari_bookmarks"></a>
+### Nested Schema for `component_blocks.safari_bookmarks`
+
+Optional:
+
+- `managed_bookmarks` (Attributes Set) Set of managed bookmark groups. (see [below for nested schema](#nestedatt--component_blocks--safari_bookmarks--managed_bookmarks))
+
+<a id="nestedatt--component_blocks--safari_bookmarks--managed_bookmarks"></a>
+### Nested Schema for `component_blocks.safari_bookmarks.managed_bookmarks`
+
+Required:
+
+- `bookmarks` (Attributes Set) Set of bookmarks in this group. (see [below for nested schema](#nestedatt--component_blocks--safari_bookmarks--managed_bookmarks--bookmarks))
+- `group_identifier` (String) Unique identifier for this group of managed bookmarks.
+- `title` (String) The name of the bookmarks folder.
+
+<a id="nestedatt--component_blocks--safari_bookmarks--managed_bookmarks--bookmarks"></a>
+### Nested Schema for `component_blocks.safari_bookmarks.managed_bookmarks.bookmarks`
+
+Required:
+
+- `title` (String) The title of the folder shown in Safari.
+
+Optional:
+
+- `folder` (Attributes Set) Bookmarks within this folder. (see [below for nested schema](#nestedatt--component_blocks--safari_bookmarks--managed_bookmarks--bookmarks--folder))
+- `type` (String) Type of bookmark. Valid values are `bookmark` (URL bookmark) or `folder` (bookmark folder).
+- `url` (String) The URL for direct bookmarks (not used for folders).
+
+<a id="nestedatt--component_blocks--safari_bookmarks--managed_bookmarks--bookmarks--folder"></a>
+### Nested Schema for `component_blocks.safari_bookmarks.managed_bookmarks.bookmarks.folder`
+
+Required:
+
+- `title` (String) The title of the bookmark shown in Safari.
+- `url` (String) The URL for the bookmark item.
+
+
+
+
+
+<a id="nestedatt--component_blocks--safari_extensions"></a>
+### Nested Schema for `component_blocks.safari_extensions`
+
+Optional:
+
+- `managed_extensions` (Attributes Set) Set of managed Safari extensions. (see [below for nested schema](#nestedatt--component_blocks--safari_extensions--managed_extensions))
+
+<a id="nestedatt--component_blocks--safari_extensions--managed_extensions"></a>
+### Nested Schema for `component_blocks.safari_extensions.managed_extensions`
+
+Required:
+
+- `extension_id` (String) The extension identifier (bundle ID).
+
+Optional:
+
+- `allowed_domains` (Attributes Set) Set of allowed domains for this extension. (see [below for nested schema](#nestedatt--component_blocks--safari_extensions--managed_extensions--allowed_domains))
+- `denied_domains` (Attributes Set) Set of denied domains for this extension. (see [below for nested schema](#nestedatt--component_blocks--safari_extensions--managed_extensions--denied_domains))
+- `private_browsing` (String) Private browsing state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `state` (String) Extension state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.
+
+<a id="nestedatt--component_blocks--safari_extensions--managed_extensions--allowed_domains"></a>
+### Nested Schema for `component_blocks.safari_extensions.managed_extensions.allowed_domains`
+
+Required:
+
+- `domain` (String) Domain name.
+
+
+<a id="nestedatt--component_blocks--safari_extensions--managed_extensions--denied_domains"></a>
+### Nested Schema for `component_blocks.safari_extensions.managed_extensions.denied_domains`
+
+Required:
+
+- `domain` (String) Domain name.
+
+
+
+
+<a id="nestedatt--component_blocks--safari_settings"></a>
+### Nested Schema for `component_blocks.safari_settings`
+
+Optional:
+
+- `accept_cookies` (String) The policy Safari uses for managing cookies. Valid values are `Never`, `CurrentWebsite`, `VisitedWebsites`, `Always`.
+- `allow_disabling_fraud_warning` (Boolean) If false, the system forces fraud warnings on in Safari.
+- `allow_history_clearing` (Boolean) If false, the system disables clearing history in Safari.
+- `allow_javascript` (Boolean) If false, the system disables JavaScript in Safari.
+- `allow_popups` (Boolean) If false, the system disables popups in Safari.
+- `allow_private_browsing` (Boolean) If false, the system disables private browsing in Safari.
+- `allow_summary` (Boolean) If false, the system disables summarization of content in Safari.
+- `new_tab_start_page_extension_id` (String) The composed identifier of the extension that provides the start page. Required when page type is `Extension`. Format: `com.example.extension (ABC1234567)`.
+- `new_tab_start_page_homepage_url` (String) The URL of the homepage which needs to start with `https://` or `http://`. Required when page type is `Home`.
+- `new_tab_start_page_type` (String) Sets the start page type in Safari. Valid values are `Start`, `Home`, `Extension`.
+
+
+<a id="nestedatt--component_blocks--service_background_tasks"></a>
+### Nested Schema for `component_blocks.service_background_tasks`
+
+Optional:
+
+- `background_tasks` (Attributes Set) Set of background tasks. (see [below for nested schema](#nestedatt--component_blocks--service_background_tasks--background_tasks))
+
+<a id="nestedatt--component_blocks--service_background_tasks--background_tasks"></a>
+### Nested Schema for `component_blocks.service_background_tasks.background_tasks`
+
+Required:
+
+- `task_type` (String) Task type identifier.
+
+Optional:
+
+- `executable_asset_reference` (Attributes) Reference to the executable asset. (see [below for nested schema](#nestedatt--component_blocks--service_background_tasks--background_tasks--executable_asset_reference))
+- `launchd_configurations` (Attributes Set) Launchd configuration items. (see [below for nested schema](#nestedatt--component_blocks--service_background_tasks--background_tasks--launchd_configurations))
+- `task_description` (String) Task description.
+
+<a id="nestedatt--component_blocks--service_background_tasks--background_tasks--executable_asset_reference"></a>
+### Nested Schema for `component_blocks.service_background_tasks.background_tasks.executable_asset_reference`
+
+Required:
+
+- `data_url` (String) URL that hosts the executable data.
+
+Optional:
+
+- `hash_sha_256` (String) SHA-256 hash of the data.
+
+Read-Only:
+
+- `content_type` (String) Media type of the data. Always `application/zip` for executable assets.
+
+
+<a id="nestedatt--component_blocks--service_background_tasks--background_tasks--launchd_configurations"></a>
+### Nested Schema for `component_blocks.service_background_tasks.background_tasks.launchd_configurations`
+
+Required:
+
+- `context` (String) Launchd context. Valid values are `daemon`, `agent`.
+- `file_asset_reference` (Attributes) Reference to the configuration file asset. (see [below for nested schema](#nestedatt--component_blocks--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference))
+
+<a id="nestedatt--component_blocks--service_background_tasks--background_tasks--launchd_configurations--file_asset_reference"></a>
+### Nested Schema for `component_blocks.service_background_tasks.background_tasks.launchd_configurations.file_asset_reference`
+
+Required:
+
+- `data_url` (String) URL that hosts the configuration data.
+
+Optional:
+
+- `content_type` (String) Media type of the data.
+- `hash_sha_256` (String) SHA-256 hash of the data.
+
+
+
+
+
+<a id="nestedatt--component_blocks--service_configuration_files"></a>
+### Nested Schema for `component_blocks.service_configuration_files`
+
+Optional:
+
+- `service_config_files` (Attributes Set) Set of service configuration files. (see [below for nested schema](#nestedatt--component_blocks--service_configuration_files--service_config_files))
+
+<a id="nestedatt--component_blocks--service_configuration_files--service_config_files"></a>
+### Nested Schema for `component_blocks.service_configuration_files.service_config_files`
+
+Required:
+
+- `service_type` (String) The identifier of the system service with managed configuration files.
+
+Optional:
+
+- `data_asset_reference` (Attributes) Reference to the configuration data asset. (see [below for nested schema](#nestedatt--component_blocks--service_configuration_files--service_config_files--data_asset_reference))
+
+<a id="nestedatt--component_blocks--service_configuration_files--service_config_files--data_asset_reference"></a>
+### Nested Schema for `component_blocks.service_configuration_files.service_config_files.data_asset_reference`
+
+Required:
+
+- `data_url` (String) URL that hosts the configuration data.
+
+Optional:
+
+- `hash_sha_256` (String) SHA-256 hash of the data.
+
+Read-Only:
+
+- `content_type` (String) Media type of the data. Always `application/zip` for service configuration files.
+
+
+
+
+<a id="nestedatt--component_blocks--software_update"></a>
+### Nested Schema for `component_blocks.software_update`
+
+Optional:
+
+- `deployment_time` (String) For automatic enforcement. Local device time to install the update. Format: `HH:mm` (24-hour). Cannot be used with `target_os_version` or `target_local_date_time`.
+- `details_url_value` (String) URL of a web page with the details about the software update.
+- `enforce_after_days` (Number) For automatic enforcement. Days after release to enforce the update. Maximum is `30`. Cannot be used with `target_os_version` or `target_local_date_time`.
+- `ignore_major_versions` (Boolean) Whether to ignore major OS versions when enforcing updates. Only applicable for automatic enforcement. Cannot be used with `target_os_version` or `target_local_date_time`.
+- `target_local_date_time` (String) For manual enforcement. Local device date and time to enforce the software update. Format: RFC3339 date-time. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.
+- `target_os_version` (String) For manual enforcement. Target OS version. Format: `major.minor[.patch]`. Cannot be used with `deployment_time`, `enforce_after_days`, or `ignore_major_versions`.
+
+Read-Only:
+
+- `enforcement_type` (String) Type of enforcement. Automatically set to `AUTOMATIC` when `deployment_time` or `enforce_after_days` is specified, or `MANUAL` when `target_os_version` or `target_local_date_time` is specified.
+
+
+<a id="nestedatt--component_blocks--software_update_settings"></a>
+### Nested Schema for `component_blocks.software_update_settings`
+
+Optional:
+
+- `allow_standard_user_os_updates` (Boolean) Allow standard users to install OS updates without administrator privileges.
+- `automatic_download` (String) Automatic download behavior for updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `automatic_install_os_updates` (String) Automatic installation behavior for OS updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `automatic_install_security_updates` (String) Automatic installation behavior for security updates. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `beta_offer_programs` (Attributes Set) Beta programs to offer (max 100). Each program must have a token and description (1-1000 characters each). (see [below for nested schema](#nestedatt--component_blocks--software_update_settings--beta_offer_programs))
+- `beta_program_enrollment` (String) Beta program enrollment setting. Valid values: `Allowed`, `AlwaysOn`, `AlwaysOff`.
+- `beta_require_program_description` (String) Required beta program description (1-1000 characters). Must be specified with `beta_require_program_token`.
+- `beta_require_program_token` (String) Required beta program token (1-1000 characters). Must be specified with `beta_require_program_description`.
+- `deferral_combined_period_days` (Number) Number of days to defer combined updates. Range: `1`-`90`.
+- `deferral_major_period_days` (Number) Number of days to defer major updates. Range: `1`-`90`.
+- `deferral_minor_period_days` (Number) Number of days to defer minor updates. Range: `1`-`90`.
+- `deferral_system_period_days` (Number) Number of days to defer system updates. Range: `1`-`90`.
+- `notifications_enabled` (Boolean) Enable update notifications to users.
+- `rapid_security_response_enabled` (Boolean) Enable Rapid Security Response updates.
+- `rapid_security_response_rollback_enabled` (Boolean) Enable rollback capability for Rapid Security Response updates.
+- `recommended_cadence` (String) Recommended update cadence policy. Valid values: `All`, `Oldest`, `Newest`.
+
+<a id="nestedatt--component_blocks--software_update_settings--beta_offer_programs"></a>
+### Nested Schema for `component_blocks.software_update_settings.beta_offer_programs`
+
+Required:
+
+- `description` (String) Beta program description (1-1000 characters).
+- `token` (String) Beta program token (1-1000 characters).
+
+
 
 
 <a id="nestedatt--custom_declarations"></a>

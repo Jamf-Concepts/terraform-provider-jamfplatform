@@ -74,24 +74,21 @@ func TestParseComponentConfiguration_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestUpdateLegacyPayloadsFromAPI_WithPayloads(t *testing.T) {
-	ctx := t.Context()
+func TestFlattenFlatLegacyPayloads_WithPayloads(t *testing.T) {
 	apiComponents := map[string]blueprints.Component{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
 			Configuration: json.RawMessage(`{"payloadDisplayName":"Test","payloadContent":[{"payloadType":"com.apple.wifi.managed","payloadIdentifier":"test-uuid","SSID_STR":"TestNetwork"}]}`),
 		},
 	}
-	rawIdentifiers := map[string]struct{}{}
 
-	model := &BlueprintResourceModel{}
-	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
+	got := flattenFlatLegacyPayloads(types.DynamicNull(), apiComponents, map[string]struct{}{})
 
-	if model.LegacyPayloads.IsNull() {
+	if got.IsNull() {
 		t.Fatal("expected non-null legacy payloads")
 	}
 
-	raw, err := helpers.TerraformDynamicToJSON(model.LegacyPayloads)
+	raw, err := helpers.TerraformDynamicToJSON(got)
 	if err != nil {
 		t.Fatalf("failed to convert dynamic to JSON: %v", err)
 	}
@@ -123,24 +120,16 @@ func TestUpdateLegacyPayloadsFromAPI_WithPayloads(t *testing.T) {
 	}
 }
 
-func TestUpdateLegacyPayloadsFromAPI_NoComponent(t *testing.T) {
-	ctx := t.Context()
-	apiComponents := map[string]blueprints.Component{}
-	rawIdentifiers := map[string]struct{}{}
-
+func TestFlattenFlatLegacyPayloads_NoComponent(t *testing.T) {
 	existingDyn, _ := helpers.JSONToTerraformDynamic([]any{map[string]any{"payload_type": "should be cleared"}})
-	model := &BlueprintResourceModel{
-		LegacyPayloads: existingDyn,
-	}
-	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
+	got := flattenFlatLegacyPayloads(existingDyn, map[string]blueprints.Component{}, map[string]struct{}{})
 
-	if !model.LegacyPayloads.IsNull() {
+	if !got.IsNull() {
 		t.Error("expected null legacy payloads when component is absent")
 	}
 }
 
-func TestUpdateLegacyPayloadsFromAPI_HandledAsRaw(t *testing.T) {
-	ctx := t.Context()
+func TestFlattenFlatLegacyPayloads_HandledAsRaw(t *testing.T) {
 	apiComponents := map[string]blueprints.Component{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
@@ -152,10 +141,9 @@ func TestUpdateLegacyPayloadsFromAPI_HandledAsRaw(t *testing.T) {
 	}
 
 	existingDyn, _ := helpers.JSONToTerraformDynamic([]any{map[string]any{"payload_type": "existing"}})
-	model := &BlueprintResourceModel{LegacyPayloads: existingDyn}
-	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
+	got := flattenFlatLegacyPayloads(existingDyn, apiComponents, rawIdentifiers)
 
-	raw, err := helpers.TerraformDynamicToJSON(model.LegacyPayloads)
+	raw, err := helpers.TerraformDynamicToJSON(got)
 	if err != nil {
 		t.Fatalf("failed to convert: %v", err)
 	}
@@ -165,20 +153,17 @@ func TestUpdateLegacyPayloadsFromAPI_HandledAsRaw(t *testing.T) {
 	}
 }
 
-func TestUpdateLegacyPayloadsFromAPI_NoPayloadContent(t *testing.T) {
-	ctx := t.Context()
+func TestFlattenFlatLegacyPayloads_NoPayloadContent(t *testing.T) {
 	apiComponents := map[string]blueprints.Component{
 		"com.jamf.ddm-configuration-profile": {
 			Identifier:    "com.jamf.ddm-configuration-profile",
 			Configuration: json.RawMessage(`{"payloadDisplayName":"Test"}`),
 		},
 	}
-	rawIdentifiers := map[string]struct{}{}
 
-	model := &BlueprintResourceModel{}
-	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, rawIdentifiers)
+	got := flattenFlatLegacyPayloads(types.DynamicNull(), apiComponents, map[string]struct{}{})
 
-	if !model.LegacyPayloads.IsNull() {
+	if !got.IsNull() {
 		t.Error("expected null legacy payloads when payloadContent is absent")
 	}
 }
@@ -308,9 +293,7 @@ func TestUpdateModelFromAPIResponse_NoSteps(t *testing.T) {
 // #282 fix: when the server response is semantically identical to the incoming
 // (configuration-shaped) value, the reader keeps that value verbatim so the
 // dynamic null-typing does not manufacture a diff.
-func TestUpdateLegacyPayloadsFromAPI_PreservesConfigShapeOnMatch(t *testing.T) {
-	ctx := t.Context()
-
+func TestFlattenFlatLegacyPayloads_PreservesConfigShapeOnMatch(t *testing.T) {
 	prior, err := helpers.JSONToTerraformDynamic([]any{
 		map[string]any{
 			"payload_type": "com.apple.notificationsettings",
@@ -337,19 +320,16 @@ func TestUpdateLegacyPayloadsFromAPI_PreservesConfigShapeOnMatch(t *testing.T) {
 		},
 	}
 
-	model := &BlueprintResourceModel{LegacyPayloads: prior}
-	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, map[string]struct{}{})
+	got := flattenFlatLegacyPayloads(prior, apiComponents, map[string]struct{}{})
 
-	if !model.LegacyPayloads.Equal(prior) {
-		t.Errorf("expected config-shaped prior value to be preserved on semantic match, got %#v", model.LegacyPayloads)
+	if !got.Equal(prior) {
+		t.Errorf("expected config-shaped prior value to be preserved on semantic match, got %#v", got)
 	}
 }
 
 // TestUpdateLegacyPayloadsFromAPI_OverwritesOnMismatch verifies that a genuine
 // server-side difference is still surfaced rather than masked by the reconcile.
-func TestUpdateLegacyPayloadsFromAPI_OverwritesOnMismatch(t *testing.T) {
-	ctx := t.Context()
-
+func TestFlattenFlatLegacyPayloads_OverwritesOnMismatch(t *testing.T) {
 	prior, err := helpers.JSONToTerraformDynamic([]any{
 		map[string]any{
 			"payload_type": "com.apple.notificationsettings",
@@ -367,14 +347,13 @@ func TestUpdateLegacyPayloadsFromAPI_OverwritesOnMismatch(t *testing.T) {
 		},
 	}
 
-	model := &BlueprintResourceModel{LegacyPayloads: prior}
-	updateLegacyPayloadsFromAPI(ctx, model, apiComponents, map[string]struct{}{})
+	got := flattenFlatLegacyPayloads(prior, apiComponents, map[string]struct{}{})
 
-	if model.LegacyPayloads.Equal(prior) {
+	if got.Equal(prior) {
 		t.Fatal("expected differing server value to overwrite the prior value")
 	}
 
-	raw, err := helpers.TerraformDynamicToJSON(model.LegacyPayloads)
+	raw, err := helpers.TerraformDynamicToJSON(got)
 	if err != nil {
 		t.Fatalf("failed to convert result: %v", err)
 	}

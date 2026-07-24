@@ -15,12 +15,62 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// collectAllComponents gathers components from both raw and strongly-typed sources.
-func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *BlueprintResourceModel) ([]blueprints.Component, diag.Diagnostics) {
+// flatStepName is the single step name used when a blueprint is authored with the deprecated flat
+// top-level component attributes (no component_blocks).
+const flatStepName = "Declaration group"
+
+// buildSteps converts the model into the ordered SDK steps for a create/update request. In block
+// mode (component_blocks set) it emits one step per block, preserving order, per-block name, and
+// per-block activation condition. In the deprecated flat mode it emits the single "Declaration
+// group" step carrying every top-level component and the top-level activation condition.
+func (r *BlueprintResource) buildSteps(ctx context.Context, data *BlueprintResourceModel) ([]blueprints.BlueprintStep, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	blueprintName := data.Name.ValueString()
+
+	if len(data.ComponentBlocks) > 0 {
+		steps := make([]blueprints.BlueprintStep, 0, len(data.ComponentBlocks))
+		for _, block := range data.ComponentBlocks {
+			components, blockDiags := r.collectBlockComponents(ctx, block)
+			r.collectBlockLegacyPayloads(&components, &blockDiags, block.LegacyPayloads, blueprintName)
+			diags.Append(blockDiags...)
+			if blockDiags.HasError() {
+				continue
+			}
+			steps = append(steps, blueprints.BlueprintStep{
+				Name:                block.Name.ValueStringPointer(),
+				ActivationPredicate: block.ActivationConditions.ValueStringPointer(),
+				Components:          components,
+			})
+		}
+		return steps, diags
+	}
+
+	components, flatDiags := r.collectBlockComponents(ctx, data.flatComponentsAsBlock())
+	if !data.LegacyPayloads.IsNull() && !data.LegacyPayloads.IsUnknown() {
+		r.collectLegacyPayloads(&components, &flatDiags, data.LegacyPayloads, blueprintName)
+	}
+	diags.Append(flatDiags...)
+
+	stepName := flatStepName
+	steps := []blueprints.BlueprintStep{
+		{
+			Name:                &stepName,
+			Components:          components,
+			ActivationPredicate: data.ActivationConditions.ValueStringPointer(),
+		},
+	}
+	return steps, diags
+}
+
+// collectBlockComponents gathers the raw and strongly-typed components of one block into SDK
+// component values. Legacy payloads are collected separately by the caller because the flat
+// (dynamic) and block (JSON-string) shapes differ. The flat top-level authoring style reuses this
+// by passing data.flatComponentsAsBlock(); each entry in component_blocks passes its own carrier.
+func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block ComponentBlockModel) ([]blueprints.Component, diag.Diagnostics) {
 	var allComponents []blueprints.Component
 	var diags diag.Diagnostics
 
-	for _, comp := range data.Components {
+	for _, comp := range block.Components {
 		component := blueprints.Component{
 			Identifier: comp.Identifier.ValueString(),
 		}
@@ -52,63 +102,59 @@ func (r *BlueprintResource) collectAllComponents(ctx context.Context, data *Blue
 		allComponents = append(allComponents, component)
 	}
 
-	r.collectStronglyTypedComponents(&allComponents, &diags, data)
+	r.collectStronglyTypedComponents(&allComponents, &diags, block)
 
 	return allComponents, diags
 }
 
-// collectStronglyTypedComponents processes all strongly-typed components using a scalable approach.
-func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blueprints.Component, diags *diag.Diagnostics, data *BlueprintResourceModel) {
-	if data.AudioAccessorySettings != nil {
-		r.collectSingleComponent(allComponents, diags, data.AudioAccessorySettings, "audio accessory settings")
+// collectStronglyTypedComponents processes all strongly-typed components of a block.
+func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blueprints.Component, diags *diag.Diagnostics, block ComponentBlockModel) {
+	if block.AudioAccessorySettings != nil {
+		r.collectSingleComponent(allComponents, diags, block.AudioAccessorySettings, "audio accessory settings")
 	}
 
-	if data.CustomDeclarations != nil {
-		r.collectSingleComponent(allComponents, diags, data.CustomDeclarations, "custom declarations")
+	if block.CustomDeclarations != nil {
+		r.collectSingleComponent(allComponents, diags, block.CustomDeclarations, "custom declarations")
 	}
 
-	if data.DiskManagementSettings != nil {
-		r.collectSingleComponent(allComponents, diags, data.DiskManagementSettings, "disk management settings")
+	if block.DiskManagementSettings != nil {
+		r.collectSingleComponent(allComponents, diags, block.DiskManagementSettings, "disk management settings")
 	}
 
-	if data.MathSettings != nil {
-		r.collectSingleComponent(allComponents, diags, data.MathSettings, "math settings")
+	if block.MathSettings != nil {
+		r.collectSingleComponent(allComponents, diags, block.MathSettings, "math settings")
 	}
 
-	if data.PasscodePolicy != nil {
-		r.collectSingleComponent(allComponents, diags, data.PasscodePolicy, "passcode policy")
+	if block.PasscodePolicy != nil {
+		r.collectSingleComponent(allComponents, diags, block.PasscodePolicy, "passcode policy")
 	}
 
-	if data.SafariBookmarks != nil {
-		r.collectSingleComponent(allComponents, diags, data.SafariBookmarks, "safari bookmarks")
+	if block.SafariBookmarks != nil {
+		r.collectSingleComponent(allComponents, diags, block.SafariBookmarks, "safari bookmarks")
 	}
 
-	if data.SafariExtensions != nil {
-		r.collectSingleComponent(allComponents, diags, data.SafariExtensions, "safari extensions")
+	if block.SafariExtensions != nil {
+		r.collectSingleComponent(allComponents, diags, block.SafariExtensions, "safari extensions")
 	}
 
-	if data.SafariSettings != nil {
-		r.collectSingleComponent(allComponents, diags, data.SafariSettings, "safari settings")
+	if block.SafariSettings != nil {
+		r.collectSingleComponent(allComponents, diags, block.SafariSettings, "safari settings")
 	}
 
-	if data.ServiceBackgroundTasks != nil {
-		r.collectSingleComponent(allComponents, diags, data.ServiceBackgroundTasks, "service background tasks")
+	if block.ServiceBackgroundTasks != nil {
+		r.collectSingleComponent(allComponents, diags, block.ServiceBackgroundTasks, "service background tasks")
 	}
 
-	if data.ServiceConfigurationFiles != nil {
-		r.collectSingleComponent(allComponents, diags, data.ServiceConfigurationFiles, "service configuration files")
+	if block.ServiceConfigurationFiles != nil {
+		r.collectSingleComponent(allComponents, diags, block.ServiceConfigurationFiles, "service configuration files")
 	}
 
-	if data.SoftwareUpdate != nil {
-		r.collectSingleComponent(allComponents, diags, data.SoftwareUpdate, "software update")
+	if block.SoftwareUpdate != nil {
+		r.collectSingleComponent(allComponents, diags, block.SoftwareUpdate, "software update")
 	}
 
-	if data.SoftwareUpdateSettings != nil {
-		r.collectSingleComponent(allComponents, diags, data.SoftwareUpdateSettings, "software update settings")
-	}
-
-	if !data.LegacyPayloads.IsNull() && !data.LegacyPayloads.IsUnknown() {
-		r.collectLegacyPayloads(allComponents, diags, data.LegacyPayloads, data.Name.ValueString())
+	if block.SoftwareUpdateSettings != nil {
+		r.collectSingleComponent(allComponents, diags, block.SoftwareUpdateSettings, "software update settings")
 	}
 }
 
@@ -122,7 +168,15 @@ func (r *BlueprintResource) collectSingleComponent(allComponents *[]blueprints.C
 	*allComponents = append(*allComponents, *clientComp)
 }
 
-// collectLegacyPayloads builds the API component from a dynamic legacy payloads value.
+// legacyPayloadEntry is one legacy payload flattened to its payload type and settings map, the
+// common shape both the flat (dynamic) and block (JSON-string) legacy collectors reduce to.
+type legacyPayloadEntry struct {
+	PayloadType string
+	Settings    map[string]any
+}
+
+// collectLegacyPayloads builds the legacy configuration profile component from the deprecated
+// dynamic top-level legacy_payloads value.
 func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]blueprints.Component, diags *diag.Diagnostics, legacyPayloads types.Dynamic, blueprintName string) {
 	raw, err := helpers.TerraformDynamicToJSON(legacyPayloads)
 	if err != nil {
@@ -136,8 +190,7 @@ func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]blueprints.Co
 		return
 	}
 
-	seenPayloadTypes := make(map[string]bool, len(items))
-	payloadArray := make([]map[string]any, 0, len(items))
+	entries := make([]legacyPayloadEntry, 0, len(items))
 	for _, item := range items {
 		obj, ok := item.(map[string]any)
 		if !ok {
@@ -146,32 +199,72 @@ func (r *BlueprintResource) collectLegacyPayloads(allComponents *[]blueprints.Co
 		}
 
 		payloadType, _ := obj["payload_type"].(string)
-		if payloadType == "" {
+		entry := legacyPayloadEntry{PayloadType: payloadType}
+		if settings, exists := obj["settings"]; exists {
+			if settingsMap, ok := settings.(map[string]any); ok {
+				entry.Settings = settingsMap
+			}
+		}
+		entries = append(entries, entry)
+	}
+
+	r.appendLegacyConfigProfile(allComponents, diags, entries, blueprintName)
+}
+
+// collectBlockLegacyPayloads builds the legacy configuration profile component from a block's
+// legacy_payloads list, whose settings arrive as JSON object strings.
+func (r *BlueprintResource) collectBlockLegacyPayloads(allComponents *[]blueprints.Component, diags *diag.Diagnostics, payloads []BlockLegacyPayloadModel, blueprintName string) {
+	if len(payloads) == 0 {
+		return
+	}
+
+	entries := make([]legacyPayloadEntry, 0, len(payloads))
+	for _, payload := range payloads {
+		entry := legacyPayloadEntry{PayloadType: payload.PayloadType.ValueString()}
+		if helpers.IsConfiguredValue(payload.Settings) && payload.Settings.ValueString() != "" {
+			var settingsMap map[string]any
+			if err := json.Unmarshal([]byte(payload.Settings.ValueString()), &settingsMap); err != nil {
+				diags.AddError(
+					"Invalid legacy payload settings",
+					"settings for payload_type "+entry.PayloadType+" must be a JSON object string (use jsonencode): "+err.Error(),
+				)
+				return
+			}
+			entry.Settings = settingsMap
+		}
+		entries = append(entries, entry)
+	}
+
+	r.appendLegacyConfigProfile(allComponents, diags, entries, blueprintName)
+}
+
+// appendLegacyConfigProfile assembles the shared com.jamf.ddm-configuration-profile component from
+// the flattened legacy payload entries and appends it. It rejects a missing payload type or a
+// duplicate payload type.
+func (r *BlueprintResource) appendLegacyConfigProfile(allComponents *[]blueprints.Component, diags *diag.Diagnostics, entries []legacyPayloadEntry, blueprintName string) {
+	seenPayloadTypes := make(map[string]bool, len(entries))
+	payloadArray := make([]map[string]any, 0, len(entries))
+	for _, entry := range entries {
+		if entry.PayloadType == "" {
 			diags.AddError("Missing payload_type", "Each legacy payload must include a payload_type key.")
 			return
 		}
 
-		if seenPayloadTypes[payloadType] {
+		if seenPayloadTypes[entry.PayloadType] {
 			diags.AddError(
 				"Duplicate payload_type",
-				"Legacy payloads must not contain duplicate payload types. Found duplicate: "+payloadType,
+				"Legacy payloads must not contain duplicate payload types. Found duplicate: "+entry.PayloadType,
 			)
 			return
 		}
-		seenPayloadTypes[payloadType] = true
+		seenPayloadTypes[entry.PayloadType] = true
 
-		entry := map[string]any{
-			"payloadType":       payloadType,
-			"payloadIdentifier": generatePayloadIdentifier(payloadType),
+		payload := map[string]any{
+			"payloadType":       entry.PayloadType,
+			"payloadIdentifier": generatePayloadIdentifier(entry.PayloadType),
 		}
-
-		if settings, exists := obj["settings"]; exists {
-			if settingsMap, ok := settings.(map[string]any); ok {
-				maps.Copy(entry, settingsMap)
-			}
-		}
-
-		payloadArray = append(payloadArray, entry)
+		maps.Copy(payload, entry.Settings)
+		payloadArray = append(payloadArray, payload)
 	}
 
 	config := map[string]any{

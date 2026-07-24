@@ -13,6 +13,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -46,6 +47,13 @@ const (
 // uuidRegex matches UUID strings used to validate device group IDs.
 var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
+// PLATFORM-DEPRECATED remove-after=2026-10-22 replaced-by=component_blocks — the flat top-level
+// component attributes (and the top-level activation_conditions) are superseded by named, ordered
+// component_blocks. On or after the date, batch-remove every attribute carrying
+// componentAttrDeprecation plus this const, and land the schema Version bump + UpgradeState. See
+// STYLE_GUIDE "Platform Services Terraform schema deprecation — 90-day window".
+const componentAttrDeprecation = "Deprecated: use `component_blocks` instead. Superseded by named, ordered component blocks; may be removed on or after 2026-10-22."
+
 // NewBlueprintResource returns a new instance of BlueprintResource.
 func NewBlueprintResource() resource.Resource {
 	return &BlueprintResource{}
@@ -58,156 +66,274 @@ func (r *BlueprintResource) Metadata(ctx context.Context, req resource.MetadataR
 
 // Schema returns the Terraform schema for the blueprint resource.
 func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Version:             3,
-		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access." + resourcePrivileges,
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				MarkdownDescription: "The unique identifier for the blueprint.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
+	attributes := map[string]schema.Attribute{
+		"id": schema.StringAttribute{
+			MarkdownDescription: "The unique identifier for the blueprint.",
+			Computed:            true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
 			},
-			"name": schema.StringAttribute{
-				MarkdownDescription: "Blueprint name.",
-				Required:            true,
+		},
+		"name": schema.StringAttribute{
+			MarkdownDescription: "Blueprint name.",
+			Required:            true,
+		},
+		"description": schema.StringAttribute{
+			MarkdownDescription: "Blueprint description.",
+			Optional:            true,
+		},
+		"deployed": schema.BoolAttribute{
+			MarkdownDescription: "Whether the blueprint should be deployed. If set to `true`, the provider will deploy the blueprint (and redeploy if it becomes `OUT_OF_DATE`). If set to `false`, the provider will undeploy the blueprint.",
+			Required:            true,
+		},
+		"device_groups": schema.SetAttribute{
+			MarkdownDescription: "Set of device group Platform IDs to target. Specified as a set of strings in UUID format.",
+			Required:            true,
+			ElementType:         types.StringType,
+			Validators: []validator.Set{
+				setvalidator.SizeAtLeast(1),
+				setvalidator.ValueStringsAre(stringvalidator.RegexMatches(
+					uuidRegex,
+					"Each device group ID must be a valid UUID",
+				)),
 			},
-			"description": schema.StringAttribute{
-				MarkdownDescription: "Blueprint description.",
-				Optional:            true,
+		},
+		"activation_conditions": schema.StringAttribute{
+			MarkdownDescription: activationConditionsDescription("the blueprint") +
+				" When using `component_blocks`, set the condition on each block instead of here.",
+			Optional:           true,
+			DeprecationMessage: componentAttrDeprecation,
+			Validators: []validator.String{
+				stringvalidator.LengthAtMost(10000),
 			},
-			"deployed": schema.BoolAttribute{
-				MarkdownDescription: "Whether the blueprint should be deployed. If set to `true`, the provider will deploy the blueprint (and redeploy if it becomes `OUT_OF_DATE`). If set to `false`, the provider will undeploy the blueprint.",
-				Required:            true,
+		},
+		"created": schema.StringAttribute{
+			MarkdownDescription: "Creation timestamp.",
+			Computed:            true,
+		},
+		"updated": schema.StringAttribute{
+			MarkdownDescription: "Last updated timestamp.",
+			Computed:            true,
+		},
+		"deployment_state": schema.StringAttribute{
+			MarkdownDescription: "Current deployment state.",
+			Computed:            true,
+		},
+		"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
+			Create: true,
+			Read:   true,
+			Update: true,
+			Delete: true,
+		}),
+		"legacy_payloads": schema.DynamicAttribute{
+			MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.",
+			Optional:            true,
+			DeprecationMessage:  componentAttrDeprecation,
+		},
+		"component_blocks": schema.ListNestedAttribute{
+			MarkdownDescription: "Ordered list of component blocks. Each block appears as a step in the Jamf Blueprints editor, with its own name, " +
+				"its own activation condition, and its own set of components. Blocks are applied in the order listed. " +
+				"Use `component_blocks` instead of the deprecated top-level component attributes; the two cannot be combined.",
+			Optional: true,
+			Validators: []validator.List{
+				listvalidator.ConflictsWith(flatComponentAttributePaths()...),
 			},
-			"device_groups": schema.SetAttribute{
-				MarkdownDescription: "Set of device group Platform IDs to target. Specified as a set of strings in UUID format.",
-				Required:            true,
-				ElementType:         types.StringType,
-				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
-					setvalidator.ValueStringsAre(stringvalidator.RegexMatches(
-						uuidRegex,
-						"Each device group ID must be a valid UUID",
-					)),
-				},
-			},
-			"activation_conditions": schema.StringAttribute{
-				MarkdownDescription: "Optional activation condition expression that further restricts which scoped devices the blueprint applies to. " +
-					"An expression combines a status item, an operator, and a value — using terms such as `@status(...)` and `@property(jamf.device.groups)` " +
-					"with operators like `==`, `!=`, `IN {…}`, `ANY`, `NONE`, `AND`, `OR`, and `NOT`. " +
-					"See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the full syntax. " +
-					"The simplest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. " +
-					"Device groups are referenced by their Platform UUID, so ordinary Terraform interpolation works — reference a managed `jamfplatform_device_group` by its `id` " +
-					"to keep conditions in sync, e.g. `\"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}\"`. " +
-					"When omitted, the blueprint applies to all devices in the targeted device groups.",
-				Optional: true,
-				Validators: []validator.String{
-					stringvalidator.LengthAtMost(10000),
-				},
-			},
-			"created": schema.StringAttribute{
-				MarkdownDescription: "Creation timestamp.",
-				Computed:            true,
-			},
-			"updated": schema.StringAttribute{
-				MarkdownDescription: "Last updated timestamp.",
-				Computed:            true,
-			},
-			"deployment_state": schema.StringAttribute{
-				MarkdownDescription: "Current deployment state.",
-				Computed:            true,
-			},
-			"legacy_payloads": schema.DynamicAttribute{
-				MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.",
-				Optional:            true,
-			},
-			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
-				Create: true,
-				Read:   true,
-				Update: true,
-				Delete: true,
-			}),
-			"raw_component": schema.SetNestedAttribute{
-				MarkdownDescription: "Raw component configuration using key-value pairs.",
-				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"identifier": schema.StringAttribute{
-							MarkdownDescription: "Component identifier (e.g., `com.jamf.ddm.disk-management`).",
-							Required:            true,
-						},
-						"configuration": schema.MapAttribute{
-							MarkdownDescription: "Component configuration as key-value pairs. Each component has its own unique configuration options.",
-							Optional:            true,
-							ElementType:         types.StringType,
-						},
-					},
-				},
-			},
-			"audio_accessory_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Audio accessory settings component for managing temporary pairing and unpairing policies.",
-				Optional:            true,
-				Attributes:          components.AudioAccessorySettingsComponentSchema(),
-			},
-			"custom_declarations": schema.SingleNestedAttribute{
-				MarkdownDescription: "Custom declarations component for managing custom DDM declarations with system or user channel types.",
-				Optional:            true,
-				Attributes:          components.CustomDeclarationsComponentSchema(),
-			},
-			"disk_management_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Disk management settings component for controlling external and network storage restrictions.",
-				Optional:            true,
-				Attributes:          components.DiskManagementPolicyComponentSchema(),
-			},
-			"math_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Math settings component for managing calculator modes and system behavior.",
-				Optional:            true,
-				Attributes:          components.MathSettingsComponentSchema(),
-			},
-			"passcode_policy": schema.SingleNestedAttribute{
-				MarkdownDescription: "Passcode policy component for managing device passcode requirements and restrictions.",
-				Optional:            true,
-				Attributes:          components.PasscodePolicyComponentSchema(),
-			},
-			"safari_bookmarks": schema.SingleNestedAttribute{
-				MarkdownDescription: "Safari bookmarks component for managing Safari managed bookmarks and bookmark groups.",
-				Optional:            true,
-				Attributes:          components.SafariBookmarksComponentSchema(),
-			},
-			"safari_extensions": schema.SingleNestedAttribute{
-				MarkdownDescription: "Safari extensions component for managing Safari extension permissions and states.",
-				Optional:            true,
-				Attributes:          components.SafariExtensionsComponentSchema(),
-			},
-			"safari_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Safari settings component for managing Safari browser behavior and security settings.",
-				Optional:            true,
-				Attributes:          components.SafariSettingsComponentSchema(),
-			},
-			"service_background_tasks": schema.SingleNestedAttribute{
-				MarkdownDescription: "Service background tasks component for managing background service tasks and launchd configurations.",
-				Optional:            true,
-				Attributes:          components.ServiceBackgroundTasksComponentSchema(),
-			},
-			"service_configuration_files": schema.SingleNestedAttribute{
-				MarkdownDescription: "Service configuration files component for managing configuration files for system services.",
-				Optional:            true,
-				Attributes:          components.ServiceConfigurationFilesComponentSchema(),
-			},
-			"software_update": schema.SingleNestedAttribute{
-				MarkdownDescription: "Software update component for enforcing OS updates on devices.",
-				Optional:            true,
-				Attributes:          components.SoftwareUpdateComponentSchema(),
-			},
-			"software_update_settings": schema.SingleNestedAttribute{
-				MarkdownDescription: "Software update settings component for configuring system update behavior and policies.",
-				Optional:            true,
-				Attributes:          components.SoftwareUpdateSettingsComponentSchema(),
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: componentBlockAttributes(),
 			},
 		},
 	}
+
+	for name, attr := range sharedComponentAttributes(componentAttrDeprecation) {
+		attributes[name] = attr
+	}
+
+	resp.Schema = schema.Schema{
+		Version:             3,
+		MarkdownDescription: "Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access." + resourcePrivileges,
+		Attributes:          attributes,
+	}
+}
+
+// activationConditionsDescription returns the shared MarkdownDescription for an activation-condition
+// field, parameterised by what the condition applies to ("the blueprint" or "this block").
+func activationConditionsDescription(appliesTo string) string {
+	return "Optional activation condition expression that further restricts which scoped devices " + appliesTo + " applies to. " +
+		"An expression combines a status item, an operator, and a value — using terms such as `@status(...)` and `@property(jamf.device.groups)` " +
+		"with operators like `==`, `!=`, `IN {…}`, `ANY`, `NONE`, `AND`, `OR`, and `NOT`. " +
+		"See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the full syntax. " +
+		"The simplest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. " +
+		"Device groups are referenced by their Platform UUID, so ordinary Terraform interpolation works — reference a managed `jamfplatform_device_group` by its `id` " +
+		"to keep conditions in sync, e.g. `\"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}\"`. " +
+		"When omitted, " + appliesTo + " applies to all devices in the targeted device groups."
+}
+
+// sharedComponentAttributes returns the component attribute set shared by the deprecated flat
+// top-level schema and each component block — the strongly-typed components plus raw_component, all
+// of which the framework allows inside a collection. legacy_payloads is NOT included: it is a
+// dynamic type at the top level (illegal inside a collection), so each caller supplies its own
+// legacy_payloads shape. Passing a non-empty deprecation string marks every entry Deprecated (the
+// flat top-level use); the block passes "" so the same attributes are current there.
+func sharedComponentAttributes(deprecation string) map[string]schema.Attribute {
+	return map[string]schema.Attribute{
+		"raw_component": schema.SetNestedAttribute{
+			MarkdownDescription: "Raw component configuration using key-value pairs.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"identifier": schema.StringAttribute{
+						MarkdownDescription: "Component identifier (e.g., `com.jamf.ddm.disk-management`).",
+						Required:            true,
+					},
+					"configuration": schema.MapAttribute{
+						MarkdownDescription: "Component configuration as key-value pairs. Each component has its own unique configuration options.",
+						Optional:            true,
+						ElementType:         types.StringType,
+					},
+				},
+			},
+		},
+		"audio_accessory_settings": schema.SingleNestedAttribute{
+			MarkdownDescription: "Audio accessory settings component for managing temporary pairing and unpairing policies.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.AudioAccessorySettingsComponentSchema(),
+		},
+		"custom_declarations": schema.SingleNestedAttribute{
+			MarkdownDescription: "Custom declarations component for managing custom DDM declarations with system or user channel types.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.CustomDeclarationsComponentSchema(),
+		},
+		"disk_management_settings": schema.SingleNestedAttribute{
+			MarkdownDescription: "Disk management settings component for controlling external and network storage restrictions.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.DiskManagementPolicyComponentSchema(),
+		},
+		"math_settings": schema.SingleNestedAttribute{
+			MarkdownDescription: "Math settings component for managing calculator modes and system behavior.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.MathSettingsComponentSchema(),
+		},
+		"passcode_policy": schema.SingleNestedAttribute{
+			MarkdownDescription: "Passcode policy component for managing device passcode requirements and restrictions.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.PasscodePolicyComponentSchema(),
+		},
+		"safari_bookmarks": schema.SingleNestedAttribute{
+			MarkdownDescription: "Safari bookmarks component for managing Safari managed bookmarks and bookmark groups.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.SafariBookmarksComponentSchema(),
+		},
+		"safari_extensions": schema.SingleNestedAttribute{
+			MarkdownDescription: "Safari extensions component for managing Safari extension permissions and states.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.SafariExtensionsComponentSchema(),
+		},
+		"safari_settings": schema.SingleNestedAttribute{
+			MarkdownDescription: "Safari settings component for managing Safari browser behavior and security settings.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.SafariSettingsComponentSchema(),
+		},
+		"service_background_tasks": schema.SingleNestedAttribute{
+			MarkdownDescription: "Service background tasks component for managing background service tasks and launchd configurations.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.ServiceBackgroundTasksComponentSchema(),
+		},
+		"service_configuration_files": schema.SingleNestedAttribute{
+			MarkdownDescription: "Service configuration files component for managing configuration files for system services.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.ServiceConfigurationFilesComponentSchema(),
+		},
+		"software_update": schema.SingleNestedAttribute{
+			MarkdownDescription: "Software update component for enforcing OS updates on devices.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.SoftwareUpdateComponentSchema(),
+		},
+		"software_update_settings": schema.SingleNestedAttribute{
+			MarkdownDescription: "Software update settings component for configuring system update behavior and policies.",
+			Optional:            true,
+			DeprecationMessage:  deprecation,
+			Attributes:          components.SoftwareUpdateSettingsComponentSchema(),
+		},
+	}
+}
+
+// componentBlockAttributes returns the schema attributes for one component block: block metadata
+// (name, per-block activation condition) plus the shared, non-deprecated component set.
+func componentBlockAttributes() map[string]schema.Attribute {
+	attributes := map[string]schema.Attribute{
+		"name": schema.StringAttribute{
+			MarkdownDescription: "Name shown for this component block in the Jamf Blueprints editor (e.g. `Passcode Policy`). When omitted, Jamf assigns a default name.",
+			Optional:            true,
+		},
+		"activation_conditions": schema.StringAttribute{
+			MarkdownDescription: activationConditionsDescription("this block"),
+			Optional:            true,
+			Validators: []validator.String{
+				stringvalidator.LengthAtMost(10000),
+			},
+		},
+		"legacy_payloads": schema.ListNestedAttribute{
+			MarkdownDescription: "Legacy configuration profile payloads in this block. The payload identifier is auto-generated and the display name uses the blueprint name.",
+			Optional:            true,
+			NestedObject: schema.NestedAttributeObject{
+				Attributes: map[string]schema.Attribute{
+					"payload_type": schema.StringAttribute{
+						MarkdownDescription: "Apple reverse-domain payload identifier, e.g. `com.apple.applicationaccess`.",
+						Required:            true,
+					},
+					"settings": schema.StringAttribute{
+						MarkdownDescription: "Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`.",
+						Optional:            true,
+					},
+				},
+			},
+		},
+	}
+
+	for name, attr := range sharedComponentAttributes("") {
+		attributes[name] = attr
+	}
+
+	return attributes
+}
+
+// flatComponentAttributePaths lists the root paths of the deprecated flat component attributes,
+// used to make `component_blocks` mutually exclusive with the flat top-level authoring style.
+func flatComponentAttributePaths() []path.Expression {
+	names := []string{
+		"activation_conditions",
+		"legacy_payloads",
+		"raw_component",
+		"audio_accessory_settings",
+		"custom_declarations",
+		"disk_management_settings",
+		"math_settings",
+		"passcode_policy",
+		"safari_bookmarks",
+		"safari_extensions",
+		"safari_settings",
+		"service_background_tasks",
+		"service_configuration_files",
+		"software_update",
+		"software_update_settings",
+	}
+	paths := make([]path.Expression, 0, len(names))
+	for _, name := range names {
+		paths = append(paths, path.MatchRoot(name))
+	}
+	return paths
 }
 
 // IdentitySchema defines the blueprint identity used across CRUD and list.

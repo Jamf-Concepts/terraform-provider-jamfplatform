@@ -143,7 +143,7 @@ func (r *BlueprintListResource) List(ctx context.Context, req list.ListRequest, 
 			}
 
 			var state BlueprintResourceModel
-			updateModelFromAPIResponse(ctx, &state, detail)
+			result.Diagnostics.Append(updateModelFromAPIResponse(ctx, &state, detail)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 		}
 

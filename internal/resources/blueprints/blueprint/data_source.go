@@ -78,12 +78,14 @@ func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				Computed:            true,
 			},
 			"activation_conditions": schema.StringAttribute{
-				MarkdownDescription: "Activation condition expression that further restricts which scoped devices the blueprint applies to. Empty when the blueprint applies to all devices in the targeted device groups.",
+				MarkdownDescription: "Activation condition expression that further restricts which scoped devices the blueprint applies to. Reflects the first component block only; read `component_blocks` for per-block conditions.",
 				Computed:            true,
+				DeprecationMessage:  componentAttrDeprecation,
 			},
 			"component": schema.ListNestedAttribute{
-				MarkdownDescription: "Blueprint components.",
+				MarkdownDescription: "Components of the first component block. Read `component_blocks` for the components of every block.",
 				Computed:            true,
+				DeprecationMessage:  componentAttrDeprecation,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"identifier": schema.StringAttribute{
@@ -94,6 +96,39 @@ func (d *BlueprintDataSource) Schema(ctx context.Context, req datasource.SchemaR
 							MarkdownDescription: "Component configuration as a map of key-value pairs.",
 							ElementType:         types.StringType,
 							Computed:            true,
+						},
+					},
+				},
+			},
+			"component_blocks": schema.ListNestedAttribute{
+				MarkdownDescription: "Ordered component blocks of the blueprint. Each block has a name, an optional activation condition, and its own components.",
+				Computed:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							MarkdownDescription: "Component block name.",
+							Computed:            true,
+						},
+						"activation_conditions": schema.StringAttribute{
+							MarkdownDescription: "Activation condition applied to this block. Empty when the block applies to all devices in scope.",
+							Computed:            true,
+						},
+						"component": schema.ListNestedAttribute{
+							MarkdownDescription: "Components in this block.",
+							Computed:            true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"identifier": schema.StringAttribute{
+										MarkdownDescription: "Component identifier.",
+										Computed:            true,
+									},
+									"configuration": schema.MapAttribute{
+										MarkdownDescription: "Component configuration as a map of key-value pairs.",
+										ElementType:         types.StringType,
+										Computed:            true,
+									},
+								},
+							},
 						},
 					},
 				},
@@ -181,23 +216,16 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	var components []ComponentModel
 	if len(bp.Steps) > 0 {
-		step := bp.Steps[0]
-		components = make([]ComponentModel, len(step.Components))
-		for i, comp := range step.Components {
-			configMap := make(map[string]string)
-			if comp.Configuration != nil {
-				var jsonObj map[string]any
-				if err := json.Unmarshal(comp.Configuration, &jsonObj); err == nil {
-					flattenJSON(jsonObj, "", configMap)
-				}
-			}
+		components = flattenStepComponents(bp.Steps[0])
+	}
 
-			configMapValue, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
-			components[i] = ComponentModel{
-				Identifier:    types.StringValue(comp.Identifier),
-				Configuration: configMapValue,
-			}
-		}
+	componentBlocks := make([]ComponentBlockDataSourceModel, 0, len(bp.Steps))
+	for _, step := range bp.Steps {
+		componentBlocks = append(componentBlocks, ComponentBlockDataSourceModel{
+			Name:                 types.StringValue(helpers.DerefString(step.Name)),
+			ActivationConditions: types.StringValue(helpers.DerefString(step.ActivationPredicate)),
+			Components:           flattenStepComponents(step),
+		})
 	}
 
 	deployState := ""
@@ -217,10 +245,33 @@ func (d *BlueprintDataSource) Read(ctx context.Context, req datasource.ReadReque
 		DeviceGroups:         deviceGroupsList,
 		ActivationConditions: activationConditions,
 		Components:           components,
+		ComponentBlocks:      componentBlocks,
 		Timeouts:             timeoutsValue,
 	}
 
 	tflog.Trace(ctx, "read a data source")
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// flattenStepComponents converts a wire step's components into the data source's read-only
+// component list (identifier + flattened key/value configuration map).
+func flattenStepComponents(step blueprints.BlueprintStep) []ComponentModel {
+	components := make([]ComponentModel, len(step.Components))
+	for i, comp := range step.Components {
+		configMap := make(map[string]string)
+		if comp.Configuration != nil {
+			var jsonObj map[string]any
+			if err := json.Unmarshal(comp.Configuration, &jsonObj); err == nil {
+				flattenJSON(jsonObj, "", configMap)
+			}
+		}
+
+		configMapValue, _ := types.MapValueFrom(context.Background(), types.StringType, configMap)
+		components[i] = ComponentModel{
+			Identifier:    types.StringValue(comp.Identifier),
+			Configuration: configMapValue,
+		}
+	}
+	return components
 }
