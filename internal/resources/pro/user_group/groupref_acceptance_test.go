@@ -27,6 +27,11 @@ import (
 // The "member of" target is a static fixture user group created via the classic
 // SDK (so its numeric id is known for the swap step) and referenced by name; it is
 // deleted on cleanup.
+//
+// The id-echo occurs only in the regressed window [11.29.0, 11.30.1) (PI-1394);
+// 11.30.1 restored the name round-trip (wire-probed), so on 11.30.1+ the write-side
+// workaround is off and this test degrades to a plain round-trip + swap-no-op check.
+// All assertions hold on both sides of the fix, so no version branch is needed.
 func TestAccResource_ProUserGroup_JamfGroupMemberOf(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	// The "member of" directory-service-group operator is rejected before Jamf

@@ -9,21 +9,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/criteria"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// groupRefMinIDVersion is the Jamf Pro version at/after which the /device-groups
-// membership criterion stores and requires the numeric group id on the wire rather
-// than the group name (the 11.29 regression — see resolveGroupRefWireIDs). Below
-// this the endpoint resolves the name itself and rejects the classic group id.
-const groupRefMinIDVersion = "11.29.0"
-
 // groupRefWriteSendsID reports whether the device-groups write path must send the
-// numeric group id (Jamf Pro >= 11.29) rather than the authored group name. Soft:
-// when the tenant version is unavailable/unparseable it returns true (the provider
-// floor is 11.29.0, so an unknown version is treated as modern — the workaround
-// stays engaged). Version is read from the cached providerdata, so this is a
-// no-network call after the first lookup in a run.
+// numeric group id rather than the authored group name. True only inside the 11.29
+// regressed window [11.29.0, 11.30.1) (criteria.GroupRefWorkaroundApplies): there
+// the endpoint requires the id and rejects the name. 11.30.1+ restored the
+// pre-11.29 behaviour (the endpoint resolves the name itself and echoes it back),
+// so the authored name is sent directly. Soft: when the tenant version is
+// unavailable/unparseable it returns true — the id is accepted across the whole
+// supported range (the fixed endpoint normalises it back to the name), so keeping
+// it engaged on an unknown version is the safe default. Version is read from the
+// cached providerdata, so this is a no-network call after the first lookup in a run.
 func (r *DeviceGroupResource) groupRefWriteSendsID(ctx context.Context) bool {
 	if r.pd == nil {
 		return true
@@ -32,7 +29,7 @@ func (r *DeviceGroupResource) groupRefWriteSendsID(ctx context.Context) bool {
 	if err != nil {
 		return true
 	}
-	return helpers.AtLeastJamfProVersion(v, groupRefMinIDVersion)
+	return criteria.GroupRefWorkaroundApplies(v)
 }
 
 // Jamf-group "member of" criteria on a Platform device group reference a Jamf
@@ -53,15 +50,18 @@ func (r *DeviceGroupResource) groupRefWriteSendsID(ctx context.Context) bool {
 // id->authoredValue map for the post-flatten restore.
 //
 // VERSION-GATED (resolveToID). The name->id rewrite is a workaround for the Jamf
-// Pro 11.29 regression only: from 11.29 the /device-groups endpoint REQUIRES the id
-// — wire-probed, PATCH with a name 400s ("Computer/Mobile Group depends on Group
-// (<name>) which does not exist") while the id succeeds on POST and PATCH (see
-// spike/PLATFORM_API_FEEDBACK_device_groups_member_of.md). PRE-11.29 the endpoint
-// resolves the name itself and does NOT recognise the classic computer-group id, so
-// sending the id 400s ("Group (<id>) does not exist") — there the value must pass
-// through as the authored NAME. Callers pass resolveToID = (tenant >= 11.29); when
-// false this is a pure passthrough (in, nil) and the pre-11.29 name round-trips
-// unchanged (read returns the name, readback short-circuits, no restore needed).
+// Pro 11.29 regression only, active inside the window [11.29.0, 11.30.1): there the
+// /device-groups endpoint REQUIRES the id — wire-probed, PATCH with a name 400s
+// ("Computer/Mobile Group depends on Group (<name>) which does not exist") while the
+// id succeeds on POST and PATCH (see spike/PLATFORM_API_FEEDBACK_device_groups_member_of.md).
+// PRE-11.29 the endpoint resolves the name itself and does NOT recognise the classic
+// computer-group id, so sending the id 400s ("Group (<id>) does not exist"); 11.30.1+
+// restored that behaviour (name round-trips; the id is also accepted and normalised
+// back to the name on read — wire-probed live). Outside the window the value must
+// pass through as the authored NAME. Callers pass resolveToID =
+// groupRefWriteSendsID (= criteria.GroupRefWorkaroundApplies); when false this is a
+// pure passthrough (in, nil) and the name round-trips unchanged (read returns the
+// name, readback short-circuits, no restore needed).
 //
 // Applies to both device types (mobile regresses identically once updated).
 // Best-effort/SOFT: a value that does not resolve (already an id, or an unknown

@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // Jamf-group "member of" criteria reference a Jamf group (computer / mobile-device
@@ -20,22 +22,60 @@ import (
 // where it previously round-tripped the name. Left unmapped this trips "Provider
 // produced inconsistent result after apply" and then a perpetual name-vs-id diff.
 //
+// The regression (PI-1394) is a WINDOW: 11.30.1 restored the pre-11.29 behaviour
+// (the endpoint resolves the group name itself and echoes it back), wire-probed
+// live — see GroupRefWorkaroundApplies. So the workaround engages only for
+// [11.29.0, 11.30.1); 11.30.1+ and pre-11.29 pass the name through directly.
+//
 // This file maps the wire value back to the authored group name on read. The
 // mapping is a FALLBACK, never a blind "the wire is an id": when the wire already
-// equals the configured value it is kept verbatim with no lookup, so the same code
-// path serves both pre-11.29 Jamf Pro (returns the name) and 11.29+ (returns the
-// id) with no version branch. See spike/JAMF_GROUP_MEMBER_OF_CRITERIA_SPIKE.md for
-// the per-surface wire-probe matrix. Only two (surface, criterion) pairs regress
-// and are wired: user_group/"User Group" and device_group/"Computer Group" (the
-// COMPUTER device type — MOBILE is clean but shares device_group's code path, where
-// wire==config holds so the resolver never fires). The three advanced searches are
-// confirmed clean and intentionally NOT wired; if a future Jamf release flips one,
-// the criterion name is already mapped per object class in jamfGroupCriterionName.
+// equals the configured value it is kept verbatim with no lookup, so the read path
+// serves pre-11.29 Jamf Pro (returns the name), the 11.29 window (returns the id),
+// and 11.30.1+ (returns the name again) with no version branch — it simply
+// short-circuits when the server echoes the name. See
+// spike/JAMF_GROUP_MEMBER_OF_CRITERIA_SPIKE.md for the per-surface wire-probe
+// matrix. Only two (surface, criterion) pairs regress and are wired:
+// user_group/"User Group" and device_group/"Computer Group" (the COMPUTER device
+// type — MOBILE is clean but shares device_group's code path, where wire==config
+// holds so the resolver never fires). The three advanced searches are confirmed
+// clean and intentionally NOT wired; if a future Jamf release flips one, the
+// criterion name is already mapped per object class in jamfGroupCriterionName.
 //
-// Unlike dsgroup, the WRITE is a pure pass-through: the server accepts the group
-// name verbatim and stores the id itself, so there is no name->wire resolution at
-// apply — only the read-side id->name reverse-resolve, plus a ModifyPlan no-op
-// suppression for the case where a user pastes the equivalent id.
+// The WRITE differs by surface. On classic /usergroups (user_group) the server
+// accepts the group name verbatim and stores the id itself, so the write is a pure
+// pass-through and the workaround only builds an id->name restore map for the
+// post-create/update read-back within the window. The Platform /device-groups
+// endpoint (device_group) instead REQUIRED the numeric id inside the window (PATCH
+// rejected the name), so there the write resolves name->id — see
+// resolveGroupRefWireIDs. Both write-side resolves are gated on
+// GroupRefWorkaroundApplies so 11.30.1+ sends the name directly. The read-side
+// reverse-resolve and the ModifyPlan no-op suppression (for a user who pastes the
+// equivalent id) stay version-agnostic — they are soft no-ops when the server
+// echoes the name.
+
+// GroupRefRegressionVersion is the first Jamf Pro version to echo a Jamf-group
+// member-of value back as the numeric group id (the 11.29 nested-smart-group
+// rework regression — PI-1394; JPRO-20813 / JPRO-20814).
+const GroupRefRegressionVersion = "11.29.0"
+
+// GroupRefFixedVersion is the Jamf Pro version that resolved PI-1394 and restored
+// the pre-11.29 behaviour: the group name round-trips again on both classic
+// /usergroups and the Platform /device-groups endpoint (wire-probed live on 11.30.1
+// — POST/PATCH by name round-trip the name; the numeric id is also accepted and
+// normalised back to the name on read).
+const GroupRefFixedVersion = "11.30.1"
+
+// GroupRefWorkaroundApplies reports whether the Jamf-group member-of name<->id
+// write workaround should engage for a tenant reporting version. True only inside
+// the regressed window [GroupRefRegressionVersion, GroupRefFixedVersion): 11.30.1+
+// and pre-11.29 pass the authored name through directly. FAIL-OPEN via
+// helpers.JamfProVersionInRange (unknown/unparseable version -> true): the numeric
+// id is accepted across the whole supported range (the fixed endpoint normalises it
+// back to the name), so keeping the workaround engaged on an unknown version is
+// safe, whereas sending the name would fail inside the window.
+func GroupRefWorkaroundApplies(version string) bool {
+	return helpers.JamfProVersionInRange(version, GroupRefRegressionVersion, GroupRefFixedVersion)
+}
 
 // GroupResolver maps a Jamf group between its name and numeric id for the
 // ObjectType-appropriate collection (computer / mobile-device / user groups).

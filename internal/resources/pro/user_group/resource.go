@@ -45,6 +45,9 @@ type UserGroupResource struct {
 	// name and the numeric id Jamf Pro 11.29 echoes on read. Backed by the same
 	// classic client.
 	groupRef criteria.GroupResolver
+	// pd carries the cached Jamf Pro version, used to gate the Jamf-group member-of
+	// workaround to the 11.29 regressed window (criteria.GroupRefWorkaroundApplies).
+	pd *providerdata.Data
 }
 
 var _ resource.Resource = &UserGroupResource{}
@@ -173,6 +176,7 @@ func (r *UserGroupResource) Configure(ctx context.Context, req resource.Configur
 	r.groupRef = criteria.NewProGroupResolver(client)
 	if pd, ok := req.ProviderData.(*providerdata.Data); ok {
 		r.ldap = pro.New(pd.Client)
+		r.pd = pd
 	}
 }
 

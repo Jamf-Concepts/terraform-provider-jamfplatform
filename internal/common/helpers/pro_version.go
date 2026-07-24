@@ -98,6 +98,32 @@ func AtLeastJamfProVersion(actual, min string) bool {
 	return compareSemver(a, b) >= 0
 }
 
+// JamfProVersionInRange reports whether actual falls in the half-open version
+// window [minInclusive, maxExclusive) (semver-prefix compare, build suffixes
+// stripped). FAIL-OPEN: on any parse failure it returns true. Callers use this to
+// gate a workaround that applies only to a specific version WINDOW — a regression
+// introduced at one Jamf Pro version and fixed at a later one — so an
+// unknown/unparseable tenant version keeps the workaround engaged, matching
+// AtLeastJamfProVersion's fail-open convention. Choosing the fail-open default is
+// the caller's responsibility: it is safe only when the workaround's behaviour is
+// tolerated across the whole supported range (e.g. sending the numeric id is
+// accepted both in the regressed window and after the fix).
+func JamfProVersionInRange(actual, minInclusive, maxExclusive string) bool {
+	a, err := parseSemverPrefix(actual)
+	if err != nil {
+		return true
+	}
+	lo, err := parseSemverPrefix(minInclusive)
+	if err != nil {
+		return true
+	}
+	hi, err := parseSemverPrefix(maxExclusive)
+	if err != nil {
+		return true
+	}
+	return compareSemver(a, lo) >= 0 && compareSemver(a, hi) < 0
+}
+
 type semver struct {
 	major, minor, patch int
 }
