@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
@@ -23,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -377,6 +379,9 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 // state) and destroy (nil plan) are skipped — the attributes are already unknown
 // on create and there is no planned state to modify on destroy — and a plan with
 // no change is left untouched so the resource keeps showing an empty plan.
+//
+// It also refuses a flat-mode apply that would delete component blocks the diff cannot show — see
+// checkFlatModeBlockLoss.
 func (r *BlueprintResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
 		return
@@ -386,8 +391,75 @@ func (r *BlueprintResource) ModifyPlan(ctx context.Context, req resource.ModifyP
 		return
 	}
 
+	resp.Diagnostics.Append(r.checkFlatModeBlockLoss(ctx, req.Plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("updated"), types.StringUnknown())...)
 	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("deployment_state"), types.StringUnknown())...)
+}
+
+// checkFlatModeBlockLoss blocks a plan that would delete component blocks without showing them in
+// the diff. The deprecated flat top-level attributes can only carry one block, so a read maps just
+// the first one into state (see updateFlatComponentsFromAPI) — any further block is absent from
+// prior state, invisible in the diff, and still deleted by the apply, which rewrites every block at
+// once. Blocks that Terraform cannot show it is about to destroy are worth an extra read per plan,
+// so this re-reads the blueprint whenever a flat-mode configuration has a planned change.
+//
+// The gate is the *planned configuration*, not prior state: a configuration that has moved to
+// `component_blocks` is migrating and takes explicit ownership of every block it declares, so it is
+// allowed through. That is also why the error enumerates the current blocks — it is the material the
+// user needs to write that migration without dropping one.
+//
+// Block mode needs no guard: every block lands in state, so removals are already plan-visible.
+func (r *BlueprintResource) checkFlatModeBlockLoss(ctx context.Context, plannedState tfsdk.Plan) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if r.client == nil {
+		return diags
+	}
+
+	var plan BlueprintResourceModel
+	diags.Append(plannedState.Get(ctx, &plan)...)
+	if diags.HasError() {
+		return diags
+	}
+
+	if len(plan.ComponentBlocks) > 0 || !plan.hasFlatComponents() {
+		return diags
+	}
+
+	id := plan.ID.ValueString()
+	if id == "" {
+		return diags
+	}
+
+	blueprint, err := r.client.GetBlueprint(ctx, id)
+	if err != nil {
+		diags.AddWarning(
+			"Could not check this blueprint for component blocks Terraform cannot represent",
+			"The configuration uses the deprecated top-level component attributes, which can only represent the first component block. "+
+				"The provider could not re-read the blueprint to check whether it has more: "+err.Error()+
+				". If it does, applying would delete them without showing the deletion in this plan. Migrate to `component_blocks` to manage every block.",
+		)
+		return diags
+	}
+
+	if len(blueprint.Steps) <= 1 {
+		return diags
+	}
+
+	diags.AddError(
+		"Blueprint has component blocks the configuration cannot represent",
+		fmt.Sprintf("This blueprint has %d component blocks, but the configuration uses the deprecated top-level component attributes, which can only represent the first. "+
+			"Applying would delete the rest, and because they cannot be held in state that deletion does not appear in this plan.\n\n"+
+			"Component blocks currently on this blueprint:\n%s\n"+
+			"Migrate to `component_blocks` and declare every block listed above, then apply. Leave a block out only if you mean to delete it.",
+			len(blueprint.Steps), describeBlueprintBlocks(blueprint.Steps)),
+	)
+
+	return diags
 }
 
 // ImportState handles the import of existing Blueprint resources.
