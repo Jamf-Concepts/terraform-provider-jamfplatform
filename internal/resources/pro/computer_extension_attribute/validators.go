@@ -27,6 +27,8 @@ import (
 //	enabled = false                                  → only valid when input_type = SCRIPT
 //	allow_multiple_values = true                     → only valid when input_type =
 //	                                                   DIRECTORY_SERVICE_ATTRIBUTE_MAPPING
+//	manage_existing_data                             → only valid when input_type = SCRIPT
+//	                                                   AND enabled = false
 //
 // Off-the-shelf validators (ConflictsWith / AlsoRequires) fire regardless of the
 // discriminator value, which is the wrong shape — the constraint is value-specific.
@@ -36,7 +38,7 @@ type inputTypeConfigValidator struct{}
 
 // Description returns a plain-text description of the validator.
 func (inputTypeConfigValidator) Description(context.Context) string {
-	return "the companion fields permitted for an extension attribute are keyed off input_type: SCRIPT requires script; DIRECTORY_SERVICE_ATTRIBUTE_MAPPING requires directory_service_attribute; popup_menu_choices is only valid with POPUP; only SCRIPT EAs may be disabled; allow_multiple_values is only valid with DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"
+	return "the companion fields permitted for an extension attribute are keyed off input_type: SCRIPT requires script; DIRECTORY_SERVICE_ATTRIBUTE_MAPPING requires directory_service_attribute; popup_menu_choices is only valid with POPUP; only SCRIPT EAs may be disabled; allow_multiple_values is only valid with DIRECTORY_SERVICE_ATTRIBUTE_MAPPING; manage_existing_data is only valid on a disabled SCRIPT EA"
 }
 
 // MarkdownDescription returns the markdown description.
@@ -102,8 +104,22 @@ func (inputTypeConfigValidator) ValidateResource(ctx context.Context, req resour
 			fmt.Sprintf("`allow_multiple_values` applies only to directory-service-mapped attributes; input_type = %q does not permit it.", inputType))
 	}
 
-	// manage_existing_data is only meaningful for SCRIPT EAs.
-	forbid(resp, "manage_existing_data", isStringSet(data.ManageExistingData) && inputType != inputTypeScript, inputType, inputTypeScript)
+	// manage_existing_data is only meaningful when a SCRIPT EA is disabled — it
+	// says what to do with the inventory values already collected. Jamf Pro
+	// rejects it on every other request (issue #302).
+	if isStringSet(data.ManageExistingData) {
+		switch {
+		case inputType != inputTypeScript:
+			forbid(resp, "manage_existing_data", true, inputType, inputTypeScript)
+		case data.Enabled.IsUnknown():
+			// Defer: enabled is interpolated, so the rule cannot be evaluated.
+		case data.Enabled.IsNull() || data.Enabled.ValueBool():
+			// enabled defaults to true, so an omitted enabled is an enabled EA.
+			resp.Diagnostics.AddAttributeError(path.Root("manage_existing_data"),
+				"manage_existing_data may only be set when enabled = false",
+				"`manage_existing_data` tells Jamf Pro what to do with the inventory data already collected by a SCRIPT extension attribute when that attribute is disabled, so Jamf Pro accepts it only on an update that sets `enabled = false`. Remove it, or set `enabled = false`.")
+		}
+	}
 }
 
 // isStringSet reports whether a string attribute carries a usable (known,
