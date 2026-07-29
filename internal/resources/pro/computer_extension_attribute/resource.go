@@ -159,7 +159,7 @@ func (r *ComputerExtensionAttributeResource) Schema(ctx context.Context, req res
 				},
 			},
 			"manage_existing_data": schema.StringAttribute{
-				MarkdownDescription: "Behavioural instruction (no admin-UI field) controlling how Jamf Pro handles already-collected inventory data when a `SCRIPT` extension attribute is updated: `RETAIN` keeps existing values, `DELETE` clears them. Valid only with `input_type = SCRIPT`. This is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro on create/update but never stored in state (Jamf Pro never returns it, and it is an instruction, not a persistent property). Jamf Pro requires it on a SCRIPT update, so when omitted the provider sends `RETAIN`. Changing only this value does not trigger an update; it takes effect alongside other changes to the extension attribute.",
+				MarkdownDescription: "Behavioural instruction (no admin-UI field) controlling what Jamf Pro does with the inventory data already collected by a `SCRIPT` extension attribute when that attribute is **disabled**: `RETAIN` keeps the existing values, `DELETE` clears them. Valid only with `input_type = SCRIPT` **and** `enabled = false` — Jamf Pro rejects it on any other update, and on create. Jamf Pro requires it when an enabled SCRIPT extension attribute is being disabled, so `RETAIN` is sent when it is omitted. This is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro on update but never stored in state (Jamf Pro never returns it, and it is an instruction, not a persistent property). Changing only this value does not trigger an update; it takes effect alongside other changes to the extension attribute.",
 				Optional:            true,
 				WriteOnly:           true,
 				Validators: []validator.String{

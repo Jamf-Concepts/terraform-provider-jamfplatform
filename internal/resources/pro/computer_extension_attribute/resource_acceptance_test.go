@@ -11,6 +11,8 @@
 //   - empty-echo normalization (no perma-diff on a bare TEXT EA)
 //   - script trailing-newline tolerance (import ignores `script`; server appends \n)
 //   - manage_existing_data is write-only (import ignores it; never returned)
+//   - manage_existing_data is sent only on an update that disables a SCRIPT EA
+//     (issue #302 — see TestAccResource_ProComputerExtensionAttribute_ScriptEnabledUpdate)
 
 package computer_extension_attribute_test
 
@@ -316,6 +318,112 @@ func TestAccResource_ProComputerExtensionAttribute_SplitOwnership(t *testing.T) 
 	})
 }
 
+// ceaScriptEnabled renders an ENABLED SCRIPT EA with the given script body and
+// no manage_existing_data — the shape from issue #302.
+func ceaScriptEnabled(name, script string) string {
+	return fmt.Sprintf(`
+		resource "jamfplatform_pro_computer_extension_attribute" "test" {
+			name              = %q
+			description       = "issue 302 regression"
+			data_type         = "STRING"
+			input_type        = "SCRIPT"
+			inventory_display = "GENERAL"
+			enabled           = true
+			script            = %q
+		}
+	`, name, script)
+}
+
+// TestAccResource_ProComputerExtensionAttribute_ScriptEnabledUpdate is the
+// issue #302 regression test: updating an ENABLED SCRIPT EA used to 400 with
+// "[INVALID_CONTENT] manageExistingData: This field should be blank if the input
+// type is not 'SCRIPT' and enabled value is not false" because the provider sent
+// manageExistingData = RETAIN on every SCRIPT update. Jamf Pro accepts the field
+// only on an update that lands the EA disabled, and requires it on the
+// enabled→disabled transition. This walks the whole enabled/disabled matrix:
+//
+//	step 1  create enabled            (field must be absent on POST)
+//	step 2  edit script, still enabled (field must be absent — the #302 repro)
+//	step 3  disable                    (field REQUIRED; provider defaults to RETAIN)
+//	step 4  edit script while disabled (field sent, already-disabled no-op)
+//	step 5  re-enable + edit script    (field must be absent again)
+func TestAccResource_ProComputerExtensionAttribute_ScriptEnabledUpdate(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-cea-script-enabled-" + suffix
+
+	const scriptV1 = "#!/bin/sh\necho \"<result>v1</result>\""
+	const scriptV2 = "#!/bin/sh\necho \"<result>v2</result>\""
+	const scriptV3 = "#!/bin/sh\necho \"<result>v3</result>\""
+	const scriptV4 = "#!/bin/sh\necho \"<result>v4</result>\""
+
+	// Disabled steps carry manage_existing_data explicitly (step 3) and omitted
+	// (step 4) to cover both the "user supplied" and "provider defaults to
+	// RETAIN" paths of the required-on-disable rule.
+	disabled := func(script, medLine string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_pro_computer_extension_attribute" "test" {
+				name              = %q
+				description       = "issue 302 regression"
+				data_type         = "STRING"
+				input_type        = "SCRIPT"
+				inventory_display = "GENERAL"
+				enabled           = false
+				script            = %q
+				%s
+			}
+		`, name, script, medLine)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckCEADestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: ceaScriptEnabled(name, scriptV1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(ceaResource, "id"),
+					resource.TestCheckResourceAttr(ceaResource, "enabled", "true"),
+					resource.TestCheckResourceAttr(ceaResource, "script", scriptV1),
+				),
+			},
+			{
+				// The #302 repro: change only the script, EA stays enabled.
+				Config: ceaScriptEnabled(name, scriptV2),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "enabled", "true"),
+					resource.TestCheckResourceAttr(ceaResource, "script", scriptV2),
+				),
+			},
+			{
+				// enabled true→false: Jamf Pro requires manage_existing_data.
+				Config: disabled(scriptV3, `manage_existing_data = "RETAIN"`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "enabled", "false"),
+					resource.TestCheckResourceAttr(ceaResource, "script", scriptV3),
+				),
+			},
+			{
+				// Already disabled, manage_existing_data omitted: the provider
+				// still sends RETAIN, which Jamf Pro accepts as a no-op.
+				Config: disabled(scriptV4, ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "enabled", "false"),
+					resource.TestCheckResourceAttr(ceaResource, "script", scriptV4),
+				),
+			},
+			{
+				// Re-enable: the field must drop off the payload again.
+				Config: ceaScriptEnabled(name, scriptV1),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(ceaResource, "enabled", "true"),
+					resource.TestCheckResourceAttr(ceaResource, "script", scriptV1),
+				),
+			},
+		},
+	})
+}
+
 // ceaPopupNoChoices renders a POPUP EA that OMITS popup_menu_choices, varying
 // inventory_display so an unrelated change can be applied.
 func ceaPopupNoChoices(name, inventoryDisplay string) string {
@@ -472,6 +580,14 @@ func TestAccResource_ProComputerExtensionAttribute_ValidatorErrors(t *testing.T)
 			name:   "enabled false forbidden on TEXT",
 			config: ceaBad(`data_type = "STRING"`, `input_type = "TEXT"`, `inventory_display = "GENERAL"`, `enabled = false`),
 			expect: regexp.MustCompile(`SCRIPT`),
+		},
+		{
+			// Issue #302: Jamf Pro only accepts manage_existing_data on an update
+			// that disables the EA, so an enabled SCRIPT EA must not declare it.
+			name: "manage_existing_data forbidden while enabled",
+			config: ceaBad(`data_type = "STRING"`, `input_type = "SCRIPT"`, `inventory_display = "GENERAL"`,
+				`script = "echo hi"`, `enabled = true`, `manage_existing_data = "RETAIN"`),
+			expect: regexp.MustCompile(`manage_existing_data`),
 		},
 	}
 

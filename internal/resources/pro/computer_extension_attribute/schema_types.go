@@ -33,9 +33,10 @@ var (
 	// (wire-probed: the Pro PUT for a SCRIPT EA requires DELETE or RETAIN).
 	validManageExistingData = []string{"DELETE", "RETAIN"}
 
-	// manageExistingDataDefault is sent for SCRIPT EAs when the user omits
-	// manage_existing_data — RETAIN preserves already-collected inventory data,
-	// the safe default. Jamf Pro requires this field on a SCRIPT EA update.
+	// manageExistingDataDefault is sent when a SCRIPT EA update disables the EA
+	// and the user omitted manage_existing_data — RETAIN preserves
+	// already-collected inventory data, the safe default. See
+	// manageExistingDataFor for when the field is sent at all.
 	manageExistingDataDefault = "RETAIN"
 
 	// validInventoryDisplays is the "Inventory display" dropdown (6 tabs).

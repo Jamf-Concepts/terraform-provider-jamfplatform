@@ -26,9 +26,8 @@ import (
 // POPUP, so a stale foreign value can never reach the wire (which would 400).
 // manageExistingData is the WriteOnly value, read from config by the caller (it
 // is null in plan/state, so it cannot come from `plan`). isCreate must be true
-// only when building the Create payload: Jamf Pro 400s
-// ("This field should be blank for first time CEA creation.") if
-// manageExistingData is present on create, and only accepts it on update.
+// only when building the Create payload — see manageExistingDataFor for the
+// wire law that governs when the field may be sent.
 func buildComputerExtensionAttributeInput(ctx context.Context, plan ComputerExtensionAttributeResourceModel, manageExistingData types.String, isCreate bool) (*pro.ComputerExtensionAttributes, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -47,18 +46,7 @@ func buildComputerExtensionAttributeInput(ctx context.Context, plan ComputerExte
 	switch inputType {
 	case inputTypeScript:
 		ea.ScriptContents = helpers.OptionalStringPointer(plan.Script)
-		// manageExistingData is required (and only valid) for SCRIPT EAs on
-		// update: Jamf Pro 400s a SCRIPT update without it, and 400s a SCRIPT
-		// create with it present. Send the user's value, or RETAIN when
-		// omitted, but only on update. Never send it for non-SCRIPT EAs or on
-		// create.
-		if !isCreate {
-			mode := manageExistingDataDefault
-			if v := helpers.OptionalStringPointer(manageExistingData); v != nil {
-				mode = *v
-			}
-			ea.ManageExistingData = &mode
-		}
+		ea.ManageExistingData = manageExistingDataFor(plan.Enabled, manageExistingData, isCreate)
 	case inputTypeLDAP:
 		ea.LdapAttributeMapping = helpers.OptionalStringPointer(plan.DirectoryServiceAttribute)
 	case inputTypePopup:
@@ -73,4 +61,41 @@ func buildComputerExtensionAttributeInput(ctx context.Context, plan ComputerExte
 	}
 
 	return ea, diags
+}
+
+// manageExistingDataFor decides whether the SCRIPT-only manageExistingData
+// instruction belongs on this request, and with what value. It returns nil when
+// the field must be omitted.
+//
+// Wire law (live-probed 2026-07-28, issue #302 — the field says what to do with
+// already-collected inventory values when a SCRIPT EA is *disabled*, so Jamf Pro
+// only tolerates it on a request that lands the EA disabled):
+//
+//	POST (any enabled value)      → must be absent
+//	                                400 "[INVALID_CONTENT] manageExistingData: This field
+//	                                should be blank for first time CEA creation."
+//	PUT landing enabled = true    → must be absent
+//	                                400 "[INVALID_CONTENT] manageExistingData: This field
+//	                                should be blank if the input type is not 'SCRIPT' and
+//	                                enabled value is not false."
+//	PUT landing enabled = false   → REQUIRED on the enabled true→false transition
+//	                                (400 "This field is required and possible values can
+//	                                be [ DELETE, RETAIN ]." when omitted); accepted, and a
+//	                                no-op, when the EA is already disabled.
+//
+// So it is sent on every update that lands enabled = false — which covers the
+// transition without needing prior state — and never otherwise. enabled is
+// Computed with a true default, so a null/unknown plan value means "enabled".
+func manageExistingDataFor(enabled types.Bool, manageExistingData types.String, isCreate bool) *string {
+	if isCreate {
+		return nil
+	}
+	if enabled.IsNull() || enabled.IsUnknown() || enabled.ValueBool() {
+		return nil
+	}
+	mode := manageExistingDataDefault
+	if v := helpers.OptionalStringPointer(manageExistingData); v != nil {
+		mode = *v
+	}
+	return &mode
 }

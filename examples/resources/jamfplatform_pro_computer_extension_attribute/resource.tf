@@ -16,22 +16,38 @@ resource "jamfplatform_pro_computer_extension_attribute" "department_class" {
   popup_menu_choices = ["Standard", "Restricted", "Kiosk"]
 }
 
-# Script extension attribute. Only SCRIPT extension attributes may be disabled,
-# and `script` is required. `manage_existing_data` is a write-only flag.
+# Script extension attribute. `script` is required, and only SCRIPT extension
+# attributes may be disabled.
 resource "jamfplatform_pro_computer_extension_attribute" "quarantine_status" {
-  name                 = "Quarantine Status"
-  data_type            = "STRING"
-  input_type           = "SCRIPT"
-  inventory_display    = "GENERAL"
-  enabled              = true
-  manage_existing_data = "RETAIN"
-  script               = <<-EOT
+  name              = "Quarantine Status"
+  data_type         = "STRING"
+  input_type        = "SCRIPT"
+  inventory_display = "GENERAL"
+  enabled           = true
+  script            = <<-EOT
     #!/bin/bash
     if [[ -d "/Library/Application Support/JamfProtect/Quarantine" ]]; then
       echo "<result>Present</result>"
     else
       echo "<result>Absent</result>"
     fi
+  EOT
+}
+
+# Disabled script extension attribute. `manage_existing_data` is a write-only
+# instruction saying what to do with the inventory values already collected, and
+# is valid only while the extension attribute is disabled (`RETAIN` is sent when
+# it is omitted).
+resource "jamfplatform_pro_computer_extension_attribute" "legacy_probe" {
+  name                 = "Legacy Probe"
+  data_type            = "STRING"
+  input_type           = "SCRIPT"
+  inventory_display    = "GENERAL"
+  enabled              = false
+  manage_existing_data = "RETAIN"
+  script               = <<-EOT
+    #!/bin/bash
+    echo "<result>retired</result>"
   EOT
 }
 

@@ -50,22 +50,38 @@ resource "jamfplatform_pro_computer_extension_attribute" "department_class" {
   popup_menu_choices = ["Standard", "Restricted", "Kiosk"]
 }
 
-# Script extension attribute. Only SCRIPT extension attributes may be disabled,
-# and `script` is required. `manage_existing_data` is a write-only flag.
+# Script extension attribute. `script` is required, and only SCRIPT extension
+# attributes may be disabled.
 resource "jamfplatform_pro_computer_extension_attribute" "quarantine_status" {
-  name                 = "Quarantine Status"
-  data_type            = "STRING"
-  input_type           = "SCRIPT"
-  inventory_display    = "GENERAL"
-  enabled              = true
-  manage_existing_data = "RETAIN"
-  script               = <<-EOT
+  name              = "Quarantine Status"
+  data_type         = "STRING"
+  input_type        = "SCRIPT"
+  inventory_display = "GENERAL"
+  enabled           = true
+  script            = <<-EOT
     #!/bin/bash
     if [[ -d "/Library/Application Support/JamfProtect/Quarantine" ]]; then
       echo "<result>Present</result>"
     else
       echo "<result>Absent</result>"
     fi
+  EOT
+}
+
+# Disabled script extension attribute. `manage_existing_data` is a write-only
+# instruction saying what to do with the inventory values already collected, and
+# is valid only while the extension attribute is disabled (`RETAIN` is sent when
+# it is omitted).
+resource "jamfplatform_pro_computer_extension_attribute" "legacy_probe" {
+  name                 = "Legacy Probe"
+  data_type            = "STRING"
+  input_type           = "SCRIPT"
+  inventory_display    = "GENERAL"
+  enabled              = false
+  manage_existing_data = "RETAIN"
+  script               = <<-EOT
+    #!/bin/bash
+    echo "<result>retired</result>"
   EOT
 }
 
@@ -99,7 +115,7 @@ resource "jamfplatform_pro_computer_extension_attribute" "ad_department" {
 - `description` (String) **"Description"** in the Jamf Pro admin UI. Optional free-text description of the extension attribute. Omit to leave any existing value untouched (it is not cleared on update); set to `""` to clear it.
 - `directory_service_attribute` (String) **"Directory Service Attribute"** in the Jamf Pro admin UI. The directory-service attribute name mapped to this EA. Required when `input_type = DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; must be omitted for every other input type.
 - `enabled` (Boolean) **"Enable"** in the Jamf Pro admin UI. Whether the extension attribute is enabled. Only `SCRIPT` extension attributes may be disabled; for every other input type Jamf Pro forces this to `true`. Defaults to `true`.
-- `manage_existing_data` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Behavioural instruction (no admin-UI field) controlling how Jamf Pro handles already-collected inventory data when a `SCRIPT` extension attribute is updated: `RETAIN` keeps existing values, `DELETE` clears them. Valid only with `input_type = SCRIPT`. This is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro on create/update but never stored in state (Jamf Pro never returns it, and it is an instruction, not a persistent property). Jamf Pro requires it on a SCRIPT update, so when omitted the provider sends `RETAIN`. Changing only this value does not trigger an update; it takes effect alongside other changes to the extension attribute.
+- `manage_existing_data` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Behavioural instruction (no admin-UI field) controlling what Jamf Pro does with the inventory data already collected by a `SCRIPT` extension attribute when that attribute is **disabled**: `RETAIN` keeps the existing values, `DELETE` clears them. Valid only with `input_type = SCRIPT` **and** `enabled = false` — Jamf Pro rejects it on any other update, and on create. Jamf Pro requires it when an enabled SCRIPT extension attribute is being disabled, so `RETAIN` is sent when it is omitted. This is a Terraform `WriteOnly` attribute — it is sent to Jamf Pro on update but never stored in state (Jamf Pro never returns it, and it is an instruction, not a persistent property). Changing only this value does not trigger an update; it takes effect alongside other changes to the extension attribute.
 - `popup_menu_choices` (Set of String) **"Pop-up menu choices"** in the Jamf Pro admin UI. The set of choices presented for a pop-up menu attribute. Valid only when `input_type = POPUP` (optional even then). Modelled as a set because Jamf Pro returns the choices sorted alphabetically rather than in the submitted order. Omit to leave any existing choices untouched (they are not cleared on an unrelated update); set to `[]` to clear them. Changing `input_type` away from `POPUP` clears the choices.
 - `script` (String) **"Script"** in the Jamf Pro admin UI. Script contents collected as the attribute value. Required when `input_type = SCRIPT`; must be omitted for every other input type. Jamf Pro normalises the stored script (notably appending a trailing newline); the provider tolerates that so it does not show as a perpetual diff.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))

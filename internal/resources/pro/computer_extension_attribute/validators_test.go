@@ -68,6 +68,7 @@ func TestInputTypeValidator_Computer_DefersOnUnknownCompanion(t *testing.T) {
 	}{
 		{"SCRIPT with unknown script", map[string]tftypes.Value{"input_type": str("SCRIPT"), "script": unknown}},
 		{"DSAM with unknown directory_service_attribute", map[string]tftypes.Value{"input_type": str("DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"), "directory_service_attribute": unknown}},
+		{"SCRIPT manage_existing_data with unknown enabled", map[string]tftypes.Value{"input_type": str("SCRIPT"), "script": str("x"), "enabled": tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue), "manage_existing_data": str("RETAIN")}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,8 +112,11 @@ func TestInputTypeValidator_Computer(t *testing.T) {
 		{"text disabled forbidden", map[string]tftypes.Value{"input_type": str("TEXT"), "enabled": boolv(false)}, true},
 		{"text allow multiple forbidden", map[string]tftypes.Value{"input_type": str("TEXT"), "allow_multiple_values": boolv(true)}, true},
 
-		// manage_existing_data is SCRIPT-only.
-		{"script manage_existing_data ok", map[string]tftypes.Value{"input_type": str("SCRIPT"), "script": str("x"), "manage_existing_data": str("RETAIN")}, false},
+		// manage_existing_data is valid only on a DISABLED SCRIPT EA (issue #302:
+		// Jamf Pro 400s the field on an enabled-SCRIPT update).
+		{"script disabled manage_existing_data ok", map[string]tftypes.Value{"input_type": str("SCRIPT"), "script": str("x"), "enabled": boolv(false), "manage_existing_data": str("RETAIN")}, false},
+		{"script enabled manage_existing_data forbidden", map[string]tftypes.Value{"input_type": str("SCRIPT"), "script": str("x"), "enabled": boolv(true), "manage_existing_data": str("RETAIN")}, true},
+		{"script omitted enabled manage_existing_data forbidden", map[string]tftypes.Value{"input_type": str("SCRIPT"), "script": str("x"), "manage_existing_data": str("RETAIN")}, true},
 		{"text manage_existing_data forbidden", map[string]tftypes.Value{"input_type": str("TEXT"), "manage_existing_data": str("RETAIN")}, true},
 	}
 
