@@ -1,5 +1,9 @@
 # terraform-provider-jamfplatform
 
+> **📘 Start here — [Managing the Jamf Platform with Terraform: the Jamf Platform provider](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/)**
+>
+> The official getting-started guide on Jamf Concepts. Covers installing Terraform, creating API credentials, configuring the provider, writing your first device groups / compliance benchmarks / blueprints, applying a configuration, and bringing an existing tenant under management. New to this provider or to Terraform? Read that first.
+
 Provides resources and data sources for managing the products and services available through the [Jamf Platform API](https://developer.jamf.com/platform-api/):
 
 * [Compliance Benchmark Engine](https://learn.jamf.com/en-US/bundle/jamf-compliance-benchmarks-configuration-guide/page/Compliance_Benchmarks_Configuration_Guide.html)
@@ -40,7 +44,9 @@ Further Jamf products are expected to be added; each will get its own row, names
 
 The jamfplatform provider is published in the [Hashicorp](https://registry.terraform.io/providers/Jamf-Concepts/jamfplatform) and [OpenTofu](https://search.opentofu.org/provider/jamf-concepts/jamfplatform) registries.
 
-For usage instructions and provider block/variable reference, refer to the registry link above for your platform of choice.
+For a step-by-step walkthrough — from installing Terraform through to applying your first configuration and importing an existing tenant — see the Jamf Concepts guide: [**Managing the Jamf Platform with Terraform: the Jamf Platform provider**](https://concepts.jamf.com/en/guides/infrastructure-as-code/managing-the-jamf-platform-with-terraform-the-jamf-platform-provider/).
+
+For provider block/variable reference, refer to the registry link above for your platform of choice.
 
 ---
 
