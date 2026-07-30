@@ -3,7 +3,7 @@ module github.com/Jamf-Concepts/terraform-provider-jamfplatform
 go 1.26.5
 
 require (
-	github.com/Jamf-Concepts/jamfplatform-go-sdk v0.12.0
+	github.com/Jamf-Concepts/jamfplatform-go-sdk v0.12.1
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-timeouts v0.7.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
@@ -65,5 +65,3 @@ require (
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-
-replace github.com/Jamf-Concepts/jamfplatform-go-sdk => /Users/Shared/GitHub/jamf-concepts/jamfplatform-go-sdk
