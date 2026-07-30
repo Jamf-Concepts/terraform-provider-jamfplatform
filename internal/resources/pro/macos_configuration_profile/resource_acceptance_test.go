@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -1175,6 +1176,139 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 				// Implicit post-step empty-plan enforces the round-trip.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_macos_configuration_profile.test", "scope.limitations.network_segment_ids.#", "0"),
+			},
+		},
+	})
+}
+
+// TestAccResource_MacOSConfigurationProfile_ReservedCharacterCorpus proves
+// the full reserved-character matrix round-trips without perpetual diffs
+// through an MCX custom-settings payload — the payload family the Classic
+// API stores byte-exact under the SDK's escaped-CDATA wire form (PI-827;
+// see jamfplatform-go-sdk's acc_proclassic_profile_payloads_test.go for
+// the wire-level matrix). Covers every reserved XML character in every
+// legal representation (raw, named entity, decimal and hex refs), literal
+// entity text, entity-bearing dict keys via all_five_mixed, a Santa-style
+// CEL expression, and an embedded CDATA section. The server canonicalises
+// representation (raw ">" is stored as "&gt;", numeric refs collapse, keys
+// sort) — the resource's semantic comparison must absorb all of it.
+func TestAccResource_MacOSConfigurationProfile_ReservedCharacterCorpus(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-corpus-" + suffix
+	payload := readFixture(t, "reserved_character_corpus.mobileconfig")
+
+	// A real value change inside the corpus must still surface as a plan.
+	changed := strings.Replace(payload, "target.team_id == \"EQHXZ8M8AV\"", "target.team_id == \"CHANGED000\"", 1)
+	if changed == payload {
+		t.Fatal("fixture edit did not apply — corpus fixture drifted?")
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configMinimal(name, payload),
+			},
+			{
+				// Identical re-apply: server canonicalisation of the corpus
+				// (entities, key order, numeric-ref collapse) must be fully
+				// absorbed — empty plan or the resource has a perpetual diff.
+				Config: configMinimal(name, payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+			{
+				// Genuine value change inside the corpus must NOT be
+				// suppressed by the semantic mask.
+				Config: configMinimal(name, changed),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(
+							"jamfplatform_pro_macos_configuration_profile.test",
+							plancheck.ResourceActionUpdate,
+						),
+					},
+				},
+			},
+			{
+				Config: configMinimal(name, changed),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_MacOSConfigurationProfile_RealWorldAmpersandFixtures
+// exercises real admin-supplied profiles (unsigned copies of the fixtures
+// that drove the PI-827 investigation):
+//   - setup_manager_ampersand: Jamf Setup Manager MCX profile with "R&D"
+//     in a department picker — MCX-family storage, must round-trip
+//     byte-exact with no perpetual diff.
+//   - cli_escaping_test: the full reserved-character corpus as exported
+//     from Jamf Pro (all five characters, every representation) — same
+//     clean round-trip expectation.
+func TestAccResource_MacOSConfigurationProfile_RealWorldAmpersandFixtures(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+
+	for _, tc := range []struct {
+		slug, fixture string
+	}{
+		{"setupmgr", "setup_manager_ampersand.mobileconfig"},
+		{"escaping", "cli_escaping_test.mobileconfig"},
+	} {
+		payload := readFixture(t, tc.fixture)
+		name := "tf-acc-mcp-" + tc.slug + "-" + suffix
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+			CheckDestroy:             checkDestroy(t),
+			Steps: []resource.TestStep{
+				{
+					Config: configMinimal(name, payload),
+				},
+				{
+					Config: configMinimal(name, payload),
+					ConfigPlanChecks: resource.ConfigPlanChecks{
+						PreApply: []plancheck.PlanCheck{
+							plancheck.ExpectEmptyPlan(),
+						},
+					},
+				},
+			},
+		})
+	}
+}
+
+// TestAccResource_MacOSConfigurationProfile_LoginWindowAmpersandRejected
+// documents the server defect for macOS payload types the Classic API
+// stores verbatim: this real Login Window profile carries "&" in
+// LoginwindowText, which the server persists with an extra entity layer
+// (PI-827 — a device would display "Here is an &amp;"). The provider
+// verifies the stored payload, rolls the create back, and fails with an
+// actionable diagnostic. If this apply starts SUCCEEDING, Jamf fixed the
+// ingest defect — convert this into a clean round-trip test.
+func TestAccResource_MacOSConfigurationProfile_LoginWindowAmpersandRejected(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-loginwin-" + suffix
+	payload := readFixture(t, "login_window_ampersand.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t), // rollback must leave nothing behind
+		Steps: []resource.TestStep{
+			{
+				Config:      configMinimal(name, payload),
+				ExpectError: regexp.MustCompile(`cannot store this payload faithfully`),
 			},
 		},
 	})

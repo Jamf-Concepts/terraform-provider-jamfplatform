@@ -441,3 +441,18 @@ func ExtractServerPayloadFromGeneral(wireXML []byte) ([]byte, error) {
 	}
 	return []byte(html.UnescapeString(string(inner))), nil
 }
+
+// PayloadFidelityCreateErrorDetail explains a create-time payload
+// verification failure: the Classic API stored the submitted payload with
+// semantically different content. Payload types the server stores verbatim
+// keep an extra XML entity layer for string values containing "&" or "<"
+// (Jamf product issue PI-827) — a device would receive "&amp;" where "&"
+// was intended. No client can work around it; see
+// jamfplatform-go-sdk/jamfplatform/acc_proclassic_profile_payloads_test.go
+// for the wire-verified server model.
+const PayloadFidelityCreateErrorDetail = "Jamf Pro's Classic API persisted one or more payload string values differently than submitted (Jamf product issue PI-827): payload types the server stores verbatim keep an extra XML entity layer for values containing \"&\" or \"<\" — a device would receive \"&amp;\" where \"&\" was intended. This is a server-side defect no client can work around. The created profile has been rolled back. Remove \"&\"/\"<\" from string values in the affected payload types, or manage this profile outside Terraform."
+
+// PayloadFidelityUpdateErrorDetail is the update-time variant: the
+// overwritten profile cannot be rolled back, so the divergence is called
+// out for manual remediation.
+const PayloadFidelityUpdateErrorDetail = "Jamf Pro's Classic API persisted one or more payload string values differently than submitted (Jamf product issue PI-827): payload types the server stores verbatim keep an extra XML entity layer for values containing \"&\" or \"<\" — a device would receive \"&amp;\" where \"&\" was intended. This is a server-side defect no client can work around. The profile on the server now differs from this configuration; remove \"&\"/\"<\" from string values in the affected payload types and re-apply, or manage this profile outside Terraform."
