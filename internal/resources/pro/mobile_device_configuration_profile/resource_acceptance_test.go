@@ -954,7 +954,7 @@ func TestAccResource_MobileDeviceConfigurationProfile_ReservedCharacterCorpusRej
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
-		CheckDestroy:             checkDestroy(t), // rollback must leave nothing behind
+		CheckDestroy:             checkDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config:      configMinimal(name, payload),

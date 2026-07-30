@@ -34,6 +34,10 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
+// Create posts the profile, reads the server-canonical form back into
+// state, and rolls the create back with an actionable diagnostic when the
+// server stored the payload unfaithfully (PI-827 — see
+// payloadhelpers.PayloadFidelityCreateErrorDetail).
 func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError("Provider not configured", providerNotConfigured)
@@ -105,15 +109,6 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// assignResourceModel's self-heal keeps the user-authored payload only
-	// when the server stored it faithfully. A mismatch here means the
-	// Classic API persisted semantically different content (PI-827 —
-	// verbatim-stored payload types keep an extra entity layer for values
-	// containing "&"/"<"; on the mobile endpoint that is EVERY payload
-	// type). Returning the server form for a practitioner-configured
-	// attribute would trip Terraform's inconsistent-result check with a
-	// cryptic message; roll the create back and fail with an actionable
-	// one instead.
 	if userAuthoredPayload != "" && plan.General != nil && plan.General.Payloads.ValueString() != userAuthoredPayload {
 		if delErr := r.client.DeleteMobileDeviceConfigurationProfileByID(createCtx, id); delErr != nil {
 			tflog.Warn(createCtx, "rollback delete after payload verification failure", map[string]any{"id": id, "error": delErr.Error()})
@@ -306,8 +301,6 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	// See the matching check in Create. On Update the overwrite cannot be
-	// rolled back — fail with the divergence called out for remediation.
 	if userAuthoredPayload != "" && plan.General != nil && plan.General.Payloads.ValueString() != userAuthoredPayload {
 		resp.Diagnostics.AddError("Jamf Pro cannot store this payload faithfully", payloadhelpers.PayloadFidelityUpdateErrorDetail)
 		return

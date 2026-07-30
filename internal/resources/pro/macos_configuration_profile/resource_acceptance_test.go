@@ -1191,14 +1191,14 @@ resource "jamfplatform_pro_macos_configuration_profile" "test" {
 // entity text, entity-bearing dict keys via all_five_mixed, a Santa-style
 // CEL expression, and an embedded CDATA section. The server canonicalises
 // representation (raw ">" is stored as "&gt;", numeric refs collapse, keys
-// sort) — the resource's semantic comparison must absorb all of it.
+// sort) — the resource's semantic comparison must absorb all of it. Steps:
+// apply, identical re-apply (must be an empty plan), a genuine value change
+// (must plan as an update, not be suppressed by the mask), then re-apply.
 func TestAccResource_MacOSConfigurationProfile_ReservedCharacterCorpus(t *testing.T) {
 	testhelpers.AccPreCheck(t)
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-mcp-corpus-" + suffix
 	payload := readFixture(t, "reserved_character_corpus.mobileconfig")
-
-	// A real value change inside the corpus must still surface as a plan.
 	changed := strings.Replace(payload, "target.team_id == \"EQHXZ8M8AV\"", "target.team_id == \"CHANGED000\"", 1)
 	if changed == payload {
 		t.Fatal("fixture edit did not apply — corpus fixture drifted?")
@@ -1212,9 +1212,6 @@ func TestAccResource_MacOSConfigurationProfile_ReservedCharacterCorpus(t *testin
 				Config: configMinimal(name, payload),
 			},
 			{
-				// Identical re-apply: server canonicalisation of the corpus
-				// (entities, key order, numeric-ref collapse) must be fully
-				// absorbed — empty plan or the resource has a perpetual diff.
 				Config: configMinimal(name, payload),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
@@ -1223,8 +1220,6 @@ func TestAccResource_MacOSConfigurationProfile_ReservedCharacterCorpus(t *testin
 				},
 			},
 			{
-				// Genuine value change inside the corpus must NOT be
-				// suppressed by the semantic mask.
 				Config: configMinimal(name, changed),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
@@ -1304,7 +1299,7 @@ func TestAccResource_MacOSConfigurationProfile_LoginWindowAmpersandRejected(t *t
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
-		CheckDestroy:             checkDestroy(t), // rollback must leave nothing behind
+		CheckDestroy:             checkDestroy(t),
 		Steps: []resource.TestStep{
 			{
 				Config:      configMinimal(name, payload),
