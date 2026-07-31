@@ -30,9 +30,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
+// Create posts the profile, reads the server-canonical form back into
+// state, and rolls the create back with an actionable diagnostic when the
+// server stored the payload unfaithfully (PI-827 — see
+// payloadhelpers.PayloadFidelityCreateErrorDetail).
 func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError("Provider not configured", providerNotConfigured)
@@ -102,6 +107,13 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 	}
 	resp.Diagnostics.Append(assignResourceModel(createCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if userAuthoredPayload != "" && plan.General != nil && plan.General.Payloads.ValueString() != userAuthoredPayload {
+		if delErr := r.client.DeleteMobileDeviceConfigurationProfileByID(createCtx, id); delErr != nil {
+			tflog.Warn(createCtx, "rollback delete after payload verification failure", map[string]any{"id": id, "error": delErr.Error()})
+		}
+		resp.Diagnostics.AddError("Jamf Pro cannot store this payload faithfully", payloadhelpers.PayloadFidelityCreateErrorDetail)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
@@ -287,6 +299,10 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 	}
 	resp.Diagnostics.Append(assignResourceModel(updateCtx, &plan, got, false)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if userAuthoredPayload != "" && plan.General != nil && plan.General.Payloads.ValueString() != userAuthoredPayload {
+		resp.Diagnostics.AddError("Jamf Pro cannot store this payload faithfully", payloadhelpers.PayloadFidelityUpdateErrorDetail)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)

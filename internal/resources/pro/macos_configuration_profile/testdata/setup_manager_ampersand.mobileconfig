@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.jamf.setupmanager</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>enrollmentActions</key>
+								<array>
+									<dict>
+										<key>arguments</key>
+										<array>
+											<string>-setTimeZone</string>
+											<string>Europe/Amsterdam</string>
+										</array>
+										<key>icon</key>
+										<string>symbol:clock</string>
+										<key>label</key>
+										<dict>
+											<key>da</key>
+											<string>Indstil tidszone</string>
+											<key>de</key>
+											<string>Zeitzone einstellen</string>
+											<key>en</key>
+											<string>Set Time Zone</string>
+											<key>en-GB</key>
+											<string>Set Time Zone</string>
+											<key>es</key>
+											<string>Establecer zona horaria</string>
+											<key>fi</key>
+											<string>Aseta aikavyöhyke</string>
+											<key>fr</key>
+											<string>Définir le fuseau horaire</string>
+											<key>he</key>
+											<string>הגדרות אזור זמן</string>
+											<key>it</key>
+											<string>Imposta il fuso orario</string>
+											<key>ja</key>
+											<string>タイムゾーンを設定</string>
+											<key>ko</key>
+											<string>시간대 설정</string>
+											<key>nb</key>
+											<string>Angi tidssone</string>
+											<key>nl</key>
+											<string>Tijdzone instellen</string>
+											<key>pl</key>
+											<string>Ustal strefę czasową</string>
+											<key>pt-BR</key>
+											<string>Definir fuso horário</string>
+											<key>pt-PT</key>
+											<string>Definir fuso horário</string>
+											<key>sv</key>
+											<string>Ställ in tidszon</string>
+											<key>tr</key>
+											<string>Saat dilimini ayarla</string>
+											<key>zh-Hans</key>
+											<string>设置时区</string>
+											<key>zh-Hant</key>
+											<string>設定時區</string>
+											<key>zh-TW</key>
+											<string>設定時區</string>
+										</dict>
+										<key>requiresRoot</key>
+										<true/>
+										<key>shell</key>
+										<string>/usr/sbin/systemsetup</string>
+									</dict>
+									<dict>
+										<key>icon</key>
+										<string>https://ics.services.jamfcloud.com/icon/hash_bb4e9c7d19adf8360ff28d666b01e66c35ae3e8d190660ac496d5a8abf4276a8</string>
+										<key>label</key>
+										<string>Microsoft 365</string>
+										<key>policy</key>
+										<string>install_microsoft365</string>
+									</dict>
+									<dict>
+										<key>icon</key>
+										<string>https://ics.services.jamfcloud.com/icon/hash_87d2224fa990a47de96f63fb2f84aa3b7304c20a3ff29412f5a7a484745fd2c9</string>
+										<key>label</key>
+										<string>Google Chrome</string>
+										<key>policy</key>
+										<string>install_chrome</string>
+									</dict>
+									<dict>
+										<key>icon</key>
+										<string>https://ics.services.jamfcloud.com/icon/hash_d72c39716b456bb647a1cfe01942656bd25dfcdd0faaa147dcce337589b75a8a</string>
+										<key>label</key>
+										<string>BBEdit</string>
+										<key>policy</key>
+										<string>install_bbedit</string>
+									</dict>
+									<dict>
+										<key>icon</key>
+										<string>symbol:app.badge</string>
+										<key>label</key>
+										<string>Jamf Protect</string>
+										<key>timeout</key>
+										<integer>600</integer>
+										<key>watchPath</key>
+										<string>/Applications/JamfProtect.app</string>
+									</dict>
+								</array>
+								<key>finalCountdown</key>
+								<integer>30</integer>
+								<key>icon</key>
+								<string>name:AppIcon</string>
+								<key>jssID</key>
+								<string>$JSSID</string>
+								<key>message</key>
+								<dict>
+									<key>da</key>
+									<string>Vær tålmodig, mens Setup Manager konfigurerer din nye Mac.</string>
+									<key>de</key>
+									<string>Bitte etwas Geduld während Setup Manager deinen neuen Mac konfiguriert.</string>
+									<key>en</key>
+									<string>Please be patient while Setup Manager configures your new Mac.</string>
+									<key>en-GB</key>
+									<string>Please be patient whilst Setup Manager configures your new Mac.</string>
+									<key>es</key>
+									<string>Por favor espere mientras Setup Manager configura tu nuevo Mac.</string>
+									<key>fi</key>
+									<string>Ole kärsivällinen, kun Setup Manager määrittää uutta Mac-tietokonettasi.</string>
+									<key>fr</key>
+									<string>Veuillez être patient pendant que Setup Manager configure votre nouveau Mac.</string>
+									<key>he</key>
+									<string>אנא התאזר בסבלנות בזמן ש-Setup Manager מגדיר את ה-Mac החדש שלך</string>
+									<key>it</key>
+									<string>Sii paziente mentre Setup Manager configura il tuo nuovo Mac.</string>
+									<key>ja</key>
+									<string>Setup Managerが新しいMacを構成している間、しばらくお待ちください。</string>
+									<key>ko</key>
+									<string>Setup Manager가 새 Mac을 구성하는 동안 기다려 주십시오.</string>
+									<key>nb</key>
+									<string>Vær tålmodig mens Setup Manager konfigurerer den nye Mac-en din.</string>
+									<key>nl</key>
+									<string>Even geduld terwijl Setup Manager je nieuwe Mac configureert.</string>
+									<key>pl</key>
+									<string>Prosimy o cierpliwość, podczas gdy Setup Manager konfiguruje Twojego nowego Maca.</string>
+									<key>pt-BR</key>
+									<string>Por favor aguarde enquanto o Setup Manager configura o seu novo Mac.</string>
+									<key>pt-PT</key>
+									<string>Por favor aguarde enquanto o Setup Manager configura o seu novo Mac.</string>
+									<key>sv</key>
+									<string>Ha tålamod medan Setup Manager konfigurerar din nya Mac.</string>
+									<key>tr</key>
+									<string>Setup Manager yeni Mac'inizi yapılandırırken lütfen sabırlı olun.</string>
+									<key>zh-Hans</key>
+									<string>请稍候，Setup Manager 正在配置你的新 Mac。</string>
+									<key>zh-Hant</key>
+									<string>請稍候，Setup Manager 正在設定你的新 Mac。</string>
+									<key>zh-TW</key>
+									<string>請稍候，Setup Manager 正在設定你的新 Mac。</string>
+								</dict>
+								<key>title</key>
+								<dict>
+									<key>da</key>
+									<string>Velkommen!</string>
+									<key>de</key>
+									<string>Willkommen!</string>
+									<key>en</key>
+									<string>Welcome!</string>
+									<key>en-GB</key>
+									<string>Welcome!</string>
+									<key>es</key>
+									<string>¡^[^[Bienvenido](inflect: true)](inflectionAlternative: 'Te damos la bienvenida')!</string>
+									<key>fi</key>
+									<string>Tervetuloa!</string>
+									<key>fr</key>
+									<string>Bienvenue!</string>
+									<key>he</key>
+									<string>ברוכים הבאים!</string>
+									<key>it</key>
+									<string>^[Benvenuto](inflect: true, inflectionAlternative: "Ciao")!</string>
+									<key>ja</key>
+									<string>ようこそ!</string>
+									<key>ko</key>
+									<string>환영합니다!</string>
+									<key>nb</key>
+									<string>Velkommen</string>
+									<key>nl</key>
+									<string>Welcom!</string>
+									<key>pl</key>
+									<string>Witamy!</string>
+									<key>pt-BR</key>
+									<string>Bem-vindo!</string>
+									<key>pt-PT</key>
+									<string>Bem-vindo!</string>
+									<key>sv</key>
+									<string>Välkommen</string>
+									<key>tr</key>
+									<string>Hoş geldiniz!</string>
+									<key>zh-Hans</key>
+									<string>欢迎!</string>
+									<key>zh-Hant</key>
+									<string>歡迎!</string>
+									<key>zh-TW</key>
+									<string>歡迎!</string>
+								</dict>
+								<key>userEntry</key>
+								<dict>
+									<key>assetTag</key>
+									<dict>
+										<key>placeholder</key>
+										<string>ABC12345</string>
+									</dict>
+									<key>computerName</key>
+									<string>Mac-12345</string>
+									<key>department</key>
+									<dict>
+										<key>options</key>
+										<array>
+											<string>Sales</string>
+											<string>R&amp;D</string>
+											<string>IT</string>
+										</array>
+									</dict>
+									<key>userID</key>
+									<dict>
+										<key>placeholder</key>
+										<dict>
+											<key>da</key>
+											<string>fornavn.efternavn@example.com</string>
+											<key>de</key>
+											<string>vorname.nachname@example.com</string>
+											<key>en</key>
+											<string>first.last@example.com</string>
+											<key>en-GB</key>
+											<string>first.last@example.com</string>
+											<key>fi</key>
+											<string>etunimi.sukunimi@example.com</string>
+											<key>ja</key>
+											<string>名.姓@example.com</string>
+											<key>ko</key>
+											<string>이름.성@example.com</string>
+											<key>nl</key>
+											<string>voornaam.achternaam@example.com</string>
+											<key>pt-BR</key>
+											<string>nome.sobrenome@example.com</string>
+											<key>pt-PT</key>
+											<string>nome.apelido@example.com</string>
+											<key>tr</key>
+											<string>ad.soyad@example.com</string>
+											<key>zh-Hans</key>
+											<string>名.姓@example.com</string>
+											<key>zh-Hant</key>
+											<string>名.姓@example.com</string>
+											<key>zh-TW</key>
+											<string>名.姓@example.com</string>
+										</dict>
+									</dict>
+								</dict>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadDisplayName</key>
+			<string>Custom Settings</string>
+			<key>PayloadIdentifier</key>
+			<string>A6DE8366-326D-4BF6-BE90-BBF2EB167912</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>A6DE8366-326D-4BF6-BE90-BBF2EB167912</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>Setup Manager</string>
+	<key>PayloadIdentifier</key>
+	<string>2C4FCE39-744B-4A63-BC38-FB41EE160FF3</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>2C4FCE39-744B-4A63-BC38-FB41EE160FF3</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

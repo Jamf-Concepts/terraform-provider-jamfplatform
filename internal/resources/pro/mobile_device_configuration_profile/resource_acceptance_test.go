@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -927,6 +928,37 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "test" {
 				// explicit empty element. Implicit post-step empty-plan enforces it.
 				Config: cfg(``),
 				Check:  resource.TestCheckResourceAttr("jamfplatform_pro_mobile_device_configuration_profile.test", "scope.limitations.network_segment_ids.#", "0"),
+			},
+		},
+	})
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_ReservedCharacterCorpusRejected
+// documents a server defect, not provider behaviour: the Classic API
+// stores mobile device payload fragments VERBATIM after validating the
+// escaped wire form (PI-827; see jamfplatform-go-sdk's
+// acc_proclassic_profile_payloads_test.go for the wire-level matrix), so
+// every entity-bearing value ("&"/"<" in a string) would be persisted
+// with one extra entity layer — a device would see `&amp;` where `&` was
+// meant. No client can store such values faithfully on this endpoint.
+// The provider verifies the stored payload after create, rolls the
+// profile back, and fails with an actionable diagnostic. If this test
+// starts failing because the apply SUCCEEDS, Jamf fixed the ingest
+// defect — replace this with a byte-exact corpus round-trip like the
+// macOS resource has.
+func TestAccResource_MobileDeviceConfigurationProfile_ReservedCharacterCorpusRejected(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdcp-corpus-" + suffix
+	payload := readFixture(t, "reserved_character_corpus.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config:      configMinimal(name, payload),
+				ExpectError: regexp.MustCompile(`cannot store this payload faithfully`),
 			},
 		},
 	})
