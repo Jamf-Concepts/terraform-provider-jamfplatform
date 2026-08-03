@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*UnlockUserAccountAction)(nil)
 var _ action.ActionWithConfigure = (*UnlockUserAccountAction)(nil)
+var _ action.ActionWithConfigValidators = (*UnlockUserAccountAction)(nil)
 
 // UnlockUserAccountAction unlocks a local user account on a computer.
 type UnlockUserAccountAction struct {
@@ -45,6 +46,10 @@ func (a *UnlockUserAccountAction) Schema(ctx context.Context, req action.SchemaR
 		MarkdownDescription: "Unlocks a local user account on a computer." + unlockUserAccountPrivileges,
 		Attributes:          attrs,
 	}
+}
+
+func (a *UnlockUserAccountAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *UnlockUserAccountAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

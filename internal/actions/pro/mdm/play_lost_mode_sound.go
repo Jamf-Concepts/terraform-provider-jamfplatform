@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*PlayLostModeSoundAction)(nil)
 var _ action.ActionWithConfigure = (*PlayLostModeSoundAction)(nil)
+var _ action.ActionWithConfigValidators = (*PlayLostModeSoundAction)(nil)
 
 // PlayLostModeSoundAction plays a sound on a mobile device that is in Lost Mode.
 type PlayLostModeSoundAction struct {
@@ -39,6 +40,10 @@ func (a *PlayLostModeSoundAction) Schema(ctx context.Context, req action.SchemaR
 		MarkdownDescription: "Plays a sound on a mobile device that is in Lost Mode." + playLostModeSoundPrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
+}
+
+func (a *PlayLostModeSoundAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *PlayLostModeSoundAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

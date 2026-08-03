@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
@@ -51,7 +52,11 @@ func (a *RetryPatchPolicyLogsAction) Schema(ctx context.Context, req action.Sche
 			"device_ids": actionschema.ListAttribute{
 				Optional:            true,
 				ElementType:         types.StringType,
-				MarkdownDescription: "Jamf Pro computer IDs to retry. Omit to retry all failed devices.",
+				MarkdownDescription: "Jamf Pro computer IDs to retry. Omit to retry all failed devices; an empty list is not a valid way to say that.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+					listvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
+				},
 			},
 		},
 	}

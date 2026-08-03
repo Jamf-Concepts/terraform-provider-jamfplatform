@@ -6,8 +6,10 @@ package mdmactions
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -15,6 +17,7 @@ import (
 
 var _ action.Action = (*DeviceLockAction)(nil)
 var _ action.ActionWithConfigure = (*DeviceLockAction)(nil)
+var _ action.ActionWithConfigValidators = (*DeviceLockAction)(nil)
 
 // DeviceLockAction locks a computer or mobile device.
 type DeviceLockAction struct {
@@ -49,12 +52,20 @@ func (a *DeviceLockAction) Schema(ctx context.Context, req action.SchemaRequest,
 	}
 	attrs["pin"] = actionschema.StringAttribute{
 		Optional:            true,
-		MarkdownDescription: "Six-digit PIN required to unlock a computer. Applies to computers only.",
+		WriteOnly:           true,
+		MarkdownDescription: "Six-character PIN needed to unlock the computer afterwards. Applies to computers only; mobile devices ignore it. Jamf Pro checks the length only, so a six-character non-numeric PIN is accepted here — but macOS expects six digits, so use digits.",
+		Validators: []validator.String{
+			stringvalidator.LengthBetween(6, 6),
+		},
 	}
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "Locks a computer or mobile device." + deviceLockPrivileges,
 		Attributes:          attrs,
 	}
+}
+
+func (a *DeviceLockAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *DeviceLockAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

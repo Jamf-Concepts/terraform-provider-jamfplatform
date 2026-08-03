@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
@@ -137,22 +138,31 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 				},
 			},
 			"build_version": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "An optional specific OS build to enforce alongside `specific_version`.",
+				Optional: true,
+				MarkdownDescription: "A specific OS build to enforce, paired with `specific_version`. " +
+					"Only valid when `version_type` is `CUSTOM_VERSION` — Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"force_install_local_date_time": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "The local date and time by which the update must be installed, in `YYYY-MM-DDThh:mm:ss` form. Applies when `update_action` is `DOWNLOAD_INSTALL_SCHEDULE`.",
+				Optional: true,
+				MarkdownDescription: "The local date and time by which the update must be installed, in `YYYY-MM-DDThh:mm:ss` form (for example `2026-12-25T21:09:31`). " +
+					"Applies when `update_action` is `DOWNLOAD_INSTALL_SCHEDULE`.",
 				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
+					stringvalidator.RegexMatches(
+						forceInstallLocalDateTimePattern,
+						"must be a local date and time in YYYY-MM-DDThh:mm:ss form, for example 2026-12-25T21:09:31",
+					),
 				},
 			},
 			"max_deferrals": actionschema.Int64Attribute{
-				Optional:            true,
-				MarkdownDescription: "The number of times a user may defer the update. Applies when `update_action` is `DOWNLOAD_INSTALL_ALLOW_DEFERRAL`.",
+				Optional: true,
+				MarkdownDescription: "How many times a user may defer the update, from `0` to `99`. " +
+					"Applies when `update_action` is `DOWNLOAD_INSTALL_ALLOW_DEFERRAL`.",
+				Validators: []validator.Int64{
+					int64validator.Between(0, 99),
+				},
 			},
 		},
 	}
@@ -161,6 +171,7 @@ func (a *PlanAction) Schema(ctx context.Context, req action.SchemaRequest, resp 
 func (a *PlanAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
 	return []action.ConfigValidator{
 		specificVersionRequiredValidator{},
+		buildVersionCustomOnlyValidator{},
 	}
 }
 

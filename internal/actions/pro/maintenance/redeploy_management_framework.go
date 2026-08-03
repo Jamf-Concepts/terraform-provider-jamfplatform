@@ -14,6 +14,7 @@ import (
 
 var _ action.Action = (*RedeployManagementFrameworkAction)(nil)
 var _ action.ActionWithConfigure = (*RedeployManagementFrameworkAction)(nil)
+var _ action.ActionWithConfigValidators = (*RedeployManagementFrameworkAction)(nil)
 
 // RedeployManagementFrameworkAction redeploys the Jamf management framework to a computer.
 type RedeployManagementFrameworkAction struct {
@@ -39,6 +40,10 @@ func (a *RedeployManagementFrameworkAction) Schema(ctx context.Context, req acti
 		MarkdownDescription: "Redeploys the Jamf management framework (binary and MDM management profile) to a computer." + redeployManagementFrameworkPrivileges,
 		Attributes:          computerTargetAttributes(),
 	}
+}
+
+func (a *RedeployManagementFrameworkAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return computerTargetConfigValidators()
 }
 
 func (a *RedeployManagementFrameworkAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

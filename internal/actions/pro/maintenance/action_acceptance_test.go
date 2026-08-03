@@ -80,7 +80,8 @@ resource "jamfplatform_pro_policy" "test" {
 action "jamfplatform_pro_flush_policy_logs" "flush" {
   config {
     policy_id = jamfplatform_pro_policy.test.id
-    interval  = "Six+Months"
+    quantity  = "Six"
+    period    = "Months"
   }
 }
 

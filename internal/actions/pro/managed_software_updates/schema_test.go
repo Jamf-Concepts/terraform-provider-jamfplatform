@@ -56,8 +56,24 @@ func TestPlanAction_Schema(t *testing.T) {
 func TestPlanAction_ConfigValidatorsWired(t *testing.T) {
 	a := NewPlanAction()
 	validators := a.(*PlanAction).ConfigValidators(context.Background())
-	if len(validators) != 1 {
-		t.Fatalf("expected exactly one ConfigValidator (specific_version required), got %d", len(validators))
+	if len(validators) != 2 {
+		t.Fatalf("expected two ConfigValidators (specific_version required, build_version CUSTOM_VERSION-only), got %d", len(validators))
+	}
+
+	var haveSpecificVersion, haveBuildVersion bool
+	for _, v := range validators {
+		switch v.(type) {
+		case specificVersionRequiredValidator:
+			haveSpecificVersion = true
+		case buildVersionCustomOnlyValidator:
+			haveBuildVersion = true
+		}
+	}
+	if !haveSpecificVersion {
+		t.Error("specificVersionRequiredValidator not wired")
+	}
+	if !haveBuildVersion {
+		t.Error("buildVersionCustomOnlyValidator not wired")
 	}
 }
 

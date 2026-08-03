@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*LogOutUserAction)(nil)
 var _ action.ActionWithConfigure = (*LogOutUserAction)(nil)
+var _ action.ActionWithConfigValidators = (*LogOutUserAction)(nil)
 
 // LogOutUserAction logs out the current user on a Shared iPad.
 type LogOutUserAction struct {
@@ -39,6 +40,10 @@ func (a *LogOutUserAction) Schema(ctx context.Context, req action.SchemaRequest,
 		MarkdownDescription: "Logs out the current user on a Shared iPad." + logOutUserPrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
+}
+
+func (a *LogOutUserAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *LogOutUserAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

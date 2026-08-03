@@ -48,5 +48,5 @@ action "jamfplatform_pro_send_blank_push" "nudge" {
 
 ### Optional
 
-- `management_ids` (List of String) Jamf Pro Management IDs of the devices to push. Provide this and/or `serial_numbers`.
-- `serial_numbers` (List of String) Serial numbers of the devices to push (case-sensitive). Provide this and/or `management_ids`.
+- `management_ids` (List of String) Jamf Pro Management IDs of the devices to push. Set this and/or `serial_numbers`.
+- `serial_numbers` (List of String) Serial numbers of the devices to push (case-sensitive). Set this and/or `management_ids`.

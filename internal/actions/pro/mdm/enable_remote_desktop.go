@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*EnableRemoteDesktopAction)(nil)
 var _ action.ActionWithConfigure = (*EnableRemoteDesktopAction)(nil)
+var _ action.ActionWithConfigValidators = (*EnableRemoteDesktopAction)(nil)
 
 // EnableRemoteDesktopAction enables Remote Desktop (remote management) on a computer.
 type EnableRemoteDesktopAction struct {
@@ -39,6 +40,10 @@ func (a *EnableRemoteDesktopAction) Schema(ctx context.Context, req action.Schem
 		MarkdownDescription: "Enables Remote Desktop (remote management) on a computer." + enableRemoteDesktopPrivileges,
 		Attributes:          targetAttributes("computer"),
 	}
+}
+
+func (a *EnableRemoteDesktopAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *EnableRemoteDesktopAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

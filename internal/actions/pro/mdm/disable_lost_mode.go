@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*DisableLostModeAction)(nil)
 var _ action.ActionWithConfigure = (*DisableLostModeAction)(nil)
+var _ action.ActionWithConfigValidators = (*DisableLostModeAction)(nil)
 
 // DisableLostModeAction turns off Lost Mode on a supervised mobile device.
 type DisableLostModeAction struct {
@@ -39,6 +40,10 @@ func (a *DisableLostModeAction) Schema(ctx context.Context, req action.SchemaReq
 		MarkdownDescription: "Turns off Lost Mode on a supervised mobile device." + disableLostModePrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
+}
+
+func (a *DisableLostModeAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *DisableLostModeAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

@@ -42,5 +42,5 @@ action "jamfplatform_pro_clear_restrictions_password" "clear_screen_time" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
-- `serial_number` (String) Serial number of the mobile device (case-sensitive). Provide this or `management_id`.
+- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
+- `serial_number` (String) Serial number of the mobile device (case-sensitive). Set exactly one of this or `management_id`.

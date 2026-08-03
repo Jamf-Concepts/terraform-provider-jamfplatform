@@ -6,6 +6,7 @@ package mdmactions
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
@@ -49,7 +50,13 @@ func (a *FlushMdmCommandsAction) Schema(ctx context.Context, req action.SchemaRe
 			},
 			"id": actionschema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Jamf Pro ID of the device or group to flush commands for.",
+				MarkdownDescription: "Jamf Pro ID of the device or group to flush commands for. Numeric.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						regexp.MustCompile(`^\d+$`),
+						"must be a numeric Jamf Pro ID",
+					),
+				},
 			},
 			"status": actionschema.StringAttribute{
 				Required:            true,

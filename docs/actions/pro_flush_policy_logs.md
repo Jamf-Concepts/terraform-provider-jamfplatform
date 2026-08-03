@@ -3,18 +3,19 @@
 page_title: "jamfplatform_pro_flush_policy_logs Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Flushes the logs for a policy older than the given interval.
+  Flushes a policy's logs that are older than the age given by quantity + period (Settings → Jamf Pro information → Log flushing in the Jamf Pro admin UI). For example quantity = "Six" with period = "Months" flushes logs older than six months. Flushing is immediate and cannot be undone. Takes no state.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
   | `delete:pro:policies` |
   | `execute:pro:flush-policy-logs` |
+  | `read:pro:policies` |
 ---
 
 # jamfplatform_pro_flush_policy_logs (Action)
 
-Flushes the logs for a policy older than the given interval.
+Flushes a policy's logs that are older than the age given by `quantity` + `period` (**Settings → Jamf Pro information → Log flushing** in the Jamf Pro admin UI). For example `quantity = "Six"` with `period = "Months"` flushes logs older than six months. Flushing is immediate and cannot be undone. Takes no state.
 
 **Required Jamf privileges**
 
@@ -24,14 +25,36 @@ The Jamf Platform API integration used by the provider must be granted the follo
 |---|
 | `delete:pro:policies` |
 | `execute:pro:flush-policy-logs` |
+| `read:pro:policies` |
 
 ## Example Usage
 
 ```terraform
+# Flush a policy's logs older than six months.
 action "jamfplatform_pro_flush_policy_logs" "flush_old" {
   config {
     policy_id = "123"
-    interval  = "Six+Months"
+    quantity  = "Six"
+    period    = "Months"
+  }
+}
+
+# quantity = "Zero" flushes every log for the policy, because no log is younger
+# than zero days. There is no "Four" or "Five" quantity.
+action "jamfplatform_pro_flush_policy_logs" "flush_all" {
+  config {
+    policy_id = "123"
+    quantity  = "Zero"
+    period    = "Days"
+  }
+}
+
+resource "terraform_data" "log_maintenance" {
+  lifecycle {
+    action_trigger {
+      events  = [after_create]
+      actions = [action.jamfplatform_pro_flush_policy_logs.flush_old]
+    }
   }
 }
 ```
@@ -41,5 +64,6 @@ action "jamfplatform_pro_flush_policy_logs" "flush_old" {
 
 ### Required
 
-- `interval` (String) Flush logs older than this interval, e.g. `Six+Months`.
-- `policy_id` (String) Jamf Pro policy ID.
+- `period` (String) The unit `quantity` counts. One of `Days`, `Weeks`, `Months`, `Years`.
+- `policy_id` (String) Jamf Pro policy ID whose logs are flushed. The policy is checked before flushing, because Jamf Pro reports success even for an ID that does not exist.
+- `quantity` (String) How many `period` units old a log must be to be flushed. One of `Zero`, `One`, `Two`, `Three`, `Six` — Jamf Pro accepts no other quantity, and there is deliberately no `Four` or `Five`. **`Zero` flushes every log for the policy** regardless of `period`, because no log is younger than zero days.

@@ -32,13 +32,13 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ```terraform
 action "jamfplatform_pro_device_lock" "lock_lost_laptop" {
   config {
-    # Provide a management_id (the `id` from the jamfplatform_devices/
-    # jamfplatform_device data sources) or a serial_number.
+    # Set exactly one of management_id (the `id` from the jamfplatform_devices/
+    # jamfplatform_device data sources) or serial_number.
     serial_number = "C02XXXXXXXXX"
 
     message      = "This device has been locked. Please contact IT."
     phone_number = "+1-555-0100"
-    pin          = "123456" # six digits; computers only
+    pin          = "123456" # exactly six characters; computers only
   }
 }
 ```
@@ -48,8 +48,10 @@ action "jamfplatform_pro_device_lock" "lock_lost_laptop" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
+- `management_id` (String) Jamf Pro Management ID of the device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
 - `message` (String) Message to display on the lock screen.
 - `phone_number` (String) Phone number to display on the lock screen.
-- `pin` (String) Six-digit PIN required to unlock a computer. Applies to computers only.
-- `serial_number` (String) Serial number of the device (case-sensitive). Provide this or `management_id`.
+- `pin` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Six-character PIN needed to unlock the computer afterwards. Applies to computers only; mobile devices ignore it. Jamf Pro checks the length only, so a six-character non-numeric PIN is accepted here — but macOS expects six digits, so use digits.
+- `serial_number` (String) Serial number of the device (case-sensitive). Set exactly one of this or `management_id`.

@@ -7,16 +7,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var _ action.Action = (*ShutdownAction)(nil)
 var _ action.ActionWithConfigure = (*ShutdownAction)(nil)
+var _ action.ActionWithConfigValidators = (*ShutdownAction)(nil)
 
 // ShutdownAction invokes a Jamf Platform shutdown command for a device.
 type ShutdownAction struct {
@@ -39,24 +37,12 @@ func (a *ShutdownAction) Metadata(ctx context.Context, req action.MetadataReques
 func (a *ShutdownAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "Requests that a device shut down. Requires **Device Management Actions API access**." + shutdownDevicePrivileges,
-		Attributes: map[string]actionschema.Attribute{
-			"device_id": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Jamf Pro Management ID. Provide this or `serial_number`.",
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
-				},
-			},
-			"serial_number": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.",
-				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("device_id")),
-				},
-			},
-		},
+		Attributes:          deviceTargetAttributes(),
 	}
+}
+
+func (a *ShutdownAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *ShutdownAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

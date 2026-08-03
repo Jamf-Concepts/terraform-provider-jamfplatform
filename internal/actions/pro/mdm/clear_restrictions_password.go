@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*ClearRestrictionsPasswordAction)(nil)
 var _ action.ActionWithConfigure = (*ClearRestrictionsPasswordAction)(nil)
+var _ action.ActionWithConfigValidators = (*ClearRestrictionsPasswordAction)(nil)
 
 // ClearRestrictionsPasswordAction clears the Screen Time (restrictions) passcode on a mobile device.
 type ClearRestrictionsPasswordAction struct {
@@ -39,6 +40,10 @@ func (a *ClearRestrictionsPasswordAction) Schema(ctx context.Context, req action
 		MarkdownDescription: "Clears the Screen Time (restrictions) passcode on a mobile device." + clearRestrictionsPasswordPrivileges,
 		Attributes:          targetAttributes("mobile device"),
 	}
+}
+
+func (a *ClearRestrictionsPasswordAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *ClearRestrictionsPasswordAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

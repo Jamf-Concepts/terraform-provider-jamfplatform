@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_enable_lost_mode Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Turns on Lost Mode on a supervised mobile device.
+  Turns on Lost Mode on a supervised mobile device. At least one of lost_mode_message or lost_mode_phone must be set — a lost_mode_footnote alone is rejected.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -15,7 +15,7 @@ description: |-
 
 # jamfplatform_pro_enable_lost_mode (Action)
 
-Turns on Lost Mode on a supervised mobile device.
+Turns on Lost Mode on a supervised mobile device. At least one of `lost_mode_message` or `lost_mode_phone` must be set — a `lost_mode_footnote` alone is rejected.
 
 **Required Jamf privileges**
 
@@ -46,8 +46,8 @@ action "jamfplatform_pro_enable_lost_mode" "enable" {
 
 ### Optional
 
-- `lost_mode_footnote` (String) Footnote to display on the Lost Mode lock screen.
-- `lost_mode_message` (String) Message to display on the Lost Mode lock screen.
-- `lost_mode_phone` (String) Phone number to display on the Lost Mode lock screen.
-- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
-- `serial_number` (String) Serial number of the mobile device (case-sensitive). Provide this or `management_id`.
+- `lost_mode_footnote` (String) Footnote to display on the Lost Mode lock screen. On its own this is not enough — Jamf Pro still requires `lost_mode_message` or `lost_mode_phone`.
+- `lost_mode_message` (String) Message to display on the Lost Mode lock screen. Set this or `lost_mode_phone` (or both).
+- `lost_mode_phone` (String) Phone number to display on the Lost Mode lock screen. Set this or `lost_mode_message` (or both).
+- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
+- `serial_number` (String) Serial number of the mobile device (case-sensitive). Set exactly one of this or `management_id`.

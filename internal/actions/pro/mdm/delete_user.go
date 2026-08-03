@@ -6,8 +6,11 @@ package mdmactions
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -15,6 +18,7 @@ import (
 
 var _ action.Action = (*DeleteUserAction)(nil)
 var _ action.ActionWithConfigure = (*DeleteUserAction)(nil)
+var _ action.ActionWithConfigValidators = (*DeleteUserAction)(nil)
 
 // DeleteUserAction removes a user account from a Shared iPad.
 type DeleteUserAction struct {
@@ -41,20 +45,28 @@ func (a *DeleteUserAction) Schema(ctx context.Context, req action.SchemaRequest,
 	attrs := targetAttributes("mobile device")
 	attrs["user_name"] = actionschema.StringAttribute{
 		Optional:            true,
-		MarkdownDescription: "User account to remove from the Shared iPad.",
+		MarkdownDescription: "User account to remove from the Shared iPad. Set this or `delete_all_users`, not both.",
+		Validators: []validator.String{
+			stringvalidator.LengthAtLeast(1),
+			stringvalidator.ConflictsWith(path.MatchRoot("delete_all_users")),
+		},
 	}
 	attrs["delete_all_users"] = actionschema.BoolAttribute{
 		Optional:            true,
-		MarkdownDescription: "Remove every user account from the Shared iPad.",
+		MarkdownDescription: "Remove every user account from the Shared iPad. Set this or `user_name`, not both.",
 	}
 	attrs["force_deletion"] = actionschema.BoolAttribute{
 		Optional:            true,
 		MarkdownDescription: "Force removal even when the account has unsynced data.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Removes a user account from a Shared iPad." + deleteUserPrivileges,
+		MarkdownDescription: "Removes a user account from a Shared iPad. Name a single account with `user_name`, or clear them all with `delete_all_users`." + deleteUserPrivileges,
 		Attributes:          attrs,
 	}
+}
+
+func (a *DeleteUserAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *DeleteUserAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

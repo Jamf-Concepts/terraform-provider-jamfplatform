@@ -7,8 +7,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/actionvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -16,6 +21,7 @@ import (
 
 var _ action.Action = (*SendBlankPushAction)(nil)
 var _ action.ActionWithConfigure = (*SendBlankPushAction)(nil)
+var _ action.ActionWithConfigValidators = (*SendBlankPushAction)(nil)
 
 // SendBlankPushAction sends a blank push notification to one or more devices.
 type SendBlankPushAction struct {
@@ -42,14 +48,31 @@ func (a *SendBlankPushAction) Schema(ctx context.Context, req action.SchemaReque
 			"management_ids": actionschema.ListAttribute{
 				Optional:            true,
 				ElementType:         types.StringType,
-				MarkdownDescription: "Jamf Pro Management IDs of the devices to push. Provide this and/or `serial_numbers`.",
+				MarkdownDescription: "Jamf Pro Management IDs of the devices to push. Set this and/or `serial_numbers`.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+					listvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
+				},
 			},
 			"serial_numbers": actionschema.ListAttribute{
 				Optional:            true,
 				ElementType:         types.StringType,
-				MarkdownDescription: "Serial numbers of the devices to push (case-sensitive). Provide this and/or `management_ids`.",
+				MarkdownDescription: "Serial numbers of the devices to push (case-sensitive). Set this and/or `management_ids`.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+					listvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
+				},
 			},
 		},
+	}
+}
+
+func (a *SendBlankPushAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return []action.ConfigValidator{
+		actionvalidator.AtLeastOneOf(
+			path.MatchRoot("management_ids"),
+			path.MatchRoot("serial_numbers"),
+		),
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/actionvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
@@ -92,42 +93,47 @@ func (a *maintenanceAction) ensureClassicClient(resp *action.InvokeResponse) boo
 
 // computerTargetAttributes returns the management_id / serial_number / udid
 // selector for actions that target a single computer by its Jamf Pro inventory
-// record. Provide exactly one.
+// record.
+//
+// Exactly-one-of is enforced by computerTargetConfigValidators rather than by
+// per-attribute ConflictsWith, so that supplying NO identifier also fails at
+// plan time instead of part-way through the apply.
 func computerTargetAttributes() map[string]actionschema.Attribute {
 	return map[string]actionschema.Attribute{
 		"management_id": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this, `serial_number`, or `udid`.",
+			MarkdownDescription: "Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this, `serial_number`, or `udid`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
-				stringvalidator.ConflictsWith(
-					path.MatchRelative().AtParent().AtName("serial_number"),
-					path.MatchRelative().AtParent().AtName("udid"),
-				),
 			},
 		},
 		"serial_number": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Serial number of the computer (case-sensitive). Provide this, `management_id`, or `udid`.",
+			MarkdownDescription: "Serial number of the computer (case-sensitive). Set exactly one of this, `management_id`, or `udid`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
-				stringvalidator.ConflictsWith(
-					path.MatchRelative().AtParent().AtName("management_id"),
-					path.MatchRelative().AtParent().AtName("udid"),
-				),
 			},
 		},
 		"udid": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Hardware UDID of the computer. Provide this, `management_id`, or `serial_number`.",
+			MarkdownDescription: "Hardware UDID of the computer. Set exactly one of this, `management_id`, or `serial_number`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
-				stringvalidator.ConflictsWith(
-					path.MatchRelative().AtParent().AtName("management_id"),
-					path.MatchRelative().AtParent().AtName("serial_number"),
-				),
 			},
 		},
+	}
+}
+
+// computerTargetConfigValidators is the plan-time counterpart to
+// computerTargetAttributes: exactly one of management_id / serial_number / udid
+// selects the computer.
+func computerTargetConfigValidators() []action.ConfigValidator {
+	return []action.ConfigValidator{
+		actionvalidator.ExactlyOneOf(
+			path.MatchRoot("management_id"),
+			path.MatchRoot("serial_number"),
+			path.MatchRoot("udid"),
+		),
 	}
 }
 

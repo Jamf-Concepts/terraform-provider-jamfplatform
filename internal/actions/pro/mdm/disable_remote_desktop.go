@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*DisableRemoteDesktopAction)(nil)
 var _ action.ActionWithConfigure = (*DisableRemoteDesktopAction)(nil)
+var _ action.ActionWithConfigValidators = (*DisableRemoteDesktopAction)(nil)
 
 // DisableRemoteDesktopAction disables Remote Desktop (remote management) on a computer.
 type DisableRemoteDesktopAction struct {
@@ -39,6 +40,10 @@ func (a *DisableRemoteDesktopAction) Schema(ctx context.Context, req action.Sche
 		MarkdownDescription: "Disables Remote Desktop (remote management) on a computer." + disableRemoteDesktopPrivileges,
 		Attributes:          targetAttributes("computer"),
 	}
+}
+
+func (a *DisableRemoteDesktopAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *DisableRemoteDesktopAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

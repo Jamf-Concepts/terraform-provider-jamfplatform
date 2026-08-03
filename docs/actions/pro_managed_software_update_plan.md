@@ -54,9 +54,13 @@ action "jamfplatform_pro_managed_software_update_plan" "enforce_latest" {
     # Required only when version_type is SPECIFIC_VERSION or CUSTOM_VERSION:
     # specific_version = "15.1"
 
+    # Only valid when version_type is CUSTOM_VERSION — Jamf Pro rejects a build
+    # version for every other version_type, including SPECIFIC_VERSION:
+    # build_version = "21F79"
+
     # Optional, by update_action:
     # force_install_local_date_time = "2026-07-01T09:00:00" # DOWNLOAD_INSTALL_SCHEDULE
-    # max_deferrals                 = 3                      # DOWNLOAD_INSTALL_ALLOW_DEFERRAL
+    # max_deferrals                 = 3                     # DOWNLOAD_INSTALL_ALLOW_DEFERRAL, 0-99
   }
 }
 ```
@@ -73,7 +77,7 @@ action "jamfplatform_pro_managed_software_update_plan" "enforce_latest" {
 
 ### Optional
 
-- `build_version` (String) An optional specific OS build to enforce alongside `specific_version`.
-- `force_install_local_date_time` (String) The local date and time by which the update must be installed, in `YYYY-MM-DDThh:mm:ss` form. Applies when `update_action` is `DOWNLOAD_INSTALL_SCHEDULE`.
-- `max_deferrals` (Number) The number of times a user may defer the update. Applies when `update_action` is `DOWNLOAD_INSTALL_ALLOW_DEFERRAL`.
+- `build_version` (String) A specific OS build to enforce, paired with `specific_version`. Only valid when `version_type` is `CUSTOM_VERSION` — Jamf Pro rejects a build version for every other `version_type`, including `SPECIFIC_VERSION`.
+- `force_install_local_date_time` (String) The local date and time by which the update must be installed, in `YYYY-MM-DDThh:mm:ss` form (for example `2026-12-25T21:09:31`). Applies when `update_action` is `DOWNLOAD_INSTALL_SCHEDULE`.
+- `max_deferrals` (Number) How many times a user may defer the update, from `0` to `99`. Applies when `update_action` is `DOWNLOAD_INSTALL_ALLOW_DEFERRAL`.
 - `specific_version` (String) The OS version to enforce. Required when `version_type` is `SPECIFIC_VERSION` or `CUSTOM_VERSION`; leave unset otherwise.

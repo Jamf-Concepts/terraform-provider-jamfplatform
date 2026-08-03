@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/actionvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
@@ -213,23 +214,38 @@ func (a *mdmAction) resolveUnlockToken(ctx context.Context, resp *action.InvokeR
 // targetAttributes returns the shared management_id / serial_number selector
 // used by every command action that targets a single device. deviceNoun tunes
 // the description (e.g. "device", "computer", "mobile device").
+//
+// Exactly-one-of is enforced by deviceTargetConfigValidators rather than by
+// per-attribute ConflictsWith, so that supplying NO identifier also fails at
+// plan time instead of part-way through the apply.
 func targetAttributes(deviceNoun string) map[string]actionschema.Attribute {
 	return map[string]actionschema.Attribute{
 		"management_id": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Jamf Pro Management ID of the " + deviceNoun + ". This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.",
+			MarkdownDescription: "Jamf Pro Management ID of the " + deviceNoun + ". This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
-				stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
 			},
 		},
 		"serial_number": actionschema.StringAttribute{
 			Optional:            true,
-			MarkdownDescription: "Serial number of the " + deviceNoun + " (case-sensitive). Provide this or `management_id`.",
+			MarkdownDescription: "Serial number of the " + deviceNoun + " (case-sensitive). Set exactly one of this or `management_id`.",
 			Validators: []validator.String{
 				stringvalidator.LengthAtLeast(1),
-				stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("management_id")),
 			},
 		},
+	}
+}
+
+// deviceTargetConfigValidators is the plan-time counterpart to
+// targetAttributes: exactly one of management_id / serial_number selects the
+// device. Every action that builds its schema from targetAttributes returns
+// this from ConfigValidators.
+func deviceTargetConfigValidators() []action.ConfigValidator {
+	return []action.ConfigValidator{
+		actionvalidator.ExactlyOneOf(
+			path.MatchRoot("management_id"),
+			path.MatchRoot("serial_number"),
+		),
 	}
 }

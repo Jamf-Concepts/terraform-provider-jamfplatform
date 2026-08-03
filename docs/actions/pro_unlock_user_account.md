@@ -43,6 +43,6 @@ action "jamfplatform_pro_unlock_user_account" "unlock" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
-- `serial_number` (String) Serial number of the computer (case-sensitive). Provide this or `management_id`.
+- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
+- `serial_number` (String) Serial number of the computer (case-sensitive). Set exactly one of this or `management_id`.
 - `user_name` (String) Local user account to unlock.

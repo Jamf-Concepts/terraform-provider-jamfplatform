@@ -7,7 +7,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/actionvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
+	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	daSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
@@ -20,6 +25,43 @@ import (
 type deviceAction struct {
 	devices *devSDK.Client
 	actions *daSDK.Client
+}
+
+// deviceTargetAttributes returns the device_id / serial_number selector shared
+// by every Platform device action.
+//
+// Exactly-one-of is enforced by deviceTargetConfigValidators rather than by
+// per-attribute ConflictsWith, so that supplying NO identifier also fails at
+// plan time instead of part-way through the apply.
+func deviceTargetAttributes() map[string]actionschema.Attribute {
+	return map[string]actionschema.Attribute{
+		"device_id": actionschema.StringAttribute{
+			Optional:            true,
+			MarkdownDescription: "Jamf Pro Management ID. Set exactly one of this or `serial_number`.",
+			Validators: []validator.String{
+				stringvalidator.LengthAtLeast(1),
+			},
+		},
+		"serial_number": actionschema.StringAttribute{
+			Optional:            true,
+			MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.",
+			Validators: []validator.String{
+				stringvalidator.LengthAtLeast(1),
+			},
+		},
+	}
+}
+
+// deviceTargetConfigValidators is the plan-time counterpart to
+// deviceTargetAttributes: exactly one of device_id / serial_number selects the
+// device.
+func deviceTargetConfigValidators() []action.ConfigValidator {
+	return []action.ConfigValidator{
+		actionvalidator.ExactlyOneOf(
+			path.MatchRoot("device_id"),
+			path.MatchRoot("serial_number"),
+		),
+	}
 }
 
 // configure binds the provider-supplied client to the action.

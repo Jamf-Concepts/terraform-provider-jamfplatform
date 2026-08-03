@@ -219,3 +219,55 @@ func TestFlushMdmCommandsAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, schema, []string{"id_type", "id", "status"})
 	assertRequired(t, schema, []string{"id_type", "id", "status"})
 }
+
+// --- plan-time device-target validation ---
+
+// TestDeviceTargetValidatorsWired guards that every action whose schema is built
+// from targetAttributes also declares the matching ConfigValidators. Without the
+// validator, "neither management_id nor serial_number" passes plan and only
+// fails part-way through the apply — the schema alone cannot express
+// exactly-one-of, so the two halves must be kept in step.
+//
+// The list is asserted against the schema itself, so an action that gains the
+// target selector but forgets ConfigValidators fails here.
+func TestDeviceTargetValidatorsWired(t *testing.T) {
+	targetActions := map[string]action.Action{
+		"clear_passcode":              NewClearPasscodeAction(),
+		"clear_restrictions_password": NewClearRestrictionsPasswordAction(),
+		"delete_user":                 NewDeleteUserAction(),
+		"device_lock":                 NewDeviceLockAction(),
+		"disable_lost_mode":           NewDisableLostModeAction(),
+		"disable_remote_desktop":      NewDisableRemoteDesktopAction(),
+		"enable_lost_mode":            NewEnableLostModeAction(),
+		"enable_remote_desktop":       NewEnableRemoteDesktopAction(),
+		"log_out_user":                NewLogOutUserAction(),
+		"play_lost_mode_sound":        NewPlayLostModeSoundAction(),
+		"set_auto_admin_password":     NewSetAutoAdminPasswordAction(),
+		"unlock_user_account":         NewUnlockUserAccountAction(),
+	}
+
+	for name, a := range targetActions {
+		t.Run(name, func(t *testing.T) {
+			withValidators, ok := a.(action.ActionWithConfigValidators)
+			if !ok {
+				t.Fatalf("%s builds its schema from targetAttributes but declares no ConfigValidators", name)
+			}
+			if len(withValidators.ConfigValidators(context.Background())) == 0 {
+				t.Fatalf("%s declares an empty ConfigValidators slice", name)
+			}
+		})
+	}
+}
+
+// TestSendBlankPushValidatorsWired covers the at-least-one-of rule: the action
+// accepts management_ids and/or serial_numbers, and previously only rejected
+// "neither" once the apply was already running.
+func TestSendBlankPushValidatorsWired(t *testing.T) {
+	a, ok := NewSendBlankPushAction().(action.ActionWithConfigValidators)
+	if !ok {
+		t.Fatal("send_blank_push declares no ConfigValidators")
+	}
+	if len(a.ConfigValidators(context.Background())) == 0 {
+		t.Fatal("send_blank_push declares an empty ConfigValidators slice")
+	}
+}
