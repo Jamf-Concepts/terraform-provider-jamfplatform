@@ -16,9 +16,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
-// strptr is a small helper for building *string PUT payloads in out-of-band baselines.
-func strptr(s string) *string { return &s }
-
 // checkSingletonRecordStillExists verifies the Jamf Pro login page settings record persists
 // on the tenant after Terraform destroys the resource from state. Canonical singleton
 // acceptance check: the remote Delete is a no-op, so the API must still return the record.
@@ -105,9 +102,9 @@ func TestAccResource_ProLoginPageSettings_CreateAdopt(t *testing.T) {
 		c := pro.New(testhelpers.NewAcceptanceClient(t))
 		body := &pro.LoginContentPut{
 			IncludeCustomDisclaimer: true,
-			DisclaimerHeading:       strptr("Baseline Heading"),
-			DisclaimerMainText:      strptr("Baseline main disclaimer body."),
-			ActionText:              strptr("Acknowledge"),
+			DisclaimerHeading:       new("Baseline Heading"),
+			DisclaimerMainText:      new("Baseline main disclaimer body."),
+			ActionText:              new("Acknowledge"),
 		}
 		if _, err := c.UpdateLoginCustomizationV1(context.Background(), body); err != nil {
 			t.Fatalf("out-of-band baseline PUT: %v", err)

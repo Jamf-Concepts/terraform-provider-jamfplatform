@@ -6,6 +6,7 @@ package blueprint
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"time"
 
@@ -146,9 +147,7 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 		},
 	}
 
-	for name, attr := range sharedComponentAttributes(componentAttrDeprecation) {
-		attributes[name] = attr
-	}
+	maps.Copy(attributes, sharedComponentAttributes(componentAttrDeprecation))
 
 	resp.Schema = schema.Schema{
 		Version:             3,
@@ -304,9 +303,7 @@ func componentBlockAttributes() map[string]schema.Attribute {
 		},
 	}
 
-	for name, attr := range sharedComponentAttributes("") {
-		attributes[name] = attr
-	}
+	maps.Copy(attributes, sharedComponentAttributes(""))
 
 	return attributes
 }

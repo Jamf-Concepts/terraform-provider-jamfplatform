@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -43,16 +43,22 @@ const (
 
 // testAccCheckPatchSoftwareTitleDestroy verifies titles created during the test
 // were destroyed.
+//
+// The read goes through the v2 patch software title configurations endpoint. The
+// resource itself is ProClassic-backed, but the classic by-id read is deprecated
+// in the Jamf API spec, and both endpoints address the same object: wire-probed
+// 2026-08-03, each returns 404 for an id that does not exist, so
+// helpers.IsNotFoundError classifies them identically.
 func testAccCheckPatchSoftwareTitleDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		c := proclassic.New(testhelpers.NewAcceptanceClient(t))
+		c := pro.New(testhelpers.NewAcceptanceClient(t))
 		ctx := context.Background()
 
 		for _, rs := range s.RootModule().Resources {
 			if rs.Type != patchSoftwareType {
 				continue
 			}
-			_, err := c.GetPatchSoftwareTitleByID(ctx, rs.Primary.ID)
+			_, err := c.GetPatchSoftwareTitleConfigurationV2(ctx, rs.Primary.ID)
 			if err != nil {
 				if helpers.IsNotFoundError(err) {
 					continue

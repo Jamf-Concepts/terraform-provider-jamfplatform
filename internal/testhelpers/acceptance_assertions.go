@@ -36,6 +36,33 @@ func NewProClassicClient(t *testing.T) *proclassic.Client {
 	return proclassic.New(NewAcceptanceClient(t))
 }
 
+// ResolveComputerIDByName returns the Jamf Pro computer id for a computer name.
+//
+// It reads the Pro computer inventory rather than the classic by-name lookup:
+// Jamf deprecated that endpoint (2025-02-11) along with the rest of the classic
+// computer-listing surface, so there is no non-deprecated classic equivalent to
+// fall back on. Fixtures need this because the classic create call returns the
+// new id on the wire but the SDK signature discards it.
+//
+// V3 is the current inventory version; V1 and V2 are both deprecated in the
+// spec. Wire-probed 2026-08-03: a computer created through the classic endpoint
+// is visible in V3 immediately and under the same id, so this is safe to call
+// directly after a create with no settling delay.
+func ResolveComputerIDByName(ctx context.Context, t *testing.T, name string) string {
+	t.Helper()
+
+	matches, err := pro.New(NewAcceptanceClient(t)).ListComputersInventoryV3(
+		ctx, []string{"GENERAL"}, nil, fmt.Sprintf("general.name==%q", name),
+	)
+	if err != nil {
+		t.Fatalf("resolving computer %q: %v", name, err)
+	}
+	if len(matches) == 0 {
+		t.Fatalf("no computer matched name %q", name)
+	}
+	return matches[0].ID
+}
+
 // RequireSingletonStillExists returns a CheckDestroy that asserts a Pro singleton
 // record still exists on the tenant after Terraform destroy — the convention for
 // update-only singleton resources whose Delete is a no-op. label names the record

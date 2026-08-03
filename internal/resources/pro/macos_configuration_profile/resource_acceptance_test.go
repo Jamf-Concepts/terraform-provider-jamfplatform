@@ -240,11 +240,7 @@ func createDummyComputer(t *testing.T, name string) string {
 	}); err != nil {
 		t.Fatalf("CreateComputerByID(%q): %v", name, err)
 	}
-	got, err := c.GetComputerByName(ctx, name)
-	if err != nil || got == nil || got.General == nil || got.General.ID == nil {
-		t.Fatalf("GetComputerByName(%q) after create: %v", name, err)
-	}
-	id := fmt.Sprintf("%d", *got.General.ID)
+	id := testhelpers.ResolveComputerIDByName(ctx, t, name)
 	t.Cleanup(func() {
 		if err := c.DeleteComputerByID(context.Background(), id); err != nil && !helpers.IsNotFoundError(err) {
 			t.Logf("cleanup DeleteComputerByID(%s): %v", id, err)

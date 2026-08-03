@@ -93,8 +93,8 @@ func checkMacosAbsent(t *testing.T) resource.TestCheckFunc {
 func writeMacosPNG(t *testing.T, path string, w, h int) {
 	t.Helper()
 	m := image.NewRGBA(image.Rect(0, 0, w, h))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			m.Set(x, y, color.RGBA{uint8(x), uint8(y), 128, 255})
 		}
 	}
@@ -102,9 +102,15 @@ func writeMacosPNG(t *testing.T, path string, w, h int) {
 	if err != nil {
 		t.Fatalf("creating PNG: %v", err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, m); err != nil {
+		_ = f.Close()
 		t.Fatalf("encoding PNG: %v", err)
+	}
+	// Close is checked rather than deferred: a dropped Close can hide a flush
+	// failure that leaves the fixture truncated, which then fails somewhere far
+	// less obvious than here.
+	if err := f.Close(); err != nil {
+		t.Fatalf("closing PNG: %v", err)
 	}
 }
 

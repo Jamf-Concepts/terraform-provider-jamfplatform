@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -606,15 +607,15 @@ func TestAccResource_ProComputerExtensionAttribute_ValidatorErrors(t *testing.T)
 // ceaBad assembles a resource block from arbitrary attribute lines, for the
 // negative validator cases.
 func ceaBad(lines ...string) string {
-	body := ""
+	var body strings.Builder
 	for _, l := range lines {
-		body += "\t\t\t" + l + "\n"
+		body.WriteString("\t\t\t" + l + "\n")
 	}
 	return fmt.Sprintf(`
 		resource "jamfplatform_pro_computer_extension_attribute" "test" {
 			name = "tf-acc-cea-bad"
 %s		}
-	`, body)
+	`, body.String())
 }
 
 func TestAccDataSource_ProComputerExtensionAttribute_ByIDAndName(t *testing.T) {

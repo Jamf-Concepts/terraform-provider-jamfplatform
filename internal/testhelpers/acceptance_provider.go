@@ -37,7 +37,9 @@ func AccPreCheck(t *testing.T) {
 		t.Skip("JAMFPLATFORM_TENANT_ID must be set for acceptance tests")
 	}
 
-	os.Setenv("TF_ACC", "1")
+	if err := os.Setenv("TF_ACC", "1"); err != nil {
+		t.Fatalf("setting TF_ACC: %v", err)
+	}
 }
 
 // AccPreCheckOffline is the precheck for acceptance tests that need no tenant —

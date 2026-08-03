@@ -141,7 +141,7 @@ func TestAccResource_ProServiceDiscoveryEnrollment_Basic(t *testing.T) {
 					if err != nil || n < 1 {
 						return fmt.Errorf("imported state has no well_known_setting rows (#=%q)", s.Attributes["well_known_setting.#"])
 					}
-					for i := 0; i < n; i++ {
+					for i := range n {
 						if s.Attributes[fmt.Sprintf("well_known_setting.%d.enrollment_type", i)] == "mdm-adde" {
 							return nil
 						}

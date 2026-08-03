@@ -211,7 +211,7 @@ func EnsureLdapServerFixture(t *testing.T, prefix string, e OktaLdapEnv) string 
 		// a disabled directory is skipped for group resolution and so will not cause
 		// "group name not unique" failures in later runs. Best-effort.
 		if err := client.UpdateLDAPServerByID(ctx, id, &proclassic.LdapServerPost{
-			Connection: &proclassic.LdapServerPostConnection{IsEnabled: ptr(false)},
+			Connection: &proclassic.LdapServerPostConnection{IsEnabled: new(false)},
 		}); err != nil {
 			t.Logf("LDAP fixture %s: delete blocked and disable fallback failed: %v", id, err)
 		} else {
@@ -225,55 +225,53 @@ func EnsureLdapServerFixture(t *testing.T, prefix string, e OktaLdapEnv) string 
 func oktaLdapServerPost(c oktaLdapConfig) *proclassic.LdapServerPost {
 	return &proclassic.LdapServerPost{
 		Connection: &proclassic.LdapServerPostConnection{
-			Name:               ptr(c.displayName),
-			ServerType:         ptr("Custom"),
-			Hostname:           ptr(c.hostname),
-			Port:               ptr(636),
-			UseSsl:             ptr(true),
-			AuthenticationType: ptr("simple"),
-			OpenCloseTimeout:   ptr(15),
-			SearchTimeout:      ptr(60),
-			UseWildcards:       ptr(true),
+			Name:               new(c.displayName),
+			ServerType:         new("Custom"),
+			Hostname:           new(c.hostname),
+			Port:               new(636),
+			UseSsl:             new(true),
+			AuthenticationType: new("simple"),
+			OpenCloseTimeout:   new(15),
+			SearchTimeout:      new(60),
+			UseWildcards:       new(true),
 			Account: &proclassic.LdapServerConnectionAccount{
-				DistinguishedUsername: ptr(fmt.Sprintf("uid=%s,%s", c.username, c.dn)),
-				Password:              ptr(c.password),
+				DistinguishedUsername: new(fmt.Sprintf("uid=%s,%s", c.username, c.dn)),
+				Password:              new(c.password),
 			},
 		},
 		MappingsForUsers: &proclassic.LdapServerPostMappingsForUsers{
 			UserMappings: &proclassic.LdapServerMappingsForUsersUserMappings{
-				MapObjectClassToAnyOrAll: ptr("all"),
-				ObjectClasses:            ptr("inetOrgPerson"),
-				SearchBase:               ptr("ou=users," + c.dn),
-				SearchScope:              ptr("All Subtrees"),
-				MapUserID:                ptr("uid"),
-				MapUsername:              ptr("uid"),
-				MapRealname:              ptr("cn"),
-				MapEmailAddress:          ptr("mail"),
-				MapDepartment:            ptr("department"),
-				MapPosition:              ptr("title"),
-				MapUserUUID:              ptr("uid"),
+				MapObjectClassToAnyOrAll: new("all"),
+				ObjectClasses:            new("inetOrgPerson"),
+				SearchBase:               new("ou=users," + c.dn),
+				SearchScope:              new("All Subtrees"),
+				MapUserID:                new("uid"),
+				MapUsername:              new("uid"),
+				MapRealname:              new("cn"),
+				MapEmailAddress:          new("mail"),
+				MapDepartment:            new("department"),
+				MapPosition:              new("title"),
+				MapUserUUID:              new("uid"),
 			},
 			UserGroupMappings: &proclassic.LdapServerMappingsForUsersUserGroupMappings{
-				MapObjectClassToAnyOrAll: ptr("all"),
-				ObjectClasses:            ptr("groupofUniqueNames"),
-				SearchBase:               ptr("ou=groups," + c.dn),
-				SearchScope:              ptr("All Subtrees"),
-				MapGroupID:               ptr("uniqueIdentifier"),
-				MapGroupName:             ptr("cn"),
-				MapGroupUUID:             ptr("uniqueIdentifier"),
+				MapObjectClassToAnyOrAll: new("all"),
+				ObjectClasses:            new("groupofUniqueNames"),
+				SearchBase:               new("ou=groups," + c.dn),
+				SearchScope:              new("All Subtrees"),
+				MapGroupID:               new("uniqueIdentifier"),
+				MapGroupName:             new("cn"),
+				MapGroupUUID:             new("uniqueIdentifier"),
 			},
 			UserGroupMembershipMappings: &proclassic.LdapServerMappingsForUsersUserGroupMembershipMappings{
-				UserGroupMembershipStoredIn:   ptr("group object"),
-				MapUserMembershipToGroupField: ptr("uniqueMember"),
-				UseDn:                         ptr(false),
-				RecursiveLookups:              ptr(false),
-				MapUserMembershipUseDn:        ptr(true),
-				MapObjectClassToAnyOrAll:      ptr("all"),
-				SearchScope:                   ptr("All Subtrees"),
-				MembershipScopingOptimization: ptr(true),
+				UserGroupMembershipStoredIn:   new("group object"),
+				MapUserMembershipToGroupField: new("uniqueMember"),
+				UseDn:                         new(false),
+				RecursiveLookups:              new(false),
+				MapUserMembershipUseDn:        new(true),
+				MapObjectClassToAnyOrAll:      new("all"),
+				SearchScope:                   new("All Subtrees"),
+				MembershipScopingOptimization: new(true),
 			},
 		},
 	}
 }
-
-func ptr[T any](v T) *T { return &v }

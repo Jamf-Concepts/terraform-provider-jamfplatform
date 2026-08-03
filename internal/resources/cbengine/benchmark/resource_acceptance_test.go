@@ -194,7 +194,7 @@ func TestAccResource_Benchmark_CustomRules_MonitorAndEnforce(t *testing.T) {
 	}
 
 	var ruleBlocks []string
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		r := rules.Rules[i]
 		block := fmt.Sprintf(`{ id = %q, enabled = true`, r.ID)
 		if r.ODV != nil {

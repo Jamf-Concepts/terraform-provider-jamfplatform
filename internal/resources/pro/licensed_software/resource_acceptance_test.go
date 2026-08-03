@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -241,12 +242,12 @@ func TestAccResource_ProLicensedSoftware(t *testing.T) {
 // default ("like") is exercised end-to-end. licence_count is derived from the
 // 1-based position so a value landing at the wrong index is detectable.
 func posListsConfig(name string, defNames, licSerials []string) string {
-	defs := ""
+	var defs strings.Builder
 	for _, d := range defNames {
 		if d == "Bravo" {
-			defs += fmt.Sprintf("\t\t\t\t{ name = %q, version = \"2.0\" },\n", d) // compare_type omitted -> default "like"
+			fmt.Fprintf(&defs, "\t\t\t\t{ name = %q, version = \"2.0\" },\n", d) // compare_type omitted -> default "like"
 		} else {
-			defs += fmt.Sprintf("\t\t\t\t{ name = %q, version = \"1.0\", compare_type = \"is\" },\n", d)
+			fmt.Fprintf(&defs, "\t\t\t\t{ name = %q, version = \"1.0\", compare_type = \"is\" },\n", d)
 		}
 	}
 	lics := ""
@@ -261,7 +262,7 @@ func posListsConfig(name string, defNames, licSerials []string) string {
 			licenses = [
 %s			]
 		}
-	`, name, defs, lics)
+	`, name, defs.String(), lics)
 }
 
 // TestAccResource_ProLicensedSoftware_PositionalLists targets the defining risk

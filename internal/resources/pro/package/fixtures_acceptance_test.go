@@ -6,10 +6,8 @@
 package pkg_test
 
 import (
-	"context"
 	"crypto/sha3"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -127,16 +125,6 @@ func downloadAndHashURL(t *testing.T, url string) (string, string) {
 func staticDigest(d string) func() string {
 	return func() string { return strings.ToLower(d) }
 }
-
-// renderHCL is a small sprintf wrapper that keeps the test bodies easy to
-// scan when interpolating display_name / source / hash values.
-func renderHCL(template string, args ...any) string {
-	return fmt.Sprintf(template, args...)
-}
-
-// withContext returns a derived context for in-test SDK calls. Keeps the
-// test bodies short.
-func withContext() context.Context { return context.Background() }
 
 // writeTempManifest stages a synthetic plist body in the test's tempdir.
 // Returned path is auto-removed by the testing framework when the test
