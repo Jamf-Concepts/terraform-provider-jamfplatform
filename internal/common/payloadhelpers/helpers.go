@@ -89,7 +89,8 @@ var (
 )
 
 // MaskPayload returns a deep-cloned representation of the input plist with
-// every server-controlled key dropped and every string value trimmed. The
+// every server-controlled key dropped and every string value trimmed and
+// line-ending-normalised (see normalizeLineEndings). The
 // result is suitable for equality comparison against another masked payload
 // — equality implies the two payloads are semantically the same modulo
 // Jamf's well-known server-side normalisations.
@@ -205,15 +206,35 @@ func normalizeBase64InString(s string) string {
 	return s
 }
 
+// normalizeLineEndings rewrites `\r\n` and lone `\r` to `\n` so a carriage
+// return compares equal to a line feed inside string values. A CR is authored
+// as a `&#13;` reference (the only whitespace character Jamf Pro keeps) but
+// always reads back as LF: MCX and mobile payload fragments normalise it on
+// store, and a verbatim-stored CR returns as a raw CR byte our own parse
+// normalises. Without this every `&#13;` fails read-back verification.
+// U+2028/U+2029/U+0085 are left alone — they round-trip byte-exact.
+// See STYLE_GUIDE §Configuration profile payload diff suppression.
+func normalizeLineEndings(s string) string {
+	if !strings.Contains(s, "\r") {
+		return s
+	}
+	return crlfReplacer.Replace(s)
+}
+
+// crlfReplacer matches `\r\n` before lone `\r` — strings.Replacer tries its
+// pairs in argument order at each position, so CRLF never becomes two LFs.
+var crlfReplacer = strings.NewReplacer("\r\n", "\n", "\r", "\n")
+
 // trimAny recursively trims whitespace from every string value in the plist
-// tree. For ordinary text values this is `strings.TrimSpace`. For string
+// tree. For ordinary text values this is `strings.TrimSpace` over
+// line-ending-normalised text (see normalizeLineEndings). For string
 // values that decode as base64, internal whitespace is also collapsed (see
 // normalizeBase64InString) so server-side line wrapping does not produce
 // spurious diffs.
 func trimAny(v any) any {
 	switch t := v.(type) {
 	case string:
-		return strings.TrimSpace(normalizeBase64InString(t))
+		return strings.TrimSpace(normalizeBase64InString(normalizeLineEndings(t)))
 	case []any:
 		out := make([]any, len(t))
 		for i, item := range t {
@@ -442,17 +463,8 @@ func ExtractServerPayloadFromGeneral(wireXML []byte) ([]byte, error) {
 	return []byte(html.UnescapeString(string(inner))), nil
 }
 
-// PayloadFidelityCreateErrorDetail explains a create-time payload
-// verification failure: the Classic API stored the submitted payload with
-// semantically different content. Payload types the server stores verbatim
-// keep an extra XML entity layer for string values containing "&" or "<"
-// (Jamf product issue PI-827) — a device would receive "&amp;" where "&"
-// was intended. No client can work around it; see
-// jamfplatform-go-sdk/jamfplatform/acc_proclassic_profile_payloads_test.go
-// for the wire-verified server model.
-const PayloadFidelityCreateErrorDetail = "Jamf Pro's Classic API persisted one or more payload string values differently than submitted (Jamf product issue PI-827): payload types the server stores verbatim keep an extra XML entity layer for values containing \"&\" or \"<\" — a device would receive \"&amp;\" where \"&\" was intended. This is a server-side defect no client can work around. The created profile has been rolled back. Remove \"&\"/\"<\" from string values in the affected payload types, or manage this profile outside Terraform."
-
-// PayloadFidelityUpdateErrorDetail is the update-time variant: the
-// overwritten profile cannot be rolled back, so the divergence is called
-// out for manual remediation.
-const PayloadFidelityUpdateErrorDetail = "Jamf Pro's Classic API persisted one or more payload string values differently than submitted (Jamf product issue PI-827): payload types the server stores verbatim keep an extra XML entity layer for values containing \"&\" or \"<\" — a device would receive \"&amp;\" where \"&\" was intended. This is a server-side defect no client can work around. The profile on the server now differs from this configuration; remove \"&\"/\"<\" from string values in the affected payload types and re-apply, or manage this profile outside Terraform."
+// PayloadFidelitySummary is the diagnostic summary both profile resources use
+// for a read-back verification failure, on create and on update. The detail is
+// built per failure by PayloadFidelityErrorDetail (see fidelity.go), which
+// names the diverging values and the remedy for each.
+const PayloadFidelitySummary = "Jamf Pro cannot store this payload faithfully"

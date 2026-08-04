@@ -35,9 +35,9 @@ import (
 )
 
 // Create posts the profile, reads the server-canonical form back into
-// state, and rolls the create back with an actionable diagnostic when the
-// server stored the payload unfaithfully (PI-827 — see
-// payloadhelpers.PayloadFidelityCreateErrorDetail).
+// state, and rolls the create back when the server stored the payload
+// unfaithfully. The diagnostic names each diverging value and the fix for its
+// class of mangling (see payloadhelpers.PayloadFidelityErrorDetail).
 func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError("Provider not configured", providerNotConfigured)
@@ -113,7 +113,10 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		if delErr := r.client.DeleteMobileDeviceConfigurationProfileByID(createCtx, id); delErr != nil {
 			tflog.Warn(createCtx, "rollback delete after payload verification failure", map[string]any{"id": id, "error": delErr.Error()})
 		}
-		resp.Diagnostics.AddError("Jamf Pro cannot store this payload faithfully", payloadhelpers.PayloadFidelityCreateErrorDetail)
+		resp.Diagnostics.AddError(
+			payloadhelpers.PayloadFidelitySummary,
+			payloadhelpers.PayloadFidelityErrorDetail([]byte(userAuthoredPayload), rawServerPayload, payloadhelpers.FidelityPhaseCreate),
+		)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
@@ -302,7 +305,10 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		return
 	}
 	if userAuthoredPayload != "" && plan.General != nil && plan.General.Payloads.ValueString() != userAuthoredPayload {
-		resp.Diagnostics.AddError("Jamf Pro cannot store this payload faithfully", payloadhelpers.PayloadFidelityUpdateErrorDetail)
+		resp.Diagnostics.AddError(
+			payloadhelpers.PayloadFidelitySummary,
+			payloadhelpers.PayloadFidelityErrorDetail([]byte(userAuthoredPayload), rawServerPayload, payloadhelpers.FidelityPhaseUpdate),
+		)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
