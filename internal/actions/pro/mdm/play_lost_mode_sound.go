@@ -66,6 +66,6 @@ func (a *PlayLostModeSoundAction) Invoke(ctx context.Context, req action.InvokeR
 		return
 	}
 
-	command := &pro.PlayLostModeSoundCommand{CommandType: cmdPlayLostModeSound}
+	command := &pro.PlayLostModeSoundCommand{CommandType: pro.MDMCommandTypePlayLostModeSound}
 	a.sendCommandBatch(ctx, resp, managementIDs, command, "Play Lost Mode sound")
 }

@@ -358,7 +358,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 			"enforcement_mode": schema.StringAttribute{
 				MarkdownDescription: "Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).",
 				Required:            true,
-				Validators:          []validator.String{stringvalidator.OneOf("MONITOR", "MONITOR_AND_ENFORCE")},
+				Validators:          []validator.String{stringvalidator.OneOf(compliancebenchmarks.BenchmarkRequestV2EnforcementModeMonitor, compliancebenchmarks.BenchmarkRequestV2EnforcementModeMonitorAndEnforce)},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},

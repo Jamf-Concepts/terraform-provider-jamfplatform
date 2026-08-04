@@ -90,7 +90,7 @@ func (a *DeleteUserAction) Invoke(ctx context.Context, req action.InvokeRequest,
 	}
 
 	command := &pro.DeleteUserCommand{
-		CommandType:    cmdDeleteUser,
+		CommandType:    pro.MDMCommandTypeDeleteUser,
 		DeleteAllUsers: data.DeleteAllUsers.ValueBoolPointer(),
 		ForceDeletion:  data.ForceDeletion.ValueBoolPointer(),
 		UserName:       data.UserName.ValueStringPointer(),

@@ -108,22 +108,14 @@ const singleTargetNote = "\n\n" +
 // the harder that is to attribute.
 const batchWarnThreshold = 500
 
-// MDM command type discriminators. The SDK aliases MDMCommandType to a bare
-// string and ships no enum constants, so the supported subset is pinned here.
-const (
-	cmdDeviceLock                = "DEVICE_LOCK"
-	cmdEnableLostMode            = "ENABLE_LOST_MODE"
-	cmdDisableLostMode           = "DISABLE_LOST_MODE"
-	cmdPlayLostModeSound         = "PLAY_LOST_MODE_SOUND"
-	cmdEnableRemoteDesktop       = "ENABLE_REMOTE_DESKTOP"
-	cmdDisableRemoteDesktop      = "DISABLE_REMOTE_DESKTOP"
-	cmdClearRestrictionsPassword = "CLEAR_RESTRICTIONS_PASSWORD"
-	cmdDeleteUser                = "DELETE_USER"
-	cmdLogOutUser                = "LOG_OUT_USER"
-	cmdSetAutoAdminPassword      = "SET_AUTO_ADMIN_PASSWORD"
-	cmdUnlockUserAccount         = "UNLOCK_USER_ACCOUNT"
-	cmdClearPasscode             = "CLEAR_PASSCODE"
-)
+// Command type discriminators come from pro.MDMCommandType* — the SDK's
+// generated enum constants, which arrived with v0.13.0. This package previously
+// pinned its own copy of the twelve values it uses, on the (then accurate)
+// grounds that the SDK aliased MDMCommandType to a bare string and shipped no
+// constants. It now ships both, generated from the spec, so the local copy has
+// been removed: a hand-maintained vocabulary cannot notice when Jamf adds or
+// renames a command, and the two enhanced-log-collection types added in the same
+// release are exactly the kind of change it would have missed.
 
 // mdmAction shares Configure logic across the MDM command actions. It holds the
 // three client surfaces the package needs: the Jamf Pro client (send-command,

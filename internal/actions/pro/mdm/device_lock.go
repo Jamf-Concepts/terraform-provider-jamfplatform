@@ -89,7 +89,7 @@ func (a *DeviceLockAction) Invoke(ctx context.Context, req action.InvokeRequest,
 	}
 
 	command := &pro.DeviceLockCommand{
-		CommandType: cmdDeviceLock,
+		CommandType: pro.MDMCommandTypeDeviceLock,
 		Message:     data.Message.ValueStringPointer(),
 		PhoneNumber: data.PhoneNumber.ValueStringPointer(),
 		Pin:         data.Pin.ValueStringPointer(),

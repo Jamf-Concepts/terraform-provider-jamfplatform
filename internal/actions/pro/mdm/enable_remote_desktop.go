@@ -66,6 +66,6 @@ func (a *EnableRemoteDesktopAction) Invoke(ctx context.Context, req action.Invok
 		return
 	}
 
-	command := &pro.EnableRemoteDesktopCommand{CommandType: cmdEnableRemoteDesktop}
+	command := &pro.EnableRemoteDesktopCommand{CommandType: pro.MDMCommandTypeEnableRemoteDesktop}
 	a.sendCommandBatch(ctx, resp, managementIDs, command, "Enable Remote Desktop")
 }

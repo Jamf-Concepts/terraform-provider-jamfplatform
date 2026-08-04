@@ -250,7 +250,12 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("HOME", "BROWSE", "HISTORY", "NOTIFICATIONS"),
+					stringvalidator.OneOf(
+						pro.SelfServiceInteractionSettingsDefaultLandingPageHome,
+						pro.SelfServiceInteractionSettingsDefaultLandingPageBrowse,
+						pro.SelfServiceInteractionSettingsDefaultLandingPageHistory,
+						pro.SelfServiceInteractionSettingsDefaultLandingPageNotifications,
+					),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

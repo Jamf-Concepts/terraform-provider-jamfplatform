@@ -104,7 +104,7 @@ func (a *EnableLostModeAction) Invoke(ctx context.Context, req action.InvokeRequ
 	}
 
 	command := &pro.EnableLostModeCommand{
-		CommandType:      cmdEnableLostMode,
+		CommandType:      pro.MDMCommandTypeEnableLostMode,
 		LostModeFootnote: data.LostModeFootnote.ValueStringPointer(),
 		LostModeMessage:  data.LostModeMessage.ValueStringPointer(),
 		LostModePhone:    data.LostModePhone.ValueStringPointer(),

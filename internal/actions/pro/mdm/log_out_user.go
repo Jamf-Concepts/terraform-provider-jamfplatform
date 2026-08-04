@@ -66,6 +66,6 @@ func (a *LogOutUserAction) Invoke(ctx context.Context, req action.InvokeRequest,
 		return
 	}
 
-	command := &pro.LogOutUserCommand{CommandType: cmdLogOutUser}
+	command := &pro.LogOutUserCommand{CommandType: pro.MDMCommandTypeLogOutUser}
 	a.sendCommandBatch(ctx, resp, managementIDs, command, "Log out user")
 }

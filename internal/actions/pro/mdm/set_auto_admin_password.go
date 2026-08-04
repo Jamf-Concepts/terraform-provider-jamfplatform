@@ -84,7 +84,7 @@ func (a *SetAutoAdminPasswordAction) Invoke(ctx context.Context, req action.Invo
 	}
 
 	command := &pro.SetAutoAdminPasswordCommand{
-		CommandType: cmdSetAutoAdminPassword,
+		CommandType: pro.MDMCommandTypeSetAutoAdminPassword,
 		Guid:        data.Guid.ValueStringPointer(),
 		Password:    data.Password.ValueStringPointer(),
 	}

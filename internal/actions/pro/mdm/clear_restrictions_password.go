@@ -66,6 +66,6 @@ func (a *ClearRestrictionsPasswordAction) Invoke(ctx context.Context, req action
 		return
 	}
 
-	command := &pro.ClearRestrictionsPasswordCommand{CommandType: cmdClearRestrictionsPassword}
+	command := &pro.ClearRestrictionsPasswordCommand{CommandType: pro.MDMCommandTypeClearRestrictionsPassword}
 	a.sendCommandBatch(ctx, resp, managementIDs, command, "Clear restrictions password")
 }

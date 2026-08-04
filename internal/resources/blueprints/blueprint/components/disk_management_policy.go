@@ -51,13 +51,13 @@ func (c *DiskManagementPolicyComponent) ToRawConfiguration() (json.RawMessage, e
 	if helpers.IsConfiguredValue(c.ExternalStorage) {
 		restrictions.ExternalStorage = &blueprints.StorageMode{Included: &trueVal, Value: c.ExternalStorage.ValueString()}
 	} else {
-		restrictions.ExternalStorage = &blueprints.StorageMode{Included: &falseVal, Value: "Allowed"}
+		restrictions.ExternalStorage = &blueprints.StorageMode{Included: &falseVal, Value: blueprints.StorageModeValueAllowed}
 	}
 
 	if helpers.IsConfiguredValue(c.NetworkStorage) {
 		restrictions.NetworkStorage = &blueprints.StorageMode{Included: &trueVal, Value: c.NetworkStorage.ValueString()}
 	} else {
-		restrictions.NetworkStorage = &blueprints.StorageMode{Included: &falseVal, Value: "Allowed"}
+		restrictions.NetworkStorage = &blueprints.StorageMode{Included: &falseVal, Value: blueprints.StorageModeValueAllowed}
 	}
 
 	cfg.Restrictions = restrictions

@@ -118,15 +118,15 @@ func RequireSmartGroupFixture(t *testing.T) string {
 		req := &devicegroups.DeviceGroupCreateRepresentationV1{
 			Name:        smartGroupFixtureName(),
 			Description: new("Terraform provider acceptance test fixture — safe to delete"),
-			DeviceType:  "COMPUTER",
-			GroupType:   "SMART",
+			DeviceType:  devicegroups.DeviceTypeV1Computer,
+			GroupType:   devicegroups.GroupTypeV1Smart,
 			Criteria: &[]devicegroups.DeviceGroupCriteriaRepresentationV1{
 				{
 					Order:          0,
 					AttributeName:  "Serial Number",
 					Operator:       "LIKE",
 					AttributeValue: "",
-					JoinType:       "AND",
+					JoinType:       devicegroups.JoinTypeV1And,
 				},
 			},
 		}
