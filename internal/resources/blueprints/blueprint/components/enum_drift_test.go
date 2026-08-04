@@ -4,6 +4,7 @@
 package components
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
@@ -47,14 +48,7 @@ func assertEnumUnchanged(t *testing.T, name string, want map[string]bool, got []
 	}
 	if len(got) != len(want) {
 		for v := range want {
-			found := false
-			for _, g := range got {
-				if g == v {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if !slices.Contains(got, v) {
 				t.Errorf("%s no longer contains %q, which the schema validator still accepts", name, v)
 			}
 		}
