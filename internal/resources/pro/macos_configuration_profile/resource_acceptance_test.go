@@ -1298,8 +1298,65 @@ func TestAccResource_MacOSConfigurationProfile_LoginWindowAmpersandRejected(t *t
 		CheckDestroy:             checkDestroy(t),
 		Steps: []resource.TestStep{
 			{
+				Config: configMinimal(name, payload),
+				// Single tokens only: the diagnostic pre-wraps its bullet text,
+				// so any pattern containing a space can land on a line break.
+				ExpectError: regexp.MustCompile(`PayloadContent\[3\]\.LoginwindowText`),
+			},
+		},
+	})
+}
+
+// TestAccResource_MacOSConfigurationProfile_LineWrappedConsentTextRejected
+// covers the second fidelity class with a real mSCP-generated profile: its
+// top-level ConsentText is decoratively line-wrapped, and Jamf Pro deletes
+// every line feed and indent tab outside PayloadContent, so the words either
+// side merge. The apply must fail naming that value — not blame PI-827, which
+// this payload cannot trigger (it holds no "&" or "<").
+func TestAccResource_MacOSConfigurationProfile_LineWrappedConsentTextRejected(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-consentwrap-" + suffix
+	payload := readFixture(t, "mscp_consent_linewrapped.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
 				Config:      configMinimal(name, payload),
-				ExpectError: regexp.MustCompile(`cannot store this payload faithfully`),
+				ExpectError: regexp.MustCompile(`ConsentText\.default`),
+			},
+		},
+	})
+}
+
+// TestAccResource_MacOSConfigurationProfile_ConsentTextCarriageReturns is the
+// paired positive case: the same mSCP profile with its line wrapping expressed
+// as `&#13;` character references. Jamf Pro keeps carriage returns in every
+// slot, so this must apply cleanly and re-plan empty — the round trip the SDK's
+// CR-reference preservation and the mask's line-ending normalisation exist to
+// make work. If this starts failing, one of those two halves has regressed.
+func TestAccResource_MacOSConfigurationProfile_ConsentTextCarriageReturns(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-consentcr-" + suffix
+	payload := readFixture(t, "mscp_consent_cr_refs.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: configMinimal(name, payload),
+			},
+			{
+				Config: configMinimal(name, payload),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectEmptyPlan(),
+					},
+				},
 			},
 		},
 	})

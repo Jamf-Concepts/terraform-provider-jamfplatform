@@ -521,3 +521,159 @@ func TestPrepareWirePayload_MalformedCreatePassesThrough(t *testing.T) {
 		t.Errorf("malformed create payload mutated: got %q", got)
 	}
 }
+
+// Line-break fixtures. A carriage return can only be authored as a `&#13;`
+// character reference (XML 1.0 §2.11 turns a literal CR into LF in transit),
+// and CR is the only whitespace character Jamf Pro keeps inside string values
+// — literal LF and TAB are deleted outright by the payload types it stores
+// verbatim. Both profile endpoints nevertheless hand the value back as LF:
+// MCX custom settings and mobile payload fragments normalise CR→LF when
+// storing, and a verbatim-stored CR comes back as a raw CR byte our own parse
+// then normalises. So the authored side holds CR, the server side LF, and the
+// mask must make the two compare equal or every `&#13;` reads as an
+// unfaithful store.
+
+// mcxWithBanner substitutes the MCX inner BannerMessage value. That string
+// lives inside mcx_preference_settings, which LenientEqualPlist strict-compares
+// — the tolerance has to hold on the strict path too, not just the
+// intersection one.
+func mcxWithBanner(t *testing.T, banner string) []byte {
+	t.Helper()
+	out := strings.Replace(mcxBaseline, "<string>hello</string>", "<string>"+banner+"</string>", 1)
+	if out == mcxBaseline {
+		t.Fatal("banner substitution did not apply — mcxBaseline fixture changed")
+	}
+	return []byte(out)
+}
+
+// consentTextTemplate carries a multi-line value outside PayloadContent, the
+// other slot where Jamf Pro deletes literal LF (top-level ConsentText is an
+// Apple-documented key mSCP emits into every generated profile).
+const consentTextTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>ConsentText</key><dict><key>default</key><string>BANNER</string></dict>
+<key>PayloadContent</key><array/>
+</dict></plist>`
+
+func consentTextWith(t *testing.T, banner string) []byte {
+	t.Helper()
+	out := strings.Replace(consentTextTemplate, "BANNER", banner, 1)
+	if out == consentTextTemplate {
+		t.Fatal("banner substitution did not apply — consentTextTemplate fixture changed")
+	}
+	return []byte(out)
+}
+
+// TestParsePlist_CarriageReturnRefParsesToCR pins the premise the whole
+// tolerance rests on: the plist parse keeps a `&#13;` reference as a real CR
+// (character references are exempt from XML line-end normalisation, which only
+// rewrites literal CR bytes). If a parser upgrade ever normalised the reference
+// to LF, the mask work below would be dead code and this fails first.
+func TestParsePlist_CarriageReturnRefParsesToCR(t *testing.T) {
+	parsed, _, err := plisthelpers.ParsePlist(consentTextWith(t, "line one&#13;line two"))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	consent, ok := parsed["ConsentText"].(map[string]any)
+	if !ok {
+		t.Fatalf("ConsentText missing or wrong type: %T", parsed["ConsentText"])
+	}
+	got, _ := consent["default"].(string)
+	if got != "line one\rline two" {
+		t.Errorf("CR reference did not parse to a carriage return: got %q", got)
+	}
+}
+
+func TestPayloadsSemanticallyEqual_MCXCarriageReturnRefVsStoredLF_Equal(t *testing.T) {
+	authored := mcxWithBanner(t, "line one&#13;line two")
+	stored := mcxWithBanner(t, "line one\nline two")
+	eq, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !eq {
+		t.Fatal("authored CR reference must compare equal to the LF Jamf Pro stores for MCX payloads")
+	}
+}
+
+func TestPayloadsSemanticallyEqual_MCXCRLFRefVsStoredLF_Equal(t *testing.T) {
+	// `&#13;&#10;` is the CRLF form Jamf's own UI emits; it must collapse to
+	// one LF, not two.
+	authored := mcxWithBanner(t, "line one&#13;&#10;line two")
+	stored := mcxWithBanner(t, "line one\nline two")
+	eq, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !eq {
+		t.Fatal("authored CRLF reference must collapse to a single LF")
+	}
+}
+
+func TestPayloadsStructurallyEqual_CarriageReturnRefVsStoredLF_Equal(t *testing.T) {
+	// The three-way comparator masks through the same helper, so the
+	// tolerance must hold on the strict structural path used for
+	// last-canonical-vs-server drift detection.
+	authored := consentTextWith(t, "line one&#13;line two")
+	stored := consentTextWith(t, "line one\nline two")
+	eq, err := PayloadsStructurallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !eq {
+		t.Fatal("CR-vs-LF must not register as structural drift")
+	}
+}
+
+func TestPayloadsSemanticallyEqual_LineBreakDeleted_NotEqual(t *testing.T) {
+	// The failure the SDK CR fix exists to prevent: the server dropping the
+	// break entirely and merging the words. Must still surface.
+	authored := consentTextWith(t, "line one&#13;line two")
+	stored := consentTextWith(t, "line oneline two")
+	eq, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if eq {
+		t.Fatal("a deleted line break must not be tolerated")
+	}
+}
+
+func TestPayloadsSemanticallyEqual_LineSeparatorNotNormalised_NotEqual(t *testing.T) {
+	// U+2028 round-trips byte-exact through every slot, so it keeps full
+	// drift fidelity — normalising it would give up detection for nothing.
+	authored := consentTextWith(t, "line one&#8232;line two")
+	stored := consentTextWith(t, "line one\nline two")
+	eq, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if eq {
+		t.Fatal("U+2028 must stay distinct from LF")
+	}
+}
+
+func TestNormalizeLineEndings(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"no carriage return untouched", "line one\nline two", "line one\nline two"},
+		{"lone CR", "line one\rline two", "line one\nline two"},
+		{"CRLF collapses to one LF", "line one\r\nline two", "line one\nline two"},
+		{"repeated CR", "a\r\rb", "a\n\nb"},
+		{"CR then CRLF", "a\r\r\nb", "a\n\nb"},
+		{"LFCR is two breaks", "a\n\rb", "a\n\nb"},
+		{"empty", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizeLineEndings(tc.in); got != tc.want {
+				t.Errorf("got %q want %q", got, tc.want)
+			}
+		})
+	}
+}

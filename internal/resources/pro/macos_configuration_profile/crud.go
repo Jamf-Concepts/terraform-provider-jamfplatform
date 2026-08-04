@@ -38,10 +38,11 @@ import (
 // allocates the ID and returns it in the response body's <id>. The provider
 // then runs a GET to capture the server-canonical form (including the
 // server-rewritten payload + minted UUIDs) into state. When that read-back
-// shows the server stored the payload unfaithfully (PI-827 — see
-// payloadhelpers.PayloadFidelityCreateErrorDetail), the created profile is
-// rolled back and the apply fails with an actionable diagnostic instead of
-// Terraform core's inconsistent-result error.
+// shows the server stored the payload unfaithfully, the created profile is
+// rolled back and the apply fails with a diagnostic naming each diverging
+// value and the fix for its class of mangling (see
+// payloadhelpers.PayloadFidelityErrorDetail) instead of Terraform core's
+// inconsistent-result error.
 func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError("Provider not configured", providerNotConfigured)
@@ -122,7 +123,10 @@ func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp 
 		if delErr := r.client.DeleteOSXConfigurationProfileByID(createCtx, id); delErr != nil {
 			tflog.Warn(createCtx, "rollback delete after payload verification failure", map[string]any{"id": id, "error": delErr.Error()})
 		}
-		resp.Diagnostics.AddError("Jamf Pro cannot store this payload faithfully", payloadhelpers.PayloadFidelityCreateErrorDetail)
+		resp.Diagnostics.AddError(
+			payloadhelpers.PayloadFidelitySummary,
+			payloadhelpers.PayloadFidelityErrorDetail([]byte(userAuthoredPayload), rawServerPayload, payloadhelpers.FidelityPhaseCreate),
+		)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
@@ -320,7 +324,10 @@ func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp 
 		return
 	}
 	if userAuthoredPayload != "" && plan.General != nil && plan.General.Payloads.ValueString() != userAuthoredPayload {
-		resp.Diagnostics.AddError("Jamf Pro cannot store this payload faithfully", payloadhelpers.PayloadFidelityUpdateErrorDetail)
+		resp.Diagnostics.AddError(
+			payloadhelpers.PayloadFidelitySummary,
+			payloadhelpers.PayloadFidelityErrorDetail([]byte(userAuthoredPayload), rawServerPayload, payloadhelpers.FidelityPhaseUpdate),
+		)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, identityModel{ID: plan.ID})...)
