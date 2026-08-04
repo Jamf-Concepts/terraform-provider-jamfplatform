@@ -22,8 +22,8 @@ var eaElementType = types.ObjectType{AttrTypes: patchSoftwareTitleEAAttrTypes}
 // The successor is /v3/patch-software-title-configurations, which a live Jamf
 // Pro 11.30.2 tenant serves without a Deprecation header — but the SDK's bundled
 // spec stops at v2 and generates no v3 client, so there is nothing to migrate to
-// yet. Tracked upstream as Jamf-Concepts/jamfplatform-go-sdk#50; the migration
-// window is recorded in this package's crud.go annotation.
+// yet. Tracked in #311, blocked upstream on Jamf-Concepts/jamfplatform-go-sdk#50;
+// the migration window is recorded in this package's crud.go annotation.
 //
 // Suppressed rather than left failing because golangci-lint runs staticcheck by
 // default and SA1019 is an error, so the alternative is a red build on every

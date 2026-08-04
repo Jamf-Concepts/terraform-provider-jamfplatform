@@ -10,14 +10,32 @@
 //   pro.ListPatchSoftwareTitleExtensionAttributesV2        (read EAs; v2 config id == classic title id)
 //   pro.UpdatePatchSoftwareTitleConfigurationV2            (accept EAs; merge-patch, accept is one-way)
 //
-// DEPRECATION: the /patchsoftwaretitles classic endpoints are flagged deprecated
-// in the Jamf API spec (the SDK funcs carry `// Deprecated:` pointing at
-// /v2/patch-software-title-configurations). They remain the only functional CRUD
-// surface — the v2 POST requires a softwareTitleId that cannot be minted
-// independently — so this resource intentionally uses them. Revisit if Jamf ships
-// a usable v2 create path or removes the classic endpoints.
+// DEPRECATION (classic CRUD): the /patchsoftwaretitles classic endpoints are
+// flagged deprecated in the Jamf API spec (the SDK funcs carry `// Deprecated:`
+// pointing at /v2/patch-software-title-configurations). They remain the only
+// functional CRUD surface — the v2 POST requires a softwareTitleId that cannot be
+// minted independently — so this resource intentionally uses them. Revisit if
+// Jamf ships a usable create path on a configurations endpoint, or removes the
+// classic endpoints.
 //
-// Status: current. Last reviewed 2026-06-01.
+// DEPRECATION (v2 extension-attribute side-channel): as of SDK v0.13.0 the
+// /v2/patch-software-title-configurations endpoints are themselves deprecated,
+// api-spec deprecation-date 2026-07-14. The successor is v3: a live Jamf Pro
+// 11.30.2 tenant serves /v3/patch-software-title-configurations with no
+// Deprecation header, while /v4 returns 403 — so v3 is the top version, not an
+// intermediate step. The SDK's bundled 11.30.0 spec stops at v2 and generates no
+// v3 client, so the migration cannot be made here yet; the two affected calls in
+// extension_attributes.go carry SA1019 suppressions meanwhile. Raised upstream as
+// Jamf-Concepts/jamfplatform-go-sdk#50.
+//
+// Note the two deprecations point in opposite directions: the classic endpoints
+// are deprecated in favour of the configurations endpoints, which are themselves
+// now deprecated. Migrating the classic CRUD onto v3 is therefore a single move
+// once the SDK exposes v3 and a usable create path exists — not two.
+//
+// Status: deprecated by Jamf 2026-07-14; migrate by 2027-01-14 (6mo soft / 3mo
+// before Jamf's announced removal date, which is not yet published). Tracked in
+// #311, blocked on jamfplatform-go-sdk#50. Last reviewed 2026-08-04.
 
 package patch_software_title
 

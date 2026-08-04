@@ -47,8 +47,8 @@ func NewProClassicClient(t *testing.T) *proclassic.Client {
 // V3 is the newest inventory version the SDK generates. Every version of this
 // endpoint — V1, V2 and V3 alike — is deprecated in the bundled spec as of
 // 2026-07-14; the /v4 successor a live 11.30.2 tenant serves is not in the spec
-// and so has no generated client (Jamf-Concepts/jamfplatform-go-sdk#50). Hence
-// the SA1019 suppression below.
+// and so has no generated client (tracked in #311, blocked upstream on
+// Jamf-Concepts/jamfplatform-go-sdk#50). Hence the SA1019 suppression below.
 //
 // Wire-probed 2026-08-03: a computer created through the classic endpoint is
 // visible in V3 immediately and under the same id, so this is safe to call

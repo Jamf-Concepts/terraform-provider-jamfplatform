@@ -15,7 +15,7 @@
 // serves /v4/computers-inventory with no Deprecation header and an identical
 // RSQL filter contract (wire-probed 2026-08-04: filtering on general.managementId
 // returns the same single record), but /v4 is absent from the bundled spec, so
-// the SDK generates no client for it. Tracked upstream as
+// the SDK generates no client for it. Tracked in #311, blocked upstream on
 // Jamf-Concepts/jamfplatform-go-sdk#50.
 //
 // Migration window per STYLE_GUIDE §Deprecation migration timeline: 6-month soft

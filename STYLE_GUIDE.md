@@ -689,6 +689,21 @@ The SDK does not currently retain side-by-side versioned functions on regenerati
 - When the SDK only exposes the new version on regeneration: migration is **SDK-bump-driven** — migrate at the SDK bump or pin the SDK to the prior release (only as a temporary workaround). Document the constraint in the resource's annotation block.
 - When a Jamf deprecation is announced for an endpoint we use (at any version pair), file an issue against `jamfplatform-go-sdk` requesting retention of the deprecated version through our migration window.
 
+#### Deprecated with no generated successor
+
+The case above assumes the successor reaches us. Sometimes it does not: the SDK marks version N deprecated while generating **no** client for N+1, because N+1 is absent from the bundled OpenAPI spec even though a live tenant serves it. `golangci-lint` runs `staticcheck` by default and `SA1019` is an error, so this combination turns a green build red with no migration available.
+
+When that happens:
+
+1. **Verify the successor on the wire before concluding anything.** The bundled spec is not authoritative about what a tenant serves — probe the real endpoint and record the status code, the presence or absence of a `Deprecation` response header, and whether the query contract (filters, sections, paging) is unchanged. A spec that deprecates every version of a surface with no replacement present is a stale-bundle symptom, not Jamf's intent.
+2. **Raise it upstream against `jamfplatform-go-sdk`** with that wire evidence, and reference the issue from every suppression.
+3. **Open the provider-side migration tracking issue** within the usual 30 days (see the timeline below). Being blocked on the SDK does not pause the clock — the deadline is set by Jamf's removal date, not by our dependency.
+4. **Suppress `SA1019` at the call site**, never repo-wide, with `//nolint:staticcheck // SA1019: <why> — see <where the reasoning lives>`. Keep the full reasoning in one place per package (a package doc or a note beside the shared type) and have the per-line comments point at it.
+5. **Do not route around the deprecation with a worse endpoint.** An undeprecated alternative that loses server-side filtering, paging, or a needed field is usually the worse trade — a tracked deprecation beats an unbounded per-call cost. If an alternative is rejected, say so and say why in the annotation, so the next maintainer does not re-litigate it.
+6. **Record the status** in the resource's annotation block using the `Status: deprecated by Jamf …` form below, naming the successor version and the blocking issue.
+
+Suppression is a holding position with a deadline attached, not a resolution. The hard floor in the timeline below still applies.
+
 #### Adoption (new endpoints)
 
 | Scenario | Action |
