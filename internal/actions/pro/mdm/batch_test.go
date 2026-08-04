@@ -198,6 +198,12 @@ func batchActions() map[string]action.Action {
 		"play_lost_mode_sound":        NewPlayLostModeSoundAction(),
 		"unlock_user_account":         NewUnlockUserAccountAction(),
 		"send_blank_push":             NewSendBlankPushAction(),
+		// Both enhanced-log-collection actions batch. The trigger does carry a
+		// payload field, but apple_care_token is user-supplied rather than
+		// per-device-derived, which is what forces the two actions below to stay
+		// single-target. See triggerTokenScopeNote for the caveat this leaves.
+		"trigger_enhanced_log_collection": NewTriggerEnhancedLogCollectionAction(),
+		"cancel_enhanced_log_collection":  NewCancelEnhancedLogCollectionAction(),
 	}
 }
 

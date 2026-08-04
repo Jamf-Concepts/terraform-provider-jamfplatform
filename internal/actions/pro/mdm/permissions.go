@@ -83,6 +83,18 @@ var enableRemoteDesktopSDKMethods = []string{
 }
 var enableRemoteDesktopPrivileges = permissions.Section(resolveSerialMerged, enableRemoteDesktopSDKMethods...)
 
+var triggerEnhancedLogCollectionSDKMethods = []string{
+	"SendMdmCommandV2",
+	"ListDevices",
+}
+var triggerEnhancedLogCollectionPrivileges = permissions.Section(resolveSerialMerged, triggerEnhancedLogCollectionSDKMethods...)
+
+var cancelEnhancedLogCollectionSDKMethods = []string{
+	"SendMdmCommandV2",
+	"ListDevices",
+}
+var cancelEnhancedLogCollectionPrivileges = permissions.Section(resolveSerialMerged, cancelEnhancedLogCollectionSDKMethods...)
+
 var logOutUserSDKMethods = []string{
 	"SendMdmCommandV2",
 	"ListDevices",

@@ -659,6 +659,8 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		mdmactions.NewLogOutUserAction,
 		mdmactions.NewUnlockUserAccountAction,
 		mdmactions.NewSetAutoAdminPasswordAction,
+		mdmactions.NewTriggerEnhancedLogCollectionAction,
+		mdmactions.NewCancelEnhancedLogCollectionAction,
 		mdmactions.NewSendBlankPushAction,
 		mdmactions.NewRenewMdmProfileAction,
 		mdmactions.NewFlushMdmCommandsAction,

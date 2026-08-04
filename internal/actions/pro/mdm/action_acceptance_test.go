@@ -290,3 +290,106 @@ action "jamfplatform_pro_enable_remote_desktop" "rd" {
 		}},
 	})
 }
+
+// --- enhanced log collection ---
+//
+// The trigger command cannot be exercised end-to-end here: it requires a real
+// AppleCare token issued against a support ticket, and there is no way to mint a
+// test one. A device on an OS below 27.0 would also accept the queued command and
+// then do nothing, so a passing apply would not prove the feature works. What IS
+// verifiable without a token is that the command discriminator is one the server
+// recognises — a bogus commandType is rejected with a 400 naming every known type
+// id, whereas a recognised one reaches device resolution — and that is covered by
+// the SDK's own TestAcceptance_Pro_MdmUpdates_EnhancedLogCollectionCommands.
+//
+// So the tests below cover the plan-time contract, which is where this action's
+// own logic lives.
+
+// TestAccAction_ProTriggerEnhancedLogCollection_MissingTokenFails asserts the
+// token stays required. Without it the command is meaningless, and the spec marks
+// appleCareToken required with minLength 1.
+func TestAccAction_ProTriggerEnhancedLogCollection_MissingTokenFails(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	config := fireConfig(`
+action "jamfplatform_pro_trigger_enhanced_log_collection" "trigger" {
+  config {
+    serial_numbers = ["C02XXXXXXXXX"]
+  }
+}`, "action.jamfplatform_pro_trigger_enhanced_log_collection.trigger")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{{
+			Config:      config,
+			ExpectError: regexp.MustCompile(`(?s)apple_care_token`),
+		}},
+	})
+}
+
+// TestAccAction_ProTriggerEnhancedLogCollection_EmptyTokenFails asserts the
+// LengthAtLeast(1) validator: an empty string is not a token, and rejecting it at
+// plan time beats queueing a command the device will refuse.
+func TestAccAction_ProTriggerEnhancedLogCollection_EmptyTokenFails(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	config := fireConfig(`
+action "jamfplatform_pro_trigger_enhanced_log_collection" "trigger" {
+  config {
+    serial_numbers   = ["C02XXXXXXXXX"]
+    apple_care_token = ""
+  }
+}`, "action.jamfplatform_pro_trigger_enhanced_log_collection.trigger")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{{
+			Config:      config,
+			ExpectError: regexp.MustCompile(`(?s)Invalid Attribute Value.*at least 1`),
+		}},
+	})
+}
+
+// TestAccAction_ProCancelEnhancedLogCollection_NoTargetFails covers the cancel
+// action's plan-time selector guard, mirroring the shared command test above.
+func TestAccAction_ProCancelEnhancedLogCollection_NoTargetFails(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+
+	config := fireConfig(`
+action "jamfplatform_pro_cancel_enhanced_log_collection" "cancel" {
+  config {}
+}`, "action.jamfplatform_pro_cancel_enhanced_log_collection.cancel")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{{
+			Config:      config,
+			ExpectError: regexp.MustCompile(`(?s)Missing Attribute Configuration.*\[management_ids,serial_numbers\]`),
+		}},
+	})
+}
+
+// TestAccAction_ProCancelEnhancedLogCollection_Invoke commands a real device.
+// Safe to run unconditionally on an opted-in device: cancelling collects nothing
+// and uploads nothing. Gated on the same serial variable as its siblings.
+func TestAccAction_ProCancelEnhancedLogCollection_Invoke(t *testing.T) {
+	serial := os.Getenv(envComputerSerial)
+	if serial == "" {
+		t.Skipf("%s not set; skipping enhanced log collection cancel acceptance test", envComputerSerial)
+	}
+	testhelpers.AccPreCheck(t)
+
+	config := fireConfig(fmt.Sprintf(`
+action "jamfplatform_pro_cancel_enhanced_log_collection" "cancel" {
+  config {
+    serial_numbers = [%q]
+  }
+}`, serial), "action.jamfplatform_pro_cancel_enhanced_log_collection.cancel")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{{
+			Config: config,
+		}},
+	})
+}
