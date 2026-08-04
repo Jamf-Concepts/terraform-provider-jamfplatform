@@ -6,8 +6,10 @@ package mdmactions
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -15,6 +17,7 @@ import (
 
 var _ action.Action = (*SetAutoAdminPasswordAction)(nil)
 var _ action.ActionWithConfigure = (*SetAutoAdminPasswordAction)(nil)
+var _ action.ActionWithConfigValidators = (*SetAutoAdminPasswordAction)(nil)
 
 // SetAutoAdminPasswordAction sets the automatic administrator password on a computer.
 type SetAutoAdminPasswordAction struct {
@@ -42,14 +45,22 @@ func (a *SetAutoAdminPasswordAction) Schema(ctx context.Context, req action.Sche
 		Optional:            true,
 		MarkdownDescription: "GUID of the local administrator account whose password is being set.",
 	}
+	// Deliberately neither WriteOnly nor Sensitive — see secretAttrNote.
 	attrs["password"] = actionschema.StringAttribute{
 		Optional:            true,
-		MarkdownDescription: "New automatic administrator password.",
+		MarkdownDescription: "New automatic administrator password. Jamf Pro never returns this value, and it must not be empty." + secretAttrNote,
+		Validators: []validator.String{
+			stringvalidator.LengthAtLeast(1),
+		},
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Sets the automatic administrator password on a computer." + setAutoAdminPasswordPrivileges,
+		MarkdownDescription: "Sets the automatic administrator password on a computer." + singleTargetNote + setAutoAdminPasswordPrivileges,
 		Attributes:          attrs,
 	}
+}
+
+func (a *SetAutoAdminPasswordAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *SetAutoAdminPasswordAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

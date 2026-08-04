@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_clear_passcode Action - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Clears the passcode on a mobile device.
+  This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use for_each to cover several devices.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
@@ -17,6 +18,8 @@ description: |-
 # jamfplatform_pro_clear_passcode (Action)
 
 Clears the passcode on a mobile device.
+
+This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use `for_each` to cover several devices.
 
 **Required Jamf privileges**
 
@@ -48,6 +51,6 @@ action "jamfplatform_pro_clear_passcode" "clear" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
-- `serial_number` (String) Serial number of the mobile device (case-sensitive). Provide this or `management_id`.
-- `unlock_token` (String) Unlock token for the mobile device. Required for unsupervised devices and looked up automatically when omitted; supervised devices do not need one.
+- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
+- `serial_number` (String) Serial number of the mobile device (case-sensitive). Set exactly one of this or `management_id`.
+- `unlock_token` (String) Unlock token for the mobile device. Required for unsupervised devices and looked up automatically when omitted; supervised devices do not need one. This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed.

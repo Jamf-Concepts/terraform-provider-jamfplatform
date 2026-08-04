@@ -17,6 +17,7 @@ import (
 // in sync with the actual classic.<Method> calls in flush_policy_logs.go and
 // with the SDK privilege registry.
 var flushPolicyLogsSDKMethods = []string{
+	"GetPolicyByID",
 	"DeleteLogFlushByLogIDInterval",
 }
 

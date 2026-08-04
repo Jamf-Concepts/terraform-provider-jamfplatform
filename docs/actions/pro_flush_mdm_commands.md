@@ -40,6 +40,6 @@ action "jamfplatform_pro_flush_mdm_commands" "clear_stuck" {
 
 ### Required
 
-- `id` (String) Jamf Pro ID of the device or group to flush commands for.
+- `id` (String) Jamf Pro ID of the device or group to flush commands for. Numeric.
 - `id_type` (String) Type of target: `computers`, `computergroups`, `mobiledevices`, or `mobiledevicegroups`.
 - `status` (String) Which commands to flush: `Pending`, `Failed`, or `Pending+Failed`.

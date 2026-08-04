@@ -38,5 +38,5 @@ action "jamfplatform_device_shutdown" "power_off" {
 
 ### Optional
 
-- `device_id` (String) Jamf Pro Management ID. Provide this or `serial_number`.
-- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.
+- `device_id` (String) Jamf Pro Management ID. Set exactly one of this or `serial_number`.
+- `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.

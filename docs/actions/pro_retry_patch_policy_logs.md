@@ -45,4 +45,4 @@ action "jamfplatform_pro_retry_patch_policy_logs" "retry" {
 
 ### Optional
 
-- `device_ids` (List of String) Jamf Pro computer IDs to retry. Omit to retry all failed devices.
+- `device_ids` (List of String) Jamf Pro computer IDs to retry. Omit to retry all failed devices; an empty list is not a valid way to say that.

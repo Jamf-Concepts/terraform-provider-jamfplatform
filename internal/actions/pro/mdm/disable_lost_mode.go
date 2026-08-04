@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*DisableLostModeAction)(nil)
 var _ action.ActionWithConfigure = (*DisableLostModeAction)(nil)
+var _ action.ActionWithConfigValidators = (*DisableLostModeAction)(nil)
 
 // DisableLostModeAction turns off Lost Mode on a supervised mobile device.
 type DisableLostModeAction struct {
@@ -22,8 +23,8 @@ type DisableLostModeAction struct {
 }
 
 type DisableLostModeActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
+	ManagementIDs types.List `tfsdk:"management_ids"`
+	SerialNumbers types.List `tfsdk:"serial_numbers"`
 }
 
 func NewDisableLostModeAction() action.Action {
@@ -36,9 +37,13 @@ func (a *DisableLostModeAction) Metadata(ctx context.Context, req action.Metadat
 
 func (a *DisableLostModeAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Turns off Lost Mode on a supervised mobile device." + disableLostModePrivileges,
-		Attributes:          targetAttributes("mobile device"),
+		MarkdownDescription: "Turns off Lost Mode on one or more supervised mobile devices." + batchNote + disableLostModePrivileges,
+		Attributes:          targetListAttributes("mobile device"),
 	}
+}
+
+func (a *DisableLostModeAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetListConfigValidators()
 }
 
 func (a *DisableLostModeAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -56,11 +61,11 @@ func (a *DisableLostModeAction) Invoke(ctx context.Context, req action.InvokeReq
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
 
 	command := &pro.DisableLostModeCommand{CommandType: cmdDisableLostMode}
-	a.sendCommand(ctx, resp, managementID, command, "Disable Lost Mode")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Disable Lost Mode")
 }

@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_set_auto_admin_password Action - terraform-provide
 subcategory: ""
 description: |-
   Sets the automatic administrator password on a computer.
+  This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use for_each to cover several devices.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -16,6 +17,8 @@ description: |-
 # jamfplatform_pro_set_auto_admin_password (Action)
 
 Sets the automatic administrator password on a computer.
+
+This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use `for_each` to cover several devices.
 
 **Required Jamf privileges**
 
@@ -45,6 +48,6 @@ action "jamfplatform_pro_set_auto_admin_password" "rotate" {
 ### Optional
 
 - `guid` (String) GUID of the local administrator account whose password is being set.
-- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
-- `password` (String) New automatic administrator password.
-- `serial_number` (String) Serial number of the computer (case-sensitive). Provide this or `management_id`.
+- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
+- `password` (String) New automatic administrator password. Jamf Pro never returns this value, and it must not be empty. This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed.
+- `serial_number` (String) Serial number of the computer (case-sensitive). Set exactly one of this or `management_id`.

@@ -45,63 +45,53 @@ func (a *EraseAction) Metadata(ctx context.Context, req action.MetadataRequest, 
 }
 
 func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
-	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Requests that a device erase its content and settings. Requires **Device Management Actions API access**." + eraseDevicePrivileges,
-		Attributes: map[string]actionschema.Attribute{
-			"device_id": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Jamf Pro Management ID. Provide this or `serial_number`.",
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
-				},
-			},
-			"serial_number": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.",
-				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("device_id")),
-				},
-			},
-			"preserve_data_plan": actionschema.BoolAttribute{
-				Optional:            true,
-				MarkdownDescription: "Preserve the data plan on an iPhone or iPad with eSIM functionality, if one exists. Applies to mobile devices only.",
-				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
-				},
-			},
-			"disallow_proximity_setup": actionschema.BoolAttribute{
-				Optional:            true,
-				MarkdownDescription: "Disable Proximity Setup on the next reboot and skip the pane in Setup Assistant. Applies to mobile devices only.",
-				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
-				},
-			},
-			"clear_activation_lock": actionschema.BoolAttribute{
-				Optional:            true,
-				MarkdownDescription: "Clear the activation lock on the device.",
-			},
-			"return_to_service": actionschema.BoolAttribute{
-				Optional:            true,
-				MarkdownDescription: "The device will be returned to service after the erase is complete. Applies to mobile devices only.",
-				Validators: []validator.Bool{
-					boolvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("pin")),
-				},
-			},
-			"pin": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "The six-character PIN for Find My. Applies to computers only.",
-				Validators: []validator.String{
-					stringvalidator.LengthBetween(6, 6),
-					stringvalidator.ConflictsWith(
-						path.MatchRelative().AtParent().AtName("preserve_data_plan"),
-						path.MatchRelative().AtParent().AtName("disallow_proximity_setup"),
-						path.MatchRelative().AtParent().AtName("return_to_service"),
-					),
-				},
-			},
+	attrs := deviceTargetAttributes()
+	attrs["preserve_data_plan"] = actionschema.BoolAttribute{
+		Optional:            true,
+		MarkdownDescription: "Preserve the data plan on an iPhone or iPad with eSIM functionality, if one exists. Applies to mobile devices only.",
+		Validators: []validator.Bool{
+			boolvalidator.ConflictsWith(path.MatchRoot("pin")),
 		},
 	}
+	attrs["disallow_proximity_setup"] = actionschema.BoolAttribute{
+		Optional:            true,
+		MarkdownDescription: "Disable Proximity Setup on the next reboot and skip the pane in Setup Assistant. Applies to mobile devices only.",
+		Validators: []validator.Bool{
+			boolvalidator.ConflictsWith(path.MatchRoot("pin")),
+		},
+	}
+	attrs["clear_activation_lock"] = actionschema.BoolAttribute{
+		Optional:            true,
+		MarkdownDescription: "Clear the activation lock on the device.",
+	}
+	attrs["return_to_service"] = actionschema.BoolAttribute{
+		Optional:            true,
+		MarkdownDescription: "The device will be returned to service after the erase is complete. Applies to mobile devices only.",
+		Validators: []validator.Bool{
+			boolvalidator.ConflictsWith(path.MatchRoot("pin")),
+		},
+	}
+	// Deliberately neither WriteOnly nor Sensitive — see secretAttrNote.
+	attrs["pin"] = actionschema.StringAttribute{
+		Optional:            true,
+		MarkdownDescription: "The six-character PIN for Find My. Applies to computers only." + secretAttrNote,
+		Validators: []validator.String{
+			stringvalidator.LengthBetween(6, 6),
+			stringvalidator.ConflictsWith(
+				path.MatchRoot("preserve_data_plan"),
+				path.MatchRoot("disallow_proximity_setup"),
+				path.MatchRoot("return_to_service"),
+			),
+		},
+	}
+	resp.Schema = actionschema.Schema{
+		MarkdownDescription: "Requests that a device erase its content and settings. Requires **Device Management Actions API access**." + eraseDevicePrivileges,
+		Attributes:          attrs,
+	}
+}
+
+func (a *EraseAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *EraseAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

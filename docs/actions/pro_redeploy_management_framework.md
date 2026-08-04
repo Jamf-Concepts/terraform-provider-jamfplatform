@@ -42,6 +42,6 @@ action "jamfplatform_pro_redeploy_management_framework" "redeploy" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this, `serial_number`, or `udid`.
-- `serial_number` (String) Serial number of the computer (case-sensitive). Provide this, `management_id`, or `udid`.
-- `udid` (String) Hardware UDID of the computer. Provide this, `management_id`, or `serial_number`.
+- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this, `serial_number`, or `udid`.
+- `serial_number` (String) Serial number of the computer (case-sensitive). Set exactly one of this, `management_id`, or `udid`.
+- `udid` (String) Hardware UDID of the computer. Set exactly one of this, `management_id`, or `serial_number`.

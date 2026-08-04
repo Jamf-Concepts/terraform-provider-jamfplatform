@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*PlayLostModeSoundAction)(nil)
 var _ action.ActionWithConfigure = (*PlayLostModeSoundAction)(nil)
+var _ action.ActionWithConfigValidators = (*PlayLostModeSoundAction)(nil)
 
 // PlayLostModeSoundAction plays a sound on a mobile device that is in Lost Mode.
 type PlayLostModeSoundAction struct {
@@ -22,8 +23,8 @@ type PlayLostModeSoundAction struct {
 }
 
 type PlayLostModeSoundActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
+	ManagementIDs types.List `tfsdk:"management_ids"`
+	SerialNumbers types.List `tfsdk:"serial_numbers"`
 }
 
 func NewPlayLostModeSoundAction() action.Action {
@@ -36,9 +37,13 @@ func (a *PlayLostModeSoundAction) Metadata(ctx context.Context, req action.Metad
 
 func (a *PlayLostModeSoundAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Plays a sound on a mobile device that is in Lost Mode." + playLostModeSoundPrivileges,
-		Attributes:          targetAttributes("mobile device"),
+		MarkdownDescription: "Plays a sound on one or more mobile devices that are in Lost Mode." + batchNote + playLostModeSoundPrivileges,
+		Attributes:          targetListAttributes("mobile device"),
 	}
+}
+
+func (a *PlayLostModeSoundAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetListConfigValidators()
 }
 
 func (a *PlayLostModeSoundAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -56,11 +61,11 @@ func (a *PlayLostModeSoundAction) Invoke(ctx context.Context, req action.InvokeR
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
 
 	command := &pro.PlayLostModeSoundCommand{CommandType: cmdPlayLostModeSound}
-	a.sendCommand(ctx, resp, managementID, command, "Play Lost Mode sound")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Play Lost Mode sound")
 }

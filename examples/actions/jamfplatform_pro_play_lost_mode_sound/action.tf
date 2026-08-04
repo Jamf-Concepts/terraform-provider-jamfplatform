@@ -1,5 +1,5 @@
 action "jamfplatform_pro_play_lost_mode_sound" "play" {
   config {
-    serial_number = "DMPXXXXXXXXX"
+    serial_numbers = ["DMPXXXXXXXXX"]
   }
 }

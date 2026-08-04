@@ -7,16 +7,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var _ action.Action = (*RestartAction)(nil)
 var _ action.ActionWithConfigure = (*RestartAction)(nil)
+var _ action.ActionWithConfigValidators = (*RestartAction)(nil)
 
 // RestartAction invokes a Jamf Platform restart command for a device.
 type RestartAction struct {
@@ -41,24 +39,12 @@ func (a *RestartAction) Metadata(ctx context.Context, req action.MetadataRequest
 func (a *RestartAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "Requests that a device restart. Requires **Device Management Actions API access**." + restartDevicePrivileges,
-		Attributes: map[string]actionschema.Attribute{
-			"device_id": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Jamf Pro Management ID. Provide this or `serial_number`.",
-				Validators: []validator.String{
-					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("serial_number")),
-				},
-			},
-			"serial_number": actionschema.StringAttribute{
-				Optional:            true,
-				MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Provide this or `device_id`.",
-				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-					stringvalidator.ConflictsWith(path.MatchRelative().AtParent().AtName("device_id")),
-				},
-			},
-		},
+		Attributes:          deviceTargetAttributes(),
 	}
+}
+
+func (a *RestartAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetConfigValidators()
 }
 
 func (a *RestartAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {

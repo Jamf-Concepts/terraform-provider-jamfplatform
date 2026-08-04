@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*ClearRestrictionsPasswordAction)(nil)
 var _ action.ActionWithConfigure = (*ClearRestrictionsPasswordAction)(nil)
+var _ action.ActionWithConfigValidators = (*ClearRestrictionsPasswordAction)(nil)
 
 // ClearRestrictionsPasswordAction clears the Screen Time (restrictions) passcode on a mobile device.
 type ClearRestrictionsPasswordAction struct {
@@ -22,8 +23,8 @@ type ClearRestrictionsPasswordAction struct {
 }
 
 type ClearRestrictionsPasswordActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
+	ManagementIDs types.List `tfsdk:"management_ids"`
+	SerialNumbers types.List `tfsdk:"serial_numbers"`
 }
 
 func NewClearRestrictionsPasswordAction() action.Action {
@@ -36,9 +37,13 @@ func (a *ClearRestrictionsPasswordAction) Metadata(ctx context.Context, req acti
 
 func (a *ClearRestrictionsPasswordAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Clears the Screen Time (restrictions) passcode on a mobile device." + clearRestrictionsPasswordPrivileges,
-		Attributes:          targetAttributes("mobile device"),
+		MarkdownDescription: "Clears the Screen Time (restrictions) passcode on one or more mobile devices." + batchNote + clearRestrictionsPasswordPrivileges,
+		Attributes:          targetListAttributes("mobile device"),
 	}
+}
+
+func (a *ClearRestrictionsPasswordAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetListConfigValidators()
 }
 
 func (a *ClearRestrictionsPasswordAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -56,11 +61,11 @@ func (a *ClearRestrictionsPasswordAction) Invoke(ctx context.Context, req action
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
 
 	command := &pro.ClearRestrictionsPasswordCommand{CommandType: cmdClearRestrictionsPassword}
-	a.sendCommand(ctx, resp, managementID, command, "Clear restrictions password")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Clear restrictions password")
 }

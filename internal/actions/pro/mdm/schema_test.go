@@ -61,7 +61,7 @@ func TestDeviceLockAction_Metadata(t *testing.T) {
 
 func TestDeviceLockAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewDeviceLockAction().(*DeviceLockAction).Schema,
-		[]string{"management_id", "serial_number", "message", "phone_number", "pin"})
+		[]string{"management_ids", "serial_numbers", "message", "phone_number", "pin"})
 }
 
 // --- disable_lost_mode (canary) ---
@@ -72,7 +72,7 @@ func TestDisableLostModeAction_Metadata(t *testing.T) {
 
 func TestDisableLostModeAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewDisableLostModeAction().(*DisableLostModeAction).Schema,
-		[]string{"management_id", "serial_number"})
+		[]string{"management_ids", "serial_numbers"})
 }
 
 // --- play_lost_mode_sound (canary) ---
@@ -83,7 +83,7 @@ func TestPlayLostModeSoundAction_Metadata(t *testing.T) {
 
 func TestPlayLostModeSoundAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewPlayLostModeSoundAction().(*PlayLostModeSoundAction).Schema,
-		[]string{"management_id", "serial_number"})
+		[]string{"management_ids", "serial_numbers"})
 }
 
 // --- clear_passcode (canary) ---
@@ -105,7 +105,7 @@ func TestEnableLostModeAction_Metadata(t *testing.T) {
 
 func TestEnableLostModeAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewEnableLostModeAction().(*EnableLostModeAction).Schema,
-		[]string{"management_id", "serial_number", "lost_mode_message", "lost_mode_footnote", "lost_mode_phone"})
+		[]string{"management_ids", "serial_numbers", "lost_mode_message", "lost_mode_footnote", "lost_mode_phone"})
 }
 
 // --- enable_remote_desktop ---
@@ -116,7 +116,7 @@ func TestEnableRemoteDesktopAction_Metadata(t *testing.T) {
 
 func TestEnableRemoteDesktopAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewEnableRemoteDesktopAction().(*EnableRemoteDesktopAction).Schema,
-		[]string{"management_id", "serial_number"})
+		[]string{"management_ids", "serial_numbers"})
 }
 
 // --- disable_remote_desktop ---
@@ -127,7 +127,7 @@ func TestDisableRemoteDesktopAction_Metadata(t *testing.T) {
 
 func TestDisableRemoteDesktopAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewDisableRemoteDesktopAction().(*DisableRemoteDesktopAction).Schema,
-		[]string{"management_id", "serial_number"})
+		[]string{"management_ids", "serial_numbers"})
 }
 
 // --- clear_restrictions_password ---
@@ -138,7 +138,7 @@ func TestClearRestrictionsPasswordAction_Metadata(t *testing.T) {
 
 func TestClearRestrictionsPasswordAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewClearRestrictionsPasswordAction().(*ClearRestrictionsPasswordAction).Schema,
-		[]string{"management_id", "serial_number"})
+		[]string{"management_ids", "serial_numbers"})
 }
 
 // --- delete_user ---
@@ -149,7 +149,7 @@ func TestDeleteUserAction_Metadata(t *testing.T) {
 
 func TestDeleteUserAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewDeleteUserAction().(*DeleteUserAction).Schema,
-		[]string{"management_id", "serial_number", "user_name", "delete_all_users", "force_deletion"})
+		[]string{"management_ids", "serial_numbers", "user_name", "delete_all_users", "force_deletion"})
 }
 
 // --- log_out_user ---
@@ -160,7 +160,7 @@ func TestLogOutUserAction_Metadata(t *testing.T) {
 
 func TestLogOutUserAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewLogOutUserAction().(*LogOutUserAction).Schema,
-		[]string{"management_id", "serial_number"})
+		[]string{"management_ids", "serial_numbers"})
 }
 
 // --- unlock_user_account ---
@@ -171,7 +171,7 @@ func TestUnlockUserAccountAction_Metadata(t *testing.T) {
 
 func TestUnlockUserAccountAction_Schema(t *testing.T) {
 	assertAttrsPresent(t, NewUnlockUserAccountAction().(*UnlockUserAccountAction).Schema,
-		[]string{"management_id", "serial_number", "user_name"})
+		[]string{"management_ids", "serial_numbers", "user_name"})
 }
 
 // --- set_auto_admin_password ---
@@ -218,4 +218,56 @@ func TestFlushMdmCommandsAction_Schema(t *testing.T) {
 	schema := NewFlushMdmCommandsAction().(*FlushMdmCommandsAction).Schema
 	assertAttrsPresent(t, schema, []string{"id_type", "id", "status"})
 	assertRequired(t, schema, []string{"id_type", "id", "status"})
+}
+
+// --- plan-time device-target validation ---
+
+// TestDeviceTargetValidatorsWired guards that every action whose schema is built
+// from targetAttributes also declares the matching ConfigValidators. Without the
+// validator, "neither management_id nor serial_number" passes plan and only
+// fails part-way through the apply — the schema alone cannot express
+// exactly-one-of, so the two halves must be kept in step.
+//
+// The list is asserted against the schema itself, so an action that gains the
+// target selector but forgets ConfigValidators fails here.
+func TestDeviceTargetValidatorsWired(t *testing.T) {
+	targetActions := map[string]action.Action{
+		"clear_passcode":              NewClearPasscodeAction(),
+		"clear_restrictions_password": NewClearRestrictionsPasswordAction(),
+		"delete_user":                 NewDeleteUserAction(),
+		"device_lock":                 NewDeviceLockAction(),
+		"disable_lost_mode":           NewDisableLostModeAction(),
+		"disable_remote_desktop":      NewDisableRemoteDesktopAction(),
+		"enable_lost_mode":            NewEnableLostModeAction(),
+		"enable_remote_desktop":       NewEnableRemoteDesktopAction(),
+		"log_out_user":                NewLogOutUserAction(),
+		"play_lost_mode_sound":        NewPlayLostModeSoundAction(),
+		"set_auto_admin_password":     NewSetAutoAdminPasswordAction(),
+		"unlock_user_account":         NewUnlockUserAccountAction(),
+	}
+
+	for name, a := range targetActions {
+		t.Run(name, func(t *testing.T) {
+			withValidators, ok := a.(action.ActionWithConfigValidators)
+			if !ok {
+				t.Fatalf("%s builds its schema from targetAttributes but declares no ConfigValidators", name)
+			}
+			if len(withValidators.ConfigValidators(context.Background())) == 0 {
+				t.Fatalf("%s declares an empty ConfigValidators slice", name)
+			}
+		})
+	}
+}
+
+// TestSendBlankPushValidatorsWired covers the at-least-one-of rule: the action
+// accepts management_ids and/or serial_numbers, and previously only rejected
+// "neither" once the apply was already running.
+func TestSendBlankPushValidatorsWired(t *testing.T) {
+	a, ok := NewSendBlankPushAction().(action.ActionWithConfigValidators)
+	if !ok {
+		t.Fatal("send_blank_push declares no ConfigValidators")
+	}
+	if len(a.ConfigValidators(context.Background())) == 0 {
+		t.Fatal("send_blank_push declares an empty ConfigValidators slice")
+	}
 }

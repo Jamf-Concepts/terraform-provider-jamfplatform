@@ -15,6 +15,7 @@ import (
 
 var _ action.Action = (*DisableRemoteDesktopAction)(nil)
 var _ action.ActionWithConfigure = (*DisableRemoteDesktopAction)(nil)
+var _ action.ActionWithConfigValidators = (*DisableRemoteDesktopAction)(nil)
 
 // DisableRemoteDesktopAction disables Remote Desktop (remote management) on a computer.
 type DisableRemoteDesktopAction struct {
@@ -22,8 +23,8 @@ type DisableRemoteDesktopAction struct {
 }
 
 type DisableRemoteDesktopActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
+	ManagementIDs types.List `tfsdk:"management_ids"`
+	SerialNumbers types.List `tfsdk:"serial_numbers"`
 }
 
 func NewDisableRemoteDesktopAction() action.Action {
@@ -36,9 +37,13 @@ func (a *DisableRemoteDesktopAction) Metadata(ctx context.Context, req action.Me
 
 func (a *DisableRemoteDesktopAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Disables Remote Desktop (remote management) on a computer." + disableRemoteDesktopPrivileges,
-		Attributes:          targetAttributes("computer"),
+		MarkdownDescription: "Disables Remote Desktop (remote management) on one or more computers." + batchNote + disableRemoteDesktopPrivileges,
+		Attributes:          targetListAttributes("computer"),
 	}
+}
+
+func (a *DisableRemoteDesktopAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetListConfigValidators()
 }
 
 func (a *DisableRemoteDesktopAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -56,11 +61,11 @@ func (a *DisableRemoteDesktopAction) Invoke(ctx context.Context, req action.Invo
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
 
 	command := &pro.DisableRemoteDesktopCommand{CommandType: cmdDisableRemoteDesktop}
-	a.sendCommand(ctx, resp, managementID, command, "Disable Remote Desktop")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Disable Remote Desktop")
 }

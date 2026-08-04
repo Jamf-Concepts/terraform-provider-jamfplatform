@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_send_blank_push Action - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Sends a blank push notification to one or more devices to prompt them to check in.
+  All targeted devices are pushed in a single request. Devices that do not accept the push are reported individually as a warning; the invocation itself still succeeds.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -16,6 +17,8 @@ description: |-
 # jamfplatform_pro_send_blank_push (Action)
 
 Sends a blank push notification to one or more devices to prompt them to check in.
+
+All targeted devices are pushed in a single request. Devices that do not accept the push are reported individually as a warning; the invocation itself still succeeds.
 
 **Required Jamf privileges**
 
@@ -48,5 +51,5 @@ action "jamfplatform_pro_send_blank_push" "nudge" {
 
 ### Optional
 
-- `management_ids` (List of String) Jamf Pro Management IDs of the devices to push. Provide this and/or `serial_numbers`.
-- `serial_numbers` (List of String) Serial numbers of the devices to push (case-sensitive). Provide this and/or `management_ids`.
+- `management_ids` (List of String) Jamf Pro Management IDs of the devices to target. These are the `id` values reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. All listed devices are commanded in a single request. Set this and/or `serial_numbers`.
+- `serial_numbers` (List of String) Serial numbers of the devices to target (case-sensitive). Each is looked up to find its Management ID before the command is sent, so `management_ids` avoids that lookup. Set this and/or `management_ids`.

@@ -133,3 +133,27 @@ func TestUnmanageAction_Schema(t *testing.T) {
 		}
 	}
 }
+
+// TestDeviceTargetValidatorsWired guards that every device action declares the
+// exactly-one-of ConfigValidator alongside the shared device_id / serial_number
+// selector. The schema cannot express exactly-one-of on its own, so without the
+// validator a config naming NO device passes plan and only fails once the apply
+// is already running.
+func TestDeviceTargetValidatorsWired(t *testing.T) {
+	for name, a := range map[string]action.Action{
+		"erase":    NewEraseAction(),
+		"restart":  NewRestartAction(),
+		"shutdown": NewShutdownAction(),
+		"unmanage": NewUnmanageAction(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			withValidators, ok := a.(action.ActionWithConfigValidators)
+			if !ok {
+				t.Fatalf("%s declares no ConfigValidators", name)
+			}
+			if len(withValidators.ConfigValidators(context.Background())) == 0 {
+				t.Fatalf("%s declares an empty ConfigValidators slice", name)
+			}
+		})
+	}
+}

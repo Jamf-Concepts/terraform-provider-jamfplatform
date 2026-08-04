@@ -7,7 +7,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/actionvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
+	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	daSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
@@ -20,6 +25,73 @@ import (
 type deviceAction struct {
 	devices *devSDK.Client
 	actions *daSDK.Client
+}
+
+// secretAttrNote is appended to the description of every action attribute that
+// carries a user-supplied secret (here, the Find My PIN).
+//
+// Such an attribute can be given NEITHER protection the framework offers:
+//
+//   - Sensitive does not exist on action schema attributes. The field is absent,
+//     and IsSensitive() is hardcoded to return false ("action schema attributes
+//     cannot be Sensitive").
+//   - WriteOnly exists on action attributes and compiles, but setting it makes
+//     the attribute impossible to use. Action config validation hardcodes
+//     WriteOnlyAttributesAllowed: false (fwserver/server_validateactionconfig.go,
+//     on the stated grounds that the capability "is only valid for resource
+//     schemas"), while the shared SchemaValidate still applies the resource
+//     write-only gate (fwserver/attribute_validation.go). Any non-null value for
+//     a write-only action attribute therefore fails validation with "WriteOnly
+//     Attribute Not Allowed".
+//
+// Note this is unconditional and version-independent: the capability is a
+// hardcoded false, not a negotiated one, so no Terraform upgrade fixes it —
+// despite the diagnostic blaming "Terraform 1.11 and later". Observed on
+// framework v1.19.0 with Terraform v1.15.8. The framework is internally
+// inconsistent here (the field is offered and documented but cannot be used),
+// which is worth raising upstream.
+//
+// So the choice is an attribute that works with its value visible, or one nobody
+// can use. We take the former and say so here. Do not re-add WriteOnly: it
+// breaks every configuration that sets the attribute, and no device-less test
+// catches it. TestActionAttributes_AreNotWriteOnly guards this.
+const secretAttrNote = " This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed."
+
+// deviceTargetAttributes returns the device_id / serial_number selector shared
+// by every Platform device action.
+//
+// Exactly-one-of is enforced by deviceTargetConfigValidators rather than by
+// per-attribute ConflictsWith, so that supplying NO identifier also fails at
+// plan time instead of part-way through the apply.
+func deviceTargetAttributes() map[string]actionschema.Attribute {
+	return map[string]actionschema.Attribute{
+		"device_id": actionschema.StringAttribute{
+			Optional:            true,
+			MarkdownDescription: "Jamf Pro Management ID. Set exactly one of this or `serial_number`.",
+			Validators: []validator.String{
+				stringvalidator.LengthAtLeast(1),
+			},
+		},
+		"serial_number": actionschema.StringAttribute{
+			Optional:            true,
+			MarkdownDescription: "Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.",
+			Validators: []validator.String{
+				stringvalidator.LengthAtLeast(1),
+			},
+		},
+	}
+}
+
+// deviceTargetConfigValidators is the plan-time counterpart to
+// deviceTargetAttributes: exactly one of device_id / serial_number selects the
+// device.
+func deviceTargetConfigValidators() []action.ConfigValidator {
+	return []action.ConfigValidator{
+		actionvalidator.ExactlyOneOf(
+			path.MatchRoot("device_id"),
+			path.MatchRoot("serial_number"),
+		),
+	}
 }
 
 // configure binds the provider-supplied client to the action.

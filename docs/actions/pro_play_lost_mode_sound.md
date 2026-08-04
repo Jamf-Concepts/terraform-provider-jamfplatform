@@ -3,7 +3,8 @@
 page_title: "jamfplatform_pro_play_lost_mode_sound Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Plays a sound on a mobile device that is in Lost Mode.
+  Plays a sound on one or more mobile devices that are in Lost Mode.
+  All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -15,7 +16,9 @@ description: |-
 
 # jamfplatform_pro_play_lost_mode_sound (Action)
 
-Plays a sound on a mobile device that is in Lost Mode.
+Plays a sound on one or more mobile devices that are in Lost Mode.
+
+All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
 
 **Required Jamf privileges**
 
@@ -32,7 +35,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ```terraform
 action "jamfplatform_pro_play_lost_mode_sound" "play" {
   config {
-    serial_number = "DMPXXXXXXXXX"
+    serial_numbers = ["DMPXXXXXXXXX"]
   }
 }
 ```
@@ -42,5 +45,5 @@ action "jamfplatform_pro_play_lost_mode_sound" "play" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Provide this or `serial_number`.
-- `serial_number` (String) Serial number of the mobile device (case-sensitive). Provide this or `management_id`.
+- `management_ids` (List of String) Jamf Pro Management IDs of the mobile devices to target. These are the `id` values reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. All listed mobile devices are commanded in a single request. Set this and/or `serial_numbers`.
+- `serial_numbers` (List of String) Serial numbers of the mobile devices to target (case-sensitive). Each is looked up to find its Management ID before the command is sent, so `management_ids` avoids that lookup. Set this and/or `management_ids`.

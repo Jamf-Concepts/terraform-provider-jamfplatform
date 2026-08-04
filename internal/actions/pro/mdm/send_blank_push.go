@@ -16,6 +16,7 @@ import (
 
 var _ action.Action = (*SendBlankPushAction)(nil)
 var _ action.ActionWithConfigure = (*SendBlankPushAction)(nil)
+var _ action.ActionWithConfigValidators = (*SendBlankPushAction)(nil)
 
 // SendBlankPushAction sends a blank push notification to one or more devices.
 type SendBlankPushAction struct {
@@ -37,20 +38,13 @@ func (a *SendBlankPushAction) Metadata(ctx context.Context, req action.MetadataR
 
 func (a *SendBlankPushAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Sends a blank push notification to one or more devices to prompt them to check in." + sendBlankPushPrivileges,
-		Attributes: map[string]actionschema.Attribute{
-			"management_ids": actionschema.ListAttribute{
-				Optional:            true,
-				ElementType:         types.StringType,
-				MarkdownDescription: "Jamf Pro Management IDs of the devices to push. Provide this and/or `serial_numbers`.",
-			},
-			"serial_numbers": actionschema.ListAttribute{
-				Optional:            true,
-				ElementType:         types.StringType,
-				MarkdownDescription: "Serial numbers of the devices to push (case-sensitive). Provide this and/or `management_ids`.",
-			},
-		},
+		MarkdownDescription: "Sends a blank push notification to one or more devices to prompt them to check in." + blankPushBatchNote + sendBlankPushPrivileges,
+		Attributes:          targetListAttributes("device"),
 	}
+}
+
+func (a *SendBlankPushAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
+	return deviceTargetListConfigValidators()
 }
 
 func (a *SendBlankPushAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -68,39 +62,8 @@ func (a *SendBlankPushAction) Invoke(ctx context.Context, req action.InvokeReque
 		return
 	}
 
-	var ids []string
-	if !data.ManagementIDs.IsNull() && !data.ManagementIDs.IsUnknown() {
-		resp.Diagnostics.Append(data.ManagementIDs.ElementsAs(ctx, &ids, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	if !data.SerialNumbers.IsNull() && !data.SerialNumbers.IsUnknown() {
-		var serials []string
-		resp.Diagnostics.Append(data.SerialNumbers.ElementsAs(ctx, &serials, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		for _, serial := range serials {
-			resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Resolving serial number %s", serial)})
-			id, err := a.devices.ResolveDeviceIDBySerialNumber(ctx, serial)
-			if err != nil {
-				resp.Diagnostics.AddError(
-					"Device Lookup Failed",
-					fmt.Sprintf("Unable to resolve serial number %s to a management id: %s", serial, err),
-				)
-				return
-			}
-			ids = append(ids, id)
-		}
-	}
-
-	if len(ids) == 0 {
-		resp.Diagnostics.AddError(
-			"Missing Device Identifier",
-			"Specify at least one of management_ids or serial_numbers.",
-		)
+	ids, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
+	if !ok {
 		return
 	}
 

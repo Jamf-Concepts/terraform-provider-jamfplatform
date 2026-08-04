@@ -46,6 +46,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
@@ -137,6 +138,10 @@ func (a *RetryDeploymentAction) Schema(ctx context.Context, req action.SchemaReq
 				Optional:            true,
 				ElementType:         types.StringType,
 				MarkdownDescription: "Explicit deployment task IDs to retry (the `id` values returned by the deployment's task search). Advanced escape hatch — mutually exclusive with the computer selector and `all_failed`.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+					listvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
+				},
 			},
 			"all_failed": actionschema.BoolAttribute{
 				Optional:            true,

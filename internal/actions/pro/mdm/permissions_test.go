@@ -128,9 +128,12 @@ func TestFlushMdmCommandsSDKMethods_KnownToSDK(t *testing.T) {
 // resolver has no registry entry of its own and hits the same /v1/devices list
 // endpoint, so its required privilege is that of ListDevices.
 var helperSDKMethods = map[string][]string{
-	"sendCommand":         {"SendMdmCommandV2"},
-	"resolveManagementID": {"ListDevices"}, // serial path -> ResolveDeviceIDBySerialNumber -> /v1/devices
-	"resolveUnlockToken":  {"ListMobileDevicesDetailV2", "GetMobileDeviceDetailV2"},
+	"sendCommand":          {"SendMdmCommandV2"},
+	"sendCommandBatch":     {"SendMdmCommandV2"},
+	"resolveManagementID":  {"ListDevices"}, // serial path -> ResolveDeviceIDBySerialNumber -> /v1/devices
+	"resolveManagementIDs": {"ListDevices"}, // serial path -> resolveSerialNumbers -> ListDevices (RSQL in= set)
+	"resolveSerialNumbers": {"ListDevices"},
+	"resolveUnlockToken":   {"ListMobileDevicesDetailV2", "GetMobileDeviceDetailV2"},
 }
 
 // directSDKAliases maps SDK methods callable directly in an action file to their

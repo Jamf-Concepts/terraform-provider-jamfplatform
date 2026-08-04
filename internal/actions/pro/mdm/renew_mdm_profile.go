@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	actionschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -46,6 +47,7 @@ func (a *RenewMdmProfileAction) Schema(ctx context.Context, req action.SchemaReq
 				MarkdownDescription: "Hardware UDIDs of the mobile devices. Source these from the `jamfplatform_device` data source `hardware_udid` attribute.",
 				Validators: []validator.List{
 					listvalidator.SizeAtLeast(1),
+					listvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
 				},
 			},
 		},
