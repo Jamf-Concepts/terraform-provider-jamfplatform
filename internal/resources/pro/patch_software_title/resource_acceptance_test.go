@@ -58,7 +58,7 @@ func testAccCheckPatchSoftwareTitleDestroy(t *testing.T) resource.TestCheckFunc 
 			if rs.Type != patchSoftwareType {
 				continue
 			}
-			_, err := c.GetPatchSoftwareTitleConfigurationV2(ctx, rs.Primary.ID)
+			_, err := c.GetPatchSoftwareTitleConfigurationV2(ctx, rs.Primary.ID) //nolint:staticcheck // SA1019: no v3 client generated yet — see extension_attributes.go
 			if err != nil {
 				if helpers.IsNotFoundError(err) {
 					continue
