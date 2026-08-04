@@ -41,10 +41,10 @@ func (a *ClearPasscodeAction) Metadata(ctx context.Context, req action.MetadataR
 
 func (a *ClearPasscodeAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	attrs := targetAttributes("mobile device")
+	// Deliberately neither WriteOnly nor Sensitive — see secretAttrNote.
 	attrs["unlock_token"] = actionschema.StringAttribute{
 		Optional:            true,
-		WriteOnly:           true,
-		MarkdownDescription: "Unlock token for the mobile device. Required for unsupervised devices and looked up automatically when omitted; supervised devices do not need one.",
+		MarkdownDescription: "Unlock token for the mobile device. Required for unsupervised devices and looked up automatically when omitted; supervised devices do not need one." + secretAttrNote,
 		Validators: []validator.String{
 			stringvalidator.LengthAtLeast(1),
 		},

@@ -47,9 +47,7 @@ action "jamfplatform_pro_set_auto_admin_password" "rotate" {
 
 ### Optional
 
-> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
-
 - `guid` (String) GUID of the local administrator account whose password is being set.
 - `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
-- `password` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) New automatic administrator password. Jamf Pro never returns this value, and it must not be empty.
+- `password` (String) New automatic administrator password. Jamf Pro never returns this value, and it must not be empty. This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed.
 - `serial_number` (String) Serial number of the computer (case-sensitive). Set exactly one of this or `management_id`.

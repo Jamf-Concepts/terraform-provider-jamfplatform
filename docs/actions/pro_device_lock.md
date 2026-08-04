@@ -71,10 +71,8 @@ action "jamfplatform_pro_device_lock" "lock_by_id" {
 
 ### Optional
 
-> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
-
 - `management_ids` (List of String) Jamf Pro Management IDs of the devices to target. These are the `id` values reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. All listed devices are commanded in a single request. Set this and/or `serial_numbers`.
 - `message` (String) Message to display on the lock screen.
 - `phone_number` (String) Phone number to display on the lock screen.
-- `pin` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Six-character PIN needed to unlock the computer afterwards. Applies to computers only; mobile devices ignore it. Jamf Pro checks the length only, so a six-character non-numeric PIN is accepted here — but macOS expects six digits, so use digits.
+- `pin` (String) Six-character PIN needed to unlock the computer afterwards. Applies to computers only; mobile devices ignore it. Jamf Pro checks the length only, so a six-character non-numeric PIN is accepted here — but macOS expects six digits, so use digits. This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed.
 - `serial_numbers` (List of String) Serial numbers of the devices to target (case-sensitive). Each is looked up to find its Management ID before the command is sent, so `management_ids` avoids that lookup. Set this and/or `management_ids`.

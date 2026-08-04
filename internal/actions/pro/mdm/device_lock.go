@@ -50,10 +50,10 @@ func (a *DeviceLockAction) Schema(ctx context.Context, req action.SchemaRequest,
 		Optional:            true,
 		MarkdownDescription: "Phone number to display on the lock screen.",
 	}
+	// Deliberately neither WriteOnly nor Sensitive — see secretAttrNote.
 	attrs["pin"] = actionschema.StringAttribute{
 		Optional:            true,
-		WriteOnly:           true,
-		MarkdownDescription: "Six-character PIN needed to unlock the computer afterwards. Applies to computers only; mobile devices ignore it. Jamf Pro checks the length only, so a six-character non-numeric PIN is accepted here — but macOS expects six digits, so use digits.",
+		MarkdownDescription: "Six-character PIN needed to unlock the computer afterwards. Applies to computers only; mobile devices ignore it. Jamf Pro checks the length only, so a six-character non-numeric PIN is accepted here — but macOS expects six digits, so use digits." + secretAttrNote,
 		Validators: []validator.String{
 			stringvalidator.LengthBetween(6, 6),
 		},

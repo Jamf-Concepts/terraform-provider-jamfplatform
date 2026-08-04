@@ -30,6 +30,36 @@ import (
 // deployed Jamf Pro endpoints with no meaningful version floor.
 const minJamfProVersion = ""
 
+// secretAttrNote is appended to the description of every action attribute that
+// carries a secret the user supplies (a PIN, password or unlock token).
+//
+// Such an attribute can be given NEITHER protection the framework offers:
+//
+//   - Sensitive does not exist on action schema attributes. The field is absent,
+//     and IsSensitive() is hardcoded to return false ("action schema attributes
+//     cannot be Sensitive").
+//   - WriteOnly exists on action attributes and compiles, but setting it makes
+//     the attribute impossible to use. Action config validation hardcodes
+//     WriteOnlyAttributesAllowed: false (fwserver/server_validateactionconfig.go,
+//     on the stated grounds that the capability "is only valid for resource
+//     schemas"), while the shared SchemaValidate still applies the resource
+//     write-only gate (fwserver/attribute_validation.go). Any non-null value for
+//     a write-only action attribute therefore fails validation with "WriteOnly
+//     Attribute Not Allowed".
+//
+// Note this is unconditional and version-independent: the capability is a
+// hardcoded false, not a negotiated one, so no Terraform upgrade fixes it —
+// despite the diagnostic blaming "Terraform 1.11 and later". Observed on
+// framework v1.19.0 with Terraform v1.15.8. The framework is internally
+// inconsistent here (the field is offered and documented but cannot be used),
+// which is worth raising upstream.
+//
+// So the choice is an attribute that works with its value visible, or one nobody
+// can use. We take the former and say so here. Do not re-add WriteOnly: it
+// breaks every configuration that sets the attribute, and no device-less test
+// catches it. TestActionAttributes_AreNotWriteOnly guards this.
+const secretAttrNote = " This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed."
+
 // batchNote is appended to the description of every action that targets devices
 // in bulk, so the single-request behaviour and its all-or-nothing failure mode
 // are visible in the rendered docs rather than buried in this package.

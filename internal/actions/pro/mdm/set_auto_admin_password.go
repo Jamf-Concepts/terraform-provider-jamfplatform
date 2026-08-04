@@ -45,10 +45,10 @@ func (a *SetAutoAdminPasswordAction) Schema(ctx context.Context, req action.Sche
 		Optional:            true,
 		MarkdownDescription: "GUID of the local administrator account whose password is being set.",
 	}
+	// Deliberately neither WriteOnly nor Sensitive — see secretAttrNote.
 	attrs["password"] = actionschema.StringAttribute{
 		Optional:            true,
-		WriteOnly:           true,
-		MarkdownDescription: "New automatic administrator password. Jamf Pro never returns this value, and it must not be empty.",
+		MarkdownDescription: "New automatic administrator password. Jamf Pro never returns this value, and it must not be empty." + secretAttrNote,
 		Validators: []validator.String{
 			stringvalidator.LengthAtLeast(1),
 		},

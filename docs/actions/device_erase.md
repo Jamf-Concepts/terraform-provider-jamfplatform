@@ -44,12 +44,10 @@ action "jamfplatform_device_erase" "return_device_to_service" {
 
 ### Optional
 
-> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
-
 - `clear_activation_lock` (Boolean) Clear the activation lock on the device.
 - `device_id` (String) Jamf Pro Management ID. Set exactly one of this or `serial_number`.
 - `disallow_proximity_setup` (Boolean) Disable Proximity Setup on the next reboot and skip the pane in Setup Assistant. Applies to mobile devices only.
-- `pin` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The six-character PIN for Find My. Applies to computers only.
+- `pin` (String) The six-character PIN for Find My. Applies to computers only. This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed.
 - `preserve_data_plan` (Boolean) Preserve the data plan on an iPhone or iPad with eSIM functionality, if one exists. Applies to mobile devices only.
 - `return_to_service` (Boolean) The device will be returned to service after the erase is complete. Applies to mobile devices only.
 - `serial_number` (String) Device serial number (case-sensitive). Requires **Device Inventory API access** when used. Set exactly one of this or `device_id`.

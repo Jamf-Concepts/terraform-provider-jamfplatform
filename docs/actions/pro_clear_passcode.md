@@ -51,8 +51,6 @@ action "jamfplatform_pro_clear_passcode" "clear" {
 
 ### Optional
 
-> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
-
 - `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
 - `serial_number` (String) Serial number of the mobile device (case-sensitive). Set exactly one of this or `management_id`.
-- `unlock_token` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Unlock token for the mobile device. Required for unsupervised devices and looked up automatically when omitted; supervised devices do not need one.
+- `unlock_token` (String) Unlock token for the mobile device. Required for unsupervised devices and looked up automatically when omitted; supervised devices do not need one. This value appears in Terraform plan output and should be supplied from a variable or secret store rather than committed.

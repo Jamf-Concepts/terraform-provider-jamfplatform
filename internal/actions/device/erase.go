@@ -71,10 +71,10 @@ func (a *EraseAction) Schema(ctx context.Context, req action.SchemaRequest, resp
 			boolvalidator.ConflictsWith(path.MatchRoot("pin")),
 		},
 	}
+	// Deliberately neither WriteOnly nor Sensitive — see secretAttrNote.
 	attrs["pin"] = actionschema.StringAttribute{
 		Optional:            true,
-		WriteOnly:           true,
-		MarkdownDescription: "The six-character PIN for Find My. Applies to computers only.",
+		MarkdownDescription: "The six-character PIN for Find My. Applies to computers only." + secretAttrNote,
 		Validators: []validator.String{
 			stringvalidator.LengthBetween(6, 6),
 			stringvalidator.ConflictsWith(
