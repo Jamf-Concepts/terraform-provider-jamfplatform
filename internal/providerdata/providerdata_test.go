@@ -13,6 +13,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
+// atFloorVersion is the tenant version the fake fetchers report: exactly the
+// provider floor, so the floor advisory does NOT fire and a test asserting zero
+// warnings is asserting something real.
+//
+// Bound to the constant rather than written out, because these fixtures were
+// previously hardcoded to the floor's then-current value and every bump silently
+// pushed the fake tenant BELOW the floor — turning "no warnings at floor" into a
+// failing test that looked like a regression in the code under test rather than a
+// stale fixture. Deriving it means the next bump needs no edit here.
+const atFloorVersion = ProviderMinJamfProVersion
+
 // newFakeClient builds a non-network jamfplatform.Client suitable for tests that
 // exercise ConfigurePro. The version fetcher is overridden so no HTTP call is made;
 // the client itself is only needed because ConfigurePro constructs pro.New(pd.Client)
@@ -58,7 +69,7 @@ func TestConfigurePro_WrongType(t *testing.T) {
 func TestConfigurePro_HappyPath_NoMinVer(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
-			return "11.29.0", nil
+			return atFloorVersion, nil
 		},
 	}
 	client, diags := ConfigurePro(context.Background(), pd, "", "jamfplatform_pro_test")
@@ -76,7 +87,7 @@ func TestConfigurePro_HappyPath_NoMinVer(t *testing.T) {
 func TestConfigurePro_MinVerGate_Satisfied(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
-			return "11.29.0", nil
+			return atFloorVersion, nil
 		},
 	}
 	_, diags := ConfigurePro(context.Background(), pd, "11.5.0", "jamfplatform_pro_test")
@@ -128,7 +139,7 @@ func TestConfigurePro_FetchError_NotCached(t *testing.T) {
 			if calls == 1 {
 				return "", errors.New("transient network error")
 			}
-			return "11.29.0", nil
+			return atFloorVersion, nil
 		},
 	}
 	// First call: empty minVer → fetch error is swallowed, client returned.
@@ -179,7 +190,7 @@ func TestConfigurePro_ShortCircuit_EmptyMinVerAfterFloorHandled(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
 			calls++
-			return "11.29.0", nil
+			return atFloorVersion, nil
 		},
 	}
 	// First Configure: fetches and considers floor (no warning at floor).
@@ -243,7 +254,7 @@ func TestConfigureProClassic_WrongType(t *testing.T) {
 func TestConfigureProClassic_HappyPath_NoMinVer(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
-			return "11.29.0", nil
+			return atFloorVersion, nil
 		},
 	}
 	client, diags := ConfigureProClassic(context.Background(), pd, "", "jamfplatform_pro_test")
@@ -315,7 +326,7 @@ func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 	pd := &Data{Client: newFakeClient(),
 		versionFetcher: func(_ context.Context) (string, error) {
 			calls++
-			return "11.29.0", nil
+			return atFloorVersion, nil
 		},
 	}
 	for i := range 3 {
@@ -323,8 +334,8 @@ func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 		if err != nil {
 			t.Fatalf("call %d: unexpected error %v", i, err)
 		}
-		if v != "11.29.0" {
-			t.Errorf("call %d: got %q, want %q", i, v, "11.29.0")
+		if v != atFloorVersion {
+			t.Errorf("call %d: got %q, want %q", i, v, atFloorVersion)
 		}
 	}
 	if calls != 1 {
