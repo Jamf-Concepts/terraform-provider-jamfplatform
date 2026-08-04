@@ -236,9 +236,13 @@ action "jamfplatform_pro_enable_remote_desktop" "rd" {
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		// actionvalidator.AtLeastOneOf reports "Missing Attribute Configuration"
+		// and names the selectors as a bracketed, space-free list. Both anchors
+		// are short enough that Terraform's ~80-column wrapping cannot split
+		// them, so neither straddles a line break.
 		Steps: []resource.TestStep{{
 			Config:      config,
-			ExpectError: regexp.MustCompile(`(?s)Invalid Attribute Combination|at least one`),
+			ExpectError: regexp.MustCompile(`(?s)Missing Attribute Configuration.*\[management_ids,serial_numbers\]`),
 		}},
 	})
 }
@@ -260,7 +264,7 @@ action "jamfplatform_pro_enable_remote_desktop" "rd" {
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{{
 			Config:      config,
-			ExpectError: regexp.MustCompile(`(?s)at least 1 element|Invalid Attribute Value`),
+			ExpectError: regexp.MustCompile(`(?s)Invalid Attribute Value.*at least 1 element`),
 		}},
 	})
 }
