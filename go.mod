@@ -3,7 +3,7 @@ module github.com/Jamf-Concepts/terraform-provider-jamfplatform
 go 1.26.5
 
 require (
-	github.com/Jamf-Concepts/jamfplatform-go-sdk v0.12.2
+	github.com/Jamf-Concepts/jamfplatform-go-sdk v0.12.3-0.20260804092035-96d36954f514
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-timeouts v0.7.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
