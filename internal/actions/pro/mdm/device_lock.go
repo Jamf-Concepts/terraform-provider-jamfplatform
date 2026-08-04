@@ -25,11 +25,11 @@ type DeviceLockAction struct {
 }
 
 type DeviceLockActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
-	Message      types.String `tfsdk:"message"`
-	PhoneNumber  types.String `tfsdk:"phone_number"`
-	Pin          types.String `tfsdk:"pin"`
+	ManagementIDs types.List   `tfsdk:"management_ids"`
+	SerialNumbers types.List   `tfsdk:"serial_numbers"`
+	Message       types.String `tfsdk:"message"`
+	PhoneNumber   types.String `tfsdk:"phone_number"`
+	Pin           types.String `tfsdk:"pin"`
 }
 
 func NewDeviceLockAction() action.Action {
@@ -41,7 +41,7 @@ func (a *DeviceLockAction) Metadata(ctx context.Context, req action.MetadataRequ
 }
 
 func (a *DeviceLockAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
-	attrs := targetAttributes("device")
+	attrs := targetListAttributes("device")
 	attrs["message"] = actionschema.StringAttribute{
 		Optional:            true,
 		MarkdownDescription: "Message to display on the lock screen.",
@@ -59,13 +59,13 @@ func (a *DeviceLockAction) Schema(ctx context.Context, req action.SchemaRequest,
 		},
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Locks a computer or mobile device." + deviceLockPrivileges,
+		MarkdownDescription: "Locks one or more computers or mobile devices. Every targeted device receives the same `pin`, `message` and `phone_number`." + batchNote + deviceLockPrivileges,
 		Attributes:          attrs,
 	}
 }
 
 func (a *DeviceLockAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
-	return deviceTargetConfigValidators()
+	return deviceTargetListConfigValidators()
 }
 
 func (a *DeviceLockAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -83,7 +83,7 @@ func (a *DeviceLockAction) Invoke(ctx context.Context, req action.InvokeRequest,
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
@@ -95,5 +95,5 @@ func (a *DeviceLockAction) Invoke(ctx context.Context, req action.InvokeRequest,
 		Pin:         data.Pin.ValueStringPointer(),
 	}
 
-	a.sendCommand(ctx, resp, managementID, command, "Device lock")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Device lock")
 }

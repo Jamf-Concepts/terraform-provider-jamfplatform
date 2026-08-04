@@ -27,8 +27,8 @@ type EnableLostModeAction struct {
 }
 
 type EnableLostModeActionModel struct {
-	ManagementID     types.String `tfsdk:"management_id"`
-	SerialNumber     types.String `tfsdk:"serial_number"`
+	ManagementIDs    types.List   `tfsdk:"management_ids"`
+	SerialNumbers    types.List   `tfsdk:"serial_numbers"`
 	LostModeMessage  types.String `tfsdk:"lost_mode_message"`
 	LostModeFootnote types.String `tfsdk:"lost_mode_footnote"`
 	LostModePhone    types.String `tfsdk:"lost_mode_phone"`
@@ -43,7 +43,7 @@ func (a *EnableLostModeAction) Metadata(ctx context.Context, req action.Metadata
 }
 
 func (a *EnableLostModeAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
-	attrs := targetAttributes("mobile device")
+	attrs := targetListAttributes("mobile device")
 	attrs["lost_mode_message"] = actionschema.StringAttribute{
 		Optional:            true,
 		MarkdownDescription: "Message to display on the Lost Mode lock screen. Set this or `lost_mode_phone` (or both).",
@@ -66,13 +66,13 @@ func (a *EnableLostModeAction) Schema(ctx context.Context, req action.SchemaRequ
 		},
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Turns on Lost Mode on a supervised mobile device. At least one of `lost_mode_message` or `lost_mode_phone` must be set — a `lost_mode_footnote` alone is rejected." + enableLostModePrivileges,
+		MarkdownDescription: "Turns on Lost Mode on one or more supervised mobile devices. At least one of `lost_mode_message` or `lost_mode_phone` must be set — a `lost_mode_footnote` alone is rejected. Every targeted device receives the same message, footnote and phone number." + batchNote + enableLostModePrivileges,
 		Attributes:          attrs,
 	}
 }
 
 func (a *EnableLostModeAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
-	return append(deviceTargetConfigValidators(),
+	return append(deviceTargetListConfigValidators(),
 		// Wire-probed 2026-08-03: Jamf Pro rejects the command with
 		// "Either phone number or Lost Mode message must be entered" when both
 		// are absent. A footnote alone does not satisfy it.
@@ -98,7 +98,7 @@ func (a *EnableLostModeAction) Invoke(ctx context.Context, req action.InvokeRequ
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
@@ -110,5 +110,5 @@ func (a *EnableLostModeAction) Invoke(ctx context.Context, req action.InvokeRequ
 		LostModePhone:    data.LostModePhone.ValueStringPointer(),
 	}
 
-	a.sendCommand(ctx, resp, managementID, command, "Enable Lost Mode")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Enable Lost Mode")
 }

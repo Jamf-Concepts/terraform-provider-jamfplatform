@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_clear_passcode Action - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Clears the passcode on a mobile device.
+  This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use for_each to cover several devices.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
@@ -17,6 +18,8 @@ description: |-
 # jamfplatform_pro_clear_passcode (Action)
 
 Clears the passcode on a mobile device.
+
+This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use `for_each` to cover several devices.
 
 **Required Jamf privileges**
 

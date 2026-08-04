@@ -4,6 +4,7 @@ page_title: "jamfplatform_pro_set_auto_admin_password Action - terraform-provide
 subcategory: ""
 description: |-
   Sets the automatic administrator password on a computer.
+  This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use for_each to cover several devices.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -16,6 +17,8 @@ description: |-
 # jamfplatform_pro_set_auto_admin_password (Action)
 
 Sets the automatic administrator password on a computer.
+
+This action targets one device at a time, unlike the other management commands, because its payload carries a value specific to that device. Use `for_each` to cover several devices.
 
 **Required Jamf privileges**
 

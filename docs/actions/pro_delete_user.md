@@ -3,7 +3,8 @@
 page_title: "jamfplatform_pro_delete_user Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Removes a user account from a Shared iPad. Name a single account with user_name, or clear them all with delete_all_users.
+  Removes a user account from one or more Shared iPads. Name a single account with user_name, or clear them all with delete_all_users; either way the same choice applies to every targeted device.
+  All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -15,7 +16,9 @@ description: |-
 
 # jamfplatform_pro_delete_user (Action)
 
-Removes a user account from a Shared iPad. Name a single account with `user_name`, or clear them all with `delete_all_users`.
+Removes a user account from one or more Shared iPads. Name a single account with `user_name`, or clear them all with `delete_all_users`; either way the same choice applies to every targeted device.
+
+All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
 
 **Required Jamf privileges**
 
@@ -32,7 +35,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ```terraform
 action "jamfplatform_pro_delete_user" "remove_shared_ipad_user" {
   config {
-    serial_number = "DMPXXXXXXXXX"
+    serial_numbers = ["DMPXXXXXXXXX"]
 
     user_name      = "student01"
     force_deletion = true
@@ -47,6 +50,6 @@ action "jamfplatform_pro_delete_user" "remove_shared_ipad_user" {
 
 - `delete_all_users` (Boolean) Remove every user account from the Shared iPad. Set this or `user_name`, not both.
 - `force_deletion` (Boolean) Force removal even when the account has unsynced data.
-- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
-- `serial_number` (String) Serial number of the mobile device (case-sensitive). Set exactly one of this or `management_id`.
+- `management_ids` (List of String) Jamf Pro Management IDs of the mobile devices to target. These are the `id` values reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. All listed mobile devices are commanded in a single request. Set this and/or `serial_numbers`.
+- `serial_numbers` (List of String) Serial numbers of the mobile devices to target (case-sensitive). Each is looked up to find its Management ID before the command is sent, so `management_ids` avoids that lookup. Set this and/or `management_ids`.
 - `user_name` (String) User account to remove from the Shared iPad. Set this or `delete_all_users`, not both.

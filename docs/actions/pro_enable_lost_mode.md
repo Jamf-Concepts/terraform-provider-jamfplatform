@@ -3,7 +3,8 @@
 page_title: "jamfplatform_pro_enable_lost_mode Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Turns on Lost Mode on a supervised mobile device. At least one of lost_mode_message or lost_mode_phone must be set — a lost_mode_footnote alone is rejected.
+  Turns on Lost Mode on one or more supervised mobile devices. At least one of lost_mode_message or lost_mode_phone must be set — a lost_mode_footnote alone is rejected. Every targeted device receives the same message, footnote and phone number.
+  All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -15,7 +16,9 @@ description: |-
 
 # jamfplatform_pro_enable_lost_mode (Action)
 
-Turns on Lost Mode on a supervised mobile device. At least one of `lost_mode_message` or `lost_mode_phone` must be set — a `lost_mode_footnote` alone is rejected.
+Turns on Lost Mode on one or more supervised mobile devices. At least one of `lost_mode_message` or `lost_mode_phone` must be set — a `lost_mode_footnote` alone is rejected. Every targeted device receives the same message, footnote and phone number.
+
+All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
 
 **Required Jamf privileges**
 
@@ -32,7 +35,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ```terraform
 action "jamfplatform_pro_enable_lost_mode" "enable" {
   config {
-    management_id = "00000000-0000-0000-0000-000000000000"
+    management_ids = ["00000000-0000-0000-0000-000000000000"]
 
     lost_mode_message  = "This device is lost. Please return it."
     lost_mode_phone    = "+1-555-0100"
@@ -49,5 +52,5 @@ action "jamfplatform_pro_enable_lost_mode" "enable" {
 - `lost_mode_footnote` (String) Footnote to display on the Lost Mode lock screen. On its own this is not enough — Jamf Pro still requires `lost_mode_message` or `lost_mode_phone`.
 - `lost_mode_message` (String) Message to display on the Lost Mode lock screen. Set this or `lost_mode_phone` (or both).
 - `lost_mode_phone` (String) Phone number to display on the Lost Mode lock screen. Set this or `lost_mode_message` (or both).
-- `management_id` (String) Jamf Pro Management ID of the mobile device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
-- `serial_number` (String) Serial number of the mobile device (case-sensitive). Set exactly one of this or `management_id`.
+- `management_ids` (List of String) Jamf Pro Management IDs of the mobile devices to target. These are the `id` values reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. All listed mobile devices are commanded in a single request. Set this and/or `serial_numbers`.
+- `serial_numbers` (List of String) Serial numbers of the mobile devices to target (case-sensitive). Each is looked up to find its Management ID before the command is sent, so `management_ids` avoids that lookup. Set this and/or `management_ids`.

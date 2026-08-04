@@ -3,7 +3,8 @@
 page_title: "jamfplatform_pro_unlock_user_account Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Unlocks a local user account on a computer.
+  Unlocks a local user account on one or more computers. The same user_name is unlocked on every targeted device.
+  All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -15,7 +16,9 @@ description: |-
 
 # jamfplatform_pro_unlock_user_account (Action)
 
-Unlocks a local user account on a computer.
+Unlocks a local user account on one or more computers. The same `user_name` is unlocked on every targeted device.
+
+All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
 
 **Required Jamf privileges**
 
@@ -32,8 +35,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ```terraform
 action "jamfplatform_pro_unlock_user_account" "unlock" {
   config {
-    serial_number = "C02XXXXXXXXX"
-    user_name     = "localadmin"
+    serial_numbers = ["C02XXXXXXXXX"]
+    user_name      = "localadmin"
   }
 }
 ```
@@ -43,6 +46,6 @@ action "jamfplatform_pro_unlock_user_account" "unlock" {
 
 ### Optional
 
-- `management_id` (String) Jamf Pro Management ID of the computer. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
-- `serial_number` (String) Serial number of the computer (case-sensitive). Set exactly one of this or `management_id`.
+- `management_ids` (List of String) Jamf Pro Management IDs of the computers to target. These are the `id` values reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. All listed computers are commanded in a single request. Set this and/or `serial_numbers`.
+- `serial_numbers` (List of String) Serial numbers of the computers to target (case-sensitive). Each is looked up to find its Management ID before the command is sent, so `management_ids` avoids that lookup. Set this and/or `management_ids`.
 - `user_name` (String) Local user account to unlock.

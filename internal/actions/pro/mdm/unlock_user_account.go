@@ -23,9 +23,9 @@ type UnlockUserAccountAction struct {
 }
 
 type UnlockUserAccountActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
-	UserName     types.String `tfsdk:"user_name"`
+	ManagementIDs types.List   `tfsdk:"management_ids"`
+	SerialNumbers types.List   `tfsdk:"serial_numbers"`
+	UserName      types.String `tfsdk:"user_name"`
 }
 
 func NewUnlockUserAccountAction() action.Action {
@@ -37,19 +37,19 @@ func (a *UnlockUserAccountAction) Metadata(ctx context.Context, req action.Metad
 }
 
 func (a *UnlockUserAccountAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
-	attrs := targetAttributes("computer")
+	attrs := targetListAttributes("computer")
 	attrs["user_name"] = actionschema.StringAttribute{
 		Optional:            true,
 		MarkdownDescription: "Local user account to unlock.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Unlocks a local user account on a computer." + unlockUserAccountPrivileges,
+		MarkdownDescription: "Unlocks a local user account on one or more computers. The same `user_name` is unlocked on every targeted device." + batchNote + unlockUserAccountPrivileges,
 		Attributes:          attrs,
 	}
 }
 
 func (a *UnlockUserAccountAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
-	return deviceTargetConfigValidators()
+	return deviceTargetListConfigValidators()
 }
 
 func (a *UnlockUserAccountAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -67,7 +67,7 @@ func (a *UnlockUserAccountAction) Invoke(ctx context.Context, req action.InvokeR
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
@@ -77,5 +77,5 @@ func (a *UnlockUserAccountAction) Invoke(ctx context.Context, req action.InvokeR
 		UserName:    data.UserName.ValueStringPointer(),
 	}
 
-	a.sendCommand(ctx, resp, managementID, command, "Unlock user account")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Unlock user account")
 }

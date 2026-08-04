@@ -50,7 +50,7 @@ func (a *ClearPasscodeAction) Schema(ctx context.Context, req action.SchemaReque
 		},
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Clears the passcode on a mobile device." + clearPasscodePrivileges,
+		MarkdownDescription: "Clears the passcode on a mobile device." + singleTargetNote + clearPasscodePrivileges,
 		Attributes:          attrs,
 	}
 }

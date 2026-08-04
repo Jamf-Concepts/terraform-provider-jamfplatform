@@ -26,8 +26,8 @@ type DeleteUserAction struct {
 }
 
 type DeleteUserActionModel struct {
-	ManagementID   types.String `tfsdk:"management_id"`
-	SerialNumber   types.String `tfsdk:"serial_number"`
+	ManagementIDs  types.List   `tfsdk:"management_ids"`
+	SerialNumbers  types.List   `tfsdk:"serial_numbers"`
 	UserName       types.String `tfsdk:"user_name"`
 	DeleteAllUsers types.Bool   `tfsdk:"delete_all_users"`
 	ForceDeletion  types.Bool   `tfsdk:"force_deletion"`
@@ -42,7 +42,7 @@ func (a *DeleteUserAction) Metadata(ctx context.Context, req action.MetadataRequ
 }
 
 func (a *DeleteUserAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
-	attrs := targetAttributes("mobile device")
+	attrs := targetListAttributes("mobile device")
 	attrs["user_name"] = actionschema.StringAttribute{
 		Optional:            true,
 		MarkdownDescription: "User account to remove from the Shared iPad. Set this or `delete_all_users`, not both.",
@@ -60,13 +60,13 @@ func (a *DeleteUserAction) Schema(ctx context.Context, req action.SchemaRequest,
 		MarkdownDescription: "Force removal even when the account has unsynced data.",
 	}
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Removes a user account from a Shared iPad. Name a single account with `user_name`, or clear them all with `delete_all_users`." + deleteUserPrivileges,
+		MarkdownDescription: "Removes a user account from one or more Shared iPads. Name a single account with `user_name`, or clear them all with `delete_all_users`; either way the same choice applies to every targeted device." + batchNote + deleteUserPrivileges,
 		Attributes:          attrs,
 	}
 }
 
 func (a *DeleteUserAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
-	return deviceTargetConfigValidators()
+	return deviceTargetListConfigValidators()
 }
 
 func (a *DeleteUserAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -84,7 +84,7 @@ func (a *DeleteUserAction) Invoke(ctx context.Context, req action.InvokeRequest,
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
@@ -96,5 +96,5 @@ func (a *DeleteUserAction) Invoke(ctx context.Context, req action.InvokeRequest,
 		UserName:       data.UserName.ValueStringPointer(),
 	}
 
-	a.sendCommand(ctx, resp, managementID, command, "Delete user")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Delete user")
 }

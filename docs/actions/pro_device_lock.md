@@ -3,7 +3,8 @@
 page_title: "jamfplatform_pro_device_lock Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Locks a computer or mobile device.
+  Locks one or more computers or mobile devices. Every targeted device receives the same pin, message and phone_number.
+  All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -15,7 +16,9 @@ description: |-
 
 # jamfplatform_pro_device_lock (Action)
 
-Locks a computer or mobile device.
+Locks one or more computers or mobile devices. Every targeted device receives the same `pin`, `message` and `phone_number`.
+
+All targeted devices are commanded in a single request. If any one device cannot be resolved the whole invocation fails and no device is commanded, so a large batch is harder to diagnose than several smaller ones. Jamf Pro publishes no maximum batch size.
 
 **Required Jamf privileges**
 
@@ -30,15 +33,35 @@ The Jamf Platform API integration used by the provider must be granted the follo
 ## Example Usage
 
 ```terraform
-action "jamfplatform_pro_device_lock" "lock_lost_laptop" {
+action "jamfplatform_pro_device_lock" "lock_lost_laptops" {
   config {
-    # Set exactly one of management_id (the `id` from the jamfplatform_devices/
-    # jamfplatform_device data sources) or serial_number.
-    serial_number = "C02XXXXXXXXX"
+    # Set management_ids (the `id` values from the jamfplatform_devices/
+    # jamfplatform_device data sources) and/or serial_numbers. The two are
+    # additive, and every listed device is commanded in a single request.
+    serial_numbers = [
+      "C02XXXXXXXXX",
+      "C02YYYYYYYYY",
+    ]
+    management_ids = [
+      "00000000-0000-0000-0000-000000000000",
+    ]
 
+    # These apply to every device in the batch.
     message      = "This device has been locked. Please contact IT."
     phone_number = "+1-555-0100"
     pin          = "123456" # exactly six characters; computers only
+  }
+}
+
+# Management IDs are the cheaper selector: serial numbers must first be looked up
+# to find the matching device.
+action "jamfplatform_pro_device_lock" "lock_by_id" {
+  config {
+    management_ids = [
+      "11111111-1111-1111-1111-111111111111",
+      "22222222-2222-2222-2222-222222222222",
+    ]
+    pin = "654321"
   }
 }
 ```
@@ -50,8 +73,8 @@ action "jamfplatform_pro_device_lock" "lock_lost_laptop" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `management_id` (String) Jamf Pro Management ID of the device. This is the `id` reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. Set exactly one of this or `serial_number`.
+- `management_ids` (List of String) Jamf Pro Management IDs of the devices to target. These are the `id` values reported by the `jamfplatform_devices`/`jamfplatform_device` data sources. All listed devices are commanded in a single request. Set this and/or `serial_numbers`.
 - `message` (String) Message to display on the lock screen.
 - `phone_number` (String) Phone number to display on the lock screen.
 - `pin` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Six-character PIN needed to unlock the computer afterwards. Applies to computers only; mobile devices ignore it. Jamf Pro checks the length only, so a six-character non-numeric PIN is accepted here — but macOS expects six digits, so use digits.
-- `serial_number` (String) Serial number of the device (case-sensitive). Set exactly one of this or `management_id`.
+- `serial_numbers` (List of String) Serial numbers of the devices to target (case-sensitive). Each is looked up to find its Management ID before the command is sent, so `management_ids` avoids that lookup. Set this and/or `management_ids`.

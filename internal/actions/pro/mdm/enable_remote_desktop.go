@@ -23,8 +23,8 @@ type EnableRemoteDesktopAction struct {
 }
 
 type EnableRemoteDesktopActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
+	ManagementIDs types.List `tfsdk:"management_ids"`
+	SerialNumbers types.List `tfsdk:"serial_numbers"`
 }
 
 func NewEnableRemoteDesktopAction() action.Action {
@@ -37,13 +37,13 @@ func (a *EnableRemoteDesktopAction) Metadata(ctx context.Context, req action.Met
 
 func (a *EnableRemoteDesktopAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Enables Remote Desktop (remote management) on a computer." + enableRemoteDesktopPrivileges,
-		Attributes:          targetAttributes("computer"),
+		MarkdownDescription: "Enables Remote Desktop (remote management) on one or more computers." + batchNote + enableRemoteDesktopPrivileges,
+		Attributes:          targetListAttributes("computer"),
 	}
 }
 
 func (a *EnableRemoteDesktopAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
-	return deviceTargetConfigValidators()
+	return deviceTargetListConfigValidators()
 }
 
 func (a *EnableRemoteDesktopAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -61,11 +61,11 @@ func (a *EnableRemoteDesktopAction) Invoke(ctx context.Context, req action.Invok
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
 
 	command := &pro.EnableRemoteDesktopCommand{CommandType: cmdEnableRemoteDesktop}
-	a.sendCommand(ctx, resp, managementID, command, "Enable Remote Desktop")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Enable Remote Desktop")
 }

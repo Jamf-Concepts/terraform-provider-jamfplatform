@@ -23,8 +23,8 @@ type LogOutUserAction struct {
 }
 
 type LogOutUserActionModel struct {
-	ManagementID types.String `tfsdk:"management_id"`
-	SerialNumber types.String `tfsdk:"serial_number"`
+	ManagementIDs types.List `tfsdk:"management_ids"`
+	SerialNumbers types.List `tfsdk:"serial_numbers"`
 }
 
 func NewLogOutUserAction() action.Action {
@@ -37,13 +37,13 @@ func (a *LogOutUserAction) Metadata(ctx context.Context, req action.MetadataRequ
 
 func (a *LogOutUserAction) Schema(ctx context.Context, req action.SchemaRequest, resp *action.SchemaResponse) {
 	resp.Schema = actionschema.Schema{
-		MarkdownDescription: "Logs out the current user on a Shared iPad." + logOutUserPrivileges,
-		Attributes:          targetAttributes("mobile device"),
+		MarkdownDescription: "Logs out the current user on one or more Shared iPads." + batchNote + logOutUserPrivileges,
+		Attributes:          targetListAttributes("mobile device"),
 	}
 }
 
 func (a *LogOutUserAction) ConfigValidators(ctx context.Context) []action.ConfigValidator {
-	return deviceTargetConfigValidators()
+	return deviceTargetListConfigValidators()
 }
 
 func (a *LogOutUserAction) Configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
@@ -61,11 +61,11 @@ func (a *LogOutUserAction) Invoke(ctx context.Context, req action.InvokeRequest,
 		return
 	}
 
-	managementID, ok := a.resolveManagementID(ctx, resp, data.ManagementID, data.SerialNumber)
+	managementIDs, ok := a.resolveManagementIDs(ctx, resp, data.ManagementIDs, data.SerialNumbers)
 	if !ok {
 		return
 	}
 
 	command := &pro.LogOutUserCommand{CommandType: cmdLogOutUser}
-	a.sendCommand(ctx, resp, managementID, command, "Log out user")
+	a.sendCommandBatch(ctx, resp, managementIDs, command, "Log out user")
 }
