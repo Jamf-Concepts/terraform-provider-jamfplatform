@@ -13,6 +13,7 @@ package account_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -45,12 +46,12 @@ func testAccCheckAccountDestroy(t *testing.T) resource.TestCheckFunc {
 }
 
 func customAccountConfig(suffix string, objects ...string) string {
-	quoted := ""
+	var quoted strings.Builder
 	for i, p := range objects {
 		if i > 0 {
-			quoted += ", "
+			quoted.WriteString(", ")
 		}
-		quoted += fmt.Sprintf("%q", p)
+		fmt.Fprintf(&quoted, "%q", p)
 	}
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_account" "test" {
@@ -67,7 +68,7 @@ resource "jamfplatform_pro_account" "test" {
     jamf_pro_server_objects = [%[2]s]
   }
 }
-`, suffix, quoted)
+`, suffix, quoted.String())
 }
 
 // TestAccResource_ProAccount covers the create + privilege-only update + import

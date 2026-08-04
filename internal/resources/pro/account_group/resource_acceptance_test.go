@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -47,12 +48,12 @@ func testAccCheckAccountGroupDestroy(t *testing.T) resource.TestCheckFunc {
 // customGroupConfig builds a Custom-privilege-set group with the given
 // jamf_pro_server_objects privileges.
 func customGroupConfig(displayName string, objects ...string) string {
-	quoted := ""
+	var quoted strings.Builder
 	for i, p := range objects {
 		if i > 0 {
-			quoted += ", "
+			quoted.WriteString(", ")
 		}
-		quoted += fmt.Sprintf("%q", p)
+		fmt.Fprintf(&quoted, "%q", p)
 	}
 	return fmt.Sprintf(`
 resource "jamfplatform_pro_account_group" "test" {
@@ -63,7 +64,7 @@ resource "jamfplatform_pro_account_group" "test" {
     jamf_pro_server_objects = [%s]
   }
 }
-`, displayName, quoted)
+`, displayName, quoted.String())
 }
 
 // TestAccResource_ProAccountGroup exercises the full lifecycle plus the privilege

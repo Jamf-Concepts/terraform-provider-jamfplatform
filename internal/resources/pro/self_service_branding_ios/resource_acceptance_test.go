@@ -89,8 +89,8 @@ func checkIosAbsent(t *testing.T) resource.TestCheckFunc {
 func writeIosPNG(t *testing.T, path string) {
 	t.Helper()
 	m := image.NewRGBA(image.Rect(0, 0, 180, 180))
-	for y := 0; y < 180; y++ {
-		for x := 0; x < 180; x++ {
+	for y := range 180 {
+		for x := range 180 {
 			m.Set(x, y, color.RGBA{uint8(x), uint8(y), 200, 255})
 		}
 	}
@@ -98,9 +98,15 @@ func writeIosPNG(t *testing.T, path string) {
 	if err != nil {
 		t.Fatalf("creating PNG: %v", err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, m); err != nil {
+		_ = f.Close()
 		t.Fatalf("encoding PNG: %v", err)
+	}
+	// Close is checked rather than deferred: a dropped Close can hide a flush
+	// failure that leaves the fixture truncated, which then fails somewhere far
+	// less obvious than here.
+	if err := f.Close(); err != nil {
+		t.Fatalf("closing PNG: %v", err)
 	}
 }
 

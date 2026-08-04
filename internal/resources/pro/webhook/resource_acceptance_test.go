@@ -292,7 +292,6 @@ func TestAccResource_ProWebhook_AllEvents(t *testing.T) {
 
 	steps := make([]resource.TestStep, 0, len(allWebhookEvents))
 	for _, ev := range allWebhookEvents {
-		ev := ev
 		steps = append(steps, resource.TestStep{
 			Config: webhookEventOnlyConfig(name, ev),
 			Check: resource.ComposeAggregateTestCheckFunc(

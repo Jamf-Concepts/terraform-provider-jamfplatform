@@ -113,7 +113,7 @@ func requireADEMultiSerialsFixture(t *testing.T, min int) []string {
 		t.Skipf("JAMFPLATFORM_ADE_MOBILE_SERIALS not set — multi-serial scope acc test requires %d comma-separated ADE-bound mobile-device serials.", min)
 	}
 	var serials []string
-	for _, s := range strings.Split(raw, ",") {
+	for s := range strings.SplitSeq(raw, ",") {
 		if s = strings.TrimSpace(s); s != "" {
 			serials = append(serials, s)
 		}

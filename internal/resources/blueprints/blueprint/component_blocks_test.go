@@ -15,8 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func strptr(s string) *string { return &s }
-
 // --- Schema ---
 
 func TestBlueprintResource_SchemaComponentBlocks(t *testing.T) {
@@ -191,12 +189,12 @@ func TestUpdateModelFromAPIResponse_BlockMode(t *testing.T) {
 		DeploymentState: &blueprints.DeploymentState{State: "DEPLOYED"},
 		Steps: []blueprints.BlueprintStep{
 			{
-				Name:       strptr("Step 1"),
+				Name:       new("Step 1"),
 				Components: []blueprints.Component{{Identifier: "com.jamf.custom.thing", Configuration: json.RawMessage(`{"a":"1"}`)}},
 			},
 			{
-				Name:                strptr("Step 2"),
-				ActivationPredicate: strptr("ANY @status(x) == 'y'"),
+				Name:                new("Step 2"),
+				ActivationPredicate: new("ANY @status(x) == 'y'"),
 				Components:          []blueprints.Component{{Identifier: "com.jamf.custom.thing", Configuration: json.RawMessage(`{"a":"2"}`)}},
 			},
 		},
@@ -276,7 +274,7 @@ func TestUpdateModelFromAPIResponse_EmptyPriorUsesBlockMode(t *testing.T) {
 	blueprint := &blueprints.BlueprintDetail{
 		DeploymentState: &blueprints.DeploymentState{State: "NOT_DEPLOYED"},
 		Steps: []blueprints.BlueprintStep{
-			{Name: strptr("Only Block"), Components: []blueprints.Component{{Identifier: "com.jamf.custom.x", Configuration: json.RawMessage(`{"k":"v"}`)}}},
+			{Name: new("Only Block"), Components: []blueprints.Component{{Identifier: "com.jamf.custom.x", Configuration: json.RawMessage(`{"k":"v"}`)}}},
 		},
 	}
 

@@ -349,7 +349,6 @@ func TestAccResource_ProUserGroup_Smart_AllOperators(t *testing.T) {
 	}
 
 	for _, spec := range specs {
-		spec := spec
 		t.Run(spec.op, func(t *testing.T) {
 			suffix := testhelpers.RunSuffix()
 			groupName := "tf-acc-pro-ug-op-" + suffix

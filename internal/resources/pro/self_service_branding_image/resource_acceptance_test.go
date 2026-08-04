@@ -30,8 +30,8 @@ var imageSourceHashRegex = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 func writePNG(t *testing.T, dir, name string, w, h int, tint uint8) string {
 	t.Helper()
 	m := image.NewRGBA(image.Rect(0, 0, w, h))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			m.Set(x, y, color.RGBA{uint8(x), uint8(y), tint, 255})
 		}
 	}
@@ -40,9 +40,15 @@ func writePNG(t *testing.T, dir, name string, w, h int, tint uint8) string {
 	if err != nil {
 		t.Fatalf("creating PNG fixture: %v", err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, m); err != nil {
+		_ = f.Close()
 		t.Fatalf("encoding PNG fixture: %v", err)
+	}
+	// Close is checked rather than deferred: a dropped Close can hide a flush
+	// failure that leaves the fixture truncated, which then fails somewhere far
+	// less obvious than here.
+	if err := f.Close(); err != nil {
+		t.Fatalf("closing PNG fixture: %v", err)
 	}
 	return p
 }
