@@ -314,10 +314,8 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	apiClient := jamfplatform.NewClient(baseURL, clientID, clientSecret, opts...)
 
 	if err := apiClient.ValidateCredentials(ctx); err != nil {
-		resp.Diagnostics.AddError(
-			"Authentication Failed",
-			fmt.Sprintf("Unable to authenticate with Jamf Platform API. Please verify your credentials are correct.\n\nError: %s", err.Error()),
-		)
+		summary, detail := authFailureDiagnostic(baseURL, err)
+		resp.Diagnostics.AddError(summary, detail)
 		return
 	}
 
