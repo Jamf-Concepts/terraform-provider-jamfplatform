@@ -288,6 +288,8 @@ Use [conventional commit](https://www.conventionalcommits.org/) style messages:
 - `chore: update CI workflow action versions`
 - `docs: add TESTING.md`
 
+Endpoint-deprecation migrations use a fixed form — `refactor(<pkg-or-resource>): migrate <surface> <from>→<to>` — and their tracking issues have their own title, label and deadline conventions. See [STYLE_GUIDE.md §Tracking — the migration issue](STYLE_GUIDE.md#tracking--the-migration-issue).
+
 ## Pull Requests
 
 - Keep PRs focused — one feature or fix per PR.
