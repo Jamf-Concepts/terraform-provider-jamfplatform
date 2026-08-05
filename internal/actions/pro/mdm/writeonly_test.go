@@ -5,6 +5,7 @@ package mdmactions
 
 import (
 	"context"
+	"maps"
 	"strings"
 	"testing"
 
@@ -19,9 +20,7 @@ func allMdmActions() map[string]action.Action {
 		"flush_mdm_commands":      NewFlushMdmCommandsAction(),
 		"renew_mdm_profile":       NewRenewMdmProfileAction(),
 	}
-	for name, a := range batchActions() {
-		all[name] = a
-	}
+	maps.Copy(all, batchActions())
 	return all
 }
 

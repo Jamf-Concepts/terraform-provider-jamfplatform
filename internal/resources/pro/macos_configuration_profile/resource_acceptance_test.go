@@ -49,13 +49,56 @@ func testdataFile(t *testing.T, name string) string {
 	return abs
 }
 
+// readFixture returns a testdata payload, newline-terminated. Every config
+// helper here splices the payload straight into an HCL heredoc whose terminator
+// follows it ("%sEOF"), so a fixture saved without a trailing newline puts EOF
+// on the same line as the last tag, the heredoc never closes, and HCL fails the
+// step with "Unterminated template string" before the provider is reached.
+// Normalised here rather than in the fixtures: those mirror real exported
+// profiles, which are not reliably newline-terminated, and are more useful
+// byte-faithful.
 func readFixture(t *testing.T, name string) string {
 	t.Helper()
 	b, err := os.ReadFile(testdataFile(t, name))
 	if err != nil {
 		t.Fatalf("reading testdata fixture %q: %v", name, err)
 	}
-	return string(b)
+	s := string(b)
+	if !strings.HasSuffix(s, "\n") {
+		s += "\n"
+	}
+	return s
+}
+
+// TestAccFixtureHeredocTermination guards the whole fixture corpus against the
+// break above. It talks to nothing — it just checks that each payload still
+// closes its heredoc once spliced into a config — so it costs nothing to run
+// and fails with the offending fixture named, instead of every step of every
+// test that happens to use it reporting an HCL parse error.
+func TestAccFixtureHeredocTermination(t *testing.T) {
+	for _, path := range fixturePaths(t) {
+		name := filepath.Base(path)
+		if cfg := configMinimal("heredoc-check", readFixture(t, name)); !strings.Contains(cfg, "\nEOF\n") {
+			t.Errorf("fixture %s does not terminate its heredoc — the payload must end with a newline", name)
+		}
+	}
+}
+
+// fixturePaths lists every .mobileconfig in testdata.
+func fixturePaths(t *testing.T) []string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatalf("could not resolve caller path")
+	}
+	paths, err := filepath.Glob(filepath.Join(filepath.Dir(file), "testdata", "*.mobileconfig"))
+	if err != nil {
+		t.Fatalf("globbing testdata fixtures: %v", err)
+	}
+	if len(paths) == 0 {
+		t.Fatal("no .mobileconfig fixtures found in testdata")
+	}
+	return paths
 }
 
 // checkDestroy verifies profiles created during the test were destroyed.
