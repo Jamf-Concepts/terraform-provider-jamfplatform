@@ -90,7 +90,7 @@ func (a *ClearPasscodeAction) Invoke(ctx context.Context, req action.InvokeReque
 	}
 
 	command := &pro.ClearPasscodeCommand{
-		CommandType: cmdClearPasscode,
+		CommandType: pro.MDMCommandTypeClearPasscode,
 		UnlockToken: token,
 	}
 	a.sendCommand(ctx, resp, managementID, command, "Clear passcode")

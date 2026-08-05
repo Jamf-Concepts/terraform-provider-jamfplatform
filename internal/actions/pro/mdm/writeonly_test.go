@@ -57,9 +57,10 @@ func TestActionAttributes_AreNotWriteOnly(t *testing.T) {
 // secrets actually say so, because that disclosure is now the whole mitigation.
 func TestSecretAttributes_DiscloseVisibility(t *testing.T) {
 	secretAttrs := map[string]string{
-		"device_lock":             "pin",
-		"clear_passcode":          "unlock_token",
-		"set_auto_admin_password": "password",
+		"device_lock":                     "pin",
+		"clear_passcode":                  "unlock_token",
+		"set_auto_admin_password":         "password",
+		"trigger_enhanced_log_collection": "apple_care_token",
 	}
 
 	all := allMdmActions()

@@ -73,7 +73,7 @@ func (a *UnlockUserAccountAction) Invoke(ctx context.Context, req action.InvokeR
 	}
 
 	command := &pro.UnlockUserAccountCommand{
-		CommandType: cmdUnlockUserAccount,
+		CommandType: pro.MDMCommandTypeUnlockUserAccount,
 		UserName:    data.UserName.ValueStringPointer(),
 	}
 

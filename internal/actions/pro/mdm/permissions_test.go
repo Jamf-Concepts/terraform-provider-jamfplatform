@@ -319,3 +319,15 @@ func TestFlushMdmCommandsPrivileges_Rendered(t *testing.T) {
 		t.Fatalf("flushMdmCommandsPrivileges did not render the expected privilege:\n%s", flushMdmCommandsPrivileges)
 	}
 }
+
+func TestTriggerEnhancedLogCollectionSDKMethods_KnownToSDK(t *testing.T) {
+	if missing := permissions.Missing(resolveSerialMerged, triggerEnhancedLogCollectionSDKMethods...); len(missing) > 0 {
+		t.Fatalf("triggerEnhancedLogCollectionSDKMethods not present in SDK registries (drift): %v", missing)
+	}
+}
+
+func TestCancelEnhancedLogCollectionSDKMethods_KnownToSDK(t *testing.T) {
+	if missing := permissions.Missing(resolveSerialMerged, cancelEnhancedLogCollectionSDKMethods...); len(missing) > 0 {
+		t.Fatalf("cancelEnhancedLogCollectionSDKMethods not present in SDK registries (drift): %v", missing)
+	}
+}

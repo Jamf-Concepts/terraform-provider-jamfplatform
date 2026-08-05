@@ -66,6 +66,6 @@ func (a *DisableLostModeAction) Invoke(ctx context.Context, req action.InvokeReq
 		return
 	}
 
-	command := &pro.DisableLostModeCommand{CommandType: cmdDisableLostMode}
+	command := &pro.DisableLostModeCommand{CommandType: pro.MDMCommandTypeDisableLostMode}
 	a.sendCommandBatch(ctx, resp, managementIDs, command, "Disable Lost Mode")
 }

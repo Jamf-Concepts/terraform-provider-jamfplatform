@@ -7,6 +7,27 @@
 // The device data sources surface a management id (UUID), not the Jamf Pro id,
 // so a management id is mapped through the computer inventory; a serial number
 // and a hardware UDID each resolve directly.
+//
+// # Endpoint status
+//
+// Every version of /computers-inventory — V1, V2 and V3 — is deprecated in the
+// SDK's bundled 11.30.0 spec as of 2026-07-14. A live Jamf Pro 11.30.2 tenant
+// serves /v4/computers-inventory with no Deprecation header and an identical
+// RSQL filter contract (wire-probed 2026-08-04: filtering on general.managementId
+// returns the same single record), but /v4 is absent from the bundled spec, so
+// the SDK generates no client for it. Tracked in #311, blocked upstream on
+// Jamf-Concepts/jamfplatform-go-sdk#50.
+//
+// Migration window per STYLE_GUIDE §Deprecation migration timeline: 6-month soft
+// target 2027-01-14, hard floor 3 months before Jamf's announced removal date.
+// Migrating means swapping ListComputersInventoryV3 for its V4 equivalent and
+// dropping the SA1019 suppression below — a one-line change once the SDK exposes
+// it, which is why this waits for the SDK rather than routing around it.
+//
+// Deliberately NOT migrated to /preview/computers, which is undeprecated and
+// does carry managementId: it accepts no filter, so resolving one computer would
+// mean paging the entire computer list. That trades a tracked deprecation for an
+// unbounded per-invocation cost that grows with fleet size.
 package computertarget
 
 import (
@@ -48,7 +69,12 @@ func ResolveComputerID(ctx context.Context, client *pro.Client, resp *action.Inv
 		managementID := managementIDAttr.ValueString()
 		resp.SendProgress(action.InvokeProgressEvent{Message: fmt.Sprintf("Resolving management id %s", managementID)})
 
-		matches, err := client.ListComputersInventoryV3(ctx, []string{"GENERAL"}, nil, fmt.Sprintf("general.managementId==%q", managementID))
+		// SA1019 suppressed: /v3/computers-inventory is spec-deprecated as of
+		// 2026-07-14 and there is no generated successor yet. The two sibling
+		// branches below reach the same deprecated surface through SDK resolve
+		// helpers, which carry no Deprecated marker of their own — so migrating
+		// this one call in isolation would buy nothing. See the package doc.
+		matches, err := client.ListComputersInventoryV3(ctx, []string{"GENERAL"}, nil, fmt.Sprintf("general.managementId==%q", managementID)) //nolint:staticcheck // SA1019: no v4 client generated yet — see the package doc
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Computer Lookup Failed",

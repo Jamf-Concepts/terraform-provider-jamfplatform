@@ -20,11 +20,27 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// ProviderMinJamfProVersion is the provider-wide recommended minimum Jamf Pro tenant
-// version. Surfaces as a warning (not an error) when the tenant version is below it.
-// Bump at release time by grepping all minJamfProVersion constants under
-// internal/resources/pro/ and taking the max.
-const ProviderMinJamfProVersion = "11.29.0"
+// ProviderMinJamfProVersion is the provider-wide recommended minimum Jamf Pro
+// tenant version. Surfaces as a WARNING (not an error) when the tenant is below
+// it, and is rendered to users as "Built against API as of" in the provider
+// description, docs/index.md and README.md.
+//
+// It tracks the SDK's jamfplatform.JamfProAPIVersion — the API surface the linked
+// SDK build was generated against — and is bumped with the SDK dependency. It is
+// NOT the maximum of the per-resource floors: those are almost all empty (one
+// resource declares 11.25.0), so a max-of-floors rule would move this backwards
+// and make the rendered "built against" claim wrong.
+//
+// Bump at release time to match jamfplatform.JamfProAPIVersion, then run
+// `make generate` for docs/index.md and hand-edit the table in README.md, which
+// is not generated and will otherwise drift silently.
+//
+// This is deliberately advisory: it says which API the provider was built for,
+// not what a tenant must run. Anything with a real requirement declares its own
+// minJamfProVersion and hard-fails Configure — grep BOTH internal/resources/pro/
+// and internal/actions/pro/ for those, since actions carry floors too (e.g. the
+// enhanced-log-collection actions require 11.30.0).
+const ProviderMinJamfProVersion = "11.30.0"
 
 // Data is the value passed via ResourceData/DataSourceData/ListResourceData/ActionData.
 // It bundles the authenticated SDK client with lazy Jamf Pro version state shared

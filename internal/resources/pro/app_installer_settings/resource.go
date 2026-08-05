@@ -118,8 +118,13 @@ func (r *AppInstallerSettingsResource) Schema(ctx context.Context, _ resource.Sc
 						Validators: []validator.Set{
 							setvalidator.ValueStringsAre(
 								stringvalidator.OneOf(
-									"MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY",
-									"FRIDAY", "SATURDAY", "SUNDAY",
+									pro.AppInstallerDeploymentProcessControlsDaysOfWeekMonday,
+									pro.AppInstallerDeploymentProcessControlsDaysOfWeekTuesday,
+									pro.AppInstallerDeploymentProcessControlsDaysOfWeekWednesday,
+									pro.AppInstallerDeploymentProcessControlsDaysOfWeekThursday,
+									pro.AppInstallerDeploymentProcessControlsDaysOfWeekFriday,
+									pro.AppInstallerDeploymentProcessControlsDaysOfWeekSaturday,
+									pro.AppInstallerDeploymentProcessControlsDaysOfWeekSunday,
 								),
 							),
 						},

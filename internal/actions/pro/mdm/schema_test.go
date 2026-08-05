@@ -5,6 +5,7 @@ package mdmactions
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
@@ -269,5 +270,54 @@ func TestSendBlankPushValidatorsWired(t *testing.T) {
 	}
 	if len(a.ConfigValidators(context.Background())) == 0 {
 		t.Fatal("send_blank_push declares an empty ConfigValidators slice")
+	}
+}
+
+// --- enhanced log collection ---
+
+func TestTriggerEnhancedLogCollectionAction_Metadata(t *testing.T) {
+	assertTypeName(t, NewTriggerEnhancedLogCollectionAction().(*TriggerEnhancedLogCollectionAction).Metadata,
+		"jamfplatform_pro_trigger_enhanced_log_collection")
+}
+
+func TestTriggerEnhancedLogCollectionAction_Schema(t *testing.T) {
+	schema := NewTriggerEnhancedLogCollectionAction().(*TriggerEnhancedLogCollectionAction).Schema
+	assertAttrsPresent(t, schema, []string{"management_ids", "serial_numbers", "apple_care_token"})
+	// The spec marks appleCareToken required with minLength 1, and the command is
+	// meaningless without it, so this must not silently become optional.
+	assertRequired(t, schema, []string{"apple_care_token"})
+}
+
+func TestCancelEnhancedLogCollectionAction_Metadata(t *testing.T) {
+	assertTypeName(t, NewCancelEnhancedLogCollectionAction().(*CancelEnhancedLogCollectionAction).Metadata,
+		"jamfplatform_pro_cancel_enhanced_log_collection")
+}
+
+func TestCancelEnhancedLogCollectionAction_Schema(t *testing.T) {
+	assertAttrsPresent(t, NewCancelEnhancedLogCollectionAction().(*CancelEnhancedLogCollectionAction).Schema,
+		[]string{"management_ids", "serial_numbers"})
+}
+
+// Both actions must state their Jamf Pro floor and the Apple OS requirement in
+// the rendered description. The command is accepted by an 11.30 tenant and then
+// does nothing on a device below macOS/iOS 27, which produces no error anywhere
+// the user looks — so the docs are the only place that can explain it.
+func TestEnhancedLogCollectionActions_DocumentTheirRequirements(t *testing.T) {
+	actions := map[string]action.Action{
+		"trigger_enhanced_log_collection": NewTriggerEnhancedLogCollectionAction(),
+		"cancel_enhanced_log_collection":  NewCancelEnhancedLogCollectionAction(),
+	}
+	for name, a := range actions {
+		var resp action.SchemaResponse
+		a.Schema(context.Background(), action.SchemaRequest{}, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Fatalf("%s: schema diagnostics: %v", name, resp.Diagnostics)
+		}
+		desc := resp.Schema.GetMarkdownDescription()
+		for _, want := range []string{"Jamf Pro 11.30", "27.0 or later"} {
+			if !strings.Contains(desc, want) {
+				t.Errorf("%s: description should mention %q, got:\n%s", name, want, desc)
+			}
+		}
 	}
 }

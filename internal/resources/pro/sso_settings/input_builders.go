@@ -58,7 +58,7 @@ func buildSsoSettingsInput(ctx context.Context, plan SsoSettingsResourceModel) (
 			UsernameAttributeClaimMapping: helpers.OptionalStringPointer(plan.OidcSettings.UsernameAttributeClaimMapping),
 		}
 	} else {
-		out.OidcSettings = pro.OidcSettings{UserMapping: "EMAIL"}
+		out.OidcSettings = pro.OidcSettings{UserMapping: pro.OidcSettingsUserMappingEmail}
 	}
 
 	// SamlSettings — value type that always serialises. Build with content

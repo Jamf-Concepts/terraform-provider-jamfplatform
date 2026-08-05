@@ -30,6 +30,18 @@ import (
 // deployed Jamf Pro endpoints with no meaningful version floor.
 const minJamfProVersion = ""
 
+// minJamfProVersionEnhancedLogCollection gates the two enhanced-log-collection
+// actions, which are the exception to the empty floor above.
+//
+// TRIGGER_ENHANCED_LOG_COLLECTION and CANCEL_ENHANCED_LOG_COLLECTION arrived with
+// Jamf Pro 11.30. Without a floor, an older tenant rejects them at the command
+// discriminator with a raw Jackson deserialisation error naming every type id it
+// does know — accurate but unreadable, and it looks like a provider bug rather
+// than a tenant too old for the feature. Wire-probed against 11.30.2 on
+// 2026-08-04: both types appear in that known-type-ids list, so the floor matches
+// what the server actually accepts.
+const minJamfProVersionEnhancedLogCollection = "11.30.0"
+
 // secretAttrNote is appended to the description of every action attribute that
 // carries a secret the user supplies (a PIN, password or unlock token).
 //
@@ -96,22 +108,14 @@ const singleTargetNote = "\n\n" +
 // the harder that is to attribute.
 const batchWarnThreshold = 500
 
-// MDM command type discriminators. The SDK aliases MDMCommandType to a bare
-// string and ships no enum constants, so the supported subset is pinned here.
-const (
-	cmdDeviceLock                = "DEVICE_LOCK"
-	cmdEnableLostMode            = "ENABLE_LOST_MODE"
-	cmdDisableLostMode           = "DISABLE_LOST_MODE"
-	cmdPlayLostModeSound         = "PLAY_LOST_MODE_SOUND"
-	cmdEnableRemoteDesktop       = "ENABLE_REMOTE_DESKTOP"
-	cmdDisableRemoteDesktop      = "DISABLE_REMOTE_DESKTOP"
-	cmdClearRestrictionsPassword = "CLEAR_RESTRICTIONS_PASSWORD"
-	cmdDeleteUser                = "DELETE_USER"
-	cmdLogOutUser                = "LOG_OUT_USER"
-	cmdSetAutoAdminPassword      = "SET_AUTO_ADMIN_PASSWORD"
-	cmdUnlockUserAccount         = "UNLOCK_USER_ACCOUNT"
-	cmdClearPasscode             = "CLEAR_PASSCODE"
-)
+// Command type discriminators come from pro.MDMCommandType* — the SDK's
+// generated enum constants, which arrived with v0.13.0. This package previously
+// pinned its own copy of the twelve values it uses, on the (then accurate)
+// grounds that the SDK aliased MDMCommandType to a bare string and shipped no
+// constants. It now ships both, generated from the spec, so the local copy has
+// been removed: a hand-maintained vocabulary cannot notice when Jamf adds or
+// renames a command, and the two enhanced-log-collection types added in the same
+// release are exactly the kind of change it would have missed.
 
 // mdmAction shares Configure logic across the MDM command actions. It holds the
 // three client surfaces the package needs: the Jamf Pro client (send-command,
@@ -124,8 +128,17 @@ type mdmAction struct {
 	devices *devSDK.Client
 }
 
-// configure binds the provider-supplied clients to the action.
+// configure binds the provider-supplied clients to the action using the package
+// default floor (none).
 func (a *mdmAction) configure(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse) {
+	a.configureWithFloor(ctx, req, resp, minJamfProVersion, "mdm")
+}
+
+// configureWithFloor is configure with an explicit minimum Jamf Pro version and
+// diagnostic label, for the actions whose commands only exist on newer tenants.
+// Passing a non-empty floor turns an unsupported tenant into a clear version
+// error at Configure time instead of an opaque server rejection at Invoke.
+func (a *mdmAction) configureWithFloor(ctx context.Context, req action.ConfigureRequest, resp *action.ConfigureResponse, minVer, label string) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -139,12 +152,15 @@ func (a *mdmAction) configure(ctx context.Context, req action.ConfigureRequest, 
 		return
 	}
 
-	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "mdm")
+	client, diags := providerdata.ConfigurePro(ctx, req.ProviderData, minVer, label)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	// The classic client is bound unconditionally because mdmAction is shared, but
+	// the floor is deliberately NOT applied to it: only flush_mdm_commands uses it,
+	// and that command has no version requirement of its own.
 	classic, cdiags := providerdata.ConfigureProClassic(ctx, req.ProviderData, minJamfProVersion, "mdm")
 	resp.Diagnostics.Append(cdiags...)
 	if resp.Diagnostics.HasError() {

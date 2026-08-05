@@ -37,12 +37,12 @@ func CustomDeclarationsComponentSchema() map[string]schema.Attribute {
 					"channel": schema.StringAttribute{
 						MarkdownDescription: "The channel type for the declaration. Valid values are `SYSTEM`, `USER`.",
 						Required:            true,
-						Validators:          []validator.String{stringvalidator.OneOf("SYSTEM", "USER")},
+						Validators:          []validator.String{stringvalidator.OneOf(blueprints.DeclarationChannelTypeSystem, blueprints.DeclarationChannelTypeUser)},
 					},
 					"kind": schema.StringAttribute{
 						MarkdownDescription: "The kind of declaration. Valid values are `CONFIGURATION`, `ASSET`.",
 						Required:            true,
-						Validators:          []validator.String{stringvalidator.OneOf("CONFIGURATION", "ASSET")},
+						Validators:          []validator.String{stringvalidator.OneOf(blueprints.DeclarationKindConfiguration, blueprints.DeclarationKindAsset)},
 					},
 					"payload": schema.StringAttribute{
 						MarkdownDescription: "JSON-encoded payload object for the declaration.",
