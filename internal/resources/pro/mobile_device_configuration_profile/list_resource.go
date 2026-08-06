@@ -16,6 +16,7 @@ import (
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/filters"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/payloadhelpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -122,6 +123,9 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 	}
 
 	results := make([]list.ListResult, 0, maxResults)
+	// skippedByGate collects profiles the import fidelity gate dropped, reported
+	// as a single warning once the stream is assembled.
+	var skippedByGate []string
 	for _, it := range items {
 		if int64(len(results)) >= maxResults {
 			break
@@ -146,6 +150,19 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 				})
 				continue
 			}
+			// Import fidelity gate. Config generation is the bulk on-ramp to import, so
+			// a profile Jamf Pro cannot store back must not be emitted as apply-ready
+			// HCL. Drop it from the stream and name it in one consolidated warning
+			// below; failing the stream instead would abandon config generation for
+			// every other profile in the tenant over one unmanageable profile.
+			var payload []byte
+			if got != nil && got.General != nil && got.General.Payloads != nil {
+				payload = []byte(string(*got.General.Payloads))
+			}
+			if payloadhelpers.ImportGateSkip(payload, payloadhelpers.PlatformMobileDevice) {
+				skippedByGate = append(skippedByGate, helpers.DerefString(it.Name))
+				continue
+			}
 			state := ResourceModel{
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(timeoutAttributeTypes),
@@ -167,10 +184,18 @@ func (r *ListResource) List(ctx context.Context, req list.ListRequest, stream *l
 		"returned":       len(results),
 	})
 
+	gateWarning := payloadhelpers.ImportGateSkipWarning(skippedByGate, "jamfplatform_pro_mobile_device_configuration_profile")
+
 	if len(results) == 0 {
+		if len(gateWarning) > 0 {
+			stream.Results = list.ListResultsStreamDiagnostics(gateWarning)
+			return
+		}
 		stream.Results = list.NoListResults
 		return
 	}
+	// One warning for the whole query, carried by the first streamed result.
+	results[0].Diagnostics.Append(gateWarning...)
 	stream.Results = func(push func(list.ListResult) bool) {
 		for _, result := range results {
 			if !push(result) {

@@ -21,6 +21,9 @@ const (
 	FidelityPhaseCreate FidelityPhase = iota
 	// FidelityPhaseUpdate — the profile in Jamf Pro now differs from the configuration.
 	FidelityPhaseUpdate
+	// FidelityPhaseImport — nothing has been written; the profile was refused at
+	// the import gate because a later write-back would corrupt it (see importgate.go).
+	FidelityPhaseImport
 )
 
 // maxReportedFindings caps how many diverging values the diagnostic names:
@@ -59,25 +62,34 @@ func PayloadFidelityErrorDetail(authored, stored []byte, phase FidelityPhase) st
 	if !ok || len(findings) == 0 {
 		return unattributedFidelityDetail(phase)
 	}
+	return formatFidelityFindings(findings, phase)
+}
 
+// formatFidelityFindings renders a non-empty finding list as diagnostic detail.
+// Shared by the post-write checks (which diff against what Jamf Pro actually
+// stored) and the import gate (which diffs against the form a write-back is
+// predicted to produce), so both speak with one voice.
+func formatFidelityFindings(findings []fidelityFinding, phase FidelityPhase) string {
 	var b strings.Builder
-	if len(findings) == 1 {
-		b.WriteString("Jamf Pro stored a payload value differently than this configuration supplied.\n")
-	} else {
-		fmt.Fprintf(&b, "Jamf Pro stored %d payload values differently than this configuration supplied.\n", len(findings))
-	}
+	b.WriteString(findingsPreamble(len(findings), phase))
 
 	shown := findings
 	if len(shown) > maxReportedFindings {
 		shown = shown[:maxReportedFindings]
 	}
+	suppliedLabel, storedLabel := "supplied", "stored  "
+	if phase == FidelityPhaseImport {
+		// Nothing was supplied and nothing is stored yet — the two columns are the
+		// profile as it exists today and the form a write-back would leave behind.
+		suppliedLabel, storedLabel = "in Jamf Pro now  ", "after a Terraform write"
+	}
 	for _, f := range shown {
 		fmt.Fprintf(&b, "\n  - %s\n", wrapIndented(f.path+" — "+remedyFor(f.class), "    "))
-		fmt.Fprintf(&b, "    supplied: %s\n", excerpt(f.authored, f.stored))
+		fmt.Fprintf(&b, "    %s: %s\n", suppliedLabel, excerpt(f.authored, f.stored))
 		if f.present {
-			fmt.Fprintf(&b, "    stored:   %s\n", excerpt(f.stored, f.authored))
+			fmt.Fprintf(&b, "    %s: %s\n", storedLabel, excerpt(f.stored, f.authored))
 		} else {
-			b.WriteString("    stored:   (nothing — the value is absent)\n")
+			fmt.Fprintf(&b, "    %s: (nothing — the value is absent)\n", storedLabel)
 		}
 	}
 	if len(findings) > len(shown) {
@@ -87,6 +99,22 @@ func PayloadFidelityErrorDetail(authored, stored []byte, phase FidelityPhase) st
 	b.WriteString("\n")
 	b.WriteString(remediationTail(phase))
 	return b.String()
+}
+
+// findingsPreamble is the opening sentence, which differs in tense: the
+// post-write phases report what Jamf Pro did, the import phase reports what it
+// would do.
+func findingsPreamble(n int, phase FidelityPhase) string {
+	if phase == FidelityPhaseImport {
+		if n == 1 {
+			return "This profile holds a payload value Jamf Pro cannot store back as it stands.\n"
+		}
+		return fmt.Sprintf("This profile holds %d payload values Jamf Pro cannot store back as they stand.\n", n)
+	}
+	if n == 1 {
+		return "Jamf Pro stored a payload value differently than this configuration supplied.\n"
+	}
+	return fmt.Sprintf("Jamf Pro stored %d payload values differently than this configuration supplied.\n", n)
 }
 
 // remedyFor is the per-class explanation and fix, worded to name the
@@ -112,12 +140,26 @@ func remedyFor(c fidelityClass) string {
 }
 
 func remediationTail(phase FidelityPhase) string {
-	if phase == FidelityPhaseCreate {
+	switch phase {
+	case FidelityPhaseCreate:
 		return "The profile just created has been rolled back, so nothing is left behind in Jamf Pro. " +
 			"Correct the value(s) above and apply again, or manage this profile outside Terraform."
+	case FidelityPhaseImport:
+		return "Nothing has been imported and nothing in Jamf Pro has changed. Importing would leave Terraform " +
+			"managing a profile it cannot write back: the first apply that touches this resource — even a change to " +
+			"an unrelated field — would rewrite the payload into the corrupted form shown above, and the Classic API " +
+			"then refuses to accept the original value back, so the damage can only be undone in the Jamf Pro admin " +
+			"UI. Either remove the character(s) named above in the admin UI and import again, move the value into an " +
+			"\"Application & Custom Settings\" payload (which Jamf Pro stores faithfully), or leave this profile out " +
+			"of Terraform and read it with the jamfplatform_pro_macos_configuration_profile / " +
+			"jamfplatform_pro_mobile_device_configuration_profile data source instead. There is deliberately no " +
+			"override: a profile Jamf Pro cannot store faithfully cannot be managed safely. If you believe this " +
+			"particular payload does round-trip cleanly, please report it with the PayloadType named above so the " +
+			"provider's storage-category table can be corrected for everyone."
+	default:
+		return "The profile in Jamf Pro now holds the stored form shown above, so it no longer matches this configuration. " +
+			"Correct the value(s) and apply again, or manage this profile outside Terraform."
 	}
-	return "The profile in Jamf Pro now holds the stored form shown above, so it no longer matches this configuration. " +
-		"Correct the value(s) and apply again, or manage this profile outside Terraform."
 }
 
 func unattributedFidelityDetail(phase FidelityPhase) string {
@@ -142,7 +184,15 @@ func diffPayloadStrings(authored, stored []byte) ([]fidelityFinding, bool) {
 	if err != nil {
 		return nil, false
 	}
+	return diffPayloadTrees(authoredTree, storedTree), true
+}
 
+// diffPayloadTrees is the comparison itself, over already-parsed trees. Split
+// out so the import gate can diff a payload against a *predicted* stored form it
+// builds in memory (see importgate.go) using exactly the comparison, mask and
+// classifier the post-write checks use — the two can therefore never disagree
+// about whether a given value survives a write.
+func diffPayloadTrees(authoredTree, storedTree map[string]any) []fidelityFinding {
 	authoredFlat := map[string]string{}
 	storedFlat := map[string]string{}
 	flattenStringLeaves("", authoredTree, authoredFlat)
@@ -166,7 +216,7 @@ func diffPayloadStrings(authored, stored []byte) ([]fidelityFinding, bool) {
 			present:  present,
 		})
 	}
-	return findings, true
+	return findings
 }
 
 // classify picks the wire law that explains one divergence. Order is
