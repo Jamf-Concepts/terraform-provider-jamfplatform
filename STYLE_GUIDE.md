@@ -745,6 +745,40 @@ Maintainer call, documented in the migration PR description.
 
 When migration would require a **breaking Terraform schema change**, defer to the next provider major version. Document explicitly in the resource's `crud.go` annotation (see below) and in the major-version release planning.
 
+#### Tracking — the migration issue
+
+Every deprecation gets exactly one tracking issue, opened from the **Deprecation migration** issue template (`.github/ISSUE_TEMPLATE/deprecation_migration.md`). The conventions below are mandatory — they are what makes the set of open migrations greppable and their deadlines visible.
+
+**Label**: `deprecation-migration`, always. Add `blocked-upstream` while the SDK exposes no successor, and remove it when the successor ships. No other label substitutes: `grep`ping the label is how the quarterly audit finds outstanding migrations.
+
+**Title format**:
+
+```
+deprecation(<sdk-family>): <surface> <from>→<to> — migrate by YYYY-MM-DD
+```
+
+- `<sdk-family>` is `pro`, `proclassic` or `platform`.
+- `<surface>` is the API path segment, not the Terraform name (`computers-inventory`, not `jamfplatform_pro_computer`). Comma-separate multiple surfaces deprecated in the same announcement rather than opening one issue per surface.
+- The date is the **binding** date: the 6-month soft target until Jamf publishes a removal date, then the 3-month hard floor if that lands earlier. Edit the title when the binding date moves — a stale date in a title is worse than none.
+
+**Deadlines**: GitHub issues carry no due-date field, so the dates live on [GitHub Project #2](https://github.com/orgs/Jamf-Concepts/projects/2) in two Date fields — `Deprecated On` (Jamf's announcement date) and `Migrate By` (the binding date, matching the title). Every `deprecation-migration` issue must be on the project with both set. Milestones are reserved for releases and must not be used to carry migration deadlines.
+
+**PR title**: conventional-commit `refactor`, naming the same surfaces as the issue:
+
+```
+refactor(<pkg-or-resource>): migrate <surface> <from>→<to>
+```
+
+The PR body closes the issue (`Closes #NNN`) and records the fast-track or slow-track call if either applies. One PR per surface unless the surfaces are coupled (e.g. a shared side-channel that cannot move independently).
+
+**While a migration is outstanding**, every call to a deprecated symbol carries a suppression naming the issue, so the reason survives without reading the tracker:
+
+```go
+//nolint:staticcheck // SA1019: no v4 client generated yet — see #311
+```
+
+**Closing condition**: the issue closes only when no call site reaches the deprecated method *and* every `SA1019` suppression for that surface is gone — `grep -rn "SA1019" internal/` is the check. A migration that leaves suppressions behind is not finished, because the next audit cannot tell it from an un-started one.
+
 #### Tracking — in-code annotation (Pro resources only)
 
 Every Jamf Pro resource's `crud.go` carries an annotation block at the top of the file listing the SDK endpoints in use, their status, and the last maintainer review date. Platform Services resources do **not** carry this annotation.
@@ -781,8 +815,9 @@ Once per quarter, a maintainer:
 2. Greps the repo for endpoint annotations: `grep -rA5 "SDK endpoints used:" internal/resources/pro/`.
 3. Reconciles each annotation against current Jamf + SDK state.
 4. Updates `Last reviewed YYYY-MM-DD` on every annotation that's still current.
-5. Opens migration tracking issues for any newly-deprecated Pro endpoints.
-6. Flags any annotation whose `Last reviewed` date is older than 120 days (means a prior audit was skipped).
+5. Opens migration tracking issues for any newly-deprecated Pro endpoints, following [§Tracking — the migration issue](#tracking--the-migration-issue).
+6. Reviews every open `deprecation-migration` issue — `gh issue list --label deprecation-migration` — and checks each one's `Migrate By` date on Project #2 against the current window, recomputing it if Jamf has since published a removal date.
+7. Flags any annotation whose `Last reviewed` date is older than 120 days (means a prior audit was skipped).
 
 The `Last reviewed` date is the drift detector — any annotation more than a quarter stale signals the audit hasn't happened.
 
