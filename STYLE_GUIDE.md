@@ -522,6 +522,43 @@ If `inp_masked == srv_masked` the modifier suppresses the diff by setting `plan.
 
 Reference implementation: the shared mask / compare / identifier-injection logic lives in `internal/common/payloadhelpers/` (`MaskPayload`, `PayloadsSemanticallyEqual`, `ThreeWayCompare`, `InjectTopLevelIdentifiers`); the per-resource glue is in `internal/resources/pro/macos_configuration_profile/` (`plan_modifiers.go` plan-time integration, `input_builders.go` / `crud.go` Update-path injection, `resource.go` MarkdownDescription disclosing the masked key set to users).
 
+### Payload storage categories and the import fidelity gate
+
+The read-back verification above is a **post-write** check, and it is only half a guard. Create can roll back when it fires; Update has nothing safe to roll back *to*, because the Classic API refuses to accept the original value back once the profile holds the mangled form (wire-verified: re-submitting a server's own unmodified `<payloads>` returns `409 Unable to update the database`). Repair is admin-UI-only.
+
+That leaves **import** as the one way an unstorable profile can come under management: the provider will not create one, but it will happily adopt one authored in the admin UI. Such a profile imports clean and plans as a no-op, then the first apply that touches it — a rename, a scope tweak, anything — rewrites the payload irreversibly. `payloadhelpers.PayloadImportRisk` therefore refuses the import up front.
+
+**Storage category is per `(platform, PayloadType)`, and the two platforms genuinely disagree.** Jamf Pro either re-renders a payload fragment (parses and re-serialises it — `&`, `<`, LF and TAB all survive, and unknown keys are preserved, so this is not schema filtering) or stores it verbatim (keeps the extra entity layer the Classic API requires on submission, and deletes LF and TAB; `>`, CR, U+2028/U+2029/U+0085 survive). Wire-probed 2026-08-06 against Jamf Pro 11.30.x:
+
+| PayloadType | macOS | Mobile device |
+|---|---|---|
+| `com.apple.ManagedClient.preferences` | re-render | **verbatim** |
+| `com.apple.applicationaccess` | **verbatim** | re-render |
+| `com.apple.notificationsettings`, `com.apple.mobiledevice.passwordpolicy`, `com.apple.webcontent-filter` | re-render | re-render |
+| `com.apple.systempolicy.control`, `com.apple.security.firewall`, `com.apple.SubmitDiagInfo`, `com.apple.servicemanagement`, `com.apple.extensiblesso` | re-render | not probed |
+| `com.apple.shareddeviceconfiguration` | not probed | re-render |
+| `com.apple.loginwindow`, `com.apple.MCX`, `com.apple.TCC.configuration-profile-policy`, `com.apple.vpn.managed`, `com.apple.wifi.managed`, `com.apple.dock`, `com.apple.screensaver`, `com.apple.SetupAssistant.managed`, `com.apple.systempreferences`, `com.apple.finder`, `com.apple.appstore`, `com.apple.dashboard`, `com.apple.system-extension-policy`, `com.apple.syspolicy.kernel-extension-policy` | verbatim | verbatim (where probed) |
+| `com.apple.webClip.managed` | n/a | verbatim |
+
+The first two rows are why a single global table is not an option — it would necessarily get one platform wrong. `testdata/reserved_character_corpus.mobileconfig` exists in both resources' fixtures with identical content and opposite expected verdicts; that pair is the regression guard.
+
+**Rules for the table** (`faithfulPayloadTypes` in `importgate.go`):
+
+- Only **re-render** types are listed. Everything absent — unprobed types, and every string slot outside the `PayloadContent` array such as a top-level `ConsentText` dictionary — is treated as verbatim.
+- **Deny-by-default is deliberate and asymmetric.** A wrong "verbatim" guess costs one refused import, which is loud, immediate and recoverable. A wrong "re-render" guess lets a profile through to be corrupted irreversibly by its first update. Never guess in the second direction.
+- **Add an entry only from a wire probe, never by inference.** The harness is `storage_category_probe_test.go` (build tag `payload_probe`). Inference is not idle caution: of the payload types with no prior classification, roughly a quarter turned out re-render (`servicemanagement`, `extensiblesso`, `webcontent-filter`), so deny-by-default alone would have refused them. `webcontent-filter` only yielded to a probe built from a real payload lifted off a tenant — every synthetic shape was schema-rejected, which is what `TestProbeStorageCategoriesFromRealPayload` is for.
+- Note that a re-render *ingest* path may still add or drop keys (a Web Clip gains `Icon` / `data_files` and loses unrecognised keys). That is independent of the escaping question this table answers; do not conflate the two.
+
+**Implementation constraints.**
+
+- The gate builds a *predicted* stored form and diffs it through `diffPayloadTrees` — the same comparator, mask and classifier the post-write checks use. Do not write an independent predicate: sharing the comparator is what makes the gate and the post-write check unable to disagree, and reduces correctness to one testable function.
+- **Gate on first-time-hydration detection, not `req.State.Raw.IsNull()`.** Only `terraform import` arrives with null prior state; a config-driven `import` block runs `ImportResourceState` first and reaches `Read` with prior state present. Use the `state.General == nil` first-hydration signal both profile resources already compute (`general` is schema-`Required`, so a nil value can only mean import hydration). An earlier revision got this wrong and every profile imported cleanly while every unit test passed.
+- **Never gate ordinary refresh.** A profile already under management, or corrupted out-of-band, must keep refreshing so drift stays visible and the resource stays removable — otherwise the guard is worse than the trap.
+- **No opt-out, by design.** A profile Jamf Pro cannot store faithfully cannot be managed safely, and a provider-global override would silently reinstate the corruption. A misclassification is fixed in the table for everyone; the diagnostic asks the operator to report the `PayloadType`.
+- List resources **drop** a refused item from the stream and name it in one consolidated warning, rather than failing the stream and abandoning config generation for the rest of the tenant. Do not stream it identity-only with a nil `Resource`: the framework documents that as merely warning, but Terraform CLI 1.15 panics rendering it in `genconfig` (`cty.Value.GetAttr` on a null).
+
+**Testing.** The predicate takes unit tests, but the *wiring* needs acceptance tests, and the fixture cannot be created through the provider — Create refuses it. The CI tenant keeps two permanent profiles named `Fidelity Test Sentinel [DO NOT DELETE]` (a macOS Login Window with `&` in `LoginwindowText`, and a mobile Web Clip with `&`/`<` in `Label` and `&` in `URL`), authored via admin-UI upload so they hold true `&`/`<` rather than the pre-mangled form. Acceptance tests resolve them **by name, never by ID**, and skip with a message describing the fixture when absent.
+
 ## Error Handling
 
 Use the shared helpers from `internal/common/helpers` rather than rolling your own:
