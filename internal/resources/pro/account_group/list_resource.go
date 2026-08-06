@@ -22,6 +22,13 @@ import (
 // defaultListTimeout caps the classic /accounts list + per-item fetches.
 const defaultListTimeout = 120 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &AccountGroupListResource{}
 var _ list.ListResourceWithConfigure = &AccountGroupListResource{}
 
@@ -123,17 +130,21 @@ func (r *AccountGroupListResource) List(ctx context.Context, req list.ListReques
 		}
 
 		if req.IncludeResource {
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			got, err := r.client.GetAccountGroupByID(itemCtx, id.ValueString())
+			cancel()
+			if err != nil {
+				tflog.Warn(ctx, "Skipping account group from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
+			}
 			state := AccountGroupResourceModel{
 				ID:       id,
 				Timeouts: helpers.NewResourceTimeoutsNullValue(accountGroupTimeoutAttributeTypes),
 			}
-			got, err := r.client.GetAccountGroupByID(listCtx, id.ValueString())
-			if err != nil {
-				result.Diagnostics.AddError("Unable to read Jamf Pro account group", err.Error())
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
-			}
-			result.Diagnostics.Append(assignAccountGroupResourceModel(listCtx, &state, got, true)...)
+			result.Diagnostics.Append(assignAccountGroupResourceModel(ctx, &state, got, true)...)
 			result.Diagnostics.Append(result.Resource.Set(ctx, &state)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)

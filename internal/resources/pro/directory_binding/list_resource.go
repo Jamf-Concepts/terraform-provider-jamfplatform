@@ -24,6 +24,13 @@ import (
 // expose a user-overridable timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var (
 	_ list.ListResource              = &DirectoryBindingListResource{}
 	_ list.ListResourceWithConfigure = &DirectoryBindingListResource{}
@@ -142,14 +149,15 @@ func (r *DirectoryBindingListResource) List(ctx context.Context, req list.ListRe
 			// resource schema is large (top-level envelope plus four
 			// per-type nested blocks) so we follow up with a singular GET
 			// to populate the full record rather than emitting nulls.
-			full, err := r.client.GetDirectoryBindingByID(listCtx, id.ValueString())
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetDirectoryBindingByID(itemCtx, id.ValueString())
+			cancel()
 			if err != nil {
-				result.Diagnostics.AddError(
-					"Unable to fetch full directory binding for list result",
-					err.Error(),
-				)
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
+				tflog.Warn(ctx, "Skipping directory binding from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
 			state := DirectoryBindingResourceModel{
 				ID:       id,

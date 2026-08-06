@@ -29,6 +29,13 @@ import (
 // not expose a user-overridable timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var (
 	_ list.ListResource              = &VolumePurchasingLocationListResource{}
 	_ list.ListResourceWithConfigure = &VolumePurchasingLocationListResource{}
@@ -144,19 +151,20 @@ func (r *VolumePurchasingLocationListResource) List(ctx context.Context, req lis
 			// ListView omits the purchased-content catalog; follow up with a
 			// singular GET to populate the `content` attribute. Identity-only
 			// listing skips this round trip.
-			full, err := r.client.GetVolumePurchasingLocationV1(listCtx, item.ID)
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetVolumePurchasingLocationV1(itemCtx, item.ID)
+			cancel()
 			if err != nil {
-				result.Diagnostics.AddError(
-					"Unable to fetch full Volume Purchasing location for list result",
-					err.Error(),
-				)
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
+				tflog.Warn(ctx, "Skipping Volume Purchasing location from generated config after per-item read failure", map[string]any{
+					"id":    item.ID,
+					"error": err.Error(),
+				})
+				continue
 			}
 			state := VolumePurchasingLocationResourceModel{
 				Timeouts: helpers.NewResourceTimeoutsNullValue(volumePurchasingLocationTimeoutAttributeTypes),
 			}
-			result.Diagnostics.Append(assignVolumePurchasingLocationResourceModel(listCtx, &state, full)...)
+			result.Diagnostics.Append(assignVolumePurchasingLocationResourceModel(ctx, &state, full)...)
 			if result.Diagnostics.HasError() {
 				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
 				return
