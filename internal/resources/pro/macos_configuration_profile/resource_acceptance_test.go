@@ -1404,3 +1404,179 @@ func TestAccResource_MacOSConfigurationProfile_ConsentTextCarriageReturns(t *tes
 		},
 	})
 }
+
+// fidelitySentinelName is a permanent profile kept on the CI tenant that holds
+// "&" in a payload value Jamf Pro stores verbatim. The provider cannot create
+// such a profile — Create detects the mangling and rolls back — so the import
+// fidelity gate can only be exercised against a fixture authored outside
+// Terraform, which is exactly the real-world case the gate exists for.
+//
+// Looked up by name, never by ID: the sentinel may be deleted and recreated,
+// and a hardcoded ID would then silently test the wrong profile (or a profile
+// that no longer exists).
+const fidelitySentinelName = "Fidelity Test Sentinel [DO NOT DELETE]"
+
+// lookupFidelitySentinelID resolves the sentinel to its current ID, skipping the
+// test with an explicit message when it is absent. Skipping rather than failing
+// keeps a tenant without the fixture usable, but the message has to name the
+// fixture so an accidental deletion is not mistaken for the gate being untested.
+func lookupFidelitySentinelID(t *testing.T) string {
+	t.Helper()
+	client := testhelpers.NewProClassicClient(t)
+	got, err := client.GetOSXConfigurationProfileByName(context.Background(), fidelitySentinelName)
+	if err != nil || got == nil || got.General == nil || got.General.ID == nil {
+		t.Skipf("macOS profile %q not present on this tenant — recreate it (a Login Window payload whose "+
+			"LoginwindowText contains \"&\") to cover the import fidelity gate; lookup error: %v",
+			fidelitySentinelName, err)
+	}
+	return helpers.StringValueFromIntPtr(got.General.ID).ValueString()
+}
+
+// TestAccResource_MacOSConfigurationProfile_ImportFidelityGateRefusesSentinel is
+// the regression test for the import trap: a profile holding "&" in a
+// verbatim-stored payload imports and plans clean, then the first apply that
+// touches it rewrites the payload into a corrupted form the Classic API will
+// not accept the original back over. Import must therefore be refused outright.
+//
+// This cannot be covered by a unit test. The predicate has unit coverage; what
+// only an acceptance test can prove is that Read actually consults it on the
+// import path — an earlier revision gated on req.State.Raw.IsNull(), which is
+// false for a config-driven import block, so every profile sailed through while
+// every unit test still passed.
+func TestAccResource_MacOSConfigurationProfile_ImportFidelityGateRefusesSentinel(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	id := lookupFidelitySentinelID(t)
+	payload := readFixture(t, "KarabinerElements__system_extension_profile.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				// A throwaway config supplies the resource address; the import
+				// targets the sentinel by ID and must never reach state.
+				Config:            configMinimal("tf-acc-mcp-gate-"+testhelpers.RunSuffix(), payload),
+				ResourceName:      "jamfplatform_pro_macos_configuration_profile.test",
+				ImportState:       true,
+				ImportStateId:     id,
+				ImportStateVerify: false,
+				// Terraform re-wraps diagnostic prose at roughly 80 columns, so the
+				// pattern must be short enough to never straddle a line break.
+				ExpectError: regexp.MustCompile(`cannot be managed by Terraform`),
+			},
+		},
+	})
+}
+
+// TestAccResource_MacOSConfigurationProfile_ImportFidelityGateNamesTheValue
+// checks the refusal is actionable: on a tenant-wide import Terraform prints no
+// resource address for a provider Read error, so the diagnostic itself has to
+// identify both the profile and the offending value or the operator cannot act.
+func TestAccResource_MacOSConfigurationProfile_ImportFidelityGateNamesTheValue(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	id := lookupFidelitySentinelID(t)
+	payload := readFixture(t, "KarabinerElements__system_extension_profile.mobileconfig")
+
+	// Single tokens only, for the line-wrap reason above. The PayloadContent
+	// index is deliberately not asserted: it shifts if the sentinel is rebuilt
+	// with a different payload order, and the key name is the actionable part.
+	for _, want := range []*regexp.Regexp{
+		regexp.MustCompile(`LoginwindowText`),
+		regexp.MustCompile(`PI-827`),
+		regexp.MustCompile(`Sentinel`),
+	} {
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				{
+					Config:        configMinimal("tf-acc-mcp-gatemsg-"+testhelpers.RunSuffix(), payload),
+					ResourceName:  "jamfplatform_pro_macos_configuration_profile.test",
+					ImportState:   true,
+					ImportStateId: id,
+					ExpectError:   want,
+				},
+			},
+		})
+	}
+}
+
+// TestAccResource_MacOSConfigurationProfile_RefreshIsNeverGated is the other half
+// of the gate's contract, and the more important one to protect: the gate must
+// fire ONLY on import. A profile that is already under management and then
+// acquires an unstorable value out-of-band — an admin edits it in the UI — has
+// to keep refreshing, or the operator can neither see the drift nor remove the
+// resource, which would be worse than the trap the gate prevents.
+//
+// The out-of-band write goes through the SDK rather than the provider precisely
+// because the provider refuses to write such a value.
+func TestAccResource_MacOSConfigurationProfile_RefreshIsNeverGated(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mcp-refreshgate-" + suffix
+	clean := readFixture(t, "KarabinerElements__system_extension_profile.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{Config: configMinimal(name, clean)},
+			{
+				// Inject "&" into the managed profile behind Terraform's back, then
+				// re-plan. The plan must succeed and report drift; a gated refresh
+				// would error here instead.
+				PreConfig: func() { injectAmpersandOutOfBand(t, name) },
+				Config:    configMinimal(name, clean),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectNonEmptyPlan(),
+					},
+				},
+				// The apply that follows re-asserts the configured payload, which is
+				// clean, so it must succeed — proving the resource stays manageable.
+			},
+		},
+	})
+}
+
+// injectAmpersandOutOfBand rewrites the named profile's payload to carry "&" in
+// a LoginwindowText value, simulating an admin-UI edit after the profile came
+// under management. Uses the SDK directly: this is a write the provider will
+// not perform.
+func injectAmpersandOutOfBand(t *testing.T, name string) {
+	t.Helper()
+	ctx := context.Background()
+	client := testhelpers.NewProClassicClient(t)
+
+	got, err := client.GetOSXConfigurationProfileByName(ctx, name)
+	if err != nil || got == nil || got.General == nil || got.General.ID == nil || got.General.Payloads == nil {
+		t.Fatalf("reading %q before out-of-band edit: %v", name, err)
+	}
+	id := helpers.StringValueFromIntPtr(got.General.ID).ValueString()
+
+	current := string(*got.General.Payloads)
+	edited := injectPlistTailKey(current)
+	if edited == current {
+		t.Fatalf("could not locate the plist tail in %q to inject the out-of-band edit", name)
+	}
+
+	payload := proclassic.PayloadsXMLText(edited)
+	if err := client.UpdateOSXConfigurationProfileByID(ctx, id,
+		&proclassic.OsXConfigurationProfile{
+			General: &proclassic.OsXConfigurationProfileGeneral{Payloads: &payload},
+		}); err != nil {
+		t.Fatalf("out-of-band payload edit of %q: %v", name, err)
+	}
+}
+
+// injectPlistTailKey appends a key holding "&" to the top-level dict, trying both
+// the indented and single-line document shapes Jamf Pro may return. Returns the
+// input unchanged when neither tail is found, so the caller fails loudly rather
+// than asserting against an unmodified profile.
+func injectPlistTailKey(plist string) string {
+	const inject = `<key>ZZOutOfBandEdit</key><string>injected &amp; value</string>`
+	for _, tail := range []string{"</dict>\n</plist>", "</dict></plist>"} {
+		if strings.Contains(plist, tail) {
+			return strings.Replace(plist, tail, inject+tail, 1)
+		}
+	}
+	return plist
+}

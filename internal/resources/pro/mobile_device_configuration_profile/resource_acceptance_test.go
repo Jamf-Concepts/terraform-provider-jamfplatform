@@ -1006,3 +1006,165 @@ func TestAccResource_MobileDeviceConfigurationProfile_ReservedCharacterCorpusRej
 		},
 	})
 }
+
+// fidelitySentinelName is a permanent profile kept on the CI tenant carrying "&"
+// in Web Clip Label and URL values. Jamf Pro stores com.apple.webClip.managed
+// verbatim in a mobile device profile, so those values cannot be written back
+// unchanged. The provider cannot create such a profile — Create detects the
+// mangling and rolls back — so the import gate can only be exercised against a
+// fixture authored outside Terraform, which is the real-world case it guards.
+//
+// Looked up by name, never by ID: the sentinel may be deleted and recreated, and
+// a hardcoded ID would then test the wrong profile or a missing one.
+const fidelitySentinelName = "Fidelity Test Sentinel [DO NOT DELETE]"
+
+// lookupFidelitySentinelID resolves the sentinel to its current ID, skipping with
+// an explicit message when absent so an accidental deletion is not mistaken for
+// the gate being covered.
+func lookupFidelitySentinelID(t *testing.T) string {
+	t.Helper()
+	c := testhelpers.NewProClassicClient(t)
+	got, err := c.GetMobileDeviceConfigurationProfileByName(context.Background(), fidelitySentinelName)
+	if err != nil || got == nil || got.General == nil || got.General.ID == nil {
+		t.Skipf("mobile device profile %q not present on this tenant — recreate it (a Web Clip payload whose "+
+			"Label and URL contain \"&\") to cover the import fidelity gate; lookup error: %v",
+			fidelitySentinelName, err)
+	}
+	return helpers.StringValueFromIntPtr(got.General.ID).ValueString()
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_ImportFidelityGateRefusesSentinel
+// is the regression test for the import trap on the mobile endpoint, which is the
+// more exposed of the two: Jamf Pro stores nearly every mobile payload type
+// verbatim — including com.apple.ManagedClient.preferences, which is faithful on
+// macOS — so an everyday web clip URL with a query string is enough to trip it.
+//
+// Only an acceptance test can prove Read consults the gate on the import path.
+// An earlier revision gated on req.State.Raw.IsNull(), which is false for a
+// config-driven import block, so every profile imported while unit tests passed.
+func TestAccResource_MobileDeviceConfigurationProfile_ImportFidelityGateRefusesSentinel(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	id := lookupFidelitySentinelID(t)
+	payload := readFixture(t, "profile_44.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				// A throwaway config supplies the resource address; the import targets
+				// the sentinel by ID and must never reach state.
+				Config:            configMinimal("tf-acc-mdcp-gate-"+testhelpers.RunSuffix(), payload),
+				ResourceName:      "jamfplatform_pro_mobile_device_configuration_profile.test",
+				ImportState:       true,
+				ImportStateId:     id,
+				ImportStateVerify: false,
+				// Terraform re-wraps diagnostic prose at roughly 80 columns, so the
+				// pattern must never straddle a line break.
+				ExpectError: regexp.MustCompile(`cannot be managed by Terraform`),
+			},
+		},
+	})
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_ImportFidelityGateNamesTheValue
+// checks the refusal is actionable. Both offending values must be named, not just
+// the first: a tenant-wide import prints no resource address for a provider Read
+// error, so the diagnostic is the operator's only handle on what to fix.
+func TestAccResource_MobileDeviceConfigurationProfile_ImportFidelityGateNamesTheValue(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	id := lookupFidelitySentinelID(t)
+	payload := readFixture(t, "profile_44.mobileconfig")
+
+	// Single tokens only, for the line-wrap reason above. The PayloadContent index
+	// is deliberately not asserted — it shifts if the sentinel is rebuilt.
+	for _, want := range []*regexp.Regexp{
+		regexp.MustCompile(`\.Label`),
+		regexp.MustCompile(`\.URL`),
+		regexp.MustCompile(`Sentinel`),
+	} {
+		resource.Test(t, resource.TestCase{
+			ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+			Steps: []resource.TestStep{
+				{
+					Config:        configMinimal("tf-acc-mdcp-gatemsg-"+testhelpers.RunSuffix(), payload),
+					ResourceName:  "jamfplatform_pro_mobile_device_configuration_profile.test",
+					ImportState:   true,
+					ImportStateId: id,
+					ExpectError:   want,
+				},
+			},
+		})
+	}
+}
+
+// TestAccResource_MobileDeviceConfigurationProfile_RefreshIsNeverGated protects the
+// other half of the gate's contract: it must fire ONLY on import. A profile
+// already under management that acquires an unstorable value out-of-band has to
+// keep refreshing, or the operator can neither see the drift nor remove the
+// resource — worse than the trap the gate prevents.
+func TestAccResource_MobileDeviceConfigurationProfile_RefreshIsNeverGated(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-mdcp-refreshgate-" + suffix
+	clean := readFixture(t, "profile_44.mobileconfig")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             checkDestroy(t),
+		Steps: []resource.TestStep{
+			{Config: configMinimal(name, clean)},
+			{
+				PreConfig: func() { injectAmpersandOutOfBand(t, name) },
+				Config:    configMinimal(name, clean),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectNonEmptyPlan(),
+					},
+				},
+			},
+		},
+	})
+}
+
+// injectAmpersandOutOfBand rewrites the named profile's payload to carry "&",
+// simulating an admin-UI edit after the profile came under management. Uses the
+// SDK directly: this is a write the provider itself refuses to perform.
+func injectAmpersandOutOfBand(t *testing.T, name string) {
+	t.Helper()
+	ctx := context.Background()
+	c := testhelpers.NewProClassicClient(t)
+
+	got, err := c.GetMobileDeviceConfigurationProfileByName(ctx, name)
+	if err != nil || got == nil || got.General == nil || got.General.ID == nil || got.General.Payloads == nil {
+		t.Fatalf("reading %q before out-of-band edit: %v", name, err)
+	}
+	id := helpers.StringValueFromIntPtr(got.General.ID).ValueString()
+
+	current := string(*got.General.Payloads)
+	edited := injectPlistTailKey(current)
+	if edited == current {
+		t.Fatalf("could not locate the plist tail in %q to inject the out-of-band edit", name)
+	}
+
+	payload := proclassic.PayloadsXMLText(edited)
+	if err := c.UpdateMobileDeviceConfigurationProfileByID(ctx, id,
+		&proclassic.MobileDeviceConfigurationProfile{
+			General: &proclassic.MobileDeviceConfigurationProfileGeneral{Payloads: &payload},
+		}); err != nil {
+		t.Fatalf("out-of-band payload edit of %q: %v", name, err)
+	}
+}
+
+// injectPlistTailKey appends a key holding "&" to the top-level dict, trying both
+// the indented and single-line document shapes Jamf Pro may return. Returns the
+// input unchanged when neither tail is found, so the caller fails loudly rather
+// than asserting against an unmodified profile.
+func injectPlistTailKey(plist string) string {
+	const inject = `<key>ZZOutOfBandEdit</key><string>injected &amp; value</string>`
+	for _, tail := range []string{"</dict>\n</plist>", "</dict></plist>"} {
+		if strings.Contains(plist, tail) {
+			return strings.Replace(plist, tail, inject+tail, 1)
+		}
+	}
+	return plist
+}
