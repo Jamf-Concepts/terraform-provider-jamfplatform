@@ -199,6 +199,37 @@ func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *res
 	// wire-present optional section in that case; subsequent Reads revert to
 	// only refreshing sections the current state already tracks.
 	firstHydration := state.General == nil
+	// Import fidelity gate. Adopting a profile whose payload Jamf Pro cannot store
+	// back unchanged is a trap: it imports and plans clean, then the first apply
+	// that touches the resource rewrites the payload into a corrupted form the
+	// Classic API will not accept the original back over, leaving the admin UI as
+	// the only repair. Refuse at the doorway instead. No API calls and no writes —
+	// the verdict comes from the payload text (payloadhelpers.PayloadImportRisk).
+	//
+	// Gated on firstHydration, not on req.State.Raw.IsNull(): only `terraform
+	// import` arrives with null prior state, whereas a config-driven `import`
+	// block runs ImportResourceState first and reaches Read with prior state
+	// present. firstHydration covers both (general is schema-Required, so a nil
+	// general can only mean first-time import hydration) and deliberately never
+	// fires on ordinary refresh, which must keep working for an already-managed or
+	// externally-corrupted profile so drift stays visible and it stays removable.
+	//
+	// Mobile device profiles are the more exposed of the two: Jamf Pro stores
+	// nearly every mobile payload type verbatim, including
+	// com.apple.ManagedClient.preferences (which is faithful on macOS), so a web
+	// clip URL with a query string is enough to trip this.
+	if firstHydration {
+		var gateName string
+		if got != nil && got.General != nil && got.General.Name != nil {
+			gateName = *got.General.Name
+		}
+		resp.Diagnostics.Append(payloadhelpers.ImportGateDiagnostics(
+			rawServerPayload, payloadhelpers.PlatformMobileDevice, gateName, state.ID.ValueString(),
+		)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
 	resp.Diagnostics.Append(assignResourceModel(readCtx, &state, got, firstHydration)...)
 	if resp.Diagnostics.HasError() {
 		return

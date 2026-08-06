@@ -9,6 +9,7 @@ description: |-
   A small set of profile-level fields (PayloadDisplayName, PayloadIdentifier, PayloadUUID, PayloadOrganization, PayloadDescription, PayloadEnabled) are managed entirely by Jamf Pro — any value you supply for them inside payloads is replaced on the server, so the provider ignores them in the diff. Use general.name, general.description, and the other top-level attributes to control the equivalent fields.
   Scope blocks mirror jamfplatform_pro_policy: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). all_mobile_devices and all_jss_users conflict with their per-ID siblings.
   Profile identity on update — the provider re-applies the existing top-level PayloadUUID and PayloadIdentifier from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled devices and the OS would treat it as a fresh installation.
+  Characters Jamf Pro cannot store — & and < come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. This affects nearly every payload type here, including "Application & Custom Settings"; a web clip URL with a query string is the usual way to meet it. Write line breaks as &#13;. Rather than alter a payload silently the provider refuses it — on create, on edit, and on import — naming the offending value.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -33,6 +34,8 @@ A small set of profile-level fields (`PayloadDisplayName`, `PayloadIdentifier`, 
 **Scope** blocks mirror `jamfplatform_pro_policy`: targets / limitations / exclusions all carry flat sets of Jamf Pro IDs (or directory-service names where appropriate). `all_mobile_devices` and `all_jss_users` conflict with their per-ID siblings.
 
 **Profile identity on update** — the provider re-applies the existing top-level `PayloadUUID` and `PayloadIdentifier` from state into every payload it sends back to Jamf Pro on update, so the profile's identity stays stable across applies. Without this, every update would look like a brand-new profile to enrolled devices and the OS would treat it as a fresh installation.
+
+**Characters Jamf Pro cannot store** — `&` and `<` come back with an extra layer of escaping, line feeds and tabs are removed, and emoji are replaced. This affects nearly every payload type here, including "Application & Custom Settings"; a web clip URL with a query string is the usual way to meet it. Write line breaks as `&#13;`. Rather than alter a payload silently the provider refuses it — on create, on edit, and on import — naming the offending value.
 
 **Required Jamf privileges**
 
@@ -128,7 +131,7 @@ resource "jamfplatform_pro_mobile_device_configuration_profile" "self_service" {
 Required:
 
 - `name` (String) Display name of the profile. Must be unique within the tenant. This value is also used as the profile's display name inside the `.mobileconfig` payload, so any name you set inside `payloads` is overridden.
-- `payloads` (String) The `.mobileconfig` plist XML carrying the configuration the profile delivers. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations.
+- `payloads` (String) The `.mobileconfig` plist XML carrying the configuration the profile delivers. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations, and for the characters Jamf Pro cannot store inside a payload value.
 
 Optional:
 
