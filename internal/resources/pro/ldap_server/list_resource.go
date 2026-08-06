@@ -22,6 +22,13 @@ import (
 // defaultListTimeout caps the list operation against /ldapservers.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var (
 	_ list.ListResource              = &LdapServerListResource{}
 	_ list.ListResourceWithConfigure = &LdapServerListResource{}
@@ -133,14 +140,15 @@ func (r *LdapServerListResource) List(ctx context.Context, req list.ListRequest,
 		if req.IncludeResource {
 			// /ldapservers list rows carry only id+name; follow up with a
 			// singular GET to populate the full record.
-			full, err := r.client.GetLDAPServerByID(listCtx, id.ValueString())
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetLDAPServerByID(itemCtx, id.ValueString())
+			cancel()
 			if err != nil {
-				result.Diagnostics.AddError(
-					"Unable to fetch full LDAP server for list result",
-					err.Error(),
-				)
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
+				tflog.Warn(ctx, "Skipping LDAP server from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
 			state := LdapServerResourceModel{
 				ID:       id,

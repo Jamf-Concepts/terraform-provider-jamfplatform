@@ -24,6 +24,13 @@ import (
 // user-overridable timeout, so this is a fixed safety bound.
 const defaultListTimeout = 90 * time.Second
 
+// defaultItemReadTimeout bounds each per-item hydration GET issued when
+// IncludeResource is set (config generation), giving every item its own
+// deadline independent of the list-fetch budget so one slow item cannot
+// exhaust a shared deadline. An item whose read fails or times out is dropped
+// from the generated config rather than aborting the whole type.
+const defaultItemReadTimeout = 30 * time.Second
+
 var _ list.ListResource = &DockItemListResource{}
 var _ list.ListResourceWithConfigure = &DockItemListResource{}
 
@@ -139,14 +146,15 @@ func (r *DockItemListResource) List(ctx context.Context, req list.ListRequest, s
 			// Required on the resource schema and contents is server-computed,
 			// so we cannot emit a list result with nulls for them — follow up
 			// with a singular GET to populate the full record.
-			full, err := r.client.GetDockItemByID(listCtx, id.ValueString())
+			itemCtx, cancel := context.WithTimeout(ctx, defaultItemReadTimeout)
+			full, err := r.client.GetDockItemByID(itemCtx, id.ValueString())
+			cancel()
 			if err != nil {
-				result.Diagnostics.AddError(
-					"Unable to fetch full dock item for list result",
-					err.Error(),
-				)
-				stream.Results = list.ListResultsStreamDiagnostics(result.Diagnostics)
-				return
+				tflog.Warn(ctx, "Skipping dock item from generated config after per-item read failure", map[string]any{
+					"id":    id.ValueString(),
+					"error": err.Error(),
+				})
+				continue
 			}
 			state := DockItemResourceModel{
 				ID:       id,
