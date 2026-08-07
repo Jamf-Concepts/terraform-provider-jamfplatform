@@ -80,17 +80,17 @@ type MobileDevicePrestageEnrollmentResourceModel struct {
 	Timeouts resourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
-// NamesModel is the device-naming nested block (spike §4.2). The server
-// assigns `device_naming_configured`; the `prestage_device_names` list element
-// `id`/`used` are server-managed but echoed on the wire so the PUT round-trips.
+// NamesModel is the device-naming nested block (spike §4.2). The
+// `prestage_device_names` list element `id`/`used` are server-managed but echoed
+// on the wire so the PUT round-trips. The wire block's deviceNamingConfigured is
+// unmodelled and derived at write time — see namingIntended.
 type NamesModel struct {
-	AssignNamesUsing       types.String              `tfsdk:"assign_names_using"`
-	ManageNames            types.Bool                `tfsdk:"manage_names"`
-	DeviceNamingConfigured types.Bool                `tfsdk:"device_naming_configured"`
-	DeviceNamePrefix       types.String              `tfsdk:"device_name_prefix"`
-	DeviceNameSuffix       types.String              `tfsdk:"device_name_suffix"`
-	SingleDeviceName       types.String              `tfsdk:"single_device_name"`
-	PrestageDeviceNames    []PrestageDeviceNameModel `tfsdk:"prestage_device_names"`
+	AssignNamesUsing    types.String              `tfsdk:"assign_names_using"`
+	ManageNames         types.Bool                `tfsdk:"manage_names"`
+	DeviceNamePrefix    types.String              `tfsdk:"device_name_prefix"`
+	DeviceNameSuffix    types.String              `tfsdk:"device_name_suffix"`
+	SingleDeviceName    types.String              `tfsdk:"single_device_name"`
+	PrestageDeviceNames []PrestageDeviceNameModel `tfsdk:"prestage_device_names"`
 }
 
 // PrestageDeviceNameModel is one element of the `prestage_device_names` list.

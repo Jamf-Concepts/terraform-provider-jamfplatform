@@ -21,14 +21,14 @@
 //     purchasingInformation); no accountSettings (spike §5/§7).
 //   - PUT-500-with-commit bug reproduces; the GET-diff verifier SKIPS the
 //     §9.1 server-authoritative exclusion set (storage_quota_size_megabytes,
-//     default_prestage, use_storage_quota_size, temporary_session_only,
-//     temporary_session_timeout) — their post-PUT drift is expected, not a
-//     silent rollback. anchor_certificates + names stay IN the check.
+//     use_storage_quota_size, temporary_session_only, temporary_session_timeout)
+//     — their post-PUT drift is expected, not a silent rollback.
+//     anchor_certificates, names and default_prestage stay IN the check.
 //   - Mobile scope errors: ALREADY_SCOPED (serial on another prestage),
 //     DEVICE_DOES_NOT_EXIST_ON_TOKEN (serial not on the ADE token).
 //   - DELETE → GET returns a clean 404 (no computer 400 INVALID_ID quirk).
 //
-// Status: current. Last reviewed 2026-05-30.
+// Status: current. Last reviewed 2026-08-07.
 
 package mobile_device_prestage_enrollment
 
@@ -53,16 +53,15 @@ import (
 // erroring with "Provider produced inconsistent result after apply". Runs on
 // create and update (skipped on destroy).
 //
-//   - default_prestage: Jamf Pro refuses `true` when another PreStage already
-//     holds the default (§F10) — it can't be detected at plan time, so a
-//     planned `true` is rendered Unknown.
 //   - use_storage_quota_size / temporary_session_only: mutually exclusive
 //     Shared-iPad storage modes — when both resolve `true` the server forces
 //     one to `false` (§F9), so both are rendered Unknown and the server picks.
 //
+// default_prestage is NOT in this set — see the note in the body.
+//
 // The user's intent is preserved for the wire body by restoreServerArbitrated
 // in Create/Update (a bare Unknown would serialise as `false` and corrupt the
-// write). diffPlanAgainstGet additionally excludes these fields (§9.1).
+// write). diffPlanAgainstGet additionally excludes those two fields (§9.1).
 func (r *MobileDevicePrestageEnrollmentResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() {
 		return // destroy
@@ -81,14 +80,16 @@ func (r *MobileDevicePrestageEnrollmentResource) ModifyPlan(ctx context.Context,
 		}
 	}
 
-	// default_prestage: only the false→true TRANSITION (and create-with-true)
-	// is server-arbitrated — Jamf Pro may refuse it when another PreStage holds
-	// the default (§F10). Steady-state true→true is honored and MUST round-trip
-	// cleanly, so leave it known there (rendering it Unknown would manufacture a
-	// perpetual diff on the prestage that legitimately is the default).
-	if isKnownTrue(plan.DefaultPrestage) && !isKnownTrue(state.DefaultPrestage) {
-		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("default_prestage"), types.BoolUnknown())...)
-	}
+	// default_prestage is deliberately NOT rendered Unknown here. It is not
+	// server-arbitrated: Jamf Pro never silently keeps it false. Claiming a
+	// default another PreStage already holds is rejected outright —
+	// 400 ALREADY_DEFAULT "Another prestage is already the default prestage" —
+	// on both create and update, with nothing written. Wire-probed 2026-08-07
+	// against Jamf Pro 11.30; see the transition table on
+	// diagnoseAlreadyDefault. Stamping Unknown over a known config value is also
+	// illegal for an Optional+Computed attribute: Terraform Core rejects the plan
+	// with "planned value cty.UnknownVal(cty.Bool) does not match config value
+	// cty.True", which made `default_prestage = true` impossible to set at all.
 
 	// use_storage_quota_size ⊻ temporary_session_only: the server stores at most
 	// one as true (§F9), so a resolved both-true is always a transition into the
@@ -115,23 +116,66 @@ func isKnownTrue(b types.Bool) bool {
 // comes from the post-write GET via assignGetToResource, which is what keeps
 // the result consistent with the Unknown plan. On create pass a zero-value
 // state.
+//
+// default_prestage is absent because ModifyPlan no longer stamps it Unknown —
+// its planned value is already the user's intent.
 func restoreServerArbitrated(plan *MobileDevicePrestageEnrollmentResourceModel, cfg, state MobileDevicePrestageEnrollmentResourceModel) {
-	plan.DefaultPrestage = resolveIntentBool(plan.DefaultPrestage, cfg.DefaultPrestage, state.DefaultPrestage)
 	plan.UseStorageQuotaSize = resolveIntentBool(plan.UseStorageQuotaSize, cfg.UseStorageQuotaSize, state.UseStorageQuotaSize)
 	plan.TemporarySessionOnly = resolveIntentBool(plan.TemporarySessionOnly, cfg.TemporarySessionOnly, state.TemporarySessionOnly)
 }
 
-// warnDefaultPrestageRefused emits a warning when the user asked for
-// default_prestage = true but Jamf Pro kept it false because another PreStage
-// already holds the tenant default (§F10). Without this the refusal is silent.
-func warnDefaultPrestageRefused(diags *diag.Diagnostics, cfg MobileDevicePrestageEnrollmentResourceModel, gotDefault bool) {
-	if isKnownTrue(cfg.DefaultPrestage) && !gotDefault {
-		diags.AddAttributeWarning(
-			path.Root("default_prestage"),
-			"default PreStage not applied",
-			"You set default_prestage = true, but another PreStage currently holds the tenant default, so Jamf Pro kept this PreStage non-default. Clear the existing default PreStage first to take it over.",
-		)
+// diagnoseAlreadyDefault replaces the raw ALREADY_DEFAULT API error with one
+// that says which knob to turn. Jamf Pro allows exactly one default mobile
+// device PreStage per tenant and will not reassign it; the current holder has to
+// give it up first. Wire-probed 2026-08-07 against Jamf Pro 11.30:
+//
+//	create default_prestage = true, no current holder   → accepted
+//	create default_prestage = true, another holds it    → 400 ALREADY_DEFAULT, nothing created
+//	update default_prestage = true, no current holder   → accepted
+//	update default_prestage = true, this one holds it   → accepted (no-op)
+//	update default_prestage = true, another holds it    → 400 ALREADY_DEFAULT, nothing written
+//	update default_prestage = false (release)           → accepted, tenant left with no default
+//
+// Returns true when it recognised and reported the error.
+func diagnoseAlreadyDefault(diags *diag.Diagnostics, cfg MobileDevicePrestageEnrollmentResourceModel, err error) bool {
+	if err == nil || !strings.Contains(err.Error(), "ALREADY_DEFAULT") {
+		return false
 	}
+	detail := "Jamf Pro allows only one default mobile device PreStage per tenant and will not move the default automatically: " +
+		"another PreStage already holds it, so this write was rejected and nothing changed. Set default_prestage = false on the " +
+		"PreStage that currently holds it, then apply again."
+	if isKnownTrue(cfg.DefaultPrestage) {
+		detail += " When both PreStages are managed by Terraform, the release has to land before the claim — Terraform does not " +
+			"order the two updates on its own, so either apply the release on its own first, or add a depends_on from this " +
+			"resource to the one giving up the default."
+	}
+	diags.AddAttributeError(path.Root("default_prestage"), "another PreStage is already the tenant default", detail)
+	return true
+}
+
+// warnNamingNotConfigured flags a record whose stored deviceNamingConfigured is
+// false despite a names block that asks for naming. Because that wire field is
+// unmodelled (see namesSchema), Terraform sees no drift and reports "No
+// changes", so the admin UI would go on hiding the naming payload silently. Any
+// apply that touches this resource rewrites the flag correctly; this warning is
+// what tells the user one is needed. Reachable for records written by provider
+// releases before the flag was sent at all, or edited outside Terraform.
+func warnNamingNotConfigured(diags *diag.Diagnostics, state MobileDevicePrestageEnrollmentResourceModel, got *pro.GetMobileDevicePrestageV3) {
+	if got.Names == nil || !namingIntentBesidesMode(state.Names) {
+		return
+	}
+	if got.Names.DeviceNamingConfigured != nil && *got.Names.DeviceNamingConfigured {
+		return
+	}
+	diags.AddAttributeWarning(
+		path.Root("names"),
+		"device naming not applied in Jamf Pro",
+		"This PreStage has a names block, but Jamf Pro has device naming marked unconfigured, so the "+
+			"\"Mobile device names\" payload is hidden in the admin UI and the names are not applied to enrolling devices. "+
+			"Re-apply this resource to correct it — for example `terraform apply -replace=<address>`, or any change to the "+
+			"resource. Terraform reports no drift on its own because Jamf Pro's naming-configured flag is not a "+
+			"Terraform-managed attribute.",
+	)
 }
 
 func resolveIntentBool(planV, cfgV, stateV types.Bool) types.Bool {
@@ -170,7 +214,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Create(ctx context.Context, req
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	post, d := buildPostInput(createCtx, plan)
+	post, d := buildPostInput(createCtx, plan, cfg)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -178,7 +222,9 @@ func (r *MobileDevicePrestageEnrollmentResource) Create(ctx context.Context, req
 
 	postResp, err := r.client.CreateMobileDevicePrestageV3(createCtx, post)
 	if err != nil {
-		resp.Diagnostics.AddError("Error creating Jamf Pro mobile device prestage enrollment", err.Error())
+		if !diagnoseAlreadyDefault(&resp.Diagnostics, cfg, err) {
+			resp.Diagnostics.AddError("Error creating Jamf Pro mobile device prestage enrollment", err.Error())
+		}
 		return
 	}
 	if postResp == nil || postResp.ID == "" {
@@ -201,7 +247,6 @@ func (r *MobileDevicePrestageEnrollmentResource) Create(ctx context.Context, req
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	warnDefaultPrestageRefused(&resp.Diagnostics, cfg, got.DefaultPrestage)
 
 	// Apply scope if user supplied any serial numbers. Mobile does not gate
 	// on profile_uuid readiness (§F13) — apply immediately.
@@ -292,6 +337,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Read(ctx context.Context, req r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	warnNamingNotConfigured(&resp.Diagnostics, state, got)
 
 	scope, err := r.client.GetMobileDevicePrestageScopeV2(readCtx, state.ID.ValueString())
 	if err != nil {
@@ -351,7 +397,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 		return
 	}
 
-	put, d := buildPutInput(updateCtx, plan)
+	put, d := buildPutInput(updateCtx, plan, cfg)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -362,7 +408,9 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 	putHitServerBug := false
 	if putErr != nil {
 		if !isPutSerializerBug(putErr) {
-			resp.Diagnostics.AddError("Error updating Jamf Pro mobile device prestage enrollment", putErr.Error())
+			if !diagnoseAlreadyDefault(&resp.Diagnostics, cfg, putErr) {
+				resp.Diagnostics.AddError("Error updating Jamf Pro mobile device prestage enrollment", putErr.Error())
+			}
 			return
 		}
 		putHitServerBug = true
@@ -397,7 +445,6 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	warnDefaultPrestageRefused(&resp.Diagnostics, cfg, postGet.DefaultPrestage)
 
 	// Scope reconciliation: replace the entire serial-number set if the plan
 	// differs from the prior state.

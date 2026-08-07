@@ -174,24 +174,26 @@ func TestScopeSerialsToSet(t *testing.T) {
 
 // TestDiffPlanAgainstGet_ExclusionSet is the single most important unit test in
 // the package. The §9.1 server-authoritative exclusion set
-// (storage_quota_size_megabytes, default_prestage, use_storage_quota_size,
-// temporary_session_only, temporary_session_timeout) MUST NOT appear in the
-// rollback-detection diff even when every one of them differs between plan and
-// GET — their post-PUT drift is server-intentional, not a silent rollback.
+// (storage_quota_size_megabytes, use_storage_quota_size, temporary_session_only,
+// temporary_session_timeout) MUST NOT appear in the rollback-detection diff even
+// when every one of them differs between plan and GET — their post-PUT drift is
+// server-intentional, not a silent rollback.
 //
-// Only those five fields are set on the plan; everything else is left null
+// default_prestage is NOT in the set: it was excluded on the belief Jamf Pro
+// silently keeps it false, but a refused claim is a hard 400 ALREADY_DEFAULT, so
+// a plan/GET mismatch there is a real rollback and must be reported.
+//
+// Only those four fields are set on the plan; everything else is left null
 // (zero-value types.*), which the per-field early-return guards skip.
 func TestDiffPlanAgainstGet_ExclusionSet(t *testing.T) {
 	plan := MobileDevicePrestageEnrollmentResourceModel{
 		StorageQuotaSizeMegabytes: types.Int64Value(8192),
-		DefaultPrestage:           types.BoolValue(true),
 		UseStorageQuotaSize:       types.BoolValue(true),
 		TemporarySessionOnly:      types.BoolValue(true),
 		TemporarySessionTimeout:   types.Int64Value(120),
 	}
 	got := &pro.GetMobileDevicePrestageV3{
 		StorageQuotaSizeMegabytes: 1024,  // differs
-		DefaultPrestage:           false, // differs
 		UseStorageQuotaSize:       false, // differs
 		TemporarySessionOnly:      false, // differs
 		TemporarySessionTimeout:   0,     // differs
@@ -199,6 +201,17 @@ func TestDiffPlanAgainstGet_ExclusionSet(t *testing.T) {
 	diff := diffPlanAgainstGet(context.Background(), plan, got)
 	if len(diff) != 0 {
 		t.Fatalf("excluded fields must NEVER appear in the rollback diff; got %v", diff)
+	}
+}
+
+// TestDiffPlanAgainstGet_DefaultPrestageIsChecked pins the counterpart: a
+// planned default_prestage that the GET contradicts is a genuine rollback.
+func TestDiffPlanAgainstGet_DefaultPrestageIsChecked(t *testing.T) {
+	plan := MobileDevicePrestageEnrollmentResourceModel{DefaultPrestage: types.BoolValue(true)}
+	got := &pro.GetMobileDevicePrestageV3{DefaultPrestage: false}
+	diff := diffPlanAgainstGet(context.Background(), plan, got)
+	if len(diff) != 1 || diff[0] != "default_prestage" {
+		t.Fatalf("default_prestage mismatch must be reported, got %v", diff)
 	}
 }
 

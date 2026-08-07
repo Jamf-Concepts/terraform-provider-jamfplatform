@@ -19,7 +19,7 @@ import (
 // purchasingInformation must be FULLY populated (id="-1", versionLock=0, every
 // scalar); `names` must be a populated object (empty names:{} → server 500);
 // storageQuotaSizeMegabytes >= 1024 even when useStorageQuotaSize is false.
-func buildPostInput(ctx context.Context, plan MobileDevicePrestageEnrollmentResourceModel) (*pro.MobileDevicePrestageV3, diag.Diagnostics) {
+func buildPostInput(ctx context.Context, plan, cfg MobileDevicePrestageEnrollmentResourceModel) (*pro.MobileDevicePrestageV3, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	post := &pro.MobileDevicePrestageV3{
@@ -90,7 +90,7 @@ func buildPostInput(ctx context.Context, plan MobileDevicePrestageEnrollmentReso
 	// `names` must ALWAYS be a populated object on POST — an empty names:{}
 	// triggers a server 500 (§F2). buildNames synthesizes a default block
 	// when the user omitted it. id="-1" on every element (§F4b).
-	post.Names = buildNames(plan.Names, true)
+	post.Names = buildNames(plan.Names, namingIntended(cfg.Names), true)
 
 	return post, diags
 }
@@ -98,7 +98,7 @@ func buildPostInput(ctx context.Context, plan MobileDevicePrestageEnrollmentReso
 // buildPutInput translates the plan + GET-derived state into the PUT body.
 // versionLocks are NOT set here — caller invokes injectVersionLocks. PUT is
 // full-replace, so every managed field is emitted (§F6).
-func buildPutInput(ctx context.Context, plan MobileDevicePrestageEnrollmentResourceModel) (*pro.PutMobileDevicePrestageV3, diag.Diagnostics) {
+func buildPutInput(ctx context.Context, plan, cfg MobileDevicePrestageEnrollmentResourceModel) (*pro.PutMobileDevicePrestageV3, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	put := &pro.PutMobileDevicePrestageV3{
@@ -173,7 +173,7 @@ func buildPutInput(ctx context.Context, plan MobileDevicePrestageEnrollmentResou
 	// On update, prestage_device_names elements echo their state-derived id
 	// (carried in via UseNonNullStateForUnknown) — omitting id silently rolls
 	// the whole names mutation back (§F4b).
-	put.Names = buildNames(plan.Names, false)
+	put.Names = buildNames(plan.Names, namingIntended(cfg.Names), false)
 
 	return put, diags
 }
@@ -199,8 +199,16 @@ func createStorageQuota(v types.Int64) int {
 // element serialises with id (state value, else "-1") AND used (§F4b).
 //
 // isCreate forces id="-1" for every element (no server ids exist yet).
-func buildNames(m *NamesModel, isCreate bool) *pro.MobileDevicePrestageNamesV3 {
+//
+// namingConfigured is the caller-derived deviceNamingConfigured value. It MUST
+// come from the CONFIG (namingIntended(cfg.Names)), never from the plan: the
+// Optional+Computed siblings carry UseStateForUnknown, so on update the plan's
+// assign_names_using holds the server's echoed default even for a bare
+// `names = {}`, which would flip an unconfigured PreStage to configured on any
+// unrelated edit.
+func buildNames(m *NamesModel, namingConfigured, isCreate bool) *pro.MobileDevicePrestageNamesV3 {
 	out := &pro.MobileDevicePrestageNamesV3{}
+	out.DeviceNamingConfigured = new(namingConfigured)
 
 	if m == nil {
 		// Synthesized default — empty names:{} would 500 the server.
@@ -412,6 +420,42 @@ func stringPtrOrSentinel(v types.String, sentinel string) *string {
 		s = v.ValueString()
 	}
 	return &s
+}
+
+// namingIntended reports whether a names block expresses any device-naming
+// intent, and so what deviceNamingConfigured is written as. A bare `names = {}`
+// expresses none. Call it on the CONFIG — see buildNames.
+func namingIntended(m *NamesModel) bool {
+	if m == nil {
+		return false
+	}
+	return knownNonEmpty(m.AssignNamesUsing) || namingIntentBesidesMode(m)
+}
+
+// namingIntentBesidesMode is namingIntended minus assign_names_using, for the
+// one caller that has only post-GET state to work from (warnNamingNotConfigured).
+// Jamf Pro always echoes an assign_names_using — it is populated even on a
+// PreStage where nothing was ever configured — so state cannot distinguish a
+// user-set mode from that echo. Every other field here is only non-zero because
+// somebody set it, so it is safe evidence of real naming intent.
+func namingIntentBesidesMode(m *NamesModel) bool {
+	if m == nil {
+		return false
+	}
+	switch {
+	case knownNonEmpty(m.DeviceNamePrefix),
+		knownNonEmpty(m.DeviceNameSuffix),
+		knownNonEmpty(m.SingleDeviceName):
+		return true
+	case !m.ManageNames.IsNull() && !m.ManageNames.IsUnknown() && m.ManageNames.ValueBool():
+		return true
+	default:
+		return len(m.PrestageDeviceNames) > 0
+	}
+}
+
+func knownNonEmpty(v types.String) bool {
+	return !v.IsNull() && !v.IsUnknown() && v.ValueString() != ""
 }
 
 // boolPtrOrFalse returns the value as a *bool, defaulting to false when

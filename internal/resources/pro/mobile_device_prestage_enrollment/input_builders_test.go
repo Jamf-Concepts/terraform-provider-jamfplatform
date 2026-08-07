@@ -133,7 +133,7 @@ func TestBuildPurchasingInformation_DateDefaults(t *testing.T) {
 }
 
 func TestBuildNames_NilSynthesizesDefault(t *testing.T) {
-	out := buildNames(nil, true)
+	out := buildNames(nil, false, true)
 	if out == nil {
 		t.Fatalf("buildNames(nil) must synthesize a populated object (empty names:{} 500s the server)")
 	}
@@ -148,6 +148,171 @@ func TestBuildNames_NilSynthesizesDefault(t *testing.T) {
 	} else if len(*out.PrestageDeviceNames) != 0 {
 		t.Errorf("synthesized prestage_device_names must be empty, got %d", len(*out.PrestageDeviceNames))
 	}
+	if out.DeviceNamingConfigured == nil || *out.DeviceNamingConfigured {
+		t.Errorf("synthesized device_naming_configured must be an explicit false, got %v", out.DeviceNamingConfigured)
+	}
+}
+
+// namingIntended decides deviceNamingConfigured, which the server stores
+// verbatim rather than deriving — and which the admin UI keys the whole "Mobile
+// device names" payload off.
+func TestNamingIntended(t *testing.T) {
+	tests := []struct {
+		name  string
+		names *NamesModel
+		want  bool
+		// wantBesidesMode is namingIntentBesidesMode's answer, which differs only
+		// where assign_names_using is the sole evidence.
+		wantBesidesMode bool
+	}{
+		{
+			name:  "nil block",
+			names: nil,
+			want:  false,
+		},
+		{
+			name:  "bare names = {} expresses no naming intent",
+			names: &NamesModel{},
+			want:  false,
+		},
+		{
+			name:  "assign_names_using set",
+			names: &NamesModel{AssignNamesUsing: types.StringValue("Serial Numbers")},
+			want:  true,
+			// Indistinguishable from the server's echo once in state.
+			wantBesidesMode: false,
+		},
+		{
+			name:            "assign_names_using set to Default Names is still a choice",
+			names:           &NamesModel{AssignNamesUsing: types.StringValue("Default Names")},
+			want:            true,
+			wantBesidesMode: false,
+		},
+		{
+			name:            "manage_names true",
+			names:           &NamesModel{ManageNames: types.BoolValue(true)},
+			want:            true,
+			wantBesidesMode: true,
+		},
+		{
+			name:  "manage_names explicitly false is not intent on its own",
+			names: &NamesModel{ManageNames: types.BoolValue(false)},
+			want:  false,
+		},
+		{
+			name:            "device_name_prefix set",
+			names:           &NamesModel{DeviceNamePrefix: types.StringValue("SSC-")},
+			want:            true,
+			wantBesidesMode: true,
+		},
+		{
+			name:            "device_name_suffix set",
+			names:           &NamesModel{DeviceNameSuffix: types.StringValue("-lab")},
+			want:            true,
+			wantBesidesMode: true,
+		},
+		{
+			name:            "single_device_name set",
+			names:           &NamesModel{SingleDeviceName: types.StringValue("Shared-iPad")},
+			want:            true,
+			wantBesidesMode: true,
+		},
+		{
+			name: "prestage_device_names populated",
+			names: &NamesModel{PrestageDeviceNames: []PrestageDeviceNameModel{
+				{DeviceName: types.StringValue("iPad-1")},
+			}},
+			want:            true,
+			wantBesidesMode: true,
+		},
+		{
+			name:  "empty-string prefix is not intent",
+			names: &NamesModel{DeviceNamePrefix: types.StringValue("")},
+			want:  false,
+		},
+		{
+			name:  "unknown sibling awaiting the post-apply GET is not intent",
+			names: &NamesModel{AssignNamesUsing: types.StringUnknown()},
+			want:  false,
+		},
+		{
+			name: "the reported config: Serial Numbers + prefix + manage_names",
+			names: &NamesModel{
+				AssignNamesUsing: types.StringValue("Serial Numbers"),
+				DeviceNamePrefix: types.StringValue("SSC-"),
+				ManageNames:      types.BoolValue(true),
+			},
+			want:            true,
+			wantBesidesMode: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := namingIntended(tc.names); got != tc.want {
+				t.Errorf("namingIntended = %v, want %v", got, tc.want)
+			}
+			if got := namingIntentBesidesMode(tc.names); got != tc.wantBesidesMode {
+				t.Errorf("namingIntentBesidesMode = %v, want %v", got, tc.wantBesidesMode)
+			}
+		})
+	}
+}
+
+// buildNames must put deviceNamingConfigured on the wire unconditionally —
+// omitting it is what made the naming payload invisible in the admin UI.
+func TestBuildNames_AlwaysSerialisesDeviceNamingConfigured(t *testing.T) {
+	for _, configured := range []bool{true, false} {
+		for _, isCreate := range []bool{true, false} {
+			for _, m := range []*NamesModel{nil, {}, {DeviceNamePrefix: types.StringValue("SSC-")}} {
+				out := buildNames(m, configured, isCreate)
+				if out.DeviceNamingConfigured == nil {
+					t.Fatalf("configured=%v isCreate=%v names=%+v: must always serialise, got nil", configured, isCreate, m)
+				}
+				if *out.DeviceNamingConfigured != configured {
+					t.Errorf("configured=%v isCreate=%v names=%+v: got %v", configured, isCreate, m, *out.DeviceNamingConfigured)
+				}
+			}
+		}
+	}
+}
+
+// Regression: deviceNamingConfigured must be derived from the CONFIG, not the
+// plan. assign_names_using is Optional+Computed with UseStateForUnknown, so on
+// update the plan carries the server's echoed mode even for a bare
+// `names = {}` — deriving from the plan flipped an unconfigured PreStage to
+// configured on any unrelated edit.
+func TestBuildPutInput_NamingConfiguredComesFromConfigNotPlan(t *testing.T) {
+	base := MobileDevicePrestageEnrollmentResourceModel{
+		DisplayName:                       types.StringValue("bare names block"),
+		DeviceEnrollmentProgramInstanceID: types.StringValue("1"),
+	}
+
+	// Config said `names = {}`; the plan holds the server's echoed mode.
+	plan := base
+	plan.Names = &NamesModel{AssignNamesUsing: types.StringValue("Serial Numbers")}
+	cfg := base
+	cfg.Names = &NamesModel{}
+
+	put, d := buildPutInput(context.Background(), plan, cfg)
+	if d.HasError() {
+		t.Fatalf("put build diags: %v", d)
+	}
+	if put.Names == nil || put.Names.DeviceNamingConfigured == nil {
+		t.Fatalf("names.deviceNamingConfigured must always serialise")
+	}
+	if *put.Names.DeviceNamingConfigured {
+		t.Errorf("a bare `names = {}` config must stay unconfigured; the plan's echoed assign_names_using leaked through")
+	}
+
+	// Same plan, but the config really does ask for naming.
+	cfg.Names = &NamesModel{AssignNamesUsing: types.StringValue("Serial Numbers")}
+	put, d = buildPutInput(context.Background(), plan, cfg)
+	if d.HasError() {
+		t.Fatalf("put build diags: %v", d)
+	}
+	if !*put.Names.DeviceNamingConfigured {
+		t.Errorf("config-declared naming must write deviceNamingConfigured=true")
+	}
 }
 
 func TestBuildNames_CreateForcesSentinelID(t *testing.T) {
@@ -159,7 +324,7 @@ func TestBuildNames_CreateForcesSentinelID(t *testing.T) {
 			{DeviceName: types.StringValue("iPad-2"), ID: types.StringNull(), Used: types.BoolNull()},
 		},
 	}
-	out := buildNames(plan, true)
+	out := buildNames(plan, true, true)
 	if out.AssignNamesUsing == nil || *out.AssignNamesUsing != "List of Names" {
 		t.Errorf("assign_names_using not copied")
 	}
@@ -191,7 +356,7 @@ func TestBuildNames_UpdateEchoesModelID(t *testing.T) {
 			{DeviceName: types.StringValue("iPad-2"), ID: types.StringNull()},
 		},
 	}
-	out := buildNames(plan, false)
+	out := buildNames(plan, true, false)
 	if out.PrestageDeviceNames == nil || len(*out.PrestageDeviceNames) != 2 {
 		t.Fatalf("expected 2 prestage device names")
 	}
@@ -210,7 +375,7 @@ func TestBuildPostInput_NamesAndNestedDefaults(t *testing.T) {
 		DeviceEnrollmentProgramInstanceID: types.StringValue("1"),
 		// Names omitted, storage unset, skip omitted.
 	}
-	post, d := buildPostInput(context.Background(), plan)
+	post, d := buildPostInput(context.Background(), plan, plan)
 	if d.HasError() {
 		t.Fatalf("post build diags: %v", d)
 	}
@@ -257,7 +422,7 @@ func TestBuildPostInput_SkipSetupItemsPopulated(t *testing.T) {
 			Biometric: types.BoolValue(true),
 		},
 	}
-	post, d := buildPostInput(context.Background(), plan)
+	post, d := buildPostInput(context.Background(), plan, plan)
 	if d.HasError() {
 		t.Fatalf("post build diags: %v", d)
 	}
@@ -277,7 +442,7 @@ func TestBuildPutInput_Smoke(t *testing.T) {
 		DisplayName:                       types.StringValue("put"),
 		DeviceEnrollmentProgramInstanceID: types.StringValue("1"),
 	}
-	put, d := buildPutInput(context.Background(), plan)
+	put, d := buildPutInput(context.Background(), plan, plan)
 	if d.HasError() {
 		t.Fatalf("put build diags: %v", d)
 	}
