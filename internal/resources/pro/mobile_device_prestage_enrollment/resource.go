@@ -414,7 +414,7 @@ func skipSetupItemsSchema() schema.SingleNestedAttribute {
 // with no computer analog.
 func namesSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "**\"Mobile device names\"** in the Jamf Pro admin UI. Supply the block (even empty: `names = {}`) to manage device naming — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block.",
+		MarkdownDescription: "**\"Mobile device names\"** in the Jamf Pro admin UI. Supply the block (even empty: `names = {}`) to manage device naming — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. A bare `names = {}` leaves device naming *unconfigured*, which is how Jamf Pro's admin UI decides not to show the naming payload at all: set at least one field below for naming to take effect.",
 		Optional:            true,
 		Attributes: map[string]schema.Attribute{
 			"assign_names_using": schema.StringAttribute{
@@ -433,13 +433,13 @@ func namesSchema() schema.SingleNestedAttribute {
 			"device_name_prefix": optString("Device name prefix (used in `\"Serial Numbers\"` mode)."),
 			"device_name_suffix": optString("Device name suffix (used in `\"Serial Numbers\"` mode)."),
 			"single_device_name": optString("Single device name (used in `\"Single Name\"` mode). Required when `assign_names_using = \"Single Name\"`."),
-			"device_naming_configured": schema.BoolAttribute{
-				MarkdownDescription: "Whether device naming has been configured. Server-managed; not user-settable.",
-				Computed:            true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
-			},
+			// deviceNamingConfigured is not exposed: it adds nothing the sibling
+			// attributes don't already say. It is still WRITTEN — buildNames
+			// derives it via namingIntended. Do not drop it from the wire body:
+			// the Jamf Pro admin UI hides the whole "Mobile device names" payload
+			// when it is false, and the server stores exactly what the write
+			// sends rather than deriving it (wire-probed 2026-08-07, Jamf Pro
+			// 11.30). Omitting it is what made naming invisible in the UI.
 			// Deliberately plain Optional, NOT Optional+Computed — an explicit
 			// carve-out from the provider-wide "full-replace ⇒ omit=preserve"
 			// standard (STYLE_GUIDE §Full-replace endpoints). prestage_device_names

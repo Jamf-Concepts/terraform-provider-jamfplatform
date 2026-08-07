@@ -134,6 +134,31 @@ func warnDefaultPrestageRefused(diags *diag.Diagnostics, cfg MobileDevicePrestag
 	}
 }
 
+// warnNamingNotConfigured flags a record whose stored deviceNamingConfigured is
+// false despite a names block that asks for naming. Because that wire field is
+// unmodelled (see namesSchema), Terraform sees no drift and reports "No
+// changes", so the admin UI would go on hiding the naming payload silently. Any
+// apply that touches this resource rewrites the flag correctly; this warning is
+// what tells the user one is needed. Reachable for records written by provider
+// releases before the flag was sent at all, or edited outside Terraform.
+func warnNamingNotConfigured(diags *diag.Diagnostics, state MobileDevicePrestageEnrollmentResourceModel, got *pro.GetMobileDevicePrestageV3) {
+	if got.Names == nil || !namingIntentBesidesMode(state.Names) {
+		return
+	}
+	if got.Names.DeviceNamingConfigured != nil && *got.Names.DeviceNamingConfigured {
+		return
+	}
+	diags.AddAttributeWarning(
+		path.Root("names"),
+		"device naming not applied in Jamf Pro",
+		"This PreStage has a names block, but Jamf Pro has device naming marked unconfigured, so the "+
+			"\"Mobile device names\" payload is hidden in the admin UI and the names are not applied to enrolling devices. "+
+			"Re-apply this resource to correct it — for example `terraform apply -replace=<address>`, or any change to the "+
+			"resource. Terraform reports no drift on its own because Jamf Pro's naming-configured flag is not a "+
+			"Terraform-managed attribute.",
+	)
+}
+
 func resolveIntentBool(planV, cfgV, stateV types.Bool) types.Bool {
 	if !planV.IsUnknown() {
 		return planV
@@ -170,7 +195,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Create(ctx context.Context, req
 	createCtx, cancel := context.WithTimeout(ctx, createTimeout)
 	defer cancel()
 
-	post, d := buildPostInput(createCtx, plan)
+	post, d := buildPostInput(createCtx, plan, cfg)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -292,6 +317,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Read(ctx context.Context, req r
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	warnNamingNotConfigured(&resp.Diagnostics, state, got)
 
 	scope, err := r.client.GetMobileDevicePrestageScopeV2(readCtx, state.ID.ValueString())
 	if err != nil {
@@ -351,7 +377,7 @@ func (r *MobileDevicePrestageEnrollmentResource) Update(ctx context.Context, req
 		return
 	}
 
-	put, d := buildPutInput(updateCtx, plan)
+	put, d := buildPutInput(updateCtx, plan, cfg)
 	resp.Diagnostics.Append(d...)
 	if resp.Diagnostics.HasError() {
 		return

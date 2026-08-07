@@ -178,12 +178,11 @@ func flattenNames(n *pro.MobileDevicePrestageNamesV3) *NamesModel {
 		return nil
 	}
 	out := &NamesModel{
-		AssignNamesUsing:       helpers.StringPointerValueOrNull(n.AssignNamesUsing),
-		ManageNames:            helpers.BoolPointerValueOrNull(n.ManageNames),
-		DeviceNamingConfigured: helpers.BoolPointerValueOrNull(n.DeviceNamingConfigured),
-		DeviceNamePrefix:       helpers.StringPointerValueOrNull(n.DeviceNamePrefix),
-		DeviceNameSuffix:       helpers.StringPointerValueOrNull(n.DeviceNameSuffix),
-		SingleDeviceName:       helpers.StringPointerValueOrNull(n.SingleDeviceName),
+		AssignNamesUsing: helpers.StringPointerValueOrNull(n.AssignNamesUsing),
+		ManageNames:      helpers.BoolPointerValueOrNull(n.ManageNames),
+		DeviceNamePrefix: helpers.StringPointerValueOrNull(n.DeviceNamePrefix),
+		DeviceNameSuffix: helpers.StringPointerValueOrNull(n.DeviceNameSuffix),
+		SingleDeviceName: helpers.StringPointerValueOrNull(n.SingleDeviceName),
 	}
 	// prestage_device_names is Optional-only (no Computed) — mirror the
 	// enrollment_customization text_panes pattern: leave the slice nil when

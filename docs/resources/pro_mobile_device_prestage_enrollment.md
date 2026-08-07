@@ -144,7 +144,7 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 - `minimum_os_specific_version_ios` (String) Specific minimum iOS version (e.g. `"17.1"`). Used only when `prestage_minimum_os_target_version_type_ios = "MINIMUM_OS_SPECIFIC_VERSION"`.
 - `minimum_os_specific_version_ipad` (String) Specific minimum iPadOS version (e.g. `"17.1"`). Used only when `prestage_minimum_os_target_version_type_ipad = "MINIMUM_OS_SPECIFIC_VERSION"`.
 - `multi_user` (Boolean) **"Enable Shared iPad"** in the Jamf Pro admin UI. Requires both `supervised = true` and `prevent_activation_lock = true` — Jamf Pro rejects Shared iPad otherwise (`prevent_activation_lock` with a hard error; `supervised` by silently disabling Shared iPad).
-- `names` (Attributes) **"Mobile device names"** in the Jamf Pro admin UI. Supply the block (even empty: `names = {}`) to manage device naming — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. (see [below for nested schema](#nestedatt--names))
+- `names` (Attributes) **"Mobile device names"** in the Jamf Pro admin UI. Supply the block (even empty: `names = {}`) to manage device naming — omitting it produces drift on the next refresh because Jamf Pro always returns a populated block. A bare `names = {}` leaves device naming *unconfigured*, which is how Jamf Pro's admin UI decides not to show the naming payload at all: set at least one field below for naming to take effect. (see [below for nested schema](#nestedatt--names))
 - `preserve_managed_apps` (Boolean) **"Preserve Managed Apps"** in the Jamf Pro admin UI.
 - `prestage_minimum_os_target_version_type_ios` (String) Minimum-iOS enforcement mode. One of `NO_ENFORCEMENT`, `MINIMUM_OS_LATEST_VERSION`, `MINIMUM_OS_LATEST_MAJOR_VERSION`, `MINIMUM_OS_LATEST_MINOR_VERSION`, `MINIMUM_OS_SPECIFIC_VERSION`. Pair `MINIMUM_OS_SPECIFIC_VERSION` with `minimum_os_specific_version_ios`.
 - `prestage_minimum_os_target_version_type_ipad` (String) Minimum-iPadOS enforcement mode. One of `NO_ENFORCEMENT`, `MINIMUM_OS_LATEST_VERSION`, `MINIMUM_OS_LATEST_MAJOR_VERSION`, `MINIMUM_OS_LATEST_MINOR_VERSION`, `MINIMUM_OS_SPECIFIC_VERSION`. Pair `MINIMUM_OS_SPECIFIC_VERSION` with `minimum_os_specific_version_ipad`.
@@ -199,10 +199,6 @@ Optional:
 - `manage_names` (Boolean) **"Enforce Mobile Device Names"** in the Jamf Pro admin UI.
 - `prestage_device_names` (Attributes List) Ordered list of device names (used in `"List of Names"` mode). Jamf Pro assigns each entry an `id` and consumes them in order as devices enrol. The framework reconciles entries by list position; append new names to the end to avoid churn. (see [below for nested schema](#nestedatt--names--prestage_device_names))
 - `single_device_name` (String) Single device name (used in `"Single Name"` mode). Required when `assign_names_using = "Single Name"`.
-
-Read-Only:
-
-- `device_naming_configured` (Boolean) Whether device naming has been configured. Server-managed; not user-settable.
 
 <a id="nestedatt--names--prestage_device_names"></a>
 ### Nested Schema for `names.prestage_device_names`
