@@ -4,6 +4,10 @@
 package mobile_device_prestage_enrollment
 
 import (
+	"errors"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -57,7 +61,7 @@ func TestResolveIntentBool(t *testing.T) {
 // would serialise as false and silently disable the user's intent.
 func TestRestoreServerArbitrated_StateCarryPath(t *testing.T) {
 	plan := MobileDevicePrestageEnrollmentResourceModel{
-		DefaultPrestage:      types.BoolUnknown(),
+		DefaultPrestage:      types.BoolValue(true),
 		UseStorageQuotaSize:  types.BoolUnknown(),
 		TemporarySessionOnly: types.BoolUnknown(),
 	}
@@ -72,8 +76,10 @@ func TestRestoreServerArbitrated_StateCarryPath(t *testing.T) {
 
 	restoreServerArbitrated(&plan, cfg, state)
 
+	// default_prestage is not server-arbitrated and is never stamped Unknown, so
+	// restore must pass it through untouched.
 	if !plan.DefaultPrestage.Equal(types.BoolValue(true)) {
-		t.Errorf("default_prestage intent lost: %v", plan.DefaultPrestage)
+		t.Errorf("default_prestage should pass through untouched: %v", plan.DefaultPrestage)
 	}
 	if !plan.UseStorageQuotaSize.Equal(types.BoolValue(true)) {
 		t.Errorf("use_storage_quota_size intent lost (state-carry): %v", plan.UseStorageQuotaSize)
@@ -88,7 +94,7 @@ func TestRestoreServerArbitrated_StateCarryPath(t *testing.T) {
 // rather than leaking Unknown into the POST body.
 func TestRestoreServerArbitrated_CreateNoState(t *testing.T) {
 	plan := MobileDevicePrestageEnrollmentResourceModel{
-		DefaultPrestage:      types.BoolUnknown(),
+		DefaultPrestage:      types.BoolValue(true),
 		UseStorageQuotaSize:  types.BoolValue(false),
 		TemporarySessionOnly: types.BoolUnknown(),
 	}
@@ -101,9 +107,58 @@ func TestRestoreServerArbitrated_CreateNoState(t *testing.T) {
 	restoreServerArbitrated(&plan, cfg, MobileDevicePrestageEnrollmentResourceModel{})
 
 	if !plan.DefaultPrestage.Equal(types.BoolValue(true)) {
-		t.Errorf("default_prestage = %v, want true (from config)", plan.DefaultPrestage)
+		t.Errorf("default_prestage = %v, want true (passed through)", plan.DefaultPrestage)
 	}
 	if !plan.TemporarySessionOnly.Equal(types.BoolValue(false)) {
 		t.Errorf("temporary_session_only = %v, want false (no config/state)", plan.TemporarySessionOnly)
 	}
+}
+
+// TestDiagnoseAlreadyDefault covers the ALREADY_DEFAULT mapping. Jamf Pro
+// rejects a claim on a default another PreStage holds with 400 ALREADY_DEFAULT
+// and writes nothing, so the error must be surfaced (not swallowed as a
+// warning) and must name the fix.
+func TestDiagnoseAlreadyDefault(t *testing.T) {
+	apiErr := errors.New(`CreateMobileDevicePrestageV3: 400 {"httpStatus":400,"errors":[{"code":"ALREADY_DEFAULT","description":"Another prestage is already the default prestage","id":"0","field":"defaultPrestage"}]}`)
+
+	t.Run("recognised, with config intent", func(t *testing.T) {
+		var diags diag.Diagnostics
+		cfg := MobileDevicePrestageEnrollmentResourceModel{DefaultPrestage: types.BoolValue(true)}
+		if !diagnoseAlreadyDefault(&diags, cfg, apiErr) {
+			t.Fatalf("must recognise ALREADY_DEFAULT")
+		}
+		if !diags.HasError() {
+			t.Fatalf("must raise an ERROR, not a warning — the write did not happen")
+		}
+		detail := diags.Errors()[0].Detail()
+		if !strings.Contains(detail, "default_prestage = false") {
+			t.Errorf("detail should name the fix, got: %s", detail)
+		}
+		// The ordering hazard only applies when this resource is the claimant.
+		if !strings.Contains(detail, "depends_on") {
+			t.Errorf("detail should cover the release-before-claim ordering, got: %s", detail)
+		}
+	})
+
+	t.Run("recognised, no config intent", func(t *testing.T) {
+		var diags diag.Diagnostics
+		if !diagnoseAlreadyDefault(&diags, MobileDevicePrestageEnrollmentResourceModel{}, apiErr) {
+			t.Fatalf("must recognise ALREADY_DEFAULT regardless of config")
+		}
+		if strings.Contains(diags.Errors()[0].Detail(), "depends_on") {
+			t.Errorf("ordering advice is noise when the user did not ask for the default")
+		}
+	})
+
+	t.Run("passes other errors through", func(t *testing.T) {
+		var diags diag.Diagnostics
+		for _, err := range []error{nil, errors.New("500 internal server error"), errors.New("ALREADY_SCOPED")} {
+			if diagnoseAlreadyDefault(&diags, MobileDevicePrestageEnrollmentResourceModel{}, err) {
+				t.Errorf("must not claim unrelated error: %v", err)
+			}
+		}
+		if diags.HasError() {
+			t.Errorf("must not add diagnostics for unrelated errors")
+		}
+	})
 }

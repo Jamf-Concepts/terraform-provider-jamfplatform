@@ -125,7 +125,7 @@ resource "jamfplatform_pro_mobile_device_prestage_enrollment" "example" {
 - `authentication_prompt` (String) **"Authentication Prompt"** message shown when `require_authentication = true`.
 - `auto_advance_setup` (Boolean) **"Auto Advance Setup"** (tvOS) in the Jamf Pro admin UI.
 - `configure_device_before_setup_assistant` (Boolean) **"Configure device before Setup Assistant"** in the Jamf Pro admin UI.
-- `default_prestage` (Boolean) When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage: if another PreStage is already the default, Jamf Pro keeps this `false` rather than reassigning. Clear the existing default first to take it over.
+- `default_prestage` (Boolean) When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage and will not move the default automatically: if another PreStage already holds it, the apply fails. Set `default_prestage = false` on the current holder first — and where both are managed by Terraform, make the release land before the claim (apply it on its own, or add a `depends_on` from this resource to the one giving up the default).
 - `department` (String) **"Department"** label shown during Setup Assistant. Free-form text; *not* the department ID (`location_information.department_id`).
 - `do_not_use_profile_from_backup` (Boolean) **"Do not use profile from backup"** in the Jamf Pro admin UI.
 - `enable_device_based_activation_lock` (Boolean) **"Enable Device-Based Activation Lock"** in the Jamf Pro admin UI.

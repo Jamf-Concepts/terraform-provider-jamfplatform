@@ -273,13 +273,15 @@ func stringSliceToList(in []string) types.List {
 // expected, NOT a silent rollback, so they are omitted from this check:
 //
 //	storage_quota_size_megabytes  (recalculated to a device floor, §F8)
-//	default_prestage              (conditional singleton, §F10)
 //	use_storage_quota_size        (forced false when temp-session wins, §F9)
 //	temporary_session_only        (symmetric to above, §F9)
 //	temporary_session_timeout     (nulled below min / not enforced, §F11)
 //
 // anchor_certificates and names/prestage_device_names stay IN the check —
-// their mismatch IS a real failure (§F4b).
+// their mismatch IS a real failure (§F4b). So does default_prestage: it was
+// previously excluded as a "conditional singleton" on the assumption Jamf Pro
+// silently keeps it false, but a refused claim is a hard 400 ALREADY_DEFAULT
+// (wire-probed 2026-08-07), so a mismatch here really is a rollback.
 func diffPlanAgainstGet(ctx context.Context, plan MobileDevicePrestageEnrollmentResourceModel, got *pro.GetMobileDevicePrestageV3) []string {
 	var mismatched []string
 
@@ -309,7 +311,7 @@ func diffPlanAgainstGet(ctx context.Context, plan MobileDevicePrestageEnrollment
 	checkBool("allow_pairing", plan.AllowPairing, got.AllowPairing)
 	checkBool("auto_advance_setup", plan.AutoAdvanceSetup, got.AutoAdvanceSetup)
 	checkBool("configure_device_before_setup_assistant", plan.ConfigureDeviceBeforeSetupAssistant, got.ConfigureDeviceBeforeSetupAssistant)
-	// default_prestage — EXCLUDED (§9.1).
+	checkBool("default_prestage", plan.DefaultPrestage, got.DefaultPrestage)
 	checkBool("send_timezone", plan.SendTimezone, got.SendTimezone)
 	checkBool("prevent_activation_lock", plan.PreventActivationLock, got.PreventActivationLock)
 	checkBool("enable_device_based_activation_lock", plan.EnableDeviceBasedActivationLock, got.EnableDeviceBasedActivationLock)

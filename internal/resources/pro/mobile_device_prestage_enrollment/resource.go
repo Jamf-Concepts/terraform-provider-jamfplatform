@@ -114,10 +114,13 @@ func (r *MobileDevicePrestageEnrollmentResource) Schema(ctx context.Context, req
 			"configure_device_before_setup_assistant": optBool("**\"Configure device before Setup Assistant\"** in the Jamf Pro admin UI."),
 			// Jamf Pro allows at most one default PreStage per device type.
 			// Setting this to true is honored only when no other PreStage is
-			// currently the default; if another already holds it, Jamf Pro
-			// silently keeps this false rather than stealing the flag (§F10).
+			// currently the default; if another already holds it the write is
+			// REJECTED with 400 ALREADY_DEFAULT and nothing is stored — it is NOT
+			// silently kept false. diagnoseAlreadyDefault turns that into an
+			// actionable diagnostic, and ModifyPlan deliberately leaves this
+			// attribute alone (see the note there).
 			"default_prestage": schema.BoolAttribute{
-				MarkdownDescription: "When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage: if another PreStage is already the default, Jamf Pro keeps this `false` rather than reassigning. Clear the existing default first to take it over.",
+				MarkdownDescription: "When true, this PreStage becomes the tenant default for new devices. Jamf Pro allows at most one default PreStage and will not move the default automatically: if another PreStage already holds it, the apply fails. Set `default_prestage = false` on the current holder first — and where both are managed by Terraform, make the release land before the claim (apply it on its own, or add a `depends_on` from this resource to the one giving up the default).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
