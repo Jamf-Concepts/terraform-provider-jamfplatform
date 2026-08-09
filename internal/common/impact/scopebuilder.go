@@ -31,10 +31,6 @@ const (
 	// ReasonNotCounted covers inputs the provider does not yet count. Stated as
 	// a limitation of the calculation rather than of Jamf Pro, because it is one.
 	ReasonNotCounted = "not included in this calculation"
-	// ReasonExclusion covers exclusions, which narrow the audience by an amount
-	// that cannot be subtracted safely from a figure that may already
-	// double-count overlapping groups.
-	ReasonExclusion = "exclusions narrow this further by an amount that is not subtracted here"
 )
 
 // ScopeBuilder assembles a Scope from Terraform collection values, recording
@@ -101,6 +97,37 @@ func (b *ScopeBuilder) PlatformGroups(attrPath string, set types.Set) *ScopeBuil
 // them in an expression).
 func (b *ScopeBuilder) PlatformGroupIDs(ids ...string) *ScopeBuilder {
 	b.scope.PlatformGroupIDs = append(b.scope.PlatformGroupIDs, ids...)
+	return b
+}
+
+// ExcludedJamfProGroups records excluded groups referenced by numeric Jamf Pro
+// id, as data so their membership can be subtracted.
+func (b *ScopeBuilder) ExcludedJamfProGroups(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedJamfProGroupIDs = append(b.scope.ExcludedJamfProGroupIDs, ids...)
+	return b
+}
+
+// ExcludedPlatformGroups records excluded groups referenced by Platform UUID.
+func (b *ScopeBuilder) ExcludedPlatformGroups(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedPlatformGroupIDs = append(b.scope.ExcludedPlatformGroupIDs, ids...)
+	return b
+}
+
+// ExcludedDevices records individually excluded devices.
+func (b *ScopeBuilder) ExcludedDevices(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedDeviceIDs = append(b.scope.ExcludedDeviceIDs, ids...)
 	return b
 }
 

@@ -142,6 +142,9 @@ func detail(ctx context.Context, req Request, res Resolution) string {
 	if lines := breakdown(res); len(lines) > 0 {
 		b.WriteString("Counted from " + strings.Join(lines, "; ") + ".\n")
 	}
+	if l := excludedLine(res); l != "" {
+		b.WriteString(l + "\n")
+	}
 
 	if req.Action == ActionUpdate {
 		if d := deltaLine(ctx, req); d != "" {
@@ -192,6 +195,9 @@ func (s Scope) equal(o Scope) bool {
 	if !sameStrings(s.DeviceIDs, o.DeviceIDs) ||
 		!sameStrings(s.JamfProGroupIDs, o.JamfProGroupIDs) ||
 		!sameStrings(s.PlatformGroupIDs, o.PlatformGroupIDs) ||
+		!sameStrings(s.ExcludedDeviceIDs, o.ExcludedDeviceIDs) ||
+		!sameStrings(s.ExcludedJamfProGroupIDs, o.ExcludedJamfProGroupIDs) ||
+		!sameStrings(s.ExcludedPlatformGroupIDs, o.ExcludedPlatformGroupIDs) ||
 		!sameStrings(s.PendingPaths, o.PendingPaths) {
 		return false
 	}

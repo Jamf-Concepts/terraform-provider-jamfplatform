@@ -97,7 +97,7 @@ type Data struct {
 // instance, backed by one shared tenant read. Called from provider Configure
 // when the impact_alerts attribute is set.
 func (d *Data) EnableImpactAlerts() {
-	d.impactCache = impact.NewProCache(pro.New(d.Client))
+	d.impactCache = impact.NewTenantCache(d.Client)
 }
 
 // ImpactCache returns the shared impact cache, or nil when impact alerts are

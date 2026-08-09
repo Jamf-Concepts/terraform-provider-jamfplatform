@@ -6,6 +6,7 @@ package impact
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -21,9 +22,39 @@ type stubSource struct {
 	groups []Group
 	totals Totals
 	err    error
+	// members maps a group's Platform id to its device management ids. A group
+	// absent from this map has unreadable membership, which is how the fallback to
+	// approximate counting is exercised.
+	members map[string][]string
+	// memberErr forces every membership read to fail.
+	memberErr error
 
-	mu    sync.Mutex
-	calls int
+	mu          sync.Mutex
+	calls       int
+	memberCalls map[string]int
+}
+
+func (s *stubSource) Members(_ context.Context, platformID string) ([]string, error) {
+	s.mu.Lock()
+	if s.memberCalls == nil {
+		s.memberCalls = map[string]int{}
+	}
+	s.memberCalls[platformID]++
+	s.mu.Unlock()
+	if s.memberErr != nil {
+		return nil, s.memberErr
+	}
+	ids, ok := s.members[platformID]
+	if !ok {
+		return nil, errors.New("membership unavailable")
+	}
+	return ids, nil
+}
+
+func (s *stubSource) memberCallCount(platformID string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.memberCalls[platformID]
 }
 
 func (s *stubSource) Groups(context.Context) ([]Group, error) {
@@ -62,7 +93,23 @@ func testSource() *stubSource {
 			// both; this pair is what a real tenant looks like.
 			{PlatformID: "uuid-ipads-1", JamfProID: "1", Name: "All Managed iPads (dup id)", DeviceType: DeviceTypeMobile, Smart: true, MembershipCount: 12},
 		},
+		// Membership expressed in device management ids, deliberately overlapping:
+		// Marketing and Lab Macs share d-30, and both sit inside All Managed Clients.
+		members: map[string][]string{
+			"uuid-all": deviceIDs(1, 200),
+			"uuid-mkt": deviceIDs(1, 30),
+			"uuid-lab": {"d-30", "d-31", "d-32", "d-33", "d-34"},
+		},
 	}
+}
+
+// deviceIDs builds a contiguous run of synthetic management ids.
+func deviceIDs(from, count int) []string {
+	out := make([]string, 0, count)
+	for i := range count {
+		out = append(out, fmt.Sprintf("d-%d", from+i))
+	}
+	return out
 }
 
 // strSet builds a known set of strings.
@@ -184,7 +231,10 @@ func TestResolveSingleGroupIsExact(t *testing.T) {
 	}
 }
 
-func TestResolveMultipleSourcesBecomeUpperBound(t *testing.T) {
+func TestResolveOverlappingGroupsAreDeduplicated(t *testing.T) {
+	// Marketing holds d-1..d-30, Lab Macs holds d-30..d-34; they share d-30. The
+	// summed counts would say 35, which is the number no administrator wants: it
+	// implies five more computers are affected than actually are.
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
 		DeviceType:      DeviceTypeComputer,
@@ -193,21 +243,69 @@ func TestResolveMultipleSourcesBecomeUpperBound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if res.Count != 34 {
+		t.Fatalf("got count=%d, want 34 distinct devices (35 summed, sharing one)", res.Count)
+	}
+	if !res.Exact {
+		t.Fatal("membership was readable, so the figure must come from set arithmetic")
+	}
+	if res.Bound != BoundExact {
+		t.Fatalf("a deduplicated union needs no upper-bound hedge, got %v", res.Bound)
+	}
+}
+
+func TestResolveFallsBackToSummedCountsWhenMembershipUnreadable(t *testing.T) {
+	// Membership reads failing must degrade the figure, not lose it.
+	src := testSource()
+	src.memberErr = errors.New("no privilege to read group membership")
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:      DeviceTypeComputer,
+		JamfProGroupIDs: []string{"12", "13"},
+	})
+	if err != nil {
+		t.Fatalf("a membership failure must not fail resolution: %v", err)
+	}
 	if res.Count != 35 {
-		t.Fatalf("got count=%d, want 35", res.Count)
+		t.Fatalf("got count=%d, want the summed 35 on the fallback path", res.Count)
+	}
+	if res.Exact {
+		t.Fatal("the fallback figure must not claim to be exact")
 	}
 	if res.Bound != BoundAtMost {
-		t.Fatalf("overlapping groups must yield an upper bound, got %v", res.Bound)
+		t.Fatalf("summed counts may double-count, so the figure is an upper bound, got %v", res.Bound)
+	}
+}
+
+func TestResolveFallsBackWhenMembershipDisagreesWithTheCount(t *testing.T) {
+	// The membership list and the membership count come from different services.
+	// If they disagree the set is not trustworthy enough for exact arithmetic.
+	src := testSource()
+	src.members["uuid-mkt"] = []string{"d-1", "d-2"} // count says 30
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:      DeviceTypeComputer,
+		JamfProGroupIDs: []string{"12"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Exact {
+		t.Fatal("a membership set that disagrees with the count must not be used")
+	}
+	if res.Count != 30 {
+		t.Fatalf("got count=%d, want the group's own count of 30", res.Count)
 	}
 }
 
 func TestResolveClampsSummedOverlapToTheEstate(t *testing.T) {
-	// Summing overlapping group counts can exceed the estate, which would read as
-	// "up to 235 of 200 computers (117%)". The estate is a hard ceiling on the
-	// true figure, so the count is clamped to it. Caught on a live tenant where
-	// two overlapping groups summed past the managed computer total.
+	// On the fallback path, summing overlapping group counts can exceed the estate,
+	// which would read as "up to 235 of 210 computers (111%)". The estate is a hard
+	// ceiling on the true figure, so the count is clamped to it. Caught on a live
+	// tenant where two overlapping groups summed past the managed computer total.
 	src := testSource()
 	src.totals = Totals{ManagedComputers: 210}
+	src.memberErr = errors.New("membership unavailable") // force the fallback path
 	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
 		DeviceType:      DeviceTypeComputer,
@@ -720,5 +818,202 @@ func TestScopeBuilderIgnoresEmptyUnresolvableCollections(t *testing.T) {
 	b.Narrows("limitations.ibeacon_ids", types.SetNull(types.StringType), ReasonIbeacon)
 	if got := b.Scope(); len(got.Unresolvable) != 0 {
 		t.Fatalf("an absent limitation must not be reported, got %+v", got.Unresolvable)
+	}
+}
+
+func TestResolveSubtractsExcludedGroupMembershipExactly(t *testing.T) {
+	// The gap exact arithmetic closes: an exclusion previously narrowed the figure
+	// by an unstated amount. Marketing holds d-1..d-30; Lab Macs holds d-30..d-34,
+	// of which only d-30 is in Marketing. Excluding Lab Macs must remove exactly
+	// that one device.
+	c := NewCache(testSource())
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:              DeviceTypeComputer,
+		JamfProGroupIDs:         []string{"12"},
+		ExcludedJamfProGroupIDs: []string{"13"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 29 {
+		t.Fatalf("got count=%d, want 30 less the one shared device", res.Count)
+	}
+	if !res.Exact || res.Bound != BoundExact {
+		t.Fatalf("an exactly subtracted exclusion needs no hedge, got exact=%v bound=%v", res.Exact, res.Bound)
+	}
+	for _, u := range res.Unresolvable {
+		if u.Path == "excluded groups" {
+			t.Fatal("a subtracted exclusion must not also be reported as an unquantified caveat")
+		}
+	}
+}
+
+func TestResolveExcludedGroupBecomesCaveatOnTheFallbackPath(t *testing.T) {
+	src := testSource()
+	src.memberErr = errors.New("membership unavailable")
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:              DeviceTypeComputer,
+		JamfProGroupIDs:         []string{"12"},
+		ExcludedJamfProGroupIDs: []string{"13"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 30 {
+		t.Fatalf("got count=%d, want the unsubtracted 30", res.Count)
+	}
+	if res.Bound != BoundAtMost {
+		t.Fatalf("an unsubtracted exclusion makes the figure an upper bound, got %v", res.Bound)
+	}
+	var named bool
+	for _, u := range res.Unresolvable {
+		if u.Path == "excluded groups" && strings.Contains(u.Reason, "Lab Macs") {
+			named = true
+		}
+	}
+	if !named {
+		t.Fatalf("the caveat must name the group whose membership could not be read, got %+v", res.Unresolvable)
+	}
+}
+
+func TestResolveAllComputersMinusExcludedGroup(t *testing.T) {
+	// A tenant-wide target with an exclusion is the common "everything except"
+	// shape, and it resolves exactly: the estate less the excluded membership.
+	src := testSource()
+	src.totals = Totals{ManagedComputers: 200}
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:              DeviceTypeComputer,
+		All:                     true,
+		ExcludedJamfProGroupIDs: []string{"12"}, // 30 members
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 170 {
+		t.Fatalf("got count=%d, want 200 less the 30 excluded", res.Count)
+	}
+	if !res.Exact || res.Bound != BoundExact {
+		t.Fatalf("got exact=%v bound=%v, want an unhedged figure", res.Exact, res.Bound)
+	}
+}
+
+func TestResolveDirectDevicesKeepUpperBoundAlongsideGroups(t *testing.T) {
+	// Individually named devices carry Jamf Pro numeric identifiers while group
+	// membership carries management identifiers, so a device that is also a group
+	// member is counted twice. That has to stay visible as an upper bound.
+	c := NewCache(testSource())
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:      DeviceTypeComputer,
+		JamfProGroupIDs: []string{"12"},
+		DeviceIDs:       []string{"5", "6"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 32 {
+		t.Fatalf("got count=%d, want 30 plus 2 named devices", res.Count)
+	}
+	if res.Exact {
+		t.Fatal("mixing groups and individually named devices cannot be exact")
+	}
+	if res.Bound != BoundAtMost {
+		t.Fatalf("got bound=%v, want an upper bound", res.Bound)
+	}
+}
+
+func TestResolveDeviceOnlyScopeIsExactWithoutMembershipReads(t *testing.T) {
+	src := testSource()
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeComputer,
+		DeviceIDs:  []string{"5", "6", "7"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 3 || res.Bound != BoundExact {
+		t.Fatalf("got count=%d bound=%v, want an exact 3", res.Count, res.Bound)
+	}
+	if len(src.memberCalls) != 0 {
+		t.Fatalf("a scope naming no groups must read no membership, got %v", src.memberCalls)
+	}
+}
+
+func TestMembersReadOncePerGroupAcrossResolvesAndConcurrency(t *testing.T) {
+	// Membership is the per-plan cost, so it must be read once per group however
+	// many resources reference it.
+	src := testSource()
+	c := NewCache(src)
+	s := Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12"}}
+
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			if _, err := Resolve(context.Background(), c, s); err != nil {
+				t.Errorf("resolve: %v", err)
+			}
+		})
+	}
+	wg.Wait()
+	if got := src.memberCallCount("uuid-mkt"); got != 1 {
+		t.Fatalf("membership of a group must be read once per plan, read %d times", got)
+	}
+}
+
+func TestReportLiftedExclusionCountsAsAnAddition(t *testing.T) {
+	// Removing an exclusion puts devices back in scope, so it belongs on the
+	// "adding" side of the delta even though it is written under exclusions.
+	c := NewCache(testSource())
+	diags := Report(context.Background(), Request{
+		Cache:  c,
+		Path:   path.Root("scope"),
+		Label:  "policy",
+		Action: ActionUpdate,
+		Prior: Scope{
+			DeviceType:              DeviceTypeComputer,
+			JamfProGroupIDs:         []string{"12"},
+			ExcludedJamfProGroupIDs: []string{"13"},
+		},
+		Planned: Scope{
+			DeviceType:      DeviceTypeComputer,
+			JamfProGroupIDs: []string{"12"},
+		},
+	})
+	if len(diags) != 1 {
+		t.Fatalf("expected one alert, got %d", len(diags))
+	}
+	detail := diags[0].Detail()
+	if !strings.Contains(detail, "adding") {
+		t.Fatalf("lifting an exclusion adds devices: %q", detail)
+	}
+	if strings.Contains(detail, "removing") {
+		t.Fatalf("nothing is leaving scope here: %q", detail)
+	}
+}
+
+func TestReportNewExclusionCountsAsARemoval(t *testing.T) {
+	c := NewCache(testSource())
+	diags := Report(context.Background(), Request{
+		Cache:  c,
+		Path:   path.Root("scope"),
+		Label:  "policy",
+		Action: ActionUpdate,
+		Prior: Scope{
+			DeviceType:      DeviceTypeComputer,
+			JamfProGroupIDs: []string{"12"},
+		},
+		Planned: Scope{
+			DeviceType:              DeviceTypeComputer,
+			JamfProGroupIDs:         []string{"12"},
+			ExcludedJamfProGroupIDs: []string{"13"},
+		},
+	})
+	if len(diags) != 1 {
+		t.Fatalf("expected one alert, got %d", len(diags))
+	}
+	if d := diags[0].Detail(); !strings.Contains(d, "removing") {
+		t.Fatalf("adding an exclusion removes devices: %q", d)
 	}
 }

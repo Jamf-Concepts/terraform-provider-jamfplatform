@@ -49,20 +49,40 @@ func summarise(r Resolution) string {
 	return head
 }
 
+// namedGroups renders up to maxListedGroups group names with their sizes.
+func namedGroups(gs []Group) string {
+	var named []string
+	for i, g := range gs {
+		if i == maxListedGroups {
+			named = append(named, fmt.Sprintf("and %d more", len(gs)-maxListedGroups))
+			break
+		}
+		named = append(named, fmt.Sprintf("%s (%d)", g.Name, g.MembershipCount))
+	}
+	return strings.Join(named, ", ")
+}
+
+// excludedLine renders the exclusion side of the breakdown.
+//
+// Without it a figure of 1 sitting under "counted from 1 group: All Managed
+// Clients (4)" reads as a contradiction rather than as a subtraction.
+func excludedLine(r Resolution) string {
+	if len(r.ExcludedGroups) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("Less %s excluded: %s.",
+		plural(len(r.ExcludedGroups), "group", "groups"), namedGroups(r.ExcludedGroups))
+}
+
 // breakdown lists what was counted, so a reviewer can see where the figure came
 // from rather than having to trust it.
 func breakdown(r Resolution) []string {
 	var lines []string
+	if r.tenantWide {
+		lines = append(lines, fmt.Sprintf("every managed %s (%d)", singularNoun(r.DeviceType), r.Total))
+	}
 	if len(r.Groups) > 0 {
-		var named []string
-		for i, g := range r.Groups {
-			if i == maxListedGroups {
-				named = append(named, fmt.Sprintf("and %d more", len(r.Groups)-maxListedGroups))
-				break
-			}
-			named = append(named, fmt.Sprintf("%s (%d)", g.Name, g.MembershipCount))
-		}
-		lines = append(lines, fmt.Sprintf("%s: %s", plural(len(r.Groups), "group", "groups"), strings.Join(named, ", ")))
+		lines = append(lines, fmt.Sprintf("%s: %s", plural(len(r.Groups), "group", "groups"), namedGroups(r.Groups)))
 	}
 	if r.DirectDevices > 0 {
 		lines = append(lines, fmt.Sprintf("%s scoped individually",
@@ -122,15 +142,7 @@ func caveats(r Resolution) []string {
 	emit(broadens, "Not resolvable during plan; the true figure may be higher:")
 	emit(ambiguous, "Not resolvable during plan; may move the figure either way:")
 	if len(r.Mentioned) > 0 {
-		var named []string
-		for i, g := range r.Mentioned {
-			if i == maxListedGroups {
-				named = append(named, fmt.Sprintf("and %d more", len(r.Mentioned)-maxListedGroups))
-				break
-			}
-			named = append(named, fmt.Sprintf("%s (%d)", g.Name, g.MembershipCount))
-		}
-		lines = append(lines, fmt.Sprintf("Groups referred to but not counted: %s.", strings.Join(named, ", ")))
+		lines = append(lines, fmt.Sprintf("Groups referred to but not counted: %s.", namedGroups(r.Mentioned)))
 	}
 	if len(r.MissingGroupIDs) > 0 {
 		lines = append(lines, fmt.Sprintf(

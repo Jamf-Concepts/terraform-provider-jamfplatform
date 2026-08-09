@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
@@ -94,12 +96,19 @@ func (t Totals) For(d DeviceType) int64 {
 	}
 }
 
-// Source supplies the two reads the impact calculation depends on. The
-// production implementation is backed by the Jamf Pro client; tests substitute
-// a stub so the resolution logic is exercised without HTTP.
+// Source supplies the reads the impact calculation depends on. The production
+// implementation is backed by the Jamf clients; tests substitute a stub so the
+// resolution logic is exercised without HTTP.
 type Source interface {
+	// Groups returns every group in the tenant with its membership count and both
+	// of its identifiers. One read serves the whole plan.
 	Groups(ctx context.Context) ([]Group, error)
+	// Totals returns the tenant's managed device counts.
 	Totals(ctx context.Context) (Totals, error)
+	// Members returns the device identifiers belonging to one group, addressed by
+	// its Platform identifier. Read per group, only for groups a changing scope
+	// actually names.
+	Members(ctx context.Context, platformID string) ([]string, error)
 }
 
 // Cache holds the tenant group list and device totals for the lifetime of one
@@ -131,11 +140,54 @@ type Cache struct {
 	byUUID map[string]Group
 	totals Totals
 
+	// memberMu guards the per-group membership map. Membership is read lazily,
+	// one group at a time, because a plan only needs it for the groups a changing
+	// scope names — not for every group in the tenant.
+	memberMu sync.Mutex
+	members  map[string]*memberSet
+
 	// noticeMu guards the one-shot latch for the "impact unavailable" notice, so
 	// a tenant that cannot be read produces one notice for the plan rather than
 	// one per scoped resource.
 	noticeMu    sync.Mutex
 	noticeFired bool
+}
+
+// memberSet is one group's membership, fetched at most once per Cache.
+type memberSet struct {
+	once sync.Once
+	ids  []string
+	err  error
+}
+
+// Members returns the device identifiers in a group, addressed by its Platform
+// identifier. Results are cached for the lifetime of the Cache and fetched at
+// most once per group even under concurrent callers.
+//
+// Membership is what makes exact arithmetic possible: two groups can share
+// devices, so their counts cannot simply be added, and an exclusion cannot be
+// subtracted from a sum that may already double-count. Device identifiers are
+// Platform UUIDs and are therefore comparable across the computer and mobile
+// device estates without translation.
+func (c *Cache) Members(ctx context.Context, platformID string) ([]string, error) {
+	if !c.Enabled() || platformID == "" {
+		return nil, nil
+	}
+	c.memberMu.Lock()
+	if c.members == nil {
+		c.members = make(map[string]*memberSet)
+	}
+	entry, ok := c.members[platformID]
+	if !ok {
+		entry = &memberSet{}
+		c.members[platformID] = entry
+	}
+	c.memberMu.Unlock()
+
+	entry.once.Do(func() {
+		entry.ids, entry.err = c.src.Members(ctx, platformID)
+	})
+	return entry.ids, entry.err
 }
 
 // noticeOnce reports whether the caller should emit the "impact unavailable"
@@ -158,9 +210,18 @@ func NewCache(src Source) *Cache {
 	return &Cache{src: src}
 }
 
-// NewProCache returns a Cache backed by a Jamf Pro client.
-func NewProCache(client *pro.Client) *Cache {
-	return NewCache(proSource{client: client})
+// NewTenantCache returns a Cache backed by a configured Jamf client.
+//
+// Two namespaces are involved and both are needed. Group counts and the pairing
+// of Jamf Pro ids to Platform ids come from Jamf Pro; group membership comes
+// from the Platform device groups service, which serves every kind of group —
+// smart or static, computer or mobile device — through one call keyed by
+// Platform identifier.
+func NewTenantCache(client *jamfplatform.Client) *Cache {
+	return NewCache(tenantSource{
+		pro:    pro.New(client),
+		groups: devicegroups.New(client),
+	})
 }
 
 // Enabled reports whether this cache will report anything. A nil Cache is
@@ -239,13 +300,25 @@ func (c *Cache) DeviceTotals(ctx context.Context) (Totals, error) {
 	return c.totals, nil
 }
 
-// proSource reads the live tenant through the Jamf Pro client.
-type proSource struct {
-	client *pro.Client
+// tenantSource reads the live tenant.
+type tenantSource struct {
+	pro    *pro.Client
+	groups *devicegroups.Client
 }
 
-func (s proSource) Groups(ctx context.Context) ([]Group, error) {
-	rows, err := s.client.ListGroupsV2(ctx, nil, "")
+// Members reads one group's membership. The endpoint is not paginated — its
+// specification declares no page parameters, unlike its sibling group list — so
+// a single call returns the complete set.
+func (s tenantSource) Members(ctx context.Context, platformID string) ([]string, error) {
+	ids, err := s.groups.ListDeviceGroupMembers(ctx, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("reading membership of group %s: %w", platformID, err)
+	}
+	return ids, nil
+}
+
+func (s tenantSource) Groups(ctx context.Context) ([]Group, error) {
+	rows, err := s.pro.ListGroupsV2(ctx, nil, "")
 	if err != nil {
 		return nil, fmt.Errorf("reading group membership counts: %w", err)
 	}
@@ -267,8 +340,8 @@ func (s proSource) Groups(ctx context.Context) ([]Group, error) {
 	return out, nil
 }
 
-func (s proSource) Totals(ctx context.Context) (Totals, error) {
-	info, err := s.client.GetInventoryInformationV1(ctx)
+func (s tenantSource) Totals(ctx context.Context) (Totals, error) {
+	info, err := s.pro.GetInventoryInformationV1(ctx)
 	if err != nil {
 		return Totals{}, fmt.Errorf("reading device totals: %w", err)
 	}

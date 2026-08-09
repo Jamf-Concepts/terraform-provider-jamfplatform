@@ -5,6 +5,7 @@ package scope
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -86,14 +87,22 @@ func TestComputerImpactScopeCountsTargetsAndClassifiesTheRest(t *testing.T) {
 
 	eff := effectsByPath(got)
 
-	// The correctness point of this mapping: limitations and exclusions can only
-	// reduce the audience, so they must never be classified as broadening.
+	// Excluded groups and devices are passed through as data so the resolver can
+	// subtract group membership exactly, rather than reporting an unquantified
+	// narrowing. They must therefore NOT appear as caveats.
+	if len(got.ExcludedJamfProGroupIDs) != 1 {
+		t.Fatalf("excluded groups must be carried as data: %v", got.ExcludedJamfProGroupIDs)
+	}
+	if len(got.ExcludedDeviceIDs) != 1 {
+		t.Fatalf("excluded devices must be carried as data: %v", got.ExcludedDeviceIDs)
+	}
+
+	// The correctness point of this mapping: limitations can only reduce the
+	// audience, so they must never be classified as broadening.
 	for _, p := range []string{
 		"limitations.network_segment_ids",
 		"limitations.ibeacon_ids",
 		"limitations.directory_service_user_group_names",
-		"exclusions.computer_ids",
-		"exclusions.computer_group_ids",
 	} {
 		e, ok := eff[p]
 		if !ok {
@@ -221,12 +230,13 @@ func TestMobileImpactScopeUsesMobileNamesAndDeviceType(t *testing.T) {
 	if len(got.JamfProGroupIDs) != 1 || got.JamfProGroupIDs[0] != "66" {
 		t.Fatalf("mobile device groups wrong: %v", got.JamfProGroupIDs)
 	}
-	eff := effectsByPath(got)
-	if eff["exclusions.mobile_device_ids"] != impact.Narrows {
-		t.Fatalf("mobile device exclusion must narrow and use the mobile attribute name, got %v", eff)
+	if len(got.ExcludedDeviceIDs) != 1 || got.ExcludedDeviceIDs[0] != "32" {
+		t.Fatalf("excluded mobile devices must be carried as data: %v", got.ExcludedDeviceIDs)
 	}
-	if _, ok := eff["exclusions.computer_ids"]; ok {
-		t.Fatal("a mobile scope must not report computer attribute paths")
+	for _, u := range got.Unresolvable {
+		if strings.HasPrefix(u.Path, "exclusions.computer") || strings.HasPrefix(u.Path, "targets.computer") {
+			t.Fatalf("a mobile scope must not report computer attribute paths, got %q", u.Path)
+		}
 	}
 }
 

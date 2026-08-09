@@ -26,11 +26,10 @@ import (
 //     only add devices the calculation has not seen.
 //   - Limitations narrow the audience. None of them can be evaluated ahead of
 //     time, so all are recorded as narrowing.
-//   - Exclusions remove from the audience. They are recorded as narrowing rather
-//     than subtracted: the target figure already sums group counts without
-//     deduplicating overlap, and subtracting a partly-overlapping exclusion
-//     count from an inflated total can understate the result in a way that is
-//     harder to reason about than an upper bound.
+//   - Exclusions remove from the audience. Excluded groups and devices are passed
+//     through as data rather than as caveats, so the resolver can subtract the
+//     groups' membership exactly. The remaining exclusion categories cannot be
+//     enumerated ahead of time and stay narrowing.
 
 // impactSection names the three scope tabs as they appear in configuration, used
 // to build the attribute paths shown in an impact alert.
@@ -58,18 +57,21 @@ func addLimitations(b *impact.ScopeBuilder, networkSegmentIDs, ibeaconIDs, userN
 	b.Narrows(sectionLimitations+".directory_service_user_group_names", dsGroupNames, impact.ReasonDirectoryServiceGroup)
 }
 
-// addExclusionDevices records the countable exclusion categories as narrowing.
-func addExclusionDevices(b *impact.ScopeBuilder, deviceAttr string, deviceIDs, groupIDs types.Set) {
-	b.Narrows(sectionExclusions+"."+deviceAttr, deviceIDs, impact.ReasonExclusion)
-	b.Narrows(sectionExclusions+".computer_group_ids", groupIDs, impact.ReasonExclusion)
+// addExclusionDevices passes the enumerable exclusion categories through as
+// data, so the resolver can subtract the excluded groups' membership exactly
+// rather than reporting the exclusion as an unquantified narrowing.
+func addExclusionDevices(b *impact.ScopeBuilder, deviceAttr, groupAttr string, deviceIDs, groupIDs types.Set) {
+	b.ExcludedDevices(sectionExclusions+"."+deviceAttr, deviceIDs)
+	b.ExcludedJamfProGroups(sectionExclusions+"."+groupAttr, groupIDs)
 }
 
-// addExclusionOther records the remaining exclusion categories as narrowing.
+// addExclusionOther records the exclusion categories that cannot be enumerated
+// ahead of time. All of them narrow.
 func addExclusionOther(b *impact.ScopeBuilder, buildingIDs, departmentIDs, userIDs, userGroupIDs, networkSegmentIDs, ibeaconIDs, userNames, dsGroupNames types.Set) {
-	b.Narrows(sectionExclusions+".building_ids", buildingIDs, impact.ReasonExclusion)
-	b.Narrows(sectionExclusions+".department_ids", departmentIDs, impact.ReasonExclusion)
-	b.Narrows(sectionExclusions+".user_ids", userIDs, impact.ReasonExclusion)
-	b.Narrows(sectionExclusions+".user_group_ids", userGroupIDs, impact.ReasonExclusion)
+	b.Narrows(sectionExclusions+".building_ids", buildingIDs, impact.ReasonNotCounted)
+	b.Narrows(sectionExclusions+".department_ids", departmentIDs, impact.ReasonNotCounted)
+	b.Narrows(sectionExclusions+".user_ids", userIDs, impact.ReasonUserTarget)
+	b.Narrows(sectionExclusions+".user_group_ids", userGroupIDs, impact.ReasonUserTarget)
 	b.Narrows(sectionExclusions+".network_segment_ids", networkSegmentIDs, impact.ReasonNetworkSegment)
 	b.Narrows(sectionExclusions+".ibeacon_ids", ibeaconIDs, impact.ReasonIbeacon)
 	b.Narrows(sectionExclusions+".directory_service_or_local_user_names", userNames, impact.ReasonUserName)
@@ -92,7 +94,7 @@ func ComputerImpactScope(ctx context.Context, m *ComputerScopeModel) impact.Scop
 		addLimitations(b, l.NetworkSegmentIDs, l.IbeaconIDs, l.DirectoryServiceOrLocalUserNames, l.DirectoryServiceUserGroupNames)
 	}
 	if e := m.Exclusions; e != nil {
-		addExclusionDevices(b, "computer_ids", e.ComputerIDs, e.ComputerGroupIDs)
+		addExclusionDevices(b, "computer_ids", "computer_group_ids", e.ComputerIDs, e.ComputerGroupIDs)
 		addExclusionOther(b, e.BuildingIDs, e.DepartmentIDs, e.UserIDs, e.UserGroupIDs,
 			e.NetworkSegmentIDs, e.IbeaconIDs, e.DirectoryServiceOrLocalUserNames, e.DirectoryServiceUserGroupNames)
 	}
@@ -114,7 +116,7 @@ func ComputerImpactScopeNoIbeacons(ctx context.Context, m *ComputerScopeModelNoI
 		addLimitations(b, l.NetworkSegmentIDs, types.SetNull(types.StringType), l.DirectoryServiceOrLocalUserNames, l.DirectoryServiceUserGroupNames)
 	}
 	if e := m.Exclusions; e != nil {
-		addExclusionDevices(b, "computer_ids", e.ComputerIDs, e.ComputerGroupIDs)
+		addExclusionDevices(b, "computer_ids", "computer_group_ids", e.ComputerIDs, e.ComputerGroupIDs)
 		addExclusionOther(b, e.BuildingIDs, e.DepartmentIDs, e.UserIDs, e.UserGroupIDs,
 			e.NetworkSegmentIDs, types.SetNull(types.StringType), e.DirectoryServiceOrLocalUserNames, e.DirectoryServiceUserGroupNames)
 	}
@@ -136,8 +138,7 @@ func MobileImpactScope(ctx context.Context, m *MobileScopeModel) impact.Scope {
 		addLimitations(b, l.NetworkSegmentIDs, l.IbeaconIDs, l.DirectoryServiceOrLocalUserNames, l.DirectoryServiceUserGroupNames)
 	}
 	if e := m.Exclusions; e != nil {
-		b.Narrows(sectionExclusions+".mobile_device_ids", e.MobileDeviceIDs, impact.ReasonExclusion)
-		b.Narrows(sectionExclusions+".mobile_device_group_ids", e.MobileDeviceGroupIDs, impact.ReasonExclusion)
+		addExclusionDevices(b, "mobile_device_ids", "mobile_device_group_ids", e.MobileDeviceIDs, e.MobileDeviceGroupIDs)
 		addExclusionOther(b, e.BuildingIDs, e.DepartmentIDs, e.UserIDs, e.UserGroupIDs,
 			e.NetworkSegmentIDs, e.IbeaconIDs, e.DirectoryServiceOrLocalUserNames, e.DirectoryServiceUserGroupNames)
 	}
