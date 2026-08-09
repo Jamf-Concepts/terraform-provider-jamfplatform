@@ -1947,7 +1947,7 @@ func TestFigureUsesTheSingularAtOne(t *testing.T) {
 	}{
 		{BoundExact, "1 computer"},
 		{BoundAtMost, "up to 1 computer"},
-		{BoundAtLeast, "1 or more computer"},
+		{BoundAtLeast, "1 or more computers"},
 		{BoundUnknown, "an estimated 1 computer"},
 	} {
 		if got := figure(1, tc.b, "computer", "computers"); got != tc.want {

@@ -34,7 +34,8 @@ func figure(n int64, b Bound, one, many string) string {
 	case BoundAtMost:
 		return fmt.Sprintf("up to %d %s", n, noun)
 	case BoundAtLeast:
-		return fmt.Sprintf("%d or more %s", n, noun)
+		// "or more" implies plurality whatever the count, so the plural stays.
+		return fmt.Sprintf("%d or more %s", n, many)
 	case BoundUnknown:
 		return fmt.Sprintf("an estimated %d %s", n, noun)
 	default:
