@@ -32,7 +32,7 @@ Off by default; also settable with `JAMFPLATFORM_IMPACT_ALERTS`. Alerts are advi
 
 ## What triggers an alert
 
-Any change to an object deployed to devices, or to an object scope is based on. Objects with no planned change stay silent.
+Any change to an object deployed to devices, or to an object that scope is based on. Objects with no planned change stay silent.
 
 A scope change reports what moves:
 
@@ -58,6 +58,7 @@ The wording states how the number relates to reality. Jamf Pro's scope model nar
 | `47 of 312 computers` | Every input was countable. |
 | `up to 47 of 312 computers` | Something narrows the audience by an amount not determinable during a plan. |
 | `47 or more of 312 computers` | Something adds devices that could not be counted. |
+| `at least 47 of 312 computers` | As `47 or more` — the qualifier leads when the figure comes from a resource that can span both estates. |
 | `an estimated 47 of 312 computers` | Inputs pull both ways, so the figure bounds it from neither side. |
 | `47 computers`, no proportion | The scope names unmanaged devices, so a share of the managed estate would mislead. |
 
@@ -106,12 +107,14 @@ terraform plan -json \
            | [.address, .summary] | @tsv'
 ```
 
-To gate on the number, match all four phrasings:
+To gate on the number, match the verb — `scoped to` for a create, `affects` for an update or delete — followed by the figure:
 
 ```
-scoped to (up to |an estimated )?([0-9]+) of ([0-9]+)
-scoped to ([0-9]+) or more of ([0-9]+)
+(scoped to|affects) (up to |at least |an estimated )?([0-9]+)( of [0-9]+)?
+(scoped to|affects) ([0-9]+) or more( of [0-9]+)?
 ```
+
+The `of` clause is optional because a figure with no proportion drops it. An alert spanning both estates joins two `X of Y` clauses with ` and ` — `3 of 4 computers and 0 of 1 mobile devices` — so match `([0-9]+) of ([0-9]+)` globally to read the second estate. Group and class alerts phrase membership instead (`will contain 7 computers`, `changes from 4 computers to 7 computers`); gate those on the arithmetic in the detail, such as `This change adds 3 computers.`
 
 ## Cost
 
@@ -123,6 +126,8 @@ Reads are cached for the lifetime of the plan, so two resources naming the same 
 | One group's membership | Per group named by a changing scope |
 | One inventory query | Per distinct set of named devices, buildings or departments |
 | Building and department names | Once per plan, if a mobile device scope names one |
+
+These reads scale. The group list is paginated at 100 groups per request, and every request is paced by the provider's `min_request_interval_ms` (default 100ms between request starts) — a 5,000-group tenant spends around five seconds on the first alert of a plan. Membership is one paced read per distinct group named by anything changing in the plan, including groups only entering or leaving a scope, so a plan touching many groups serialises many reads.
 
 ## Scope of reporting
 

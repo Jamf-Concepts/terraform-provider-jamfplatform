@@ -227,24 +227,20 @@ func (r *Resource) preflightScopeGroups(ctx context.Context, req resource.Modify
 	}
 }
 
-// ModifyPlan runs the payload-diff decision before the per-attribute
-// modifiers fire. When both private-state references are present
-// (post-first-Apply, non-imported), it runs the three-way compare to
-// distinguish three cases:
+// ModifyPlan sequences the plan-time hooks so each one sees what it needs:
+// the scope directory-service user-group preflight first (it must cover
+// create plans too), then the payload-diff decision, then the impact alert.
 //
-//   - NoOp     — plan rewritten to state so Terraform reports no change.
-//   - Apply    — diff propagates naturally so Update runs.
-//   - Drift    — diff propagates so Terraform surfaces server-side change.
-//
-// When either reference is empty (Create, freshly imported, pre-tracking
-// resources) it falls back to the legacy two-way intersection compare via
-// PayloadsSemanticallyEqual. Same behaviour as the attribute-level
-// suppressor that previously lived in plan_modifiers.go.
+// The impact alert's position is a correctness constraint, not taste:
+// healPayloadPlan can rewrite a byte-different but semantically-equal payload
+// back to state, self-healing the plan to a no-op, and a diagnostic once
+// appended cannot be retracted. Creates and destroys are reported immediately
+// (the payload compare does not apply to them, and an object entering or
+// leaving management changes what its scope receives); updates are reported
+// only after the self-heal, and skipped when the healed plan equals state —
+// otherwise `terraform plan` would print an impact alert directly above
+// "No changes".
 func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	// Runs ahead of any guard below: an object entering or leaving management
-	// changes what its scope receives, so creates and destroys are reported too.
-	r.reportScopeImpact(ctx, req, resp)
-
 	// Scope directory-service user-group preflight runs first so it covers
 	// create-plans too (the payload compare below early-returns on create). It
 	// is skipped only on destroy (null plan).
@@ -254,11 +250,39 @@ func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanReques
 	}
 
 	// Create has no state; Delete has no plan. Either way the payload
-	// compare does not apply.
+	// compare does not apply, so the impact alert is emitted right away.
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
+		r.reportScopeImpact(ctx, req, resp)
 		return
 	}
 
+	r.healPayloadPlan(ctx, req, resp)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// The shared impact hook derives its change flag from req.Plan — the
+	// pre-heal plan — so a plan healed to a no-op must be skipped here, where
+	// the healed resp.Plan is visible.
+	if resp.Plan.Raw.Equal(req.State.Raw) {
+		return
+	}
+	r.reportScopeImpact(ctx, req, resp)
+}
+
+// healPayloadPlan runs the payload-diff decision for an update plan. When
+// both private-state references are present (post-first-Apply, non-imported),
+// it runs the three-way compare to distinguish three cases:
+//
+//   - NoOp     — plan rewritten to state so Terraform reports no change.
+//   - Apply    — diff propagates naturally so Update runs.
+//   - Drift    — diff propagates so Terraform surfaces server-side change.
+//
+// When either reference is empty (freshly imported, pre-tracking resources)
+// it falls back to the legacy two-way intersection compare via
+// PayloadsSemanticallyEqual. Same behaviour as the attribute-level
+// suppressor that previously lived in plan_modifiers.go.
+func (r *Resource) healPayloadPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	var plan ResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {

@@ -6,6 +6,7 @@ package blueprint
 import (
 	"context"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -19,24 +20,28 @@ import (
 // quoted literals.
 var groupIDPattern = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 
-// activationConditionsReason explains why a group named in an activation
-// condition is reported but not counted.
+// activationConditionsReason explains why an activation condition caveats the
+// figure rather than adjusting it.
 //
-// The expression language can require a group or rule one out, and can combine
-// several with boolean operators. Reading the group identifiers out of it is
-// straightforward; deciding what the expression as a whole does to the audience
-// is not, and guessing would produce a confident figure that is wrong in an
-// unpredictable direction. The groups are surfaced by name instead, which is the
-// part a reviewer cannot easily get for themselves — an activation condition
-// shows identifiers, not names.
-const activationConditionsReason = "activation conditions can require or rule out a group, so their effect on the audience is not counted here"
+// The expression language can require devices or groups, rule them out, and
+// combine several tests with boolean operators. Deciding what an expression as
+// a whole does to the audience is not tractable here, and guessing would
+// produce a confident figure that is wrong in an unpredictable direction — so
+// every non-empty expression caveats the figure. When an expression names
+// groups, those are additionally surfaced by name, which is the part a
+// reviewer cannot easily get for themselves — an activation condition shows
+// identifiers, not names.
+const activationConditionsReason = "activation conditions can require or rule out devices or groups, so their effect on the audience is not counted here"
 
 // blueprintImpactScope converts a blueprint's device group targeting into the
 // shape the impact package counts.
 //
-// device_groups is the blueprint's audience and is counted. Groups named in
-// activation conditions — the blueprint's own and each component block's — are
-// reported by name but deliberately left out of the figure.
+// device_groups is the blueprint's audience and is counted. Any non-empty
+// activation condition — the blueprint's own or a component block's — gates
+// which devices the blueprint applies to even when it names no group (an
+// OS-version test narrows just as a group test does), so each one caveats the
+// figure as ambiguous. Groups the expressions name are additionally reported
+// by name but deliberately left out of the figure.
 func blueprintImpactScope(ctx context.Context, m *BlueprintResourceModel) impact.Scope {
 	b := impact.NewScopeBuilder(ctx, impact.DeviceTypeAny)
 	if m == nil {
@@ -45,7 +50,12 @@ func blueprintImpactScope(ctx context.Context, m *BlueprintResourceModel) impact
 	b.PlatformGroups("device_groups", m.DeviceGroups)
 
 	var mentioned []string
+	conditions := 0
 	collect := func(expr string) {
+		if strings.TrimSpace(expr) == "" {
+			return
+		}
+		conditions++
 		mentioned = append(mentioned, groupIDPattern.FindAllString(expr, -1)...)
 	}
 	if !m.ActivationConditions.IsNull() && !m.ActivationConditions.IsUnknown() {
@@ -56,18 +66,24 @@ func blueprintImpactScope(ctx context.Context, m *BlueprintResourceModel) impact
 			collect(blk.ActivationConditions.ValueString())
 		}
 	}
-	if len(mentioned) > 0 {
-		s := b.Scope()
-		s.MentionedPlatformIDs = dedupe(mentioned)
-		s.Unresolvable = append(s.Unresolvable, impact.Unresolvable{
-			Path:   "activation_conditions",
-			Reason: activationConditionsReason,
-			Effect: impact.Ambiguous,
-			Values: len(s.MentionedPlatformIDs),
-		})
-		return s
+	if conditions == 0 {
+		return b.Scope()
 	}
-	return b.Scope()
+	s := b.Scope()
+	// Values carries the group count when the expressions name groups, and the
+	// expression count otherwise — the caveat must always show a real figure.
+	values := conditions
+	if len(mentioned) > 0 {
+		s.MentionedPlatformIDs = dedupe(mentioned)
+		values = len(s.MentionedPlatformIDs)
+	}
+	s.Unresolvable = append(s.Unresolvable, impact.Unresolvable{
+		Path:   "activation_conditions",
+		Reason: activationConditionsReason,
+		Effect: impact.Ambiguous,
+		Values: values,
+	})
+	return s
 }
 
 // dedupe returns ids with duplicates removed, preserving first-seen order.

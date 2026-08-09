@@ -67,8 +67,14 @@ type Unresolvable struct {
 type Scope struct {
 	DeviceType DeviceType
 
-	// All is the tenant-wide flag (all_computers / all_mobile_devices).
+	// All is the tenant-wide flag (all_computers / all_mobile_devices) for a
+	// scope fixed to one estate.
 	All bool
+	// AllEstates lists the estates targeted tenant-wide, for a scope that can
+	// span both estates at once. An ebook can set all_computers while scoping
+	// mobile devices to one group, and folding both flags into All would claim
+	// the whole combined estate; carrying the estate keeps the two sides apart.
+	AllEstates []DeviceType
 	// DeviceIDs are individually scoped devices (computer_ids / mobile_device_ids).
 	DeviceIDs []string
 	// BuildingIDs and DepartmentIDs are the buildings and departments the scope
@@ -118,6 +124,7 @@ type Scope struct {
 // Empty reports whether the scope names nothing at all.
 func (s Scope) Empty() bool {
 	return !s.All &&
+		len(s.AllEstates) == 0 &&
 		len(s.DeviceIDs) == 0 &&
 		len(s.ProGroups) == 0 &&
 		len(s.PlatformGroupIDs) == 0 &&
@@ -137,6 +144,56 @@ func (s Scope) Empty() bool {
 // group membership — individually, or by the building or department they are in.
 func (s Scope) namesDevicesDirectly() bool {
 	return len(s.DeviceIDs) > 0 || len(s.BuildingIDs) > 0 || len(s.DepartmentIDs) > 0
+}
+
+// allEstateSet returns the estates the scope targets tenant-wide. The
+// single-estate All flag maps to the scope's own estate; All on an
+// estate-spanning scope, and DeviceTypeAny entries, mean both estates.
+func (s Scope) allEstateSet() map[DeviceType]struct{} {
+	out := make(map[DeviceType]struct{}, 2)
+	add := func(dt DeviceType) {
+		if dt == DeviceTypeAny {
+			out[DeviceTypeComputer] = struct{}{}
+			out[DeviceTypeMobile] = struct{}{}
+			return
+		}
+		out[dt] = struct{}{}
+	}
+	if s.All {
+		add(s.DeviceType)
+	}
+	for _, dt := range s.AllEstates {
+		add(dt)
+	}
+	return out
+}
+
+// tenantWideOrder renders a tenant-wide estate set in the admin UI's order,
+// computers first.
+func tenantWideOrder(set map[DeviceType]struct{}) []DeviceType {
+	out := make([]DeviceType, 0, len(set))
+	for _, dt := range []DeviceType{DeviceTypeComputer, DeviceTypeMobile} {
+		if _, ok := set[dt]; ok {
+			out = append(out, dt)
+		}
+	}
+	return out
+}
+
+// withoutTenantWideEstates drops the groups whose estate is targeted
+// tenant-wide, since their membership is subsumed by that estate's total.
+func withoutTenantWideEstates(groups []Group, all map[DeviceType]struct{}) []Group {
+	if len(all) == 0 {
+		return groups
+	}
+	out := make([]Group, 0, len(groups))
+	for _, g := range groups {
+		if _, ok := all[g.DeviceType]; ok {
+			continue
+		}
+		out = append(out, g)
+	}
+	return out
 }
 
 // Bound describes how a counted figure relates to the true device count.
@@ -201,9 +258,14 @@ type Resolution struct {
 	// disjoint by construction and the union partitions cleanly.
 	PerEstate map[DeviceType]int64
 
-	// tenantWide records that the scope targeted the whole estate, so the
-	// breakdown can say so rather than listing nothing.
-	tenantWide bool
+	// tenantWide lists the estates the scope targeted in full, so the breakdown
+	// can say so rather than listing nothing.
+	tenantWide []DeviceType
+	// members is the resolved member set — the union of the targets less the
+	// exclusions — kept only when it is complete, so an update's delta can be
+	// taken from real membership rather than from which references changed. A
+	// tenant-wide estate has no enumerated membership, so it leaves this nil.
+	members map[string]DeviceType
 	// totals carries both estates' sizes, so a split figure can give each side its
 	// own denominator.
 	totals Totals
@@ -311,7 +373,7 @@ func Resolve(ctx context.Context, c *Cache, s Scope) (Resolution, error) {
 	}
 	res.Groups = targets
 	res.ExcludedGroups = excluded
-	res.tenantWide = s.All
+	res.tenantWide = tenantWideOrder(s.allEstateSet())
 
 	sortGroups(res.Groups)
 	sortGroups(res.ExcludedGroups)
@@ -403,8 +465,14 @@ func (r *Resolution) resolveGroups(ctx context.Context, c *Cache, s Scope, proRe
 // across both estates, so the set arithmetic itself needs no per-estate handling.
 // The estate each member came from is still tracked, so a scope spanning both can
 // be reported as a split rather than one merged figure.
+//
+// A tenant-wide estate contributes its total, less its excluded members, rather
+// than enumerated membership — and only that estate. A dual-estate scope with
+// all_computers set still counts its mobile side from the mobile groups it
+// names, so one estate's flag never claims the combined estate.
 func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, targets, excluded []Group) (int64, bool, error) {
-	if !s.All && len(targets) == 0 && !s.namesDevicesDirectly() {
+	allEstates := s.allEstateSet()
+	if len(allEstates) == 0 && len(targets) == 0 && !s.namesDevicesDirectly() {
 		// Nothing to union at all. Fall back so a caveat-only scope keeps its
 		// existing treatment.
 		return 0, false, nil
@@ -441,47 +509,65 @@ func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, target
 	// Device-naming exclusions join the same set, so an excluded computer or an
 	// excluded building genuinely reduces the figure rather than being reported as
 	// an unquantified narrowing.
-	exclNamed, err := addNamedDevices(ctx, c, s.DeviceType, excludedMembers, Narrows,
+	exclNamed := addNamedDevices(ctx, c, s.DeviceType, excludedMembers, Narrows,
 		"exclusions device ids", s.ExcludedDeviceIDs, s.ExcludedBuildingIDs, s.ExcludedDepartmentIDs)
-	if err != nil {
-		return 0, false, err
-	}
 
-	if s.All {
-		// Tenant-wide target: everything in the estate, less the exclusions.
+	if s.DeviceType != DeviceTypeAny && len(allEstates) > 0 {
+		// Tenant-wide target on a single-estate scope: everything in the estate,
+		// less the exclusions.
 		count := max(r.Total-int64(len(excludedMembers)), 0)
 		r.commitNamed(exclNamed)
 		return count, true, nil
 	}
 
-	targetMembers, ok, err := gather(targets)
+	// Groups in a tenant-wide estate are subsumed by that estate's total, so
+	// their membership is not read.
+	remaining := withoutTenantWideEstates(targets, allEstates)
+	targetMembers, ok, err := gather(remaining)
 	if err != nil || !ok {
 		return 0, false, err
 	}
-	targetNamed, err := addNamedDevices(ctx, c, s.DeviceType, targetMembers, Broadens,
+	targetNamed := addNamedDevices(ctx, c, s.DeviceType, targetMembers, Broadens,
 		"targets device ids", s.DeviceIDs, s.BuildingIDs, s.DepartmentIDs)
-	if err != nil {
-		return 0, false, err
-	}
-	if len(targets) == 0 && targetNamed.resolved == 0 {
+	if len(allEstates) == 0 && len(remaining) == 0 && targetNamed.resolved == 0 {
 		// Nothing was resolvable, so there is no exact figure to report — fall back
 		// rather than presenting a confident zero.
 		return 0, false, nil
 	}
 
 	var count int64
-	perEstate := estateKeys(targets)
+	perEstate := estateKeys(remaining)
 	if targetNamed.resolved > 0 {
 		// The estate is named by the device categories too, so it belongs in the
 		// split even when no group named it.
 		perEstate[s.DeviceType] += 0
 	}
+	members := make(map[string]DeviceType, len(targetMembers))
 	for id, dt := range targetMembers {
 		if _, isExcluded := excludedMembers[id]; isExcluded {
 			continue
 		}
+		members[id] = dt
 		count++
 		perEstate[dt]++
+	}
+	// A tenant-wide estate contributes its whole total, less the excluded
+	// members that sit in it.
+	for _, dt := range tenantWideOrder(allEstates) {
+		var excludedHere int64
+		for _, mdt := range excludedMembers {
+			if mdt == dt {
+				excludedHere++
+			}
+		}
+		n := max(r.totals.For(dt)-excludedHere, 0)
+		count += n
+		perEstate[dt] += n
+	}
+	if len(allEstates) == 0 {
+		// Member identities are complete only when no estate was counted by its
+		// total, so only then can a delta be taken from them.
+		r.members = members
 	}
 	r.setPerEstate(s, perEstate)
 	r.commitNamed(targetNamed)
@@ -499,6 +585,11 @@ func (r *Resolution) commitNamed(o namedOutcome) {
 	}
 	r.namedDescribed = append(r.namedDescribed, o.described...)
 }
+
+// reasonPlaceNotFound covers building or department ids with no match in the
+// tenant's building and department lists. Unexported because only the resolver
+// emits it; the Reason* constants the scope adapters share live in scopebuilder.go.
+const reasonPlaceNotFound = "not found among this tenant's buildings and departments, so their devices are not counted here"
 
 // namedCategory is one device-naming scope category awaiting resolution.
 type namedCategory struct {
@@ -537,7 +628,12 @@ type namedOutcome struct {
 // addNamedDevices folds the device-naming scope categories — individual devices,
 // buildings, departments — into a membership set, having resolved them to the same
 // device management identifiers group membership uses.
-func addNamedDevices(ctx context.Context, c *Cache, dt DeviceType, into map[string]DeviceType, side Effect, deviceAttr string, deviceIDs, buildingIDs, departmentIDs []string) (namedOutcome, error) {
+//
+// A failed inventory read degrades that one category to a caveat, the same
+// advisory contract as a failed membership read. Propagating it would abort the
+// whole resolution and consume the plan-wide "impact unavailable" notice,
+// silencing every other resource's alert over one unreadable category.
+func addNamedDevices(ctx context.Context, c *Cache, dt DeviceType, into map[string]DeviceType, side Effect, deviceAttr string, deviceIDs, buildingIDs, departmentIDs []string) namedOutcome {
 	var out namedOutcome
 	categories := []namedCategory{
 		{filterKindDevice, deviceIDs, deviceAttr},
@@ -548,11 +644,8 @@ func addNamedDevices(ctx context.Context, c *Cache, dt DeviceType, into map[stri
 		if len(cat.ids) == 0 {
 			continue
 		}
-		ids, supported, err := c.deviceIDsFor(ctx, dt, cat.kind, cat.ids)
-		if err != nil {
-			return namedOutcome{}, err
-		}
-		if !supported {
+		ids, dropped, supported, err := c.deviceIDsFor(ctx, dt, cat.kind, cat.ids)
+		if err != nil || !supported {
 			out.unresolved = append(out.unresolved, Unresolvable{
 				Path: cat.path, Reason: ReasonNotCounted, Effect: side, Values: len(cat.ids),
 			})
@@ -561,10 +654,19 @@ func addNamedDevices(ctx context.Context, c *Cache, dt DeviceType, into map[stri
 		for _, id := range ids {
 			into[id] = dt
 		}
-		out.resolved += len(cat.ids)
-		out.described = append(out.described, cat.describe(dt, len(cat.ids), len(ids)))
+		// A partially translated category is described by what actually resolved,
+		// and the dropped remainder is caveated in the direction the category
+		// already pushes — its devices are missing from the figure either way.
+		resolved := len(cat.ids) - dropped
+		out.resolved += resolved
+		out.described = append(out.described, cat.describe(dt, resolved, len(ids)))
+		if dropped > 0 {
+			out.unresolved = append(out.unresolved, Unresolvable{
+				Path: cat.path, Reason: reasonPlaceNotFound, Effect: side, Values: dropped,
+			})
+		}
 	}
-	return out, nil
+	return out
 }
 
 // estateKeys seeds a per-estate tally with every estate the scope names, so an
@@ -608,11 +710,21 @@ func groupsShareAnEstate(groups []Group) bool {
 // countApproximately sums membership counts, clamps to the estate, and reports
 // exclusions as narrowing. Used when membership could not be read.
 func (r *Resolution) countApproximately(s Scope, targets, excluded []Group) {
-	if s.All {
+	allEstates := s.allEstateSet()
+	if s.DeviceType != DeviceTypeAny && len(allEstates) > 0 {
 		r.Count = r.Total
 	} else {
-		perEstate := estateKeys(targets)
-		for _, g := range targets {
+		// Groups in a tenant-wide estate are subsumed by that estate's total, and
+		// each tenant-wide estate contributes its own total — never the combined
+		// estate on the strength of one flag.
+		remaining := withoutTenantWideEstates(targets, allEstates)
+		perEstate := estateKeys(remaining)
+		for _, dt := range tenantWideOrder(allEstates) {
+			n := r.totals.For(dt)
+			r.Count += n
+			perEstate[dt] += n
+		}
+		for _, g := range remaining {
 			r.Count += g.MembershipCount
 			perEstate[g.DeviceType] += g.MembershipCount
 		}
@@ -620,7 +732,7 @@ func (r *Resolution) countApproximately(s Scope, targets, excluded []Group) {
 		// Summed counts can double-count only where two groups could share a member,
 		// which means two groups in the same estate: a device belongs to exactly one
 		// estate, so a computer group and a mobile device group never overlap.
-		if groupsShareAnEstate(targets) {
+		if groupsShareAnEstate(remaining) {
 			r.Bound = r.Bound.with(Narrows)
 		}
 	}
@@ -719,28 +831,60 @@ func Delta(prior, planned Scope) (added, removed Scope) {
 	added.DeviceIDs = missingFrom(planned.DeviceIDs, prior.DeviceIDs)
 	added.ProGroups = refsMissingFrom(planned.ProGroups, prior.ProGroups)
 	added.PlatformGroupIDs = missingFrom(planned.PlatformGroupIDs, prior.PlatformGroupIDs)
+	added.BuildingIDs = missingFrom(planned.BuildingIDs, prior.BuildingIDs)
+	added.DepartmentIDs = missingFrom(planned.DepartmentIDs, prior.DepartmentIDs)
 	added.PendingPaths = planned.PendingPaths
 	added.Unresolvable = unresolvableDiff(planned.Unresolvable, prior.Unresolvable)
 	added.All = planned.All && !prior.All
+	added.AllEstates = estatesMissingFrom(planned.AllEstates, prior.AllEstates)
 	// An exclusion that is being LIFTED adds devices, so it belongs on this side —
 	// as a target, since those devices are entering scope.
 	added.ProGroups = append(added.ProGroups,
 		refsMissingFrom(prior.ExcludedProGroups, planned.ExcludedProGroups)...)
 	added.PlatformGroupIDs = append(added.PlatformGroupIDs,
 		missingFrom(prior.ExcludedPlatformGroupIDs, planned.ExcludedPlatformGroupIDs)...)
+	added.BuildingIDs = append(added.BuildingIDs,
+		missingFrom(prior.ExcludedBuildingIDs, planned.ExcludedBuildingIDs)...)
+	added.DepartmentIDs = append(added.DepartmentIDs,
+		missingFrom(prior.ExcludedDepartmentIDs, planned.ExcludedDepartmentIDs)...)
 
 	removed.DeviceIDs = missingFrom(prior.DeviceIDs, planned.DeviceIDs)
 	removed.ProGroups = refsMissingFrom(prior.ProGroups, planned.ProGroups)
 	removed.PlatformGroupIDs = missingFrom(prior.PlatformGroupIDs, planned.PlatformGroupIDs)
+	removed.BuildingIDs = missingFrom(prior.BuildingIDs, planned.BuildingIDs)
+	removed.DepartmentIDs = missingFrom(prior.DepartmentIDs, planned.DepartmentIDs)
 	removed.Unresolvable = unresolvableDiff(prior.Unresolvable, planned.Unresolvable)
 	removed.All = prior.All && !planned.All
+	removed.AllEstates = estatesMissingFrom(prior.AllEstates, planned.AllEstates)
 	// A newly ADDED exclusion removes devices, so it belongs on the removal side.
 	removed.ProGroups = append(removed.ProGroups,
 		refsMissingFrom(planned.ExcludedProGroups, prior.ExcludedProGroups)...)
 	removed.PlatformGroupIDs = append(removed.PlatformGroupIDs,
 		missingFrom(planned.ExcludedPlatformGroupIDs, prior.ExcludedPlatformGroupIDs)...)
+	removed.BuildingIDs = append(removed.BuildingIDs,
+		missingFrom(planned.ExcludedBuildingIDs, prior.ExcludedBuildingIDs)...)
+	removed.DepartmentIDs = append(removed.DepartmentIDs,
+		missingFrom(planned.ExcludedDepartmentIDs, prior.ExcludedDepartmentIDs)...)
 
 	return added, removed
+}
+
+// estatesMissingFrom returns the estates in a that do not appear in b.
+func estatesMissingFrom(a, b []DeviceType) []DeviceType {
+	if len(a) == 0 {
+		return nil
+	}
+	in := make(map[DeviceType]struct{}, len(b))
+	for _, v := range b {
+		in[v] = struct{}{}
+	}
+	var out []DeviceType
+	for _, v := range a {
+		if _, ok := in[v]; !ok {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // refsMissingFrom returns the references in a that do not appear in b, sorted.

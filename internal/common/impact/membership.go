@@ -34,6 +34,11 @@ type Membership struct {
 	// Noun is what is being counted, in the admin UI's terms — "computers",
 	// "mobile devices", "users".
 	Noun string
+	// NounSingular is the singular form of Noun. When empty it is derived by
+	// trimming a trailing "s", which is safe for every noun the in-tree callers
+	// pass ("computers", "mobile devices", "users"); a caller whose plural is
+	// irregular ("classes") must set it.
+	NounSingular string
 
 	// Current is the membership before this change. Known for anything that
 	// already exists.
@@ -105,22 +110,22 @@ func membershipHeadline(req MembershipRequest) string {
 	switch req.Action {
 	case ActionCreate:
 		if m.NextKnown {
-			return fmt.Sprintf("Impact alert — this %s will contain %s", req.Label, countOf(m.Next, m.Noun))
+			return fmt.Sprintf("Impact alert — this %s will contain %s", req.Label, countOf(m.Next, m.Noun, m.NounSingular))
 		}
 		return fmt.Sprintf("Impact alert — this new %s's membership is decided after apply", req.Label)
 	case ActionDelete:
 		if m.CurrentKnown {
-			return fmt.Sprintf("Impact alert — removing this %s affects %s", req.Label, countOf(m.Current, m.Noun))
+			return fmt.Sprintf("Impact alert — removing this %s affects %s", req.Label, countOf(m.Current, m.Noun, m.NounSingular))
 		}
 		return fmt.Sprintf("Impact alert — removing this %s changes what is scoped to it", req.Label)
 	default:
 		switch {
 		case m.CurrentKnown && m.NextKnown && m.Next != m.Current:
 			return fmt.Sprintf("Impact alert — this %s changes from %s to %s",
-				req.Label, countOf(m.Current, m.Noun), countOf(m.Next, m.Noun))
+				req.Label, countOf(m.Current, m.Noun, m.NounSingular), countOf(m.Next, m.Noun, m.NounSingular))
 		case m.CurrentKnown:
 			return fmt.Sprintf("Impact alert — this %s currently contains %s and its membership is changing",
-				req.Label, countOf(m.Current, m.Noun))
+				req.Label, countOf(m.Current, m.Noun, m.NounSingular))
 		default:
 			return fmt.Sprintf("Impact alert — this %s's membership is changing", req.Label)
 		}
@@ -143,9 +148,9 @@ func membershipDetail(req MembershipRequest) string {
 	if m.CurrentKnown && m.NextKnown {
 		switch delta := m.Next - m.Current; {
 		case delta > 0:
-			fmt.Fprintf(&b, "This change adds %s.\n", countOf(delta, m.Noun))
+			fmt.Fprintf(&b, "This change adds %s.\n", countOf(delta, m.Noun, m.NounSingular))
 		case delta < 0:
-			fmt.Fprintf(&b, "This change removes %s.\n", countOf(-delta, m.Noun))
+			fmt.Fprintf(&b, "This change removes %s.\n", countOf(-delta, m.Noun, m.NounSingular))
 		default:
 			fmt.Fprintf(&b, "The number of %s does not change, but which ones are members does.\n", m.Noun)
 		}
@@ -165,10 +170,16 @@ func membershipDetail(req MembershipRequest) string {
 	return b.String()
 }
 
-// countOf renders a count with a singular or plural noun.
-func countOf(n int64, noun string) string {
+// countOf renders a count with a singular or plural noun. An empty singular
+// falls back to trimming the plural's trailing "s" — correct for the nouns the
+// in-tree callers pass ("computers", "mobile devices", "users"), and kept only
+// for their compatibility; anything irregular must supply the singular.
+func countOf(n int64, noun, singular string) string {
 	if n == 1 {
-		return fmt.Sprintf("1 %s", strings.TrimSuffix(noun, "s"))
+		if singular == "" {
+			singular = strings.TrimSuffix(noun, "s")
+		}
+		return "1 " + singular
 	}
 	return fmt.Sprintf("%d %s", n, noun)
 }

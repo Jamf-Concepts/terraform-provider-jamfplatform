@@ -187,3 +187,19 @@ func TestReportMembershipDeleteDoesNotExplainFutureMembership(t *testing.T) {
 		t.Fatalf("a delete must still state what stops: %q", d)
 	}
 }
+
+func TestCountOfUsesTheCallerSingular(t *testing.T) {
+	// "classes" trimmed of its "s" is "classe", so an irregular plural must come
+	// with its singular form from the caller.
+	req := membershipReq(ActionDelete, Membership{
+		Noun: "classes", NounSingular: "class", Current: 1, CurrentKnown: true,
+	})
+	req.Label = "class"
+	diags := ReportMembership(context.Background(), req)
+	if len(diags) != 1 {
+		t.Fatalf("expected one alert, got %d", len(diags))
+	}
+	if s := diags[0].Summary(); !strings.Contains(s, "affects 1 class") || strings.Contains(s, "classe") {
+		t.Fatalf("the singular must come from the caller, not from trimming: %q", s)
+	}
+}

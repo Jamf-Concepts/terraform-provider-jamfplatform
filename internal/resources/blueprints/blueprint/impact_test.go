@@ -94,16 +94,43 @@ func TestBlueprintImpactScopeDeduplicatesRepeatedMentions(t *testing.T) {
 	}
 }
 
-func TestBlueprintImpactScopeIgnoresConditionsWithNoGroups(t *testing.T) {
+func TestBlueprintImpactScopeFlagsConditionsWithNoGroups(t *testing.T) {
+	// An OS-version condition names no group yet still gates which devices the
+	// blueprint applies to, so the figure must carry the ambiguity caveat.
 	got := blueprintImpactScope(context.Background(), &BlueprintResourceModel{
 		DeviceGroups:         uuidSet(t, groupA),
 		ActivationConditions: types.StringValue("ANY @property(jamf.device.osVersion) >= '15.0'"),
+		ComponentBlocks: []ComponentBlockModel{
+			{Name: types.StringValue("one"), ActivationConditions: types.StringValue("ANY @property(jamf.device.modelName) CONTAINS 'MacBook'")},
+			{Name: types.StringValue("two"), ActivationConditions: types.StringNull()},
+		},
 	})
 	if len(got.MentionedPlatformIDs) != 0 {
-		t.Fatalf("a condition naming no group must add nothing, got %v", got.MentionedPlatformIDs)
+		t.Fatalf("a condition naming no group must surface no mentioned groups, got %v", got.MentionedPlatformIDs)
 	}
+	if len(got.Unresolvable) != 1 || got.Unresolvable[0].Effect != impact.Ambiguous {
+		t.Fatalf("a group-free condition still gates the audience, got %+v", got.Unresolvable)
+	}
+	if got.Unresolvable[0].Path != "activation_conditions" {
+		t.Fatalf("caveat path wrong: %q", got.Unresolvable[0].Path)
+	}
+	if got.Unresolvable[0].Values != 2 {
+		t.Fatalf("with no groups the caveat counts the non-empty expressions, got %d", got.Unresolvable[0].Values)
+	}
+}
+
+func TestBlueprintImpactScopeIgnoresBlankConditions(t *testing.T) {
+	// An expression that is empty or whitespace gates nothing and must not
+	// caveat the figure.
+	got := blueprintImpactScope(context.Background(), &BlueprintResourceModel{
+		DeviceGroups:         uuidSet(t, groupA),
+		ActivationConditions: types.StringValue("   "),
+		ComponentBlocks: []ComponentBlockModel{
+			{Name: types.StringValue("one"), ActivationConditions: types.StringValue("")},
+		},
+	})
 	if len(got.Unresolvable) != 0 {
-		t.Fatalf("a condition naming no group must not add a caveat, got %+v", got.Unresolvable)
+		t.Fatalf("a blank expression must not add a caveat, got %+v", got.Unresolvable)
 	}
 }
 

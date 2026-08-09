@@ -221,12 +221,11 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			},
 			"impact_alerts": schema.BoolAttribute{
 				Optional: true,
-				MarkdownDescription: "Show **impact alerts** during `terraform plan`: an advisory warning on each scopeable or deployable object whose scope is changing, reporting how many computers or mobile devices the change affects. " +
-					"Mirrors the impact alert Jamf Pro shows on Save, and reads the same group membership counts the admin UI does.\n\n" +
-					"Alerts are advisory only — they never block a plan, and a tenant that cannot be read simply produces one notice. Off by default, because enabling it reads group membership counts and device totals once per plan. " +
-					"Figures are a snapshot: group membership is re-evaluated continuously, so the number affected can change before or during apply.\n\n" +
-					"This does not change any Jamf Pro setting. To configure the impact alerts Jamf Pro shows in its own web interface, use `jamfplatform_pro_impact_alert_notification_settings`. " +
-					"Can also be set via the JAMFPLATFORM_IMPACT_ALERTS environment variable. See the [Impact alerts guide](../guides/impact-alerts) for how to read the figures and how to consume them in CI.",
+				MarkdownDescription: "Show **impact alerts** during `terraform plan`: an advisory warning on each deployable or scopeable object this plan changes, reporting how many computers or mobile devices the change affects — the same signal Jamf Pro shows on Save. " +
+					"Off by default; alerts never block a plan. " +
+					"Can also be set via the JAMFPLATFORM_IMPACT_ALERTS environment variable, which accepts the values of Go's `strconv.ParseBool` (`true`, `false`, `1`, `0`, …) — an unparseable value leaves alerts off and raises a configure-time warning, and this attribute, when set, always takes precedence over the variable. " +
+					"This does not change any Jamf Pro setting; to configure the alerts Jamf Pro shows in its own web interface, use `jamfplatform_pro_impact_alert_notification_settings`. " +
+					"See the [Impact alerts guide](../guides/impact-alerts) for how to read the figures, how to consume them in CI, and what they cost.",
 			},
 		},
 	}
@@ -337,7 +336,13 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	})
 
 	pd := providerdata.New(apiClient)
-	if impactAlertsEnabled(data.ImpactAlerts) {
+	impactEnabled, impactWarn := impactAlertsEnabled(data.ImpactAlerts)
+	if impactWarn != "" {
+		// Advisory by design: a typo in the env value must not fail the plan,
+		// but the operator has to be told why no alerts appeared.
+		resp.Diagnostics.AddWarning("Invalid JAMFPLATFORM_IMPACT_ALERTS", impactWarn)
+	}
+	if impactEnabled {
 		pd.EnableImpactAlerts()
 	}
 	resp.DataSourceData = pd
@@ -701,20 +706,29 @@ func getenv(key string) string {
 }
 
 // shouldEnableHTTPLogging checks TF_LOG to determine whether HTTP logging should be wired up.
-// impactAlertsEnabled resolves the impact_alerts setting, attribute taking
-// precedence over the environment variable. Unparseable env values are treated
-// as off rather than erroring: impact alerts are advisory, so a typo here must
-// not stop a plan that would otherwise succeed.
-func impactAlertsEnabled(attr types.Bool) bool {
+// impactAlertsEnabled resolves the impact_alerts setting, the attribute always
+// taking precedence over the environment variable (which is then not consulted
+// at all). An unparseable env value leaves the feature off and returns a warning
+// for Configure to surface: impact alerts are advisory, so a typo here must not
+// stop a plan that would otherwise succeed — but it must not silently do nothing
+// either. An empty value is treated as unset, matching the other env variables.
+func impactAlertsEnabled(attr types.Bool) (enabled bool, warning string) {
 	if !attr.IsNull() && !attr.IsUnknown() {
-		return attr.ValueBool()
+		return attr.ValueBool(), ""
 	}
 	v, ok := os.LookupEnv(envImpactAlerts)
-	if !ok {
-		return false
+	if !ok || strings.TrimSpace(v) == "" {
+		return false, ""
 	}
 	enabled, err := strconv.ParseBool(strings.TrimSpace(v))
-	return err == nil && enabled
+	if err != nil {
+		return false, fmt.Sprintf(
+			"%s is set to %q, which is not a valid boolean, so impact alerts stay off. "+
+				"Accepted values are those of Go's strconv.ParseBool: 1, t, T, TRUE, true, True, 0, f, F, FALSE, false, False. "+
+				"The impact_alerts provider attribute, when set, takes precedence over this variable.",
+			envImpactAlerts, v)
+	}
+	return enabled, ""
 }
 
 func shouldEnableHTTPLogging() bool {

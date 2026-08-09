@@ -269,3 +269,57 @@ func TestImpactScopePendingGroupReference(t *testing.T) {
 		t.Fatalf("a group created by this plan must be recorded as pending, got %v", got.PendingPaths)
 	}
 }
+
+func TestBuildImpactScopeDualEstateAllFlagsAreEstateAware(t *testing.T) {
+	// An ebook's all_computers is tenant-wide for the computer estate only.
+	// Folding it into the single All flag would let the resolver claim the whole
+	// combined estate even when the mobile side is scoped to one small group.
+	in := ImpactInputs{
+		DeviceType:  impact.DeviceTypeAny,
+		DeviceAttr:  "computer_ids",
+		GroupAttr:   "computer_group_ids",
+		GroupEstate: impact.DeviceTypeComputer,
+		All:         types.BoolValue(true),
+		SecondaryDevices: &SecondaryEstate{
+			DeviceType: impact.DeviceTypeMobile,
+			DeviceAttr: "mobile_device_ids",
+			GroupAttr:  "mobile_device_group_ids",
+			All:        types.BoolNull(),
+			GroupIDs:   idSet(t, "66"),
+		},
+	}
+	got := BuildImpactScope(context.Background(), in)
+	if got.All {
+		t.Fatal("a dual-estate scope must not fold its all-flags into the single All")
+	}
+	if len(got.AllEstates) != 1 || got.AllEstates[0] != impact.DeviceTypeComputer {
+		t.Fatalf("all_computers must be tenant-wide for the computer estate only, got %v", got.AllEstates)
+	}
+	if len(got.ProGroups) != 1 || got.ProGroups[0].DeviceType != impact.DeviceTypeMobile || got.ProGroups[0].ID != "66" {
+		t.Fatalf("the mobile group must still be carried for counting: %v", got.ProGroups)
+	}
+}
+
+func TestBuildImpactScopeDualEstateSecondaryAllFlag(t *testing.T) {
+	in := ImpactInputs{
+		DeviceType:  impact.DeviceTypeAny,
+		DeviceAttr:  "computer_ids",
+		GroupAttr:   "computer_group_ids",
+		GroupEstate: impact.DeviceTypeComputer,
+		All:         types.BoolNull(),
+		GroupIDs:    idSet(t, "12"),
+		SecondaryDevices: &SecondaryEstate{
+			DeviceType: impact.DeviceTypeMobile,
+			DeviceAttr: "mobile_device_ids",
+			GroupAttr:  "mobile_device_group_ids",
+			All:        types.BoolValue(true),
+		},
+	}
+	got := BuildImpactScope(context.Background(), in)
+	if len(got.AllEstates) != 1 || got.AllEstates[0] != impact.DeviceTypeMobile {
+		t.Fatalf("all_mobile_devices must be tenant-wide for the mobile estate only, got %v", got.AllEstates)
+	}
+	if len(got.ProGroups) != 1 || got.ProGroups[0].DeviceType != impact.DeviceTypeComputer {
+		t.Fatalf("the computer group must still be carried for counting: %v", got.ProGroups)
+	}
+}

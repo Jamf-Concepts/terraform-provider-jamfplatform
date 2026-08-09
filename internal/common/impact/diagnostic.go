@@ -18,12 +18,18 @@ const snapshotNote = "Group membership is a snapshot taken during this plan and 
 // remainder is summarised, so a scope naming dozens of groups stays readable.
 const maxListedGroups = 5
 
-// figure renders a count with the qualifier its bound earns.
+// figure renders a count with the qualifier its bound earns, choosing the
+// singular noun at exactly one so a delta of a single device never reads
+// "1 computers".
 //
 // The qualifier is not a hedge for its own sake: Jamf Pro's scope model narrows
 // as well as broadens, so the direction of the uncertainty is known even when
 // the exact number is not.
-func figure(n int64, b Bound, noun string) string {
+func figure(n int64, b Bound, one, many string) string {
+	noun := many
+	if n == 1 {
+		noun = one
+	}
 	switch b {
 	case BoundAtMost:
 		return fmt.Sprintf("up to %d %s", n, noun)
@@ -86,13 +92,17 @@ func summarise(r Resolution) string {
 	if len(r.PerEstate) > 0 {
 		return qualifier(r.Bound) + splitEstates(r)
 	}
-	noun := r.DeviceType.Noun()
-	head := figure(r.Count, r.Bound, noun)
+	many := r.DeviceType.Noun()
+	noun := many
+	if r.Count == 1 {
+		noun = singularNoun(r.DeviceType)
+	}
+	head := figure(r.Count, r.Bound, singularNoun(r.DeviceType), many)
 	// A proportion of the managed estate makes no sense once the figure exceeds it:
 	// "2 of 1 mobile devices (200%)" reads as a defect rather than as the fact that
 	// some named devices are unmanaged.
 	if r.Total > 0 && !r.exceedsManaged {
-		head = strings.Replace(head, " "+noun, fmt.Sprintf(" of %d %s", r.Total, noun), 1)
+		head = strings.Replace(head, " "+noun, fmt.Sprintf(" of %d %s", r.Total, many), 1)
 		if pct, ok := r.Percent(); ok {
 			head += fmt.Sprintf(" (%d%%)", pct)
 		}
@@ -129,8 +139,8 @@ func excludedLine(r Resolution) string {
 // from rather than having to trust it.
 func breakdown(r Resolution) []string {
 	var lines []string
-	if r.tenantWide {
-		lines = append(lines, fmt.Sprintf("every managed %s (%d)", singularNoun(r.DeviceType), r.Total))
+	for _, dt := range r.tenantWide {
+		lines = append(lines, fmt.Sprintf("every managed %s (%d)", singularNoun(dt), r.totals.For(dt)))
 	}
 	if len(r.Groups) > 0 {
 		lines = append(lines, fmt.Sprintf("%s: %s", plural(len(r.Groups), "group", "groups"), namedGroups(r.Groups)))

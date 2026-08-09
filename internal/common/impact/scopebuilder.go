@@ -57,10 +57,21 @@ func NewScopeBuilder(ctx context.Context, dt DeviceType) *ScopeBuilder {
 // Scope returns the assembled scope.
 func (b *ScopeBuilder) Scope() Scope { return b.scope }
 
-// All records the tenant-wide target flag.
+// All records the tenant-wide target flag of a scope fixed to one estate.
 func (b *ScopeBuilder) All(v types.Bool) *ScopeBuilder {
 	if !v.IsNull() && !v.IsUnknown() && v.ValueBool() {
 		b.scope.All = true
+	}
+	return b
+}
+
+// AllForEstate records a tenant-wide target flag for one estate, for a scope
+// that can span both estates at once. An ebook's all_computers is tenant-wide
+// for the computer estate only, and recording it as a bare All would let one
+// estate's flag claim the combined estate.
+func (b *ScopeBuilder) AllForEstate(dt DeviceType, v types.Bool) *ScopeBuilder {
+	if !v.IsNull() && !v.IsUnknown() && v.ValueBool() {
+		b.scope.AllEstates = append(b.scope.AllEstates, dt)
 	}
 	return b
 }

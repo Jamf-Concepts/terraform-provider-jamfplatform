@@ -102,8 +102,12 @@ func (d *Data) EnableImpactAlerts() {
 
 // ImpactCache returns the shared impact cache, or nil when impact alerts are
 // off. Resources pass the result straight into impact.Report, which treats nil
-// as disabled.
+// as disabled. Nil-receiver-safe: impact reporting is advisory, so a resource
+// whose Configure never ran must degrade to disabled, not panic mid-plan.
 func (d *Data) ImpactCache() *impact.Cache {
+	if d == nil {
+		return nil
+	}
 	return d.impactCache
 }
 

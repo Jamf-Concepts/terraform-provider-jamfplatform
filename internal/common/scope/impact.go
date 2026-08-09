@@ -124,13 +124,20 @@ func BuildImpactScope(ctx context.Context, in ImpactInputs) impact.Scope {
 		groupEstate = in.DeviceType
 	}
 
-	// Targets — counted.
-	b.All(in.All).
-		Devices(sectionTargets+"."+in.DeviceAttr, in.DeviceIDs).
+	// Targets — counted. A single-estate scope records its all-flag as All; a
+	// dual-estate scope records which estate each all-flag covers, so
+	// all_computers alongside a mobile side scoped to one group never claims
+	// the whole combined estate.
+	if in.DeviceType == impact.DeviceTypeAny {
+		b.AllForEstate(groupEstate, in.All)
+	} else {
+		b.All(in.All)
+	}
+	b.Devices(sectionTargets+"."+in.DeviceAttr, in.DeviceIDs).
 		ProGroups(sectionTargets+"."+in.GroupAttr, groupEstate, in.GroupIDs)
 
 	if sec := in.SecondaryDevices; sec != nil {
-		b.All(sec.All).
+		b.AllForEstate(sec.DeviceType, sec.All).
 			Devices(sectionTargets+"."+sec.DeviceAttr, sec.DeviceIDs).
 			ProGroups(sectionTargets+"."+sec.GroupAttr, sec.DeviceType, sec.GroupIDs)
 	}

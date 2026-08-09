@@ -83,7 +83,13 @@ func Report(ctx context.Context, req Request) diag.Diagnostics {
 		subject = req.Prior
 	}
 	if subject.Empty() {
-		return diags
+		if !emptiedUpdate(req) {
+			return diags
+		}
+		// An update that removes the entire scope still stops every device the
+		// prior scope reached from receiving the object, so the alert reports
+		// the prior audience and says that it stops.
+		subject = req.Prior
 	}
 	if req.Action == ActionUpdate && !req.Changed {
 		// Jamf Pro alerts on save, not on view — so an object this plan does not
@@ -117,17 +123,27 @@ func Report(ctx context.Context, req Request) diag.Diagnostics {
 	return diags
 }
 
+// emptiedUpdate reports an update whose plan removes the entire scope. The
+// planned side has nothing to count, but every device the prior scope reached
+// stops receiving the object — the one case where the alert's figure comes
+// from the prior scope of an update.
+func emptiedUpdate(req Request) bool {
+	return req.Action == ActionUpdate && req.Planned.Empty() && !req.Prior.Empty()
+}
+
 // headline renders the one-line summary Terraform shows above the detail.
 func headline(req Request, res Resolution) string {
 	if !res.Determinable {
 		return fmt.Sprintf("Impact alert — affected %s cannot be determined during plan", res.DeviceType.Noun())
 	}
 	f := summarise(res)
-	switch req.Action {
-	case ActionCreate:
+	switch {
+	case req.Action == ActionCreate:
 		return fmt.Sprintf("Impact alert — this %s will be scoped to %s", req.Label, f)
-	case ActionDelete:
+	case req.Action == ActionDelete:
 		return fmt.Sprintf("Impact alert — removing this %s affects %s", req.Label, f)
+	case emptiedUpdate(req):
+		return fmt.Sprintf("Impact alert — this %s will stop reaching %s", req.Label, f)
 	default:
 		return fmt.Sprintf("Impact alert — this %s affects %s", req.Label, f)
 	}
@@ -142,7 +158,7 @@ func detail(ctx context.Context, req Request, res Resolution) string {
 	case Scopeable:
 		fmt.Fprintf(&b, "Changing this %s changes what every object scoped to it applies to.\n\n", req.Label)
 	default:
-		if req.Action == ActionDelete {
+		if req.Action == ActionDelete || emptiedUpdate(req) {
 			fmt.Fprintf(&b, "These %s will stop receiving this %s.\n\n", res.DeviceType.Noun(), req.Label)
 		}
 	}
@@ -155,12 +171,12 @@ func detail(ctx context.Context, req Request, res Resolution) string {
 	}
 
 	if req.Action == ActionUpdate {
-		if d := deltaLine(ctx, req); d != "" {
-			b.WriteString(d + "\n")
-		} else if req.Prior.equal(req.Planned) {
+		if req.Prior.equal(req.Planned) {
 			// Says why the alert is here at all when the audience has not moved.
 			fmt.Fprintf(&b, "The scope is unchanged; these %s will receive the updated %s.\n",
 				res.DeviceType.Noun(), req.Label)
+		} else if d := deltaLine(ctx, req); d != "" {
+			b.WriteString(d + "\n")
 		}
 	}
 
@@ -176,20 +192,52 @@ func detail(ctx context.Context, req Request, res Resolution) string {
 // Pro's own alert leads with, and the one a plan is uniquely able to produce
 // because it holds the prior and intended scope together.
 //
+// When both sides resolve to complete member sets the delta is their set
+// difference, so a group whose members are already in scope through another
+// group adds nothing, and a lifted exclusion counts only the members actually
+// re-entering scope. Otherwise the diff falls back to comparing which
+// references changed, and those figures are qualified as bounds — a
+// reference-level count cannot see overlap, so it can only cap the movement.
+//
 // A failure here is silently dropped: the headline figure has already been
 // resolved successfully, so a partial delta is not worth surfacing an error for.
 func deltaLine(ctx context.Context, req Request) string {
-	added, removed := Delta(req.Prior, req.Planned)
+	dt := req.Planned.DeviceType
+	if req.Planned.Empty() {
+		dt = req.Prior.DeviceType
+	}
+	one, many := singularNoun(dt), dt.Noun()
 
+	priorMembers, priorOK := resolvedMembers(ctx, req.Cache, req.Prior)
+	plannedMembers, plannedOK := resolvedMembers(ctx, req.Cache, req.Planned)
+	if priorOK && plannedOK {
+		var parts []string
+		if n := countMissing(plannedMembers, priorMembers); n > 0 {
+			parts = append(parts, "adding "+figure(n, BoundExact, one, many))
+		}
+		if n := countMissing(priorMembers, plannedMembers); n > 0 {
+			parts = append(parts, "removing "+figure(n, BoundExact, one, many))
+		}
+		if len(parts) == 0 {
+			// The references changed but the audience did not — dropping a group
+			// whose members all remain in scope through another one, for instance.
+			return "This change moves no " + many + " in or out of scope."
+		}
+		return "This change is " + strings.Join(parts, " and ") + "."
+	}
+
+	added, removed := Delta(req.Prior, req.Planned)
 	var parts []string
 	if !added.Empty() {
 		if r, err := Resolve(ctx, req.Cache, added); err == nil && r.Determinable && r.Count > 0 {
-			parts = append(parts, "adding "+figure(r.Count, r.Bound, r.DeviceType.Noun()))
+			// The added references may name devices already in scope, so the figure
+			// caps the movement rather than stating it.
+			parts = append(parts, "adding "+figure(r.Count, r.Bound.with(Narrows), one, many))
 		}
 	}
 	if !removed.Empty() {
 		if r, err := Resolve(ctx, req.Cache, removed); err == nil && r.Determinable && r.Count > 0 {
-			parts = append(parts, "removing "+figure(r.Count, r.Bound, r.DeviceType.Noun()))
+			parts = append(parts, "removing "+figure(r.Count, r.Bound.with(Narrows), one, many))
 		}
 	}
 	if len(parts) == 0 {
@@ -198,16 +246,49 @@ func deltaLine(ctx context.Context, req Request) string {
 	return "This change is " + strings.Join(parts, " and ") + "."
 }
 
+// resolvedMembers resolves one side of an update to its complete member set.
+// ok is false when the side has no complete set — membership unreadable, a
+// tenant-wide estate, a pending reference, or any input the arithmetic could
+// not count — in which case the delta falls back to comparing references. An
+// empty scope has an empty member set by definition: the side of an update
+// that adds or removes the entire scope.
+func resolvedMembers(ctx context.Context, c *Cache, s Scope) (map[string]DeviceType, bool) {
+	if s.Empty() {
+		return nil, true
+	}
+	r, err := Resolve(ctx, c, s)
+	if err != nil || !r.Determinable || r.members == nil || r.Bound != BoundExact {
+		return nil, false
+	}
+	return r.members, true
+}
+
+// countMissing counts the members of a that are absent from b.
+func countMissing(a, b map[string]DeviceType) int64 {
+	var n int64
+	for id := range a {
+		if _, ok := b[id]; !ok {
+			n++
+		}
+	}
+	return n
+}
+
 // equal reports whether two scopes name the same things, so an unchanged scope
 // can be skipped.
 func (s Scope) equal(o Scope) bool {
-	if s.All != o.All || s.DeviceType != o.DeviceType {
+	if s.All != o.All || s.DeviceType != o.DeviceType || !sameEstates(s.AllEstates, o.AllEstates) {
 		return false
 	}
 	if !sameStrings(s.DeviceIDs, o.DeviceIDs) ||
+		!sameStrings(s.BuildingIDs, o.BuildingIDs) ||
+		!sameStrings(s.DepartmentIDs, o.DepartmentIDs) ||
 		!sameRefs(s.ProGroups, o.ProGroups) ||
 		!sameStrings(s.PlatformGroupIDs, o.PlatformGroupIDs) ||
+		!sameStrings(s.MentionedPlatformIDs, o.MentionedPlatformIDs) ||
 		!sameStrings(s.ExcludedDeviceIDs, o.ExcludedDeviceIDs) ||
+		!sameStrings(s.ExcludedBuildingIDs, o.ExcludedBuildingIDs) ||
+		!sameStrings(s.ExcludedDepartmentIDs, o.ExcludedDepartmentIDs) ||
 		!sameRefs(s.ExcludedProGroups, o.ExcludedProGroups) ||
 		!sameStrings(s.ExcludedPlatformGroupIDs, o.ExcludedPlatformGroupIDs) ||
 		!sameStrings(s.PendingPaths, o.PendingPaths) {
@@ -227,6 +308,19 @@ func unresolvableKeys(us []Unresolvable) []string {
 		out = append(out, fmt.Sprintf("%s=%d", u.Path, u.Values))
 	}
 	return out
+}
+
+// sameEstates compares two tenant-wide estate lists as sets.
+func sameEstates(a, b []DeviceType) bool {
+	x := make([]string, 0, len(a))
+	y := make([]string, 0, len(b))
+	for _, v := range a {
+		x = append(x, string(v))
+	}
+	for _, v := range b {
+		y = append(y, string(v))
+	}
+	return sameStrings(x, y)
 }
 
 // sameRefs compares two group-reference slices as sets.

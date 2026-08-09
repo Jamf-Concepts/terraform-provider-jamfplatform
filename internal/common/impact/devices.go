@@ -6,6 +6,7 @@ package impact
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -88,40 +89,76 @@ func deviceFilter(dt DeviceType, kind deviceFilterKind, values []string) (string
 	return strings.Join(terms, " or "), true
 }
 
+// deviceFilterChunk caps how many identifiers one inventory filter names.
+// Filters travel in the request URL, and a scope can name hundreds of devices;
+// past roughly 8KB the server rejects the URL outright, so lookups are chunked
+// well below that and the results unioned.
+const deviceFilterChunk = 50
+
 // deviceIDsFor resolves one scope category into device management identifiers,
 // reporting ok=false when the category cannot be resolved for this estate — in
-// which case the caller keeps its existing unresolved treatment.
-func (c *Cache) deviceIDsFor(ctx context.Context, dt DeviceType, kind deviceFilterKind, ids []string) ([]string, bool, error) {
-	values, resolvable, err := c.filterValues(ctx, dt, kind, ids)
+// which case the caller keeps its existing unresolved treatment. dropped counts
+// the identifiers that could not be translated into filter values: their devices
+// are absent from the result, so the caller must caveat them rather than present
+// the figure as covering the whole category.
+//
+// Lookups are issued in chunks of deviceFilterChunk identifiers. Each chunk is
+// memoised by its own filter, so the same identifier set always chunks the same
+// way and is still read once per plan however many resources name it.
+func (c *Cache) deviceIDsFor(ctx context.Context, dt DeviceType, kind deviceFilterKind, ids []string) (out []string, dropped int, ok bool, err error) {
+	values, dropped, resolvable, err := c.filterValues(ctx, dt, kind, ids)
 	if err != nil || !resolvable {
-		return nil, false, err
+		return nil, 0, false, err
 	}
-	filter, supported := deviceFilter(dt, kind, values)
-	if !supported {
-		return nil, false, nil
+	if len(values) == 0 {
+		return nil, 0, false, nil
 	}
-	out, err := c.devicesByFilter(ctx, dt, filter)
-	if err != nil {
-		return nil, false, err
+	// Sorted on a copy before chunking, so the same identifier set always
+	// produces the same chunks and the caller's slice is left alone.
+	sorted := append([]string(nil), values...)
+	sort.Strings(sorted)
+
+	seen := make(map[string]struct{})
+	for chunk := range slices.Chunk(sorted, deviceFilterChunk) {
+		filter, supported := deviceFilter(dt, kind, chunk)
+		if !supported {
+			return nil, 0, false, nil
+		}
+		found, err := c.devicesByFilter(ctx, dt, filter)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		// Unioned rather than appended: a device can match more than one chunk
+		// only if the same identifier was named twice, but membership sets must
+		// not carry duplicates either way.
+		for _, id := range found {
+			if _, dup := seen[id]; dup {
+				continue
+			}
+			seen[id] = struct{}{}
+			out = append(out, id)
+		}
 	}
-	return out, true, nil
+	return out, dropped, true, nil
 }
 
 // filterValues converts a scope category's identifiers into the values its filter
-// field expects. Only the mobile building and department fields need translating,
-// because they match on name.
+// field expects, reporting how many identifiers could not be translated. Only the
+// mobile building and department fields need translating, because they match on
+// name.
 //
-// An identifier with no matching name is dropped rather than guessed at, and if
-// that leaves nothing the category reports as unresolvable — better an honest
-// caveat than a filter that silently matches everything or nothing.
-func (c *Cache) filterValues(ctx context.Context, dt DeviceType, kind deviceFilterKind, ids []string) ([]string, bool, error) {
+// An identifier with no matching name is dropped rather than guessed at — better
+// an honest caveat than a filter that silently matches everything or nothing. A
+// partial translation still resolves, with the shortfall in dropped; only when
+// every identifier drops does the whole category report as unresolvable.
+func (c *Cache) filterValues(ctx context.Context, dt DeviceType, kind deviceFilterKind, ids []string) (values []string, dropped int, ok bool, err error) {
 	if dt != DeviceTypeMobile || (kind != filterKindBuilding && kind != filterKindDepartment) {
-		return ids, true, nil
+		return ids, 0, true, nil
 	}
 	places, err := c.placeNames(ctx)
 	if err != nil {
 		// Names unavailable, so the category keeps its unresolved treatment.
-		return nil, false, nil
+		return nil, 0, false, nil
 	}
 	lookup := places.Buildings
 	if kind == filterKindDepartment {
@@ -134,9 +171,9 @@ func (c *Cache) filterValues(ctx context.Context, dt DeviceType, kind deviceFilt
 		}
 	}
 	if len(names) == 0 {
-		return nil, false, nil
+		return nil, 0, false, nil
 	}
-	return names, true, nil
+	return names, len(ids) - len(names), true, nil
 }
 
 // placeNames reads the building and department names once per plan.
