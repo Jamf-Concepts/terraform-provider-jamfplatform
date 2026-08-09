@@ -5,6 +5,7 @@ package impact
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -70,6 +71,12 @@ type Scope struct {
 	All bool
 	// DeviceIDs are individually scoped devices (computer_ids / mobile_device_ids).
 	DeviceIDs []string
+	// BuildingIDs and DepartmentIDs are the buildings and departments the scope
+	// targets. Carried as data so the devices assigned to them can be resolved and
+	// unioned exactly; when an estate cannot resolve them they fall back to being
+	// reported as broadening.
+	BuildingIDs   []string
+	DepartmentIDs []string
 	// ProGroups are groups referenced by numeric Jamf Pro id. The estate is part of
 	// the reference because numeric group ids repeat across the computer and mobile
 	// device estates, so an id alone does not identify a group. Carrying it per
@@ -91,11 +98,12 @@ type Scope struct {
 	// fall back to being reported as narrowing.
 	ExcludedProGroups        []ProGroupRef
 	ExcludedPlatformGroupIDs []string
-	// ExcludedDeviceIDs are individually excluded devices. These are Jamf Pro
-	// numeric identifiers, whereas group membership is expressed in device
-	// management identifiers, so they cannot be subtracted from a membership set
-	// and remain a narrowing caveat.
-	ExcludedDeviceIDs []string
+	// ExcludedDeviceIDs, ExcludedBuildingIDs and ExcludedDepartmentIDs are the
+	// device-naming exclusion categories, carried as data for the same reason as
+	// their target counterparts.
+	ExcludedDeviceIDs     []string
+	ExcludedBuildingIDs   []string
+	ExcludedDepartmentIDs []string
 
 	// Unresolvable holds inputs that cannot be evaluated during a plan.
 	Unresolvable []Unresolvable
@@ -116,9 +124,19 @@ func (s Scope) Empty() bool {
 		len(s.MentionedPlatformIDs) == 0 &&
 		len(s.ExcludedProGroups) == 0 &&
 		len(s.ExcludedPlatformGroupIDs) == 0 &&
+		len(s.BuildingIDs) == 0 &&
+		len(s.DepartmentIDs) == 0 &&
 		len(s.ExcludedDeviceIDs) == 0 &&
+		len(s.ExcludedBuildingIDs) == 0 &&
+		len(s.ExcludedDepartmentIDs) == 0 &&
 		len(s.Unresolvable) == 0 &&
 		len(s.PendingPaths) == 0
+}
+
+// namesDevicesDirectly reports whether the scope names devices other than through
+// group membership — individually, or by the building or department they are in.
+func (s Scope) namesDevicesDirectly() bool {
+	return len(s.DeviceIDs) > 0 || len(s.BuildingIDs) > 0 || len(s.DepartmentIDs) > 0
 }
 
 // Bound describes how a counted figure relates to the true device count.
@@ -189,6 +207,11 @@ type Resolution struct {
 	// totals carries both estates' sizes, so a split figure can give each side its
 	// own denominator.
 	totals Totals
+	// resolvedNamed counts the device-naming categories that resolved exactly, so
+	// the breakdown can mention them and the estate split can include their estate.
+	resolvedNamed int
+	// namedDescribed renders those categories for the breakdown.
+	namedDescribed []string
 	// DirectDevices is the number of individually scoped devices counted.
 	DirectDevices int
 	// MissingGroupIDs are referenced groups that are not present in the tenant.
@@ -291,13 +314,14 @@ func Resolve(ctx context.Context, c *Cache, s Scope) (Resolution, error) {
 	if exact, ok, err := res.countExactly(ctx, c, s, targets, excluded); err != nil {
 		return Resolution{}, err
 	} else if ok {
+		// Everything countable is already in the union, so nothing is added on top.
 		res.Count = exact
 		res.Exact = true
-		res.finishDirectDevices(s)
 		return res, nil
 	}
 
 	res.countApproximately(s, targets, excluded)
+	res.namedDeviceCaveats(s)
 	res.finishDirectDevices(s)
 	return res, nil
 }
@@ -373,9 +397,9 @@ func (r *Resolution) resolveGroups(ctx context.Context, c *Cache, s Scope, proRe
 // The estate each member came from is still tracked, so a scope spanning both can
 // be reported as a split rather than one merged figure.
 func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, targets, excluded []Group) (int64, bool, error) {
-	if !s.All && len(targets) == 0 {
-		// Nothing to union. Fall back so a device-only or caveat-only scope keeps
-		// its existing treatment.
+	if !s.All && len(targets) == 0 && !s.namesDevicesDirectly() {
+		// Nothing to union at all. Fall back so a caveat-only scope keeps its
+		// existing treatment.
 		return 0, false, nil
 	}
 
@@ -407,10 +431,19 @@ func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, target
 	if err != nil || !ok {
 		return 0, false, err
 	}
+	// Device-naming exclusions join the same set, so an excluded computer or an
+	// excluded building genuinely reduces the figure rather than being reported as
+	// an unquantified narrowing.
+	exclNamed, err := addNamedDevices(ctx, c, s.DeviceType, excludedMembers, Narrows,
+		"exclusions device ids", s.ExcludedDeviceIDs, s.ExcludedBuildingIDs, s.ExcludedDepartmentIDs)
+	if err != nil {
+		return 0, false, err
+	}
 
 	if s.All {
 		// Tenant-wide target: everything in the estate, less the exclusions.
 		count := max(r.Total-int64(len(excludedMembers)), 0)
+		r.commitNamed(exclNamed)
 		return count, true, nil
 	}
 
@@ -418,8 +451,24 @@ func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, target
 	if err != nil || !ok {
 		return 0, false, err
 	}
+	targetNamed, err := addNamedDevices(ctx, c, s.DeviceType, targetMembers, Broadens,
+		"targets device ids", s.DeviceIDs, s.BuildingIDs, s.DepartmentIDs)
+	if err != nil {
+		return 0, false, err
+	}
+	if len(targets) == 0 && targetNamed.resolved == 0 {
+		// Nothing was resolvable, so there is no exact figure to report — fall back
+		// rather than presenting a confident zero.
+		return 0, false, nil
+	}
+
 	var count int64
 	perEstate := estateKeys(targets)
+	if targetNamed.resolved > 0 {
+		// The estate is named by the device categories too, so it belongs in the
+		// split even when no group named it.
+		perEstate[s.DeviceType] += 0
+	}
 	for id, dt := range targetMembers {
 		if _, isExcluded := excludedMembers[id]; isExcluded {
 			continue
@@ -428,7 +477,87 @@ func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, target
 		perEstate[dt]++
 	}
 	r.setPerEstate(s, perEstate)
+	r.commitNamed(targetNamed)
+	r.commitNamed(exclNamed)
+	r.resolvedNamed = targetNamed.resolved
 	return count, true, nil
+}
+
+// commitNamed records an outcome's caveats onto the resolution, once the exact
+// strategy has committed to succeeding.
+func (r *Resolution) commitNamed(o namedOutcome) {
+	for _, u := range o.unresolved {
+		r.Unresolvable = append(r.Unresolvable, u)
+		r.Bound = r.Bound.with(u.Effect)
+	}
+	r.namedDescribed = append(r.namedDescribed, o.described...)
+}
+
+// namedCategory is one device-naming scope category awaiting resolution.
+type namedCategory struct {
+	kind deviceFilterKind
+	ids  []string
+	path string
+}
+
+// describe renders this category for the breakdown: how many were named, and how
+// many devices they turned out to hold.
+func (c namedCategory) describe(dt DeviceType, named, devices int) string {
+	switch c.kind {
+	case filterKindBuilding:
+		return fmt.Sprintf("%s (%d)", plural(named, "building", "buildings"), devices)
+	case filterKindDepartment:
+		return fmt.Sprintf("%s (%d)", plural(named, "department", "departments"), devices)
+	default:
+		return fmt.Sprintf("%s named individually", plural(named, singularNoun(dt), dt.Noun()))
+	}
+}
+
+// namedOutcome is what resolving the device-naming categories produced. It is
+// returned rather than written straight onto the resolution, because the exact
+// strategy may still abandon the attempt — and a caveat recorded by an abandoned
+// attempt would then be reported alongside the approximate figure that replaced it.
+type namedOutcome struct {
+	// unresolved holds the categories this estate cannot resolve.
+	unresolved []Unresolvable
+	// resolved counts the categories that did resolve.
+	resolved int
+	// described names what resolved, for the breakdown — otherwise a figure counting
+	// named computers or a building would have nothing explaining where it came from.
+	described []string
+}
+
+// addNamedDevices folds the device-naming scope categories — individual devices,
+// buildings, departments — into a membership set, having resolved them to the same
+// device management identifiers group membership uses.
+func addNamedDevices(ctx context.Context, c *Cache, dt DeviceType, into map[string]DeviceType, side Effect, deviceAttr string, deviceIDs, buildingIDs, departmentIDs []string) (namedOutcome, error) {
+	var out namedOutcome
+	categories := []namedCategory{
+		{filterKindDevice, deviceIDs, deviceAttr},
+		{filterKindBuilding, buildingIDs, "building_ids"},
+		{filterKindDepartment, departmentIDs, "department_ids"},
+	}
+	for _, cat := range categories {
+		if len(cat.ids) == 0 {
+			continue
+		}
+		ids, supported, err := c.deviceIDsFor(ctx, dt, cat.kind, cat.ids)
+		if err != nil {
+			return namedOutcome{}, err
+		}
+		if !supported {
+			out.unresolved = append(out.unresolved, Unresolvable{
+				Path: cat.path, Reason: ReasonNotCounted, Effect: side, Values: len(cat.ids),
+			})
+			continue
+		}
+		for _, id := range ids {
+			into[id] = dt
+		}
+		out.resolved += len(cat.ids)
+		out.described = append(out.described, cat.describe(dt, len(cat.ids), len(ids)))
+	}
+	return out, nil
 }
 
 // estateKeys seeds a per-estate tally with every estate the scope names, so an
@@ -514,9 +643,27 @@ func (r *Resolution) countApproximately(s Scope, targets, excluded []Group) {
 	}
 }
 
-// finishDirectDevices folds individually named devices into the figure. They are
-// added rather than unioned, because they are identified differently from group
-// membership, so a device that is also a group member is counted twice — hence
+// namedDeviceCaveats reports the device-naming categories as unresolved, used on
+// the approximate path where they could not be turned into membership.
+func (r *Resolution) namedDeviceCaveats(s Scope) {
+	report := func(path string, n int, e Effect, reason string) {
+		if n == 0 {
+			return
+		}
+		r.Unresolvable = append(r.Unresolvable, Unresolvable{
+			Path: path, Reason: reason, Effect: e, Values: n,
+		})
+		r.Bound = r.Bound.with(e)
+	}
+	report("targets.building_ids", len(s.BuildingIDs), Broadens, ReasonNotCounted)
+	report("targets.department_ids", len(s.DepartmentIDs), Broadens, ReasonNotCounted)
+	report("exclusions.building_ids", len(s.ExcludedBuildingIDs), Narrows, ReasonNotCounted)
+	report("exclusions.department_ids", len(s.ExcludedDepartmentIDs), Narrows, ReasonNotCounted)
+}
+
+// finishDirectDevices folds individually named devices into the figure on the
+// approximate path. They are added rather than unioned there, because without a
+// membership set a device that is also a group member is counted twice — hence
 // the upper bound whenever both are present.
 func (r *Resolution) finishDirectDevices(s Scope) {
 	if n := len(s.DeviceIDs); n > 0 {

@@ -141,6 +141,47 @@ func (b *ScopeBuilder) ExcludedDevices(attrPath string, set types.Set) *ScopeBui
 	return b
 }
 
+// Buildings records the buildings the scope targets, as data so the devices
+// assigned to them can be resolved and unioned exactly where the estate allows it.
+func (b *ScopeBuilder) Buildings(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.BuildingIDs = append(b.scope.BuildingIDs, ids...)
+	return b
+}
+
+// Departments records the departments the scope targets.
+func (b *ScopeBuilder) Departments(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.DepartmentIDs = append(b.scope.DepartmentIDs, ids...)
+	return b
+}
+
+// ExcludedBuildings records excluded buildings.
+func (b *ScopeBuilder) ExcludedBuildings(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedBuildingIDs = append(b.scope.ExcludedBuildingIDs, ids...)
+	return b
+}
+
+// ExcludedDepartments records excluded departments.
+func (b *ScopeBuilder) ExcludedDepartments(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedDepartmentIDs = append(b.scope.ExcludedDepartmentIDs, ids...)
+	return b
+}
+
 // Pending records an attribute path whose value this plan creates.
 func (b *ScopeBuilder) Pending(attrPath string) *ScopeBuilder {
 	b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)

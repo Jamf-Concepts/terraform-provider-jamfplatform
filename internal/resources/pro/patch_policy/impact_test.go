@@ -63,8 +63,13 @@ func TestPatchPolicyImpactScopeClassifiesItsLimitedScope(t *testing.T) {
 	if eff["exclusions.ibeacon_ids"] != impact.Narrows {
 		t.Fatalf("an iBeacon exclusion narrows, got %v", eff["exclusions.ibeacon_ids"])
 	}
-	if eff["targets.building_ids"] != impact.Broadens {
-		t.Fatalf("a building target broadens, got %v", eff["targets.building_ids"])
+	// Buildings are carried as data, so they resolve to real devices rather than
+	// being reported as an unquantified caveat.
+	if len(got.BuildingIDs) != 1 || got.BuildingIDs[0] != "321" {
+		t.Fatalf("buildings must be carried as data: %v", got.BuildingIDs)
+	}
+	if _, reported := eff["targets.building_ids"]; reported {
+		t.Fatalf("a building carried as data must not also be a caveat: %+v", got.Unresolvable)
 	}
 	// A patch policy has no user-based categories at all, so none may be reported.
 	for p := range eff {

@@ -109,6 +109,11 @@ type Source interface {
 	// its Platform identifier. Read per group, only for groups a changing scope
 	// actually names.
 	Members(ctx context.Context, platformID string) ([]string, error)
+	// ComputerManagementIDs returns the management identifiers of the computers
+	// matching an inventory filter. Used to turn the Jamf Pro numeric identifiers a
+	// scope block carries — individual computers, buildings, departments — into the
+	// identifier space group membership uses.
+	ComputerManagementIDs(ctx context.Context, filter string) ([]string, error)
 }
 
 // Cache holds the tenant group list and device totals for the lifetime of one
@@ -145,6 +150,11 @@ type Cache struct {
 	// scope names — not for every group in the tenant.
 	memberMu sync.Mutex
 	members  map[string]*memberSet
+
+	// deviceMu guards the per-filter device lookups, cached by filter so two
+	// resources naming the same building read it once.
+	deviceMu sync.Mutex
+	devices  map[string]*memberSet
 
 	// noticeMu guards the one-shot latch for the "impact unavailable" notice, so
 	// a tenant that cannot be read produces one notice for the plan rather than
@@ -315,6 +325,23 @@ func (s tenantSource) Members(ctx context.Context, platformID string) ([]string,
 		return nil, fmt.Errorf("reading membership of group %s: %w", platformID, err)
 	}
 	return ids, nil
+}
+
+// ComputerManagementIDs reads the management identifiers of the computers an
+// inventory filter matches. Only the general section is requested, since the
+// management identifier is the single field needed.
+func (s tenantSource) ComputerManagementIDs(ctx context.Context, filter string) ([]string, error) {
+	rows, err := s.pro.ListComputersInventoryV4(ctx, []string{"GENERAL"}, nil, filter)
+	if err != nil {
+		return nil, fmt.Errorf("reading computers matching the scope: %w", err)
+	}
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if r.General != nil && r.General.ManagementID != "" {
+			out = append(out, r.General.ManagementID)
+		}
+	}
+	return out, nil
 }
 
 func (s tenantSource) Groups(ctx context.Context) ([]Group, error) {

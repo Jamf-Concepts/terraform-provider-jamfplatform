@@ -129,7 +129,10 @@ func breakdown(r Resolution) []string {
 	if len(r.Groups) > 0 {
 		lines = append(lines, fmt.Sprintf("%s: %s", plural(len(r.Groups), "group", "groups"), namedGroups(r.Groups)))
 	}
+	lines = append(lines, r.namedDescribed...)
 	if r.DirectDevices > 0 {
+		// The approximate path adds named devices on rather than resolving them, so it
+		// reports them separately from the resolved categories above.
 		lines = append(lines, fmt.Sprintf("%s scoped individually",
 			plural(r.DirectDevices, singularNoun(r.DeviceType), r.DeviceType.Noun())))
 	}

@@ -116,10 +116,15 @@ func TestComputerImpactScopeCountsTargetsAndClassifiesTheRest(t *testing.T) {
 		}
 	}
 
+	// Buildings and departments are passed through as data now, so they resolve to
+	// real devices rather than being reported as an unquantified caveat.
+	if len(got.BuildingIDs) != 1 || got.BuildingIDs[0] != "321" {
+		t.Fatalf("buildings must be carried as data: %v", got.BuildingIDs)
+	}
+
 	// Target-side inputs the calculation cannot enumerate can only add devices.
 	for _, p := range []string{
 		"targets.all_jss_users",
-		"targets.building_ids",
 		"targets.user_group_ids",
 	} {
 		e, ok := eff[p]
@@ -132,7 +137,7 @@ func TestComputerImpactScopeCountsTargetsAndClassifiesTheRest(t *testing.T) {
 	}
 
 	// Absent collections must not be reported at all.
-	for _, p := range []string{"targets.department_ids", "targets.user_ids", "exclusions.building_ids"} {
+	for _, p := range []string{"targets.user_ids", "exclusions.user_ids"} {
 		if _, ok := eff[p]; ok {
 			t.Fatalf("%s was absent and must not be reported", p)
 		}

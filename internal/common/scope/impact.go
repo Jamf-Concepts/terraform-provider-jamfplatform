@@ -135,10 +135,17 @@ func BuildImpactScope(ctx context.Context, in ImpactInputs) impact.Scope {
 			ProGroups(sectionTargets+"."+sec.GroupAttr, sec.DeviceType, sec.GroupIDs)
 	}
 
+	// Buildings and departments are passed through as data. For computers they
+	// resolve to the devices assigned to them and join the union exactly; for the
+	// mobile estate they fall back to being reported as broadening, because a mobile
+	// inventory filters buildings by name while a scope block carries ids.
+	b.Buildings(sectionTargets+".building_ids", in.BuildingIDs).
+		Departments(sectionTargets+".department_ids", in.DepartmentIDs).
+		ExcludedBuildings(sectionExclusions+".building_ids", in.ExcludeBuildingIDs).
+		ExcludedDepartments(sectionExclusions+".department_ids", in.ExcludeDepartmentIDs)
+
 	// Targets — cannot be enumerated, and can only add devices.
 	b.BroadensIf(sectionTargets+".all_jss_users", in.AllJssUsers, impact.ReasonUserTarget).
-		Broadens(sectionTargets+".building_ids", in.BuildingIDs, impact.ReasonNotCounted).
-		Broadens(sectionTargets+".department_ids", in.DepartmentIDs, impact.ReasonNotCounted).
 		Broadens(sectionTargets+".user_ids", in.UserIDs, impact.ReasonUserTarget).
 		Broadens(sectionTargets+".user_group_ids", in.UserGroupIDs, impact.ReasonUserTarget).
 		Broadens(sectionTargets+".class_ids", in.ClassIDs, impact.ReasonClassTarget)
@@ -158,9 +165,7 @@ func BuildImpactScope(ctx context.Context, in ImpactInputs) impact.Scope {
 			ExcludedProGroups(sectionExclusions+"."+sec.GroupAttr, sec.DeviceType, sec.GroupIDs)
 	}
 
-	b.Narrows(sectionExclusions+".building_ids", in.ExcludeBuildingIDs, impact.ReasonNotCounted).
-		Narrows(sectionExclusions+".department_ids", in.ExcludeDepartmentIDs, impact.ReasonNotCounted).
-		Narrows(sectionExclusions+".user_ids", in.ExcludeUserIDs, impact.ReasonUserTarget).
+	b.Narrows(sectionExclusions+".user_ids", in.ExcludeUserIDs, impact.ReasonUserTarget).
 		Narrows(sectionExclusions+".user_group_ids", in.ExcludeUserGroupIDs, impact.ReasonUserTarget).
 		Narrows(sectionExclusions+".network_segment_ids", in.ExcludeNetworkSegmentIDs, impact.ReasonNetworkSegment).
 		Narrows(sectionExclusions+".ibeacon_ids", in.ExcludeIbeaconIDs, impact.ReasonIbeacon).

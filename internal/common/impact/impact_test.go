@@ -28,10 +28,15 @@ type stubSource struct {
 	members map[string][]string
 	// memberErr forces every membership read to fail.
 	memberErr error
+	// computersByFilter maps an inventory filter to the management ids it matches.
+	computersByFilter map[string][]string
+	// filterErr forces every inventory read to fail.
+	filterErr error
 
 	mu          sync.Mutex
 	calls       int
 	memberCalls map[string]int
+	filterCalls map[string]int
 }
 
 func (s *stubSource) Members(_ context.Context, platformID string) ([]string, error) {
@@ -49,6 +54,28 @@ func (s *stubSource) Members(_ context.Context, platformID string) ([]string, er
 		return nil, errors.New("membership unavailable")
 	}
 	return ids, nil
+}
+
+// computersByFilter maps an inventory filter to the management ids it matches.
+// A filter absent from this map resolves to no devices, which is what a real
+// tenant returns for a building nobody is assigned to.
+func (s *stubSource) ComputerManagementIDs(_ context.Context, filter string) ([]string, error) {
+	s.mu.Lock()
+	if s.filterCalls == nil {
+		s.filterCalls = map[string]int{}
+	}
+	s.filterCalls[filter]++
+	s.mu.Unlock()
+	if s.filterErr != nil {
+		return nil, s.filterErr
+	}
+	return s.computersByFilter[filter], nil
+}
+
+func (s *stubSource) filterCallCount(filter string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.filterCalls[filter]
 }
 
 func (s *stubSource) memberCallCount(platformID string) int {
@@ -969,32 +996,160 @@ func TestResolveAllComputersMinusExcludedGroup(t *testing.T) {
 	}
 }
 
-func TestResolveDirectDevicesKeepUpperBoundAlongsideGroups(t *testing.T) {
-	// Individually named devices carry Jamf Pro numeric identifiers while group
-	// membership carries management identifiers, so a device that is also a group
-	// member is counted twice. That has to stay visible as an upper bound.
-	c := NewCache(testSource())
+func TestResolveNamedComputersJoinTheUnionWithoutDoubleCounting(t *testing.T) {
+	// The point of resolving named computers to management identifiers: computer 5
+	// is already inside Marketing, so naming it individually must not add a second
+	// device to the figure. Previously the two were separate additive terms and the
+	// result carried an upper-bound hedge it no longer needs.
+	src := testSource()
+	src.computersByFilter = map[string][]string{
+		"id==5 or id==6": {"d-1", "d-500"}, // d-1 is inside Marketing, d-500 is not
+	}
+	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
 		DeviceType: DeviceTypeComputer,
-		ProGroups:  computerRefs("12"),
+		ProGroups:  computerRefs("12"), // Marketing, d-1..d-30
 		DeviceIDs:  []string{"5", "6"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Count != 32 {
-		t.Fatalf("got count=%d, want 30 plus 2 named devices", res.Count)
+	if res.Count != 31 {
+		t.Fatalf("got count=%d, want 31 — Marketing's 30 plus the one named computer outside it", res.Count)
 	}
-	if res.Exact {
-		t.Fatal("mixing groups and individually named devices cannot be exact")
-	}
-	if res.Bound != BoundAtMost {
-		t.Fatalf("got bound=%v, want an upper bound", res.Bound)
+	if !res.Exact || res.Bound != BoundExact {
+		t.Fatalf("got exact=%v bound=%v, want an unhedged figure", res.Exact, res.Bound)
 	}
 }
 
-func TestResolveDeviceOnlyScopeIsExactWithoutMembershipReads(t *testing.T) {
+func TestResolveBuildingTargetIsCountedExactly(t *testing.T) {
 	src := testSource()
+	src.computersByFilter = map[string][]string{
+		"userAndLocation.buildingId==321": {"d-900", "d-901"},
+	}
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:  DeviceTypeComputer,
+		BuildingIDs: []string{"321"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 2 {
+		t.Fatalf("got count=%d, want the 2 computers in that building", res.Count)
+	}
+	if res.Bound != BoundExact {
+		t.Fatalf("a counted building needs no hedge, got %v", res.Bound)
+	}
+	for _, u := range res.Unresolvable {
+		if u.Path == "building_ids" || u.Path == "targets.building_ids" {
+			t.Fatalf("a counted building must not also be reported as a caveat: %+v", u)
+		}
+	}
+}
+
+func TestResolveExcludedBuildingIsSubtractedExactly(t *testing.T) {
+	src := testSource()
+	src.computersByFilter = map[string][]string{
+		"userAndLocation.buildingId==321": {"d-1", "d-2"}, // both inside Marketing
+	}
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:          DeviceTypeComputer,
+		ProGroups:           computerRefs("12"), // 30 members, d-1..d-30
+		ExcludedBuildingIDs: []string{"321"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 28 {
+		t.Fatalf("got count=%d, want 30 less the 2 in the excluded building", res.Count)
+	}
+	if res.Bound != BoundExact {
+		t.Fatalf("a subtracted building needs no hedge, got %v", res.Bound)
+	}
+}
+
+func TestResolveMobileBuildingStaysUnresolved(t *testing.T) {
+	// Mobile devices filter buildings by name while a scope block carries ids, so
+	// the mobile estate keeps the unresolved treatment — and it must broaden, since
+	// a target can only add devices.
+	c := NewCache(testSource())
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:  DeviceTypeMobile,
+		ProGroups:   mobileRefs("66"),
+		BuildingIDs: []string{"321"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, u := range res.Unresolvable {
+		if u.Path == "building_ids" {
+			found = true
+			if u.Effect != Broadens {
+				t.Fatalf("an unresolvable building target broadens, got %v", u.Effect)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("the unresolvable building must be reported: %+v", res.Unresolvable)
+	}
+	if res.Bound != BoundAtLeast {
+		t.Fatalf("got bound=%v, want a lower bound", res.Bound)
+	}
+}
+
+func TestResolveInventoryFilterIsReadOncePerFilter(t *testing.T) {
+	src := testSource()
+	src.computersByFilter = map[string][]string{
+		"userAndLocation.buildingId==321": {"d-900"},
+	}
+	c := NewCache(src)
+	s := Scope{DeviceType: DeviceTypeComputer, BuildingIDs: []string{"321"}}
+	for range 5 {
+		if _, err := Resolve(context.Background(), c, s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := src.filterCallCount("userAndLocation.buildingId==321"); got != 1 {
+		t.Fatalf("a filter must be read once per plan, read %d times", got)
+	}
+}
+
+func TestResolveAbandonedExactAttemptDoesNotLeaveCaveatsBehind(t *testing.T) {
+	// The exact strategy resolves named categories before it knows whether it can
+	// finish. If it then gives up, anything it recorded must not be reported
+	// alongside the approximate figure that replaces it.
+	src := testSource()
+	src.memberErr = errors.New("membership unavailable") // force the fallback
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:  DeviceTypeMobile,
+		ProGroups:   mobileRefs("66"),
+		BuildingIDs: []string{"321"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var seen int
+	for _, u := range res.Unresolvable {
+		if u.Path == "building_ids" || u.Path == "targets.building_ids" {
+			seen++
+		}
+	}
+	if seen != 1 {
+		t.Fatalf("the building must be reported exactly once, got %d: %+v", seen, res.Unresolvable)
+	}
+}
+
+func TestResolveDeviceOnlyScopeResolvesWithoutReadingAnyGroupMembership(t *testing.T) {
+	// A scope naming only individual computers costs one inventory read and no
+	// group membership reads at all.
+	src := testSource()
+	src.computersByFilter = map[string][]string{
+		"id==5 or id==6 or id==7": {"d-700", "d-701", "d-702"},
+	}
 	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
 		DeviceType: DeviceTypeComputer,
@@ -1007,7 +1162,7 @@ func TestResolveDeviceOnlyScopeIsExactWithoutMembershipReads(t *testing.T) {
 		t.Fatalf("got count=%d bound=%v, want an exact 3", res.Count, res.Bound)
 	}
 	if len(src.memberCalls) != 0 {
-		t.Fatalf("a scope naming no groups must read no membership, got %v", src.memberCalls)
+		t.Fatalf("a scope naming no groups must read no group membership, got %v", src.memberCalls)
 	}
 }
 
