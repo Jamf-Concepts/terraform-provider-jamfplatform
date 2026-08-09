@@ -34,6 +34,16 @@ const (
 	Ambiguous
 )
 
+// ProGroupRef identifies a Jamf Pro group by estate and numeric id — the only
+// combination that is unique, since the two estates are numbered independently.
+type ProGroupRef struct {
+	DeviceType DeviceType
+	ID         string
+}
+
+// key renders a reference for set comparison.
+func (r ProGroupRef) key() string { return string(r.DeviceType) + ":" + r.ID }
+
 // Unresolvable records one scope input that cannot be evaluated during a plan,
 // with the reason stated in terms an administrator can act on.
 type Unresolvable struct {
@@ -60,8 +70,12 @@ type Scope struct {
 	All bool
 	// DeviceIDs are individually scoped devices (computer_ids / mobile_device_ids).
 	DeviceIDs []string
-	// JamfProGroupIDs are groups referenced by numeric Jamf Pro id.
-	JamfProGroupIDs []string
+	// ProGroups are groups referenced by numeric Jamf Pro id. The estate is part of
+	// the reference because numeric group ids repeat across the computer and mobile
+	// device estates, so an id alone does not identify a group. Carrying it per
+	// reference also lets a resource target both estates at once, which an ebook
+	// does.
+	ProGroups []ProGroupRef
 	// PlatformGroupIDs are groups referenced by Platform UUID.
 	PlatformGroupIDs []string
 	// MentionedPlatformIDs are groups the configuration refers to but which are
@@ -71,11 +85,11 @@ type Scope struct {
 	// than there is.
 	MentionedPlatformIDs []string
 
-	// ExcludedJamfProGroupIDs and ExcludedPlatformGroupIDs are groups removed from
-	// the audience. They are carried as data rather than as narrowing caveats so
-	// their membership can be subtracted exactly; when membership cannot be read
-	// they fall back to being reported as narrowing.
-	ExcludedJamfProGroupIDs  []string
+	// ExcludedProGroups and ExcludedPlatformGroupIDs are groups removed from the
+	// audience. They are carried as data rather than as narrowing caveats so their
+	// membership can be subtracted exactly; when membership cannot be read they
+	// fall back to being reported as narrowing.
+	ExcludedProGroups        []ProGroupRef
 	ExcludedPlatformGroupIDs []string
 	// ExcludedDeviceIDs are individually excluded devices. These are Jamf Pro
 	// numeric identifiers, whereas group membership is expressed in device
@@ -97,10 +111,10 @@ type Scope struct {
 func (s Scope) Empty() bool {
 	return !s.All &&
 		len(s.DeviceIDs) == 0 &&
-		len(s.JamfProGroupIDs) == 0 &&
+		len(s.ProGroups) == 0 &&
 		len(s.PlatformGroupIDs) == 0 &&
 		len(s.MentionedPlatformIDs) == 0 &&
-		len(s.ExcludedJamfProGroupIDs) == 0 &&
+		len(s.ExcludedProGroups) == 0 &&
 		len(s.ExcludedPlatformGroupIDs) == 0 &&
 		len(s.ExcludedDeviceIDs) == 0 &&
 		len(s.Unresolvable) == 0 &&
@@ -245,11 +259,11 @@ func Resolve(ctx context.Context, c *Cache, s Scope) (Resolution, error) {
 
 	// Resolve the group references on both sides to rows, so names and counts are
 	// available whichever strategy ends up being used.
-	targets, err := res.resolveGroups(ctx, c, s, s.JamfProGroupIDs, s.PlatformGroupIDs, false)
+	targets, err := res.resolveGroups(ctx, c, s, s.ProGroups, s.PlatformGroupIDs, false)
 	if err != nil {
 		return Resolution{}, err
 	}
-	excluded, err := res.resolveGroups(ctx, c, s, s.ExcludedJamfProGroupIDs, s.ExcludedPlatformGroupIDs, true)
+	excluded, err := res.resolveGroups(ctx, c, s, s.ExcludedProGroups, s.ExcludedPlatformGroupIDs, true)
 	if err != nil {
 		return Resolution{}, err
 	}
@@ -288,23 +302,10 @@ func sortGroups(gs []Group) {
 // resolveGroups turns group references into rows, recording references that do
 // not resolve. Unresolvable target references make the figure short; unresolvable
 // exclusions make it long, so the direction depends on which side they sit on.
-func (r *Resolution) resolveGroups(ctx context.Context, c *Cache, s Scope, proIDs, platformIDs []string, isExclusion bool) ([]Group, error) {
-	if len(proIDs) > 0 && s.DeviceType == DeviceTypeAny {
-		// Numeric group ids repeat across the two estates, so without knowing which
-		// estate is meant they cannot be resolved, in either direction.
-		r.Unresolvable = append(r.Unresolvable, Unresolvable{
-			Path:   "group ids",
-			Reason: "numeric group ids are only unique within the computer or mobile device estate, so they cannot be counted for a scope that spans both",
-			Effect: Ambiguous,
-			Values: len(proIDs),
-		})
-		r.Bound = r.Bound.with(Ambiguous)
-		proIDs = nil
-	}
-
-	out := make([]Group, 0, len(proIDs)+len(platformIDs))
-	seen := make(map[string]struct{}, len(proIDs)+len(platformIDs))
-	add := func(id string, byPlatform bool) error {
+func (r *Resolution) resolveGroups(ctx context.Context, c *Cache, s Scope, proRefs []ProGroupRef, platformIDs []string, isExclusion bool) ([]Group, error) {
+	out := make([]Group, 0, len(proRefs)+len(platformIDs))
+	seen := make(map[string]struct{}, len(proRefs)+len(platformIDs))
+	add := func(dt DeviceType, id string, byPlatform bool) error {
 		if id == "" {
 			return nil
 		}
@@ -316,7 +317,7 @@ func (r *Resolution) resolveGroups(ctx context.Context, c *Cache, s Scope, proID
 		if byPlatform {
 			g, found, err = c.GroupByPlatformID(ctx, id)
 		} else {
-			g, found, err = c.GroupByJamfProID(ctx, s.DeviceType, id)
+			g, found, err = c.GroupByJamfProID(ctx, dt, id)
 		}
 		if err != nil {
 			return err
@@ -337,13 +338,13 @@ func (r *Resolution) resolveGroups(ctx context.Context, c *Cache, s Scope, proID
 		out = append(out, g)
 		return nil
 	}
-	for _, id := range proIDs {
-		if err := add(id, false); err != nil {
+	for _, ref := range proRefs {
+		if err := add(ref.DeviceType, ref.ID, false); err != nil {
 			return nil, err
 		}
 	}
 	for _, id := range platformIDs {
-		if err := add(id, true); err != nil {
+		if err := add(DeviceTypeAny, id, true); err != nil {
 			return nil, err
 		}
 	}
@@ -498,30 +499,49 @@ func Delta(prior, planned Scope) (added, removed Scope) {
 	removed = Scope{DeviceType: prior.DeviceType}
 
 	added.DeviceIDs = missingFrom(planned.DeviceIDs, prior.DeviceIDs)
-	added.JamfProGroupIDs = missingFrom(planned.JamfProGroupIDs, prior.JamfProGroupIDs)
+	added.ProGroups = refsMissingFrom(planned.ProGroups, prior.ProGroups)
 	added.PlatformGroupIDs = missingFrom(planned.PlatformGroupIDs, prior.PlatformGroupIDs)
 	added.PendingPaths = planned.PendingPaths
 	added.Unresolvable = unresolvableDiff(planned.Unresolvable, prior.Unresolvable)
 	added.All = planned.All && !prior.All
 	// An exclusion that is being LIFTED adds devices, so it belongs on this side —
 	// as a target, since those devices are entering scope.
-	added.JamfProGroupIDs = append(added.JamfProGroupIDs,
-		missingFrom(prior.ExcludedJamfProGroupIDs, planned.ExcludedJamfProGroupIDs)...)
+	added.ProGroups = append(added.ProGroups,
+		refsMissingFrom(prior.ExcludedProGroups, planned.ExcludedProGroups)...)
 	added.PlatformGroupIDs = append(added.PlatformGroupIDs,
 		missingFrom(prior.ExcludedPlatformGroupIDs, planned.ExcludedPlatformGroupIDs)...)
 
 	removed.DeviceIDs = missingFrom(prior.DeviceIDs, planned.DeviceIDs)
-	removed.JamfProGroupIDs = missingFrom(prior.JamfProGroupIDs, planned.JamfProGroupIDs)
+	removed.ProGroups = refsMissingFrom(prior.ProGroups, planned.ProGroups)
 	removed.PlatformGroupIDs = missingFrom(prior.PlatformGroupIDs, planned.PlatformGroupIDs)
 	removed.Unresolvable = unresolvableDiff(prior.Unresolvable, planned.Unresolvable)
 	removed.All = prior.All && !planned.All
 	// A newly ADDED exclusion removes devices, so it belongs on the removal side.
-	removed.JamfProGroupIDs = append(removed.JamfProGroupIDs,
-		missingFrom(planned.ExcludedJamfProGroupIDs, prior.ExcludedJamfProGroupIDs)...)
+	removed.ProGroups = append(removed.ProGroups,
+		refsMissingFrom(planned.ExcludedProGroups, prior.ExcludedProGroups)...)
 	removed.PlatformGroupIDs = append(removed.PlatformGroupIDs,
 		missingFrom(planned.ExcludedPlatformGroupIDs, prior.ExcludedPlatformGroupIDs)...)
 
 	return added, removed
+}
+
+// refsMissingFrom returns the references in a that do not appear in b, sorted.
+func refsMissingFrom(a, b []ProGroupRef) []ProGroupRef {
+	if len(a) == 0 {
+		return nil
+	}
+	in := make(map[string]struct{}, len(b))
+	for _, v := range b {
+		in[v.key()] = struct{}{}
+	}
+	var out []ProGroupRef
+	for _, v := range a {
+		if _, ok := in[v.key()]; !ok {
+			out = append(out, v)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].key() < out[j].key() })
+	return out
 }
 
 // missingFrom returns the members of a that do not appear in b, sorted.

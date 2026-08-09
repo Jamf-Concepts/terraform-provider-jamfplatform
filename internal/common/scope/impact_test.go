@@ -81,8 +81,11 @@ func TestComputerImpactScopeCountsTargetsAndClassifiesTheRest(t *testing.T) {
 	if got.All {
 		t.Fatal("all_computers was false, so the scope must not be tenant-wide")
 	}
-	if len(got.DeviceIDs) != 2 || len(got.JamfProGroupIDs) != 1 {
-		t.Fatalf("countable targets wrong: devices=%v groups=%v", got.DeviceIDs, got.JamfProGroupIDs)
+	if len(got.DeviceIDs) != 2 || len(got.ProGroups) != 1 {
+		t.Fatalf("countable targets wrong: devices=%v groups=%v", got.DeviceIDs, got.ProGroups)
+	}
+	if got.ProGroups[0].DeviceType != impact.DeviceTypeComputer {
+		t.Fatalf("a computer scope's group refs must carry the computer estate, got %v", got.ProGroups[0].DeviceType)
 	}
 
 	eff := effectsByPath(got)
@@ -90,8 +93,8 @@ func TestComputerImpactScopeCountsTargetsAndClassifiesTheRest(t *testing.T) {
 	// Excluded groups and devices are passed through as data so the resolver can
 	// subtract group membership exactly, rather than reporting an unquantified
 	// narrowing. They must therefore NOT appear as caveats.
-	if len(got.ExcludedJamfProGroupIDs) != 1 {
-		t.Fatalf("excluded groups must be carried as data: %v", got.ExcludedJamfProGroupIDs)
+	if len(got.ExcludedProGroups) != 1 {
+		t.Fatalf("excluded groups must be carried as data: %v", got.ExcludedProGroups)
 	}
 	if len(got.ExcludedDeviceIDs) != 1 {
 		t.Fatalf("excluded devices must be carried as data: %v", got.ExcludedDeviceIDs)
@@ -227,8 +230,11 @@ func TestMobileImpactScopeUsesMobileNamesAndDeviceType(t *testing.T) {
 	if got.DeviceType != impact.DeviceTypeMobile {
 		t.Fatalf("device type wrong: %v", got.DeviceType)
 	}
-	if len(got.JamfProGroupIDs) != 1 || got.JamfProGroupIDs[0] != "66" {
-		t.Fatalf("mobile device groups wrong: %v", got.JamfProGroupIDs)
+	if len(got.ProGroups) != 1 || got.ProGroups[0].ID != "66" {
+		t.Fatalf("mobile device groups wrong: %v", got.ProGroups)
+	}
+	if got.ProGroups[0].DeviceType != impact.DeviceTypeMobile {
+		t.Fatalf("a mobile scope's group refs must carry the mobile estate, got %v", got.ProGroups[0].DeviceType)
 	}
 	if len(got.ExcludedDeviceIDs) != 1 || got.ExcludedDeviceIDs[0] != "32" {
 		t.Fatalf("excluded mobile devices must be carried as data: %v", got.ExcludedDeviceIDs)

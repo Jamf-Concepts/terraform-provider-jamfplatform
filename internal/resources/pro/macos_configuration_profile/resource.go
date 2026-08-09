@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -32,6 +33,9 @@ const minJamfProVersion = ""
 
 // Resource implements jamfplatform_pro_macos_configuration_profile.
 type Resource struct {
+	// impact backs the plan-time impact alert on scope changes. nil when the
+	// provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 	client *proclassic.Client
 	// ldapSearcher backs the plan-time scope directory-service user-group
 	// preflight (ModifyPlan). The LDAP group search is a Pro (v1) endpoint, so
@@ -231,6 +235,7 @@ func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 	r.client = client
 
 	// Pro (v1) client for the scope directory-service group preflight.

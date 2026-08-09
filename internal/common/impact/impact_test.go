@@ -112,6 +112,24 @@ func deviceIDs(from, count int) []string {
 	return out
 }
 
+// computerRefs builds computer-estate group references from numeric ids.
+func computerRefs(ids ...string) []ProGroupRef {
+	out := make([]ProGroupRef, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, ProGroupRef{DeviceType: DeviceTypeComputer, ID: id})
+	}
+	return out
+}
+
+// mobileRefs builds mobile-estate group references from numeric ids.
+func mobileRefs(ids ...string) []ProGroupRef {
+	out := make([]ProGroupRef, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, ProGroupRef{DeviceType: DeviceTypeMobile, ID: id})
+	}
+	return out
+}
+
 // strSet builds a known set of strings.
 func strSet(vals ...string) types.Set {
 	out, diags := types.SetValueFrom(context.Background(), types.StringType, vals)
@@ -205,7 +223,7 @@ func TestNilCacheIsDisabled(t *testing.T) {
 	if diags := Report(context.Background(), Request{
 		Cache:   c,
 		Path:    path.Root("scope"),
-		Planned: Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"1"}},
+		Planned: Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("1")},
 	}); len(diags) != 0 {
 		t.Fatalf("a disabled cache must produce no diagnostics, got %d", len(diags))
 	}
@@ -214,8 +232,8 @@ func TestNilCacheIsDisabled(t *testing.T) {
 func TestResolveSingleGroupIsExact(t *testing.T) {
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -237,8 +255,8 @@ func TestResolveOverlappingGroupsAreDeduplicated(t *testing.T) {
 	// implies five more computers are affected than actually are.
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12", "13"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12", "13"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -260,8 +278,8 @@ func TestResolveFallsBackToSummedCountsWhenMembershipUnreadable(t *testing.T) {
 	src.memberErr = errors.New("no privilege to read group membership")
 	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12", "13"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12", "13"),
 	})
 	if err != nil {
 		t.Fatalf("a membership failure must not fail resolution: %v", err)
@@ -284,8 +302,8 @@ func TestResolveFallsBackWhenMembershipDisagreesWithTheCount(t *testing.T) {
 	src.members["uuid-mkt"] = []string{"d-1", "d-2"} // count says 30
 	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -308,8 +326,8 @@ func TestResolveClampsSummedOverlapToTheEstate(t *testing.T) {
 	src.memberErr = errors.New("membership unavailable") // force the fallback path
 	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"1", "12", "13"}, // 200 + 30 + 5 = 235
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("1", "12", "13"), // 200 + 30 + 5 = 235
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -334,8 +352,8 @@ func TestResolveLimitationNarrowsNotBroadens(t *testing.T) {
 	// uncountable limitation means the figure is too high, never too low.
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12"),
 		Unresolvable: []Unresolvable{
 			{Path: "limitations.network_segment_ids", Reason: ReasonNetworkSegment, Effect: Narrows, Values: 1},
 		},
@@ -354,8 +372,8 @@ func TestResolveLimitationNarrowsNotBroadens(t *testing.T) {
 func TestResolveBroadeningTargetYieldsLowerBound(t *testing.T) {
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12"),
 		Unresolvable: []Unresolvable{
 			{Path: "targets.user_group_ids", Reason: ReasonUserTarget, Effect: Broadens, Values: 2},
 		},
@@ -374,8 +392,8 @@ func TestResolveBroadeningTargetYieldsLowerBound(t *testing.T) {
 func TestResolveOpposingInputsAreUnbounded(t *testing.T) {
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12"),
 		Unresolvable: []Unresolvable{
 			{Path: "limitations.ibeacon_ids", Reason: ReasonIbeacon, Effect: Narrows, Values: 1},
 			{Path: "targets.user_ids", Reason: ReasonUserTarget, Effect: Broadens, Values: 1},
@@ -443,8 +461,8 @@ func TestResolveAnyDeviceTypeSpansBothEstates(t *testing.T) {
 func TestResolveRejectsWrongDeviceTypeGroup(t *testing.T) {
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"66"}, // a mobile device group
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("66"), // a mobile device group
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -490,8 +508,8 @@ func TestGroupIDsCollideAcrossEstates(t *testing.T) {
 func TestResolveCountsTheRightEstateForACollidingID(t *testing.T) {
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"1"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("1"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -504,22 +522,29 @@ func TestResolveCountsTheRightEstateForACollidingID(t *testing.T) {
 	}
 }
 
-func TestResolveNumericGroupIDsAreAmbiguousForAMixedScope(t *testing.T) {
-	// A scope spanning both estates cannot use numeric ids, because they do not
-	// identify a group on their own.
+func TestResolveMixedEstateScopeResolvesBothSidesCorrectly(t *testing.T) {
+	// The reason group references carry their estate: id 1 exists in both, so a
+	// resource targeting computer groups and mobile device groups side by side —
+	// an ebook does — must resolve each against the right estate. Computer group 1
+	// holds 200, mobile group 1 holds 12; a scope naming both must reach 212, not
+	// 400 and not 24.
 	c := NewCache(testSource())
+	refs := append(computerRefs("1"), mobileRefs("1")...)
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeAny,
-		JamfProGroupIDs: []string{"1"},
+		DeviceType: DeviceTypeAny,
+		ProGroups:  refs,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Count != 0 {
-		t.Fatalf("an ambiguous id must not be counted, got %d", res.Count)
+	if res.Count != 212 {
+		t.Fatalf("got count=%d, want 212 — 200 computers plus 12 mobile devices", res.Count)
 	}
-	if res.Bound != BoundUnknown {
-		t.Fatalf("an ambiguous id bounds the figure from neither side, got %v", res.Bound)
+	if len(res.MissingGroupIDs) != 0 {
+		t.Fatalf("both references must resolve, got missing %v", res.MissingGroupIDs)
+	}
+	if res.Total != 360 {
+		t.Fatalf("got total=%d, want the whole managed estate", res.Total)
 	}
 }
 
@@ -527,7 +552,7 @@ func TestResolveDeduplicatesRepeatedGroupReference(t *testing.T) {
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
 		DeviceType:       DeviceTypeComputer,
-		JamfProGroupIDs:  []string{"12"},
+		ProGroups:        computerRefs("12"),
 		PlatformGroupIDs: []string{"uuid-mkt"},
 	})
 	if err != nil {
@@ -541,9 +566,9 @@ func TestResolveDeduplicatesRepeatedGroupReference(t *testing.T) {
 func TestResolvePendingReferenceIsNotDeterminable(t *testing.T) {
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12"},
-		PendingPaths:    []string{"targets.computer_group_ids"},
+		DeviceType:   DeviceTypeComputer,
+		ProGroups:    computerRefs("12"),
+		PendingPaths: []string{"targets.computer_group_ids"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -581,20 +606,20 @@ func TestResolveMentionedGroupsAreNamedNotCounted(t *testing.T) {
 }
 
 func TestDeltaSplitsAdditionsAndRemovals(t *testing.T) {
-	prior := Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12", "13"}}
-	planned := Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12", "1"}}
+	prior := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12", "13")}
+	planned := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12", "1")}
 	added, removed := Delta(prior, planned)
-	if len(added.JamfProGroupIDs) != 1 || added.JamfProGroupIDs[0] != "1" {
-		t.Fatalf("added groups wrong: %v", added.JamfProGroupIDs)
+	if len(added.ProGroups) != 1 || added.ProGroups[0].ID != "1" {
+		t.Fatalf("added groups wrong: %v", added.ProGroups)
 	}
-	if len(removed.JamfProGroupIDs) != 1 || removed.JamfProGroupIDs[0] != "13" {
-		t.Fatalf("removed groups wrong: %v", removed.JamfProGroupIDs)
+	if len(removed.ProGroups) != 1 || removed.ProGroups[0].ID != "13" {
+		t.Fatalf("removed groups wrong: %v", removed.ProGroups)
 	}
 }
 
 func TestReportSkipsUnchangedScope(t *testing.T) {
 	c := NewCache(testSource())
-	s := Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12"}}
+	s := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")}
 	diags := Report(context.Background(), Request{
 		Cache:   c,
 		Path:    path.Root("scope"),
@@ -615,8 +640,8 @@ func TestReportSkipsUnchangedScopeWhenOrderDiffers(t *testing.T) {
 		Path:    path.Root("scope"),
 		Label:   "policy",
 		Action:  ActionUpdate,
-		Prior:   Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12", "13"}},
-		Planned: Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"13", "12"}},
+		Prior:   Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12", "13")},
+		Planned: Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("13", "12")},
 	})
 	if len(diags) != 0 {
 		t.Fatalf("scope collections are unordered, so a reordering must not alert: %q", diags[0].Detail())
@@ -630,8 +655,8 @@ func TestReportUpdateStatesAdditionsAndRemovals(t *testing.T) {
 		Path:    path.Root("scope"),
 		Label:   "policy",
 		Action:  ActionUpdate,
-		Prior:   Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"13"}},
-		Planned: Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12"}},
+		Prior:   Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("13")},
+		Planned: Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")},
 	})
 	if len(diags) != 1 {
 		t.Fatalf("expected one alert, got %d", len(diags))
@@ -650,7 +675,7 @@ func TestReportUpdateStatesAdditionsAndRemovals(t *testing.T) {
 
 func TestReportCreateAndDeleteWording(t *testing.T) {
 	c := NewCache(testSource())
-	s := Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12"}}
+	s := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")}
 
 	create := Report(context.Background(), Request{
 		Cache: c, Path: path.Root("scope"), Label: "policy",
@@ -711,7 +736,7 @@ func TestReportEmptyScopeIsSilent(t *testing.T) {
 
 func TestReportUnavailableTenantWarnsOnceAndNeverErrors(t *testing.T) {
 	c := NewCache(&stubSource{err: errors.New("tenant unreachable")})
-	s := Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12"}}
+	s := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")}
 
 	first := Report(context.Background(), Request{
 		Cache: c, Path: path.Root("scope"), Label: "policy",
@@ -737,8 +762,8 @@ func TestReportScopeableKindNamesTheKnockOn(t *testing.T) {
 	diags := Report(context.Background(), Request{
 		Cache: c, Path: path.Root("criteria"), Kind: Scopeable,
 		Label: "smart computer group", Action: ActionUpdate,
-		Prior:   Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"13"}},
-		Planned: Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12"}},
+		Prior:   Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("13")},
+		Planned: Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")},
 	})
 	if len(diags) != 1 {
 		t.Fatalf("expected one alert, got %d", len(diags))
@@ -761,7 +786,7 @@ func TestBreakdownSummarisesBeyondTheListedGroups(t *testing.T) {
 	for i := range 10 {
 		ids = append(ids, "90"+string(rune('0'+i)))
 	}
-	res, err := Resolve(context.Background(), c, Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: ids})
+	res, err := Resolve(context.Background(), c, Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs(ids...)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -773,7 +798,7 @@ func TestBreakdownSummarisesBeyondTheListedGroups(t *testing.T) {
 
 func TestScopeBuilderTreatsUnknownCollectionAsPending(t *testing.T) {
 	b := NewScopeBuilder(context.Background(), DeviceTypeComputer)
-	b.JamfProGroups("targets.computer_group_ids", types.SetUnknown(types.StringType))
+	b.ProGroups("targets.computer_group_ids", DeviceTypeComputer, types.SetUnknown(types.StringType))
 	s := b.Scope()
 	if len(s.PendingPaths) != 1 || s.PendingPaths[0] != "targets.computer_group_ids" {
 		t.Fatalf("an unknown collection must be recorded as pending, got %v", s.PendingPaths)
@@ -785,10 +810,10 @@ func TestScopeBuilderTreatsUnknownElementAsPendingAndKeepsTheKnownOne(t *testing
 	// plan creates. The known id is still worth reading, but the figure cannot be
 	// completed, so the path is recorded as pending.
 	b := NewScopeBuilder(context.Background(), DeviceTypeComputer)
-	b.JamfProGroups("targets.computer_group_ids", setWithUnknownElement("12"))
+	b.ProGroups("targets.computer_group_ids", DeviceTypeComputer, setWithUnknownElement("12"))
 	s := b.Scope()
-	if len(s.JamfProGroupIDs) != 1 || s.JamfProGroupIDs[0] != "12" {
-		t.Fatalf("the known id must still be read, got %v", s.JamfProGroupIDs)
+	if len(s.ProGroups) != 1 || s.ProGroups[0].ID != "12" {
+		t.Fatalf("the known id must still be read, got %v", s.ProGroups)
 	}
 	if len(s.PendingPaths) != 1 {
 		t.Fatalf("the unknown element must mark the path pending, got %v", s.PendingPaths)
@@ -798,12 +823,12 @@ func TestScopeBuilderTreatsUnknownElementAsPendingAndKeepsTheKnownOne(t *testing
 func TestScopeBuilderReadsKnownValuesAndSkipsNullCollections(t *testing.T) {
 	ctx := context.Background()
 	b := NewScopeBuilder(ctx, DeviceTypeComputer)
-	b.JamfProGroups("targets.computer_group_ids", strSet("12", "13")).
+	b.ProGroups("targets.computer_group_ids", DeviceTypeComputer, strSet("12", "13")).
 		Devices("targets.computer_ids", types.SetNull(types.StringType)).
 		Narrows("limitations.network_segment_ids", strSet("7"), ReasonNetworkSegment)
 	s := b.Scope()
-	if len(s.JamfProGroupIDs) != 2 {
-		t.Fatalf("known ids must be read, got %v", s.JamfProGroupIDs)
+	if len(s.ProGroups) != 2 {
+		t.Fatalf("known ids must be read, got %v", s.ProGroups)
 	}
 	if len(s.DeviceIDs) != 0 || len(s.PendingPaths) != 0 {
 		t.Fatalf("a null collection means absent, not pending: %v / %v", s.DeviceIDs, s.PendingPaths)
@@ -828,9 +853,9 @@ func TestResolveSubtractsExcludedGroupMembershipExactly(t *testing.T) {
 	// that one device.
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:              DeviceTypeComputer,
-		JamfProGroupIDs:         []string{"12"},
-		ExcludedJamfProGroupIDs: []string{"13"},
+		DeviceType:        DeviceTypeComputer,
+		ProGroups:         computerRefs("12"),
+		ExcludedProGroups: computerRefs("13"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -853,9 +878,9 @@ func TestResolveExcludedGroupBecomesCaveatOnTheFallbackPath(t *testing.T) {
 	src.memberErr = errors.New("membership unavailable")
 	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:              DeviceTypeComputer,
-		JamfProGroupIDs:         []string{"12"},
-		ExcludedJamfProGroupIDs: []string{"13"},
+		DeviceType:        DeviceTypeComputer,
+		ProGroups:         computerRefs("12"),
+		ExcludedProGroups: computerRefs("13"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -884,9 +909,9 @@ func TestResolveAllComputersMinusExcludedGroup(t *testing.T) {
 	src.totals = Totals{ManagedComputers: 200}
 	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:              DeviceTypeComputer,
-		All:                     true,
-		ExcludedJamfProGroupIDs: []string{"12"}, // 30 members
+		DeviceType:        DeviceTypeComputer,
+		All:               true,
+		ExcludedProGroups: computerRefs("12"), // 30 members
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -905,9 +930,9 @@ func TestResolveDirectDevicesKeepUpperBoundAlongsideGroups(t *testing.T) {
 	// member is counted twice. That has to stay visible as an upper bound.
 	c := NewCache(testSource())
 	res, err := Resolve(context.Background(), c, Scope{
-		DeviceType:      DeviceTypeComputer,
-		JamfProGroupIDs: []string{"12"},
-		DeviceIDs:       []string{"5", "6"},
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12"),
+		DeviceIDs:  []string{"5", "6"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -946,7 +971,7 @@ func TestMembersReadOncePerGroupAcrossResolvesAndConcurrency(t *testing.T) {
 	// many resources reference it.
 	src := testSource()
 	c := NewCache(src)
-	s := Scope{DeviceType: DeviceTypeComputer, JamfProGroupIDs: []string{"12"}}
+	s := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")}
 
 	var wg sync.WaitGroup
 	for range 16 {
@@ -972,13 +997,13 @@ func TestReportLiftedExclusionCountsAsAnAddition(t *testing.T) {
 		Label:  "policy",
 		Action: ActionUpdate,
 		Prior: Scope{
-			DeviceType:              DeviceTypeComputer,
-			JamfProGroupIDs:         []string{"12"},
-			ExcludedJamfProGroupIDs: []string{"13"},
+			DeviceType:        DeviceTypeComputer,
+			ProGroups:         computerRefs("12"),
+			ExcludedProGroups: computerRefs("13"),
 		},
 		Planned: Scope{
-			DeviceType:      DeviceTypeComputer,
-			JamfProGroupIDs: []string{"12"},
+			DeviceType: DeviceTypeComputer,
+			ProGroups:  computerRefs("12"),
 		},
 	})
 	if len(diags) != 1 {
@@ -1001,13 +1026,13 @@ func TestReportNewExclusionCountsAsARemoval(t *testing.T) {
 		Label:  "policy",
 		Action: ActionUpdate,
 		Prior: Scope{
-			DeviceType:      DeviceTypeComputer,
-			JamfProGroupIDs: []string{"12"},
+			DeviceType: DeviceTypeComputer,
+			ProGroups:  computerRefs("12"),
 		},
 		Planned: Scope{
-			DeviceType:              DeviceTypeComputer,
-			JamfProGroupIDs:         []string{"12"},
-			ExcludedJamfProGroupIDs: []string{"13"},
+			DeviceType:        DeviceTypeComputer,
+			ProGroups:         computerRefs("12"),
+			ExcludedProGroups: computerRefs("13"),
 		},
 	})
 	if len(diags) != 1 {

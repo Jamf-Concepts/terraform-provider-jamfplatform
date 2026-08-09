@@ -31,6 +31,9 @@ const (
 	// ReasonNotCounted covers inputs the provider does not yet count. Stated as
 	// a limitation of the calculation rather than of Jamf Pro, because it is one.
 	ReasonNotCounted = "not included in this calculation"
+	// ReasonClassTarget covers class targets, which reach devices through the
+	// mobile device groups the class itself names.
+	ReasonClassTarget = "classes reach devices through the device groups the class names"
 )
 
 // ScopeBuilder assembles a Scope from Terraform collection values, recording
@@ -72,13 +75,18 @@ func (b *ScopeBuilder) Devices(attrPath string, set types.Set) *ScopeBuilder {
 	return b
 }
 
-// JamfProGroups records groups referenced by their numeric Jamf Pro id.
-func (b *ScopeBuilder) JamfProGroups(attrPath string, set types.Set) *ScopeBuilder {
+// ProGroups records groups referenced by their numeric Jamf Pro id, within one
+// estate. The estate is required rather than inferred from the scope, because a
+// single resource can target both: an ebook names computer groups and mobile
+// device groups side by side.
+func (b *ScopeBuilder) ProGroups(attrPath string, dt DeviceType, set types.Set) *ScopeBuilder {
 	ids, pending := setStrings(b.ctx, set)
 	if pending {
 		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
 	}
-	b.scope.JamfProGroupIDs = append(b.scope.JamfProGroupIDs, ids...)
+	for _, id := range ids {
+		b.scope.ProGroups = append(b.scope.ProGroups, ProGroupRef{DeviceType: dt, ID: id})
+	}
 	return b
 }
 
@@ -100,14 +108,16 @@ func (b *ScopeBuilder) PlatformGroupIDs(ids ...string) *ScopeBuilder {
 	return b
 }
 
-// ExcludedJamfProGroups records excluded groups referenced by numeric Jamf Pro
-// id, as data so their membership can be subtracted.
-func (b *ScopeBuilder) ExcludedJamfProGroups(attrPath string, set types.Set) *ScopeBuilder {
+// ExcludedProGroups records excluded groups referenced by numeric Jamf Pro id,
+// as data so their membership can be subtracted.
+func (b *ScopeBuilder) ExcludedProGroups(attrPath string, dt DeviceType, set types.Set) *ScopeBuilder {
 	ids, pending := setStrings(b.ctx, set)
 	if pending {
 		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
 	}
-	b.scope.ExcludedJamfProGroupIDs = append(b.scope.ExcludedJamfProGroupIDs, ids...)
+	for _, id := range ids {
+		b.scope.ExcludedProGroups = append(b.scope.ExcludedProGroups, ProGroupRef{DeviceType: dt, ID: id})
+	}
 	return b
 }
 

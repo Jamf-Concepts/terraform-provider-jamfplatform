@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
@@ -41,12 +42,16 @@ const minJamfProVersion = ""
 // only name-keyed scope category (exclusion users) is free-text local
 // usernames, not Jamf LDAP/cloud-IdP objects.
 type RestrictedSoftwareResource struct {
+	// impact backs the plan-time impact alert on scope changes. nil when the
+	// provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 	client *proclassic.Client
 }
 
 var _ resource.Resource = &RestrictedSoftwareResource{}
 var _ resource.ResourceWithImportState = &RestrictedSoftwareResource{}
 var _ resource.ResourceWithIdentity = &RestrictedSoftwareResource{}
+var _ resource.ResourceWithModifyPlan = &RestrictedSoftwareResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -223,6 +228,7 @@ func (r *RestrictedSoftwareResource) Configure(ctx context.Context, req resource
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 	r.client = client
 }
 

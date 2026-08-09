@@ -33,7 +33,7 @@ func classImpactScope(ctx context.Context, m *ClassResourceModel) impact.Scope {
 	if m == nil {
 		return b.Scope()
 	}
-	b.JamfProGroups("mobile_device_group_ids", m.MobileDeviceGroupIDs)
+	b.ProGroups("mobile_device_group_ids", impact.DeviceTypeMobile, m.MobileDeviceGroupIDs)
 	// People are recorded as broadening: they can only bring more devices into
 	// play, never fewer than the device groups already account for.
 	b.Broadens("student_ids", m.StudentIDs, reasonStudents)
@@ -46,48 +46,12 @@ func classImpactScope(ctx context.Context, m *ClassResourceModel) impact.Scope {
 // reportImpact emits the plan-time impact alert for a change to this class's
 // device group targeting.
 func (r *ClassResource) reportImpact(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if !r.impact.Enabled() {
-		return
-	}
-	creating := req.State.Raw.IsNull()
-	destroying := req.Plan.Raw.IsNull()
-	if creating && destroying {
-		return
-	}
-
-	var prior, planned impact.Scope
-	if !creating {
-		var state ClassResourceModel
-		if diags := req.State.Get(ctx, &state); diags.HasError() {
-			return
-		}
-		prior = classImpactScope(ctx, &state)
-	}
-	if !destroying {
-		var plan ClassResourceModel
-		if diags := req.Plan.Get(ctx, &plan); diags.HasError() {
-			return
-		}
-		planned = classImpactScope(ctx, &plan)
-	}
-
-	action := impact.ActionUpdate
-	switch {
-	case creating:
-		action = impact.ActionCreate
-	case destroying:
-		action = impact.ActionDelete
-	}
-
-	resp.Diagnostics.Append(impact.Report(ctx, impact.Request{
-		Cache:   r.impact,
-		Path:    path.Root("mobile_device_group_ids"),
-		Kind:    impact.Scopeable,
-		Label:   "class",
-		Action:  action,
-		Prior:   prior,
-		Planned: planned,
-	})...)
+	impact.ReportPlan(ctx, req, resp, impact.PlanReport{
+		Cache: r.impact,
+		Path:  path.Root("mobile_device_group_ids"),
+		Kind:  impact.Scopeable,
+		Label: "class",
+	}, classImpactScope)
 }
 
 // ModifyPlan emits the impact alert for a class's device group targeting. The

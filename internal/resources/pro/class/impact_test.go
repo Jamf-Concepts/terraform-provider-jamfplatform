@@ -34,8 +34,11 @@ func TestClassImpactScopeCountsMobileDeviceGroupsOnly(t *testing.T) {
 	if got.DeviceType != impact.DeviceTypeMobile {
 		t.Fatalf("a class targets mobile devices, got %v", got.DeviceType)
 	}
-	if len(got.JamfProGroupIDs) != 1 || got.JamfProGroupIDs[0] != "66" {
-		t.Fatalf("only the device groups may be counted: %v", got.JamfProGroupIDs)
+	if len(got.ProGroups) != 1 || got.ProGroups[0].ID != "66" {
+		t.Fatalf("only the device groups may be counted: %v", got.ProGroups)
+	}
+	if got.ProGroups[0].DeviceType != impact.DeviceTypeMobile {
+		t.Fatalf("a class's group refs must carry the mobile estate, got %v", got.ProGroups[0].DeviceType)
 	}
 	// People can only bring more devices into play, never fewer.
 	var found bool

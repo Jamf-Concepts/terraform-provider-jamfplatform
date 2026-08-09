@@ -92,46 +92,9 @@ func dedupe(ids []string) []string {
 // identifiers, so how many devices it reaches is not evident from reading the
 // configuration.
 func (r *BlueprintResource) reportDeviceGroupImpact(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if !r.impact.Enabled() {
-		return
-	}
-	creating := req.State.Raw.IsNull()
-	destroying := req.Plan.Raw.IsNull()
-	if creating && destroying {
-		return
-	}
-
-	var prior, planned impact.Scope
-	if !creating {
-		var state BlueprintResourceModel
-		if diags := req.State.Get(ctx, &state); diags.HasError() {
-			return
-		}
-		prior = blueprintImpactScope(ctx, &state)
-	}
-	if !destroying {
-		var plan BlueprintResourceModel
-		if diags := req.Plan.Get(ctx, &plan); diags.HasError() {
-			return
-		}
-		planned = blueprintImpactScope(ctx, &plan)
-	}
-
-	action := impact.ActionUpdate
-	switch {
-	case creating:
-		action = impact.ActionCreate
-	case destroying:
-		action = impact.ActionDelete
-	}
-
-	resp.Diagnostics.Append(impact.Report(ctx, impact.Request{
-		Cache:   r.impact,
-		Path:    path.Root("device_groups"),
-		Kind:    impact.Deployable,
-		Label:   "blueprint",
-		Action:  action,
-		Prior:   prior,
-		Planned: planned,
-	})...)
+	impact.ReportPlan(ctx, req, resp, impact.PlanReport{
+		Cache: r.impact,
+		Path:  path.Root("device_groups"),
+		Label: "blueprint",
+	}, blueprintImpactScope)
 }

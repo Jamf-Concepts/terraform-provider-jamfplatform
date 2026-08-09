@@ -193,6 +193,10 @@ func (r *Resource) preflightScopeGroups(ctx context.Context, req resource.Modify
 }
 
 func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Runs ahead of any guard below: an object entering or leaving management
+	// changes what its scope receives, so creates and destroys are reported too.
+	r.reportScopeImpact(ctx, req, resp)
+
 	// Scope directory-service user-group preflight runs first so it covers
 	// create-plans too (the payload compare below early-returns on create). It
 	// is skipped only on destroy (null plan).

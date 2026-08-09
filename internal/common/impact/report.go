@@ -193,10 +193,10 @@ func (s Scope) equal(o Scope) bool {
 		return false
 	}
 	if !sameStrings(s.DeviceIDs, o.DeviceIDs) ||
-		!sameStrings(s.JamfProGroupIDs, o.JamfProGroupIDs) ||
+		!sameRefs(s.ProGroups, o.ProGroups) ||
 		!sameStrings(s.PlatformGroupIDs, o.PlatformGroupIDs) ||
 		!sameStrings(s.ExcludedDeviceIDs, o.ExcludedDeviceIDs) ||
-		!sameStrings(s.ExcludedJamfProGroupIDs, o.ExcludedJamfProGroupIDs) ||
+		!sameRefs(s.ExcludedProGroups, o.ExcludedProGroups) ||
 		!sameStrings(s.ExcludedPlatformGroupIDs, o.ExcludedPlatformGroupIDs) ||
 		!sameStrings(s.PendingPaths, o.PendingPaths) {
 		return false
@@ -215,6 +215,22 @@ func unresolvableKeys(us []Unresolvable) []string {
 		out = append(out, fmt.Sprintf("%s=%d", u.Path, u.Values))
 	}
 	return out
+}
+
+// sameRefs compares two group-reference slices as sets.
+func sameRefs(a, b []ProGroupRef) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	x := make([]string, 0, len(a))
+	y := make([]string, 0, len(b))
+	for _, v := range a {
+		x = append(x, v.key())
+	}
+	for _, v := range b {
+		y = append(y, v.key())
+	}
+	return sameStrings(x, y)
 }
 
 // sameStrings compares two slices as sets, tolerating order differences because

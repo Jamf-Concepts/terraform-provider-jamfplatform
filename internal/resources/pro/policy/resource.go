@@ -651,57 +651,17 @@ func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 	}
 }
 
-// reportScopeImpact emits the plan-time impact alert for a scope change. A
-// policy is a deployable object in Jamf Pro's terms, so the alert reports how
-// many computers the change reaches.
-//
-// Unlike the directory-service preflight above this also runs on destroy, where
-// the planned state is null and the figure comes from state: removing a policy
-// stops it applying to everything currently in its scope, which is worth seeing
-// before it happens.
+// reportScopeImpact emits the plan-time impact alert for a scope change. A policy
+// is a deployable object in Jamf Pro's terms, so the alert reports how many
+// computers the change reaches.
 func (r *PolicyResource) reportScopeImpact(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	if !r.impact.Enabled() {
-		return
-	}
-	creating := req.State.Raw.IsNull()
-	destroying := req.Plan.Raw.IsNull()
-	if creating && destroying {
-		return
-	}
-
-	var prior, planned impact.Scope
-	if !creating {
-		var state PolicyResourceModel
-		if diags := req.State.Get(ctx, &state); diags.HasError() {
-			return
-		}
-		prior = scope.ComputerImpactScope(ctx, state.Scope)
-	}
-	if !destroying {
-		var plan PolicyResourceModel
-		if diags := req.Plan.Get(ctx, &plan); diags.HasError() {
-			return
-		}
-		planned = scope.ComputerImpactScope(ctx, plan.Scope)
-	}
-
-	action := impact.ActionUpdate
-	switch {
-	case creating:
-		action = impact.ActionCreate
-	case destroying:
-		action = impact.ActionDelete
-	}
-
-	resp.Diagnostics.Append(impact.Report(ctx, impact.Request{
-		Cache:   r.impact,
-		Path:    path.Root("scope"),
-		Kind:    impact.Deployable,
-		Label:   "policy",
-		Action:  action,
-		Prior:   prior,
-		Planned: planned,
-	})...)
+	impact.ReportPlan(ctx, req, resp, impact.PlanReport{
+		Cache: r.impact,
+		Path:  path.Root("scope"),
+		Label: "policy",
+	}, func(ctx context.Context, m *PolicyResourceModel) impact.Scope {
+		return scope.ComputerImpactScope(ctx, m.Scope)
+	})
 }
 
 // optComputedString returns an Optional+Computed StringAttribute with the

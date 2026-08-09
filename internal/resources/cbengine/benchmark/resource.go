@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/compliancebenchmarks"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
@@ -33,6 +34,9 @@ import (
 // BenchmarkResource implements the Terraform resource for Jamf Compliance Benchmark.
 type BenchmarkResource struct {
 	client *compliancebenchmarks.Client
+	// impact backs the plan-time impact alert on device group targeting. nil when
+	// the provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -40,6 +44,7 @@ var _ resource.Resource = &BenchmarkResource{}
 var _ resource.ResourceWithImportState = &BenchmarkResource{}
 var _ resource.ResourceWithIdentity = &BenchmarkResource{}
 var _ resource.ResourceWithConfigValidators = &BenchmarkResource{}
+var _ resource.ResourceWithModifyPlan = &BenchmarkResource{}
 
 const (
 	defaultCreateTimeout = 15 * time.Minute
@@ -431,6 +436,7 @@ func (r *BenchmarkResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 
+	r.impact = pd.ImpactCache()
 	r.client = compliancebenchmarks.New(pd.Client)
 }
 
