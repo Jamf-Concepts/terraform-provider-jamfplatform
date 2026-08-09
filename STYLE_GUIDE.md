@@ -1139,6 +1139,8 @@ The `<scope>` block of every Jamf Classic-API resource (policies, ebooks, mac ap
 
 **Item shape — IDs-only `Set<String>`.** Sub-blocks collapse to a flat `schema.SetAttribute{ElementType: types.StringType, Optional: true}` carrying only the numeric Jamf Pro classic ID (or name string, for the directory-service categories). Server-augmented `<name>` and `<udid>` wire fields are discarded on read; only IDs round-trip through Terraform state. Authoring uses interpolation: `computer_ids = [for c in data.jamfplatform_pro_computers.example: c.id]`.
 
+**A numeric Jamf Pro group ID does not identify a group on its own — always pair it with the estate.** Jamf Pro numbers computer groups and mobile device groups in independent sequences, so the same integer names two different groups: on the test tenant, `1` is both the `All Managed Clients` computer group and the `All Managed iPads` mobile device group. Any map, cache, or resolver keyed on the ID alone silently loses one of every colliding pair, and the survivor is then rejected as the wrong type — which reads as "group not found" for a group that plainly exists. Key on `{deviceType, id}` (see `internal/common/impact/cache.go`), or thread an estate discriminator through the lookup the way `internal/common/criteria`'s `GroupResolver` threads `ObjectType`. **Platform group UUIDs are unique tenant-wide**, so a UUID-keyed index needs no discriminator, and UUID → Jamf Pro ID resolution (`device_group`'s `resolveJamfProID`) is unambiguous in that direction. Unit tests will not catch a regression here unless the fixture deliberately contains a cross-estate ID collision — this was found only by running against a live tenant.
+
 **Naming convention.**
 
 | Sub-block kind | Suffix | Examples |
