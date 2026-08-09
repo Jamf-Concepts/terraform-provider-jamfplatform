@@ -212,6 +212,12 @@ type Resolution struct {
 	resolvedNamed int
 	// namedDescribed renders those categories for the breakdown.
 	namedDescribed []string
+	// exceedsManaged records that the exact figure is larger than the tenant's
+	// managed device count, which means the scope names devices that are not
+	// managed. Unlike the approximate path — where an excess means overlapping
+	// counts were summed and the estate is a valid ceiling — this excess is real
+	// information and must not be clamped away.
+	exceedsManaged bool
 	// DirectDevices is the number of individually scoped devices counted.
 	DirectDevices int
 	// MissingGroupIDs are referenced groups that are not present in the tenant.
@@ -317,6 +323,7 @@ func Resolve(ctx context.Context, c *Cache, s Scope) (Resolution, error) {
 		// Everything countable is already in the union, so nothing is added on top.
 		res.Count = exact
 		res.Exact = true
+		res.exceedsManaged = res.Total > 0 && res.Count > res.Total
 		return res, nil
 	}
 

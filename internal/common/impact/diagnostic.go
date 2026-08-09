@@ -74,6 +74,9 @@ func splitEstates(r Resolution) string {
 	return strings.Join(parts, " and ")
 }
 
+// unmanagedNote explains a figure larger than the tenant's managed device count.
+const unmanagedNote = "The scope names devices that are not managed. Only managed devices receive anything, so the figure is larger than the number that will act on this."
+
 // summarise renders the headline count, with the tenant proportion when known.
 func summarise(r Resolution) string {
 	// One entry is still worth rendering this way: a resource that can span both
@@ -85,7 +88,10 @@ func summarise(r Resolution) string {
 	}
 	noun := r.DeviceType.Noun()
 	head := figure(r.Count, r.Bound, noun)
-	if r.Total > 0 {
+	// A proportion of the managed estate makes no sense once the figure exceeds it:
+	// "2 of 1 mobile devices (200%)" reads as a defect rather than as the fact that
+	// some named devices are unmanaged.
+	if r.Total > 0 && !r.exceedsManaged {
 		head = strings.Replace(head, " "+noun, fmt.Sprintf(" of %d %s", r.Total, noun), 1)
 		if pct, ok := r.Percent(); ok {
 			head += fmt.Sprintf(" (%d%%)", pct)
@@ -162,10 +168,14 @@ func plural(n int, one, many string) string {
 // caveats renders the inputs that could not be evaluated, grouped by the
 // direction they move the figure in so the reader learns which way it is wrong.
 func caveats(r Resolution) []string {
-	if len(r.Unresolvable) == 0 && len(r.MissingGroupIDs) == 0 && len(r.Mentioned) == 0 {
+	if len(r.Unresolvable) == 0 && len(r.MissingGroupIDs) == 0 && len(r.Mentioned) == 0 && !r.exceedsManaged {
 		return nil
 	}
 	var lines []string
+	if r.exceedsManaged {
+		lines = append(lines, fmt.Sprintf("%s The tenant has %s under management.",
+			unmanagedNote, plural(int(r.Total), singularNoun(r.DeviceType), r.DeviceType.Noun())))
+	}
 	var narrows, broadens, ambiguous []Unresolvable
 	for _, u := range r.Unresolvable {
 		switch u.Effect {

@@ -30,6 +30,13 @@ type stubSource struct {
 	memberErr error
 	// computersByFilter maps an inventory filter to the management ids it matches.
 	computersByFilter map[string][]string
+	// mobilesByFilter is the mobile device equivalent.
+	mobilesByFilter map[string][]string
+	// places maps building and department ids to names, for the mobile filters that
+	// match on name.
+	places Places
+	// placeErr forces the name lookup to fail.
+	placeErr error
 	// filterErr forces every inventory read to fail.
 	filterErr error
 
@@ -37,6 +44,7 @@ type stubSource struct {
 	calls       int
 	memberCalls map[string]int
 	filterCalls map[string]int
+	placeCalls  int
 }
 
 func (s *stubSource) Members(_ context.Context, platformID string) ([]string, error) {
@@ -70,6 +78,35 @@ func (s *stubSource) ComputerManagementIDs(_ context.Context, filter string) ([]
 		return nil, s.filterErr
 	}
 	return s.computersByFilter[filter], nil
+}
+
+func (s *stubSource) MobileManagementIDs(_ context.Context, filter string) ([]string, error) {
+	s.mu.Lock()
+	if s.filterCalls == nil {
+		s.filterCalls = map[string]int{}
+	}
+	s.filterCalls[filter]++
+	s.mu.Unlock()
+	if s.filterErr != nil {
+		return nil, s.filterErr
+	}
+	return s.mobilesByFilter[filter], nil
+}
+
+func (s *stubSource) PlaceNames(_ context.Context) (Places, error) {
+	s.mu.Lock()
+	s.placeCalls++
+	s.mu.Unlock()
+	if s.placeErr != nil {
+		return Places{}, s.placeErr
+	}
+	return s.places, nil
+}
+
+func (s *stubSource) placeCallCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.placeCalls
 }
 
 func (s *stubSource) filterCallCount(filter string) int {
@@ -1070,11 +1107,55 @@ func TestResolveExcludedBuildingIsSubtractedExactly(t *testing.T) {
 	}
 }
 
-func TestResolveMobileBuildingStaysUnresolved(t *testing.T) {
-	// Mobile devices filter buildings by name while a scope block carries ids, so
-	// the mobile estate keeps the unresolved treatment — and it must broaden, since
-	// a target can only add devices.
-	c := NewCache(testSource())
+func TestResolveMobileBuildingIsTranslatedToItsNameAndCounted(t *testing.T) {
+	// The mobile inventory filters buildings by name where the computer inventory
+	// filters by id, so the scope's id has to be translated first.
+	src := testSource()
+	src.places = Places{Buildings: map[string]string{"321": "Head Office"}}
+	src.mobilesByFilter = map[string][]string{
+		`building=="Head Office"`: {"d-1000", "d-1001"},
+	}
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:  DeviceTypeMobile,
+		BuildingIDs: []string{"321"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 2 {
+		t.Fatalf("got count=%d, want the 2 mobile devices in that building", res.Count)
+	}
+	if res.Bound != BoundExact {
+		t.Fatalf("a counted building needs no hedge, got %v", res.Bound)
+	}
+}
+
+func TestResolveMobileDeviceIDsAreCountedExactly(t *testing.T) {
+	src := testSource()
+	src.mobilesByFilter = map[string][]string{
+		"mobileDeviceId==7 or mobileDeviceId==8": {"d-1000", "d-1001"},
+	}
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeMobile,
+		DeviceIDs:  []string{"7", "8"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 2 || res.Bound != BoundExact {
+		t.Fatalf("got count=%d bound=%v, want an exact 2", res.Count, res.Bound)
+	}
+}
+
+func TestResolveMobileBuildingWithNoMatchingNameStaysUnresolved(t *testing.T) {
+	// An id with no matching name is not guessed at. Filtering on a name we do not
+	// have would match everything or nothing, so the category reports as
+	// unresolvable instead — broadening, since a target can only add devices.
+	src := testSource()
+	src.places = Places{Buildings: map[string]string{"999": "Somewhere Else"}}
+	c := NewCache(src)
 	res, err := Resolve(context.Background(), c, Scope{
 		DeviceType:  DeviceTypeMobile,
 		ProGroups:   mobileRefs("66"),
@@ -1097,6 +1178,39 @@ func TestResolveMobileBuildingStaysUnresolved(t *testing.T) {
 	}
 	if res.Bound != BoundAtLeast {
 		t.Fatalf("got bound=%v, want a lower bound", res.Bound)
+	}
+}
+
+func TestResolveMobileNameLookupFailureDegradesRatherThanFailing(t *testing.T) {
+	src := testSource()
+	src.placeErr = errors.New("no privilege to read buildings")
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType:  DeviceTypeMobile,
+		ProGroups:   mobileRefs("66"),
+		BuildingIDs: []string{"321"},
+	})
+	if err != nil {
+		t.Fatalf("a name lookup failure must not fail resolution: %v", err)
+	}
+	if res.Bound != BoundAtLeast {
+		t.Fatalf("got bound=%v, want the unresolved treatment", res.Bound)
+	}
+}
+
+func TestResolvePlaceNamesReadOncePerPlan(t *testing.T) {
+	src := testSource()
+	src.places = Places{Buildings: map[string]string{"321": "Head Office"}}
+	src.mobilesByFilter = map[string][]string{`building=="Head Office"`: {"d-1000"}}
+	c := NewCache(src)
+	s := Scope{DeviceType: DeviceTypeMobile, BuildingIDs: []string{"321"}}
+	for range 4 {
+		if _, err := Resolve(context.Background(), c, s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := src.placeCallCount(); got != 1 {
+		t.Fatalf("building and department names must be read once per plan, read %d times", got)
 	}
 }
 
@@ -1354,5 +1468,61 @@ func TestSplitFigureCarriesTheBoundAsALeadingPhrase(t *testing.T) {
 	}
 	if strings.Contains(got, "or more") {
 		t.Fatalf("the trailing form must not be used for a split: %q", got)
+	}
+}
+
+func TestResolveFigureExceedingManagedEstateIsNotClamped(t *testing.T) {
+	// Caught live: naming two unmanaged mobile devices on a tenant with one managed
+	// mobile device reported "2 of 1 mobile devices (200%)". The count is correct —
+	// the scope really does name two devices — so clamping it would hide that.
+	// Instead the proportion is dropped and the reason stated.
+	src := testSource()
+	src.totals = Totals{ManagedMobileDevices: 1}
+	src.mobilesByFilter = map[string][]string{
+		"mobileDeviceId==7 or mobileDeviceId==8": {"d-1000", "d-1001"},
+	}
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeMobile,
+		DeviceIDs:  []string{"7", "8"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 2 {
+		t.Fatalf("got count=%d, want the 2 named devices — not clamped to the managed total", res.Count)
+	}
+	got := summarise(res)
+	if got != "2 mobile devices" {
+		t.Fatalf("got %q, want no proportion once the figure exceeds the managed estate", got)
+	}
+	if strings.Contains(got, "%") || strings.Contains(got, " of ") {
+		t.Fatalf("an impossible proportion must not be rendered: %q", got)
+	}
+	line := strings.Join(caveats(res), "\n")
+	if !strings.Contains(line, "not managed") {
+		t.Fatalf("the reason must be stated: %q", line)
+	}
+}
+
+func TestResolveApproximatePathStillClampsToTheEstate(t *testing.T) {
+	// The distinction: on the approximate path an excess comes from summing
+	// overlapping counts, so the estate really is a ceiling and clamping is right.
+	src := testSource()
+	src.totals = Totals{ManagedComputers: 210}
+	src.memberErr = errors.New("membership unavailable")
+	c := NewCache(src)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("1", "12", "13"), // 200 + 30 + 5 summed
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Count != 210 {
+		t.Fatalf("got count=%d, want the summed figure clamped to 210", res.Count)
+	}
+	if res.exceedsManaged {
+		t.Fatal("the approximate path clamps, so nothing exceeds the estate")
 	}
 }

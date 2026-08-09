@@ -114,6 +114,18 @@ type Source interface {
 	// scope block carries — individual computers, buildings, departments — into the
 	// identifier space group membership uses.
 	ComputerManagementIDs(ctx context.Context, filter string) ([]string, error)
+	// MobileManagementIDs is the mobile device equivalent.
+	MobileManagementIDs(ctx context.Context, filter string) ([]string, error)
+	// PlaceNames maps building and department identifiers to their names. The mobile
+	// inventory filters on the name where the computer inventory filters on the id,
+	// so a scope block's ids have to be translated before they can be used.
+	PlaceNames(ctx context.Context) (Places, error)
+}
+
+// Places maps building and department identifiers to names.
+type Places struct {
+	Buildings   map[string]string
+	Departments map[string]string
 }
 
 // Cache holds the tenant group list and device totals for the lifetime of one
@@ -155,6 +167,12 @@ type Cache struct {
 	// resources naming the same building read it once.
 	deviceMu sync.Mutex
 	devices  map[string]*memberSet
+
+	// placeOnce guards the one-time building and department name lookup, needed
+	// only when a mobile-device scope names one of them.
+	placeOnce sync.Once
+	places    Places
+	placeErr  error
 
 	// noticeMu guards the one-shot latch for the "impact unavailable" notice, so
 	// a tenant that cannot be read produces one notice for the plan rather than
@@ -339,6 +357,68 @@ func (s tenantSource) ComputerManagementIDs(ctx context.Context, filter string) 
 	for _, r := range rows {
 		if r.General != nil && r.General.ManagementID != "" {
 			out = append(out, r.General.ManagementID)
+		}
+	}
+	return out, nil
+}
+
+// MobileManagementIDs reads the management identifiers of the mobile devices an
+// inventory filter matches.
+//
+// The response is a union discriminated by operating system, and only one variant
+// is populated per record — so the identifier has to be read from whichever it is.
+func (s tenantSource) MobileManagementIDs(ctx context.Context, filter string) ([]string, error) {
+	rows, err := s.pro.ListMobileDevicesDetailV2(ctx, []string{"GENERAL"}, nil, filter)
+	if err != nil {
+		return nil, fmt.Errorf("reading mobile devices matching the scope: %w", err)
+	}
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		switch {
+		case r.IOS != nil && r.IOS.General != nil:
+			out = appendIfSet(out, r.IOS.General.ManagementID)
+		case r.TvOS != nil && r.TvOS.General != nil:
+			out = appendIfSet(out, r.TvOS.General.ManagementID)
+		case r.VisionOS != nil && r.VisionOS.General != nil:
+			out = appendIfSet(out, r.VisionOS.General.ManagementID)
+		case r.WatchOS != nil && r.WatchOS.General != nil:
+			out = appendIfSet(out, r.WatchOS.General.ManagementID)
+		}
+	}
+	return out, nil
+}
+
+// appendIfSet appends a non-empty identifier.
+func appendIfSet(out []string, id string) []string {
+	if id == "" {
+		return out
+	}
+	return append(out, id)
+}
+
+// PlaceNames reads the building and department names, for the mobile inventory
+// filters that match on name rather than id.
+func (s tenantSource) PlaceNames(ctx context.Context) (Places, error) {
+	buildings, err := s.pro.ListBuildingsV1(ctx, nil, "")
+	if err != nil {
+		return Places{}, fmt.Errorf("reading buildings: %w", err)
+	}
+	departments, err := s.pro.ListDepartmentsV1(ctx, nil, "")
+	if err != nil {
+		return Places{}, fmt.Errorf("reading departments: %w", err)
+	}
+	out := Places{
+		Buildings:   make(map[string]string, len(buildings)),
+		Departments: make(map[string]string, len(departments)),
+	}
+	for _, b := range buildings {
+		if b.ID != nil {
+			out.Buildings[*b.ID] = b.Name
+		}
+	}
+	for _, d := range departments {
+		if d.ID != nil {
+			out.Departments[*d.ID] = d.Name
 		}
 	}
 	return out, nil
