@@ -99,6 +99,9 @@ func testSource() *stubSource {
 			"uuid-all": deviceIDs(1, 200),
 			"uuid-mkt": deviceIDs(1, 30),
 			"uuid-lab": {"d-30", "d-31", "d-32", "d-33", "d-34"},
+			// A mobile group's members are drawn from a disjoint range: a device
+			// belongs to one estate only, so the two sides never share an identifier.
+			"uuid-ipads": deviceIDs(1000, 40),
 		},
 	}
 }
@@ -617,7 +620,10 @@ func TestDeltaSplitsAdditionsAndRemovals(t *testing.T) {
 	}
 }
 
-func TestReportSkipsUnchangedScope(t *testing.T) {
+func TestReportSkipsAnUnchangedResource(t *testing.T) {
+	// Terraform calls a plan modifier for every resource in the configuration, so
+	// an object with no diff must stay silent or every plan would carry one alert
+	// per scoped object.
 	c := NewCache(testSource())
 	s := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")}
 	diags := Report(context.Background(), Request{
@@ -627,13 +633,47 @@ func TestReportSkipsUnchangedScope(t *testing.T) {
 		Action:  ActionUpdate,
 		Prior:   s,
 		Planned: s,
+		Changed: false,
 	})
 	if len(diags) != 0 {
-		t.Fatalf("an unchanged scope must not alert, got %q", diags[0].Detail())
+		t.Fatalf("an untouched object must not alert, got %q", diags[0].Detail())
 	}
 }
 
-func TestReportSkipsUnchangedScopeWhenOrderDiffers(t *testing.T) {
+func TestReportAlertsWhenOnlyThePayloadChanges(t *testing.T) {
+	// Adding a script to a policy alters what every computer in its scope receives.
+	// The audience has not moved, but the change still reaches those devices — and
+	// the resource diff shows what changed without ever saying how many devices it
+	// reaches.
+	c := NewCache(testSource())
+	s := Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")}
+	diags := Report(context.Background(), Request{
+		Cache:   c,
+		Path:    path.Root("scope"),
+		Label:   "policy",
+		Action:  ActionUpdate,
+		Prior:   s,
+		Planned: s,
+		Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("expected one alert, got %d", len(diags))
+	}
+	if s := diags[0].Summary(); !strings.Contains(s, "affects 30 of 300 computers") {
+		t.Fatalf("summary must still give the audience: %q", s)
+	}
+	d := diags[0].Detail()
+	if !strings.Contains(d, "The scope is unchanged; these computers will receive the updated policy.") {
+		t.Fatalf("detail must explain why the alert is here: %q", d)
+	}
+	if strings.Contains(d, "adding") || strings.Contains(d, "removing") {
+		t.Fatalf("nothing entered or left scope, so no delta may be claimed: %q", d)
+	}
+}
+
+func TestReportClaimsNoDeltaWhenScopeOnlyReorders(t *testing.T) {
+	// Scope collections are unordered, so a reordering moves nobody in or out — the
+	// alert may report the audience but must not invent a delta.
 	c := NewCache(testSource())
 	diags := Report(context.Background(), Request{
 		Cache:   c,
@@ -642,9 +682,13 @@ func TestReportSkipsUnchangedScopeWhenOrderDiffers(t *testing.T) {
 		Action:  ActionUpdate,
 		Prior:   Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12", "13")},
 		Planned: Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("13", "12")},
+		Changed: true,
 	})
-	if len(diags) != 0 {
-		t.Fatalf("scope collections are unordered, so a reordering must not alert: %q", diags[0].Detail())
+	if len(diags) != 1 {
+		t.Fatalf("expected one alert, got %d", len(diags))
+	}
+	if d := diags[0].Detail(); strings.Contains(d, "adding") || strings.Contains(d, "removing") {
+		t.Fatalf("a reordering moves nobody: %q", d)
 	}
 }
 
@@ -655,6 +699,7 @@ func TestReportUpdateStatesAdditionsAndRemovals(t *testing.T) {
 		Path:    path.Root("scope"),
 		Label:   "policy",
 		Action:  ActionUpdate,
+		Changed: true,
 		Prior:   Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("13")},
 		Planned: Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")},
 	})
@@ -761,7 +806,7 @@ func TestReportScopeableKindNamesTheKnockOn(t *testing.T) {
 	c := NewCache(testSource())
 	diags := Report(context.Background(), Request{
 		Cache: c, Path: path.Root("criteria"), Kind: Scopeable,
-		Label: "smart computer group", Action: ActionUpdate,
+		Label: "smart computer group", Action: ActionUpdate, Changed: true,
 		Prior:   Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("13")},
 		Planned: Scope{DeviceType: DeviceTypeComputer, ProGroups: computerRefs("12")},
 	})
@@ -992,10 +1037,11 @@ func TestReportLiftedExclusionCountsAsAnAddition(t *testing.T) {
 	// "adding" side of the delta even though it is written under exclusions.
 	c := NewCache(testSource())
 	diags := Report(context.Background(), Request{
-		Cache:  c,
-		Path:   path.Root("scope"),
-		Label:  "policy",
-		Action: ActionUpdate,
+		Cache:   c,
+		Path:    path.Root("scope"),
+		Label:   "policy",
+		Action:  ActionUpdate,
+		Changed: true,
 		Prior: Scope{
 			DeviceType:        DeviceTypeComputer,
 			ProGroups:         computerRefs("12"),
@@ -1021,10 +1067,11 @@ func TestReportLiftedExclusionCountsAsAnAddition(t *testing.T) {
 func TestReportNewExclusionCountsAsARemoval(t *testing.T) {
 	c := NewCache(testSource())
 	diags := Report(context.Background(), Request{
-		Cache:  c,
-		Path:   path.Root("scope"),
-		Label:  "policy",
-		Action: ActionUpdate,
+		Cache:   c,
+		Path:    path.Root("scope"),
+		Label:   "policy",
+		Action:  ActionUpdate,
+		Changed: true,
 		Prior: Scope{
 			DeviceType: DeviceTypeComputer,
 			ProGroups:  computerRefs("12"),
@@ -1040,5 +1087,117 @@ func TestReportNewExclusionCountsAsARemoval(t *testing.T) {
 	}
 	if d := diags[0].Detail(); !strings.Contains(d, "removing") {
 		t.Fatalf("adding an exclusion removes devices: %q", d)
+	}
+}
+
+func TestResolveSplitsFigureAcrossEstates(t *testing.T) {
+	// A merged "3 of 5 devices" hides the distinction that matters most: three Macs
+	// and three iPads are not the same change. A scope spanning both estates must
+	// report each side with its own denominator.
+	c := NewCache(testSource())
+	refs := append(computerRefs("12"), mobileRefs("66")...)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeAny,
+		ProGroups:  refs,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := res.PerEstate[DeviceTypeComputer]; got != 30 {
+		t.Fatalf("computer side = %d, want 30", got)
+	}
+	if got := res.PerEstate[DeviceTypeMobile]; got != 40 {
+		t.Fatalf("mobile side = %d, want 40", got)
+	}
+	if !res.Exact {
+		t.Fatal("both estates' membership was readable, so the figure must be exact")
+	}
+	want := "30 of 300 computers and 40 of 60 mobile devices"
+	if got := summarise(res); got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestResolveSingleEstateScopeIsNotSplit(t *testing.T) {
+	// A scope confined to one estate already says which in its noun, so a split
+	// would only add noise.
+	c := NewCache(testSource())
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeComputer,
+		ProGroups:  computerRefs("12"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.PerEstate != nil {
+		t.Fatalf("a single-estate scope must not be split, got %v", res.PerEstate)
+	}
+	if got := summarise(res); got != "30 of 300 computers (10%)" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestResolveMixedEstateScopeNamingOneEstateUsesThatEstatesDenominator(t *testing.T) {
+	// A resource that can span both estates but names only computers must not be
+	// measured against a denominator that includes mobile devices it never touches.
+	c := NewCache(testSource())
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeAny,
+		ProGroups:  computerRefs("12"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := summarise(res); got != "30 of 300 computers" {
+		t.Fatalf("got %q, want the computer estate's own denominator", got)
+	}
+}
+
+func TestResolveNamedEstateWithNoMembersStillReportsZero(t *testing.T) {
+	// Caught live: an ebook naming a mobile device group that currently holds
+	// nothing reported only the computer side, silently hiding that the mobile side
+	// was targeted at all. The estate is named by the scope, so it must appear.
+	src := testSource()
+	src.groups = append(src.groups, Group{
+		PlatformID: "uuid-empty-mobile", JamfProID: "99", Name: "Empty iPads",
+		DeviceType: DeviceTypeMobile, Smart: true, MembershipCount: 0,
+	})
+	src.members["uuid-empty-mobile"] = nil
+	c := NewCache(src)
+	refs := append(computerRefs("12"), mobileRefs("99")...)
+	res, err := Resolve(context.Background(), c, Scope{DeviceType: DeviceTypeAny, ProGroups: refs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := res.PerEstate[DeviceTypeMobile]; !ok {
+		t.Fatalf("the named mobile estate must appear even at zero, got %v", res.PerEstate)
+	}
+	want := "30 of 300 computers and 0 of 60 mobile devices"
+	if got := summarise(res); got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestSplitFigureCarriesTheBoundAsALeadingPhrase(t *testing.T) {
+	// "30 or more computers and 40 of 60 mobile devices" would attach the
+	// qualifier to one side only, so a split moves it to the front.
+	c := NewCache(testSource())
+	refs := append(computerRefs("12"), mobileRefs("66")...)
+	res, err := Resolve(context.Background(), c, Scope{
+		DeviceType: DeviceTypeAny,
+		ProGroups:  refs,
+		Unresolvable: []Unresolvable{
+			{Path: "targets.user_group_ids", Reason: ReasonUserTarget, Effect: Broadens, Values: 1},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := summarise(res)
+	if !strings.HasPrefix(got, "at least ") {
+		t.Fatalf("got %q, want a leading qualifier", got)
+	}
+	if strings.Contains(got, "or more") {
+		t.Fatalf("the trailing form must not be used for a split: %q", got)
 	}
 }

@@ -59,6 +59,10 @@ type Request struct {
 	Prior Scope
 	// Planned is the scope this plan intends. Zero for a delete.
 	Planned Scope
+	// Changed reports whether this plan changes the object at all. Terraform calls
+	// a plan modifier for every resource in the configuration, including ones with
+	// no diff, so without this every plan would carry one alert per scoped object.
+	Changed bool
 }
 
 // Report produces the impact alert for one planned change, as advisory warning
@@ -81,10 +85,14 @@ func Report(ctx context.Context, req Request) diag.Diagnostics {
 	if subject.Empty() {
 		return diags
 	}
-	if req.Action == ActionUpdate && req.Prior.equal(req.Planned) {
-		// Jamf Pro alerts on save, not on view. A plan that leaves scope alone
-		// gets no alert, otherwise every plan would carry one warning per
-		// scoped object.
+	if req.Action == ActionUpdate && !req.Changed {
+		// Jamf Pro alerts on save, not on view — so an object this plan does not
+		// touch gets no alert.
+		//
+		// Deliberately keyed on the object changing at all, not on its scope
+		// changing. Adding a script to a policy alters what every computer in its
+		// scope receives, which is impact even though the audience is identical; the
+		// diff shows what changed but never how many devices it reaches.
 		return diags
 	}
 
@@ -149,6 +157,10 @@ func detail(ctx context.Context, req Request, res Resolution) string {
 	if req.Action == ActionUpdate {
 		if d := deltaLine(ctx, req); d != "" {
 			b.WriteString(d + "\n")
+		} else if req.Prior.equal(req.Planned) {
+			// Says why the alert is here at all when the audience has not moved.
+			fmt.Fprintf(&b, "The scope is unchanged; these %s will receive the updated %s.\n",
+				res.DeviceType.Noun(), req.Label)
 		}
 	}
 

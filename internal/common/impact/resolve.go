@@ -174,9 +174,21 @@ type Resolution struct {
 	// ExcludedGroups are the excluded groups that were found. Rendered in the
 	// breakdown so a figure smaller than the targets suggest is explicable.
 	ExcludedGroups []Group
+	// PerEstate splits Count by estate, and is populated only when the scope spans
+	// both. A merged "3 of 5 devices" hides whether three Macs or three iPads are
+	// affected, which is the first thing an administrator wants to know.
+	//
+	// The split is sound rather than approximate: a device belongs to exactly one
+	// estate, so computer-group members and mobile-device-group members are
+	// disjoint by construction and the union partitions cleanly.
+	PerEstate map[DeviceType]int64
+
 	// tenantWide records that the scope targeted the whole estate, so the
 	// breakdown can say so rather than listing nothing.
 	tenantWide bool
+	// totals carries both estates' sizes, so a split figure can give each side its
+	// own denominator.
+	totals Totals
 	// DirectDevices is the number of individually scoped devices counted.
 	DirectDevices int
 	// MissingGroupIDs are referenced groups that are not present in the tenant.
@@ -238,6 +250,7 @@ func Resolve(ctx context.Context, c *Cache, s Scope) (Resolution, error) {
 		return Resolution{}, err
 	}
 	res.Total = totals.For(s.DeviceType)
+	res.totals = totals
 
 	for _, u := range s.Unresolvable {
 		res.Bound = res.Bound.with(u.Effect)
@@ -356,7 +369,9 @@ func (r *Resolution) resolveGroups(ctx context.Context, c *Cache, s Scope, proRe
 // fails, so the caller can fall back to counts.
 //
 // Membership is expressed in device management identifiers, which are unique
-// across both estates, so the set arithmetic needs no per-estate handling.
+// across both estates, so the set arithmetic itself needs no per-estate handling.
+// The estate each member came from is still tracked, so a scope spanning both can
+// be reported as a split rather than one merged figure.
 func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, targets, excluded []Group) (int64, bool, error) {
 	if !s.All && len(targets) == 0 {
 		// Nothing to union. Fall back so a device-only or caveat-only scope keeps
@@ -364,8 +379,10 @@ func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, target
 		return 0, false, nil
 	}
 
-	gather := func(groups []Group) (map[string]struct{}, bool, error) {
-		out := make(map[string]struct{})
+	// gather unions the membership of a set of groups, remembering which estate
+	// each member arrived from.
+	gather := func(groups []Group) (map[string]DeviceType, bool, error) {
+		out := make(map[string]DeviceType)
 		for _, g := range groups {
 			ids, err := c.Members(ctx, g.PlatformID)
 			if err != nil {
@@ -380,7 +397,7 @@ func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, target
 				return nil, false, nil
 			}
 			for _, id := range ids {
-				out[id] = struct{}{}
+				out[id] = g.DeviceType
 			}
 		}
 		return out, true, nil
@@ -402,12 +419,54 @@ func (r *Resolution) countExactly(ctx context.Context, c *Cache, s Scope, target
 		return 0, false, err
 	}
 	var count int64
-	for id := range targetMembers {
-		if _, isExcluded := excludedMembers[id]; !isExcluded {
-			count++
+	perEstate := estateKeys(targets)
+	for id, dt := range targetMembers {
+		if _, isExcluded := excludedMembers[id]; isExcluded {
+			continue
 		}
+		count++
+		perEstate[dt]++
 	}
+	r.setPerEstate(s, perEstate)
 	return count, true, nil
+}
+
+// estateKeys seeds a per-estate tally with every estate the scope names, so an
+// estate that contributes no devices still reports as zero.
+//
+// An empty group is exactly the case worth showing: naming a mobile device group
+// that currently holds nothing is a real fact about the change, and reporting
+// only the computer side would silently hide that the mobile side was targeted at
+// all.
+func estateKeys(groups []Group) map[DeviceType]int64 {
+	out := make(map[DeviceType]int64, 2)
+	for _, g := range groups {
+		out[g.DeviceType] += 0
+	}
+	return out
+}
+
+// setPerEstate records the per-estate tally for a scope that can span both
+// estates. A scope fixed to one estate already says which in its noun, so it is
+// left merged.
+func (r *Resolution) setPerEstate(s Scope, perEstate map[DeviceType]int64) {
+	if s.DeviceType != DeviceTypeAny || len(perEstate) == 0 {
+		return
+	}
+	r.PerEstate = perEstate
+}
+
+// groupsShareAnEstate reports whether any two of the groups sit in the same
+// estate, which is the only way their membership counts can overlap.
+func groupsShareAnEstate(groups []Group) bool {
+	seen := make(map[DeviceType]struct{}, 2)
+	for _, g := range groups {
+		if _, dup := seen[g.DeviceType]; dup {
+			return true
+		}
+		seen[g.DeviceType] = struct{}{}
+	}
+	return false
 }
 
 // countApproximately sums membership counts, clamps to the estate, and reports
@@ -416,11 +475,16 @@ func (r *Resolution) countApproximately(s Scope, targets, excluded []Group) {
 	if s.All {
 		r.Count = r.Total
 	} else {
+		perEstate := estateKeys(targets)
 		for _, g := range targets {
 			r.Count += g.MembershipCount
+			perEstate[g.DeviceType] += g.MembershipCount
 		}
-		// More than one group means members can be counted twice.
-		if len(targets) > 1 {
+		r.setPerEstate(s, perEstate)
+		// Summed counts can double-count only where two groups could share a member,
+		// which means two groups in the same estate: a device belongs to exactly one
+		// estate, so a computer group and a mobile device group never overlap.
+		if groupsShareAnEstate(targets) {
 			r.Bound = r.Bound.with(Narrows)
 		}
 	}

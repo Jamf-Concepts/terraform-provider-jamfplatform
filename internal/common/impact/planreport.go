@@ -82,5 +82,8 @@ func ReportPlan[M any](
 		Action:  action,
 		Prior:   prior,
 		Planned: planned,
+		// Any diff at all counts. A payload edit reaches every device in scope just
+		// as a scope edit does.
+		Changed: !req.Plan.Raw.Equal(req.State.Raw),
 	})...)
 }

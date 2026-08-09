@@ -36,8 +36,53 @@ func figure(n int64, b Bound, noun string) string {
 	}
 }
 
+// qualifier renders a bound as a leading phrase, for figures where a trailing
+// "or more" cannot attach cleanly — a split across two estates, for instance.
+func qualifier(b Bound) string {
+	switch b {
+	case BoundAtMost:
+		return "up to "
+	case BoundAtLeast:
+		return "at least "
+	case BoundUnknown:
+		return "an estimated "
+	default:
+		return ""
+	}
+}
+
+// splitEstates renders a per-estate breakdown, each side with its own
+// denominator: "3 of 4 computers and 0 of 1 mobile devices".
+//
+// A merged figure would hide the distinction an administrator cares about most —
+// three Macs and three iPads are not the same change — so a scope spanning both
+// estates never reports one combined number.
+func splitEstates(r Resolution) string {
+	parts := make([]string, 0, 2)
+	// Computers first, then mobile devices, matching the admin UI's ordering.
+	for _, dt := range []DeviceType{DeviceTypeComputer, DeviceTypeMobile} {
+		n, ok := r.PerEstate[dt]
+		if !ok {
+			continue
+		}
+		if total := r.totals.For(dt); total > 0 {
+			parts = append(parts, fmt.Sprintf("%d of %d %s", n, total, dt.Noun()))
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%d %s", n, dt.Noun()))
+	}
+	return strings.Join(parts, " and ")
+}
+
 // summarise renders the headline count, with the tenant proportion when known.
 func summarise(r Resolution) string {
+	// One entry is still worth rendering this way: a resource that can span both
+	// estates but names only computers should read "3 of 4 computers", not
+	// "3 of 5 devices" against a denominator including mobile devices it never
+	// touches.
+	if len(r.PerEstate) > 0 {
+		return qualifier(r.Bound) + splitEstates(r)
+	}
 	noun := r.DeviceType.Noun()
 	head := figure(r.Count, r.Bound, noun)
 	if r.Total > 0 {
