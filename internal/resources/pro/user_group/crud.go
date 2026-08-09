@@ -100,6 +100,10 @@ func (r *UserGroupResource) groupRefWorkaroundApplies(ctx context.Context) bool 
 // Skips create (no prior state) and destroy (no plan); soft — any resolve
 // failure leaves the diff intact.
 func (r *UserGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Runs ahead of the create/destroy guard below: a group entering or leaving
+	// management changes what everything scoped to it applies to.
+	r.reportMembershipImpact(ctx, req, resp)
+
 	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || (r.ldap == nil && r.groupRef == nil) {
 		return
 	}

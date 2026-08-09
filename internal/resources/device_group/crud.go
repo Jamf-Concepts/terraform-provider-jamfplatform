@@ -47,6 +47,12 @@ func isDeletePropagationConflict(err error) bool {
 // Skips create (no prior state) and destroy (no plan); soft — any resolve
 // failure leaves the diff intact.
 func (r *DeviceGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Runs ahead of the create/destroy guard below: a group entering or leaving
+	// management changes what everything scoped to it applies to, so both deserve
+	// an impact alert even though neither needs the criteria suppression that
+	// follows.
+	r.reportMembershipImpact(ctx, req, resp)
+
 	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() || r.proClient == nil {
 		return
 	}
