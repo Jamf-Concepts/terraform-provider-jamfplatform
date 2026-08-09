@@ -226,7 +226,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 					"Alerts are advisory only — they never block a plan, and a tenant that cannot be read simply produces one notice. Off by default, because enabling it reads group membership counts and device totals once per plan. " +
 					"Figures are a snapshot: group membership is re-evaluated continuously, so the number affected can change before or during apply.\n\n" +
 					"This does not change any Jamf Pro setting. To configure the impact alerts Jamf Pro shows in its own web interface, use `jamfplatform_pro_impact_alert_notification_settings`. " +
-					"Can also be set via the JAMFPLATFORM_IMPACT_ALERTS environment variable.",
+					"Can also be set via the JAMFPLATFORM_IMPACT_ALERTS environment variable. See the [Impact alerts guide](../guides/impact-alerts) for how to read the figures and how to consume them in CI.",
 			},
 		},
 	}
