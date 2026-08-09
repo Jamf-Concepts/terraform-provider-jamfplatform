@@ -154,6 +154,7 @@ const (
 	envClientSecret         = "JAMFPLATFORM_CLIENT_SECRET"
 	envTenantID             = "JAMFPLATFORM_TENANT_ID"
 	envMinRequestIntervalMs = "JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS"
+	envImpactAlerts         = "JAMFPLATFORM_IMPACT_ALERTS"
 )
 
 // Ensure JamfPlatformProvider satisfies the various provider interfaces.
@@ -173,6 +174,7 @@ type JamfPlatformProviderModel struct {
 	ClientSecret         types.String `tfsdk:"client_secret"`
 	TenantID             types.String `tfsdk:"tenant_id"`
 	MinRequestIntervalMs types.Int64  `tfsdk:"min_request_interval_ms"`
+	ImpactAlerts         types.Bool   `tfsdk:"impact_alerts"`
 }
 
 func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -216,6 +218,15 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			"min_request_interval_ms": schema.Int64Attribute{
 				Optional:    true,
 				Description: "Minimum elapsed time, in milliseconds, between the start of consecutive outbound API requests. Paces all traffic through the shared client (which Terraform fans out across parallel resource operations), giving the server breathing room and reducing rate-limit responses. Defaults to 100. Set to 0 to disable. Raising it slows large parallel applies; lowering it increases the chance of 429s. Can also be set via the JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS environment variable.",
+			},
+			"impact_alerts": schema.BoolAttribute{
+				Optional: true,
+				MarkdownDescription: "Show **impact alerts** during `terraform plan`: an advisory warning on each scopeable or deployable object whose scope is changing, reporting how many computers or mobile devices the change affects. " +
+					"Mirrors the impact alert Jamf Pro shows on Save, and reads the same group membership counts the admin UI does.\n\n" +
+					"Alerts are advisory only — they never block a plan, and a tenant that cannot be read simply produces one notice. Off by default, because enabling it reads group membership counts and device totals once per plan. " +
+					"Figures are a snapshot: group membership is re-evaluated continuously, so the number affected can change before or during apply.\n\n" +
+					"This does not change any Jamf Pro setting. To configure the impact alerts Jamf Pro shows in its own web interface, use `jamfplatform_pro_impact_alert_notification_settings`. " +
+					"Can also be set via the JAMFPLATFORM_IMPACT_ALERTS environment variable.",
 			},
 		},
 	}
@@ -326,6 +337,9 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 	})
 
 	pd := providerdata.New(apiClient)
+	if impactAlertsEnabled(data.ImpactAlerts) {
+		pd.EnableImpactAlerts()
+	}
 	resp.DataSourceData = pd
 	resp.ResourceData = pd
 	resp.ListResourceData = pd
@@ -687,6 +701,22 @@ func getenv(key string) string {
 }
 
 // shouldEnableHTTPLogging checks TF_LOG to determine whether HTTP logging should be wired up.
+// impactAlertsEnabled resolves the impact_alerts setting, attribute taking
+// precedence over the environment variable. Unparseable env values are treated
+// as off rather than erroring: impact alerts are advisory, so a typo here must
+// not stop a plan that would otherwise succeed.
+func impactAlertsEnabled(attr types.Bool) bool {
+	if !attr.IsNull() && !attr.IsUnknown() {
+		return attr.ValueBool()
+	}
+	v, ok := os.LookupEnv(envImpactAlerts)
+	if !ok {
+		return false
+	}
+	enabled, err := strconv.ParseBool(strings.TrimSpace(v))
+	return err == nil && enabled
+}
+
 func shouldEnableHTTPLogging() bool {
 	level, ok := os.LookupEnv("TF_LOG")
 	if !ok {

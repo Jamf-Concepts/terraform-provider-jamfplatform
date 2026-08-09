@@ -1,0 +1,282 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+// Package impact computes plan-time scope impact for scopeable and deployable
+// objects, mirroring Jamf Pro's impact alert notifications.
+//
+// Jamf Pro shows an impact alert on Save, summarising how many devices a change
+// to a deployable object (policies, configuration profiles, apps) or a scopeable
+// object (smart and static groups, classes) will affect. This package produces
+// the equivalent signal during `terraform plan`, as advisory warning
+// diagnostics. It never blocks a plan and never writes to the tenant.
+//
+// The counting inputs are group membership counts and the tenant device totals.
+// Both are read once per provider instance and shared across every resource in
+// the plan; see Cache.
+package impact
+
+import (
+	"context"
+	"fmt"
+	"sync"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+)
+
+// DeviceType distinguishes the two membership namespaces Jamf Pro groups live
+// in. Group rows carry it so a computer-scoped resource never resolves a mobile
+// device group id, and so percentages are taken against the right denominator.
+type DeviceType string
+
+const (
+	// DeviceTypeComputer is a computer group or computer-scoped resource.
+	DeviceTypeComputer DeviceType = "COMPUTER"
+	// DeviceTypeMobile is a mobile device group or mobile-device-scoped resource.
+	DeviceTypeMobile DeviceType = "MOBILE"
+	// DeviceTypeAny is a resource that can target either kind in one set —
+	// blueprints and compliance benchmarks address device groups without
+	// distinguishing computers from mobile devices.
+	DeviceTypeAny DeviceType = ""
+)
+
+// Noun returns the user-facing plural for a device type, matching the Jamf Pro
+// admin UI ("computers", "mobile devices", "devices").
+func (d DeviceType) Noun() string {
+	switch d {
+	case DeviceTypeMobile:
+		return "mobile devices"
+	case DeviceTypeComputer:
+		return "computers"
+	default:
+		return "devices"
+	}
+}
+
+// accepts reports whether a group of type other belongs in a scope of this type.
+func (d DeviceType) accepts(other DeviceType) bool {
+	return d == DeviceTypeAny || d == other
+}
+
+// Group is one row of the tenant's group list: a single group carrying both of
+// its identifiers plus its current membership count.
+//
+// Jamf Pro groups are addressed by two different identifiers depending on which
+// surface refers to them. Jamf Pro resources (policies, profiles, restricted
+// software) scope by the numeric Jamf Pro id; Jamf Platform resources
+// (blueprints, compliance benchmarks) target the group's Platform UUID. Both
+// identifiers arrive on the same row, so one read serves every caller.
+type Group struct {
+	PlatformID      string
+	JamfProID       string
+	Name            string
+	DeviceType      DeviceType
+	Smart           bool
+	MembershipCount int64
+}
+
+// Totals is the tenant's device inventory summary, used as the denominator when
+// expressing impact as a proportion.
+type Totals struct {
+	ManagedComputers     int64
+	ManagedMobileDevices int64
+}
+
+// For returns the managed device total for a device type. DeviceTypeAny spans
+// both, so it returns the whole managed estate.
+func (t Totals) For(d DeviceType) int64 {
+	switch d {
+	case DeviceTypeMobile:
+		return t.ManagedMobileDevices
+	case DeviceTypeComputer:
+		return t.ManagedComputers
+	default:
+		return t.ManagedComputers + t.ManagedMobileDevices
+	}
+}
+
+// Source supplies the two reads the impact calculation depends on. The
+// production implementation is backed by the Jamf Pro client; tests substitute
+// a stub so the resolution logic is exercised without HTTP.
+type Source interface {
+	Groups(ctx context.Context) ([]Group, error)
+	Totals(ctx context.Context) (Totals, error)
+}
+
+// Cache holds the tenant group list and device totals for the lifetime of one
+// provider instance — in practice, one terraform plan.
+//
+// Loading semantics:
+//   - Both reads happen once, on the first resource that needs them. Terraform
+//     evaluates resources concurrently, so concurrent callers block on the same
+//     load rather than issuing duplicate reads.
+//   - Failures are memoised. Impact reporting is advisory: a tenant that cannot
+//     be read produces one "impact unavailable" notice and then stays quiet for
+//     the rest of the plan. Retrying per resource would turn a transient blip
+//     into N slow resources and N duplicate notices, and could make a plan that
+//     currently issues no reads at all (a plan with refresh disabled) depend on
+//     tenant availability.
+//
+// A nil *Cache is valid and reports nothing, which is how the disabled state
+// (impact_alerts unset) is represented — callers need no flag check of their own.
+type Cache struct {
+	src Source
+
+	once sync.Once
+	err  error
+	// byPro is keyed by device type as well as id, because Jamf Pro's numeric
+	// group ids are only unique within an estate: id 1 is "All Managed Clients"
+	// among computer groups and "All Managed iPads" among mobile device groups.
+	// Keying on the id alone silently loses one of every colliding pair.
+	byPro  map[proKey]Group
+	byUUID map[string]Group
+	totals Totals
+
+	// noticeMu guards the one-shot latch for the "impact unavailable" notice, so
+	// a tenant that cannot be read produces one notice for the plan rather than
+	// one per scoped resource.
+	noticeMu    sync.Mutex
+	noticeFired bool
+}
+
+// noticeOnce reports whether the caller should emit the "impact unavailable"
+// notice. It returns true exactly once per Cache.
+func (c *Cache) noticeOnce() bool {
+	if c == nil {
+		return false
+	}
+	c.noticeMu.Lock()
+	defer c.noticeMu.Unlock()
+	if c.noticeFired {
+		return false
+	}
+	c.noticeFired = true
+	return true
+}
+
+// NewCache returns a Cache backed by src.
+func NewCache(src Source) *Cache {
+	return &Cache{src: src}
+}
+
+// NewProCache returns a Cache backed by a Jamf Pro client.
+func NewProCache(client *pro.Client) *Cache {
+	return NewCache(proSource{client: client})
+}
+
+// Enabled reports whether this cache will report anything. A nil Cache is
+// disabled.
+func (c *Cache) Enabled() bool { return c != nil && c.src != nil }
+
+// load performs the one-time read. The returned error is the memoised load
+// failure; callers treat it as "impact unavailable", never as a plan error.
+func (c *Cache) load(ctx context.Context) error {
+	c.once.Do(func() {
+		groups, err := c.src.Groups(ctx)
+		if err != nil {
+			c.err = err
+			return
+		}
+		totals, err := c.src.Totals(ctx)
+		if err != nil {
+			c.err = err
+			return
+		}
+		c.byPro = make(map[proKey]Group, len(groups))
+		c.byUUID = make(map[string]Group, len(groups))
+		for _, g := range groups {
+			if g.JamfProID != "" {
+				c.byPro[proKey{g.DeviceType, g.JamfProID}] = g
+			}
+			if g.PlatformID != "" {
+				c.byUUID[g.PlatformID] = g
+			}
+		}
+		c.totals = totals
+	})
+	return c.err
+}
+
+// proKey identifies a group by estate and numeric id, the only combination that
+// is unique on the Jamf Pro side.
+type proKey struct {
+	deviceType DeviceType
+	id         string
+}
+
+// GroupByJamfProID looks up a group by its numeric Jamf Pro identifier — the
+// form Jamf Pro resources use in scope — within one estate.
+//
+// The device type is required rather than optional: numeric group ids repeat
+// across the computer and mobile device estates, so an id on its own does not
+// identify a group. Callers that genuinely do not know the estate should address
+// groups by Platform identifier instead, which is unique tenant-wide.
+func (c *Cache) GroupByJamfProID(ctx context.Context, dt DeviceType, id string) (Group, bool, error) {
+	if err := c.load(ctx); err != nil {
+		return Group{}, false, err
+	}
+	if dt == DeviceTypeAny {
+		return Group{}, false, nil
+	}
+	g, ok := c.byPro[proKey{dt, id}]
+	return g, ok, nil
+}
+
+// GroupByPlatformID looks up a group by its Platform UUID — the form blueprints
+// and compliance benchmarks use to target device groups.
+func (c *Cache) GroupByPlatformID(ctx context.Context, id string) (Group, bool, error) {
+	if err := c.load(ctx); err != nil {
+		return Group{}, false, err
+	}
+	g, ok := c.byUUID[id]
+	return g, ok, nil
+}
+
+// DeviceTotals returns the tenant's managed device counts.
+func (c *Cache) DeviceTotals(ctx context.Context) (Totals, error) {
+	if err := c.load(ctx); err != nil {
+		return Totals{}, err
+	}
+	return c.totals, nil
+}
+
+// proSource reads the live tenant through the Jamf Pro client.
+type proSource struct {
+	client *pro.Client
+}
+
+func (s proSource) Groups(ctx context.Context) ([]Group, error) {
+	rows, err := s.client.ListGroupsV2(ctx, nil, "")
+	if err != nil {
+		return nil, fmt.Errorf("reading group membership counts: %w", err)
+	}
+	out := make([]Group, 0, len(rows))
+	for _, r := range rows {
+		dt := DeviceTypeComputer
+		if DeviceType(r.GroupType) == DeviceTypeMobile {
+			dt = DeviceTypeMobile
+		}
+		out = append(out, Group{
+			PlatformID:      r.GroupPlatformID,
+			JamfProID:       r.GroupJamfProID,
+			Name:            r.GroupName,
+			DeviceType:      dt,
+			Smart:           r.Smart,
+			MembershipCount: int64(r.MembershipCount),
+		})
+	}
+	return out, nil
+}
+
+func (s proSource) Totals(ctx context.Context) (Totals, error) {
+	info, err := s.client.GetInventoryInformationV1(ctx)
+	if err != nil {
+		return Totals{}, fmt.Errorf("reading device totals: %w", err)
+	}
+	if info == nil {
+		return Totals{}, nil
+	}
+	return Totals{
+		ManagedComputers:     int64(info.ManagedComputers),
+		ManagedMobileDevices: int64(info.ManagedDevices),
+	}, nil
+}
