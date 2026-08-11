@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -42,6 +43,9 @@ type PolicyResource struct {
 	// preflight (ModifyPlan). The LDAP group search is a Pro (v1) endpoint, so
 	// it is a separate client from the ProClassic CRUD client. nil until Configure.
 	ldapSearcher ldapgroups.Searcher
+	// impact backs the plan-time impact alert on scope changes. nil when the
+	// provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 }
 
 var _ resource.Resource = &PolicyResource{}
@@ -605,6 +609,10 @@ func (r *PolicyResource) Configure(ctx context.Context, req resource.ConfigureRe
 	if proClient != nil {
 		r.ldapSearcher = proClient
 	}
+
+	// Impact alerts are advisory and produce no diagnostics of their own here;
+	// a nil cache means they are switched off.
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 }
 
 // ImportState handles import by the Jamf Pro policy ID.
@@ -618,6 +626,8 @@ func (r *PolicyResource) ImportState(ctx context.Context, req resource.ImportSta
 // group"). Best-effort: search errors / unconfigured LDAP downgrade to a
 // warning. No-op on destroy and when no scope groups are declared.
 func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	r.reportScopeImpact(ctx, req, resp)
+
 	if r.ldapSearcher == nil || req.Plan.Raw.IsNull() {
 		return
 	}
@@ -639,6 +649,19 @@ func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 			scopeRoot.AtName("exclusions").AtName("directory_service_user_group_names"),
 		)...)
 	}
+}
+
+// reportScopeImpact emits the plan-time impact alert for a scope change. A policy
+// is a deployable object in Jamf Pro's terms, so the alert reports how many
+// computers the change reaches.
+func (r *PolicyResource) reportScopeImpact(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	impact.ReportPlan(ctx, req, resp, impact.PlanReport{
+		Cache: r.impact,
+		Path:  path.Root("scope"),
+		Label: "policy",
+	}, func(ctx context.Context, m *PolicyResourceModel) impact.Scope {
+		return scope.ComputerImpactScope(ctx, m.Scope)
+	})
 }
 
 // optComputedString returns an Optional+Computed StringAttribute with the

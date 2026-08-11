@@ -45,6 +45,7 @@ internal/
 │   ├── files/         # Shared upload-source plumbing for resources that upload file content
 │   ├── filters/       # RSQL + classic filter schema/expression builder
 │   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version
+│   ├── impact/        # Plan-time impact alerts — device counts for scope changes (see §Impact alerts)
 │   ├── invitationcommon/ # Shared enrollment-invitation helpers (computer_invitation, mobile_device_invitation)
 │   ├── ldapgroups/    # Directory-service (LDAP / cloud-IdP) group resolution + scope preflight validation
 │   ├── payloadhelpers/ # mobileconfig mask / compare / identifier injection (macos/mobile_device_configuration_profile)
@@ -78,6 +79,10 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 | Create-only immutable upload (server rejects every PUT once the blob exists → all attrs RequiresReplace + no-PUT Update) | `internal/resources/pro/mobile_device_provisioning_profile/` |
 | Classic XML merge PUT where empty clears (always-emit scalars / clear-by-omission) + Location/Purchasing blocks + read-only attachments (bearer-auth-refused upload) | `internal/resources/pro/mobile_device_enrollment_profile/` |
 | Provider-defined function (offline; `types.Dynamic` decode + shared core) | `internal/functions/mobileconfig/` |
+
+## Impact alerts — one-paragraph orientation
+
+`internal/common/impact/` produces Jamf Pro's **impact alert notifications** during `terraform plan`: an advisory warning on each object whose scope or payload is changing, reporting how many computers or mobile devices the change reaches. Off by default behind the provider's `impact_alerts` attribute; a nil `*impact.Cache` means disabled, so resources need no flag check. Two channels, mirroring Jamf's own split — **deployable** (policies, profiles, apps, blueprints, benchmarks) and **scopeable** (groups, classes) — because a resource's `ModifyPlan` cannot see a sibling's, so a plan editing both a group and something scoped to it needs an alert from each side. Resources wire in via `impact.ReportPlan` (deployable) or `impact.ReportMembership` (scopeable), plus a per-family adapter that reduces their scope model to `impact.Scope`; the shared Jamf Pro scope block goes through `scope.BuildImpactScope`, which is the single place the narrows/broadens/counts classification lives. Alerts are advisory — a tenant that cannot be read yields one notice and never fails a plan. Two rules that are easy to get wrong: a numeric Jamf Pro group id is unique only **within an estate** (see [STYLE_GUIDE.md §Scope helper](STYLE_GUIDE.md#scope-helper)), and group membership is expressed in **device management identifiers**, so a Jamf Pro numeric device/building/department id must be resolved through the inventory before it can be compared with a group's members. User guidance, including the `terraform plan -json` caveat, is in `docs/guides/impact-alerts.md`.
 
 ## Jamf Pro resources — one-paragraph orientation
 

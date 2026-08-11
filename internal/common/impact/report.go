@@ -1,0 +1,358 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package impact
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+)
+
+// Action is the lifecycle operation planned for the object being reported on.
+type Action int
+
+const (
+	// ActionCreate is a new object entering management.
+	ActionCreate Action = iota
+	// ActionUpdate is a change to an existing object.
+	ActionUpdate
+	// ActionDelete is removal of an existing object.
+	ActionDelete
+)
+
+// Kind mirrors the two channels Jamf Pro's impact alert notifications
+// distinguish. Jamf Pro keeps them separate because editing a group and editing
+// something scoped to that group are different events with different audiences,
+// and the provider follows suit: a plan that does both produces one alert from
+// each side rather than one combined figure.
+type Kind int
+
+const (
+	// Deployable is an object deployed to devices — a policy, a configuration
+	// profile, an app, a blueprint, a compliance benchmark.
+	Deployable Kind = iota
+	// Scopeable is an object that scope can be based on — a smart or static
+	// group, or a class.
+	Scopeable
+)
+
+// Request describes one object's planned change for impact reporting.
+type Request struct {
+	// Cache is the shared tenant cache. A nil cache disables reporting.
+	Cache *Cache
+	// Path anchors the diagnostic to the attribute the figure derives from, so
+	// the warning appears next to the scope block rather than the whole resource.
+	Path path.Path
+	// Kind selects the deployable or scopeable channel.
+	Kind Kind
+	// Label names the object in prose, using the admin UI's term for it
+	// (e.g. "policy", "configuration profile", "smart computer group").
+	Label string
+	// Action is the planned lifecycle operation.
+	Action Action
+	// Prior is the scope currently in state. Zero for a create.
+	Prior Scope
+	// Planned is the scope this plan intends. Zero for a delete.
+	Planned Scope
+	// Changed reports whether this plan changes the object at all. Terraform calls
+	// a plan modifier for every resource in the configuration, including ones with
+	// no diff, so without this every plan would carry one alert per scoped object.
+	Changed bool
+}
+
+// Report produces the impact alert for one planned change, as advisory warning
+// diagnostics.
+//
+// It returns no diagnostics when reporting is disabled, when the scope is
+// unchanged, or when the tenant could not be read — impact reporting is
+// advisory and must never be the reason a plan fails. A tenant that cannot be
+// read produces a single notice for the whole plan.
+func Report(ctx context.Context, req Request) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if !req.Cache.Enabled() {
+		return diags
+	}
+
+	subject := req.Planned
+	if req.Action == ActionDelete {
+		subject = req.Prior
+	}
+	if subject.Empty() {
+		if !emptiedUpdate(req) {
+			return diags
+		}
+		// An update that removes the entire scope still stops every device the
+		// prior scope reached from receiving the object, so the alert reports
+		// the prior audience and says that it stops.
+		subject = req.Prior
+	}
+	if req.Action == ActionUpdate && !req.Changed {
+		// Jamf Pro alerts on save, not on view — so an object this plan does not
+		// touch gets no alert.
+		//
+		// Deliberately keyed on the object changing at all, not on its scope
+		// changing. Adding a script to a policy alters what every computer in its
+		// scope receives, which is impact even though the audience is identical; the
+		// diff shows what changed but never how many devices it reaches.
+		return diags
+	}
+
+	res, err := Resolve(ctx, req.Cache, subject)
+	if err != nil {
+		if req.Cache.noticeOnce() {
+			diags.AddWarning(
+				"Impact alert unavailable",
+				fmt.Sprintf("Scope impact could not be calculated for this plan: %s\n\n"+
+					"Impact alerts are advisory, so the plan is unaffected. No further notices will be shown for this plan.", err),
+			)
+		}
+		return diags
+	}
+
+	if !res.Determinable {
+		diags.AddAttributeWarning(req.Path, headline(req, res), pendingDetail(res.PendingPaths))
+		return diags
+	}
+
+	diags.AddAttributeWarning(req.Path, headline(req, res), detail(ctx, req, res))
+	return diags
+}
+
+// emptiedUpdate reports an update whose plan removes the entire scope. The
+// planned side has nothing to count, but every device the prior scope reached
+// stops receiving the object — the one case where the alert's figure comes
+// from the prior scope of an update.
+func emptiedUpdate(req Request) bool {
+	return req.Action == ActionUpdate && req.Planned.Empty() && !req.Prior.Empty()
+}
+
+// headline renders the one-line summary Terraform shows above the detail.
+func headline(req Request, res Resolution) string {
+	if !res.Determinable {
+		return fmt.Sprintf("Impact alert — affected %s cannot be determined during plan", res.DeviceType.Noun())
+	}
+	f := summarise(res)
+	switch {
+	case req.Action == ActionCreate:
+		return fmt.Sprintf("Impact alert — this %s will be scoped to %s", req.Label, f)
+	case req.Action == ActionDelete:
+		return fmt.Sprintf("Impact alert — removing this %s affects %s", req.Label, f)
+	case emptiedUpdate(req):
+		return fmt.Sprintf("Impact alert — this %s will stop reaching %s", req.Label, f)
+	default:
+		return fmt.Sprintf("Impact alert — this %s affects %s", req.Label, f)
+	}
+}
+
+// detail renders the body: what was counted, what is changing, what could not be
+// evaluated, and the snapshot caveat that closes every alert.
+func detail(ctx context.Context, req Request, res Resolution) string {
+	var b strings.Builder
+
+	switch req.Kind {
+	case Scopeable:
+		fmt.Fprintf(&b, "Changing this %s changes what every object scoped to it applies to.\n\n", req.Label)
+	default:
+		if req.Action == ActionDelete || emptiedUpdate(req) {
+			fmt.Fprintf(&b, "These %s will stop receiving this %s.\n\n", res.DeviceType.Noun(), req.Label)
+		}
+	}
+
+	if lines := breakdown(res); len(lines) > 0 {
+		b.WriteString("Counted from " + strings.Join(lines, "; ") + ".\n")
+	}
+	if l := excludedLine(res); l != "" {
+		b.WriteString(l + "\n")
+	}
+
+	if req.Action == ActionUpdate {
+		if req.Prior.equal(req.Planned) {
+			// Says why the alert is here at all when the audience has not moved.
+			fmt.Fprintf(&b, "The scope is unchanged; these %s will receive the updated %s.\n",
+				res.DeviceType.Noun(), req.Label)
+		} else if d := deltaLine(ctx, req); d != "" {
+			b.WriteString(d + "\n")
+		}
+	}
+
+	if lines := caveats(res); len(lines) > 0 {
+		b.WriteString("\n" + strings.Join(lines, "\n") + "\n")
+	}
+
+	b.WriteString("\n" + snapshotNote)
+	return b.String()
+}
+
+// deltaLine renders the devices entering and leaving scope — the figure Jamf
+// Pro's own alert leads with, and the one a plan is uniquely able to produce
+// because it holds the prior and intended scope together.
+//
+// When both sides resolve to complete member sets the delta is their set
+// difference, so a group whose members are already in scope through another
+// group adds nothing, and a lifted exclusion counts only the members actually
+// re-entering scope. Otherwise the diff falls back to comparing which
+// references changed, and those figures are qualified as bounds — a
+// reference-level count cannot see overlap, so it can only cap the movement.
+//
+// A failure here is silently dropped: the headline figure has already been
+// resolved successfully, so a partial delta is not worth surfacing an error for.
+func deltaLine(ctx context.Context, req Request) string {
+	dt := req.Planned.DeviceType
+	if req.Planned.Empty() {
+		dt = req.Prior.DeviceType
+	}
+	one, many := singularNoun(dt), dt.Noun()
+
+	priorMembers, priorOK := resolvedMembers(ctx, req.Cache, req.Prior)
+	plannedMembers, plannedOK := resolvedMembers(ctx, req.Cache, req.Planned)
+	if priorOK && plannedOK {
+		var parts []string
+		if n := countMissing(plannedMembers, priorMembers); n > 0 {
+			parts = append(parts, "adding "+figure(n, BoundExact, one, many))
+		}
+		if n := countMissing(priorMembers, plannedMembers); n > 0 {
+			parts = append(parts, "removing "+figure(n, BoundExact, one, many))
+		}
+		if len(parts) == 0 {
+			// The references changed but the audience did not — dropping a group
+			// whose members all remain in scope through another one, for instance.
+			return "This change moves no " + many + " in or out of scope."
+		}
+		return "This change is " + strings.Join(parts, " and ") + "."
+	}
+
+	added, removed := Delta(req.Prior, req.Planned)
+	var parts []string
+	if !added.Empty() {
+		if r, err := Resolve(ctx, req.Cache, added); err == nil && r.Determinable && r.Count > 0 {
+			// The added references may name devices already in scope, so the figure
+			// caps the movement rather than stating it.
+			parts = append(parts, "adding "+figure(r.Count, r.Bound.with(Narrows), one, many))
+		}
+	}
+	if !removed.Empty() {
+		if r, err := Resolve(ctx, req.Cache, removed); err == nil && r.Determinable && r.Count > 0 {
+			parts = append(parts, "removing "+figure(r.Count, r.Bound.with(Narrows), one, many))
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "This change is " + strings.Join(parts, " and ") + "."
+}
+
+// resolvedMembers resolves one side of an update to its complete member set.
+// ok is false when the side has no complete set — membership unreadable, a
+// tenant-wide estate, a pending reference, or any input the arithmetic could
+// not count — in which case the delta falls back to comparing references. An
+// empty scope has an empty member set by definition: the side of an update
+// that adds or removes the entire scope.
+func resolvedMembers(ctx context.Context, c *Cache, s Scope) (map[string]DeviceType, bool) {
+	if s.Empty() {
+		return nil, true
+	}
+	r, err := Resolve(ctx, c, s)
+	if err != nil || !r.Determinable || r.members == nil || r.Bound != BoundExact {
+		return nil, false
+	}
+	return r.members, true
+}
+
+// countMissing counts the members of a that are absent from b.
+func countMissing(a, b map[string]DeviceType) int64 {
+	var n int64
+	for id := range a {
+		if _, ok := b[id]; !ok {
+			n++
+		}
+	}
+	return n
+}
+
+// equal reports whether two scopes name the same things, so an unchanged scope
+// can be skipped.
+func (s Scope) equal(o Scope) bool {
+	if s.All != o.All || s.DeviceType != o.DeviceType || !sameEstates(s.AllEstates, o.AllEstates) {
+		return false
+	}
+	if !sameStrings(s.DeviceIDs, o.DeviceIDs) ||
+		!sameStrings(s.BuildingIDs, o.BuildingIDs) ||
+		!sameStrings(s.DepartmentIDs, o.DepartmentIDs) ||
+		!sameRefs(s.ProGroups, o.ProGroups) ||
+		!sameStrings(s.PlatformGroupIDs, o.PlatformGroupIDs) ||
+		!sameStrings(s.MentionedPlatformIDs, o.MentionedPlatformIDs) ||
+		!sameStrings(s.ExcludedDeviceIDs, o.ExcludedDeviceIDs) ||
+		!sameStrings(s.ExcludedBuildingIDs, o.ExcludedBuildingIDs) ||
+		!sameStrings(s.ExcludedDepartmentIDs, o.ExcludedDepartmentIDs) ||
+		!sameRefs(s.ExcludedProGroups, o.ExcludedProGroups) ||
+		!sameStrings(s.ExcludedPlatformGroupIDs, o.ExcludedPlatformGroupIDs) ||
+		!sameStrings(s.PendingPaths, o.PendingPaths) {
+		return false
+	}
+	if len(s.Unresolvable) != len(o.Unresolvable) {
+		return false
+	}
+	left := unresolvableKeys(s.Unresolvable)
+	right := unresolvableKeys(o.Unresolvable)
+	return sameStrings(left, right)
+}
+
+func unresolvableKeys(us []Unresolvable) []string {
+	out := make([]string, 0, len(us))
+	for _, u := range us {
+		out = append(out, fmt.Sprintf("%s=%d", u.Path, u.Values))
+	}
+	return out
+}
+
+// sameEstates compares two tenant-wide estate lists as sets.
+func sameEstates(a, b []DeviceType) bool {
+	x := make([]string, 0, len(a))
+	y := make([]string, 0, len(b))
+	for _, v := range a {
+		x = append(x, string(v))
+	}
+	for _, v := range b {
+		y = append(y, string(v))
+	}
+	return sameStrings(x, y)
+}
+
+// sameRefs compares two group-reference slices as sets.
+func sameRefs(a, b []ProGroupRef) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	x := make([]string, 0, len(a))
+	y := make([]string, 0, len(b))
+	for _, v := range a {
+		x = append(x, v.key())
+	}
+	for _, v := range b {
+		y = append(y, v.key())
+	}
+	return sameStrings(x, y)
+}
+
+// sameStrings compares two slices as sets, tolerating order differences because
+// scope collections are unordered.
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	x := append([]string(nil), a...)
+	y := append([]string(nil), b...)
+	sort.Strings(x)
+	sort.Strings(y)
+	for i := range x {
+		if x[i] != y[i] {
+			return false
+		}
+	}
+	return true
+}

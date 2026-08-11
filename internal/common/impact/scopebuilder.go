@@ -1,0 +1,266 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package impact
+
+import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
+
+// Reasons an input cannot be evaluated during a plan. They are user-facing text
+// and are kept together so the same input always reads the same way, whichever
+// resource reports it.
+const (
+	// ReasonNetworkSegment covers network segment limitations and exclusions.
+	// Jamf Pro matches these against where a device is when it checks in, so
+	// membership does not exist ahead of time.
+	ReasonNetworkSegment = "network segments are matched against a device's network location when it checks in"
+	// ReasonIbeacon covers iBeacon limitations and exclusions, matched as a
+	// device enters or leaves range.
+	ReasonIbeacon = "iBeacon regions are matched as a device enters or leaves range"
+	// ReasonDirectoryServiceGroup covers directory service user group scope,
+	// resolved against the directory when a user logs in.
+	ReasonDirectoryServiceGroup = "directory service group membership is resolved when a user logs in"
+	// ReasonUserName covers directory service or local user name scope.
+	ReasonUserName = "user names are matched when a user logs in"
+	// ReasonUserTarget covers Jamf Pro user and user group targets, which reach
+	// devices through user assignment rather than directly.
+	ReasonUserTarget = "user-based targets reach devices through user assignment, which Jamf Pro resolves"
+	// ReasonNotCounted covers inputs the provider does not yet count. Stated as
+	// a limitation of the calculation rather than of Jamf Pro, because it is one.
+	ReasonNotCounted = "not included in this calculation"
+	// ReasonClassTarget covers class targets, which reach devices through the
+	// mobile device groups the class itself names.
+	ReasonClassTarget = "classes reach devices through the device groups the class names"
+)
+
+// ScopeBuilder assembles a Scope from Terraform collection values, recording
+// unresolvable inputs and pending references as it goes.
+//
+// It exists so each resource family's adapter reads as a short declaration of
+// which attribute means what, rather than repeating null/unknown handling. The
+// builder is deliberately not aware of any resource's model type: the shared
+// scope helper has several model variants, and blueprints and compliance
+// benchmarks do not use it at all.
+type ScopeBuilder struct {
+	ctx   context.Context
+	scope Scope
+}
+
+// NewScopeBuilder starts a builder for a device type.
+func NewScopeBuilder(ctx context.Context, dt DeviceType) *ScopeBuilder {
+	return &ScopeBuilder{ctx: ctx, scope: Scope{DeviceType: dt}}
+}
+
+// Scope returns the assembled scope.
+func (b *ScopeBuilder) Scope() Scope { return b.scope }
+
+// All records the tenant-wide target flag of a scope fixed to one estate.
+func (b *ScopeBuilder) All(v types.Bool) *ScopeBuilder {
+	if !v.IsNull() && !v.IsUnknown() && v.ValueBool() {
+		b.scope.All = true
+	}
+	return b
+}
+
+// AllForEstate records a tenant-wide target flag for one estate, for a scope
+// that can span both estates at once. An ebook's all_computers is tenant-wide
+// for the computer estate only, and recording it as a bare All would let one
+// estate's flag claim the combined estate.
+func (b *ScopeBuilder) AllForEstate(dt DeviceType, v types.Bool) *ScopeBuilder {
+	if !v.IsNull() && !v.IsUnknown() && v.ValueBool() {
+		b.scope.AllEstates = append(b.scope.AllEstates, dt)
+	}
+	return b
+}
+
+// Devices records individually scoped devices.
+func (b *ScopeBuilder) Devices(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.DeviceIDs = append(b.scope.DeviceIDs, ids...)
+	return b
+}
+
+// ProGroups records groups referenced by their numeric Jamf Pro id, within one
+// estate. The estate is required rather than inferred from the scope, because a
+// single resource can target both: an ebook names computer groups and mobile
+// device groups side by side.
+func (b *ScopeBuilder) ProGroups(attrPath string, dt DeviceType, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	for _, id := range ids {
+		b.scope.ProGroups = append(b.scope.ProGroups, ProGroupRef{DeviceType: dt, ID: id})
+	}
+	return b
+}
+
+// PlatformGroups records groups referenced by their Platform UUID.
+func (b *ScopeBuilder) PlatformGroups(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.PlatformGroupIDs = append(b.scope.PlatformGroupIDs, ids...)
+	return b
+}
+
+// PlatformGroupIDs records already-extracted Platform UUIDs, for callers whose
+// references are not held in a Set (a blueprint's activation conditions embed
+// them in an expression).
+func (b *ScopeBuilder) PlatformGroupIDs(ids ...string) *ScopeBuilder {
+	b.scope.PlatformGroupIDs = append(b.scope.PlatformGroupIDs, ids...)
+	return b
+}
+
+// ExcludedProGroups records excluded groups referenced by numeric Jamf Pro id,
+// as data so their membership can be subtracted.
+func (b *ScopeBuilder) ExcludedProGroups(attrPath string, dt DeviceType, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	for _, id := range ids {
+		b.scope.ExcludedProGroups = append(b.scope.ExcludedProGroups, ProGroupRef{DeviceType: dt, ID: id})
+	}
+	return b
+}
+
+// ExcludedPlatformGroups records excluded groups referenced by Platform UUID.
+func (b *ScopeBuilder) ExcludedPlatformGroups(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedPlatformGroupIDs = append(b.scope.ExcludedPlatformGroupIDs, ids...)
+	return b
+}
+
+// ExcludedDevices records individually excluded devices.
+func (b *ScopeBuilder) ExcludedDevices(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedDeviceIDs = append(b.scope.ExcludedDeviceIDs, ids...)
+	return b
+}
+
+// Buildings records the buildings the scope targets, as data so the devices
+// assigned to them can be resolved and unioned exactly where the estate allows it.
+func (b *ScopeBuilder) Buildings(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.BuildingIDs = append(b.scope.BuildingIDs, ids...)
+	return b
+}
+
+// Departments records the departments the scope targets.
+func (b *ScopeBuilder) Departments(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.DepartmentIDs = append(b.scope.DepartmentIDs, ids...)
+	return b
+}
+
+// ExcludedBuildings records excluded buildings.
+func (b *ScopeBuilder) ExcludedBuildings(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedBuildingIDs = append(b.scope.ExcludedBuildingIDs, ids...)
+	return b
+}
+
+// ExcludedDepartments records excluded departments.
+func (b *ScopeBuilder) ExcludedDepartments(attrPath string, set types.Set) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if pending {
+		b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	}
+	b.scope.ExcludedDepartmentIDs = append(b.scope.ExcludedDepartmentIDs, ids...)
+	return b
+}
+
+// Pending records an attribute path whose value this plan creates.
+func (b *ScopeBuilder) Pending(attrPath string) *ScopeBuilder {
+	b.scope.PendingPaths = append(b.scope.PendingPaths, attrPath)
+	return b
+}
+
+// Narrows records a set-valued input that reduces the audience by an amount the
+// provider cannot compute.
+func (b *ScopeBuilder) Narrows(attrPath string, set types.Set, reason string) *ScopeBuilder {
+	return b.unresolvable(attrPath, set, reason, Narrows)
+}
+
+// Broadens records a set-valued input that increases the audience by an amount
+// the provider cannot compute.
+func (b *ScopeBuilder) Broadens(attrPath string, set types.Set, reason string) *ScopeBuilder {
+	return b.unresolvable(attrPath, set, reason, Broadens)
+}
+
+// BroadensIf records a tenant-wide user target flag as a broadening input.
+func (b *ScopeBuilder) BroadensIf(attrPath string, v types.Bool, reason string) *ScopeBuilder {
+	if !v.IsNull() && !v.IsUnknown() && v.ValueBool() {
+		b.scope.Unresolvable = append(b.scope.Unresolvable, Unresolvable{
+			Path: attrPath, Reason: reason, Effect: Broadens, Values: 1,
+		})
+	}
+	return b
+}
+
+func (b *ScopeBuilder) unresolvable(attrPath string, set types.Set, reason string, e Effect) *ScopeBuilder {
+	ids, pending := setStrings(b.ctx, set)
+	if len(ids) == 0 && !pending {
+		return b
+	}
+	n := len(ids)
+	if pending && n == 0 {
+		n = 1
+	}
+	b.scope.Unresolvable = append(b.scope.Unresolvable, Unresolvable{
+		Path: attrPath, Reason: reason, Effect: e, Values: n,
+	})
+	return b
+}
+
+// setStrings extracts the known string elements of a set. It reports pending
+// when the set itself, or any element, is not yet known — which is how Terraform
+// represents a reference to something created by the same plan.
+func setStrings(ctx context.Context, set types.Set) (ids []string, pending bool) {
+	if set.IsNull() {
+		return nil, false
+	}
+	if set.IsUnknown() {
+		return nil, true
+	}
+	for _, el := range set.Elements() {
+		if el.IsUnknown() {
+			pending = true
+			continue
+		}
+		if el.IsNull() {
+			continue
+		}
+		sv, ok := el.(types.String)
+		if !ok {
+			continue
+		}
+		if v := sv.ValueString(); v != "" {
+			ids = append(ids, v)
+		}
+	}
+	return ids, pending
+}

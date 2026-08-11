@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -37,11 +38,15 @@ const minJamfProVersion = ""
 // ClassResource implements the Terraform resource for Jamf Pro classes.
 type ClassResource struct {
 	client *proclassic.Client
+	// impact backs the plan-time impact alert on device group targeting. nil when
+	// the provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 }
 
 var _ resource.Resource = &ClassResource{}
 var _ resource.ResourceWithImportState = &ClassResource{}
 var _ resource.ResourceWithIdentity = &ClassResource{}
+var _ resource.ResourceWithModifyPlan = &ClassResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -171,6 +176,7 @@ func (r *ClassResource) Configure(ctx context.Context, req resource.ConfigureReq
 		return
 	}
 	r.client = client
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 }
 
 // ImportState handles import by the Jamf Pro class ID.

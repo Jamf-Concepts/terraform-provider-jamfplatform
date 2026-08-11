@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -40,6 +41,9 @@ const minJamfProVersion = ""
 
 // MacAppResource implements the Terraform resource for Jamf Pro App Store Mac apps.
 type MacAppResource struct {
+	// impact backs the plan-time impact alert on scope changes. nil when the
+	// provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 	client *proclassic.Client
 	// ldapSearcher backs the plan-time directory-service user-group preflight in
 	// ModifyPlan. The LDAP group search is a Pro (v1) endpoint, so it is a
@@ -225,6 +229,7 @@ func (r *MacAppResource) Configure(ctx context.Context, req resource.ConfigureRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 	r.client = client
 
 	// Also obtain a Pro (v1) client for the scope directory-service group
@@ -254,6 +259,10 @@ func (r *MacAppResource) ImportState(ctx context.Context, req resource.ImportSta
 // error or an unconfigured directory downgrades to a warning. No-op on destroy
 // (null plan) and when no scope groups are declared.
 func (r *MacAppResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Runs ahead of any guard below: an object entering or leaving management
+	// changes what its scope receives, so creates and destroys are reported too.
+	r.reportScopeImpact(ctx, req, resp)
+
 	if r.ldapSearcher == nil || req.Plan.Raw.IsNull() {
 		return
 	}

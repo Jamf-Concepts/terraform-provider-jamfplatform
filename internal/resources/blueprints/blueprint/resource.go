@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint/components"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
@@ -32,6 +33,9 @@ import (
 // BlueprintResource implements the Terraform resource for Jamf Blueprint.
 type BlueprintResource struct {
 	client *blueprints.Client
+	// impact backs the plan-time impact alert on device group targeting. nil when
+	// the provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 }
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -365,6 +369,7 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 	}
 
 	r.client = blueprints.New(pd.Client)
+	r.impact = pd.ImpactCache()
 }
 
 // ModifyPlan marks the server-managed `updated` and `deployment_state`
@@ -380,6 +385,11 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 // It also refuses a flat-mode apply that would delete component blocks the diff cannot show — see
 // checkFlatModeBlockLoss.
 func (r *BlueprintResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Runs ahead of the create/destroy guard below: a blueprint entering or
+	// leaving management changes what devices receive, so both are worth an
+	// impact alert even though neither needs the unknown-marking that follows.
+	r.reportDeviceGroupImpact(ctx, req, resp)
+
 	if req.State.Raw.IsNull() || req.Plan.Raw.IsNull() {
 		return
 	}

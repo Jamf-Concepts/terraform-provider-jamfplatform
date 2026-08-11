@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 )
 
 // ProviderMinJamfProVersion is the provider-wide recommended minimum Jamf Pro
@@ -85,6 +86,41 @@ type Data struct {
 	// versionFetcher is the function used to retrieve the tenant Jamf Pro version.
 	// Tests override this to avoid real HTTP calls. Nil means use the default SDK path.
 	versionFetcher func(ctx context.Context) (string, error)
+
+	// impactCache backs the plan-time impact alerts. Nil when the provider's
+	// impact_alerts attribute is unset, which is the default — a nil cache
+	// reports nothing, so resources need no flag check of their own.
+	impactCache *impact.Cache
+}
+
+// EnableImpactAlerts turns on plan-time impact alerts for this provider
+// instance, backed by one shared tenant read. Called from provider Configure
+// when the impact_alerts attribute is set.
+func (d *Data) EnableImpactAlerts() {
+	d.impactCache = impact.NewTenantCache(d.Client)
+}
+
+// ImpactCache returns the shared impact cache, or nil when impact alerts are
+// off. Resources pass the result straight into impact.Report, which treats nil
+// as disabled. Nil-receiver-safe: impact reporting is advisory, so a resource
+// whose Configure never ran must degrade to disabled, not panic mid-plan.
+func (d *Data) ImpactCache() *impact.Cache {
+	if d == nil {
+		return nil
+	}
+	return d.impactCache
+}
+
+// ConfigureImpact returns the shared impact cache from providerData, or nil when
+// impact alerts are off or providerData is not yet available. It never produces
+// diagnostics: impact reporting is advisory and must not affect whether a
+// resource configures successfully.
+func ConfigureImpact(providerData any) *impact.Cache {
+	pd, ok := providerData.(*Data)
+	if !ok {
+		return nil
+	}
+	return pd.ImpactCache()
 }
 
 // EnrollmentWriteLock returns the process-shared mutex that serializes writes to the

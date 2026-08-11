@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -42,6 +43,9 @@ const minJamfProVersion = ""
 
 // MobileAppResource implements the Terraform resource for Jamf Pro mobile device apps.
 type MobileAppResource struct {
+	// impact backs the plan-time impact alert on scope changes. nil when the
+	// provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 	client *proclassic.Client
 	// ldapSearcher backs the plan-time directory-service user-group preflight in
 	// ModifyPlan. The LDAP group search is a Pro (v1) endpoint, so it is a
@@ -244,6 +248,7 @@ func (r *MobileAppResource) Configure(ctx context.Context, req resource.Configur
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 	r.client = client
 
 	proClient, proDiags := providerdata.ConfigurePro(ctx, req.ProviderData, minJamfProVersion, "jamfplatform_pro_mobile_device_app")
@@ -269,6 +274,10 @@ func (r *MobileAppResource) ImportState(ctx context.Context, req resource.Import
 // error or an unconfigured directory downgrades to a warning. No-op on destroy
 // (null plan) and when no scope groups are declared.
 func (r *MobileAppResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Runs ahead of any guard below: an object entering or leaving management
+	// changes what its scope receives, so creates and destroys are reported too.
+	r.reportScopeImpact(ctx, req, resp)
+
 	if r.ldapSearcher == nil || req.Plan.Raw.IsNull() {
 		return
 	}

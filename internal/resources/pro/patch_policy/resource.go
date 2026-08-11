@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
@@ -48,12 +49,16 @@ var distributionMethods = []string{"selfservice", "prompt"}
 // policies. No directory-service preflight is wired: patch-policy scope exposes
 // no readable name-keyed (LDAP/cloud-IdP) category.
 type PatchPolicyResource struct {
+	// impact backs the plan-time impact alert on scope changes. nil when the
+	// provider's impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 	client *proclassic.Client
 }
 
 var _ resource.Resource = &PatchPolicyResource{}
 var _ resource.ResourceWithImportState = &PatchPolicyResource{}
 var _ resource.ResourceWithIdentity = &PatchPolicyResource{}
+var _ resource.ResourceWithModifyPlan = &PatchPolicyResource{}
 
 const (
 	defaultCreateTimeout = 60 * time.Second
@@ -376,6 +381,7 @@ func (r *PatchPolicyResource) Configure(ctx context.Context, req resource.Config
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 	r.client = client
 }
 
