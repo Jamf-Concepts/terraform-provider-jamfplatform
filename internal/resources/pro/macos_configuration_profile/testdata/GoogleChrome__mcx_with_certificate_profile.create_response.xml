@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><os_x_configuration_profile>
+<!--
+ Copyright Jamf Software LLC 2026
+ SPDX-License-Identifier: MPL-2.0
+-->
+
+  <general>
+    <id>7366</id>
+    <name>tf-acc-roundtrip-GoogleChrome--mcx-with-certificate-profile</name>
+    <description/>
+    <site>
+      <id>-1</id>
+      <name>NONE</name>
+    </site>
+    <category>
+      <id>-1</id>
+      <name>No category assigned</name>
+    </category>
+    <distribution_method>Install Automatically</distribution_method>
+    <user_removable>false</user_removable>
+    <level>System</level>
+    <uuid>9ded2aaa-39e0-46fe-b5bc-ba5f0f0f3a4d</uuid>
+    <redeploy_on_update>Newly Assigned</redeploy_on_update>
+    <payloads>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
+&lt;plist version="1"&gt;&lt;dict&gt;&lt;key&gt;PayloadUUID&lt;/key&gt;&lt;string&gt;9ded2aaa-39e0-46fe-b5bc-ba5f0f0f3a4d&lt;/string&gt;&lt;key&gt;PayloadType&lt;/key&gt;&lt;string&gt;Configuration&lt;/string&gt;&lt;key&gt;PayloadOrganization&lt;/key&gt;&lt;string&gt;Example Org&lt;/string&gt;&lt;key&gt;PayloadIdentifier&lt;/key&gt;&lt;string&gt;9ded2aaa-39e0-46fe-b5bc-ba5f0f0f3a4d&lt;/string&gt;&lt;key&gt;PayloadDisplayName&lt;/key&gt;&lt;string&gt;tf-acc-roundtrip-GoogleChrome--mcx-with-certificate-profile&lt;/string&gt;&lt;key&gt;PayloadDescription&lt;/key&gt;&lt;string/&gt;&lt;key&gt;PayloadVersion&lt;/key&gt;&lt;integer&gt;1&lt;/integer&gt;&lt;key&gt;PayloadEnabled&lt;/key&gt;&lt;true/&gt;&lt;key&gt;PayloadRemovalDisallowed&lt;/key&gt;&lt;true/&gt;&lt;key&gt;PayloadScope&lt;/key&gt;&lt;string&gt;System&lt;/string&gt;&lt;key&gt;PayloadContent&lt;/key&gt;&lt;array&gt;&lt;dict&gt;&lt;key&gt;PayloadUUID&lt;/key&gt;&lt;string&gt;4A7D2E60-8B15-4C93-A2F6-1D3E5C9B7048&lt;/string&gt;&lt;key&gt;PayloadType&lt;/key&gt;&lt;string&gt;com.apple.security.root&lt;/string&gt;&lt;key&gt;PayloadOrganization&lt;/key&gt;&lt;string&gt;Terraform Acceptance Test Org&lt;/string&gt;&lt;key&gt;PayloadIdentifier&lt;/key&gt;&lt;string&gt;com.example.root.ca&lt;/string&gt;&lt;key&gt;PayloadDisplayName&lt;/key&gt;&lt;string&gt;Example Root CA&lt;/string&gt;&lt;key&gt;PayloadDescription&lt;/key&gt;&lt;string/&gt;&lt;key&gt;PayloadVersion&lt;/key&gt;&lt;integer&gt;1&lt;/integer&gt;&lt;key&gt;PayloadEnabled&lt;/key&gt;&lt;true/&gt;&lt;key&gt;PayloadCertificateFileName&lt;/key&gt;&lt;string&gt;example-root-ca.cer&lt;/string&gt;&lt;key&gt;PayloadContent&lt;/key&gt;&lt;data&gt;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxGF3lQ0m6zvbNQ0dQKe9nJ6l0J1yQ4nFq0dYh2s5cWJ9Yz8mQ2pLdE7vXhR4tS1uK0oB9wYcAaZmNpQrTfHl&lt;/data&gt;&lt;key&gt;AllowAllAppsAccess&lt;/key&gt;&lt;false/&gt;&lt;/dict&gt;&lt;dict&gt;&lt;key&gt;PayloadDisplayName&lt;/key&gt;&lt;string&gt;Custom Settings&lt;/string&gt;&lt;key&gt;PayloadIdentifier&lt;/key&gt;&lt;string&gt;com.example.chrome.managed.settings&lt;/string&gt;&lt;key&gt;PayloadOrganization&lt;/key&gt;&lt;string&gt;JAMF Software&lt;/string&gt;&lt;key&gt;PayloadType&lt;/key&gt;&lt;string&gt;com.apple.ManagedClient.preferences&lt;/string&gt;&lt;key&gt;PayloadUUID&lt;/key&gt;&lt;string&gt;9C1F5A24-3E7B-4D18-9F02-6B5A8C4E17D3&lt;/string&gt;&lt;key&gt;PayloadVersion&lt;/key&gt;&lt;integer&gt;1&lt;/integer&gt;&lt;key&gt;PayloadContent&lt;/key&gt;&lt;dict&gt;&lt;key&gt;com.google.Chrome&lt;/key&gt;&lt;dict&gt;&lt;key&gt;Forced&lt;/key&gt;&lt;array&gt;&lt;dict&gt;&lt;key&gt;mcx_preference_settings&lt;/key&gt;&lt;dict&gt;&lt;key&gt;HomepageLocation&lt;/key&gt;&lt;string&gt;https://example.com/start&lt;/string&gt;&lt;key&gt;NewTabPageLocation&lt;/key&gt;&lt;string&gt;https://example.com/newtab&lt;/string&gt;&lt;key&gt;PasswordManagerEnabled&lt;/key&gt;&lt;false/&gt;&lt;key&gt;URLBlocklist&lt;/key&gt;&lt;array&gt;&lt;string&gt;example-blocked.test&lt;/string&gt;&lt;/array&gt;&lt;/dict&gt;&lt;/dict&gt;&lt;/array&gt;&lt;/dict&gt;&lt;/dict&gt;&lt;/dict&gt;&lt;/array&gt;&lt;/dict&gt;&lt;/plist&gt;</payloads>
+  </general>
+  <scope>
+    <all_computers>false</all_computers>
+    <all_jss_users>false</all_jss_users>
+    <computers/>
+    <buildings/>
+    <departments/>
+    <computer_groups/>
+    <jss_users/>
+    <jss_user_groups/>
+    <limitations>
+      <users/>
+      <user_groups/>
+      <network_segments/>
+      <ibeacons/>
+    </limitations>
+    <exclusions>
+      <computers/>
+      <buildings/>
+      <departments/>
+      <computer_groups/>
+      <users/>
+      <user_groups/>
+      <network_segments/>
+      <ibeacons/>
+      <jss_users/>
+      <jss_user_groups/>
+    </exclusions>
+  </scope>
+  <self_service>
+    <self_service_display_name/>
+    <install_button_text>Install</install_button_text>
+    <self_service_description/>
+    <force_users_to_view_description>false</force_users_to_view_description>
+    <security>
+      <removal_disallowed>Never</removal_disallowed>
+    </security>
+    <self_service_icon/>
+    <feature_on_main_page>false</feature_on_main_page>
+    <self_service_categories/>
+    <notification>false</notification>
+    <notification>Self Service</notification>
+    <notification_subject/>
+    <notification_message/>
+  </self_service>
+</os_x_configuration_profile>

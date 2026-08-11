@@ -189,3 +189,114 @@ func mustNotContain(t *testing.T, got, unwanted string) {
 		t.Errorf("detail unexpectedly contains %q:\n%s", unwanted, got)
 	}
 }
+
+// Wire-observed 2026-08-11 against Jamf Pro 11.30.x: an authored
+// [MCX, loginwindow] profile comes back as [loginwindow, MCX], because a
+// loginwindow payload is stored verbatim while MCX is re-rendered and Jamf Pro
+// puts the verbatim block first. The loginwindow value also loses its line feed,
+// so this pair carries a reorder and exactly one real defect at the same time.
+const (
+	reorderedAuthored = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><dict>
+<key>com.example.browser</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>HomepageLocation</key><string>https://example.com/start</string>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+<dict>
+<key>PayloadType</key><string>com.apple.loginwindow</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>LoginwindowText</key><string>FIRST LINE
+SECOND LINE</string>
+</dict>
+</array>
+</dict></plist>`
+
+	reorderedStored = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.loginwindow</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>LoginwindowText</key><string>FIRST LINESECOND LINE</string>
+</dict>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><dict>
+<key>com.example.browser</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>HomepageLocation</key><string>https://example.com/start</string>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+</array>
+</dict></plist>`
+)
+
+// TestPayloadFidelityErrorDetail_ReorderedEntriesBlameOnlyTheRealValue is the
+// regression guard for the diagnostic half of the reorder bug. The paths this
+// message quotes are indexed, so when Jamf Pro moves an entry the authored and
+// stored sides disagree about which entry index 1 is. Without
+// alignPayloadContentOrder this pair produced four findings — a value that stored
+// perfectly reported as "not stored at all", a phantom PayloadType mismatch, the
+// real defect misclassified as absent, and the actual line-break finding pushed
+// past maxReportedFindings and never shown to the operator.
+func TestPayloadFidelityErrorDetail_ReorderedEntriesBlameOnlyTheRealValue(t *testing.T) {
+	got := PayloadFidelityErrorDetail([]byte(reorderedAuthored), []byte(reorderedStored), FidelityPhaseCreate)
+
+	// Exactly one value differs, and it is named at the index the operator wrote it at.
+	mustContain(t, got, "Jamf Pro stored a payload value differently")
+	mustContain(t, got, "PayloadContent[1].LoginwindowText")
+	mustContain(t, got, "line breaks removed")
+	mustContain(t, got, `"FIRST LINE\nSECOND LINE"`)
+
+	// None of the reorder artefacts may appear.
+	mustNotContain(t, got, "further value(s) also differ")
+	mustNotContain(t, got, "not stored at all")
+	mustNotContain(t, got, "HomepageLocation")
+	mustNotContain(t, got, "com.apple.ManagedClient.preferences")
+}
+
+// TestPayloadFidelityErrorDetail_ReorderAloneIsNotReported covers the case that
+// actually reached a user: the array was reordered and nothing else changed, so
+// the diff must be silent. The equality gate suppresses this before the
+// diagnostic is reached, but the two must not be able to disagree.
+func TestPayloadFidelityErrorDetail_ReorderAloneIsNotReported(t *testing.T) {
+	authored, stored := []byte(reorderedAuthored), []byte(reorderedStored)
+	// Same pair with the line feed left intact on the stored side.
+	stored = []byte(strings.Replace(string(stored), "FIRST LINESECOND LINE", "FIRST LINE\nSECOND LINE", 1))
+
+	findings, ok := diffPayloadStrings(authored, stored)
+	if !ok {
+		t.Fatal("pair did not parse")
+	}
+	if len(findings) != 0 {
+		for _, f := range findings {
+			t.Logf("unexpected finding: %s (present=%v)", f.path, f.present)
+		}
+		t.Errorf("a reorder with no value change must produce no findings, got %d", len(findings))
+	}
+}

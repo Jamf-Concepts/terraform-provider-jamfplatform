@@ -196,7 +196,7 @@ func diffPayloadTrees(authoredTree, storedTree map[string]any) []fidelityFinding
 	authoredFlat := map[string]string{}
 	storedFlat := map[string]string{}
 	flattenStringLeaves("", authoredTree, authoredFlat)
-	flattenStringLeaves("", storedTree, storedFlat)
+	flattenStringLeaves("", alignPayloadContentOrder(authoredTree, storedTree), storedFlat)
 
 	findings := make([]fidelityFinding, 0, 4)
 	for _, path := range sortedKeys(authoredFlat) {
@@ -217,6 +217,69 @@ func diffPayloadTrees(authoredTree, storedTree map[string]any) []fidelityFinding
 		})
 	}
 	return findings
+}
+
+// alignPayloadContentOrder returns storedTree with its top-level PayloadContent
+// array permuted back into the order authoredTree used, pairing entries by
+// PayloadType in order of appearance. Entries with no counterpart keep their
+// relative order at the end.
+//
+// The paths this diagnostic quotes are indexed (`PayloadContent[1].Foo`), so both
+// sides have to agree on which entry index 1 is. Jamf Pro reorders the array on
+// store — it stably partitions verbatim-stored entries ahead of re-rendered ones
+// (see canonicalisePayloadContentOrder for the wire law) — so without this step
+// every leaf below a moved entry is diffed against an unrelated payload: values
+// that stored perfectly get reported as "not stored at all", a phantom
+// PayloadType mismatch appears, and the one real defect is pushed past
+// maxReportedFindings. Wire-confirmed 2026-08-11 on an authored
+// [MCX, loginwindow] profile carrying a single line feed: four findings reported,
+// none of them the line feed.
+//
+// Aligning to the *authored* order rather than sorting both sides keeps the
+// reported indices matching the payload the operator wrote, which is the whole
+// point of naming a path in the message.
+//
+// The returned tree shares everything except the PayloadContent slice with
+// storedTree — nothing here mutates the caller's trees, so the import gate's
+// predicted tree (which is already in authored order, making this a no-op)
+// continues to diff through exactly the comparison the post-write checks use.
+func alignPayloadContentOrder(authoredTree, storedTree map[string]any) map[string]any {
+	authored, aOK := authoredTree["PayloadContent"].([]any)
+	stored, sOK := storedTree["PayloadContent"].([]any)
+	if !aOK || !sOK || len(authored) < 2 || len(stored) < 2 {
+		return storedTree
+	}
+
+	remaining := make(map[string][]any, len(stored))
+	var order []string
+	for _, entry := range stored {
+		pt := payloadTypeOf(entry)
+		if _, seen := remaining[pt]; !seen {
+			order = append(order, pt)
+		}
+		remaining[pt] = append(remaining[pt], entry)
+	}
+
+	aligned := make([]any, 0, len(stored))
+	for _, entry := range authored {
+		pt := payloadTypeOf(entry)
+		if queue := remaining[pt]; len(queue) > 0 {
+			aligned = append(aligned, queue[0])
+			remaining[pt] = queue[1:]
+		}
+	}
+	// Anything the authored side had no slot for — an entry Jamf Pro injected, or
+	// a type whose count grew — keeps its stored relative order at the end.
+	for _, pt := range order {
+		aligned = append(aligned, remaining[pt]...)
+	}
+
+	out := make(map[string]any, len(storedTree))
+	for k, v := range storedTree {
+		out[k] = v
+	}
+	out["PayloadContent"] = aligned
+	return out
 }
 
 // classify picks the wire law that explains one divergence. Order is

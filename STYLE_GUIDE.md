@@ -510,6 +510,29 @@ Mask drops (or empty-normalises) from **both** sides:
 
 Cost: CR-vs-LF drift fidelity everywhere. Accepted over a per-`PayloadType` model of the server's line-break handling, which is empirical and drifts each release. U+2028/U+2029/U+0085 are deliberately **not** normalised — they round-trip byte-exact, render as line breaks on-device, and keep full drift detection.
 
+**`PayloadContent` entry order is not preserved on store — canonicalise it, do not compare it.** Jamf Pro **stably partitions** the top-level `PayloadContent` array into the entries it stores *verbatim* followed by the entries it *re-renders* (the same two categories as §"Payload storage categories" below), keeping relative order within each block. Wire-probed 2026-08-11 against Jamf Pro 11.30.x across 18 profile shapes, no exceptions:
+
+| Authored order | Stored order |
+|---|---|
+| `[MCX, certificate]` | `[certificate, MCX]` |
+| `[certificate, MCX]` | unchanged — already canonical |
+| `[MCX, certificate, MCX]` | `[certificate, MCX, MCX]` |
+| `[notificationsettings, MCX]` | unchanged — both re-rendered |
+| `[loginwindow, certificate]` | unchanged — both verbatim |
+| `[MCX, loginwindow, certificate]` | `[loginwindow, certificate, MCX]` |
+| `[MCX-a, certificate, MCX-b, certificate-b, MCX-c]` | `[certificate, certificate-b, MCX-a, MCX-b, MCX-c]` |
+
+A positional array compare therefore pairs unrelated entries and reports cascading false drift on every key of both — which reached a user as a bogus `"Jamf Pro cannot store this payload faithfully"` error plus a create-time rollback for a payload the server had stored perfectly. `maskPayloadContent` closes this by **stable-sorting the array by `PayloadType`** (`canonicalisePayloadContentOrder`), so both sides reach the comparator in the same order and every comparator built on `MaskPayload` — the lenient `LenientEqualPlist` and the strict `structuralEqual` behind `ThreeWayCompare` — inherits the fix.
+
+Two properties make this a canonicalisation rather than a tolerance:
+
+- **Entry order carries no meaning.** Apple treats each `PayloadContent` entry as an independent payload, so an order-insensitive comparison is the correct one.
+- **The sort is stable and keyed only on `PayloadType`**, so same-type siblings keep their authored order relative to each other and an edit to one of them still surfaces as drift. That granularity is exactly what the wire law needs: same `PayloadType` implies the same partition, so Jamf Pro *cannot* reorder same-type siblings.
+
+Do not reach for `PayloadIdentifier` as a pairing key — it is masked (server-assignable) and already gone by compare time.
+
+The same reorder breaks the **read-back diagnostic**, which quotes indexed paths (`PayloadContent[1].Foo`) and so needs both sides to agree on which entry index 1 is. `PayloadFidelityErrorDetail` permutes the stored array back into the *authored* order (`alignPayloadContentOrder`) rather than sorting both, so the indices it prints match the payload the operator wrote.
+
 If `inp_masked == srv_masked` the modifier suppresses the diff by setting `plan.payloads = state.payloads`. Otherwise the plan keeps the raw user input and Terraform plans the change.
 
 **Trade-off accepted**: if the user authors a meaningful change to one of the masked keys (e.g. a hand-tuned `PayloadOrganization`), the provider will not detect drift — the server overwrites that value on the next write anyway, so a permanent diff would be the alternative. Document this in the `payloads` attribute `MarkdownDescription`.
