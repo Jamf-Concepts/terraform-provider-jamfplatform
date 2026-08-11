@@ -343,6 +343,138 @@ const mcxChangedInnerValue = `<?xml version="1.0" encoding="UTF-8"?>
 </dict></array>
 </dict></plist>`
 
+// PayloadContent reorder fixtures: wire-observed 2026-08-11 against a live
+// Jamf Pro 11.30.x tenant, a profile mixing an MCX "Application & Custom
+// Settings" entry with a Certificate entry comes back with the certificate
+// moved ahead of MCX. A positional array compare pairs the wrong entries
+// (MCX vs certificate) and reports cascading false drift across every key —
+// this is the root cause of the original "Jamf Pro cannot store this payload
+// faithfully" false positive.
+const mcxThenCert = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>mcx-id</string>
+<key>PayloadUUID</key><string>mcx-uuid</string>
+<key>PayloadContent</key><dict>
+<key>com.example.app</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>FeatureEnabled</key><true/>
+<key>BannerMessage</key><string>hello</string>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+<dict>
+<key>PayloadType</key><string>com.apple.security.root</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>cert-id</string>
+<key>PayloadUUID</key><string>cert-uuid</string>
+<key>PayloadCertificateFileName</key><string>Test.crt</string>
+<key>PayloadContent</key><data>AAAA</data>
+</dict>
+</array>
+</dict></plist>`
+
+const certThenMCXSameContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.security.root</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>cert-id</string>
+<key>PayloadUUID</key><string>cert-uuid</string>
+<key>PayloadCertificateFileName</key><string>Test.crt</string>
+<key>PayloadContent</key><data>AAAA</data>
+</dict>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>mcx-id</string>
+<key>PayloadUUID</key><string>mcx-uuid</string>
+<key>PayloadContent</key><dict>
+<key>com.example.app</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>FeatureEnabled</key><true/>
+<key>BannerMessage</key><string>hello</string>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+</array>
+</dict></plist>`
+
+const certThenMCXChangedInnerValue = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.security.root</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>cert-id</string>
+<key>PayloadUUID</key><string>cert-uuid</string>
+<key>PayloadCertificateFileName</key><string>Test.crt</string>
+<key>PayloadContent</key><data>AAAA</data>
+</dict>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>mcx-id</string>
+<key>PayloadUUID</key><string>mcx-uuid</string>
+<key>PayloadContent</key><dict>
+<key>com.example.app</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict>
+<key>FeatureEnabled</key><false/>
+<key>BannerMessage</key><string>hello</string>
+</dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+</array>
+</dict></plist>`
+
+func TestPayloadsSemanticallyEqual_PayloadContentReordered_Equal(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(mcxThenCert), []byte(certThenMCXSameContent))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !eq {
+		t.Fatal("Jamf Pro reordering PayloadContent entries on store must not report drift")
+	}
+}
+
+func TestPayloadsSemanticallyEqual_PayloadContentReorderedWithRealDrift_NotEqual(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(mcxThenCert), []byte(certThenMCXChangedInnerValue))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if eq {
+		t.Fatal("a real change inside the reordered MCX entry must still be reported as drift")
+	}
+}
+
 func TestPayloadsSemanticallyEqual_MCXIdentical_Equal(t *testing.T) {
 	eq, err := PayloadsSemanticallyEqual([]byte(mcxBaseline), []byte(mcxBaseline))
 	if err != nil {

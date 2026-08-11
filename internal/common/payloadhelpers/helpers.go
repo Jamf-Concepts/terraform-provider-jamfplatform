@@ -345,6 +345,9 @@ func LenientEqualPlist(a, b any) bool {
 		if !ok || len(av) != len(bv) {
 			return false
 		}
+		if isPayloadContentArray(av) && isPayloadContentArray(bv) {
+			return payloadContentArraysEqual(av, bv)
+		}
 		for i := range av {
 			if !LenientEqualPlist(av[i], bv[i]) {
 				return false
@@ -366,6 +369,74 @@ func LenientEqualPlist(a, b any) bool {
 	default:
 		return a == b
 	}
+}
+
+// isPayloadContentArray reports whether every element is a dict carrying a
+// non-empty PayloadType — the shape of a profile's top-level PayloadContent
+// array. Ordinary ordered arrays (SSIDMatch, OnDemandRules, …) never match
+// this shape, so they keep the strict positional compare below.
+func isPayloadContentArray(arr []any) bool {
+	if len(arr) == 0 {
+		return false
+	}
+	for _, item := range arr {
+		m, ok := item.(map[string]any)
+		if !ok {
+			return false
+		}
+		if pt, _ := m["PayloadType"].(string); pt == "" {
+			return false
+		}
+	}
+	return true
+}
+
+// payloadContentArraysEqual compares two PayloadContent arrays tolerating
+// reorder *between* PayloadType groups while still comparing strictly
+// *within* each group. Jamf Pro is free to move an entire entry elsewhere in
+// the array on store (wire-observed: a profile mixing an MCX
+// "Application & Custom Settings" entry with a Certificate entry comes back
+// with the certificate moved ahead of MCX) — a positional compare would pair
+// unrelated entries and report cascading false drift.
+//
+// PayloadIdentifier can't be used to pair same-type entries because it's in
+// maskedPayloadContentKeys (the server may assign it) and is already gone
+// from both trees by the time this runs. Instead, entries are grouped by
+// PayloadType and matched positionally *within* each group — Jamf Pro has
+// never been observed to reorder same-type siblings relative to each other
+// (e.g. six MCX "Application & Custom Settings" entries for six different
+// browsers keep their authored order), only to relocate an entire type
+// elsewhere among its differently-typed siblings.
+func payloadContentArraysEqual(av, bv []any) bool {
+	byTypeA := groupByPayloadType(av)
+	byTypeB := groupByPayloadType(bv)
+	if len(byTypeA) != len(byTypeB) {
+		return false
+	}
+	for pt, groupA := range byTypeA {
+		groupB, ok := byTypeB[pt]
+		if !ok || len(groupA) != len(groupB) {
+			return false
+		}
+		for i := range groupA {
+			if !LenientEqualPlist(groupA[i], groupB[i]) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// groupByPayloadType buckets PayloadContent entries by their PayloadType,
+// preserving each bucket's original relative order.
+func groupByPayloadType(arr []any) map[string][]map[string]any {
+	groups := make(map[string][]map[string]any)
+	for _, item := range arr {
+		m := item.(map[string]any) // isPayloadContentArray already checked
+		pt, _ := m["PayloadType"].(string)
+		groups[pt] = append(groups[pt], m)
+	}
+	return groups
 }
 
 // InjectTopLevelIdentifierValues overwrites the top-level PayloadUUID and
