@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"html"
+	"slices"
 	"strings"
 
 	"howett.net/plist"
@@ -152,7 +153,52 @@ func maskPayloadContent(items []any) []any {
 		}
 		out = append(out, masked)
 	}
-	return out
+	return canonicalisePayloadContentOrder(out)
+}
+
+// canonicalisePayloadContentOrder stable-sorts a top-level PayloadContent array
+// by PayloadType so two payloads that differ only in entry order compare equal
+// under the positional array walk in LenientEqualPlist and structuralEqual.
+//
+// Jamf Pro does not store the array as submitted: it stably partitions the
+// entries into the ones it stores verbatim followed by the ones it re-renders
+// (see the storage-category table in importgate.go), keeping relative order
+// within each block. Wire-probed 2026-08-11 against Jamf Pro 11.30.x over 18
+// profile shapes: an authored [MCX, certificate] comes back as
+// [certificate, MCX], while [loginwindow, certificate] — both verbatim slots —
+// comes back untouched. A positional compare therefore pairs unrelated entries
+// and reports cascading false drift on every key of both, which surfaced as a
+// bogus "Jamf Pro cannot store this payload faithfully" error and a create-time
+// rollback for a payload the server had stored perfectly.
+//
+// Sorting rather than special-casing the compare is safe because entry order in
+// PayloadContent carries no meaning: Apple treats each entry as an independent
+// payload, so an order-insensitive comparison is the correct one, not a
+// tolerance. The sort is *stable* and keyed only on PayloadType, so two entries
+// of the same type keep their authored order relative to each other and a real
+// change between same-type siblings still surfaces as drift. That is exactly the
+// granularity the wire law needs — same PayloadType implies the same partition,
+// so Jamf Pro cannot reorder same-type siblings.
+//
+// PayloadIdentifier would be the natural pairing key but it is in
+// maskedPayloadContentKeys (the server may assign it) and is already gone from
+// the masked tree by the time this runs.
+func canonicalisePayloadContentOrder(entries []any) []any {
+	slices.SortStableFunc(entries, func(a, b any) int {
+		return strings.Compare(payloadTypeOf(a), payloadTypeOf(b))
+	})
+	return entries
+}
+
+// payloadTypeOf returns a PayloadContent entry's PayloadType, or "" when the
+// entry is not a dict or carries no type.
+func payloadTypeOf(v any) string {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	pt, _ := m["PayloadType"].(string)
+	return pt
 }
 
 // isEmpty reports whether a plist value is equivalent to "user did not
@@ -282,8 +328,11 @@ func PayloadsSemanticallyEqual(a, b []byte) (bool, error) {
 
 // LenientEqualPlist compares two parsed-and-masked plist trees with
 // intersection semantics: dict keys present on only one side are ignored;
-// shared keys must compare equal. Arrays compare positionally. Scalars
-// compare via plisthelpers.NumericEqual for ints (howett.net/plist returns int64 or
+// shared keys must compare equal. Arrays compare positionally — the top-level
+// PayloadContent array, the one array Jamf Pro reorders on store, is put into a
+// canonical order by MaskPayload before it gets here (see
+// canonicalisePayloadContentOrder). Scalars compare via
+// plisthelpers.NumericEqual for ints (howett.net/plist returns int64 or
 // uint64 depending on sign).
 //
 // Exception: PayloadContent[i] entries whose PayloadType is in
@@ -345,9 +394,6 @@ func LenientEqualPlist(a, b any) bool {
 		if !ok || len(av) != len(bv) {
 			return false
 		}
-		if isPayloadContentArray(av) && isPayloadContentArray(bv) {
-			return payloadContentArraysEqual(av, bv)
-		}
 		for i := range av {
 			if !LenientEqualPlist(av[i], bv[i]) {
 				return false
@@ -369,74 +415,6 @@ func LenientEqualPlist(a, b any) bool {
 	default:
 		return a == b
 	}
-}
-
-// isPayloadContentArray reports whether every element is a dict carrying a
-// non-empty PayloadType — the shape of a profile's top-level PayloadContent
-// array. Ordinary ordered arrays (SSIDMatch, OnDemandRules, …) never match
-// this shape, so they keep the strict positional compare below.
-func isPayloadContentArray(arr []any) bool {
-	if len(arr) == 0 {
-		return false
-	}
-	for _, item := range arr {
-		m, ok := item.(map[string]any)
-		if !ok {
-			return false
-		}
-		if pt, _ := m["PayloadType"].(string); pt == "" {
-			return false
-		}
-	}
-	return true
-}
-
-// payloadContentArraysEqual compares two PayloadContent arrays tolerating
-// reorder *between* PayloadType groups while still comparing strictly
-// *within* each group. Jamf Pro is free to move an entire entry elsewhere in
-// the array on store (wire-observed: a profile mixing an MCX
-// "Application & Custom Settings" entry with a Certificate entry comes back
-// with the certificate moved ahead of MCX) — a positional compare would pair
-// unrelated entries and report cascading false drift.
-//
-// PayloadIdentifier can't be used to pair same-type entries because it's in
-// maskedPayloadContentKeys (the server may assign it) and is already gone
-// from both trees by the time this runs. Instead, entries are grouped by
-// PayloadType and matched positionally *within* each group — Jamf Pro has
-// never been observed to reorder same-type siblings relative to each other
-// (e.g. six MCX "Application & Custom Settings" entries for six different
-// browsers keep their authored order), only to relocate an entire type
-// elsewhere among its differently-typed siblings.
-func payloadContentArraysEqual(av, bv []any) bool {
-	byTypeA := groupByPayloadType(av)
-	byTypeB := groupByPayloadType(bv)
-	if len(byTypeA) != len(byTypeB) {
-		return false
-	}
-	for pt, groupA := range byTypeA {
-		groupB, ok := byTypeB[pt]
-		if !ok || len(groupA) != len(groupB) {
-			return false
-		}
-		for i := range groupA {
-			if !LenientEqualPlist(groupA[i], groupB[i]) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// groupByPayloadType buckets PayloadContent entries by their PayloadType,
-// preserving each bucket's original relative order.
-func groupByPayloadType(arr []any) map[string][]map[string]any {
-	groups := make(map[string][]map[string]any)
-	for _, item := range arr {
-		m := item.(map[string]any) // isPayloadContentArray already checked
-		pt, _ := m["PayloadType"].(string)
-		groups[pt] = append(groups[pt], m)
-	}
-	return groups
 }
 
 // InjectTopLevelIdentifierValues overwrites the top-level PayloadUUID and

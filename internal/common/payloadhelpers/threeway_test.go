@@ -213,3 +213,37 @@ func TestStructuralEqual_NumericCrossType(t *testing.T) {
 		})
 	}
 }
+
+// TestPayloadsStructurallyEqual_ReorderedPayloadContent covers the strict
+// comparator's share of the reorder problem. structuralEqual walks arrays
+// positionally too, and both of its operands are usually server-canonical — so
+// both carry Jamf Pro's ordering and agree. The exception is the plan modifier's
+// fallback when payload_server_now is absent from private state: the drift arm
+// then compares the last-applied server canonical against state.General.Payloads,
+// which lenient self-healing keeps in the *user-authored* order. On a profile
+// mixing storage categories that is a guaranteed false DecisionDrift and a plan
+// that never converges.
+//
+// MaskPayload canonicalises PayloadContent order for both comparators, so this
+// holds without structuralEqual needing a special case of its own.
+func TestPayloadsStructurallyEqual_ReorderedPayloadContent(t *testing.T) {
+	equal, err := PayloadsStructurallyEqual([]byte(mcxThenCert), []byte(certThenMCXSameContent))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !equal {
+		t.Fatal("entry order must not make two otherwise identical payloads structurally unequal")
+	}
+}
+
+// TestPayloadsStructurallyEqual_ReorderedWithRealDrift keeps the strict
+// comparator strict: order is ignored, values are not.
+func TestPayloadsStructurallyEqual_ReorderedWithRealDrift(t *testing.T) {
+	equal, err := PayloadsStructurallyEqual([]byte(mcxThenCert), []byte(certThenMCXChangedInnerValue))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if equal {
+		t.Fatal("a changed value inside a relocated entry must still compare unequal")
+	}
+}

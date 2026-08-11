@@ -5,6 +5,8 @@ package payloadhelpers
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -809,3 +811,162 @@ func TestNormalizeLineEndings(t *testing.T) {
 		})
 	}
 }
+
+// payloadContentTypeOrder returns the PayloadType of each top-level
+// PayloadContent entry, in document order.
+func payloadContentTypeOrder(t *testing.T, raw []byte) []string {
+	t.Helper()
+	tree, _, err := plisthelpers.ParsePlist(raw)
+	if err != nil {
+		t.Fatalf("parsing payload: %v", err)
+	}
+	arr, ok := tree["PayloadContent"].([]any)
+	if !ok {
+		t.Fatal("payload has no PayloadContent array")
+	}
+	out := make([]string, 0, len(arr))
+	for _, entry := range arr {
+		out = append(out, payloadTypeOf(entry))
+	}
+	return out
+}
+
+// TestPayloadsSemanticallyEqual_RecordedReorderedResponse_Equal is the
+// wire-backed twin of the two hand-written reorder tests above: real authored
+// bytes and the real response a live Jamf Pro returned for them, so it guards
+// the actual server behaviour rather than our model of it.
+//
+// The fixture mixes an MCX "Application & Custom Settings" entry with a
+// certificate entry — a certificate is stored verbatim while MCX is re-rendered,
+// which is the condition that makes Jamf Pro reorder the array. Before the
+// canonical ordering in maskPayloadContent this pair reported drift on every key
+// of both entries, rolled back the freshly created profile, and told the operator
+// Jamf Pro could not store a payload it had in fact stored perfectly.
+func TestPayloadsSemanticallyEqual_RecordedReorderedResponse_Equal(t *testing.T) {
+	const (
+		fixtures = "../../resources/pro/macos_configuration_profile/testdata"
+		stem     = "GoogleChrome__mcx_with_certificate_profile"
+	)
+	authored, err := os.ReadFile(filepath.Join(fixtures, stem+".mobileconfig"))
+	if err != nil {
+		t.Fatalf("reading authored fixture: %v", err)
+	}
+	resp, err := os.ReadFile(filepath.Join(fixtures, stem+".create_response.xml"))
+	if err != nil {
+		t.Fatalf("reading recorded response: %v", err)
+	}
+	stored, err := ExtractServerPayloadFromGeneral(resp)
+	if err != nil {
+		t.Fatalf("extracting payload from recorded response: %v", err)
+	}
+
+	// Guard the guard: if this tenant ever stops reordering, the assertions below
+	// would pass for the wrong reason and quietly stop covering anything.
+	authoredOrder := payloadContentTypeOrder(t, authored)
+	storedOrder := payloadContentTypeOrder(t, stored)
+	if strings.Join(authoredOrder, ",") == strings.Join(storedOrder, ",") {
+		t.Fatalf("fixture no longer exhibits the reorder it exists to cover: %v", storedOrder)
+	}
+
+	eq, err := PayloadsSemanticallyEqual(authored, stored)
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if !eq {
+		t.Errorf("recorded response reordered %v to %v and this must not read as drift", authoredOrder, storedOrder)
+	}
+
+	// The diagnostic path has to agree with the equality gate, or a profile that
+	// compares equal would still produce a findings list if anything else failed.
+	findings, ok := diffPayloadStrings(authored, stored)
+	if !ok {
+		t.Fatal("fixture pair did not parse for the fidelity diff")
+	}
+	if len(findings) != 0 {
+		for _, f := range findings {
+			t.Logf("unexpected finding: %s (present=%v) authored=%q stored=%q", f.path, f.present, f.authored, f.stored)
+		}
+		t.Errorf("recorded response stored every value faithfully, got %d fidelity finding(s)", len(findings))
+	}
+}
+
+// TestPayloadsSemanticallyEqual_SameTypeSiblingDrift_NotEqual pins the limit of
+// the canonical ordering: the sort is keyed only on PayloadType and is stable, so
+// two entries of the same type keep their authored positions relative to each
+// other and an edit to one of them is still drift. A non-stable sort, or one that
+// also ordered by content, would silently swallow this.
+func TestPayloadsSemanticallyEqual_SameTypeSiblingDrift_NotEqual(t *testing.T) {
+	eq, err := PayloadsSemanticallyEqual([]byte(twoMCXSiblings), []byte(twoMCXSiblingsSecondEdited))
+	if err != nil {
+		t.Fatalf("compare: %v", err)
+	}
+	if eq {
+		t.Fatal("an edit inside the second of two same-type siblings must surface as drift")
+	}
+}
+
+const twoMCXSiblings = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><dict>
+<key>com.example.first</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict><key>Flag</key><true/></dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><dict>
+<key>com.example.second</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict><key>Flag</key><true/></dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+</array>
+</dict></plist>`
+
+const twoMCXSiblingsSecondEdited = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>PayloadType</key><string>Configuration</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadIdentifier</key><string>top-id</string>
+<key>PayloadUUID</key><string>top-uuid</string>
+<key>PayloadContent</key><array>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><dict>
+<key>com.example.first</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict><key>Flag</key><true/></dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+<dict>
+<key>PayloadType</key><string>com.apple.ManagedClient.preferences</string>
+<key>PayloadVersion</key><integer>1</integer>
+<key>PayloadContent</key><dict>
+<key>com.example.second</key><dict>
+<key>Forced</key><array><dict>
+<key>mcx_preference_settings</key><dict><key>Flag</key><false/></dict>
+</dict></array>
+</dict>
+</dict>
+</dict>
+</array>
+</dict></plist>`

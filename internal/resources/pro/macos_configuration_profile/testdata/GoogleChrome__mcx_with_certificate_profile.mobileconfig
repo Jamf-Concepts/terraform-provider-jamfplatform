@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.google.Chrome</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>HomepageLocation</key>
+								<string>https://example.com/start</string>
+								<key>NewTabPageLocation</key>
+								<string>https://example.com/newtab</string>
+								<key>PasswordManagerEnabled</key>
+								<false/>
+								<key>URLBlocklist</key>
+								<array>
+									<string>example-blocked.test</string>
+								</array>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadDisplayName</key>
+			<string>Google Chrome managed preferences</string>
+			<key>PayloadIdentifier</key>
+			<string>com.example.chrome.managed.settings</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>9C1F5A24-3E7B-4D18-9F02-6B5A8C4E17D3</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>PayloadCertificateFileName</key>
+			<string>example-root-ca.cer</string>
+			<key>PayloadContent</key>
+			<data>
+			MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxGF3lQ0m6zvbNQ0dQKe9
+			nJ6l0J1yQ4nFq0dYh2s5cWJ9Yz8mQ2pLdE7vXhR4tS1uK0oB9wYcAaZmNpQrTfHl
+			</data>
+			<key>PayloadDisplayName</key>
+			<string>Example Root CA</string>
+			<key>PayloadIdentifier</key>
+			<string>com.example.root.ca</string>
+			<key>PayloadType</key>
+			<string>com.apple.security.root</string>
+			<key>PayloadUUID</key>
+			<string>4A7D2E60-8B15-4C93-A2F6-1D3E5C9B7048</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>Chrome settings with root certificate</string>
+	<key>PayloadIdentifier</key>
+	<string>com.example.chrome.with.certificate</string>
+	<key>PayloadOrganization</key>
+	<string>Example Org</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>2F8C6B31-7A4E-4D52-B9C8-0E1A3F7D6B92</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>
