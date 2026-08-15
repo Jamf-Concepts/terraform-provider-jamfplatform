@@ -30,6 +30,15 @@ import (
 
 const resName = "jamfplatform_pro_activation_code.test"
 
+// skipReason documents why both acceptance tests in this file are skipped.
+//
+// The resource is scheduled for deprecation and the test tenant no longer needs
+// an activation code maintained, so there is nothing left for these to exercise
+// safely. Skipping rather than deleting keeps the omission visible in test
+// output, and keeps the license-secret handling notes above on record for as
+// long as the resource ships.
+const skipReason = "jamfplatform_pro_activation_code is scheduled for deprecation and the test tenant no longer maintains an activation code; see the license-secret note at the top of this file."
+
 // currentActivationCode reads the tenant's live activation code and organization name so
 // the test can re-use the real code (never mutating the license) and restore the org name.
 func currentActivationCode(t *testing.T) (org, code string) {
@@ -66,6 +75,7 @@ func configFor(org, code string) string {
 // organization_name (code held constant at the tenant's real value), then restores the
 // original organization name.
 func TestAccResource_ProActivationCode_Basic(t *testing.T) {
+	t.Skip(skipReason)
 	testhelpers.AccPreCheck(t)
 
 	originalOrg, code := currentActivationCode(t)
@@ -107,6 +117,7 @@ func TestAccResource_ProActivationCode_Basic(t *testing.T) {
 // TestAccResource_ProActivationCode_RejectsNonSingletonImport verifies the ImportState
 // guard: any identifier other than "singleton" must fail.
 func TestAccResource_ProActivationCode_RejectsNonSingletonImport(t *testing.T) {
+	t.Skip(skipReason)
 	testhelpers.AccPreCheck(t)
 
 	org, code := currentActivationCode(t)

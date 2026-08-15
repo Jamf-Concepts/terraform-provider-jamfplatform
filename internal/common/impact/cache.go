@@ -23,6 +23,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 // DeviceType distinguishes the two membership namespaces Jamf Pro groups live
@@ -179,6 +180,18 @@ type Cache struct {
 	// one per scoped resource.
 	noticeMu    sync.Mutex
 	noticeFired bool
+
+	// policySrc supplies the whole-tenant policy sweep behind dependency alerts.
+	// Held separately from src because the sweep is far more expensive than the
+	// group reads and is loaded only when a plan actually changes a policy
+	// dependency; a nil policySrc reports no dependency impact at all.
+	policySrc PolicySource
+	// policyOnce guards the sweep, which happens at most once per Cache however
+	// many dependency resources a plan changes. Its failure is memoised for the
+	// same reason the group load's is.
+	policyOnce sync.Once
+	policies   *dependencyIndex
+	policyErr  error
 }
 
 // memberSet is one group's membership, fetched at most once per Cache.
@@ -233,9 +246,16 @@ func (c *Cache) noticeOnce() bool {
 	return true
 }
 
-// NewCache returns a Cache backed by src.
+// NewCache returns a Cache backed by src, without dependency reporting. Tests
+// that exercise the dependency index use NewCacheWithPolicies.
 func NewCache(src Source) *Cache {
 	return &Cache{src: src}
+}
+
+// NewCacheWithPolicies returns a Cache that can also report policy dependency
+// impact, backed by a policy sweep source.
+func NewCacheWithPolicies(src Source, policies PolicySource) *Cache {
+	return &Cache{src: src, policySrc: policies}
 }
 
 // NewTenantCache returns a Cache backed by a configured Jamf client.
@@ -245,11 +265,17 @@ func NewCache(src Source) *Cache {
 // from the Platform device groups service, which serves every kind of group —
 // smart or static, computer or mobile device — through one call keyed by
 // Platform identifier.
+// Policy dependency alerts additionally need the Classic policy surface, since
+// the reverse "which policies use this script" question has no endpoint of its
+// own and can only be answered by sweeping policies.
 func NewTenantCache(client *jamfplatform.Client) *Cache {
-	return NewCache(tenantSource{
-		pro:    pro.New(client),
-		groups: devicegroups.New(client),
-	})
+	return NewCacheWithPolicies(
+		tenantSource{
+			pro:    pro.New(client),
+			groups: devicegroups.New(client),
+		},
+		policyTenantSource{classic: proclassic.New(client)},
+	)
 }
 
 // Enabled reports whether this cache will report anything. A nil Cache is

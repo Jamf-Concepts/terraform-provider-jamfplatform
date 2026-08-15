@@ -1,0 +1,442 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package impact
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+)
+
+// DependencyRequest describes one planned change to a policy dependency.
+type DependencyRequest struct {
+	// Cache is the shared tenant cache. A nil cache, or one without a policy
+	// source, disables reporting.
+	Cache *Cache
+	// Path optionally anchors the diagnostic to an attribute. A dependency alert has
+	// no single attribute it derives from — any change reaches every policy using the
+	// object — so this is normally empty, reporting at resource level rather than
+	// blaming a field that may not be the one that changed.
+	Path path.Path
+	// Kind is the dependency category, used to look up the reverse index.
+	Kind DependencyKind
+	// ID is the dependency's numeric Jamf Pro id. Empty during a create, since
+	// the object does not exist yet and nothing can reference it.
+	ID string
+	// Name names the object in prose. Falls back to the kind when empty.
+	Name string
+	// Action is the planned lifecycle operation.
+	Action Action
+	// Changed reports whether this plan changes the object at all.
+	Changed bool
+}
+
+// ReportDependency produces the impact alert for a change to a policy dependency:
+// how many computers it reaches, via every policy using it.
+//
+// This is the deployable channel's blind spot. A policy's own alert covers a change
+// to that policy and a group's covers that group, but a script edited alone produces
+// neither — it has no scope, and the policies running it are not in the plan. Jamf
+// Pro's save-time alert has the same gap.
+//
+// Advisory: an unsweepable tenant yields one notice per plan and never fails it.
+//
+// The wording is load-bearing. Alerts are consumed from `terraform plan -json` by
+// regex, so the headline keeps the shared "affects <qualifier><n> of <m>" shape and
+// the detail keeps its counts in fixed phrases. See TestDependencyAlert_IsMachineReadable
+// and the CI section of docs/guides/impact-alerts.md before rewording any of it.
+func ReportDependency(ctx context.Context, req DependencyRequest) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if req.Cache == nil || req.Cache.policySrc == nil {
+		return diags
+	}
+	// Nothing can reference an id the tenant has not issued, so a create must not
+	// sweep. On a plan creating a script and a policy together the policy's own
+	// alert already covers it.
+	if req.Action == ActionCreate || req.ID == "" {
+		return diags
+	}
+	if req.Action == ActionUpdate && !req.Changed {
+		return diags
+	}
+
+	uses, swept, err := req.Cache.PolicyUses(ctx, req.Kind, req.ID)
+	if err != nil {
+		if req.Cache.noticeOnce() {
+			diags.AddWarning(
+				"Impact alert unavailable",
+				fmt.Sprintf("Policy dependency impact could not be calculated for this plan: %s\n\n"+
+					"Impact alerts are advisory, so the plan is unaffected. No further notices will be shown for this plan.", err),
+			)
+		}
+		return diags
+	}
+
+	label := req.Name
+	if label == "" {
+		label = string(req.Kind)
+	}
+
+	if len(uses) == 0 {
+		addDependencyWarning(&diags, req.Path,
+			fmt.Sprintf("Impact alert — no policy uses this %s", req.Kind),
+			fmt.Sprintf("No policy in this tenant references %s, so this change reaches no computers through a policy.\n\n"+
+				"Searched %s.\n\n%s",
+				label, plural(swept, "policy", "policies"), dependencyNote))
+		return diags
+	}
+
+	res, err := resolveDependency(ctx, req.Cache, uses)
+	if err != nil {
+		if req.Cache.noticeOnce() {
+			diags.AddWarning(
+				"Impact alert unavailable",
+				fmt.Sprintf("Policy dependency impact could not be calculated for this plan: %s\n\n"+
+					"Impact alerts are advisory, so the plan is unaffected. No further notices will be shown for this plan.", err),
+			)
+		}
+		return diags
+	}
+
+	addDependencyWarning(&diags, req.Path,
+		dependencyHeadline(req, res),
+		dependencyDetail(req, res, label, swept))
+	return diags
+}
+
+// addDependencyWarning attaches the alert to an attribute when one was named, and
+// to the resource otherwise.
+func addDependencyWarning(diags *diag.Diagnostics, p path.Path, summary, detail string) {
+	if p.Equal(path.Empty()) {
+		diags.AddWarning(summary, detail)
+		return
+	}
+	diags.AddAttributeWarning(p, summary, detail)
+}
+
+// dependencyNote closes every dependency alert. Distinct from snapshotNote because
+// the sweep adds its own staleness: which policies use the object is also a
+// point-in-time reading.
+const dependencyNote = "Policy usage and group membership are a plan-time snapshot and can change before apply."
+
+// DependencyResolution is the combined reach of the policies using one
+// dependency.
+type DependencyResolution struct {
+	// Resolution is the union of the using policies' scopes.
+	Resolution
+	// Enabled and Disabled split the using policies. A disabled policy references the
+	// object but delivers nothing, so it is disclosed separately, never counted.
+	Enabled  []PolicyUse
+	Disabled []PolicyUse
+}
+
+// resolveDependency unions the scopes of every enabled policy using a dependency.
+//
+// Over member sets, not by summing per-policy counts: scopes overlap heavily, so a
+// computer in three affected policies must count once. Summing would inflate the
+// figure without bound, the more so the better-organised the tenant.
+//
+// A policy whose scope will not resolve exactly degrades the bound rather than the
+// figure, so one network-segment limitation does not discard the rest.
+func resolveDependency(ctx context.Context, c *Cache, uses []PolicyUse) (DependencyResolution, error) {
+	out := DependencyResolution{}
+	for _, u := range uses {
+		if u.Enabled {
+			out.Enabled = append(out.Enabled, u)
+			continue
+		}
+		out.Disabled = append(out.Disabled, u)
+	}
+
+	// Only enabled policies deliver anything, so only they contribute devices.
+	combined := combineScopes(scopesOf(out.Enabled))
+	if combined.Empty() {
+		out.Resolution = Resolution{DeviceType: DeviceTypeComputer, Determinable: true}
+		return out, nil
+	}
+
+	res, err := Resolve(ctx, c, combined)
+	if err != nil {
+		return out, err
+	}
+	out.Resolution = res
+	return out, nil
+}
+
+// scopesOf extracts the scopes of a set of uses.
+func scopesOf(uses []PolicyUse) []Scope {
+	out := make([]Scope, 0, len(uses))
+	for _, u := range uses {
+		out = append(out, u.Scope)
+	}
+	return out
+}
+
+// exclusionsAreNotCombinable is the caveat text for exclusions dropped when more
+// than one policy contributes.
+const exclusionsAreNotCombinable = "exclusions apply per policy, so cannot be subtracted from a combined audience"
+
+// combineScopes merges every contributing policy's scope into one whose audience is
+// their union.
+//
+// Targets union straightforwardly; exclusions do not. An exclusion belongs to the
+// policy declaring it, so a computer excluded from A but targeted by B still receives
+// the dependency through B, and subtracting either from the combined target set
+// undercounts. One contributing policy therefore keeps its exclusions — the audience
+// is just its own — while two or more drop them for a single aggregated narrowing
+// caveat: stating the direction of the error is honest, applying it to the wrong
+// audience is not.
+//
+// One pass, not a pairwise fold. Folding re-examined the accumulator each step and
+// re-emitted its caveats per remaining policy — 56 copies of one line on a real tenant.
+func combineScopes(scopes []Scope) Scope {
+	switch len(scopes) {
+	case 0:
+		return Scope{DeviceType: DeviceTypeComputer}
+	case 1:
+		return scopes[0]
+	}
+
+	out := Scope{DeviceType: DeviceTypeComputer}
+	var droppedExclusions int
+	for _, s := range scopes {
+		out.All = out.All || s.All
+		out.DeviceIDs = unionStrings(out.DeviceIDs, s.DeviceIDs)
+		out.BuildingIDs = unionStrings(out.BuildingIDs, s.BuildingIDs)
+		out.DepartmentIDs = unionStrings(out.DepartmentIDs, s.DepartmentIDs)
+		out.PlatformGroupIDs = unionStrings(out.PlatformGroupIDs, s.PlatformGroupIDs)
+		out.ProGroups = unionRefs(out.ProGroups, s.ProGroups)
+		out.Unresolvable = append(out.Unresolvable, s.Unresolvable...)
+		droppedExclusions += len(s.ExcludedProGroups) + len(s.ExcludedPlatformGroupIDs) +
+			len(s.ExcludedDeviceIDs) + len(s.ExcludedBuildingIDs) + len(s.ExcludedDepartmentIDs)
+	}
+	if droppedExclusions > 0 {
+		out.Unresolvable = append(out.Unresolvable, Unresolvable{
+			Path:   "policy exclusions",
+			Reason: exclusionsAreNotCombinable,
+			Effect: Narrows,
+			Values: droppedExclusions,
+		})
+	}
+	// Identical inputs collapse into one entry carrying the total, so 56 policies
+	// sharing a network-segment limitation yield one line, not 56.
+	out.Unresolvable = aggregateUnresolvable(out.Unresolvable)
+	return out
+}
+
+// aggregateUnresolvable collapses entries sharing a path, reason and direction into
+// one carrying the summed count, keeping first-seen order so wording stays stable.
+func aggregateUnresolvable(in []Unresolvable) []Unresolvable {
+	if len(in) < 2 {
+		return in
+	}
+	type key struct {
+		path, reason string
+		effect       Effect
+	}
+	seen := make(map[key]int, len(in))
+	out := make([]Unresolvable, 0, len(in))
+	for _, u := range in {
+		k := key{u.Path, u.Reason, u.Effect}
+		if i, ok := seen[k]; ok {
+			out[i].Values += u.Values
+			continue
+		}
+		seen[k] = len(out)
+		out = append(out, u)
+	}
+	return out
+}
+
+// unionStrings merges two id slices as a set, preserving first-seen order so a
+// diagnostic reads the same across plans.
+func unionStrings(a, b []string) []string {
+	if len(a) == 0 {
+		return b
+	}
+	if len(b) == 0 {
+		return a
+	}
+	seen := make(map[string]struct{}, len(a)+len(b))
+	out := make([]string, 0, len(a)+len(b))
+	for _, v := range append(append([]string(nil), a...), b...) {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
+
+// unionRefs merges two group-reference slices as a set.
+func unionRefs(a, b []ProGroupRef) []ProGroupRef {
+	if len(a) == 0 {
+		return b
+	}
+	if len(b) == 0 {
+		return a
+	}
+	seen := make(map[string]struct{}, len(a)+len(b))
+	out := make([]ProGroupRef, 0, len(a)+len(b))
+	for _, v := range append(append([]ProGroupRef(nil), a...), b...) {
+		if _, ok := seen[v.key()]; ok {
+			continue
+		}
+		seen[v.key()] = struct{}{}
+		out = append(out, v)
+	}
+	return out
+}
+
+// dependencyHeadline renders the one-line summary.
+func dependencyHeadline(req DependencyRequest, res DependencyResolution) string {
+	if len(res.Enabled) == 0 {
+		return fmt.Sprintf("Impact alert — this %s is used only by disabled policies", req.Kind)
+	}
+	if !res.Determinable {
+		return "Impact alert — affected computers cannot be determined during plan"
+	}
+	via := plural(len(res.Enabled), "policy", "policies")
+	if req.Action == ActionDelete {
+		return fmt.Sprintf("Impact alert — removing this %s affects %s, via %s",
+			req.Kind, summarise(res.Resolution), via)
+	}
+	return fmt.Sprintf("Impact alert — this %s affects %s, via %s",
+		req.Kind, summarise(res.Resolution), via)
+}
+
+// dependencyDetail renders the body: which policies carry the change, what the figure
+// was counted from, and what could not be evaluated.
+//
+// No lead sentence explaining that a dependency change reaches every policy using it —
+// the headline already says "affects N computers, via M policies", and repeating it
+// pushed the policy list below the fold.
+func dependencyDetail(req DependencyRequest, res DependencyResolution, label string, swept int) string {
+	var b strings.Builder
+
+	// "Used by N enabled policies" and "Searched N policies" are fixed phrases that
+	// CI regexes anchor on; keep the counts where they are.
+	if len(res.Enabled) > 0 {
+		fmt.Fprintf(&b, "Used by %s: %s.\n",
+			plural(len(res.Enabled), "enabled policy", "enabled policies"), policyNames(res.Enabled))
+	}
+	if len(res.Disabled) > 0 {
+		// Disclosed rather than hidden: staging a change on a disabled policy is
+		// common, and its audience is what the figure becomes once enabled.
+		fmt.Fprintf(&b, "Also %s, delivering nothing until enabled: %s.\n",
+			plural(len(res.Disabled), "disabled policy", "disabled policies"), policyNames(res.Disabled))
+	}
+
+	if len(res.Enabled) == 0 {
+		fmt.Fprintf(&b, "\nNo enabled policy uses %s, so this reaches no computers yet.\n", label)
+		fmt.Fprintf(&b, "\nSearched %s. %s", plural(swept, "policy", "policies"), dependencyNote)
+		return b.String()
+	}
+
+	if !res.Determinable {
+		fmt.Fprintf(&b, "\n%s", pendingDetail(res.PendingPaths))
+		return b.String()
+	}
+
+	if lines := breakdown(res.Resolution); len(lines) > 0 {
+		fmt.Fprintf(&b, "Counted from their combined scope: %s.\n", strings.Join(lines, "; "))
+	}
+	if l := excludedLine(res.Resolution); l != "" {
+		fmt.Fprintf(&b, "%s\n", l)
+	}
+	if len(res.Enabled) > 1 {
+		// Says why the total is not the sum of the parts — the first thing a reader
+		// checks when they know each policy's own audience.
+		b.WriteString("Computers in more than one are counted once.\n")
+	}
+
+	if lines := caveats(res.Resolution); len(lines) > 0 {
+		fmt.Fprintf(&b, "\n%s\n", strings.Join(lines, "\n"))
+	}
+
+	fmt.Fprintf(&b, "\nSearched %s. %s", plural(swept, "policy", "policies"), dependencyNote)
+	return b.String()
+}
+
+// maxListedPolicies caps listed policy names so a widely-used script stays readable.
+const maxListedPolicies = 8
+
+// policyNames renders the using policies, capped.
+func policyNames(uses []PolicyUse) string {
+	names := make([]string, 0, len(uses))
+	for _, u := range uses {
+		names = append(names, u.Name)
+	}
+	sort.Strings(names)
+	if len(names) > maxListedPolicies {
+		rest := len(names) - maxListedPolicies
+		names = append(names[:maxListedPolicies], fmt.Sprintf("and %d more", rest))
+	}
+	return strings.Join(names, ", ")
+}
+
+// DependencyPlanReport is the per-resource configuration for the shared
+// dependency plan hook.
+type DependencyPlanReport struct {
+	// Cache is the shared tenant cache.
+	Cache *Cache
+	// Path anchors the diagnostic.
+	Path path.Path
+	// Kind is the dependency category.
+	Kind DependencyKind
+}
+
+// ReportDependencyPlan is the shared ModifyPlan hook for a policy dependency
+// resource. It mirrors ReportPlan's lifecycle bookkeeping; the caller supplies only
+// how to read the id and name out of its own model.
+func ReportDependencyPlan[M any](
+	ctx context.Context,
+	req resource.ModifyPlanRequest,
+	resp *resource.ModifyPlanResponse,
+	rep DependencyPlanReport,
+	identify func(context.Context, *M) (id string, name string),
+) {
+	if rep.Cache == nil || rep.Cache.policySrc == nil {
+		return
+	}
+	creating := req.State.Raw.IsNull()
+	destroying := req.Plan.Raw.IsNull()
+	if creating && destroying {
+		return
+	}
+	// Nothing references an object this plan is creating, so there is no sweep to
+	// justify. Bail before touching the tenant.
+	if creating {
+		return
+	}
+
+	action := ActionUpdate
+	if destroying {
+		action = ActionDelete
+	}
+
+	// The id is server-assigned and so only ever present in prior state; a
+	// planned-only read would be unknown on an update that replaces the object.
+	var state M
+	if diags := req.State.Get(ctx, &state); diags.HasError() {
+		return
+	}
+	id, name := identify(ctx, &state)
+
+	resp.Diagnostics.Append(ReportDependency(ctx, DependencyRequest{
+		Cache:   rep.Cache,
+		Path:    rep.Path,
+		Kind:    rep.Kind,
+		ID:      id,
+		Name:    name,
+		Action:  action,
+		Changed: !req.Plan.Raw.Equal(req.State.Raw),
+	})...)
+}

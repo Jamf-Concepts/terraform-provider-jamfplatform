@@ -217,7 +217,7 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			},
 			"min_request_interval_ms": schema.Int64Attribute{
 				Optional:    true,
-				Description: "Minimum elapsed time, in milliseconds, between the start of consecutive outbound API requests. Paces all traffic through the shared client (which Terraform fans out across parallel resource operations), giving the server breathing room and reducing rate-limit responses. Defaults to 100. Set to 0 to disable. Raising it slows large parallel applies; lowering it increases the chance of 429s. Can also be set via the JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS environment variable.",
+				Description: "Minimum elapsed time, in milliseconds, between the start of consecutive outbound API requests, pacing all traffic through the shared client. Defaults to 0 (no pacing). Because it gates request starts rather than limiting concurrency, it is a throughput ceiling on the whole provider: at 100ms no plan exceeds 10 requests per second however many operations Terraform runs in parallel. Raise it to give a heavily loaded server breathing room, at the cost of slowing every plan and apply. Can also be set via the JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS environment variable.",
 			},
 			"impact_alerts": schema.BoolAttribute{
 				Optional: true,
@@ -292,16 +292,22 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		jamfplatform.WithUserAgent("terraform-provider-jamfplatform/" + p.version),
 		jamfplatform.WithTenantID(tenantID),
 	}
-	// Inter-request pacing. The SDK defaults to 100ms when the option is not
-	// passed; only override when the operator sets it explicitly (including 0 to
-	// disable) via the attribute or the env var, attribute taking precedence.
+	// Inter-request pacing, defaulting to none.
+	//
+	// The interval gates request *starts*, making it a throughput ceiling rather
+	// than a concurrency limit: at 100ms it caps the whole provider at 10 requests
+	// per second however many operations Terraform runs in parallel — measurably the
+	// dominant cost of a read-heavy plan. Serially it buys almost nothing either,
+	// since a typical Jamf request already outlasts the interval. Hence a default of
+	// 0, always passed so it overrides the SDK's own 100ms; set the attribute or env
+	// var (attribute wins) to put pacing back. Features that fan out reads bound
+	// their own concurrency instead — see impact.dependencySweepConcurrency.
+	//
 	// Eventual-consistency retries are NOT done by the transport — resources that
 	// need them poll explicitly (see the apps and device_group Delete paths).
-	minIntervalSet := false
 	var minIntervalMs int64
 	switch {
 	case !data.MinRequestIntervalMs.IsNull() && !data.MinRequestIntervalMs.IsUnknown():
-		minIntervalSet = true
 		minIntervalMs = data.MinRequestIntervalMs.ValueInt64()
 	case getenv(envMinRequestIntervalMs) != "":
 		parsed, err := strconv.ParseInt(getenv(envMinRequestIntervalMs), 10, 64)
@@ -312,12 +318,9 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 			)
 			return
 		}
-		minIntervalSet = true
 		minIntervalMs = parsed
 	}
-	if minIntervalSet {
-		opts = append(opts, jamfplatform.WithMinRequestInterval(time.Duration(minIntervalMs)*time.Millisecond))
-	}
+	opts = append(opts, jamfplatform.WithMinRequestInterval(time.Duration(minIntervalMs)*time.Millisecond))
 	if shouldEnableHTTPLogging() {
 		opts = append(opts, jamfplatform.WithLogger(NewTerraformLogger()))
 	}
