@@ -292,35 +292,19 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		jamfplatform.WithUserAgent("terraform-provider-jamfplatform/" + p.version),
 		jamfplatform.WithTenantID(tenantID),
 	}
-	// Inter-request pacing, defaulting to none.
-	//
-	// The interval gates request *starts*, making it a throughput ceiling rather
-	// than a concurrency limit: at 100ms it caps the whole provider at 10 requests
-	// per second however many operations Terraform runs in parallel — measurably the
-	// dominant cost of a read-heavy plan. Serially it buys almost nothing either,
-	// since a typical Jamf request already outlasts the interval. Hence a default of
-	// 0, always passed so it overrides the SDK's own 100ms; set the attribute or env
-	// var (attribute wins) to put pacing back. Features that fan out reads bound
-	// their own concurrency instead — see impact.dependencySweepConcurrency.
+	// Inter-request pacing, defaulting to none — see resolveMinRequestInterval.
 	//
 	// Eventual-consistency retries are NOT done by the transport — resources that
 	// need them poll explicitly (see the apps and device_group Delete paths).
-	var minIntervalMs int64
-	switch {
-	case !data.MinRequestIntervalMs.IsNull() && !data.MinRequestIntervalMs.IsUnknown():
-		minIntervalMs = data.MinRequestIntervalMs.ValueInt64()
-	case getenv(envMinRequestIntervalMs) != "":
-		parsed, err := strconv.ParseInt(getenv(envMinRequestIntervalMs), 10, 64)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Invalid JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS",
-				fmt.Sprintf("Expected an integer number of milliseconds, got %q: %s", getenv(envMinRequestIntervalMs), err),
-			)
-			return
-		}
-		minIntervalMs = parsed
+	minInterval, err := resolveMinRequestInterval(data.MinRequestIntervalMs)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS",
+			fmt.Sprintf("Expected an integer number of milliseconds, got %q: %s", getenv(envMinRequestIntervalMs), err),
+		)
+		return
 	}
-	opts = append(opts, jamfplatform.WithMinRequestInterval(time.Duration(minIntervalMs)*time.Millisecond))
+	opts = append(opts, jamfplatform.WithMinRequestInterval(minInterval))
 	if shouldEnableHTTPLogging() {
 		opts = append(opts, jamfplatform.WithLogger(NewTerraformLogger()))
 	}
@@ -732,6 +716,37 @@ func impactAlertsEnabled(attr types.Bool) (enabled bool, warning string) {
 			envImpactAlerts, v)
 	}
 	return enabled, ""
+}
+
+// resolveMinRequestInterval resolves the min_request_interval_ms setting, the
+// attribute always taking precedence over the environment variable (which is
+// then not consulted at all). An empty env value is treated as unset, matching
+// the other env variables; an unparseable one is an error for Configure to
+// surface, since silently picking a different pace would misreport what the
+// operator asked for.
+//
+// The default is 0 — no pacing at all. The interval gates request *starts*,
+// making it a throughput ceiling rather than a concurrency limit: at 100ms it
+// caps the whole provider at 10 requests per second however many operations
+// Terraform runs in parallel — measurably the dominant cost of a read-heavy
+// plan. Serially it buys almost nothing either, since a typical Jamf request
+// already outlasts the interval. Hence a default of 0, which is always passed
+// to the client so it overrides the SDK's own default interval; set the
+// attribute or the env variable to put pacing back. Features that fan out reads
+// bound their own concurrency instead — see impact.dependencySweepConcurrency.
+func resolveMinRequestInterval(attr types.Int64) (time.Duration, error) {
+	var ms int64
+	switch {
+	case !attr.IsNull() && !attr.IsUnknown():
+		ms = attr.ValueInt64()
+	case getenv(envMinRequestIntervalMs) != "":
+		parsed, err := strconv.ParseInt(getenv(envMinRequestIntervalMs), 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		ms = parsed
+	}
+	return time.Duration(ms) * time.Millisecond, nil
 }
 
 func shouldEnableHTTPLogging() bool {

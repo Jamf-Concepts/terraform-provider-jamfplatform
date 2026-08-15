@@ -90,30 +90,51 @@ type PolicySource interface {
 	Policy(ctx context.Context, id string) (*proclassic.Policy, error)
 }
 
+// SweepStats reports how much of the tenant the policy sweep actually covered.
+//
+// The two counts are kept apart because a partial sweep must never be rendered as
+// a complete one. "No policy uses this script — searched 295 policies" is a
+// confident denial, and it is false if any of those 295 went unread: the answer the
+// alert exists to give is exactly the one an unread policy can invalidate.
+type SweepStats struct {
+	// Searched is how many policies were read and folded into the index.
+	Searched int
+	// Unreadable is how many were listed but could not be read, so their references
+	// are absent from the index and every negative answer is provisional.
+	Unreadable int
+}
+
+// Listed is how many policies the tenant listed, read or not.
+func (s SweepStats) Listed() int { return s.Searched + s.Unreadable }
+
+// Complete reports whether every listed policy was read.
+func (s SweepStats) Complete() bool { return s.Unreadable == 0 }
+
 // dependencyIndex is the reverse map from dependency object to the policies
 // using it, built once per Cache from a single whole-tenant sweep.
 type dependencyIndex struct {
 	uses map[dependencyKey][]PolicyUse
-	// swept is how many policies the index was built from, so a diagnostic can
-	// say what was searched rather than only what was found.
-	swept int
+	// stats is what the sweep covered, so a diagnostic can say what was searched
+	// rather than only what was found — and can hedge when it searched less than
+	// the tenant holds.
+	stats SweepStats
 }
 
-// PolicyUses returns the policies referencing one dependency object, and how many
-// policies were searched to find them.
+// PolicyUses returns the policies referencing one dependency object, and how much
+// of the tenant was searched to find them.
 //
 // The sweep runs at most once per Cache — in practice once per plan — shared across
 // every dependency resource in it, and is lazy: a plan changing none never sweeps.
 // A nil Cache, or one without a policy source, reports nothing.
-func (c *Cache) PolicyUses(ctx context.Context, kind DependencyKind, id string) (uses []PolicyUse, swept int, err error) {
+func (c *Cache) PolicyUses(ctx context.Context, kind DependencyKind, id string) (uses []PolicyUse, stats SweepStats, err error) {
 	if c == nil || c.policySrc == nil || id == "" {
-		return nil, 0, nil
+		return nil, SweepStats{}, nil
 	}
 	idx, err := c.policyIndex(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, SweepStats{}, err
 	}
-	return idx.uses[dependencyKey{kind, id}], idx.swept, nil
+	return idx.uses[dependencyKey{kind, id}], idx.stats, nil
 }
 
 // policyIndex builds the reverse dependency index once, memoising result and
@@ -130,8 +151,10 @@ func (c *Cache) policyIndex(ctx context.Context) (*dependencyIndex, error) {
 // buildDependencyIndex sweeps every policy and inverts its dependency references
 // into the index.
 //
-// An unreadable policy is skipped, costing only its own contribution rather than
-// the whole alert. Only the listing is fatal: without it the index would be
+// An unreadable policy costs only its own contribution rather than the whole alert,
+// but it is counted rather than quietly dropped: its references are missing from the
+// index, so every "nothing uses this" the index supports afterwards is provisional
+// and has to say so. Only the listing is fatal: without it the index would be
 // silently empty, which reads as "nothing uses this".
 func buildDependencyIndex(ctx context.Context, src PolicySource) (*dependencyIndex, error) {
 	ids, err := src.PolicyIDs(ctx)
@@ -141,7 +164,7 @@ func buildDependencyIndex(ctx context.Context, src PolicySource) (*dependencyInd
 
 	var (
 		mu    sync.Mutex
-		index = &dependencyIndex{uses: make(map[dependencyKey][]PolicyUse), swept: len(ids)}
+		index = &dependencyIndex{uses: make(map[dependencyKey][]PolicyUse)}
 	)
 
 	work := make(chan string)
@@ -152,13 +175,17 @@ func buildDependencyIndex(ctx context.Context, src PolicySource) (*dependencyInd
 			for id := range work {
 				pol, err := src.Policy(ctx, id)
 				if err != nil || pol == nil {
+					mu.Lock()
+					index.stats.Unreadable++
+					mu.Unlock()
 					continue
 				}
 				use, refs := policyDependencies(pol)
-				if len(refs) == 0 {
-					continue
-				}
+				// A policy referencing nothing still takes the lock: the searched
+				// count is what the diagnostic reports, so it has to include the
+				// policies that were read and found to use nothing.
 				mu.Lock()
+				index.stats.Searched++
 				for _, key := range refs {
 					index.uses[key] = append(index.uses[key], use)
 				}
@@ -190,8 +217,14 @@ func buildDependencyIndex(ctx context.Context, src PolicySource) (*dependencyInd
 
 // policyDependencies reduces one policy to its identity plus every dependency it
 // references.
+//
+// Absent fields fail open in one direction throughout: a policy whose enabled flag
+// cannot be read is treated as enabled, so it contributes devices and the figure
+// errs high. Bucketing it as disabled instead would drop its audience from the
+// figure entirely while still listing it, which is the one error mode this alert
+// cannot afford.
 func policyDependencies(p *proclassic.Policy) (PolicyUse, []dependencyKey) {
-	use := PolicyUse{Scope: policyWireScope(p.Scope)}
+	use := PolicyUse{Scope: policyWireScope(p.Scope), Enabled: true}
 	if p.General != nil {
 		if p.General.ID != nil {
 			use.ID = strconv.Itoa(*p.General.ID)
@@ -201,15 +234,36 @@ func policyDependencies(p *proclassic.Policy) (PolicyUse, []dependencyKey) {
 		}
 		use.Enabled = p.General.Enabled == nil || *p.General.Enabled
 	}
-	if use.Name == "" {
+	switch {
+	case use.Name != "":
+	case use.ID != "":
 		use.Name = "policy " + use.ID
+	default:
+		// Neither name nor id: "policy " alone would render as a dangling prefix in
+		// the middle of a comma-separated list.
+		use.Name = "an unidentified policy"
 	}
 
+	// De-duplicated per policy, because one policy counts once however many of its
+	// fields name the same object. Disk encryption is the ordinary case: apply and
+	// remediate routinely point at the same configuration, and a doubled PolicyUse
+	// would read as "via 2 policies", list the name twice, and push combineScopes
+	// off its exact single-policy path — turning an exact figure into an inflated
+	// "up to".
 	var refs []dependencyKey
+	seen := make(map[dependencyKey]struct{})
 	add := func(kind DependencyKind, id *int) {
-		if id != nil {
-			refs = append(refs, dependencyKey{kind, strconv.Itoa(*id)})
+		// A zero id is the Classic API's way of saying the field is unset, which the
+		// disk-encryption fields emit rather than omitting them.
+		if id == nil || *id <= 0 {
+			return
 		}
+		key := dependencyKey{kind, strconv.Itoa(*id)}
+		if _, dup := seen[key]; dup {
+			return
+		}
+		seen[key] = struct{}{}
+		refs = append(refs, key)
 	}
 
 	if p.Scripts != nil && p.Scripts.Script != nil {

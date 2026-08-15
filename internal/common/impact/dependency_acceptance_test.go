@@ -65,12 +65,17 @@ func TestAcceptance_DependencyIndex_SweepsLiveTenant(t *testing.T) {
 		t.Fatalf("sweep failed: %v", err)
 	}
 	elapsed := time.Since(start)
-	if idx.swept == 0 {
+	if idx.stats.Listed() == 0 {
 		t.Skip("tenant has no policies; nothing to assert")
 	}
-	t.Logf("swept %d policies in %s at %d-way concurrency (%.1f policies/sec)",
-		idx.swept, elapsed.Round(time.Millisecond), dependencySweepConcurrency,
-		float64(idx.swept)/elapsed.Seconds())
+	t.Logf("swept %d of %d policies in %s at %d-way concurrency (%.1f policies/sec)",
+		idx.stats.Searched, idx.stats.Listed(), elapsed.Round(time.Millisecond), dependencySweepConcurrency,
+		float64(idx.stats.Searched)/elapsed.Seconds())
+	// An unreadable policy is survivable by design, but it means every "nothing uses
+	// this" the index supports is provisional, so it is worth seeing in the log.
+	if !idx.stats.Complete() {
+		t.Logf("%d policies could not be read; the index is incomplete", idx.stats.Unreadable)
+	}
 
 	// Every reference the index holds must be well-formed: a real id, and a use
 	// carrying the policy that declared it.
@@ -99,8 +104,8 @@ func TestAcceptance_DependencyIndex_SweepsLiveTenant(t *testing.T) {
 
 	// A second lookup, of any kind, must not re-sweep.
 	for _, k := range kinds {
-		if _, swept, err := c.PolicyUses(ctx, k, "1"); err != nil || swept != idx.swept {
-			t.Errorf("%s: PolicyUses after sweep: swept=%d err=%v, want swept=%d/nil", k, swept, err, idx.swept)
+		if _, stats, err := c.PolicyUses(ctx, k, "1"); err != nil || stats != idx.stats {
+			t.Errorf("%s: PolicyUses after sweep: stats=%+v err=%v, want %+v/nil", k, stats, err, idx.stats)
 		}
 	}
 }
@@ -184,11 +189,19 @@ func TestAcceptance_DependencyReport_RendersForRealDependency(t *testing.T) {
 	// The union must never exceed the managed estate: that would mean devices were
 	// double-counted across overlapping policy scopes, which is the specific error
 	// unioning member sets exists to avoid.
-	uses, _, err := c.PolicyUses(ctx, best.kind, best.id)
+	//
+	// Both invariants below run under BoundAtMost as well as BoundExact, because on a
+	// real tenant BoundExact is the rare case: two contributing policies with any
+	// exclusion between them make combineScopes emit a narrowing caveat — 111 of them
+	// on the tenant this was developed against — and gating on BoundExact skipped the
+	// assertions outright, exactly where the arithmetic is hardest. AtMost is safe for
+	// both: it means something could only reduce the true figure, so no uncounted
+	// devices were added, which is what each invariant relies on.
+	uses, stats, err := c.PolicyUses(ctx, best.kind, best.id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := resolveDependency(ctx, c, uses)
+	res, err := resolveDependency(ctx, c, uses, stats)
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -196,7 +209,11 @@ func TestAcceptance_DependencyReport_RendersForRealDependency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("totals: %v", err)
 	}
-	if res.Determinable && res.Bound == BoundExact && res.Count > totals.ManagedComputers {
+	// boundedAbove reports whether the figure can be trusted as a ceiling: nothing
+	// went uncounted upwards, so the true audience is the figure or smaller.
+	boundedAbove := res.Determinable && (res.Bound == BoundExact || res.Bound == BoundAtMost)
+	t.Logf("invariants running under bound=%v (checked=%t)", res.Bound, boundedAbove)
+	if boundedAbove && res.Count > totals.ManagedComputers {
 		t.Errorf("counted %d computers but the tenant manages %d — overlapping policy scopes were double-counted",
 			res.Count, totals.ManagedComputers)
 	}
@@ -205,13 +222,15 @@ func TestAcceptance_DependencyReport_RendersForRealDependency(t *testing.T) {
 
 	// And the union must be at least as large as the largest single contributing
 	// policy: a union that shrank below one of its inputs would mean exclusions
-	// were subtracted from the wrong audience.
+	// were subtracted from the wrong audience. Dropping a policy's exclusions can only
+	// make the union larger than that policy's own exclusion-subtracted figure, so this
+	// holds under AtMost too.
 	for _, u := range res.Enabled {
 		one, err := Resolve(ctx, c, u.Scope)
 		if err != nil || !one.Determinable || one.Bound != BoundExact {
 			continue
 		}
-		if res.Bound == BoundExact && res.Count < one.Count {
+		if boundedAbove && res.Count < one.Count {
 			t.Errorf("union counted %d but policy %q alone reaches %d", res.Count, u.Name, one.Count)
 		}
 	}

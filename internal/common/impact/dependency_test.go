@@ -6,6 +6,7 @@ package impact
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -120,6 +121,38 @@ func withPackages(ids ...int) policyOpt {
 	}
 }
 
+func withPrinters(ids ...int) policyOpt {
+	return func(p *proclassic.Policy) {
+		items := make([]proclassic.PolicyPrintersPrinterItem, 0, len(ids))
+		for _, id := range ids {
+			items = append(items, proclassic.PolicyPrintersPrinterItem{ID: new(id)})
+		}
+		p.Printers = &proclassic.PolicyPrinters{Printer: &items}
+	}
+}
+
+func withDockItems(ids ...int) policyOpt {
+	return func(p *proclassic.Policy) {
+		items := make([]proclassic.PolicyDockItemsDockItemItem, 0, len(ids))
+		for _, id := range ids {
+			items = append(items, proclassic.PolicyDockItemsDockItemItem{ID: new(id)})
+		}
+		p.DockItems = &proclassic.PolicyDockItems{DockItem: &items}
+	}
+}
+
+func withDirectoryBindings(ids ...int) policyOpt {
+	return func(p *proclassic.Policy) {
+		items := make([]proclassic.IDName, 0, len(ids))
+		for _, id := range ids {
+			items = append(items, proclassic.IDName{ID: new(id)})
+		}
+		p.AccountMaintenance = &proclassic.PolicyAccountMaintenance{
+			DirectoryBindings: &proclassic.PolicyAccountMaintenanceDirectoryBindings{Binding: &items},
+		}
+	}
+}
+
 func withDiskEncryption(applyID, remediateID *int) policyOpt {
 	return func(p *proclassic.Policy) {
 		p.DiskEncryption = &proclassic.PolicyDiskEncryption{
@@ -129,6 +162,15 @@ func withDiskEncryption(applyID, remediateID *int) policyOpt {
 	}
 }
 
+// scopeOf returns the policy's scope block, creating it on first use so the scope
+// builders compose in any order rather than the last one silently winning.
+func scopeOf(p *proclassic.Policy) *proclassic.PolicyScope {
+	if p.Scope == nil {
+		p.Scope = &proclassic.PolicyScope{}
+	}
+	return p.Scope
+}
+
 // withGroupScope scopes the policy to computer groups by numeric id.
 func withGroupScope(groupIDs ...int) policyOpt {
 	return func(p *proclassic.Policy) {
@@ -136,15 +178,26 @@ func withGroupScope(groupIDs ...int) policyOpt {
 		for _, id := range groupIDs {
 			items = append(items, proclassic.IDName{ID: new(id)})
 		}
-		p.Scope = &proclassic.PolicyScope{
-			ComputerGroups: &proclassic.PolicyScopeComputerGroups{ComputerGroup: &items},
+		scopeOf(p).ComputerGroups = &proclassic.PolicyScopeComputerGroups{ComputerGroup: &items}
+	}
+}
+
+// withExcludedGroups excludes computer groups by numeric id.
+func withExcludedGroups(groupIDs ...int) policyOpt {
+	return func(p *proclassic.Policy) {
+		items := make([]proclassic.IDName, 0, len(groupIDs))
+		for _, id := range groupIDs {
+			items = append(items, proclassic.IDName{ID: new(id)})
+		}
+		scopeOf(p).Exclusions = &proclassic.PolicyScopeExclusions{
+			ComputerGroups: &proclassic.PolicyScopeExclusionsComputerGroups{ComputerGroup: &items},
 		}
 	}
 }
 
 func withAllComputers() policyOpt {
 	return func(p *proclassic.Policy) {
-		p.Scope = &proclassic.PolicyScope{AllComputers: new(true)}
+		scopeOf(p).AllComputers = new(true)
 	}
 }
 
@@ -166,13 +219,20 @@ func twoGroupTenant() *stubSource {
 	}
 }
 
+// TestPolicyUses_IndexesEveryDependencyKind covers all six DependencyKind values.
+//
+// All six deliberately, not a representative sample: each kind is a separate block
+// in policyDependencies reading a differently-shaped wire section, so a kind with no
+// case here is a kind whose block can be deleted with the suite still green.
 func TestPolicyUses_IndexesEveryDependencyKind(t *testing.T) {
 	t.Parallel()
 	src := &stubPolicySource{
-		ids: []string{"10", "11"},
+		ids: []string{"10", "11", "12"},
 		policies: map[string]*proclassic.Policy{
 			"10": testPolicy(10, "Runs script", withScripts(500), withPackages(80)),
 			"11": testPolicy(11, "Encrypts", withDiskEncryption(new(59), new(60))),
+			"12": testPolicy(12, "Sets up the desk",
+				withPrinters(31), withDockItems(41), withDirectoryBindings(51)),
 		},
 	}
 	c := depCache(twoGroupTenant(), src)
@@ -184,21 +244,109 @@ func TestPolicyUses_IndexesEveryDependencyKind(t *testing.T) {
 	}{
 		{DependencyScript, "500", "Runs script"},
 		{DependencyPackage, "80", "Runs script"},
+		{DependencyPrinter, "31", "Sets up the desk"},
+		{DependencyDockItem, "41", "Sets up the desk"},
+		{DependencyDirectoryBinding, "51", "Sets up the desk"},
 		{DependencyDiskEncryptionConfiguration, "59", "Encrypts"},
 		// The remediate field makes the policy depend on that configuration too, so
 		// editing configuration 60 must also be reported.
 		{DependencyDiskEncryptionConfiguration, "60", "Encrypts"},
 	} {
-		uses, swept, err := c.PolicyUses(context.Background(), tc.kind, tc.id)
+		uses, stats, err := c.PolicyUses(context.Background(), tc.kind, tc.id)
 		if err != nil {
 			t.Fatalf("%s %s: %v", tc.kind, tc.id, err)
 		}
-		if swept != 2 {
-			t.Errorf("%s %s: swept = %d, want 2", tc.kind, tc.id, swept)
+		if stats.Searched != 3 || stats.Unreadable != 0 {
+			t.Errorf("%s %s: stats = %+v, want 3 searched and none unreadable", tc.kind, tc.id, stats)
 		}
 		if len(uses) != 1 || uses[0].Name != tc.want {
 			t.Errorf("%s %s: uses = %+v, want one use named %q", tc.kind, tc.id, uses, tc.want)
 		}
+	}
+}
+
+func TestPolicyDependencies_CountsOnePolicyOncePerObject(t *testing.T) {
+	t.Parallel()
+	// Apply and remediate pointing at the same configuration is an ordinary setup —
+	// both fields are Optional+Computed on the policy resource. Indexed twice, one
+	// policy reads as "via 2 policies", lists its name twice, and pushes combineScopes
+	// off its exact single-policy path, so an exact figure becomes an inflated "up to".
+	shared := 59
+	src := &stubPolicySource{
+		ids: []string{"10"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Encrypts", withDiskEncryption(&shared, &shared), withGroupScope(1)),
+		},
+	}
+	c := depCache(twoGroupTenant(), src)
+
+	uses, _, err := c.PolicyUses(context.Background(), DependencyDiskEncryptionConfiguration, "59")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(uses) != 1 {
+		t.Fatalf("uses = %d, want 1 — one policy referencing one object twice is one use", len(uses))
+	}
+
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: c, Path: path.Empty(), Kind: DependencyDiskEncryptionConfiguration,
+		ID: "59", Name: "FileVault", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	summary, detail := diags[0].Summary(), diags[0].Detail()
+	if !strings.Contains(summary, "via 1 policy") {
+		t.Errorf("summary must count the policy once: %q", summary)
+	}
+	// Group One holds two devices and the policy excludes nothing, so a single
+	// contributor keeps its exclusions and the figure stays exact — the doubled use
+	// showed up as "up to" here.
+	if !strings.Contains(summary, "2 of 4 computers") || strings.Contains(summary, "up to") {
+		t.Errorf("summary must stay exact: %q", summary)
+	}
+	if strings.Count(detail, "Encrypts") != 1 {
+		t.Errorf("detail names the policy more than once:\n%s", detail)
+	}
+}
+
+func TestPolicyDependencies_IgnoresUnsetZeroIDs(t *testing.T) {
+	t.Parallel()
+	// The Classic API emits 0 for an unset disk-encryption field rather than omitting
+	// it, so a policy that encrypts nothing would otherwise index a reference to
+	// configuration "0".
+	src := &stubPolicySource{
+		ids: []string{"10"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Encrypts nothing", withDiskEncryption(new(0), new(0)), withGroupScope(1)),
+		},
+	}
+	c := depCache(twoGroupTenant(), src)
+	uses, _, err := c.PolicyUses(context.Background(), DependencyDiskEncryptionConfiguration, "0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(uses) != 0 {
+		t.Errorf("uses = %+v, want none — id 0 means the field is unset", uses)
+	}
+}
+
+func TestPolicyDependencies_AbsentGeneralFailsOpen(t *testing.T) {
+	t.Parallel()
+	// A policy whose General block did not come back must be treated as enabled: as
+	// disabled it would be listed but contribute no devices, understating the figure,
+	// and it would be named "policy " with a dangling trailing space.
+	p := &proclassic.Policy{}
+	withScripts(500)(p)
+	use, refs := policyDependencies(p)
+	if !use.Enabled {
+		t.Error("an absent General block must fail open to enabled, as an absent Enabled flag does")
+	}
+	if strings.TrimSpace(use.Name) != use.Name || use.Name == "" {
+		t.Errorf("Name = %q, want a name that is not a dangling prefix", use.Name)
+	}
+	if len(refs) != 1 {
+		t.Errorf("refs = %+v, want the script reference regardless of the missing identity", refs)
 	}
 }
 
@@ -238,9 +386,14 @@ func TestPolicyUses_SweepsOnceAcrossKindsAndConcurrentCallers(t *testing.T) {
 			t.Errorf("policy %s read %d times, want 1", id, n)
 		}
 	}
-	if src.maxConcurrent > dependencySweepConcurrency {
-		t.Errorf("maxConcurrent = %d, exceeds the %d bound Jamf's guidance asks for",
-			src.maxConcurrent, dependencySweepConcurrency)
+	// The literal 5 is deliberate. Jamf's API scalability guidance is the fixed bound
+	// this has to respect, so the assertion pins that number rather than whatever
+	// dependencySweepConcurrency currently says — compared against the constant, the
+	// two move together and raising it to 50 leaves the test green.
+	const jamfConcurrentConnectionLimit = 5
+	if src.maxConcurrent > jamfConcurrentConnectionLimit {
+		t.Errorf("maxConcurrent = %d, exceeds the %d concurrent connections Jamf's scalability guidance asks for",
+			src.maxConcurrent, jamfConcurrentConnectionLimit)
 	}
 	if src.maxConcurrent < 2 {
 		t.Errorf("maxConcurrent = %d, sweep did not run concurrently at all", src.maxConcurrent)
@@ -259,16 +412,22 @@ func TestPolicyUses_SurvivesUnreadablePolicyButNotUnreadableListing(t *testing.T
 		policyErrs: map[string]error{"11": errors.New("boom")},
 	}
 	c := depCache(twoGroupTenant(), src)
-	uses, swept, err := c.PolicyUses(context.Background(), DependencyScript, "500")
+	uses, stats, err := c.PolicyUses(context.Background(), DependencyScript, "500")
 	if err != nil {
 		t.Fatalf("one unreadable policy must not fail the sweep: %v", err)
 	}
 	if len(uses) != 1 {
 		t.Errorf("uses = %d, want 1", len(uses))
 	}
-	// swept still reports what was searched, so the diagnostic does not understate it.
-	if swept != 2 {
-		t.Errorf("swept = %d, want 2", swept)
+	// Only the policy that was actually read counts as searched. Reporting 2 would let
+	// the alert say "no policy uses this — searched 2 policies" while one of the two
+	// was never opened, which is the confident-but-wrong denial this whole design is
+	// built to avoid.
+	if stats.Searched != 1 || stats.Unreadable != 1 {
+		t.Errorf("stats = %+v, want 1 searched and 1 unreadable", stats)
+	}
+	if stats.Complete() || stats.Listed() != 2 {
+		t.Errorf("stats = %+v, want an incomplete sweep over 2 listed policies", stats)
 	}
 
 	// An unreadable listing is fatal: an empty index would read as "nothing uses this".
@@ -276,6 +435,109 @@ func TestPolicyUses_SurvivesUnreadablePolicyButNotUnreadableListing(t *testing.T
 	if _, _, err := bad.PolicyUses(context.Background(), DependencyScript, "500"); err == nil {
 		t.Error("unreadable listing must surface an error, not an empty index")
 	}
+}
+
+func TestReportDependency_PartialSweepIsDisclosedNotDenied(t *testing.T) {
+	t.Parallel()
+
+	// The dangerous case: the one policy using the script is the one that could not
+	// be read, so the index holds nothing for it. "No policy uses this script" would
+	// be a flat denial of something the sweep never checked.
+	unread := &stubPolicySource{
+		ids: []string{"10", "11"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Unrelated", withPackages(80)),
+		},
+		policyErrs: map[string]error{"11": errors.New("boom")},
+	}
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), unread), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	summary, detail := diags[0].Summary(), diags[0].Detail()
+	if strings.Contains(summary, "no policy uses this") {
+		t.Errorf("a partial sweep must not deny usage outright: %q", summary)
+	}
+	if !strings.Contains(summary, "the search was incomplete") {
+		t.Errorf("the shortfall must reach the headline: %q", summary)
+	}
+	for _, want := range []string{"Searched 1 policy of 2", "1 could not be read"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("detail missing %q:\n%s", want, detail)
+		}
+	}
+
+	// And when uses were found anyway, the figure still stands but the shortfall is
+	// disclosed alongside it, since another policy may add to the audience.
+	found := &stubPolicySource{
+		ids: []string{"10", "11"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Alpha", withScripts(500), withGroupScope(1)),
+		},
+		policyErrs: map[string]error{"11": errors.New("boom")},
+	}
+	diags = ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), found), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	summary, detail = diags[0].Summary(), diags[0].Detail()
+	if !strings.Contains(detail, "Searched 1 policy of 2 (1 could not be read") {
+		t.Errorf("detail must disclose the shortfall next to the count it qualifies:\n%s", detail)
+	}
+	if strings.Contains(detail, "Searched 2 polic") {
+		t.Errorf("detail claims policies it never read:\n%s", detail)
+	}
+	// The shortfall is a direction, not just a sentence: an unread policy can only add
+	// audience, so the figure is a lower bound and the qualifier has to say so.
+	if !strings.Contains(summary, "2 or more of 4 computers") {
+		t.Errorf("an incomplete sweep must render the figure as a lower bound: %q", summary)
+	}
+	if !strings.Contains(detail, "the true figure may be higher") ||
+		!strings.Contains(detail, "unread policies (1)") {
+		t.Errorf("the unread policies must appear among the caveats:\n%s", detail)
+	}
+	t.Logf("partial sweep with uses:\n--- summary ---\n%s\n--- detail ---\n%s", summary, detail)
+}
+
+func TestReportDependency_PartialSweepAndDroppedExclusionsBoundNeitherWay(t *testing.T) {
+	t.Parallel()
+	// Two directions at once: an unread policy can only add devices, a dropped exclusion
+	// can only remove them, so the figure bounds the truth from neither side and reads
+	// "an estimated". Correct rather than a defect — asserted here so nobody later
+	// reads it as one and "fixes" it into a false one-sided claim.
+	src := &stubPolicySource{
+		ids: []string{"10", "11", "12"},
+		policies: map[string]*proclassic.Policy{
+			// Alpha excludes Group Two, Beta excludes nothing, so the exclusion is
+			// carried by only one contributor and cannot be subtracted.
+			"10": testPolicy(10, "Alpha", withScripts(500), withGroupScope(1), withExcludedGroups(2)),
+			"11": testPolicy(11, "Beta", withScripts(500), withGroupScope(2)),
+		},
+		policyErrs: map[string]error{"12": errors.New("boom")},
+	}
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), src), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	summary, detail := diags[0].Summary(), diags[0].Detail()
+	if !strings.Contains(summary, "an estimated 3 of 4 computers") {
+		t.Errorf("inputs pulling both ways must bound the figure from neither side: %q", summary)
+	}
+	for _, want := range []string{"unread policies (1)", "policy exclusions (1)"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("detail missing %q:\n%s", want, detail)
+		}
+	}
+	t.Logf("both directions:\n--- summary ---\n%s\n--- detail ---\n%s", summary, detail)
 }
 
 func TestPolicyUses_MemoisesFailure(t *testing.T) {
@@ -409,6 +671,40 @@ func TestReportDependency_OnlyDisabledPolicies(t *testing.T) {
 	}
 }
 
+func TestReportDependency_OnlyDisabledPoliciesNeverReadsTheTenant(t *testing.T) {
+	t.Parallel()
+	// The disabled-only alert renders no figure — the headline names the situation and
+	// the detail says it reaches nothing yet — so it must not depend on the group list
+	// or the device totals. Proven with a group source that fails: if the alert still
+	// reads correctly, nothing asked the tenant for anything.
+	groups := &stubSource{err: errors.New("group list unavailable")}
+	src := &stubPolicySource{
+		ids: []string{"10"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Staged", disabled(), withScripts(500), withGroupScope(1)),
+		},
+	}
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(groups, src), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	if !strings.Contains(diags[0].Summary(), "only by disabled policies") {
+		t.Errorf("a failing group read must not degrade this alert: %q", diags[0].Summary())
+	}
+	if !strings.Contains(diags[0].Detail(), "Staged") {
+		t.Errorf("detail must still name the disabled policy:\n%s", diags[0].Detail())
+	}
+	groups.mu.Lock()
+	calls := groups.calls
+	groups.mu.Unlock()
+	if calls != 0 {
+		t.Errorf("group list read %d times, want 0 — this path renders no figure to count", calls)
+	}
+}
+
 func TestReportDependency_UnusedDependency(t *testing.T) {
 	t.Parallel()
 	src := &stubPolicySource{
@@ -427,6 +723,147 @@ func TestReportDependency_UnusedDependency(t *testing.T) {
 	// reassurance an administrator editing a script wants.
 	if !strings.Contains(diags[0].Summary(), "no policy uses this script") {
 		t.Errorf("summary = %q", diags[0].Summary())
+	}
+}
+
+func TestReportDependency_UnusedPackageNamesPatchManagement(t *testing.T) {
+	t.Parallel()
+	// A package has a second delivery channel the sweep does not read: a patch software
+	// title assigns packages per software version and a patch policy carries its own
+	// scope, so a package can reach devices with no ordinary policy referencing it.
+	// "No policy uses this package" would then read as an all-clear it has not earned.
+	newSrc := func() *stubPolicySource {
+		return &stubPolicySource{
+			ids:      []string{"10"},
+			policies: map[string]*proclassic.Policy{"10": testPolicy(10, "Other", withScripts(999))},
+		}
+	}
+	report := func(kind DependencyKind, id string) string {
+		diags := ReportDependency(context.Background(), DependencyRequest{
+			Cache: depCache(twoGroupTenant(), newSrc()), Path: path.Empty(), Kind: kind,
+			ID: id, Name: "my thing", Action: ActionUpdate, Changed: true,
+		})
+		if len(diags) != 1 {
+			t.Fatalf("%s: diags = %d, want 1", kind, len(diags))
+		}
+		return diags[0].Detail()
+	}
+
+	pkg := report(DependencyPackage, "80")
+	if !strings.Contains(pkg, "Patch Management") {
+		t.Errorf("the package denial must name the channel it did not search:\n%s", pkg)
+	}
+	if strings.Contains(pkg, "reaches no computers through a policy") {
+		t.Errorf("a patch policy is a policy, so this claim is not available here:\n%s", pkg)
+	}
+
+	// The other five kinds have no second consumer, so their wording must be exactly
+	// what it was — pinned byte-for-byte, since this is the sentence an administrator
+	// acts on.
+	want := "No policy in this tenant references my thing, so this change reaches no computers " +
+		"through a policy.\n\nSearched 1 policy.\n\n" + dependencyNote
+	for _, kind := range []DependencyKind{
+		DependencyScript, DependencyPrinter, DependencyDockItem,
+		DependencyDirectoryBinding, DependencyDiskEncryptionConfiguration,
+	} {
+		if got := report(kind, "500"); got != want {
+			t.Errorf("%s wording changed:\n got %q\nwant %q", kind, got, want)
+		}
+	}
+}
+
+func TestReportDependency_UnscopedPoliciesKeepTheDenominator(t *testing.T) {
+	t.Parallel()
+	// Two enabled policies, neither with a scope. They reach nobody, but the figure
+	// must still carry its denominator: the guide tells CI authors to anchor the device
+	// count on the "of N" clause, and an alert reading "affects 0 computers" is the one
+	// dependency headline that would drop it.
+	src := &stubPolicySource{
+		ids: []string{"10", "11"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Unscoped one", withScripts(500)),
+			"11": testPolicy(11, "Unscoped two", withScripts(500)),
+		},
+	}
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), src), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	summary, detail := diags[0].Summary(), diags[0].Detail()
+	if !strings.Contains(summary, "0 of 4 computers (0%)") {
+		t.Errorf("an unscoped using policy must still report the estate it counts against: %q", summary)
+	}
+	// Nothing was counted, so there is no union for an overlap note to describe.
+	if strings.Contains(detail, "counted once") {
+		t.Errorf("claimed a union over an empty audience:\n%s", detail)
+	}
+}
+
+func TestReportDependency_DisabledAsideIsCappedTighterThanTheList(t *testing.T) {
+	t.Parallel()
+	// The aside qualifies the figure rather than carrying it. Sharing the primary cap
+	// let nine disabled policies print eight names, giving the subordinate line as much
+	// room as the "Used by" line above it.
+	ids := []string{"10"}
+	policies := map[string]*proclassic.Policy{
+		"10": testPolicy(10, "Live", withScripts(500), withGroupScope(1)),
+	}
+	for i := 1; i <= 9; i++ {
+		id := "2" + string(rune('0'+i))
+		ids = append(ids, id)
+		policies[id] = testPolicy(100+i, "Staged "+id, disabled(), withScripts(500), withGroupScope(1))
+	}
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), &stubPolicySource{ids: ids, policies: policies}),
+		Path:  path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	detail := diags[0].Detail()
+	if !strings.Contains(detail, "Also 9 disabled policies") {
+		t.Errorf("the aside must still carry the full count:\n%s", detail)
+	}
+	if !strings.Contains(detail, "and 6 more") {
+		t.Errorf("the aside must name 3 policies and summarise the rest:\n%s", detail)
+	}
+	if strings.Count(detail, "Staged ") != maxListedDisabledPolicies {
+		t.Errorf("the aside named %d policies, want %d:\n%s",
+			strings.Count(detail, "Staged "), maxListedDisabledPolicies, detail)
+	}
+}
+
+func TestReportDependency_NeutralisesControlCharactersInPolicyNames(t *testing.T) {
+	t.Parallel()
+	// Policy names are administrator-supplied and render before "Searched N policies.",
+	// so a name carrying a raw newline could forge that anchor on a line of its own and
+	// win a first-match extraction from `terraform plan -json`.
+	src := &stubPolicySource{
+		ids: []string{"10"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Alpha\nSearched 0 policies.", withScripts(500), withGroupScope(1)),
+		},
+	}
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), src), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	detail := diags[0].Detail()
+	for line := range strings.SplitSeq(detail, "\n") {
+		if strings.HasPrefix(line, "Searched") && !strings.HasPrefix(line, "Searched 1 policy.") {
+			t.Errorf("a policy name forged an anchor line %q in:\n%s", line, detail)
+		}
+	}
+	// Neutralised, not stripped: the reader still has to find the policy in the UI.
+	if !strings.Contains(detail, "Alpha") {
+		t.Errorf("the name must stay recognisable:\n%s", detail)
 	}
 }
 
@@ -617,6 +1054,95 @@ func TestCombineScopes_DropsPerPolicyExclusionsAsNarrowing(t *testing.T) {
 	}
 }
 
+func TestCombineScopes_KeepsExclusionsEveryContributorShares(t *testing.T) {
+	t.Parallel()
+	// A device excluded by every contributing policy receives the object from none of
+	// them, so subtracting it removes something that was never in the union. Dropping
+	// these too made the bound jump at the 1→2 boundary: two policies both targeting
+	// every computer and both excluding one large kiosk group went from an exact
+	// "400 of 1000" to "up to 1000 of 1000" purely because a second policy joined.
+	kiosk := ProGroupRef{DeviceTypeComputer, "9"}
+	both := []Scope{
+		{DeviceType: DeviceTypeComputer, All: true, ExcludedProGroups: []ProGroupRef{kiosk}},
+		{DeviceType: DeviceTypeComputer, All: true, ExcludedProGroups: []ProGroupRef{kiosk}},
+	}
+	got := combineScopes(both)
+	if len(got.ExcludedProGroups) != 1 || got.ExcludedProGroups[0] != kiosk {
+		t.Errorf("ExcludedProGroups = %+v, want the shared exclusion kept", got.ExcludedProGroups)
+	}
+	for _, u := range got.Unresolvable {
+		if strings.Contains(u.Reason, "exclusions apply per policy") {
+			t.Errorf("a fully shared exclusion must not degrade the bound: %+v", u)
+		}
+	}
+
+	// Partly shared is not shared: the kiosk group is carried by both, the individually
+	// excluded device by only one, so only the device becomes a caveat.
+	mixed := []Scope{
+		{DeviceType: DeviceTypeComputer, All: true,
+			ExcludedProGroups: []ProGroupRef{kiosk}, ExcludedDeviceIDs: []string{"d1"}},
+		{DeviceType: DeviceTypeComputer, All: true, ExcludedProGroups: []ProGroupRef{kiosk}},
+	}
+	got = combineScopes(mixed)
+	if len(got.ExcludedProGroups) != 1 {
+		t.Errorf("ExcludedProGroups = %+v, want the shared group still kept", got.ExcludedProGroups)
+	}
+	if len(got.ExcludedDeviceIDs) != 0 {
+		t.Errorf("ExcludedDeviceIDs = %v, want dropped — only one policy excludes it", got.ExcludedDeviceIDs)
+	}
+	var dropped int
+	for _, u := range got.Unresolvable {
+		if strings.Contains(u.Reason, "exclusions apply per policy") {
+			dropped = u.Values
+		}
+	}
+	if dropped != 1 {
+		t.Errorf("dropped exclusion count = %d, want 1 (the device only one policy excludes)", dropped)
+	}
+
+	// A group repeated inside one policy's own exclusions must not pass for two
+	// policies agreeing.
+	repeated := []Scope{
+		{DeviceType: DeviceTypeComputer, All: true, ExcludedProGroups: []ProGroupRef{kiosk, kiosk}},
+		{DeviceType: DeviceTypeComputer, All: true},
+	}
+	if got = combineScopes(repeated); len(got.ExcludedProGroups) != 0 {
+		t.Errorf("ExcludedProGroups = %+v, want none — the second policy excludes nothing",
+			got.ExcludedProGroups)
+	}
+}
+
+func TestReportDependency_SharedExclusionKeepsTheFigureExact(t *testing.T) {
+	t.Parallel()
+	// End to end: two policies scope every computer and both exclude Group Two, which
+	// holds two of the four managed computers. The audience is the other two, exactly —
+	// no "up to", because nothing was left unsubtracted.
+	src := &stubPolicySource{
+		ids: []string{"10", "11"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Alpha", withScripts(500), withAllComputers(), withExcludedGroups(2)),
+			"11": testPolicy(11, "Beta", withScripts(500), withAllComputers(), withExcludedGroups(2)),
+		},
+	}
+	diags := ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), src), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	summary, detail := diags[0].Summary(), diags[0].Detail()
+	if !strings.Contains(summary, "2 of 4 computers") || strings.Contains(summary, "up to") {
+		t.Errorf("a shared exclusion must keep the figure exact: %q", summary)
+	}
+	if !strings.Contains(detail, "Less 1 group excluded: Group Two") {
+		t.Errorf("the subtraction must be shown, or a figure below the targets reads as a contradiction:\n%s", detail)
+	}
+	if strings.Contains(detail, "exclusions apply per policy") {
+		t.Errorf("nothing was left unsubtracted, so there is no caveat to make:\n%s", detail)
+	}
+}
+
 // TestDependencyAlert_IsMachineReadable pins the wording against the regexes
 // documented in the CI section of docs/guides/impact-alerts.md.
 //
@@ -699,6 +1225,44 @@ func TestDependencyAlert_IsMachineReadable(t *testing.T) {
 	if !searched.MatchString(diags[0].Detail()) {
 		t.Errorf("singular detail must still match the searched anchor:\n%s", diags[0].Detail())
 	}
+
+	// An incomplete sweep appends its shortfall after the anchor phrase rather than
+	// rewriting it, so a pipeline matching the phrase without the full stop still reads
+	// the right number — the number of policies actually searched. The guide documents
+	// the pattern without the full stop for exactly this reason.
+	phrase := regexp.MustCompile(`Searched ([0-9]+) (policy|policies)`)
+	partial := &stubPolicySource{
+		ids:        []string{"10", "11"},
+		policies:   map[string]*proclassic.Policy{"10": testPolicy(10, "Alpha", withScripts(500), withGroupScope(1))},
+		policyErrs: map[string]error{"11": errors.New("boom")},
+	}
+	diags = ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), partial), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("diags = %d, want 1", len(diags))
+	}
+	if pm := phrase.FindStringSubmatch(diags[0].Detail()); pm == nil || pm[1] != "1" {
+		t.Errorf("a partial sweep must keep the anchor phrase carrying the searched count:\n%s",
+			diags[0].Detail())
+	}
+	// The unread policies make the figure a lower bound, so the headline takes the "or
+	// more" shape — the guide's second documented figure pattern, which exists precisely
+	// because the qualifier varies. The summary keeps its "affects <figure>, via N" shape
+	// either way.
+	orMore := regexp.MustCompile(`(scoped to|affects) ([0-9]+) or more( of ([0-9]+))?`)
+	summary := diags[0].Summary()
+	om := orMore.FindStringSubmatch(summary)
+	if om == nil {
+		t.Fatalf("a partial sweep's summary must match the documented or-more pattern: %q", summary)
+	}
+	if om[2] != "2" || om[4] != "4" {
+		t.Errorf("parsed count/total = %q/%q, want 2/4 from %q", om[2], om[4], summary)
+	}
+	if vm := via.FindStringSubmatch(summary); vm == nil || vm[1] != "1" {
+		t.Errorf("summary must still end with the enabled-policy count: %q", summary)
+	}
 }
 
 func TestCombineScopes_AggregatesRepeatedCaveatsIntoOneLine(t *testing.T) {
@@ -708,11 +1272,14 @@ func TestCombineScopes_AggregatesRepeatedCaveatsIntoOneLine(t *testing.T) {
 	// caveat line per policy — dozens of copies of the same sentence — which
 	// buried the figure the alert exists to convey.
 	scopes := make([]Scope, 0, 20)
-	for range 20 {
+	for i := range 20 {
 		scopes = append(scopes, Scope{
-			DeviceType:        DeviceTypeComputer,
-			ProGroups:         []ProGroupRef{{DeviceTypeComputer, "1"}},
-			ExcludedDeviceIDs: []string{"x"},
+			DeviceType: DeviceTypeComputer,
+			ProGroups:  []ProGroupRef{{DeviceTypeComputer, "1"}},
+			// A distinct device per policy, so every exclusion is one only that policy
+			// carries and all 20 are genuinely undroppable — the case the caveat exists
+			// for.
+			ExcludedDeviceIDs: []string{fmt.Sprintf("x%d", i)},
 			Unresolvable: []Unresolvable{{
 				Path:   "scope.limitations.network_segments",
 				Reason: ReasonNetworkSegment,

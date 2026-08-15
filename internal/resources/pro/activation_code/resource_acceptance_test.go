@@ -39,6 +39,11 @@ const resName = "jamfplatform_pro_activation_code.test"
 // long as the resource ships.
 const skipReason = "jamfplatform_pro_activation_code is scheduled for deprecation and the test tenant no longer maintains an activation code; see the license-secret note at the top of this file."
 
+// The three helpers below — currentActivationCode, checkSingletonRecordStillExists and
+// configFor — are currently unreachable: both tests `t.Skip(skipReason)` before calling
+// them, and `t.Skip` unwinds via runtime.Goexit, so the compiler cannot flag it. They are
+// retained verbatim for when this resource's tests are re-enabled.
+
 // currentActivationCode reads the tenant's live activation code and organization name so
 // the test can re-use the real code (never mutating the license) and restore the org name.
 func currentActivationCode(t *testing.T) (org, code string) {
