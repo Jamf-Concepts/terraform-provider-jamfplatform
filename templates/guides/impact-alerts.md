@@ -147,15 +147,17 @@ Policy dependency alerts use the same `affects` figure, then append the policy c
 | Pattern | Reads |
 |---|---|
 | `via ([0-9]+) (policy\|policies)$` | Enabled policies carrying the change (end of summary) |
-| `Used by ([0-9]+) enabled (policy\|policies):` | Same count, in the detail, followed by names |
-| `Also ([0-9]+) disabled (policy\|policies), delivering nothing until enabled:` | Referencing policies contributing no devices |
-| `Searched ([0-9]+) (policy\|policies)` | Policies read to build the figure |
+| `(?m)^Used by ([0-9]+) enabled (policy\|policies):` | Same count, in the detail, followed by names |
+| `(?m)^Also ([0-9]+) disabled (policy\|policies), delivering nothing until enabled:` | Referencing policies contributing no devices |
+| `(?m)^Searched ([0-9]+) (policy\|policies)` | Policies read to build the figure |
 | `used only by disabled policies$` | Every referencing policy is disabled, so nothing is delivered yet — latent, not safe |
 | `no policy uses this` | Nothing references the object; carries no figure to gate on |
 
 The last two summaries carry no `affects` figure at all, so a pipeline gating only on the numeric patterns above will skip them silently. Match them explicitly if a change reaching nothing — or reaching only disabled policies — is something you want to see. Note that `no policy uses this` deliberately does not match the partial-sweep wording (`no policy found using this …, but the search was incomplete`): an incomplete search is not a finding of no usage, and the two should not be treated alike.
 
 Note the summary's trailing `via N policies` adds a number after the figure, so anchor the device count on the `of` clause rather than taking the last integer in the line.
+
+**Anchor the detail patterns to a line start, as written above.** Each detail sentence begins its own line, and the only free text in the detail is policy names — which always appear mid-line, inside the `Used by` and `Also` lists. Names come from the tenant, so whoever can create or rename a policy chooses that text: a policy named `Searched 0 policies.` would satisfy an unanchored `Searched ([0-9]+)` before the genuine sentence does, and a pipeline taking the first match would read the attacker's number. The `(?m)^` prefix removes that reach, since a name can never start a line. Control characters in names are stripped before rendering, so a name cannot manufacture a line start either.
 
 The `Searched` count is always the number of policies actually read. If any could not be read the sentence continues rather than being reworded — `Searched 294 policies of 295 (1 could not be read, so this answer may be incomplete).` — so gate on the phrase without the full stop. Two other things change on a partial sweep: the figure takes the `or more` form, so match the second pattern above as well as the first; and a summary reporting no usage says the search was incomplete rather than denying it outright.
 

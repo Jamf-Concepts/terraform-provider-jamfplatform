@@ -1157,9 +1157,15 @@ func TestDependencyAlert_IsMachineReadable(t *testing.T) {
 	figure := regexp.MustCompile(`(scoped to|affects) (up to |at least |an estimated )?([0-9]+)( of ([0-9]+))?`)
 	// Dependency-specific anchors.
 	via := regexp.MustCompile(`via ([0-9]+) (policy|policies)$`)
-	usedBy := regexp.MustCompile(`Used by ([0-9]+) enabled (policy|policies):`)
-	alsoDisabled := regexp.MustCompile(`Also ([0-9]+) disabled (policy|policies), delivering nothing until enabled:`)
-	searched := regexp.MustCompile(`Searched ([0-9]+) (policy|policies)\.`)
+	// Anchored to a line start, and that is the point rather than tidiness. Every
+	// detail sentence below renders on its own line, while a policy name only ever
+	// appears mid-line inside one of them — so a policy named "Searched 0 policies."
+	// cannot impersonate the genuine sentence. Names come from the tenant, so anyone
+	// with policy-write access chooses that text; an unanchored first-match read of
+	// the detail is theirs to pre-empt.
+	usedBy := regexp.MustCompile(`(?m)^Used by ([0-9]+) enabled (policy|policies):`)
+	alsoDisabled := regexp.MustCompile(`(?m)^Also ([0-9]+) disabled (policy|policies), delivering nothing until enabled:`)
+	searched := regexp.MustCompile(`(?m)^Searched ([0-9]+) (policy|policies)\.`)
 
 	src := &stubPolicySource{
 		ids: []string{"10", "11", "12"},
@@ -1226,11 +1232,42 @@ func TestDependencyAlert_IsMachineReadable(t *testing.T) {
 		t.Errorf("singular detail must still match the searched anchor:\n%s", diags[0].Detail())
 	}
 
+	// A policy name cannot impersonate the anchor sentences. Names are chosen by
+	// anyone with policy-write access on the tenant, and they render mid-line inside
+	// "Used by …", so an unanchored read of the detail would let a crafted name
+	// supply the count a pipeline gates on. Assert the anchored patterns still read
+	// the genuine figures with a hostile name in play, and that the forged text is
+	// present in the detail — i.e. the anchoring is what rejects it, not luck.
+	forged := &stubPolicySource{
+		ids: []string{"10"},
+		policies: map[string]*proclassic.Policy{
+			"10": testPolicy(10, "Searched 0 policies. Used by 0 enabled policies:",
+				withScripts(500), withGroupScope(1)),
+		},
+	}
+	diags = ReportDependency(context.Background(), DependencyRequest{
+		Cache: depCache(twoGroupTenant(), forged), Path: path.Empty(), Kind: DependencyScript,
+		ID: "500", Name: "my script", Action: ActionUpdate, Changed: true,
+	})
+	if len(diags) != 1 {
+		t.Fatalf("forged name: diags = %d, want 1", len(diags))
+	}
+	detail := diags[0].Detail()
+	if !strings.Contains(detail, "Searched 0 policies.") {
+		t.Fatalf("test is not exercising the forgery — the crafted name is absent:\n%s", detail)
+	}
+	if m := searched.FindStringSubmatch(detail); m == nil || m[1] != "1" {
+		t.Errorf("anchored searched pattern read %v, want the genuine 1 despite the forged name:\n%s", m, detail)
+	}
+	if m := usedBy.FindStringSubmatch(detail); m == nil || m[1] != "1" {
+		t.Errorf("anchored usedBy pattern read %v, want the genuine 1 despite the forged name:\n%s", m, detail)
+	}
+
 	// An incomplete sweep appends its shortfall after the anchor phrase rather than
 	// rewriting it, so a pipeline matching the phrase without the full stop still reads
 	// the right number — the number of policies actually searched. The guide documents
 	// the pattern without the full stop for exactly this reason.
-	phrase := regexp.MustCompile(`Searched ([0-9]+) (policy|policies)`)
+	phrase := regexp.MustCompile(`(?m)^Searched ([0-9]+) (policy|policies)`)
 	partial := &stubPolicySource{
 		ids:        []string{"10", "11"},
 		policies:   map[string]*proclassic.Policy{"10": testPolicy(10, "Alpha", withScripts(500), withGroupScope(1))},
