@@ -6,7 +6,6 @@ package payloadhelpers
 import (
 	"fmt"
 	"html"
-	"maps"
 	"slices"
 	"strings"
 
@@ -276,7 +275,9 @@ func alignPayloadContentOrder(authoredTree, storedTree map[string]any) map[strin
 	}
 
 	out := make(map[string]any, len(storedTree))
-	maps.Copy(out, storedTree)
+	for k, v := range storedTree {
+		out[k] = v
+	}
 	out["PayloadContent"] = aligned
 	return out
 }
