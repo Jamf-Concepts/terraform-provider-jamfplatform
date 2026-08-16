@@ -292,38 +292,6 @@ func (r *VolumePurchasingLocationResource) Update(ctx context.Context, req resou
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// deleteLocationRetryLimit and deleteLocationRetryDelay bound the retry below.
-const (
-	deleteLocationRetryLimit = 3
-	deleteLocationRetryDelay = 2 * time.Second
-)
-
-// deleteLocationWithRetry re-issues DeleteVolumePurchasingLocationV1 while it
-// keeps failing with a bare empty-body 500 — observed intermittently against
-// a live tenant and reproduced as Apple ABM-side flakiness that Jamf Pro
-// passes straight through, not something the caller can avoid by request
-// shape. This is deliberately scoped to just this call rather than a global
-// 5xx retry: the provider's global request interval already defaults to 0
-// precisely so features like the policy-dependency sweep can fan out
-// concurrently (see resolveMinRequestInterval), and a blanket transport-level
-// retry was already rejected once for 4xx (eventual consistency is a caller
-// concern, not a transport one — see WithMinRequestInterval's history).
-func deleteLocationWithRetry(ctx context.Context, client *pro.Client, id string) error {
-	var err error
-	for attempt := 1; attempt <= deleteLocationRetryLimit; attempt++ {
-		err = client.DeleteVolumePurchasingLocationV1(ctx, id)
-		if err == nil || !helpers.IsServerError(err) || attempt == deleteLocationRetryLimit {
-			return err
-		}
-		select {
-		case <-ctx.Done():
-			return err
-		case <-time.After(deleteLocationRetryDelay):
-		}
-	}
-	return err
-}
-
 // Delete removes a Jamf Pro Volume Purchasing location.
 func (r *VolumePurchasingLocationResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state VolumePurchasingLocationResourceModel
@@ -345,7 +313,7 @@ func (r *VolumePurchasingLocationResource) Delete(ctx context.Context, req resou
 		return
 	}
 
-	if err := deleteLocationWithRetry(deleteCtx, r.client, state.ID.ValueString()); err != nil {
+	if err := r.client.DeleteVolumePurchasingLocationV1(deleteCtx, state.ID.ValueString()); err != nil {
 		if helpers.IsNotFoundError(err) {
 			tflog.Info(ctx, "Jamf Pro Volume Purchasing location already removed", map[string]any{"id": state.ID.ValueString()})
 			return
