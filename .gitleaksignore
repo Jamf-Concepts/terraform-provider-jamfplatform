@@ -6,5 +6,10 @@
 # certificate-filename attribute (and its generated doc). That value is a p12
 # FILENAME, not a credential — the real secret is the filebase64(...) keystore
 # reference, which has no literal value. Safe to ignore.
-e79e5aeb580a053c71d4b09de7dfc0f00c168085:docs/resources/pro_gsx_connection_settings.md:generic-api-key:37
-e79e5aeb580a053c71d4b09de7dfc0f00c168085:examples/resources/jamfplatform_pro_gsx_connection_settings/resource.tf:generic-api-key:22
+#
+# The SHA must be the commit that INTRODUCED the line, as gitleaks reports it in
+# the finding fingerprint — not the commit that added this file. If history is
+# rebased the SHA changes and the entry silently stops matching, so re-derive it
+# with `gitleaks git --log-opts="--all" -v` after any history rewrite.
+1335078e2bbab1ddd5aec36e4e3e34fdcd3e2a58:docs/resources/pro_gsx_connection_settings.md:generic-api-key:37
+1335078e2bbab1ddd5aec36e4e3e34fdcd3e2a58:examples/resources/jamfplatform_pro_gsx_connection_settings/resource.tf:generic-api-key:22
