@@ -50,7 +50,7 @@ func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 				Enabled:     true,
 				Title:       "Rule Title",
 				Description: "Rule Description",
-				References:  []string{"ref-1", "ref-2"},
+				References:  &[]string{"ref-1", "ref-2"},
 				ODV: &compliancebenchmarks.OrganizationDefinedValue{
 					Value:       "30",
 					Hint:        "Enter a number",

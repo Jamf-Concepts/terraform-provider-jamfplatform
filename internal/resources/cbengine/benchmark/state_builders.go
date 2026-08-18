@@ -162,7 +162,7 @@ func buildRuleModel(r compliancebenchmarks.RuleInfo) RuleModel {
 		Enabled:                 types.BoolValue(r.Enabled),
 		Title:                   types.StringValue(r.Title),
 		Description:             types.StringValue(r.Description),
-		References:              buildStringList(r.References),
+		References:              buildStringList(derefStringSlice(r.References)),
 		SupportedOS:             buildSupportedOSList(r.SupportedOs),
 		OSSpecificDefaults:      buildOSSpecificDefaultsMap(r.OsSpecificDefaults),
 		ODVValue:                odvStringValue(r.ODV, func(o *compliancebenchmarks.OrganizationDefinedValue) string { return o.Value }),
@@ -202,6 +202,13 @@ func buildTargetDeviceGroupsSet(deviceGroups []string) types.Set {
 }
 
 // buildStringList converts a string slice into a Terraform list of strings, returning null for empty.
+func derefStringSlice(s *[]string) []string {
+	if s == nil {
+		return nil
+	}
+	return *s
+}
+
 func buildStringList(values []string) types.List {
 	if len(values) == 0 {
 		return types.ListNull(types.StringType)

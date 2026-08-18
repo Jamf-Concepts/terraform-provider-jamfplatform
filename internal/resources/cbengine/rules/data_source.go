@@ -280,8 +280,10 @@ func (d *RulesDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	var rules []RuleModel
 	for _, r := range rulesResp.Rules {
 		var references []types.String
-		for _, ref := range r.References {
-			references = append(references, types.StringValue(ref))
+		if r.References != nil {
+			for _, ref := range *r.References {
+				references = append(references, types.StringValue(ref))
+			}
 		}
 
 		var odvValue, odvHint, odvPlaceholder, odvType types.String
