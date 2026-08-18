@@ -6,7 +6,7 @@ description: |-
 
 # Impact alerts
 
-Jamf Pro shows an **impact alert** when you save a policy, profile, app or group, summarising how many devices the change affects. Set `impact_alerts` and the same signal appears during `terraform plan`:
+Jamf Pro shows an **impact alert** when you save a policy, profile, app or group, summarising how many devices the change affects. Set `impact_alerts` and the same signal appears during `terraform plan` — plus one Jamf Pro does not show, for [policy dependencies](#policy-dependency-changes) such as scripts and packages:
 
 ```hcl
 provider "jamfplatform" {
@@ -48,6 +48,32 @@ The scope is unchanged; these computers will receive the updated policy.
 ```
 
 Creating an object reports what will start receiving it; deleting one reports what stops.
+
+## Policy dependency changes
+
+A script, package, printer, Dock item, directory binding or disk encryption configuration has no scope of its own — but every policy referencing it delivers it to that policy's audience. Jamf Pro shows no alert for this; the provider does:
+
+```text
+Impact alert — this script affects up to 3 of 4 computers (75%), via 56 policies
+
+Used by 56 enabled policies: Jamf Auto Update - Adobe Acrobat DC - Ongoing, ... and 48 more.
+Also 9 disabled policies, delivering nothing until enabled: ... and 1 more.
+Counted from their combined scope: 36 groups: All Managed (3), All Laptops (2), ... and 31 more.
+Computers in more than one are counted once.
+
+Searched 295 policies. Policy usage and group membership are a plan-time snapshot and can change before apply.
+```
+
+How the figure is built:
+
+- **Computers count once.** Policy scopes overlap, so the total is the union of the affected audiences, not the sum.
+- **Disabled policies are listed, never counted.** They deliver nothing until enabled.
+- **A policy that could not be read makes the figure a lower bound.** It may add audience but cannot take any away, so the figure reads `or more` and names the unread policies among the caveats. Combined with a dropped exclusion, which pulls the other way, the figure reads `an estimated` instead.
+- **Exclusions combine only when every policy shares them.** An exclusion belongs to its declaring policy, so a computer excluded from one but targeted by another still receives the object. An exclusion carried by every contributing policy is subtracted, because a computer all of them exclude receives the object from none; any other becomes a narrowing caveat and the figure reads `up to`.
+
+Creating one of these raises no alert: nothing can reference an id the tenant has not issued.
+
+`terraform apply -replace` on one of them raises no dependency alert either, when the configuration is otherwise unchanged. The replacement is created with a new id, so every policy that referenced the old one loses the dependency — check the references by hand before replacing a script, package, printer, Dock item, directory binding or disk encryption configuration.
 
 ## Reading the figure
 
@@ -116,6 +142,25 @@ To gate on the number, match the verb — `scoped to` for a create, `affects` fo
 
 The `of` clause is optional because a figure with no proportion drops it. An alert spanning both estates joins two `X of Y` clauses with ` and ` — `3 of 4 computers and 0 of 1 mobile devices` — so match `([0-9]+) of ([0-9]+)` globally to read the second estate. Group and class alerts phrase membership instead (`will contain 7 computers`, `changes from 4 computers to 7 computers`); gate those on the arithmetic in the detail, such as `This change adds 3 computers.`
 
+Policy dependency alerts use the same `affects` figure, then append the policy count. Their counts sit in fixed phrases:
+
+| Pattern | Reads |
+|---|---|
+| `via ([0-9]+) (policy\|policies)$` | Enabled policies carrying the change (end of summary) |
+| `(?m)^Used by ([0-9]+) enabled (policy\|policies):` | Same count, in the detail, followed by names |
+| `(?m)^Also ([0-9]+) disabled (policy\|policies), delivering nothing until enabled:` | Referencing policies contributing no devices |
+| `(?m)^Searched ([0-9]+) (policy\|policies)` | Policies read to build the figure |
+| `used only by disabled policies$` | Every referencing policy is disabled, so nothing is delivered yet — latent, not safe |
+| `no policy uses this` | Nothing references the object; carries no figure to gate on |
+
+The last two summaries carry no `affects` figure at all, so a pipeline gating only on the numeric patterns above will skip them silently. Match them explicitly if a change reaching nothing — or reaching only disabled policies — is something you want to see. Note that `no policy uses this` deliberately does not match the partial-sweep wording (`no policy found using this …, but the search was incomplete`): an incomplete search is not a finding of no usage, and the two should not be treated alike.
+
+Note the summary's trailing `via N policies` adds a number after the figure, so anchor the device count on the `of` clause rather than taking the last integer in the line.
+
+**Anchor the detail patterns to a line start, as written above.** Each detail sentence begins its own line, and the only free text in the detail is policy names — which always appear mid-line, inside the `Used by` and `Also` lists. Names come from the tenant, so whoever can create or rename a policy chooses that text: a policy named `Searched 0 policies.` would satisfy an unanchored `Searched ([0-9]+)` before the genuine sentence does, and a pipeline taking the first match would read the attacker's number. The `(?m)^` prefix removes that reach, since a name can never start a line. Control characters in names are stripped before rendering, so a name cannot manufacture a line start either.
+
+The `Searched` count is always the number of policies actually read. If any could not be read the sentence continues rather than being reworded — `Searched 294 policies of 295 (1 could not be read, so this answer may be incomplete).` — so gate on the phrase without the full stop. Two other things change on a partial sweep: the figure takes the `or more` form, so match the second pattern above as well as the first; and a summary reporting no usage says the search was incomplete rather than denying it outright.
+
 ## Cost
 
 Reads are cached for the lifetime of the plan, so two resources naming the same group read it once. A plan that changes nothing reads nothing.
@@ -126,11 +171,24 @@ Reads are cached for the lifetime of the plan, so two resources naming the same 
 | One group's membership | Per group named by a changing scope |
 | One inventory query | Per distinct set of named devices, buildings or departments |
 | Building and department names | Once per plan, if a mobile device scope names one |
+| Every policy in the tenant | Once per configured provider instance, only if the plan changes a policy dependency |
 
-These reads scale. The group list is paginated at 100 groups per request, and every request is paced by the provider's `min_request_interval_ms` (default 100ms between request starts) — a 5,000-group tenant spends around five seconds on the first alert of a plan. Membership is one paced read per distinct group named by anything changing in the plan, including groups only entering or leaving a scope, so a plan touching many groups serialises many reads.
+The group list is paginated at 100 groups per request. Membership is one read per distinct group named by anything changing in the plan, including groups only entering or leaving a scope.
+
+The policy sweep is the largest single cost, and the reason it is lazy. Jamf Pro has no endpoint answering "which policies use this script", and the Classic API's subset endpoint cannot trim the payload — it silently omits the `PackageConfiguration` section package references live in — so every policy must be read in full. Measured: ~6 seconds and ~1MB for 295 policies, so expect roughly a minute at 3,000. A plan changing no dependency never triggers it.
+
+The sweep is not the whole cost of a dependency alert. Once the using policies are known, their combined scope is resolved like any other, so a dependency used by many policies also pays one membership read per distinct group that scope names — dozens, for a widely-used script. Those reads are cached for the plan, so a second dependency naming the same groups adds nothing.
+
+Note "once per configured provider instance" rather than once per plan: the cache is built per provider configuration, so two `provider` blocks aliased against the same tenant each sweep it.
+
+The sweep needs the credential to be able to read every policy in the tenant. An API role without policy read does not fail the plan — the alert degrades to a single "impact alert unavailable" notice — but no dependency figure is produced.
+
+Two controls bound this, and they are easy to confuse. `min_request_interval_ms` gates the time between request *starts* across all traffic, making it a throughput ceiling on the whole plan rather than a concurrency limit: at 100ms no plan exceeds 10 requests per second, however many resources Terraform evaluates in parallel. It defaults to 0. The sweep separately caps its own parallelism at 5 concurrent reads, matching [Jamf's API scalability guidance](https://developer.jamf.com/jamf-pro/docs/jamf-pro-api-scalability-best-practices) and the point where measured throughput stops improving. To trade plan speed for a gentler load profile, raise `min_request_interval_ms`.
 
 ## Scope of reporting
 
 Every figure is a snapshot: group membership is re-evaluated continuously, so treat the number as what would happen if the change applied at that moment.
 
 `jamfplatform_pro_vpp_assignment` and `jamfplatform_pro_vpp_invitation` raise no alert — their scope targets Jamf Pro users and user groups, with no device category to count.
+
+The policy sweep reads policies only. Patch Management is a second delivery channel for packages — a patch software title assigns a package per software version, and a patch policy carries its own scope — and it is not searched, so a package delivered only that way is reported as used by no policy. The alert for a package says so rather than reading as an all-clear.

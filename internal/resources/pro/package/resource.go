@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -33,6 +34,10 @@ const minJamfProVersion = ""
 // PackageResource implements the Terraform resource for Jamf Pro packages.
 type PackageResource struct {
 	client *pro.Client
+	// impact backs the plan-time impact alert reporting how many computers this
+	// object reaches through the policies that use it. nil when the provider's
+	// impact_alerts attribute is off, which is the default.
+	impact *impact.Cache
 }
 
 var (
@@ -353,6 +358,7 @@ func (r *PackageResource) Configure(ctx context.Context, req resource.ConfigureR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	r.impact = providerdata.ConfigureImpact(req.ProviderData)
 	r.client = client
 }
 

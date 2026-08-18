@@ -35,7 +35,11 @@ func NewMockClient(t *testing.T, handler http.Handler) *jamfplatform.Client {
 	server := httptest.NewServer(wrapped)
 	t.Cleanup(server.Close)
 
-	c := jamfplatform.NewClient(server.URL, "test-id", "test-secret")
+	// Disable the SDK's automatic retry-on-transient-failure: a handler that
+	// deliberately keeps returning e.g. 500/502/503 to exercise a caller's
+	// error-handling path would otherwise hang for the production 1s-60s
+	// backoff window on every run.
+	c := jamfplatform.NewClient(server.URL, "test-id", "test-secret", jamfplatform.WithRetryPolicy(0, 0, 0))
 	return c
 }
 

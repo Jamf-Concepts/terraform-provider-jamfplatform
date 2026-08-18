@@ -1103,7 +1103,7 @@ The two misleading-status patterns look identical on the wire (same `400`) but d
 
 ### Pro error/retry helpers
 
-Eventual-consistency and retry are **consumer concerns**, not transport concerns — the SDK client cannot tell a permanent `409` ("Problem with site ID") from a transient one, so it does **not** retry 4xx. The transport retries only **`429`/`Retry-After`** (an unambiguous, server-instructed throttle) and applies a configurable **inter-request delay** (`WithMinRequestInterval`, default 100ms; surfaced as the provider `min_request_interval_ms` attribute / `JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS` env var) that paces all outbound calls. Everything else surfaces to the resource, which owns any eventual-consistency handling (poll, re-issue, or fire-and-trust — see [§Delete semantics](#delete-semantics-not-found-async-and-propagation-blocked) and the per-resource `crud.go` annotation blocks).
+Eventual-consistency and retry are **consumer concerns**, not transport concerns — the SDK client cannot tell a permanent `409` ("Problem with site ID") from a transient one, so it does **not** retry 4xx. The transport retries only **`429`/`Retry-After`** (an unambiguous, server-instructed throttle) and applies a configurable **inter-request delay** (`WithMinRequestInterval`) that paces all outbound calls. The SDK's own default is 100ms, applied only when the option is not passed; the provider always passes its own value, which defaults to **0** — no pacing — a deliberate provider-wide throughput decision, since the interval gates request *starts* and so at 100ms caps the whole provider at 10 requests per second however many operations Terraform runs in parallel. Operators put pacing back with the provider `min_request_interval_ms` attribute / `JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS` env var (attribute wins); features that fan out reads bound their own concurrency instead. Everything else surfaces to the resource, which owns any eventual-consistency handling (poll, re-issue, or fire-and-trust — see [§Delete semantics](#delete-semantics-not-found-async-and-propagation-blocked) and the per-resource `crud.go` annotation blocks).
 
 `internal/common/helpers/helpers.go` provides the classifiers:
 
@@ -1119,7 +1119,7 @@ Independent of per-resource `minJamfProVersion` constants (which are hard errors
 
 ```go
 // internal/providerdata/providerdata.go
-const ProviderMinJamfProVersion = "11.30.0"  // tracks jamfplatform.JamfProAPIVersion; bump with the SDK
+const ProviderMinJamfProVersion = "11.31.0"  // tracks jamfplatform.JamfProAPIVersion; bump with the SDK
 ```
 
 Every Pro resource funnels its Configure through `providerdata.ConfigurePro`, which calls `pd.GetJamfProVersion(ctx)` unconditionally — regardless of whether the resource declares a per-resource `minJamfProVersion` const. The call is cached via `sync.Once` on `providerdata.Data`, so it fires at most once per `terraform` invocation. After the version is cached, the helper computes the floor warning and appends it to the Configure response.

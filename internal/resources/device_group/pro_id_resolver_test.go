@@ -39,7 +39,11 @@ func newProIDMockClient(t *testing.T, handler http.Handler) *jamfplatform.Client
 	})
 	server := httptest.NewServer(wrapped)
 	t.Cleanup(server.Close)
-	return jamfplatform.NewClient(server.URL, "test-id", "test-secret")
+	// Disable the SDK's automatic retry-on-transient-failure: several tests
+	// here mock a persistent 403/502 to exercise resolveJamfProID's
+	// error-handling path, which would otherwise hang for the production
+	// 1s-60s backoff window on every run.
+	return jamfplatform.NewClient(server.URL, "test-id", "test-secret", jamfplatform.WithRetryPolicy(0, 0, 0))
 }
 
 // proIDResolverHandler returns an http.Handler that serves the Pro
