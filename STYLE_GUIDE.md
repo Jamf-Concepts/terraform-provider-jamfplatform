@@ -1119,7 +1119,7 @@ Independent of per-resource `minJamfProVersion` constants (which are hard errors
 
 ```go
 // internal/providerdata/providerdata.go
-const ProviderMinJamfProVersion = "11.30.0"  // tracks jamfplatform.JamfProAPIVersion; bump with the SDK
+const ProviderMinJamfProVersion = "11.31.0"  // tracks jamfplatform.JamfProAPIVersion; bump with the SDK
 ```
 
 Every Pro resource funnels its Configure through `providerdata.ConfigurePro`, which calls `pd.GetJamfProVersion(ctx)` unconditionally — regardless of whether the resource declares a per-resource `minJamfProVersion` const. The call is cached via `sync.Once` on `providerdata.Data`, so it fires at most once per `terraform` invocation. After the version is cached, the helper computes the floor warning and appends it to the Configure response.

@@ -34,7 +34,7 @@ import (
 
 // minJamfProVersion is the minimum Jamf Pro tenant version required by this resource.
 // Empty: Access Management settings require Jamf Pro 11.18.0, which is below the
-// provider's overall floor (providerdata.ProviderMinJamfProVersion = 11.29.0), so no
+// provider's overall floor (providerdata.ProviderMinJamfProVersion), so no
 // per-resource gate is needed — the provider-wide advisory already covers it.
 const minJamfProVersion = ""
 

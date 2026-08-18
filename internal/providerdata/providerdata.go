@@ -41,7 +41,7 @@ import (
 // minJamfProVersion and hard-fails Configure — grep BOTH internal/resources/pro/
 // and internal/actions/pro/ for those, since actions carry floors too (e.g. the
 // enhanced-log-collection actions require 11.30.0).
-const ProviderMinJamfProVersion = "11.30.0"
+const ProviderMinJamfProVersion = "11.31.0"
 
 // Data is the value passed via ResourceData/DataSourceData/ListResourceData/ActionData.
 // It bundles the authenticated SDK client with lazy Jamf Pro version state shared
