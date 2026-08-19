@@ -56,6 +56,37 @@ Refer to the [documentation](https://registry.terraform.io/providers/Jamf-Concep
 
 ---
 
+## Troubleshooting
+
+### Debug logging
+
+Terraform's log level is set with `TF_LOG`. At `DEBUG` the provider logs every HTTP request and response it makes to the Jamf Platform API — method, URL, status code, response headers, and the request and response bodies:
+
+```shell
+TF_LOG=DEBUG terraform apply
+TF_LOG=DEBUG terraform apply 2> debug.log   # capture to a file
+```
+
+`TF_LOG=TRACE` adds Terraform core's own plan/apply internals on top. Use `TF_LOG_PROVIDER=DEBUG` to raise the level for providers only and leave Terraform core quieter.
+
+### Debug logs and secrets
+
+Debug logs are the fastest way to see what the provider actually sent, which means they are also the most likely place for a credential to end up. The provider therefore redacts before it logs:
+
+- **Headers** — `Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie` and `X-Api-Key` are logged as `REDACTED`.
+- **Request and response bodies** — values of known credential-bearing fields are replaced with `REDACTED`. This covers plaintext passwords and their `_sha256` echoes, recovery and encryption keys, client secrets, bearer and enrolment tokens, keystore blobs, and secret values inside configuration profile payloads (including plist `<key>`/`<string>` pairs, which sit inside the `payloads` element).
+- **Unparseable bodies** — a body that is neither JSON nor XML cannot be checked for credentials, so it is withheld from the log rather than written out raw.
+- **File uploads** — multipart bodies are never rendered; the log records `<multipart body>`.
+
+Redaction is matched against known field names, so treat it as a strong safety net rather than a guarantee. Two things follow from that:
+
+- Review a debug log before you attach it to a support ticket, paste it into an issue, or leave it in CI output. CI logs in particular are often readable by more people than the person who triggered the run.
+- If you find a credential in a debug log that should have been redacted, please report it — see [SECURITY.md](./SECURITY.md).
+
+Redaction applies to what the provider logs. It does not change what Terraform itself writes: values marked sensitive are masked in Terraform's plan and apply output, but a `write-only` argument's value still exists in your configuration and in any variable file or environment variable that supplies it.
+
+---
+
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [TESTING.md](./TESTING.md) for the full workflow. In short, for changes that add or modify resources, data sources, list resources, actions, or functions:
