@@ -78,6 +78,7 @@ func (r *BlueprintResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
+	resp.Diagnostics.Append(checkLegacyPayloadDiscards(&data, blueprint)...)
 	resp.Diagnostics.Append(updateModelFromAPIResponse(ctx, &data, blueprint)...)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)
@@ -231,6 +232,7 @@ func (r *BlueprintResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
+	resp.Diagnostics.Append(checkLegacyPayloadDiscards(&data, blueprint)...)
 	resp.Diagnostics.Append(updateModelFromAPIResponse(ctx, &data, blueprint)...)
 
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, blueprintIdentityModel{ID: data.ID})...)

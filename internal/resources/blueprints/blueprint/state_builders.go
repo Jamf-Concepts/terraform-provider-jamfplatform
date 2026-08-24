@@ -7,6 +7,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -252,7 +255,13 @@ func parseComponentConfiguration(apiComponentsByID map[string]blueprints.Compone
 // legacyPayloadItems extracts the legacy configuration profile's payloads from the wire as a list
 // of `{payload_type, settings}` maps (settings present only when non-empty), or nil when the
 // component is absent or malformed. The caller decides how to render them (dynamic or JSON string).
-func legacyPayloadItems(apiComponentsByID map[string]blueprints.Component) []any {
+//
+// The blueprints service stamps its own metadata onto every payload it stores (see
+// serverStampedPayloadKeys), so a payload's settings are masked against what the author declared:
+// a stamped key the author did not write is dropped, and one the author did write is kept, since
+// the service echoes an authored value back verbatim. priorSettingsByType carries the author's
+// settings keyed by payload type, and may be nil (import — nothing authored to mask against).
+func legacyPayloadItems(apiComponentsByID map[string]blueprints.Component, priorSettingsByType map[string]map[string]any) []any {
 	rawJSON, ok := parseComponentConfiguration(apiComponentsByID, "com.jamf.ddm-configuration-profile")
 	if !ok {
 		return nil
@@ -284,6 +293,7 @@ func legacyPayloadItems(apiComponentsByID map[string]blueprints.Component) []any
 			}
 			settingsMap[k] = v
 		}
+		maskServerStampedPayloadKeys(settingsMap, priorSettingsByType[payloadType])
 
 		entry := map[string]any{"payload_type": payloadType}
 		if len(settingsMap) > 0 {
@@ -298,6 +308,60 @@ func legacyPayloadItems(apiComponentsByID map[string]blueprints.Component) []any
 	return items
 }
 
+// serverStampedPayloadKeys are the per-payload metadata keys the blueprints service writes onto
+// every legacy payload it stores, whether or not the author supplied them. `payloadType` and
+// `payloadIdentifier` are not listed: legacyPayloadItems already lifts those out of settings, the
+// first into `payload_type` and the second because the provider derives it from the payload type
+// (see generatePayloadIdentifier).
+var serverStampedPayloadKeys = [...]string{
+	"payloadDisplayName",
+	"payloadOrganization",
+	"payloadUUID",
+	"payloadVersion",
+}
+
+// maskServerStampedPayloadKeys deletes from a payload's server-derived settings every metadata key
+// the service stamps on that the author did not declare, so the stamp never reads as a settings
+// change. A stamped key the author did declare is left in place, because the service preserves an
+// authored value and state must keep reflecting it.
+func maskServerStampedPayloadKeys(settings map[string]any, priorSettings map[string]any) {
+	for _, key := range serverStampedPayloadKeys {
+		if _, authored := priorSettings[key]; authored {
+			continue
+		}
+		delete(settings, key)
+	}
+}
+
+// pruneJSONNulls returns value with every null-valued object key removed, recursively through
+// objects and arrays. The blueprints service discards a null-valued payload key rather than storing
+// it, so a settings object authored with explicit nulls (com.apple.notificationsettings is the
+// common case) never comes back key-for-key. Pruning the authored side before comparing lets an
+// author keep their nulls in configuration without manufacturing a diff. A key the author gave a
+// non-null value keeps its place, so a genuine discard — a key the service does not recognise, which
+// it drops silently — still reads as a mismatch instead of being masked away.
+func pruneJSONNulls(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		pruned := make(map[string]any, len(typed))
+		for k, v := range typed {
+			if v == nil {
+				continue
+			}
+			pruned[k] = pruneJSONNulls(v)
+		}
+		return pruned
+	case []any:
+		pruned := make([]any, 0, len(typed))
+		for _, v := range typed {
+			pruned = append(pruned, pruneJSONNulls(v))
+		}
+		return pruned
+	default:
+		return value
+	}
+}
+
 // flattenFlatLegacyPayloads renders the wire legacy payloads into the deprecated top-level dynamic
 // value. When the user manages the configuration profile as a raw_component it is left untouched;
 // when the server value is semantically identical to the prior value that prior value is preserved
@@ -307,7 +371,7 @@ func flattenFlatLegacyPayloads(prior types.Dynamic, apiComponentsByID map[string
 		return prior
 	}
 
-	items := legacyPayloadItems(apiComponentsByID)
+	items := legacyPayloadItems(apiComponentsByID, priorSettingsFromDynamic(prior))
 	if len(items) == 0 {
 		return types.DynamicNull()
 	}
@@ -323,6 +387,61 @@ func flattenFlatLegacyPayloads(prior types.Dynamic, apiComponentsByID map[string
 	return dynVal
 }
 
+// priorSettingsFromDynamic reads the author's per-payload settings out of the deprecated top-level
+// dynamic value, keyed by payload type, so the wire payloads can be masked against what was
+// actually written. It returns nil when the prior value carries nothing usable (import, or a first
+// create with no prior state).
+func priorSettingsFromDynamic(prior types.Dynamic) map[string]map[string]any {
+	if prior.IsNull() || prior.IsUnknown() {
+		return nil
+	}
+
+	raw, err := helpers.TerraformDynamicToJSON(prior)
+	if err != nil {
+		return nil
+	}
+
+	items, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+
+	settingsByType := make(map[string]map[string]any, len(items))
+	for _, item := range items {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		payloadType, _ := obj["payload_type"].(string)
+		if settings, ok := obj["settings"].(map[string]any); ok {
+			settingsByType[payloadType] = settings
+		}
+	}
+	return settingsByType
+}
+
+// priorSettingsFromBlockPayloads reads the author's per-payload settings out of a block's typed
+// legacy payload list, keyed by payload type, decoding each settings JSON string. It returns nil
+// when nothing was authored.
+func priorSettingsFromBlockPayloads(prior []BlockLegacyPayloadModel) map[string]map[string]any {
+	if len(prior) == 0 {
+		return nil
+	}
+
+	settingsByType := make(map[string]map[string]any, len(prior))
+	for _, entry := range prior {
+		if !helpers.IsConfiguredValue(entry.Settings) {
+			continue
+		}
+		var settings map[string]any
+		if err := json.Unmarshal([]byte(entry.Settings.ValueString()), &settings); err != nil {
+			continue
+		}
+		settingsByType[entry.PayloadType.ValueString()] = settings
+	}
+	return settingsByType
+}
+
 // flattenBlockLegacyPayloads renders the wire legacy payloads into a block's typed list, with each
 // payload's settings as a canonical JSON string. When the user manages the configuration profile as
 // a raw_component the prior value is left untouched. For each payload, the prior settings string is
@@ -332,7 +451,7 @@ func flattenBlockLegacyPayloads(prior []BlockLegacyPayloadModel, apiComponentsBy
 		return prior
 	}
 
-	items := legacyPayloadItems(apiComponentsByID)
+	items := legacyPayloadItems(apiComponentsByID, priorSettingsFromBlockPayloads(prior))
 	if len(items) == 0 {
 		return nil
 	}
@@ -371,7 +490,8 @@ func flattenBlockLegacyPayloads(prior []BlockLegacyPayloadModel, apiComponentsBy
 
 // settingsStringMatchesJSON reports whether a prior settings JSON string is semantically identical
 // to a server-derived settings map, comparing canonical JSON encodings (sorted keys, float64
-// numbers). It keeps a block's settings string stable when the server echoes an equivalent value.
+// numbers) with the authored side's explicit nulls pruned (see pruneJSONNulls). It keeps a block's
+// settings string stable when the server echoes an equivalent value.
 func settingsStringMatchesJSON(prior types.String, settings map[string]any) bool {
 	if prior.IsNull() || prior.IsUnknown() {
 		return false
@@ -382,7 +502,7 @@ func settingsStringMatchesJSON(prior types.String, settings map[string]any) bool
 		return false
 	}
 
-	priorBytes, err := json.Marshal(priorObj)
+	priorBytes, err := json.Marshal(pruneJSONNulls(priorObj))
 	if err != nil {
 		return false
 	}
@@ -397,7 +517,8 @@ func settingsStringMatchesJSON(prior types.String, settings map[string]any) bool
 
 // dynamicPayloadsMatchJSON reports whether the prior dynamic value is
 // semantically identical to the server-derived payload items, comparing their
-// canonical JSON encodings. Numbers normalise to float64 on both sides and
+// canonical JSON encodings with the authored side's explicit nulls pruned (see
+// pruneJSONNulls). Numbers normalise to float64 on both sides and
 // json.Marshal sorts object keys, so the comparison is order-independent for
 // object keys and insensitive to the dynamic null-typing that otherwise causes
 // a perpetual diff.
@@ -411,7 +532,7 @@ func dynamicPayloadsMatchJSON(prior types.Dynamic, apiItems []any) bool {
 		return false
 	}
 
-	priorBytes, err := json.Marshal(priorJSON)
+	priorBytes, err := json.Marshal(pruneJSONNulls(priorJSON))
 	if err != nil {
 		return false
 	}
@@ -422,4 +543,137 @@ func dynamicPayloadsMatchJSON(prior types.Dynamic, apiItems []any) bool {
 	}
 
 	return bytes.Equal(priorBytes, apiBytes)
+}
+
+// checkLegacyPayloadDiscards warns when the blueprints service did not store a legacy payload as it
+// was written. The service validates each payload against Apple's profile-specific payload schema
+// for that payload type (the same key vocabulary as apple/device-management `mdm/profiles`) and
+// silently discards any key the schema does not define, so a mistyped or unsupported key never
+// reaches a device and never appears in state — which Terraform then reports only as the opaque
+// "provider produced inconsistent result after apply". Key lookup is case-insensitive and the stored
+// key is canonicalised to Apple's spelling, so a miscased key is reported here too: it is discarded
+// under the spelling the author used. This runs on the write paths, against the planned model before
+// state is rebuilt from the response, and names what was dropped so the cause is legible.
+//
+// A key the author set to null is not reported: the service drops nulls by design and the flatteners
+// already tolerate that (see pruneJSONNulls). A key whose value has the wrong type is not reported
+// either — the service rejects the whole write with a validation failure, which surfaces as an
+// error from the create or update call instead.
+func checkLegacyPayloadDiscards(planned *BlueprintResourceModel, blueprint *blueprints.BlueprintDetail) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if len(planned.ComponentBlocks) > 0 {
+		for i, block := range planned.ComponentBlocks {
+			var step blueprints.BlueprintStep
+			if i < len(blueprint.Steps) {
+				step = blueprint.Steps[i]
+			}
+			appendLegacyPayloadDiscardWarnings(&diags, priorSettingsFromBlockPayloads(block.LegacyPayloads), step, describeBlockPosition(i, block.Name))
+		}
+		return diags
+	}
+
+	var step blueprints.BlueprintStep
+	if len(blueprint.Steps) > 0 {
+		step = blueprint.Steps[0]
+	}
+	appendLegacyPayloadDiscardWarnings(&diags, priorSettingsFromDynamic(planned.LegacyPayloads), step, "legacy_payloads")
+
+	return diags
+}
+
+// describeBlockPosition names a component block for a diagnostic, by name where it has one and by
+// its index either way, so a blueprint with several blocks points at the right one.
+func describeBlockPosition(index int, name types.String) string {
+	if helpers.IsConfiguredValue(name) && name.ValueString() != "" {
+		return fmt.Sprintf("component_blocks[%d] (%s)", index, name.ValueString())
+	}
+	return fmt.Sprintf("component_blocks[%d]", index)
+}
+
+// appendLegacyPayloadDiscardWarnings compares each payload's authored settings against what the
+// step actually stored and adds one warning per payload that lost keys.
+func appendLegacyPayloadDiscardWarnings(diags *diag.Diagnostics, authoredByType map[string]map[string]any, step blueprints.BlueprintStep, location string) {
+	if len(authoredByType) == 0 {
+		return
+	}
+
+	apiComponentsByID := make(map[string]blueprints.Component, len(step.Components))
+	for _, comp := range step.Components {
+		apiComponentsByID[comp.Identifier] = comp
+	}
+
+	storedByType := make(map[string]map[string]any)
+	for _, item := range legacyPayloadItems(apiComponentsByID, authoredByType) {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		payloadType, _ := obj["payload_type"].(string)
+		settings, _ := obj["settings"].(map[string]any)
+		storedByType[payloadType] = settings
+	}
+
+	for _, payloadType := range slices.Sorted(maps.Keys(authoredByType)) {
+		discarded := discardedSettingsPaths(authoredByType[payloadType], storedByType[payloadType], "")
+		if len(discarded) == 0 {
+			continue
+		}
+		diags.AddWarning(
+			"Legacy payload settings were not stored",
+			fmt.Sprintf(
+				"Jamf did not store %d setting(s) written for the %s payload in %s: %s. "+
+					"Jamf validates each legacy payload against Apple's payload keys for that payload type and silently drops any key it does not define, "+
+					"so these settings will not reach any device and Terraform will report a difference on every plan. "+
+					"Check each key against Apple's documentation for this payload type, including its exact capitalisation.",
+				len(discarded), payloadType, location, strings.Join(discarded, ", "),
+			),
+		)
+	}
+}
+
+// discardedSettingsPaths returns the dotted paths of every non-null value present in authored but
+// missing from stored, descending through nested objects and positional array entries so a dropped
+// key inside a nested array (com.apple.notificationsettings is the common shape) is named in full.
+func discardedSettingsPaths(authored, stored any, path string) []string {
+	switch authoredTyped := authored.(type) {
+	case map[string]any:
+		storedTyped, ok := stored.(map[string]any)
+		if !ok {
+			storedTyped = nil
+		}
+		var paths []string
+		for _, key := range slices.Sorted(maps.Keys(authoredTyped)) {
+			value := authoredTyped[key]
+			if value == nil {
+				continue
+			}
+			child := key
+			if path != "" {
+				child = path + "." + key
+			}
+			storedValue, present := storedTyped[key]
+			if !present {
+				paths = append(paths, child)
+				continue
+			}
+			paths = append(paths, discardedSettingsPaths(value, storedValue, child)...)
+		}
+		return paths
+	case []any:
+		storedTyped, ok := stored.([]any)
+		if !ok {
+			return nil
+		}
+		var paths []string
+		for i, value := range authoredTyped {
+			if i >= len(storedTyped) {
+				break
+			}
+			paths = append(paths, discardedSettingsPaths(value, storedTyped[i], fmt.Sprintf("%s[%d]", path, i))...)
+		}
+		return paths
+	default:
+		return nil
+	}
 }

@@ -133,7 +133,7 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 			Delete: true,
 		}),
 		"legacy_payloads": schema.DynamicAttribute{
-			MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.",
+			MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name. " + legacyPayloadSettingsBehaviour,
 			Optional:            true,
 			DeprecationMessage:  componentAttrDeprecation,
 		},
@@ -290,7 +290,7 @@ func componentBlockAttributes() map[string]schema.Attribute {
 			},
 		},
 		"legacy_payloads": schema.ListNestedAttribute{
-			MarkdownDescription: "Legacy configuration profile payloads in this block. The payload identifier is auto-generated and the display name uses the blueprint name.",
+			MarkdownDescription: "Legacy configuration profile payloads in this block. The payload identifier is auto-generated and the display name uses the blueprint name. " + legacyPayloadSettingsBehaviour,
 			Optional:            true,
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
@@ -299,7 +299,7 @@ func componentBlockAttributes() map[string]schema.Attribute {
 						Required:            true,
 					},
 					"settings": schema.StringAttribute{
-						MarkdownDescription: "Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`.",
+						MarkdownDescription: "Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`. " + legacyPayloadSettingsBehaviour,
 						Optional:            true,
 					},
 				},
