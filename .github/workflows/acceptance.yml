@@ -124,9 +124,11 @@ jobs:
           # --- Tuning ---
           JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS: ${{ secrets.JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS }}
 
-      # Surface which acceptance suites actually ran vs. self-skipped, so an
-      # env-gated suite that never executes (missing secret) is visible instead
-      # of vanishing into a green check. Counts top-level TestAcc* results only.
+      # Surface which acceptance suites actually ran, failed, or self-skipped, so
+      # an env-gated suite that never executes (missing secret) is visible
+      # instead of vanishing into a green check, and a failure is nameable from
+      # the summary without opening the raw log. Counts top-level TestAcc*
+      # results only.
       - name: Gated suite summary
         if: always()
         run: |
@@ -145,6 +147,18 @@ jobs:
             skip=$(grep -cE '^--- SKIP: TestAcc[^/]+\(' "$log" || true)
             echo "**Ran:** ${pass:-0} passed, ${fail:-0} failed · **Skipped:** ${skip:-0}"
             echo
+            if [ "${fail:-0}" -gt 0 ]; then
+              # Open by default: a failure is the one thing nobody should have
+              # to click to see.
+              echo "<details open><summary>Failed suites (${fail})</summary>"
+              echo
+              echo '```'
+              grep -E '^--- FAIL: TestAcc[^/]+\(' "$log" | sed -E 's/^--- FAIL: //' | sort -u || true
+              echo '```'
+              echo
+              echo "</details>"
+              echo
+            fi
             echo "<details><summary>Skipped suites (gate unset)</summary>"
             echo
             echo '```'
