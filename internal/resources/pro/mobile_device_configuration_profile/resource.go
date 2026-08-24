@@ -24,6 +24,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/ldapgroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -141,8 +142,9 @@ func (r *Resource) Schema(_ context.Context, _ resource.SchemaRequest, resp *res
 						PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 					},
 					"payloads": schema.StringAttribute{
-						MarkdownDescription: "The `.mobileconfig` plist XML carrying the configuration the profile delivers. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations, and for the characters Jamf Pro cannot store inside a payload value.",
+						MarkdownDescription: "The `.mobileconfig` plist XML carrying the configuration the profile delivers. Must be a complete plist document — a bare `<dict>` fragment is rejected by Jamf Pro. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations, and for the characters Jamf Pro cannot store inside a payload value.",
 						Required:            true,
+						Validators:          []validator.String{validators.PlistDocument()},
 					},
 					"category_id": schema.StringAttribute{
 						MarkdownDescription: "Jamf Pro category ID. Use `-1` (default) for \"no category\".",
