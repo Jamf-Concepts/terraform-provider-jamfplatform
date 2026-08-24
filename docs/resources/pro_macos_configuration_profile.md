@@ -145,7 +145,7 @@ Pair `display_notifications` with `notification_location` to control whether and
 Required:
 
 - `name` (String) Display name of the profile. Must be unique within the tenant. This value is also used as the profile's display name inside the `.mobileconfig` payload, so any name you set inside `payloads` is overridden.
-- `payloads` (String) The `.mobileconfig` plist XML carrying the configuration the profile delivers. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations, and for the characters Jamf Pro cannot store inside a payload value.
+- `payloads` (String) The `.mobileconfig` plist XML carrying the configuration the profile delivers. Must be a complete plist document — a bare `<dict>` fragment is rejected by Jamf Pro. See the resource description for how the provider handles diffs against Jamf Pro's server-side normalisations, and for the characters Jamf Pro cannot store inside a payload value.
 
 Optional:
 
