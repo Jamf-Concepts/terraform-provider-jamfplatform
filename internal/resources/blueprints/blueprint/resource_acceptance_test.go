@@ -1255,3 +1255,133 @@ func TestAccResource_Blueprint_LegacyPayloads_FlatSchemaValidation(t *testing.T)
 		},
 	})
 }
+
+// TestAccResource_Blueprint_LegacyPayloads_RedactedCredentials pins the round trip for a payload
+// carrying credentials. Jamf returns a Wi-Fi Password, and EAPClientConfiguration's UserName and
+// UserPassword, as a run of asterisks rather than the value written, so without restoring the
+// authored value the resource could never settle: step 1 would fail with an inconsistent result and
+// every later plan would show a change that applying cannot resolve. Step 2 asserts the empty plan.
+func TestAccResource_Blueprint_LegacyPayloads_RedactedCredentials(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-redacted-" + suffix
+	addr := "jamfplatform_blueprints_blueprint.test_legacy_redacted"
+
+	config := func(ssid string) string {
+		return testBlueprintConfig(smartGroupHCL("legacyredacted"), fmt.Sprintf(`
+			resource "jamfplatform_blueprints_blueprint" "test_legacy_redacted" {
+				name          = %q
+				description   = "Acceptance test — safe to delete"
+				deployed      = false
+				device_groups = [jamfplatform_device_group.scope.id]
+
+				component_blocks = [
+					{
+						name = "Wi-Fi"
+						legacy_payloads = [
+							{
+								payload_type = "com.apple.wifi.managed"
+								settings = jsonencode({
+									SSID_STR       = %q
+									EncryptionType = "WPA2"
+									AutoJoin       = true
+									Password       = "not-a-real-psk-abc123"
+									EAPClientConfiguration = {
+										AcceptEAPTypes = [25]
+										UserName       = "svc-wifi"
+										UserPassword   = "not-a-real-password-abc123"
+										OuterIdentity  = "anonymous"
+									}
+								})
+							}
+						]
+					},
+				]
+			}
+		`, name, ssid))
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: config("TF-ACC-REDACTED"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(addr, "id"),
+					resource.TestCheckResourceAttr(addr, "name", name),
+				),
+			},
+			{
+				Config: config("TF-ACC-REDACTED"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// A genuine edit alongside the credentials must still be seen and applied.
+				Config: config("TF-ACC-REDACTED-2"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(addr, "id"),
+				),
+			},
+			{
+				Config: config("TF-ACC-REDACTED-2"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_LegacyPayloads_IntegerOutOfRange pins the plan-time check for Jamf's
+// 32-bit integer field. Apple declares CacheLimit unbounded, so only wire probing reveals the limit;
+// the write fails with a validation error, which is worth catching before an apply.
+func TestAccResource_Blueprint_LegacyPayloads_IntegerOutOfRange(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-int32-" + suffix
+
+	config := func(cacheLimit string) string {
+		return testBlueprintConfig(smartGroupHCL("legacyint32"), fmt.Sprintf(`
+			resource "jamfplatform_blueprints_blueprint" "test_legacy_int32" {
+				name          = %q
+				description   = "Acceptance test — safe to delete"
+				deployed      = false
+				device_groups = [jamfplatform_device_group.scope.id]
+
+				component_blocks = [
+					{
+						name = "Content Caching"
+						legacy_payloads = [
+							{
+								payload_type = "com.apple.AssetCache.managed"
+								settings     = jsonencode({ CacheLimit = %s })
+							}
+						]
+					},
+				]
+			}
+		`, name, cacheLimit))
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config:      config("2147483648"),
+				ExpectError: regexp.MustCompile(`32-bit signed field`),
+				PlanOnly:    true,
+			},
+			{
+				// One below the ceiling applies, which is what makes the bound the real thing.
+				Config: config("2147483647"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_blueprints_blueprint.test_legacy_int32", "id"),
+				),
+			},
+		},
+	})
+}

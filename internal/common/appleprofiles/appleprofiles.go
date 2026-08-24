@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -138,6 +139,18 @@ const (
 	WrongType
 	// MissingRequiredKey means a key Apple marks required is absent or null. Jamf rejects the write.
 	MissingRequiredKey
+	// IntegerOutOfRange means an integer value does not fit the 32-bit signed field Jamf stores
+	// integers in. Apple declares its integers unbounded, so this is Jamf's limit rather than
+	// Apple's: wire probing found 2147483647 accepted and 2147483648 rejected across several
+	// payloads (AssetCache CacheLimit, screensaver idleTime, Time Machine BackupSizeMB). Jamf
+	// rejects the write, so this is not advisory.
+	IntegerOutOfRange
+)
+
+// The bounds of the 32-bit signed field Jamf stores an integer payload value in.
+const (
+	maxJamfInteger = 2147483647
+	minJamfInteger = -2147483648
 )
 
 // Problem is one finding against a payload.
@@ -293,6 +306,19 @@ func validateValue(declared *Schema, value any, path string, problems *[]Problem
 		return
 	}
 
+	if declared.Type == KindInteger {
+		if number, ok := numeric(value); ok && (number > maxJamfInteger || number < minJamfInteger) {
+			*problems = append(*problems, Problem{
+				Kind: IntegerOutOfRange,
+				Path: path,
+				Detail: fmt.Sprintf(
+					"Apple leaves this integer unbounded, but Jamf stores it in a 32-bit signed field and rejects a write outside %d to %d; the value is %s.",
+					minJamfInteger, maxJamfInteger, formatNumber(number),
+				),
+			})
+		}
+	}
+
 	switch declared.Type {
 	case KindDictionary:
 		nested, ok := value.(map[string]any)
@@ -361,6 +387,15 @@ func numeric(value any) (float64, bool) {
 	default:
 		return 0, false
 	}
+}
+
+// formatNumber renders a JSON number for a diagnostic without exponent notation, so a large integer
+// reads as the digits the author wrote.
+func formatNumber(number float64) string {
+	if number == float64(int64(number)) {
+		return strconv.FormatInt(int64(number), 10)
+	}
+	return strconv.FormatFloat(number, 'f', -1, 64)
 }
 
 // describe names a value's JSON type for a diagnostic.

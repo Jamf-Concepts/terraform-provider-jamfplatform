@@ -294,6 +294,9 @@ func legacyPayloadItems(apiComponentsByID map[string]blueprints.Component, prior
 			settingsMap[k] = v
 		}
 		maskServerStampedPayloadKeys(settingsMap, priorSettingsByType[payloadType])
+		if restored, ok := restoreRedactedValues(settingsMap, priorSettingsByType[payloadType]).(map[string]any); ok {
+			settingsMap = restored
+		}
 
 		entry := map[string]any{"payload_type": payloadType}
 		if len(settingsMap) > 0 {
@@ -330,6 +333,77 @@ func maskServerStampedPayloadKeys(settings map[string]any, priorSettings map[str
 			continue
 		}
 		delete(settings, key)
+	}
+}
+
+// redactionSentinel is what Jamf returns in place of a payload value it treats as a credential: a
+// run of asterisks, never the value that was written. Wire probing found it on the Wi-Fi payload's
+// Password and on EAPClientConfiguration's OuterIdentity, UserName and UserPassword, while
+// com.apple.loginwindow's AutologinPassword came back in the clear — so which keys are redacted is
+// Jamf's decision, not something Apple's schema describes. The provider therefore recognises the
+// value rather than a list of keys.
+const redactionSentinel = '*'
+
+// minRedactionLength is the shortest run of asterisks treated as a redaction, so a genuine short
+// value made of asterisks is not mistaken for one. Jamf's own sentinel is ten characters.
+const minRedactionLength = 4
+
+// isRedacted reports whether a wire value is Jamf's redaction sentinel rather than a real value.
+func isRedacted(value any) bool {
+	text, ok := value.(string)
+	if !ok || len(text) < minRedactionLength {
+		return false
+	}
+	for _, r := range text {
+		if r != redactionSentinel {
+			return false
+		}
+	}
+	return true
+}
+
+// restoreRedactedValues walks a payload's server-derived settings alongside what the author wrote and
+// puts the authored value back wherever Jamf returned a redaction. Without this, a payload carrying a
+// credential can never settle: the wire value differs from configuration on every read, so the plan
+// shows a change that applying cannot resolve.
+//
+// Only a redacted leaf is substituted, and only where the author actually wrote something at the same
+// path. On import there is nothing to restore from, so the sentinel stays in state — the value is not
+// recoverable from the service, and inventing one would be worse than showing what it returned.
+func restoreRedactedValues(wire, authored any) any {
+	switch typed := wire.(type) {
+	case map[string]any:
+		authoredMap, ok := authored.(map[string]any)
+		if !ok {
+			return wire
+		}
+		for key, value := range typed {
+			authoredValue, present := authoredMap[key]
+			if !present {
+				continue
+			}
+			typed[key] = restoreRedactedValues(value, authoredValue)
+		}
+		return typed
+	case []any:
+		authoredSlice, ok := authored.([]any)
+		if !ok {
+			return wire
+		}
+		for i, value := range typed {
+			if i >= len(authoredSlice) {
+				break
+			}
+			typed[i] = restoreRedactedValues(value, authoredSlice[i])
+		}
+		return typed
+	default:
+		if isRedacted(wire) {
+			if _, ok := authored.(string); ok {
+				return authored
+			}
+		}
+		return wire
 	}
 }
 

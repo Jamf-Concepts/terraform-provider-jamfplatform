@@ -26,14 +26,19 @@ var stronglyTypedComponentIdentifiers = map[string]struct{}{
 	"com.jamf.ddm-configuration-profile":       {},
 }
 
-// legacyPayloadSettingsBehaviour documents how Jamf treats the settings written for a legacy
-// payload, appended to every legacy-payload schema description. Each rule is observed wire
-// behaviour, not provider behaviour, and each one shapes what a plan can show.
-const legacyPayloadSettingsBehaviour = "Jamf validates each payload against Apple's payload keys for its `payload_type`: " +
-	"a key Apple does not define for that payload type is **silently discarded**, so it will not reach any device and Terraform " +
-	"reports a difference on every plan (the provider warns and names the discarded keys on apply); a key whose value has the wrong " +
-	"type is **rejected**, failing the apply with a validation error; and a key set to `null` is discarded, which the provider " +
-	"tolerates, so nulls can stay in configuration without producing a perpetual diff. Key names are matched case-insensitively " +
-	"and stored under Apple's spelling, so match Apple's capitalisation exactly to avoid a permanent difference. " +
-	"Jamf also stamps Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, `payloadUUID`, `payloadVersion`) " +
-	"onto every payload; the provider hides those unless you set them yourself."
+// legacyPayloadSettingsBehaviour documents how Jamf treats the settings written for a legacy payload,
+// appended to every legacy-payload schema description. It deliberately covers only what an author
+// cannot learn from a diagnostic: what the provider absorbs silently, and the one case it cannot fix
+// (an import cannot recover a redacted value). The rules the plan-time schema check reports — an
+// unrecognised or miscased key, a wrong value type, a missing required key, an out-of-range integer —
+// are named there, with the offending path and Apple's spelling, so they are summarised here rather
+// than enumerated. See internal/common/appleprofiles.
+const legacyPayloadSettingsBehaviour = "Jamf validates each payload against Apple's payload keys for its `payload_type`, " +
+	"and the provider checks the same rules during `plan`, so an unrecognised or miscased key, a wrong value type, " +
+	"or a missing required key is reported before an apply rather than failing one. " +
+	"Two behaviours are absorbed for you instead: a key set to `null` is discarded by Jamf and tolerated here, so nulls " +
+	"can stay in configuration; and Apple's common payload metadata (`payloadDisplayName`, `payloadOrganization`, " +
+	"`payloadUUID`, `payloadVersion`) is stamped onto every payload and hidden unless you set it yourself. " +
+	"Values Jamf treats as credentials — a Wi-Fi `Password`, and `EAPClientConfiguration`'s `UserName`, `UserPassword` " +
+	"and `OuterIdentity` — are returned redacted, and the provider keeps what you wrote so the plan still settles; " +
+	"an imported blueprint carries the redaction, because the real value cannot be read back."

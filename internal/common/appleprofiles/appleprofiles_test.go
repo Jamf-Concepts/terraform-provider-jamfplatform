@@ -211,3 +211,44 @@ func TestValidate_ProblemsAreOrderedByPath(t *testing.T) {
 		t.Errorf("expected problems ordered by path, got %q then %q", problems[0].Path, problems[1].Path)
 	}
 }
+
+func TestValidate_IntegerOutOfJamfRange(t *testing.T) {
+	// Apple declares CacheLimit unbounded; Jamf stores a 32-bit signed integer. Wire probing found
+	// 2147483647 accepted and 2147483648 rejected with a validation failure.
+	if problems := Validate("com.apple.AssetCache.managed", settings(t, `{"CacheLimit":2147483647}`)); len(problems) != 0 {
+		t.Errorf("expected int32 max to be accepted, got %v", problems)
+	}
+
+	problems := Validate("com.apple.AssetCache.managed", settings(t, `{"CacheLimit":2147483648}`))
+	if len(problems) != 1 {
+		t.Fatalf("expected 1 problem, got %v", problems)
+	}
+	if problems[0].Kind != IntegerOutOfRange {
+		t.Errorf("expected IntegerOutOfRange, got %v", problems[0].Kind)
+	}
+	if problems[0].Advisory() {
+		t.Error("expected an out-of-range integer not to be advisory — Jamf rejects the write")
+	}
+	if !strings.Contains(problems[0].Detail, "2147483648") {
+		t.Errorf("expected the offending value in the detail without exponent notation, got %q", problems[0].Detail)
+	}
+}
+
+func TestValidate_NegativeIntegerOutOfJamfRange(t *testing.T) {
+	problems := Validate("com.apple.AssetCache.managed", settings(t, `{"CacheLimit":-2147483649}`))
+	if len(problems) != 1 || problems[0].Kind != IntegerOutOfRange {
+		t.Errorf("expected IntegerOutOfRange below the 32-bit floor, got %v", problems)
+	}
+}
+
+func TestValidate_IntegerRangeCheckedInsideNesting(t *testing.T) {
+	// The bound applies wherever an integer appears, not only at the top level.
+	problems := Validate("com.apple.notificationsettings", settings(t,
+		`{"NotificationSettings":[{"BundleIdentifier":"com.example.app","AlertType":2147483648}]}`))
+	if len(problems) != 1 || problems[0].Kind != IntegerOutOfRange {
+		t.Fatalf("expected IntegerOutOfRange, got %v", problems)
+	}
+	if problems[0].Path != "NotificationSettings[0].AlertType" {
+		t.Errorf("expected an indexed path, got %q", problems[0].Path)
+	}
+}

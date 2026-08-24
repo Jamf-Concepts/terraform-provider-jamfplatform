@@ -687,3 +687,93 @@ func TestCheckLegacyPayloadDiscards_SilentWhenNothingDiscarded(t *testing.T) {
 		t.Errorf("expected no diagnostics, got %v", diags)
 	}
 }
+
+func TestIsRedacted(t *testing.T) {
+	tests := []struct {
+		value any
+		want  bool
+	}{
+		{"**********", true},
+		{"****", true},
+		{"***", false}, // shorter than the sentinel the provider will trust
+		{"abc", false},
+		{"*abc*", false},
+		{"", false},
+		{42, false},
+		{nil, false},
+	}
+	for _, tt := range tests {
+		if got := isRedacted(tt.value); got != tt.want {
+			t.Errorf("isRedacted(%#v) = %v, want %v", tt.value, got, tt.want)
+		}
+	}
+}
+
+func TestFlattenBlockLegacyPayloads_RestoresRedactedCredential(t *testing.T) {
+	// Jamf returns a Wi-Fi credential as a run of asterisks, nested inside EAPClientConfiguration.
+	// Without restoring the authored value the payload can never settle: the wire value differs from
+	// configuration on every read and applying cannot resolve it.
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.wifi.managed","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"Wi-Fi","payloadOrganization":"JAMF Software",` +
+				`"SSID_STR":"EXAMPLE-CORP","Password":"**********",` +
+				`"EAPClientConfiguration":{"AcceptEAPTypes":[25],"UserName":"**********","UserPassword":"**********"}}]}`),
+		},
+	}
+	authored := `{"EAPClientConfiguration":{"AcceptEAPTypes":[25],"UserName":"svc-user","UserPassword":"s3cret"},"Password":"psk-secret","SSID_STR":"EXAMPLE-CORP"}`
+	prior := []BlockLegacyPayloadModel{{
+		PayloadType: types.StringValue("com.apple.wifi.managed"),
+		Settings:    types.StringValue(authored),
+	}}
+
+	got := flattenBlockLegacyPayloads(prior, apiComponents, map[string]struct{}{})
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(got))
+	}
+	if got[0].Settings.ValueString() != authored {
+		t.Errorf("expected the authored settings preserved verbatim, got %q", got[0].Settings.ValueString())
+	}
+}
+
+func TestRestoreRedactedValues_LeavesUnauthoredRedactionAlone(t *testing.T) {
+	// On import there is no authored value to restore from, so the sentinel has to stay: it is not
+	// recoverable from the service, and inventing a value would be worse than showing what it sent.
+	var wire, authored any
+	if err := json.Unmarshal([]byte(`{"Password":"**********","SSID_STR":"X"}`), &wire); err != nil {
+		t.Fatalf("failed to decode wire: %v", err)
+	}
+	if err := json.Unmarshal([]byte(`{"SSID_STR":"X"}`), &authored); err != nil {
+		t.Fatalf("failed to decode authored: %v", err)
+	}
+
+	got, err := json.Marshal(restoreRedactedValues(wire, authored))
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	if string(got) != `{"Password":"**********","SSID_STR":"X"}` {
+		t.Errorf("expected the sentinel left in place, got %s", got)
+	}
+}
+
+func TestRestoreRedactedValues_DoesNotSubstituteNonRedactedValue(t *testing.T) {
+	// A genuine out-of-band change must still surface, so only a redaction is substituted.
+	var wire, authored any
+	if err := json.Unmarshal([]byte(`{"Password":"changed-elsewhere"}`), &wire); err != nil {
+		t.Fatalf("failed to decode wire: %v", err)
+	}
+	if err := json.Unmarshal([]byte(`{"Password":"psk-secret"}`), &authored); err != nil {
+		t.Fatalf("failed to decode authored: %v", err)
+	}
+
+	got, err := json.Marshal(restoreRedactedValues(wire, authored))
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	if string(got) != `{"Password":"changed-elsewhere"}` {
+		t.Errorf("expected the wire value kept, got %s", got)
+	}
+}
