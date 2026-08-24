@@ -18,6 +18,32 @@ generate:
 fmt:
 	gofmt -s -w -e main.go internal/ tools/ scripts/
 
+# apple-profiles regenerates the embedded Apple configuration profile schema table at
+# internal/common/appleprofiles/profiles.json from apple/device-management. It is deliberately NOT
+# part of `make generate`: it needs network access and a clone, and the upstream schemas only change
+# a few times a year, tracking Apple OS releases. Run it when Apple ships a release, review the diff,
+# and commit the regenerated table.
+#
+# Override REF to pin a different upstream branch or tag:
+#   make apple-profiles REF=release
+REF ?= release
+apple-profiles:
+	@set -e; \
+	work="$$(mktemp -d)"; \
+	trap 'rm -rf "$$work"' EXIT; \
+	echo "Cloning apple/device-management ($(REF))..."; \
+	git clone --depth 1 --branch '$(REF)' --filter=blob:none --sparse \
+		https://github.com/apple/device-management.git "$$work/src" >/dev/null 2>&1; \
+	git -C "$$work/src" sparse-checkout set mdm/profiles >/dev/null 2>&1; \
+	commit="$$(git -C "$$work/src" rev-parse HEAD)"; \
+	release="$$(git -C "$$work/src" log -1 --format=%s)"; \
+	cd tools && go run ./appleprofiles \
+		-source "$$work/src/mdm/profiles" \
+		-commit "$$commit" \
+		-release "$$release" \
+		-ref '$(REF)' \
+		-out ../internal/common/appleprofiles/profiles.json
+
 fix:
 	go fix ./...
 
@@ -60,4 +86,4 @@ testacc-changed:
 	echo "Acceptance scope: $$pkgs"; \
 	TF_ACC=1 go test -v -cover -count=1 -tags acceptance -timeout 120m -p=1 $$pkgs
 
-.PHONY: fmt fix lint test testacc testacc-run testacc-changed build install generate
+.PHONY: fmt fix lint apple-profiles test testacc testacc-run testacc-changed build install generate

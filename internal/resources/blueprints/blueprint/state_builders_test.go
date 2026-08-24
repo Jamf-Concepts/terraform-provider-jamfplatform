@@ -5,6 +5,7 @@ package blueprint
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -360,5 +361,419 @@ func TestFlattenFlatLegacyPayloads_OverwritesOnMismatch(t *testing.T) {
 	settings := raw.([]any)[0].(map[string]any)["settings"].(map[string]any)
 	if settings["BundleIdentifier"] != "com.apple.tips.new" {
 		t.Errorf("expected overwritten value 'com.apple.tips.new', got %v", settings["BundleIdentifier"])
+	}
+}
+
+// The three wire behaviours the blueprints service applies to a stored legacy payload, pinned as
+// unit tests because each one manufactured a perpetual diff (and a post-apply inconsistent-result
+// error) when the flatteners echoed the wire back verbatim:
+//
+//   - it stamps Apple's common payload metadata onto every payload (payloadDisplayName,
+//     payloadOrganization, payloadUUID, payloadVersion);
+//   - it discards a null-valued key rather than storing it;
+//   - it discards a key Apple's schema for that payload type does not define.
+//
+// The first two are absorbed (masked / null-tolerant compare); the third is surfaced, as a genuine
+// mismatch plus a warning naming the keys.
+
+func TestFlattenBlockLegacyPayloads_MasksServerStampedMetadata(t *testing.T) {
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.applicationaccess","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"Restrictions","payloadOrganization":"JAMF Software",` +
+				`"allowSafariPrivateBrowsing":false}]}`),
+		},
+	}
+	authored := `{"allowSafariPrivateBrowsing":false}`
+	prior := []BlockLegacyPayloadModel{{
+		PayloadType: types.StringValue("com.apple.applicationaccess"),
+		Settings:    types.StringValue(authored),
+	}}
+
+	got := flattenBlockLegacyPayloads(prior, apiComponents, map[string]struct{}{})
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(got))
+	}
+	if got[0].Settings.ValueString() != authored {
+		t.Errorf("expected the authored settings preserved verbatim, got %q", got[0].Settings.ValueString())
+	}
+}
+
+func TestFlattenBlockLegacyPayloads_KeepsAuthoredMetadata(t *testing.T) {
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.applicationaccess","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"My Own Name","payloadOrganization":"Acme",` +
+				`"allowSafariPrivateBrowsing":false}]}`),
+		},
+	}
+	// The author declared two of the stamped keys, and the service echoed both back, so both must
+	// survive the mask — dropping them would flip the diff around and delete the author's values.
+	authored := `{"allowSafariPrivateBrowsing":false,"payloadDisplayName":"My Own Name","payloadOrganization":"Acme"}`
+	prior := []BlockLegacyPayloadModel{{
+		PayloadType: types.StringValue("com.apple.applicationaccess"),
+		Settings:    types.StringValue(authored),
+	}}
+
+	got := flattenBlockLegacyPayloads(prior, apiComponents, map[string]struct{}{})
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(got))
+	}
+	if got[0].Settings.ValueString() != authored {
+		t.Errorf("expected the authored settings preserved verbatim, got %q", got[0].Settings.ValueString())
+	}
+}
+
+func TestFlattenBlockLegacyPayloads_ToleratesDiscardedNulls(t *testing.T) {
+	// The service stored the payload without PreviewType or GroupingType, because the author gave
+	// them null. The authored string must survive so the nulls stay in configuration shape.
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.notificationsettings","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"Notifications","payloadOrganization":"JAMF Software",` +
+				`"NotificationSettings":[{"AlertType":0,"BundleIdentifier":"com.example.app","NotificationsEnabled":false}]}]}`),
+		},
+	}
+	authored := `{"NotificationSettings":[{"AlertType":0,"BundleIdentifier":"com.example.app","GroupingType":null,"NotificationsEnabled":false,"PreviewType":null}]}`
+	prior := []BlockLegacyPayloadModel{{
+		PayloadType: types.StringValue("com.apple.notificationsettings"),
+		Settings:    types.StringValue(authored),
+	}}
+
+	got := flattenBlockLegacyPayloads(prior, apiComponents, map[string]struct{}{})
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(got))
+	}
+	if got[0].Settings.ValueString() != authored {
+		t.Errorf("expected the authored settings preserved verbatim, got %q", got[0].Settings.ValueString())
+	}
+}
+
+func TestFlattenBlockLegacyPayloads_SurfacesDiscardedNonNullKey(t *testing.T) {
+	// allowCamera was authored with a real value and is absent from the wire, so this is a genuine
+	// mismatch — the service refused it — and state must move to the wire truth.
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.applicationaccess","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"Restrictions","payloadOrganization":"JAMF Software",` +
+				`"allowSafariPrivateBrowsing":false}]}`),
+		},
+	}
+	prior := []BlockLegacyPayloadModel{{
+		PayloadType: types.StringValue("com.apple.applicationaccess"),
+		Settings:    types.StringValue(`{"allowCamera":true,"allowSafariPrivateBrowsing":false}`),
+	}}
+
+	got := flattenBlockLegacyPayloads(prior, apiComponents, map[string]struct{}{})
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(got))
+	}
+	if got[0].Settings.ValueString() != `{"allowSafariPrivateBrowsing":false}` {
+		t.Errorf("expected state to move to the wire truth, got %q", got[0].Settings.ValueString())
+	}
+}
+
+func TestFlattenFlatLegacyPayloads_MasksServerStampedMetadata(t *testing.T) {
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.applicationaccess","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"Restrictions","payloadOrganization":"JAMF Software",` +
+				`"allowSafariPrivateBrowsing":false}]}`),
+		},
+	}
+	prior, err := helpers.JSONToTerraformDynamic([]any{map[string]any{
+		"payload_type": "com.apple.applicationaccess",
+		"settings":     map[string]any{"allowSafariPrivateBrowsing": false},
+	}})
+	if err != nil {
+		t.Fatalf("failed to build prior dynamic: %v", err)
+	}
+
+	got := flattenFlatLegacyPayloads(prior, apiComponents, map[string]struct{}{})
+
+	if !got.Equal(prior) {
+		t.Errorf("expected the prior dynamic preserved once the stamped metadata is masked, got %v", got)
+	}
+}
+
+func TestFlattenFlatLegacyPayloads_MasksStampedMetadataOnImport(t *testing.T) {
+	// Import has no prior value to mask against, so the stamped metadata must still be dropped —
+	// otherwise the imported state carries keys no configuration would ever declare.
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.applicationaccess","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"Restrictions","payloadOrganization":"JAMF Software",` +
+				`"allowSafariPrivateBrowsing":false}]}`),
+		},
+	}
+
+	got := flattenFlatLegacyPayloads(types.DynamicNull(), apiComponents, map[string]struct{}{})
+
+	raw, err := helpers.TerraformDynamicToJSON(got)
+	if err != nil {
+		t.Fatalf("failed to convert dynamic to JSON: %v", err)
+	}
+	settings := raw.([]any)[0].(map[string]any)["settings"].(map[string]any)
+	for _, key := range serverStampedPayloadKeys {
+		if _, exists := settings[key]; exists {
+			t.Errorf("expected %s masked out of settings on import, got %v", key, settings)
+		}
+	}
+	if _, exists := settings["allowSafariPrivateBrowsing"]; !exists {
+		t.Errorf("expected the real payload key kept, got %v", settings)
+	}
+}
+
+func TestPruneJSONNulls(t *testing.T) {
+	var value any
+	if err := json.Unmarshal([]byte(`{"a":null,"b":1,"c":{"d":null,"e":"x"},"f":[{"g":null,"h":2}],"i":[]}`), &value); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	got, err := json.Marshal(pruneJSONNulls(value))
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	want := `{"b":1,"c":{"e":"x"},"f":[{"h":2}],"i":[]}`
+	if string(got) != want {
+		t.Errorf("expected %s, got %s", want, got)
+	}
+}
+
+func TestDiscardedSettingsPaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		authored string
+		stored   string
+		want     []string
+	}{
+		{
+			name:     "nothing discarded",
+			authored: `{"allowCamera":true}`,
+			stored:   `{"allowCamera":true}`,
+		},
+		{
+			name:     "null keys are not discards",
+			authored: `{"allowCamera":true,"allowScreenShot":null}`,
+			stored:   `{"allowCamera":true}`,
+		},
+		{
+			name:     "top-level key dropped",
+			authored: `{"allowCamera":true,"bogusKey":"x"}`,
+			stored:   `{"allowCamera":true}`,
+			want:     []string{"bogusKey"},
+		},
+		{
+			name:     "key dropped inside a nested array entry",
+			authored: `{"NotificationSettings":[{"BundleIdentifier":"a","Bogus":1}]}`,
+			stored:   `{"NotificationSettings":[{"BundleIdentifier":"a"}]}`,
+			want:     []string{"NotificationSettings[0].Bogus"},
+		},
+		{
+			name:     "whole payload rejected",
+			authored: `{"allowCamera":true,"bogusKey":"x"}`,
+			stored:   ``,
+			want:     []string{"allowCamera", "bogusKey"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var authored, stored any
+			if err := json.Unmarshal([]byte(tt.authored), &authored); err != nil {
+				t.Fatalf("failed to unmarshal authored: %v", err)
+			}
+			if tt.stored != "" {
+				if err := json.Unmarshal([]byte(tt.stored), &stored); err != nil {
+					t.Fatalf("failed to unmarshal stored: %v", err)
+				}
+			}
+
+			got := discardedSettingsPaths(authored, stored, "")
+			if len(got) != len(tt.want) {
+				t.Fatalf("expected %v, got %v", tt.want, got)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("expected %v, got %v", tt.want, got)
+					break
+				}
+			}
+		})
+	}
+}
+
+func TestCheckLegacyPayloadDiscards_WarnsOnDiscardedKey(t *testing.T) {
+	stepName := "Restrictions"
+	blueprint := &blueprints.BlueprintDetail{
+		Steps: []blueprints.BlueprintStep{{
+			Name: &stepName,
+			Components: []blueprints.Component{{
+				Identifier: "com.jamf.ddm-configuration-profile",
+				Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+					`"payloadType":"com.apple.applicationaccess","payloadIdentifier":"pi",` +
+					`"allowSafariPrivateBrowsing":false}]}`),
+			}},
+		}},
+	}
+	planned := &BlueprintResourceModel{
+		ComponentBlocks: []ComponentBlockModel{{
+			Name: types.StringValue("Restrictions"),
+			LegacyPayloads: []BlockLegacyPayloadModel{{
+				PayloadType: types.StringValue("com.apple.applicationaccess"),
+				Settings:    types.StringValue(`{"allowSafariPrivateBrowsing":false,"AllowCamera":true,"bogusKey":"x"}`),
+			}},
+		}},
+	}
+
+	diags := checkLegacyPayloadDiscards(planned, blueprint)
+
+	if diags.WarningsCount() != 1 {
+		t.Fatalf("expected 1 warning, got %d (%v)", diags.WarningsCount(), diags)
+	}
+	if diags.ErrorsCount() != 0 {
+		t.Fatalf("expected no errors, got %v", diags.Errors())
+	}
+	detail := diags.Warnings()[0].Detail()
+	for _, want := range []string{"AllowCamera", "bogusKey", "com.apple.applicationaccess", "component_blocks[0] (Restrictions)"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("expected the warning to name %q, got %q", want, detail)
+		}
+	}
+	if strings.Contains(detail, "allowSafariPrivateBrowsing") {
+		t.Errorf("expected the stored key not reported as discarded, got %q", detail)
+	}
+}
+
+func TestCheckLegacyPayloadDiscards_SilentWhenNothingDiscarded(t *testing.T) {
+	blueprint := &blueprints.BlueprintDetail{
+		Steps: []blueprints.BlueprintStep{{
+			Components: []blueprints.Component{{
+				Identifier: "com.jamf.ddm-configuration-profile",
+				Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+					`"payloadType":"com.apple.applicationaccess","payloadIdentifier":"pi","payloadUUID":"pi",` +
+					`"payloadVersion":1,"payloadDisplayName":"Restrictions","payloadOrganization":"JAMF Software",` +
+					`"allowSafariPrivateBrowsing":false}]}`),
+			}},
+		}},
+	}
+	planned := &BlueprintResourceModel{
+		ComponentBlocks: []ComponentBlockModel{{
+			LegacyPayloads: []BlockLegacyPayloadModel{{
+				PayloadType: types.StringValue("com.apple.applicationaccess"),
+				Settings:    types.StringValue(`{"allowSafariPrivateBrowsing":false,"allowCamera":null}`),
+			}},
+		}},
+	}
+
+	if diags := checkLegacyPayloadDiscards(planned, blueprint); len(diags) != 0 {
+		t.Errorf("expected no diagnostics, got %v", diags)
+	}
+}
+
+func TestIsRedacted(t *testing.T) {
+	tests := []struct {
+		value any
+		want  bool
+	}{
+		{"**********", true},
+		{"****", true},
+		{"***", false}, // shorter than the sentinel the provider will trust
+		{"abc", false},
+		{"*abc*", false},
+		{"", false},
+		{42, false},
+		{nil, false},
+	}
+	for _, tt := range tests {
+		if got := isRedacted(tt.value); got != tt.want {
+			t.Errorf("isRedacted(%#v) = %v, want %v", tt.value, got, tt.want)
+		}
+	}
+}
+
+func TestFlattenBlockLegacyPayloads_RestoresRedactedCredential(t *testing.T) {
+	// Jamf returns a Wi-Fi credential as a run of asterisks, nested inside EAPClientConfiguration.
+	// Without restoring the authored value the payload can never settle: the wire value differs from
+	// configuration on every read and applying cannot resolve it.
+	apiComponents := map[string]blueprints.Component{
+		"com.jamf.ddm-configuration-profile": {
+			Identifier: "com.jamf.ddm-configuration-profile",
+			Configuration: json.RawMessage(`{"payloadDisplayName":"bp","payloadContent":[{` +
+				`"payloadType":"com.apple.wifi.managed","payloadIdentifier":"pi","payloadUUID":"pi",` +
+				`"payloadVersion":1,"payloadDisplayName":"Wi-Fi","payloadOrganization":"JAMF Software",` +
+				`"SSID_STR":"EXAMPLE-CORP","Password":"**********",` +
+				`"EAPClientConfiguration":{"AcceptEAPTypes":[25],"UserName":"**********","UserPassword":"**********"}}]}`),
+		},
+	}
+	authored := `{"EAPClientConfiguration":{"AcceptEAPTypes":[25],"UserName":"svc-user","UserPassword":"s3cret"},"Password":"psk-secret","SSID_STR":"EXAMPLE-CORP"}`
+	prior := []BlockLegacyPayloadModel{{
+		PayloadType: types.StringValue("com.apple.wifi.managed"),
+		Settings:    types.StringValue(authored),
+	}}
+
+	got := flattenBlockLegacyPayloads(prior, apiComponents, map[string]struct{}{})
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 payload, got %d", len(got))
+	}
+	if got[0].Settings.ValueString() != authored {
+		t.Errorf("expected the authored settings preserved verbatim, got %q", got[0].Settings.ValueString())
+	}
+}
+
+func TestRestoreRedactedValues_LeavesUnauthoredRedactionAlone(t *testing.T) {
+	// On import there is no authored value to restore from, so the sentinel has to stay: it is not
+	// recoverable from the service, and inventing a value would be worse than showing what it sent.
+	var wire, authored any
+	if err := json.Unmarshal([]byte(`{"Password":"**********","SSID_STR":"X"}`), &wire); err != nil {
+		t.Fatalf("failed to decode wire: %v", err)
+	}
+	if err := json.Unmarshal([]byte(`{"SSID_STR":"X"}`), &authored); err != nil {
+		t.Fatalf("failed to decode authored: %v", err)
+	}
+
+	got, err := json.Marshal(restoreRedactedValues(wire, authored))
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	if string(got) != `{"Password":"**********","SSID_STR":"X"}` {
+		t.Errorf("expected the sentinel left in place, got %s", got)
+	}
+}
+
+func TestRestoreRedactedValues_DoesNotSubstituteNonRedactedValue(t *testing.T) {
+	// A genuine out-of-band change must still surface, so only a redaction is substituted.
+	var wire, authored any
+	if err := json.Unmarshal([]byte(`{"Password":"changed-elsewhere"}`), &wire); err != nil {
+		t.Fatalf("failed to decode wire: %v", err)
+	}
+	if err := json.Unmarshal([]byte(`{"Password":"psk-secret"}`), &authored); err != nil {
+		t.Fatalf("failed to decode authored: %v", err)
+	}
+
+	got, err := json.Marshal(restoreRedactedValues(wire, authored))
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	if string(got) != `{"Password":"changed-elsewhere"}` {
+		t.Errorf("expected the wire value kept, got %s", got)
 	}
 }

@@ -1055,3 +1055,333 @@ func TestAccDataSource_BlueprintComponents(t *testing.T) {
 		},
 	})
 }
+
+// TestAccResource_Blueprint_LegacyPayloads_SchemaValidation covers the plan-time check against
+// Apple's declared payload keys (internal/common/appleprofiles). Each step asserts a configuration
+// Jamf would refuse or quietly rewrite is stopped at plan, so no write is attempted: a value of the
+// wrong type and a missing required key both fail the write outright, and a miscased key is stored
+// under Apple's spelling, which configuration could never match. Every case here was wire-probed
+// against a live tenant before being pinned.
+func TestAccResource_Blueprint_LegacyPayloads_SchemaValidation(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-schema-" + suffix
+
+	config := func(payloadType, settings string) string {
+		return testBlueprintConfig(smartGroupHCL("legacyschema"), fmt.Sprintf(`
+			resource "jamfplatform_blueprints_blueprint" "test_legacy_schema" {
+				name          = %q
+				description   = "Acceptance test — safe to delete"
+				deployed      = false
+				device_groups = [jamfplatform_device_group.scope.id]
+
+				component_blocks = [
+					{
+						name = "Schema"
+						legacy_payloads = [
+							{
+								payload_type = %q
+								settings     = %s
+							}
+						]
+					},
+				]
+			}
+		`, name, payloadType, settings))
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				// allowScreenShot is declared <boolean>; the service returns a validation failure.
+				Config:      config("com.apple.applicationaccess", `jsonencode({ allowScreenShot = "yes" })`),
+				ExpectError: regexp.MustCompile(`Apple declares a boolean here`),
+				PlanOnly:    true,
+			},
+			{
+				// The service stores this as allowCamera, which the configuration can never match.
+				Config:      config("com.apple.applicationaccess", `jsonencode({ AllowCamera = true })`),
+				ExpectError: regexp.MustCompile(`not spelled the way Apple defines it`),
+				PlanOnly:    true,
+			},
+			{
+				// NotificationSettings is required; the service rejects the write without it.
+				Config:      config("com.apple.notificationsettings", `jsonencode({})`),
+				ExpectError: regexp.MustCompile(`marks "NotificationSettings" required`),
+				PlanOnly:    true,
+			},
+			{
+				// BundleIdentifier is required inside each array entry.
+				Config:      config("com.apple.notificationsettings", `jsonencode({ NotificationSettings = [{ AlertType = 1 }] })`),
+				ExpectError: regexp.MustCompile(`BundleIdentifier`),
+				PlanOnly:    true,
+			},
+			{
+				// The payload type is matched case-sensitively by the service.
+				Config: config("com.apple.Dock", `jsonencode({ orientation = "left" })`),
+				// Terraform wraps diagnostic text at roughly 80 columns, so the pattern must stay
+				// inside one rendered line (see the payload type, which the message quotes first).
+				ExpectError: regexp.MustCompile(`payload type "com\.apple\.Dock" is not spelled`),
+				PlanOnly:    true,
+			},
+			{
+				// A clean payload plans and applies. Nulls and the free-form MCX subtree are both
+				// left alone, so this exercises the two tolerances alongside the checks above.
+				Config: config("com.apple.applicationaccess", `jsonencode({ allowCamera = true, allowSafariPrivateBrowsing = false, allowScreenShot = null })`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_blueprints_blueprint.test_legacy_schema", "id"),
+					resource.TestCheckResourceAttr("jamfplatform_blueprints_blueprint.test_legacy_schema", "name", name),
+				),
+			},
+			{
+				Config: config("com.apple.applicationaccess", `jsonencode({ allowCamera = true, allowSafariPrivateBrowsing = false, allowScreenShot = null })`),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_LegacyPayloads_MCXPassthrough pins that an MCX "Custom Settings" payload
+// is left alone by the schema check. Everything below a preference domain is free-form — the service
+// stores arbitrary keys there verbatim — so validating past the wildcard would reject configurations
+// that work. The envelope itself is still checked, which the unit tests cover.
+func TestAccResource_Blueprint_LegacyPayloads_MCXPassthrough(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-mcx-" + suffix
+	addr := "jamfplatform_blueprints_blueprint.test_legacy_mcx"
+
+	config := testBlueprintConfig(smartGroupHCL("legacymcx"), fmt.Sprintf(`
+		resource "jamfplatform_blueprints_blueprint" "test_legacy_mcx" {
+			name          = %q
+			description   = "Acceptance test — safe to delete"
+			deployed      = false
+			device_groups = [jamfplatform_device_group.scope.id]
+
+			component_blocks = [
+				{
+					name = "Custom Settings"
+					legacy_payloads = [
+						{
+							payload_type = "com.apple.ManagedClient.preferences"
+							settings = jsonencode({
+								PayloadContent = {
+									"com.example.notarealapp" = {
+										Forced = [
+											{
+												mcx_preference_settings = {
+													totallyMadeUpKey = "whatever"
+													aNumber          = 42
+													nested           = { deep = [1, 2, { x = true }] }
+												}
+											},
+										]
+									}
+								}
+							})
+						}
+					]
+				},
+			]
+		}
+	`, name))
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(addr, "id"),
+					resource.TestCheckResourceAttr(addr, "name", name),
+				),
+			},
+			{
+				Config: config,
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_LegacyPayloads_FlatSchemaValidation covers the same plan-time schema
+// check on the deprecated top-level legacy_payloads attribute, where settings are objects rather
+// than JSON strings and the value is dynamic.
+func TestAccResource_Blueprint_LegacyPayloads_FlatSchemaValidation(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-flatschema-" + suffix
+
+	config := func(settings string) string {
+		return testBlueprintConfig(smartGroupHCL("legacyflatschema"), fmt.Sprintf(`
+			resource "jamfplatform_blueprints_blueprint" "test_legacy_flat_schema" {
+				name          = %q
+				description   = "Acceptance test — safe to delete"
+				deployed      = false
+				device_groups = [jamfplatform_device_group.scope.id]
+
+				legacy_payloads = [
+					{
+						payload_type = "com.apple.applicationaccess"
+						settings     = %s
+					}
+				]
+			}
+		`, name, settings))
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config:      config(`{ allowScreenShot = "yes" }`),
+				ExpectError: regexp.MustCompile(`Apple declares a boolean here`),
+				PlanOnly:    true,
+			},
+			{
+				Config: config(`{ allowCamera = true }`),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_blueprints_blueprint.test_legacy_flat_schema", "id"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_LegacyPayloads_RedactedCredentials pins the round trip for a payload
+// carrying credentials. Jamf returns a Wi-Fi Password, and EAPClientConfiguration's UserName and
+// UserPassword, as a run of asterisks rather than the value written, so without restoring the
+// authored value the resource could never settle: step 1 would fail with an inconsistent result and
+// every later plan would show a change that applying cannot resolve. Step 2 asserts the empty plan.
+func TestAccResource_Blueprint_LegacyPayloads_RedactedCredentials(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-redacted-" + suffix
+	addr := "jamfplatform_blueprints_blueprint.test_legacy_redacted"
+
+	config := func(ssid string) string {
+		return testBlueprintConfig(smartGroupHCL("legacyredacted"), fmt.Sprintf(`
+			resource "jamfplatform_blueprints_blueprint" "test_legacy_redacted" {
+				name          = %q
+				description   = "Acceptance test — safe to delete"
+				deployed      = false
+				device_groups = [jamfplatform_device_group.scope.id]
+
+				component_blocks = [
+					{
+						name = "Wi-Fi"
+						legacy_payloads = [
+							{
+								payload_type = "com.apple.wifi.managed"
+								settings = jsonencode({
+									SSID_STR       = %q
+									EncryptionType = "WPA2"
+									AutoJoin       = true
+									Password       = "not-a-real-psk-abc123"
+									EAPClientConfiguration = {
+										AcceptEAPTypes = [25]
+										UserName       = "svc-wifi"
+										UserPassword   = "not-a-real-password-abc123"
+										OuterIdentity  = "anonymous"
+									}
+								})
+							}
+						]
+					},
+				]
+			}
+		`, name, ssid))
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: config("TF-ACC-REDACTED"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(addr, "id"),
+					resource.TestCheckResourceAttr(addr, "name", name),
+				),
+			},
+			{
+				Config: config("TF-ACC-REDACTED"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+			{
+				// A genuine edit alongside the credentials must still be seen and applied.
+				Config: config("TF-ACC-REDACTED-2"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet(addr, "id"),
+				),
+			},
+			{
+				Config: config("TF-ACC-REDACTED-2"),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
+// TestAccResource_Blueprint_LegacyPayloads_IntegerOutOfRange pins the plan-time check for Jamf's
+// 32-bit integer field. Apple declares CacheLimit unbounded, so only wire probing reveals the limit;
+// the write fails with a validation error, which is worth catching before an apply.
+func TestAccResource_Blueprint_LegacyPayloads_IntegerOutOfRange(t *testing.T) {
+	testhelpers.AccPreCheck(t)
+	suffix := testhelpers.RunSuffix()
+	name := "tf-acc-legacy-int32-" + suffix
+
+	config := func(cacheLimit string) string {
+		return testBlueprintConfig(smartGroupHCL("legacyint32"), fmt.Sprintf(`
+			resource "jamfplatform_blueprints_blueprint" "test_legacy_int32" {
+				name          = %q
+				description   = "Acceptance test — safe to delete"
+				deployed      = false
+				device_groups = [jamfplatform_device_group.scope.id]
+
+				component_blocks = [
+					{
+						name = "Content Caching"
+						legacy_payloads = [
+							{
+								payload_type = "com.apple.AssetCache.managed"
+								settings     = jsonencode({ CacheLimit = %s })
+							}
+						]
+					},
+				]
+			}
+		`, name, cacheLimit))
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckBlueprintResourcesDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config:      config("2147483648"),
+				ExpectError: regexp.MustCompile(`32-bit signed field`),
+				PlanOnly:    true,
+			},
+			{
+				// One below the ceiling applies, which is what makes the bound the real thing.
+				Config: config("2147483647"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("jamfplatform_blueprints_blueprint.test_legacy_int32", "id"),
+				),
+			},
+		},
+	})
+}

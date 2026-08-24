@@ -133,9 +133,12 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 			Delete: true,
 		}),
 		"legacy_payloads": schema.DynamicAttribute{
-			MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name.",
+			MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name. Payload validation behaves as described on `component_blocks` → `legacy_payloads` → `settings`.",
 			Optional:            true,
 			DeprecationMessage:  componentAttrDeprecation,
+			Validators: []validator.Dynamic{
+				flatLegacyPayloadSchemaValidator(),
+			},
 		},
 		"component_blocks": schema.ListNestedAttribute{
 			MarkdownDescription: "Ordered list of component blocks. Each block appears as a step in the Jamf Blueprints editor, with its own name, " +
@@ -163,14 +166,12 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 // activationConditionsDescription returns the shared MarkdownDescription for an activation-condition
 // field, parameterised by what the condition applies to ("the blueprint" or "this block").
 func activationConditionsDescription(appliesTo string) string {
-	return "Optional activation condition expression that further restricts which scoped devices " + appliesTo + " applies to. " +
-		"An expression combines a status item, an operator, and a value — using terms such as `@status(...)` and `@property(jamf.device.groups)` " +
-		"with operators like `==`, `!=`, `IN {…}`, `ANY`, `NONE`, `AND`, `OR`, and `NOT`. " +
-		"See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the full syntax. " +
-		"The simplest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. " +
-		"Device groups are referenced by their Platform UUID, so ordinary Terraform interpolation works — reference a managed `jamfplatform_device_group` by its `id` " +
-		"to keep conditions in sync, e.g. `\"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}\"`. " +
-		"When omitted, " + appliesTo + " applies to all devices in the targeted device groups."
+	return "Optional activation condition expression that further restricts which scoped devices " + appliesTo + " applies to; " +
+		"when omitted, " + appliesTo + " applies to every device in the targeted device groups. " +
+		"See the [Activation Condition Expression Reference](https://learn.jamf.com/r/en-US/jamf-pro-blueprints-configuration-guide/Activation_Condition_Expression_Reference) for the syntax; " +
+		"the easiest way to author one is to build the rule in the **Activation conditions** editor in the Jamf UI, switch to the **Text** view, and copy the expression here. " +
+		"Device groups are referenced by Platform UUID, so ordinary interpolation keeps a condition in sync with a managed group, " +
+		"e.g. `\"ANY @property(jamf.device.groups) IN {'${jamfplatform_device_group.example.id}'}\"`."
 }
 
 // sharedComponentAttributes returns the component attribute set shared by the deprecated flat
@@ -292,6 +293,9 @@ func componentBlockAttributes() map[string]schema.Attribute {
 		"legacy_payloads": schema.ListNestedAttribute{
 			MarkdownDescription: "Legacy configuration profile payloads in this block. The payload identifier is auto-generated and the display name uses the blueprint name.",
 			Optional:            true,
+			Validators: []validator.List{
+				blockLegacyPayloadSchemaValidator(),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"payload_type": schema.StringAttribute{
@@ -299,7 +303,7 @@ func componentBlockAttributes() map[string]schema.Attribute {
 						Required:            true,
 					},
 					"settings": schema.StringAttribute{
-						MarkdownDescription: "Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`.",
+						MarkdownDescription: "Payload key-value settings as a JSON object string. Author with `jsonencode({ ... })`. " + legacyPayloadSettingsBehaviour,
 						Optional:            true,
 					},
 				},

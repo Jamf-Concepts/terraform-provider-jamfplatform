@@ -1,0 +1,112 @@
+name: Apple Profile Schemas
+
+# Keeps internal/common/appleprofiles/profiles.json current with Apple's configuration profile
+# schemas. The provider validates legacy configuration profile payloads against that table during
+# plan, so a stale table means keys Apple has since added are reported as unrecognised.
+#
+# This is deliberately a scheduled job that opens a pull request, NOT a check on every pull request:
+# upstream ships a handful of releases a year, and a freshness check on the critical path would block
+# unrelated work the day Apple publishes. It follows the pattern Dependabot already uses here for Go
+# modules and actions — a scheduled, reviewable pull request — because a schema diff can turn a
+# passing configuration into a failing one and so needs a human to look at it.
+#
+# Runs monthly and on demand. Upstream cadence tracks Apple OS releases (roughly four to six commits
+# a year), so a monthly check stays comfortably ahead of it.
+
+on:
+  schedule:
+    # 04:00 UTC on the 1st of each month.
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# A refresh must never race itself; a queued run picks up whatever the previous one committed.
+concurrency:
+  group: apple-profiles
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh Schemas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Regenerate the schema table
+        run: make apple-profiles
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet -- internal/common/appleprofiles/profiles.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Schema table is already current."
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "commit=$(jq -r .commit internal/common/appleprofiles/profiles.json)"
+            echo "release=$(jq -r .release internal/common/appleprofiles/profiles.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      # A schema diff changes what the provider accepts, so the suites that consume the table must
+      # still pass before a refresh is proposed.
+      - name: Test against the new table
+        if: steps.diff.outputs.changed == 'true'
+        run: go test ./internal/common/appleprofiles/... ./internal/resources/blueprints/...
+
+      # A fixed branch is force-pushed, so an unreviewed month does not accumulate branches and an
+      # already-open pull request picks up the newer table instead of a second one being opened.
+      - name: Open or update the refresh pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_COMMIT: ${{ steps.diff.outputs.commit }}
+          UPSTREAM_RELEASE: ${{ steps.diff.outputs.release }}
+        run: |
+          set -euo pipefail
+          branch="chore/apple-profiles-refresh"
+
+          cat > /tmp/commit-message <<EOF
+          chore(appleprofiles): refresh Apple profile schemas to ${UPSTREAM_RELEASE}
+
+          Regenerated internal/common/appleprofiles/profiles.json from
+          apple/device-management ${UPSTREAM_COMMIT}.
+          EOF
+
+          cat > /tmp/pr-body <<EOF
+          Apple published new configuration profile schemas. This refreshes the embedded table the provider validates legacy payloads against.
+
+          Upstream: [\`${UPSTREAM_COMMIT}\`](https://github.com/apple/device-management/commit/${UPSTREAM_COMMIT}) (\`${UPSTREAM_RELEASE}\`)
+
+          **Review focus** — most of a refresh is newly added keys, which is harmless. What matters is:
+
+          - a key whose \`type\` changed, or which gained \`required\`: the provider raises an **error** on a wrong value type and on a missing required key, so either can fail a plan that works today.
+          - a payload type that disappeared upstream, which would start reporting as unrecognised.
+
+          Opened by the Apple Profile Schemas workflow.
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add internal/common/appleprofiles/profiles.json
+          git commit --file=/tmp/commit-message
+          git push --force origin "$branch"
+
+          if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            echo "An open refresh pull request already exists; it now carries the newer table."
+            exit 0
+          fi
+          gh pr create \
+            --head "$branch" \
+            --title "chore(appleprofiles): refresh Apple profile schemas to ${UPSTREAM_RELEASE}" \
+            --body-file /tmp/pr-body
