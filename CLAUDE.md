@@ -40,6 +40,7 @@ internal/
 │   ├── mobileconfig/       # mobileconfig(profile) — build a full .mobileconfig from HCL payloads; also holds the shared Assemble core
 │   └── mcx_forced_payload/ # mcx_forced_payload(domain, prefs) — MCX "Custom Settings" envelope; thin wrapper over mobileconfig.Assemble
 ├── common/
+│   ├── appleprofiles/ # Apple configuration profile schemas (generated table + plan-time payload validation)
 │   ├── availabletitles/ # Shared patch available-titles lookup (patch_external_source, patch_internal_source)
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
 │   ├── files/         # Shared upload-source plumbing for resources that upload file content
@@ -84,6 +85,27 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 
 `internal/common/impact/` produces Jamf Pro's **impact alert notifications** during `terraform plan`: an advisory warning on each object whose scope or payload is changing, reporting how many computers or mobile devices the change reaches. Off by default behind the provider's `impact_alerts` attribute; a nil `*impact.Cache` means disabled, so resources need no flag check. Three channels. Two mirror Jamf's own split — **deployable** (policies, profiles, apps, blueprints, benchmarks) and **scopeable** (groups, classes) — because a resource's `ModifyPlan` cannot see a sibling's, so a plan editing both a group and something scoped to it needs an alert from each side. The third, **policy dependencies** (script, package, printer, Dock item, directory binding, disk encryption configuration), has no counterpart in Jamf Pro: these objects have no scope of their own, so their blast radius is the combined audience of the policies referencing them. Resources wire in via `impact.ReportPlan` (deployable), `impact.ReportMembership` (scopeable) or `impact.ReportDependencyPlan` (dependencies), plus a per-family adapter — a reducer to `impact.Scope` for the first two, and for a dependency only a reader for the object's id and name. The shared Jamf Pro scope block goes through `scope.BuildImpactScope`, which is the single place the narrows/broadens/counts classification lives. Dependencies need a whole-tenant policy sweep, since Jamf Pro has no reverse lookup ("which policies use this script"): lazy, at most once per configured provider instance, self-capped at 5 concurrent reads, and built by `impact.NewCacheWithPolicies` (`NewTenantCache` wires both sources). Alerts are advisory — a tenant that cannot be read yields one notice and never fails a plan. Two rules that are easy to get wrong: a numeric Jamf Pro group id is unique only **within an estate** (see [STYLE_GUIDE.md §Scope helper](STYLE_GUIDE.md#scope-helper)), and group membership is expressed in **device management identifiers**, so a Jamf Pro numeric device/building/department id must be resolved through the inventory before it can be compared with a group's members. User guidance, including the `terraform plan -json` caveat, is in `docs/guides/impact-alerts.md`.
 
+## Apple profile schemas — one-paragraph orientation
+
+`internal/common/appleprofiles/` carries a generated table of Apple's configuration profile payload
+keys, built from the `mdm/profiles` directory of apple/device-management by `make apple-profiles`
+(never part of `make generate` — it needs a network clone, and upstream only moves a few times a
+year). Jamf's blueprints service validates a stored legacy payload against the same vocabulary, and
+wire probing established exactly how: an unknown **payload type** is rejected and matched
+case-sensitively; an unknown **key** is silently discarded; a key differing only in case is silently
+stored under Apple's spelling; a wrong value type or a missing required key fails the write; enum and
+range constraints are **not** enforced (`AlertType: 99` stores fine), so the table does not check
+them either. `appleprofiles.Validate` turns those rules into `Problem` values, and
+`Problem.Advisory()` says how far to trust each one — a name the table does not recognise is a
+warning, because a key Apple added after the snapshot looks identical to one that never existed;
+everything else is an error, because Jamf refuses the write. Descent stops at a free-form
+(wildcard) dictionary: everything under an MCX preference domain
+(`com.apple.ManagedClient.preferences`, the "Custom Settings" envelope) is passthrough, and Jamf
+stops validating there too. The blueprint resource wires this in through `validators.go` for both
+`component_blocks[].legacy_payloads` and the deprecated top-level `legacy_payloads`. Freshness is a
+scheduled concern, not a plan-time one: `.github/workflows/apple-profiles.yml` regenerates monthly
+and opens a pull request, the same reviewable-PR pattern Dependabot uses here.
+
 ## Jamf Pro resources — one-paragraph orientation
 
 Terraform construct name format: `jamfplatform_pro_<resource>` regardless of whether the SDK source is `pro/` or `proclassic/`. One `jamfplatform.Client` built from `JAMFPLATFORM_*` credentials serves both Platform Services and Pro. Every Pro resource declares an unexported `const minJamfProVersion` and funnels Configure through `providerdata.ConfigurePro` (no hand-rolled boilerplate). Each Pro resource's `crud.go` opens with an SDK-endpoints annotation block (`Status: current. Last reviewed YYYY-MM-DD.`) — Pro / ProClassic only; Platform Services resources are exempt. Full rules: [STYLE_GUIDE.md §Jamf Pro Resource Naming](STYLE_GUIDE.md#jamf-pro-resource-naming), §Minimum Jamf Pro version check, §Endpoint adoption & migration policy. Workflow for adding a Pro resource (incl. SDK-comparison + ProClassic payload audit gate): [CONTRIBUTING.md §Adding a Jamf Pro Resource](CONTRIBUTING.md#adding-a-jamf-pro-resource).
@@ -103,6 +125,7 @@ Terraform construct name format: `jamfplatform_pro_<resource>` regardless of whe
 | `fix` | `go fix ./...` — rewrites deprecated API usages |
 | `lint` | `golangci-lint run` |
 | `generate` | Copyright headers + `terraform fmt examples/` + docs |
+| `apple-profiles` | Regenerate `internal/common/appleprofiles/profiles.json` from apple/device-management (network; not part of `generate`) |
 | `test` | Unit tests (excludes `acceptance` build tag) |
 | `testacc` | Acceptance tests (sets `TF_ACC=1`, requires tenant) |
 | `testacc-run` | Targeted acc rerun (`RUN=<regex> PKG=<path>`) |

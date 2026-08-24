@@ -136,6 +136,9 @@ func (r *BlueprintResource) Schema(ctx context.Context, req resource.SchemaReque
 			MarkdownDescription: "Legacy configuration profile payloads as a list of objects. Each object must have a `payload_type` key (Apple reverse-domain identifier, e.g. `com.apple.applicationaccess`) and an optional `settings` object containing the payload key-value pairs. The payload identifier is auto-generated and the display name uses the blueprint name. " + legacyPayloadSettingsBehaviour,
 			Optional:            true,
 			DeprecationMessage:  componentAttrDeprecation,
+			Validators: []validator.Dynamic{
+				flatLegacyPayloadSchemaValidator(),
+			},
 		},
 		"component_blocks": schema.ListNestedAttribute{
 			MarkdownDescription: "Ordered list of component blocks. Each block appears as a step in the Jamf Blueprints editor, with its own name, " +
@@ -292,6 +295,9 @@ func componentBlockAttributes() map[string]schema.Attribute {
 		"legacy_payloads": schema.ListNestedAttribute{
 			MarkdownDescription: "Legacy configuration profile payloads in this block. The payload identifier is auto-generated and the display name uses the blueprint name. " + legacyPayloadSettingsBehaviour,
 			Optional:            true,
+			Validators: []validator.List{
+				blockLegacyPayloadSchemaValidator(),
+			},
 			NestedObject: schema.NestedAttributeObject{
 				Attributes: map[string]schema.Attribute{
 					"payload_type": schema.StringAttribute{
