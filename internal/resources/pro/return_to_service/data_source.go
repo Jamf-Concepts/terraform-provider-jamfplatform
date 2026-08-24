@@ -129,8 +129,7 @@ func (d *ReturnToServiceDataSource) Read(ctx context.Context, req datasource.Rea
 		// Display names are not unique, so a name lookup can match more than one
 		// configuration; surface that as a distinct, actionable diagnostic rather
 		// than a generic not-found.
-		var ambErr *jamfplatform.AmbiguousMatchError
-		if errors.As(err, &ambErr) {
+		if _, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
 			resp.Diagnostics.AddError(
 				"Multiple Jamf Pro Return to Service configurations match this display name",
 				err.Error()+". Look the configuration up by id instead.",
