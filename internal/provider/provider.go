@@ -152,6 +152,7 @@ const (
 	envBaseURL              = "JAMFPLATFORM_BASE_URL"
 	envClientID             = "JAMFPLATFORM_CLIENT_ID"
 	envClientSecret         = "JAMFPLATFORM_CLIENT_SECRET"
+	envEnvironmentID        = "JAMFPLATFORM_ENVIRONMENT_ID"
 	envTenantID             = "JAMFPLATFORM_TENANT_ID"
 	envMinRequestIntervalMs = "JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS"
 	envImpactAlerts         = "JAMFPLATFORM_IMPACT_ALERTS"
@@ -172,6 +173,7 @@ type JamfPlatformProviderModel struct {
 	BaseURL              types.String `tfsdk:"base_url"`
 	ClientID             types.String `tfsdk:"client_id"`
 	ClientSecret         types.String `tfsdk:"client_secret"`
+	EnvironmentID        types.String `tfsdk:"environment_id"`
 	TenantID             types.String `tfsdk:"tenant_id"`
 	MinRequestIntervalMs types.Int64  `tfsdk:"min_request_interval_ms"`
 	ImpactAlerts         types.Bool   `tfsdk:"impact_alerts"`
@@ -211,9 +213,21 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 				Sensitive:   true,
 				Description: "Required. OAuth client secret for Jamf Platform API. Must be set either here or via the JAMFPLATFORM_CLIENT_SECRET environment variable. Marked Optional in the schema so it can be sourced from the environment; the provider errors at configure time if it is set in neither place.",
 			},
+			"environment_id": schema.StringAttribute{
+				Optional: true,
+				MarkdownDescription: "**Preferred.** ID of the **\"Platform environment\"** your API integration targets — a group of tenants across product types with interconnected capabilities. " +
+					"Can also be set via the `JAMFPLATFORM_ENVIRONMENT_ID` environment variable. " +
+					"This is the scope Jamf intends new integrations to be created with, and Blueprints and Compliance Benchmarks are moving to it exclusively. " +
+					"Mutually exclusive with the legacy `tenant_id`: an API integration targets one or the other, so setting both is an error, and supplying the ID that does not match the integration is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer — pick the one your integration was created for rather than treating them as two spellings of the same thing. " +
+					"Setting neither leaves the provider organization-scoped, matching an **\"Organization management\"** integration (single sign-on, AI Governance, and similar organization-level resources); no resource or data source in this provider uses that scope yet, and each one reports the scope it needs when it is configured.",
+			},
 			"tenant_id": schema.StringAttribute{
-				Optional:    true,
-				Description: "Required. Tenant UUID used to scope all API requests. Must be set either here or via the JAMFPLATFORM_TENANT_ID environment variable. Marked Optional in the schema so it can be sourced from the environment; the provider errors at configure time if it is set in neither place.",
+				Optional: true,
+				MarkdownDescription: "**Legacy — prefer `environment_id`.** UUID of the single **\"Tenant\"** your API integration targets: one Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud tenant. " +
+					"Can also be set via the `JAMFPLATFORM_TENANT_ID` environment variable. " +
+					"Jamf describes tenant scope as the legacy method for targeting integrations without a platform environment. " +
+					"It stays supported — and a few surfaces are still only reachable this way — but new configurations should use `environment_id`. " +
+					"Mutually exclusive with `environment_id`; see that attribute for what happens when the ID and the integration disagree.",
 			},
 			"min_request_interval_ms": schema.Int64Attribute{
 				Optional:    true,
@@ -276,21 +290,20 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
-	tenantID := data.TenantID.ValueString()
-	if tenantID == "" {
-		tenantID = getenv(envTenantID)
-	}
-	if tenantID == "" {
-		resp.Diagnostics.AddError(
-			"Missing Required Provider Configuration",
-			"tenant_id must be set either in the provider block or via the JAMFPLATFORM_TENANT_ID environment variable.",
-		)
+	scopeKind, scopeID, scopeDiags := resolveScope(data.EnvironmentID, data.TenantID)
+	resp.Diagnostics.Append(scopeDiags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	opts := []jamfplatform.Option{
 		jamfplatform.WithUserAgent("terraform-provider-jamfplatform/" + p.version),
-		jamfplatform.WithTenantID(tenantID),
+	}
+	switch scopeKind {
+	case providerdata.ScopeEnvironment:
+		opts = append(opts, jamfplatform.WithEnvironmentID(scopeID))
+	case providerdata.ScopeTenant:
+		opts = append(opts, jamfplatform.WithTenantID(scopeID))
 	}
 	// Inter-request pacing, defaulting to none — see resolveMinRequestInterval.
 	//
@@ -316,13 +329,14 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 
+	pd := providerdata.New(apiClient)
+
 	tflog.Info(ctx, "Jamf Platform provider configured", map[string]any{
 		"provider_version":     p.version,
 		"jamf_pro_api_version": jamfplatform.JamfProAPIVersion,
 		"provider_pro_floor":   providerdata.ProviderMinJamfProVersion,
+		"integration_scope":    pd.Scope().String(),
 	})
-
-	pd := providerdata.New(apiClient)
 	impactEnabled, impactWarn := impactAlertsEnabled(data.ImpactAlerts)
 	if impactWarn != "" {
 		// Advisory by design: a typo in the env value must not fail the plan,

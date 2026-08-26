@@ -113,7 +113,7 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 - `selected_os_versions` (Attributes Set) Operating system versions the benchmark applies to. Optional: when omitted, the benchmark targets every version available for the baseline. Supplying a subset scopes the benchmark to just those versions. Immutable (replace on change). Look up valid values via `available_os_versions` on the `jamfplatform_cbengine_rules` data source. (see [below for nested schema](#nestedatt--selected_os_versions))
 - `source_baseline_id` (String) mSCP baseline identifier used as the source for rules. Required on creation, but computed for imports. Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.
 - `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups` instead. Single device group Platform ID targeted by this benchmark, in UUID format. Mutually exclusive with `target_device_groups`. Immutable (replace on change).
-- `target_device_groups` (Set of String) Device group Platform IDs targeted by this benchmark. Specified as a set of UUID strings; Platform IDs can be sourced from the response body of the `/api/v1/groups` Jamf Pro API endpoint. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).
+- `target_device_groups` (Set of String) Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

@@ -220,6 +220,11 @@ func (d *RulesDataSource) Configure(ctx context.Context, req datasource.Configur
 		return
 	}
 
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_cbengine_rules", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	d.client = compliancebenchmarks.New(pd.Client)
 }
 

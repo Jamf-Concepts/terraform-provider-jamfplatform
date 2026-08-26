@@ -29,12 +29,17 @@ func liveCache(t *testing.T) *Cache {
 	baseURL := os.Getenv("JAMFPLATFORM_BASE_URL")
 	clientID := os.Getenv("JAMFPLATFORM_CLIENT_ID")
 	clientSecret := os.Getenv("JAMFPLATFORM_CLIENT_SECRET")
+	environmentID := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID")
 	tenantID := os.Getenv("JAMFPLATFORM_TENANT_ID")
-	if baseURL == "" || clientID == "" || clientSecret == "" || tenantID == "" {
-		t.Skip("set JAMFPLATFORM_BASE_URL, _CLIENT_ID, _CLIENT_SECRET and _TENANT_ID to run")
+	if baseURL == "" || clientID == "" || clientSecret == "" || (environmentID == "" && tenantID == "") {
+		t.Skip("set JAMFPLATFORM_BASE_URL, _CLIENT_ID, _CLIENT_SECRET and one of _ENVIRONMENT_ID / _TENANT_ID to run")
+	}
+	scope := jamfplatform.WithEnvironmentID(environmentID)
+	if environmentID == "" {
+		scope = jamfplatform.WithTenantID(tenantID)
 	}
 	client := jamfplatform.NewClient(baseURL, clientID, clientSecret,
-		jamfplatform.WithTenantID(tenantID),
+		scope,
 		// Matches the provider's default, and is the configuration the sweep's
 		// concurrency bound was chosen against.
 		jamfplatform.WithMinRequestInterval(0),

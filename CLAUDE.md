@@ -110,6 +110,10 @@ and opens a pull request, the same reviewable-PR pattern Dependabot uses here.
 
 Terraform construct name format: `jamfplatform_pro_<resource>` regardless of whether the SDK source is `pro/` or `proclassic/`. One `jamfplatform.Client` built from `JAMFPLATFORM_*` credentials serves both Platform Services and Pro. Every Pro resource declares an unexported `const minJamfProVersion` and funnels Configure through `providerdata.ConfigurePro` (no hand-rolled boilerplate). Each Pro resource's `crud.go` opens with an SDK-endpoints annotation block (`Status: current. Last reviewed YYYY-MM-DD.`) — Pro / ProClassic only; Platform Services resources are exempt. Full rules: [STYLE_GUIDE.md §Jamf Pro Resource Naming](STYLE_GUIDE.md#jamf-pro-resource-naming), §Minimum Jamf Pro version check, §Endpoint adoption & migration policy. Workflow for adding a Pro resource (incl. SDK-comparison + ProClassic payload audit gate): [CONTRIBUTING.md §Adding a Jamf Pro Resource](CONTRIBUTING.md#adding-a-jamf-pro-resource).
 
+## API integration scope — one-paragraph orientation
+
+Jamf offers three scopes when an API integration is created, and the provider mirrors all three: **Platform environment** (a group of tenants across product types — the *preferred* scope, `environment_id` → `X-Environment-Id`), **Tenant** (a single Jamf Pro / School / Protect / Security Cloud tenant — Jamf's own words are "legacy method for targeting integrations without a platform environment", `tenant_id` → `X-Tenant-Id`), and **Organization management** (SSO, AI Governance and similar organization-level resources — no scope header at all; the gateway resolves the context from the access token). Since SDK v0.17.0 the scope travels in a header rather than the URL path, set by `WithEnvironmentID` / `WithTenantID`. So `environment_id` and `tenant_id` are **mutually exclusive and both optional** — an integration targets one, and supplying the other is refused with `403 OWNERSHIP_FORBIDDEN` even when both IDs belong to the same customer. `internal/provider/scope.go` resolves which is in play (config beats environment; both-at-once is an error either way; a shadowed env var warns) and selects the SDK option accordingly; `providerdata.New` then reads the scope back off the built client via `Client.Scope()` (SDK v0.18.0), so the gate can never disagree with the header the client actually sends. Whether a given construct can be reached under that scope is then enforced **per construct**, not once in provider Configure, via `providerdata.RequireScope` in `internal/providerdata/scope.go` — because the answer differs per API family and is about to differ more: Jamf Pro works under either scope (gated once inside `configureSub`, covering every `pro/` package and Pro action), while Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point their call sites drop `ScopeTenant`. Pass the allowed kinds in preference order, environment first — it is the order the diagnostic lists them in. Organization scope is currently rejected everywhere, deliberately: it turns an opaque gateway failure mid-apply into a named diagnostic at Configure, and the organization-level constructs that would accept it are not built yet.
+
 ## Tooling
 
 - Go >= 1.26, Terraform >= 1.13.0.
@@ -136,7 +140,9 @@ Before committing: `make fix fmt lint test`. Then `make generate` if any schema 
 
 - `JAMFPLATFORM_BASE_URL` — `https://us.apigw.jamf.com` / `eu.apigw.jamf.com` / `apac.apigw.jamf.com`.
 - `JAMFPLATFORM_CLIENT_ID` / `JAMFPLATFORM_CLIENT_SECRET` — API client credentials.
-- Acceptance tests additionally require `TF_ACC=1` (set automatically by `make testacc`).
+- `JAMFPLATFORM_ENVIRONMENT_ID` — platform-environment scope, sent as `X-Environment-Id`. **Preferred.**
+- `JAMFPLATFORM_TENANT_ID` — tenant scope, sent as `X-Tenant-Id`. **Legacy.** Mutually exclusive with the above; both are optional — see §API integration scope.
+- Acceptance tests additionally require `TF_ACC=1` (set automatically by `make testacc`), and one of the two scope variables.
 
 ## Copyright headers
 

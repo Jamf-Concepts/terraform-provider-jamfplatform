@@ -348,7 +348,7 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"target_device_groups": schema.SetAttribute{
-				MarkdownDescription: "Device group Platform IDs targeted by this benchmark. Specified as a set of UUID strings; Platform IDs can be sourced from the response body of the `/api/v1/groups` Jamf Pro API endpoint. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).",
+				MarkdownDescription: "Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Validators: []validator.Set{
@@ -433,6 +433,11 @@ func (r *BenchmarkResource) Configure(ctx context.Context, req resource.Configur
 			fmt.Sprintf("Expected *providerdata.Data, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
+		return
+	}
+
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_cbengine_benchmark", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 

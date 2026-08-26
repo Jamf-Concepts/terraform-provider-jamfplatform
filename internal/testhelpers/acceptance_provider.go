@@ -33,8 +33,8 @@ func AccPreCheck(t *testing.T) {
 	if v := os.Getenv("JAMFPLATFORM_CLIENT_SECRET"); v == "" {
 		t.Skip("JAMFPLATFORM_CLIENT_SECRET must be set for acceptance tests")
 	}
-	if v := os.Getenv("JAMFPLATFORM_TENANT_ID"); v == "" {
-		t.Skip("JAMFPLATFORM_TENANT_ID must be set for acceptance tests")
+	if os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID") == "" && os.Getenv("JAMFPLATFORM_TENANT_ID") == "" {
+		t.Skip("one of JAMFPLATFORM_ENVIRONMENT_ID or JAMFPLATFORM_TENANT_ID must be set for acceptance tests")
 	}
 
 	if err := os.Setenv("TF_ACC", "1"); err != nil {

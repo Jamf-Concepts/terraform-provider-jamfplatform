@@ -34,7 +34,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/scope"
 )
 
-// Create handles POST /api/proclassic/tenant/{tenantId}/osxconfigurationprofiles/id/0. Classic
+// Create handles POST /api/proclassic/osxconfigurationprofiles/id/0. Classic
 // allocates the ID and returns it in the response body's <id>. The provider
 // then runs a GET to capture the server-canonical form (including the
 // server-rewritten payload + minted UUIDs) into state. When that read-back

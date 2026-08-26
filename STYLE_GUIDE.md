@@ -695,16 +695,26 @@ func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest,
 
 The helper returns `(*pro.Client, diag.Diagnostics)`. When `req.ProviderData` is nil (early framework lifecycle) it returns `(nil, nil)` — leave `r.client` unset and let the next Configure call populate it. Data sources and list resources use the same one-liner shape; only the request/response types differ.
 
-Platform Services resources do not use `ConfigurePro` — they only need the raw client. They type-assert `req.ProviderData.(*providerdata.Data)` and read `.Client` directly.
+Platform Services resources do not use `ConfigurePro` — they only need the raw client. They type-assert `req.ProviderData.(*providerdata.Data)` and read `.Client` directly, then gate on API integration scope (below).
 
-The tenant version is fetched **only when** a Pro construct with non-empty `minJamfProVersion` is in the config (or when the floor warning needs to run, which happens inside `ConfigurePro` after a `GetJamfProVersion` call). Configurations that use only Platform Services resources never trigger the fetch.
+#### API integration scope: every construct declares which scopes reach it
 
-`RequireMinJamfProVersion` lives in `internal/common/helpers/pro_version.go` and:
+A Jamf API integration is created against one of three scopes, and the provider exposes all three: **Platform environment** (`environment_id` → `X-Environment-Id`) is the **preferred** scope; **Tenant** (`tenant_id` → `X-Tenant-Id`) is the legacy one Jamf documents as "targeting integrations without a platform environment"; **Organization management** is neither attribute set — no scope header, context resolved from the access token. The two attributes are mutually exclusive and **both optional**, so a construct cannot assume a scope was configured at all. Every construct's Configure therefore gates on `providerdata.RequireScope`, naming the scopes it can actually be reached under, **in preference order**:
 
-- Tolerates Jamf's build-suffix format (`11.5.0-t1700000000` → parses as `11.5.0`).
-- Parses `MAJOR.MINOR.PATCH`. Unparseable input → error diagnostic with the raw string.
-- Empty `required` → no-op (returns nil diagnostics).
-- `actual < required` → error diagnostic naming both versions and the resource type. **Error, not warning** — version-gated resources should not silently proceed against unsupported tenants.
+```go
+resp.Diagnostics.Append(pd.RequireScope("jamfplatform_<name>", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+if resp.Diagnostics.HasError() {
+    return
+}
+```
+
+- **Pro and ProClassic constructs need no call site** — the gate is applied once inside `configureSub`, so `ConfigurePro` / `ConfigureProClassic` already enforce environment-or-tenant for every `pro/` package and Pro action.
+- **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion. Every one currently declares `ScopeEnvironment, ScopeTenant`.
+- **Argument order is presentation order** — it is the order the diagnostic lists the scopes in, so environment comes first.
+- **Do not gate in provider Configure instead.** The answer differs per API family — Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point those call sites simply drop `ScopeTenant` — and a provider-level assertion would also block the organization-level constructs that legitimately run without a scope header.
+- Organization scope is rejected everywhere today. That is the point of the gate: it converts an opaque `403` mid-apply into a named diagnostic at Configure.
+
+Scope resolution itself (config beats environment, both-at-once is an error, a shadowed environment variable warns) lives in `internal/provider/scope.go`; the `ScopeKind` vocabulary and the gate live in `internal/providerdata/scope.go`. `providerdata.New` derives the scope from the SDK client's own `Client.Scope()` rather than taking it as a parameter, so a caller cannot build a `Data` whose declared scope differs from the header its client sends.
 
 #### Failure modes
 

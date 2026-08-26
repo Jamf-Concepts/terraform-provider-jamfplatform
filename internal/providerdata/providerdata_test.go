@@ -67,7 +67,7 @@ func TestConfigurePro_WrongType(t *testing.T) {
 }
 
 func TestConfigurePro_HappyPath_NoMinVer(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return atFloorVersion, nil
 		},
@@ -85,7 +85,7 @@ func TestConfigurePro_HappyPath_NoMinVer(t *testing.T) {
 }
 
 func TestConfigurePro_MinVerGate_Satisfied(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return atFloorVersion, nil
 		},
@@ -97,7 +97,7 @@ func TestConfigurePro_MinVerGate_Satisfied(t *testing.T) {
 }
 
 func TestConfigurePro_MinVerGate_Failed(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return "10.0.0", nil
 		},
@@ -111,7 +111,7 @@ func TestConfigurePro_MinVerGate_Failed(t *testing.T) {
 // TestConfigurePro_FloorWarning_EmittedOnce verifies the provider-floor advisory
 // warning fires at most once per Data value even with many Pro Configure calls.
 func TestConfigurePro_FloorWarning_EmittedOnce(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return "10.0.0", nil
 		},
@@ -133,7 +133,7 @@ func TestConfigurePro_FloorWarning_EmittedOnce(t *testing.T) {
 // first Configure does not poison subsequent Configures — they retry the fetch.
 func TestConfigurePro_FetchError_NotCached(t *testing.T) {
 	calls := 0
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			calls++
 			if calls == 1 {
@@ -164,7 +164,7 @@ func TestConfigurePro_FetchError_NotCached(t *testing.T) {
 // TestConfigurePro_FetchError_HardWithMinVer verifies a fetch failure surfaces as
 // a Configure-time error when the resource declares a non-empty minVer.
 func TestConfigurePro_FetchError_HardWithMinVer(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return "", errors.New("503 service unavailable")
 		},
@@ -187,7 +187,7 @@ func TestConfigurePro_FetchError_HardWithMinVer(t *testing.T) {
 // noise low when many empty-minVer Pro resources reuse the same Data.
 func TestConfigurePro_ShortCircuit_EmptyMinVerAfterFloorHandled(t *testing.T) {
 	calls := 0
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			calls++
 			return atFloorVersion, nil
@@ -252,7 +252,7 @@ func TestConfigureProClassic_WrongType(t *testing.T) {
 }
 
 func TestConfigureProClassic_HappyPath_NoMinVer(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return atFloorVersion, nil
 		},
@@ -267,7 +267,7 @@ func TestConfigureProClassic_HappyPath_NoMinVer(t *testing.T) {
 }
 
 func TestConfigureProClassic_MinVerGate_Failed(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return "10.0.0", nil
 		},
@@ -283,7 +283,7 @@ func TestConfigureProClassic_MinVerGate_Failed(t *testing.T) {
 // Data value. A config that mixes both kinds of resources must only see one
 // warning regardless of order.
 func TestConfigureProClassic_SharesFloorStateWithPro(t *testing.T) {
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			return "10.0.0", nil
 		},
@@ -323,7 +323,7 @@ func TestFiredOnce_NamespacedLatches(t *testing.T) {
 // TestGetJamfProVersion_CachesSuccess verifies successful fetches are not re-issued.
 func TestGetJamfProVersion_CachesSuccess(t *testing.T) {
 	calls := 0
-	pd := &Data{Client: newFakeClient(),
+	pd := &Data{Client: newFakeClient(), scope: ScopeTenant,
 		versionFetcher: func(_ context.Context) (string, error) {
 			calls++
 			return atFloorVersion, nil
