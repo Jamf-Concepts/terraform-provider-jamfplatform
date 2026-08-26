@@ -156,6 +156,9 @@ const (
 	envTenantID             = "JAMFPLATFORM_TENANT_ID"
 	envMinRequestIntervalMs = "JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS"
 	envImpactAlerts         = "JAMFPLATFORM_IMPACT_ALERTS"
+
+	envCustomHeaders           = "JAMFPLATFORM_CUSTOM_HEADERS"
+	envAuthorizationHeaderName = "JAMFPLATFORM_AUTHORIZATION_HEADER_NAME"
 )
 
 // Ensure JamfPlatformProvider satisfies the various provider interfaces.
@@ -177,6 +180,9 @@ type JamfPlatformProviderModel struct {
 	TenantID             types.String `tfsdk:"tenant_id"`
 	MinRequestIntervalMs types.Int64  `tfsdk:"min_request_interval_ms"`
 	ImpactAlerts         types.Bool   `tfsdk:"impact_alerts"`
+
+	CustomHeaders           types.Map    `tfsdk:"custom_headers"`
+	AuthorizationHeaderName types.String `tfsdk:"authorization_header_name"`
 }
 
 func (p *JamfPlatformProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -232,6 +238,31 @@ func (p *JamfPlatformProvider) Schema(ctx context.Context, req provider.SchemaRe
 			"min_request_interval_ms": schema.Int64Attribute{
 				Optional:    true,
 				Description: "Minimum elapsed time, in milliseconds, between the start of consecutive outbound API requests, pacing all traffic through the shared client. Defaults to 0 (no pacing). Because it gates request starts rather than limiting concurrency, it is a throughput ceiling on the whole provider: at 100ms no plan exceeds 10 requests per second however many operations Terraform runs in parallel. Raise it to give a heavily loaded server breathing room, at the cost of slowing every plan and apply. Can also be set via the JAMFPLATFORM_MIN_REQUEST_INTERVAL_MS environment variable.",
+			},
+			"custom_headers": schema.MapAttribute{
+				Optional:    true,
+				Sensitive:   true,
+				ElementType: types.StringType,
+				MarkdownDescription: "Extra HTTP headers to send on every request the provider makes, including the token request it uses to authenticate. " +
+					"Keyed by header name; header names are case-insensitive, so `x-proxy-route` and `X-Proxy-Route` are the same header and only one of the two may appear. " +
+					"For deployments whose traffic reaches Jamf through a reverse proxy that authenticates callers itself, or routes on a tag the provider knows nothing about. " +
+					"Marked sensitive in full, because these headers commonly carry a credential and Terraform cannot redact one entry of a map. " +
+					"Can also be set via the `JAMFPLATFORM_CUSTOM_HEADERS` environment variable, as one `Name: value` pair per line — the form a CI runner can inject without a Terraform variable. " +
+					"When this attribute is set the variable is not read at all. " +
+					"Three names are refused. `X-Environment-Id` and `X-Tenant-Id` are set by the provider from `environment_id` and `tenant_id`, and Jamf answers an overridden scope with the same error a wrong credential gets. " +
+					"`Cookie` is refused because a supplied header replaces rather than adds to what the provider sends, and it would displace the session cookie Jamf Cloud uses to keep this client on one application node — a proxy that needs a cookie of its own can simply set one on a response, which the provider stores and sends back on its own. " +
+					"Supplying `Authorization` is supported and is the point of the feature — pair it with `authorization_header_name` so the proxy's credential and Jamf's own both reach the request. " +
+					"See the [Reverse proxy guide](../guides/reverse-proxy) for the whole arrangement.",
+			},
+			"authorization_header_name": schema.StringAttribute{
+				Optional: true,
+				MarkdownDescription: "Send the Jamf credential in this header instead of `Authorization`. " +
+					"For a reverse proxy that consumes `Authorization` for its own service account and expects Jamf's credential under a name it chose. " +
+					"Leave it unset — the default — to keep the credential in `Authorization`, which is what talking to Jamf directly needs. " +
+					"Can also be set via the `JAMFPLATFORM_AUTHORIZATION_HEADER_NAME` environment variable. " +
+					"Only the credential the provider sends on API requests moves; the credentials that obtain it are unaffected, so authentication keeps working. " +
+					"`Authorization`, `X-Environment-Id`, `X-Tenant-Id`, and any name also present in `custom_headers` are refused, since each leaves the request with no usable credential and fails in terms that name something else as the cause. " +
+					"See the [Reverse proxy guide](../guides/reverse-proxy).",
 			},
 			"impact_alerts": schema.BoolAttribute{
 				Optional: true,
@@ -318,6 +349,19 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		return
 	}
 	opts = append(opts, jamfplatform.WithMinRequestInterval(minInterval))
+	customHeaders, headerDiags := resolveCustomHeaders(data.CustomHeaders)
+	resp.Diagnostics.Append(headerDiags...)
+	authHeaderName, authHeaderDiags := resolveAuthorizationHeaderName(data.AuthorizationHeaderName, customHeaders)
+	resp.Diagnostics.Append(authHeaderDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if len(customHeaders) > 0 {
+		opts = append(opts, jamfplatform.WithHeaders(customHeaders))
+	}
+	if authHeaderName != "" {
+		opts = append(opts, jamfplatform.WithAuthorizationHeaderName(authHeaderName))
+	}
 	if shouldEnableHTTPLogging() {
 		opts = append(opts, jamfplatform.WithLogger(NewTerraformLogger()))
 	}
@@ -336,6 +380,8 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		"jamf_pro_api_version": jamfplatform.JamfProAPIVersion,
 		"provider_pro_floor":   providerdata.ProviderMinJamfProVersion,
 		"integration_scope":    pd.Scope().String(),
+		"custom_headers":       sortedHeaderNames(customHeaders),
+		"credential_header":    credentialHeaderName(authHeaderName),
 	})
 	impactEnabled, impactWarn := impactAlertsEnabled(data.ImpactAlerts)
 	if impactWarn != "" {

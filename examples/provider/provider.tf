@@ -18,4 +18,17 @@ provider "jamfplatform" {
   # exactly one of environment_id or tenant_id, and set the one your integration
   # was actually created for.
   # tenant_id = "00000000-0000-0000-0000-000000000000"
+
+  # Only needed when traffic reaches Jamf through a reverse proxy that
+  # authenticates callers itself. An ordinary forward proxy needs nothing beyond
+  # HTTPS_PROXY / NO_PROXY in the environment. See the reverse proxy guide.
+  #
+  # custom_headers = {
+  #   "X-Proxy-Route" = "eu-west"
+  #   "Authorization" = "Basic ${var.proxy_basic_credential}"
+  # }
+  #
+  # Send the Jamf credential in this header instead of Authorization, leaving
+  # Authorization free for the proxy's own credential above.
+  # authorization_header_name = "X-Jamf-Authorization"
 }
