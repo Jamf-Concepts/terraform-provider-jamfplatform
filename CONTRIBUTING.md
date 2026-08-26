@@ -113,7 +113,7 @@ provider "jamfplatform" {
   base_url      = "https://us.apigw.jamf.com"
   client_id     = "..."
   client_secret = "..."
-  tenant_id     = "..."
+  environment_id = "..." # preferred; or tenant_id (legacy), never both
 }
 
 # ... resources / data sources to exercise ...
@@ -125,7 +125,7 @@ Export your tenant credentials and run Terraform directly — skip `init`:
 export JAMFPLATFORM_BASE_URL="https://us.apigw.jamf.com"
 export JAMFPLATFORM_CLIENT_ID="..."
 export JAMFPLATFORM_CLIENT_SECRET="..."
-export JAMFPLATFORM_TENANT_ID="..."
+export JAMFPLATFORM_ENVIRONMENT_ID="..." # preferred; or JAMFPLATFORM_TENANT_ID (legacy), never both
 
 terraform plan
 terraform apply

@@ -59,6 +59,11 @@ func (r *DeviceGroupListResource) Configure(ctx context.Context, req resource.Co
 		return
 	}
 
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_device_group", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	r.client = devicegroups.New(pd.Client)
 	r.proClient = pro.New(pd.Client)
 	r.groupRef = criteria.NewProGroupResolver(proclassic.New(pd.Client))

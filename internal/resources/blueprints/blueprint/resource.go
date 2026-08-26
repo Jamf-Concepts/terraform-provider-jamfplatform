@@ -372,6 +372,11 @@ func (r *BlueprintResource) Configure(ctx context.Context, req resource.Configur
 		return
 	}
 
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_blueprints_blueprint", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	r.client = blueprints.New(pd.Client)
 	r.impact = pd.ImpactCache()
 }

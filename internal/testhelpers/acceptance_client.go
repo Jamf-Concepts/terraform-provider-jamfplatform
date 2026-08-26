@@ -47,8 +47,17 @@ var initAcceptanceClient = sync.OnceValues(func() (*jamfplatform.Client, error) 
 		return nil, fmt.Errorf("missing required environment variables (JAMFPLATFORM_BASE_URL, JAMFPLATFORM_CLIENT_ID, JAMFPLATFORM_CLIENT_SECRET)")
 	}
 
+	environmentID := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID")
+	tenantID := os.Getenv("JAMFPLATFORM_TENANT_ID")
+	if environmentID != "" && tenantID != "" {
+		return nil, fmt.Errorf("JAMFPLATFORM_ENVIRONMENT_ID and JAMFPLATFORM_TENANT_ID are both set; unset one so this client is scoped the same way as the provider under test")
+	}
+
 	var opts []jamfplatform.Option
-	if tenantID := os.Getenv("JAMFPLATFORM_TENANT_ID"); tenantID != "" {
+	switch {
+	case environmentID != "":
+		opts = append(opts, jamfplatform.WithEnvironmentID(environmentID))
+	case tenantID != "":
 		opts = append(opts, jamfplatform.WithTenantID(tenantID))
 	}
 

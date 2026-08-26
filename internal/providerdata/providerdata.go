@@ -57,8 +57,14 @@ const ProviderMinJamfProVersion = "11.31.0"
 //   - Once the floor advisory has been considered (emitted or determined not to be
 //     applicable), further Configure calls with empty minVer skip the version fetch
 //     entirely — there is nothing left to check on those code paths.
+//
+// It also carries the API integration scope (environment, tenant, or
+// organization) the provider was configured with, fixed before any construct
+// runs and read via RequireScope; see scope.go.
 type Data struct {
 	Client *jamfplatform.Client
+
+	scope ScopeKind
 
 	proMu      sync.Mutex
 	proVersion string
@@ -132,9 +138,40 @@ func (d *Data) EnrollmentWriteLock() *sync.Mutex {
 	return &d.enrollmentWriteMu
 }
 
-// New wraps a configured SDK client in a Data value.
+// New wraps a configured SDK client in a Data value, reading the API integration
+// scope back off the client so it cannot disagree with the scope option the
+// client was actually built with.
+//
+// SDK v0.18.0 added Client.Scope() for exactly this; before it the scope had to
+// be passed in alongside, because the transport exposed only TenantID() — which
+// returns "" for both environment and organization scope and so cannot tell them
+// apart — and its scope type was unreachable in internal/client.
 func New(client *jamfplatform.Client) *Data {
-	return &Data{Client: client}
+	return &Data{Client: client, scope: scopeFromClient(client)}
+}
+
+// scopeFromClient maps the SDK's scope onto the provider's ScopeKind.
+//
+// The provider keeps its own enum rather than aliasing the SDK's because it
+// needs organization scope as a named kind carrying user-facing wording: the SDK
+// models it as the zero value and renders it "none", which is right for a log
+// field and wrong for a diagnostic that has to tell a practitioner which
+// integration scope they configured.
+func scopeFromClient(c *jamfplatform.Client) ScopeKind {
+	if c == nil {
+		return ScopeOrganization
+	}
+	kind, id := c.Scope()
+	if id == "" {
+		return ScopeOrganization
+	}
+	switch kind {
+	case jamfplatform.ScopeEnvironment:
+		return ScopeEnvironment
+	case jamfplatform.ScopeTenant:
+		return ScopeTenant
+	}
+	return ScopeOrganization
 }
 
 // GetJamfProVersion fetches the tenant's Jamf Pro version. Successful results are
@@ -233,6 +270,11 @@ func (d *Data) FiredOnce(key string) bool {
 // nothing left to evaluate on those code paths, so the network round-trip is
 // avoided.
 //
+// The credential-scope gate is applied here once for every Jamf Pro construct
+// rather than per package: the Pro API is reachable under either a tenant- or an
+// environment-scoped credential, and has no account-level surface that answers
+// without a scope header, so an organization-scoped credential is rejected.
+//
 // Returns (nil, nil) when providerData is nil (the framework calls Configure with
 // a nil ProviderData during early lifecycle — that is not an error, the resource
 // simply remains unconfigured until a later Configure call provides the data).
@@ -254,6 +296,12 @@ func configureSub[T any](
 		)
 		return nil, diags
 	}
+
+	if scopeDiags := pd.RequireScope(resourceType, ScopeEnvironment, ScopeTenant); scopeDiags.HasError() {
+		diags.Append(scopeDiags...)
+		return nil, diags
+	}
+
 	client := factory(pd.Client)
 
 	// Fast path: empty per-resource minVer and the provider-floor advisory has already

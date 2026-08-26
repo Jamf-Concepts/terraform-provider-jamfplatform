@@ -64,6 +64,7 @@ jobs:
           JAMFPLATFORM_BASE_URL: ${{ secrets.JAMFPLATFORM_BASE_URL }}
           JAMFPLATFORM_CLIENT_ID: ${{ secrets.JAMFPLATFORM_CLIENT_ID }}
           JAMFPLATFORM_CLIENT_SECRET: ${{ secrets.JAMFPLATFORM_CLIENT_SECRET }}
+          JAMFPLATFORM_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_ENVIRONMENT_ID }}
           JAMFPLATFORM_TENANT_ID: ${{ secrets.JAMFPLATFORM_TENANT_ID }}
 
           # --- Automated Device Enrollment ---

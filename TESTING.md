@@ -28,7 +28,7 @@ Acceptance tests create, read, update, and delete real resources against a live 
 export JAMFPLATFORM_BASE_URL="https://us.apigw.jamf.com"
 export JAMFPLATFORM_CLIENT_ID="your-client-id"
 export JAMFPLATFORM_CLIENT_SECRET="your-client-secret"
-export JAMFPLATFORM_TENANT_ID="your-tenant-id"
+export JAMFPLATFORM_ENVIRONMENT_ID="your-environment-id" # preferred; or JAMFPLATFORM_TENANT_ID (legacy), never both
 
 go test -v -cover -count=1 -tags=acceptance -p=1 ./...
 ```
@@ -275,4 +275,5 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_BASE_URL`      | Jamf Platform tenant URL                                      |
 | `JAMFPLATFORM_CLIENT_ID`     | OAuth client ID                                               |
 | `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret                                           |
-| `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — required provider credential; scopes all API requests          |
+| `JAMFPLATFORM_ENVIRONMENT_ID`| Platform environment ID — preferred scope; mutually exclusive with the next row |
+| `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |

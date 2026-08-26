@@ -186,6 +186,11 @@ func (d *DeviceDataSource) Configure(ctx context.Context, req datasource.Configu
 		return
 	}
 
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_device", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	d.client = devices.New(pd.Client)
 }
 

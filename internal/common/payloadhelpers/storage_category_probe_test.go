@@ -82,7 +82,10 @@ func probeClient(t *testing.T) *proclassic.Client {
 		t.Skip("probe needs JAMFPLATFORM_BASE_URL / _CLIENT_ID / _CLIENT_SECRET")
 	}
 	var opts []jamfplatform.Option
-	if tid := os.Getenv("JAMFPLATFORM_TENANT_ID"); tid != "" {
+	switch eid, tid := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID"), os.Getenv("JAMFPLATFORM_TENANT_ID"); {
+	case eid != "":
+		opts = append(opts, jamfplatform.WithEnvironmentID(eid))
+	case tid != "":
 		opts = append(opts, jamfplatform.WithTenantID(tid))
 	}
 	c := jamfplatform.NewClient(base, id, secret, opts...)

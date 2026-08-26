@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 // SDK endpoints used:
-//   - GET    /tenant/{tenantId}/diskencryptionconfigurations
-//   - GET    /tenant/{tenantId}/diskencryptionconfigurations/id/{id}
-//   - GET    /tenant/{tenantId}/diskencryptionconfigurations/name/{name}
-//   - POST   /tenant/{tenantId}/diskencryptionconfigurations/id/0
-//   - PUT    /tenant/{tenantId}/diskencryptionconfigurations/id/{id}
-//   - DELETE /tenant/{tenantId}/diskencryptionconfigurations/id/{id}
-// Status: current. Last reviewed 2026-05-23.
+//   - GET    /diskencryptionconfigurations
+//   - GET    /diskencryptionconfigurations/id/{id}
+//   - GET    /diskencryptionconfigurations/name/{name}
+//   - POST   /diskencryptionconfigurations/id/0
+//   - PUT    /diskencryptionconfigurations/id/{id}
+//   - DELETE /diskencryptionconfigurations/id/{id}
+// Status: current. Last reviewed 2026-08-26.
 
 package disk_encryption_configuration
 

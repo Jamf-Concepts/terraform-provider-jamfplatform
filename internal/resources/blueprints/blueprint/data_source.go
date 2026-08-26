@@ -153,6 +153,11 @@ func (d *BlueprintDataSource) Configure(ctx context.Context, req datasource.Conf
 		return
 	}
 
+	resp.Diagnostics.Append(pd.RequireScope("jamfplatform_blueprints_blueprint", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	d.client = blueprints.New(pd.Client)
 }
 

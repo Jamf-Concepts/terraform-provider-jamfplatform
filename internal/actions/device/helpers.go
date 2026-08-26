@@ -109,6 +109,11 @@ func (a *deviceAction) configure(_ context.Context, req action.ConfigureRequest,
 		return
 	}
 
+	resp.Diagnostics.Append(pd.RequireScope("Jamf Platform device actions", providerdata.ScopeEnvironment, providerdata.ScopeTenant)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	a.devices = devSDK.New(pd.Client)
 	a.actions = daSDK.New(pd.Client)
 }
