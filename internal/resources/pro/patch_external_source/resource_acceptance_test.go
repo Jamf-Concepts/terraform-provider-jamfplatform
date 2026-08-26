@@ -143,11 +143,13 @@ func TestAccDataSource_ProPatchExternalSource_ByID(t *testing.T) {
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_external_source.lookup", "name", "jamfplatform_pro_patch_external_source.src", "name"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_external_source.lookup", "host_name", "definitions.datajar.mobi/v2/"),
 					resource.TestCheckResourceAttr("data.jamfplatform_pro_patch_external_source.lookup", "ssl_enabled", "true"),
-					// The datajar definitions host publishes a real catalog, so
-					// available_titles is populated — assert the first entry.
+					// Only that the attribute is present. Its contents come from a
+					// third-party definitions host via Jamf Pro, and the data source
+					// treats a failed catalog fetch as non-fatal (warning + empty
+					// list) — so asserting on entry 0 tests datajar's uptime, not
+					// this provider. Entry mapping is covered by the unit tests in
+					// internal/common/availabletitles.
 					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.#"),
-					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.0.name_id"),
-					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.0.app_name"),
 				),
 			},
 		},
@@ -177,8 +179,8 @@ func TestAccDataSource_ProPatchExternalSource_ByName(t *testing.T) {
 				`, name),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPair("data.jamfplatform_pro_patch_external_source.lookup", "id", "jamfplatform_pro_patch_external_source.src", "id"),
-					// Real definitions host → populated catalog.
-					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.0.name_id"),
+					// Presence only — see the ByID test for why entry 0 is not asserted.
+					resource.TestCheckResourceAttrSet("data.jamfplatform_pro_patch_external_source.lookup", "available_titles.#"),
 				),
 			},
 		},
