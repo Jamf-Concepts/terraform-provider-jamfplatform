@@ -61,13 +61,13 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
 
 ### Read-Only
 
-- `availability_zones` (List of String) Source addresses IPsec traffic from Jamf Security Cloud originates from.
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--contact))
-- `datacenter` (String) Egress region this gateway is deployed to.
 - `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway. Empty while provisioning, and always empty on an IPsec gateway.
 - `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway, routing through private egress IP addresses Jamf provisions. Mutually exclusive with an IPsec configuration.
+- `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.
 - `ipsec` (Attributes) IPsec tunnel configuration. Null on a dedicated internet gateway. (see [below for nested schema](#nestedatt--ipsec))
+- `ipsec_source_ip_addresses` (List of String) Addresses IPsec traffic from Jamf Security Cloud originates from.
 - `status` (Attributes) Operational status Jamf Security Cloud reports for this gateway. (see [below for nested schema](#nestedatt--status))
 - `tenant_ids` (List of String) IDs of the tenants granted access to this gateway.
 
@@ -94,10 +94,10 @@ Read-Only:
 Read-Only:
 
 - `customer_side` (Attributes) The customer end of the tunnel. (see [below for nested schema](#nestedatt--ipsec--customer_side))
-- `esp` (Attributes) Phase 2 cipher suite, protecting the tunnelled traffic. (see [below for nested schema](#nestedatt--ipsec--esp))
-- `ike` (Attributes) Phase 1 cipher suite, protecting the key exchange. (see [below for nested schema](#nestedatt--ipsec--ike))
 - `jamf_side` (Attributes) The Jamf Security Cloud end of the tunnel. (see [below for nested schema](#nestedatt--ipsec--jamf_side))
-- `key_exchange` (String) Key exchange protocol.
+- `key_exchange_protocol` (String) Key exchange protocol.
+- `phase_1` (Attributes) Phase 1 cipher suite, protecting the key exchange. (see [below for nested schema](#nestedatt--ipsec--phase_1))
+- `phase_2` (Attributes) Phase 2 cipher suite, protecting the tunnelled traffic. (see [below for nested schema](#nestedatt--ipsec--phase_2))
 
 <a id="nestedatt--ipsec--customer_side"></a>
 ### Nested Schema for `ipsec.customer_side`
@@ -106,31 +106,9 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Your IPsec gateway address.
-- `ike_id` (String) IKE identity your concentrator presents.
+- `ike_domain_id` (String) IKE identity your concentrator presents.
 - `subnets` (List of String) Subnets reachable through this gateway, in CIDR notation.
 - `vendor` (String) VPN vendor of your concentrator.
-
-
-<a id="nestedatt--ipsec--esp"></a>
-### Nested Schema for `ipsec.esp`
-
-Read-Only:
-
-- `dh_group` (String) Diffie-Hellman group.
-- `encryption` (String) Encryption algorithm.
-- `integrity` (String) Integrity algorithm.
-- `lifetime_seconds` (Number) Security association lifetime, in seconds.
-
-
-<a id="nestedatt--ipsec--ike"></a>
-### Nested Schema for `ipsec.ike`
-
-Read-Only:
-
-- `dh_group` (String) Diffie-Hellman group.
-- `encryption` (String) Encryption algorithm.
-- `integrity` (String) Integrity algorithm.
-- `lifetime_seconds` (Number) Security association lifetime, in seconds.
 
 
 <a id="nestedatt--ipsec--jamf_side"></a>
@@ -140,8 +118,30 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Endpoint address.
-- `ike_id` (String) IKE identity Jamf presents.
+- `ike_domain_id` (String) IKE identity Jamf presents.
 - `subnet` (String) Jamf-side encryption domain, in CIDR notation.
+
+
+<a id="nestedatt--ipsec--phase_1"></a>
+### Nested Schema for `ipsec.phase_1`
+
+Read-Only:
+
+- `diffie_hellman_group` (String) Diffie-Hellman group.
+- `encryption` (String) Encryption algorithm.
+- `integrity` (String) Integrity algorithm.
+- `sa_lifetime_seconds` (Number) Security association lifetime, in seconds.
+
+
+<a id="nestedatt--ipsec--phase_2"></a>
+### Nested Schema for `ipsec.phase_2`
+
+Read-Only:
+
+- `diffie_hellman_group` (String) Diffie-Hellman group.
+- `encryption` (String) Encryption algorithm.
+- `integrity` (String) Integrity algorithm.
+- `sa_lifetime_seconds` (Number) Security association lifetime, in seconds.
 
 
 

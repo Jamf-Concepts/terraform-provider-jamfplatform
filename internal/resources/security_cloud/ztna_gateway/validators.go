@@ -183,29 +183,29 @@ func parseIPv4CIDR(value string) (net.IP, int, error) {
 	return ip, prefix, nil
 }
 
-// ipsecAvailabilityZonesValidator enforces that availability_zones is only set on
-// an IPsec gateway.
+// ipsecSourceAddressesValidator enforces that ipsec_source_ip_addresses is only
+// set on an IPsec gateway.
 //
 // The server refuses the combination with `400 [INVALID_FIELD]
 // availabilityZones: availabilityZones must be empty when dedicatedIps.enabled is
 // true.` Because the provider derives that flag from the absence of the `ipsec`
-// block, the equivalent config-level rule is: availability zones require `ipsec`.
-type ipsecAvailabilityZonesValidator struct{}
+// block, the equivalent config-level rule is: source addresses require `ipsec`.
+type ipsecSourceAddressesValidator struct{}
 
-var _ resource.ConfigValidator = ipsecAvailabilityZonesValidator{}
+var _ resource.ConfigValidator = ipsecSourceAddressesValidator{}
 
 // Description returns a plain-text description of the validator.
-func (ipsecAvailabilityZonesValidator) Description(_ context.Context) string {
-	return "availability_zones may only be set when the ipsec block is present"
+func (ipsecSourceAddressesValidator) Description(_ context.Context) string {
+	return "ipsec_source_ip_addresses may only be set when the ipsec block is present"
 }
 
 // MarkdownDescription returns the markdown description of the validator.
-func (v ipsecAvailabilityZonesValidator) MarkdownDescription(ctx context.Context) string {
+func (v ipsecSourceAddressesValidator) MarkdownDescription(ctx context.Context) string {
 	return v.Description(ctx)
 }
 
 // ValidateResource implements resource.ConfigValidator.
-func (v ipsecAvailabilityZonesValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+func (v ipsecSourceAddressesValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var config GatewayResourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
@@ -214,14 +214,14 @@ func (v ipsecAvailabilityZonesValidator) ValidateResource(ctx context.Context, r
 	if config.IPSec != nil {
 		return
 	}
-	if config.AvailabilityZones.IsNull() || config.AvailabilityZones.IsUnknown() {
+	if config.IPSecSourceIPAddresses.IsNull() || config.IPSecSourceIPAddresses.IsUnknown() {
 		return
 	}
 	resp.Diagnostics.AddAttributeError(
-		path.Root("availability_zones"),
-		"Availability zones require an IPsec gateway",
-		"`availability_zones` names the source addresses of IPsec traffic, so it only applies to a dedicated "+
-			"IPsec gateway. This gateway has no `ipsec` block, which makes it a dedicated internet gateway — "+
-			"remove `availability_zones`, or add the `ipsec` block.",
+		path.Root("ipsec_source_ip_addresses"),
+		"IPsec source addresses require an IPsec gateway",
+		"`ipsec_source_ip_addresses` names the addresses IPsec traffic originates from, so it only applies to a "+
+			"dedicated IPsec gateway. This gateway has no `ipsec` block, which makes it a dedicated internet "+
+			"gateway — remove `ipsec_source_ip_addresses`, or add the `ipsec` block.",
 	)
 }

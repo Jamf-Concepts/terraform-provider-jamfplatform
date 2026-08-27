@@ -70,11 +70,11 @@ func (d *GroupedGatewaysDataSource) Schema(ctx context.Context, _ datasource.Sch
 							ElementType:         types.StringType,
 						},
 						"routing_strategy": schema.StringAttribute{
-							MarkdownDescription: "Which member a device uses: `NEAREST`, `RANDOM` or `ACTIVE_STANDBY`.",
+							MarkdownDescription: "Which member a device uses: `Nearest`, `Random` or `First available`.",
 							Computed:            true,
 						},
-						"recovery_delay_seconds": schema.Int64Attribute{
-							MarkdownDescription: "How long a recovered member must stay healthy before traffic returns to it, in seconds.",
+						"required_gateway_stability": schema.StringAttribute{
+							MarkdownDescription: "How long a recovered member must stay healthy before traffic returns to it.",
 							Computed:            true,
 						},
 						"tenant_ids": schema.ListAttribute{

@@ -60,7 +60,7 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 				Optional:            true,
 				Computed:            true,
 			},
-			"datacenter": schema.StringAttribute{
+			"egress_region": schema.StringAttribute{
 				MarkdownDescription: "Egress region this gateway is deployed to.",
 				Computed:            true,
 			},
@@ -81,8 +81,8 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
-			"availability_zones": schema.ListAttribute{
-				MarkdownDescription: "Source addresses IPsec traffic from Jamf Security Cloud originates from.",
+			"ipsec_source_ip_addresses": schema.ListAttribute{
+				MarkdownDescription: "Addresses IPsec traffic from Jamf Security Cloud originates from.",
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
@@ -110,25 +110,25 @@ func dsIPSecAttribute() schema.SingleNestedAttribute {
 		MarkdownDescription: "IPsec tunnel configuration. Null on a dedicated internet gateway.",
 		Computed:            true,
 		Attributes: map[string]schema.Attribute{
-			"key_exchange": schema.StringAttribute{MarkdownDescription: "Key exchange protocol.", Computed: true},
-			"ike":          dsCipherSuiteAttribute("Phase 1 cipher suite, protecting the key exchange."),
-			"esp":          dsCipherSuiteAttribute("Phase 2 cipher suite, protecting the tunnelled traffic."),
+			"key_exchange_protocol": schema.StringAttribute{MarkdownDescription: "Key exchange protocol.", Computed: true},
+			"phase_1":               dsCipherSuiteAttribute("Phase 1 cipher suite, protecting the key exchange."),
+			"phase_2":               dsCipherSuiteAttribute("Phase 2 cipher suite, protecting the tunnelled traffic."),
 			"jamf_side": schema.SingleNestedAttribute{
 				MarkdownDescription: "The Jamf Security Cloud end of the tunnel.",
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
-					"host":        schema.StringAttribute{MarkdownDescription: "Endpoint address.", Computed: true},
-					"ike_id":      schema.StringAttribute{MarkdownDescription: "IKE identity Jamf presents.", Computed: true},
-					"subnet":      schema.StringAttribute{MarkdownDescription: "Jamf-side encryption domain, in CIDR notation.", Computed: true},
-					"auth_method": schema.StringAttribute{MarkdownDescription: "Authentication method.", Computed: true},
+					"host":          schema.StringAttribute{MarkdownDescription: "Endpoint address.", Computed: true},
+					"ike_domain_id": schema.StringAttribute{MarkdownDescription: "IKE identity Jamf presents.", Computed: true},
+					"subnet":        schema.StringAttribute{MarkdownDescription: "Jamf-side encryption domain, in CIDR notation.", Computed: true},
+					"auth_method":   schema.StringAttribute{MarkdownDescription: "Authentication method.", Computed: true},
 				},
 			},
 			"customer_side": schema.SingleNestedAttribute{
 				MarkdownDescription: "The customer end of the tunnel.",
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
-					"host":   schema.StringAttribute{MarkdownDescription: "Your IPsec gateway address.", Computed: true},
-					"ike_id": schema.StringAttribute{MarkdownDescription: "IKE identity your concentrator presents.", Computed: true},
+					"host":          schema.StringAttribute{MarkdownDescription: "Your IPsec gateway address.", Computed: true},
+					"ike_domain_id": schema.StringAttribute{MarkdownDescription: "IKE identity your concentrator presents.", Computed: true},
 					"subnets": schema.ListAttribute{
 						MarkdownDescription: "Subnets reachable through this gateway, in CIDR notation.",
 						Computed:            true,
@@ -148,10 +148,10 @@ func dsCipherSuiteAttribute(description string) schema.SingleNestedAttribute {
 		MarkdownDescription: description,
 		Computed:            true,
 		Attributes: map[string]schema.Attribute{
-			"encryption":       schema.StringAttribute{MarkdownDescription: "Encryption algorithm.", Computed: true},
-			"integrity":        schema.StringAttribute{MarkdownDescription: "Integrity algorithm.", Computed: true},
-			"dh_group":         schema.StringAttribute{MarkdownDescription: "Diffie-Hellman group.", Computed: true},
-			"lifetime_seconds": schema.Int64Attribute{MarkdownDescription: "Security association lifetime, in seconds.", Computed: true},
+			"encryption":           schema.StringAttribute{MarkdownDescription: "Encryption algorithm.", Computed: true},
+			"integrity":            schema.StringAttribute{MarkdownDescription: "Integrity algorithm.", Computed: true},
+			"diffie_hellman_group": schema.StringAttribute{MarkdownDescription: "Diffie-Hellman group.", Computed: true},
+			"sa_lifetime_seconds":  schema.Int64Attribute{MarkdownDescription: "Security association lifetime, in seconds.", Computed: true},
 		},
 	}
 }

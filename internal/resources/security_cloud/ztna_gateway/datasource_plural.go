@@ -61,9 +61,9 @@ func (d *GatewaysDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":         schema.StringAttribute{MarkdownDescription: "Gateway ID assigned by Jamf Security Cloud.", Computed: true},
-						"name":       schema.StringAttribute{MarkdownDescription: "Gateway name.", Computed: true},
-						"datacenter": schema.StringAttribute{MarkdownDescription: "Egress region this gateway is deployed to.", Computed: true},
+						"id":            schema.StringAttribute{MarkdownDescription: "Gateway ID assigned by Jamf Security Cloud.", Computed: true},
+						"name":          schema.StringAttribute{MarkdownDescription: "Gateway name.", Computed: true},
+						"egress_region": schema.StringAttribute{MarkdownDescription: "Egress region this gateway is deployed to.", Computed: true},
 						"contact": schema.SingleNestedAttribute{
 							MarkdownDescription: "Operational contact for this gateway.",
 							Computed:            true,
@@ -78,8 +78,8 @@ func (d *GatewaysDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 							Computed:            true,
 							ElementType:         types.StringType,
 						},
-						"availability_zones": schema.ListAttribute{
-							MarkdownDescription: "Source addresses IPsec traffic from Jamf Security Cloud originates from.",
+						"ipsec_source_ip_addresses": schema.ListAttribute{
+							MarkdownDescription: "Addresses IPsec traffic from Jamf Security Cloud originates from.",
 							Computed:            true,
 							ElementType:         types.StringType,
 						},

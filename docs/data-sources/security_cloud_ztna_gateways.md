@@ -42,7 +42,7 @@ output "unhealthy_gateways" {
 output "ipsec_gateways_by_region" {
   value = {
     for gateway in data.jamfplatform_security_cloud_ztna_gateways.all.gateways :
-    gateway.name => gateway.datacenter if gateway.ipsec != null
+    gateway.name => gateway.egress_region if gateway.ipsec != null
   }
 }
 ```
@@ -72,14 +72,14 @@ Optional:
 
 Read-Only:
 
-- `availability_zones` (List of String) Source addresses IPsec traffic from Jamf Security Cloud originates from.
 - `contact` (Attributes) Operational contact for this gateway. (see [below for nested schema](#nestedatt--gateways--contact))
-- `datacenter` (String) Egress region this gateway is deployed to.
 - `dedicated_egress_ip_addresses` (List of String) The private egress IP addresses Jamf provisioned for a dedicated internet gateway.
 - `dedicated_egress_ips_enabled` (Boolean) Whether this is a dedicated internet gateway.
+- `egress_region` (String) Egress region this gateway is deployed to.
 - `enabled` (Boolean) Whether the deployment is active.
 - `id` (String) Gateway ID assigned by Jamf Security Cloud.
 - `ipsec` (Attributes) IPsec tunnel configuration. Null on a dedicated internet gateway. (see [below for nested schema](#nestedatt--gateways--ipsec))
+- `ipsec_source_ip_addresses` (List of String) Addresses IPsec traffic from Jamf Security Cloud originates from.
 - `name` (String) Gateway name.
 - `status` (Attributes) Operational status Jamf Security Cloud reports for this gateway. (see [below for nested schema](#nestedatt--gateways--status))
 - `tenant_ids` (List of String) IDs of the tenants granted access to this gateway.
@@ -99,10 +99,10 @@ Read-Only:
 Read-Only:
 
 - `customer_side` (Attributes) The customer end of the tunnel. (see [below for nested schema](#nestedatt--gateways--ipsec--customer_side))
-- `esp` (Attributes) Phase 2 cipher suite, protecting the tunnelled traffic. (see [below for nested schema](#nestedatt--gateways--ipsec--esp))
-- `ike` (Attributes) Phase 1 cipher suite, protecting the key exchange. (see [below for nested schema](#nestedatt--gateways--ipsec--ike))
 - `jamf_side` (Attributes) The Jamf Security Cloud end of the tunnel. (see [below for nested schema](#nestedatt--gateways--ipsec--jamf_side))
-- `key_exchange` (String) Key exchange protocol.
+- `key_exchange_protocol` (String) Key exchange protocol.
+- `phase_1` (Attributes) Phase 1 cipher suite, protecting the key exchange. (see [below for nested schema](#nestedatt--gateways--ipsec--phase_1))
+- `phase_2` (Attributes) Phase 2 cipher suite, protecting the tunnelled traffic. (see [below for nested schema](#nestedatt--gateways--ipsec--phase_2))
 
 <a id="nestedatt--gateways--ipsec--customer_side"></a>
 ### Nested Schema for `gateways.ipsec.customer_side`
@@ -111,31 +111,9 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Your IPsec gateway address.
-- `ike_id` (String) IKE identity your concentrator presents.
+- `ike_domain_id` (String) IKE identity your concentrator presents.
 - `subnets` (List of String) Subnets reachable through this gateway, in CIDR notation.
 - `vendor` (String) VPN vendor of your concentrator.
-
-
-<a id="nestedatt--gateways--ipsec--esp"></a>
-### Nested Schema for `gateways.ipsec.esp`
-
-Read-Only:
-
-- `dh_group` (String) Diffie-Hellman group.
-- `encryption` (String) Encryption algorithm.
-- `integrity` (String) Integrity algorithm.
-- `lifetime_seconds` (Number) Security association lifetime, in seconds.
-
-
-<a id="nestedatt--gateways--ipsec--ike"></a>
-### Nested Schema for `gateways.ipsec.ike`
-
-Read-Only:
-
-- `dh_group` (String) Diffie-Hellman group.
-- `encryption` (String) Encryption algorithm.
-- `integrity` (String) Integrity algorithm.
-- `lifetime_seconds` (Number) Security association lifetime, in seconds.
 
 
 <a id="nestedatt--gateways--ipsec--jamf_side"></a>
@@ -145,8 +123,30 @@ Read-Only:
 
 - `auth_method` (String) Authentication method.
 - `host` (String) Endpoint address.
-- `ike_id` (String) IKE identity Jamf presents.
+- `ike_domain_id` (String) IKE identity Jamf presents.
 - `subnet` (String) Jamf-side encryption domain, in CIDR notation.
+
+
+<a id="nestedatt--gateways--ipsec--phase_1"></a>
+### Nested Schema for `gateways.ipsec.phase_1`
+
+Read-Only:
+
+- `diffie_hellman_group` (String) Diffie-Hellman group.
+- `encryption` (String) Encryption algorithm.
+- `integrity` (String) Integrity algorithm.
+- `sa_lifetime_seconds` (Number) Security association lifetime, in seconds.
+
+
+<a id="nestedatt--gateways--ipsec--phase_2"></a>
+### Nested Schema for `gateways.ipsec.phase_2`
+
+Read-Only:
+
+- `diffie_hellman_group` (String) Diffie-Hellman group.
+- `encryption` (String) Encryption algorithm.
+- `integrity` (String) Integrity algorithm.
+- `sa_lifetime_seconds` (Number) Security association lifetime, in seconds.
 
 
 

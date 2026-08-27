@@ -45,10 +45,10 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 			)
 		case codeIPSecSecretClearNotSupported:
 			diags.AddAttributeError(
-				path.Root("ipsec").AtName("jamf_side").AtName("shared_secret"),
+				path.Root("ipsec").AtName("jamf_side").AtName("authentication_secret"),
 				"IPsec pre-shared key cannot be cleared",
-				"The pre-shared key can be rotated but never removed. Supply a new `shared_secret` and bump "+
-					"`shared_secret_wo_version`, or leave both alone to keep the stored key. Reported by Jamf "+
+				"The pre-shared key can be rotated but never removed. Supply a new `authentication_secret` and "+
+					"bump `authentication_secret_wo_version`, or leave both alone to keep the stored key. Reported by Jamf "+
 					"Security Cloud: "+detail.Description,
 			)
 		case codeBadRequest:

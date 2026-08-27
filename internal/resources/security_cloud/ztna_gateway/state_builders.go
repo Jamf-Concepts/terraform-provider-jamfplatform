@@ -20,7 +20,7 @@ import (
 // over from the prior model rather than read, because the wire has no counterpart
 // and losing it would make the next update look like a rotation.
 //
-// `availability_zones` is written back only when the server actually reports
+// `ipsec_source_ip_addresses` is written back only when the server actually reports
 // zones. It answers null for a gateway created without them, and writing an empty
 // set over a null config value would turn a no-op into a permanent diff.
 func assignGatewayResourceModel(ctx context.Context, state *GatewayResourceModel, g *securitycloud.Gateway) diag.Diagnostics {
@@ -30,7 +30,7 @@ func assignGatewayResourceModel(ctx context.Context, state *GatewayResourceModel
 		state.ID = types.StringValue(g.ID)
 	}
 	state.Name = types.StringValue(g.Name)
-	state.Datacenter = types.StringValue(g.Datacenter)
+	state.EgressRegion = types.StringValue(labelFor(g.Datacenter, datacenterLabels))
 	state.Enabled = types.BoolValue(g.Enabled)
 
 	if g.Contact != nil {
@@ -47,9 +47,9 @@ func assignGatewayResourceModel(ctx context.Context, state *GatewayResourceModel
 	if len(g.AvailabilityZones) > 0 {
 		zones, zoneDiags := types.SetValueFrom(ctx, types.StringType, g.AvailabilityZones)
 		diags.Append(zoneDiags...)
-		state.AvailabilityZones = zones
+		state.IPSecSourceIPAddresses = zones
 	} else {
-		state.AvailabilityZones = types.SetNull(types.StringType)
+		state.IPSecSourceIPAddresses = types.SetNull(types.StringType)
 	}
 
 	dedicatedIPs, dedicatedDiags := dedicatedEgressIPList(ctx, g.DedicatedIps)
@@ -78,14 +78,14 @@ func assignIPSecResourceModel(ctx context.Context, state *GatewayResourceModel, 
 	priorWoVersion := types.Int64Null()
 	priorSecret := types.StringNull()
 	if state.IPSec != nil && state.IPSec.JamfSide != nil {
-		priorWoVersion = state.IPSec.JamfSide.SharedSecretWoVersion
-		priorSecret = state.IPSec.JamfSide.SharedSecret
+		priorWoVersion = state.IPSec.JamfSide.AuthenticationSecretWoVersion
+		priorSecret = state.IPSec.JamfSide.AuthenticationSecret
 	}
 
 	ipsec := &IPSecModel{
-		KeyExchange: types.StringValue(wire.KeyExchange),
-		IKE:         cipherSuiteModel(wire.Ike),
-		ESP:         cipherSuiteModel(wire.Esp),
+		KeyExchangeProtocol: types.StringValue(labelFor(wire.KeyExchange, keyExchangeLabels)),
+		Phase1:              cipherSuiteModel(wire.Ike),
+		Phase2:              cipherSuiteModel(wire.Esp),
 	}
 
 	if wire.Left != nil {
@@ -94,12 +94,12 @@ func assignIPSecResourceModel(ctx context.Context, state *GatewayResourceModel, 
 			subnet = types.StringValue(wire.Left.Subnets[0])
 		}
 		ipsec.JamfSide = &JamfSideModel{
-			Host:                  types.StringValue(wire.Left.Host),
-			IKEID:                 types.StringValue(wire.Left.ID),
-			Subnet:                subnet,
-			SharedSecret:          priorSecret,
-			SharedSecretWoVersion: priorWoVersion,
-			AuthMethod:            types.StringValue(wire.Left.Auth),
+			Host:                          types.StringValue(wire.Left.Host),
+			IKEDomainID:                   types.StringValue(wire.Left.ID),
+			Subnet:                        subnet,
+			AuthenticationSecret:          priorSecret,
+			AuthenticationSecretWoVersion: priorWoVersion,
+			AuthMethod:                    types.StringValue(wire.Left.Auth),
 		}
 	}
 
@@ -107,11 +107,11 @@ func assignIPSecResourceModel(ctx context.Context, state *GatewayResourceModel, 
 		subnets, subnetDiags := types.SetValueFrom(ctx, types.StringType, wire.Right.Subnets)
 		diags.Append(subnetDiags...)
 		ipsec.CustomerSide = &CustomerSideModel{
-			Host:       types.StringValue(wire.Right.Host),
-			IKEID:      types.StringValue(wire.Right.ID),
-			Subnets:    subnets,
-			Vendor:     types.StringValue(wire.Right.Vendor),
-			AuthMethod: types.StringValue(wire.Right.Auth),
+			Host:        types.StringValue(wire.Right.Host),
+			IKEDomainID: types.StringValue(wire.Right.ID),
+			Subnets:     subnets,
+			Vendor:      types.StringValue(wire.Right.Vendor),
+			AuthMethod:  types.StringValue(wire.Right.Auth),
 		}
 	}
 
@@ -119,19 +119,28 @@ func assignIPSecResourceModel(ctx context.Context, state *GatewayResourceModel, 
 	return diags
 }
 
-// cipherSuiteModel collapses one wire cipher-suite phase into the single values
-// the schema exposes. The wire arrays hold exactly one element each; an empty
-// array yields null rather than an index panic.
+// cipherSuiteModel collapses one wire cipher-suite phase into the single
+// admin-UI-labelled values the schema exposes. The wire arrays hold exactly one
+// element each; an empty array yields null rather than an index panic.
 func cipherSuiteModel(wire *securitycloud.CipherSuiteConfig) *CipherSuiteModel {
 	if wire == nil {
 		return nil
 	}
 	return &CipherSuiteModel{
-		Encryption:      firstOrNull(wire.Encryption),
-		Integrity:       firstOrNull(wire.Integrity),
-		DHGroup:         firstOrNull(wire.DhGroups),
-		LifetimeSeconds: types.Int64Value(wire.LifetimeInSec),
+		Encryption:         firstLabelOrNull(wire.Encryption, encryptionLabels),
+		Integrity:          firstLabelOrNull(wire.Integrity, integrityLabels),
+		DiffieHellmanGroup: firstLabelOrNull(wire.DhGroups, dhGroupLabels),
+		SALifetimeSeconds:  types.Int64Value(wire.LifetimeInSec),
 	}
+}
+
+// firstLabelOrNull returns the first element of a wire array as its admin-UI
+// label, or null when the array is empty.
+func firstLabelOrNull(values []string, labels map[string]string) types.String {
+	if len(values) == 0 {
+		return types.StringNull()
+	}
+	return types.StringValue(labelFor(values[0], labels))
 }
 
 // firstOrNull returns the first element of a wire array as a string value, or
@@ -175,7 +184,7 @@ func assignGatewayDataSourceModel(ctx context.Context, state *GatewayDataSourceM
 
 	state.ID = types.StringValue(g.ID)
 	state.Name = types.StringValue(g.Name)
-	state.Datacenter = types.StringValue(g.Datacenter)
+	state.EgressRegion = types.StringValue(labelFor(g.Datacenter, datacenterLabels))
 	state.Enabled = types.BoolValue(g.Enabled)
 
 	contact, contactDiags := contactObjectValue(g.Contact)
@@ -188,7 +197,7 @@ func assignGatewayDataSourceModel(ctx context.Context, state *GatewayDataSourceM
 
 	zones, zoneDiags := types.ListValueFrom(ctx, types.StringType, g.AvailabilityZones)
 	diags.Append(zoneDiags...)
-	state.AvailabilityZones = zones
+	state.IPSecSourceIPAddresses = zones
 
 	state.DedicatedEgressIPsEnabled = types.BoolValue(g.DedicatedIps != nil && g.DedicatedIps.Enabled)
 
@@ -215,11 +224,11 @@ func buildGatewaysResultModel(ctx context.Context, g securitycloud.Gateway) (Gat
 	return GatewaysDataSourceResultModel{
 		ID:                         ds.ID,
 		Name:                       ds.Name,
-		Datacenter:                 ds.Datacenter,
+		EgressRegion:               ds.EgressRegion,
 		Contact:                    ds.Contact,
 		Enabled:                    ds.Enabled,
 		TenantIDs:                  ds.TenantIDs,
-		AvailabilityZones:          ds.AvailabilityZones,
+		IPSecSourceIPAddresses:     ds.IPSecSourceIPAddresses,
 		DedicatedEgressIPsEnabled:  ds.DedicatedEgressIPsEnabled,
 		DedicatedEgressIPAddresses: ds.DedicatedEgressIPAddresses,
 		IPSec:                      ds.IPSec,
@@ -258,10 +267,10 @@ func dsIPSecObjectValue(ctx context.Context, wire *securitycloud.GatewayIpSec) (
 			subnet = types.StringValue(wire.Left.Subnets[0])
 		}
 		obj, objDiags := types.ObjectValue(dsJamfSideAttributeTypes, map[string]attr.Value{
-			"host":        types.StringValue(wire.Left.Host),
-			"ike_id":      types.StringValue(wire.Left.ID),
-			"subnet":      subnet,
-			"auth_method": types.StringValue(wire.Left.Auth),
+			"host":          types.StringValue(wire.Left.Host),
+			"ike_domain_id": types.StringValue(wire.Left.ID),
+			"subnet":        subnet,
+			"auth_method":   types.StringValue(wire.Left.Auth),
 		})
 		diags.Append(objDiags...)
 		jamfSide = obj
@@ -272,22 +281,22 @@ func dsIPSecObjectValue(ctx context.Context, wire *securitycloud.GatewayIpSec) (
 		subnets, subnetDiags := types.ListValueFrom(ctx, types.StringType, wire.Right.Subnets)
 		diags.Append(subnetDiags...)
 		obj, objDiags := types.ObjectValue(dsCustomerSideAttributeTypes, map[string]attr.Value{
-			"host":        types.StringValue(wire.Right.Host),
-			"ike_id":      types.StringValue(wire.Right.ID),
-			"subnets":     subnets,
-			"vendor":      types.StringValue(wire.Right.Vendor),
-			"auth_method": types.StringValue(wire.Right.Auth),
+			"host":          types.StringValue(wire.Right.Host),
+			"ike_domain_id": types.StringValue(wire.Right.ID),
+			"subnets":       subnets,
+			"vendor":        types.StringValue(wire.Right.Vendor),
+			"auth_method":   types.StringValue(wire.Right.Auth),
 		})
 		diags.Append(objDiags...)
 		customerSide = obj
 	}
 
 	obj, objDiags := types.ObjectValue(dsIPSecAttributeTypes, map[string]attr.Value{
-		"key_exchange":  types.StringValue(wire.KeyExchange),
-		"ike":           ike,
-		"esp":           esp,
-		"jamf_side":     jamfSide,
-		"customer_side": customerSide,
+		"key_exchange_protocol": types.StringValue(labelFor(wire.KeyExchange, keyExchangeLabels)),
+		"phase_1":               ike,
+		"phase_2":               esp,
+		"jamf_side":             jamfSide,
+		"customer_side":         customerSide,
 	})
 	diags.Append(objDiags...)
 	return obj, diags
@@ -299,9 +308,9 @@ func dsCipherSuiteObjectValue(wire *securitycloud.CipherSuiteConfig) (types.Obje
 		return types.ObjectNull(cipherSuiteAttributeTypes), nil
 	}
 	return types.ObjectValue(cipherSuiteAttributeTypes, map[string]attr.Value{
-		"encryption":       firstOrNull(wire.Encryption),
-		"integrity":        firstOrNull(wire.Integrity),
-		"dh_group":         firstOrNull(wire.DhGroups),
-		"lifetime_seconds": types.Int64Value(wire.LifetimeInSec),
+		"encryption":           firstLabelOrNull(wire.Encryption, encryptionLabels),
+		"integrity":            firstLabelOrNull(wire.Integrity, integrityLabels),
+		"diffie_hellman_group": firstLabelOrNull(wire.DhGroups, dhGroupLabels),
+		"sa_lifetime_seconds":  types.Int64Value(wire.LifetimeInSec),
 	})
 }

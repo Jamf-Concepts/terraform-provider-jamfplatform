@@ -14,6 +14,6 @@ output "unhealthy_gateways" {
 output "ipsec_gateways_by_region" {
   value = {
     for gateway in data.jamfplatform_security_cloud_ztna_gateways.all.gateways :
-    gateway.name => gateway.datacenter if gateway.ipsec != null
+    gateway.name => gateway.egress_region if gateway.ipsec != null
   }
 }

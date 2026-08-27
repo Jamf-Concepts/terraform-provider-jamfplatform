@@ -159,7 +159,9 @@ When the wire name is already a reasonable match for the UI label (e.g. `encrypt
 "create_mobile_account": optBool("**\"Create Mobile Account\"** in the Jamf Pro admin UI. …"),
 ```
 
-The rename rule applies to all current and future Jamf Pro resources. Where an existing shipped resource has cryptic wire-name attributes, do not retrofit in a feature PR — schedule a dedicated rename PR (the change is breaking for users).
+The rename rule applies to all current and future Jamf Pro **and Jamf Security Cloud** resources — the reasoning is about the gap between a wire payload and the screen an administrator reads, which is not specific to one product. Where an existing shipped resource has cryptic wire-name attributes, do not retrofit in a feature PR — schedule a dedicated rename PR (the change is breaking for users).
+
+**The wire name cannot go in a comment beside the attribute**, despite the snippet above: [§Go Conventions](#go-conventions) forbids comments inside function bodies, and a schema is built inside one. Put the whole wire mapping in the package doc comment instead, as a table — `internal/resources/security_cloud/ztna_gateway/resource.go` is the reference. That reads better anyway: one place to scan when chasing a field name seen in an API response, rather than a dozen scattered one-liners.
 
 ### User-facing descriptions are UI-aligned, not wire-aligned
 

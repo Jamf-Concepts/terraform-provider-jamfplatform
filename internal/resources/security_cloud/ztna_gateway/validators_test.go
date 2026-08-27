@@ -98,7 +98,7 @@ func TestIPv4Address(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			req := validator.StringRequest{
-				Path:        path.Root("availability_zones"),
+				Path:        path.Root("ipsec_source_ip_addresses"),
 				ConfigValue: tc.value,
 			}
 			var resp validator.StringResponse

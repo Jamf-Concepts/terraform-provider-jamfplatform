@@ -43,7 +43,7 @@ func TestAppendWriteDiagnostics_MapsCodes(t *testing.T) {
 		{
 			name:     "secret clear points at the secret",
 			err:      apiError(400, codeIPSecSecretClearNotSupported, "Clearing the IPSec pre-shared key is not supported."),
-			wantPath: new(path.Root("ipsec").AtName("jamf_side").AtName("shared_secret")),
+			wantPath: new(path.Root("ipsec").AtName("jamf_side").AtName("authentication_secret")),
 			wantText: "rotated but never removed",
 		},
 		{

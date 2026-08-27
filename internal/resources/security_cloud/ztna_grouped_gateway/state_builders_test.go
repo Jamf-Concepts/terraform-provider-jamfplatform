@@ -37,11 +37,11 @@ func TestAssignGroupedGatewayResourceModel_PopulatesEveryField(t *testing.T) {
 	if state.Name.ValueString() != "tf-group" {
 		t.Errorf("name = %q", state.Name.ValueString())
 	}
-	if state.RoutingStrategy.ValueString() != "NEAREST" {
-		t.Errorf("routing_strategy = %q", state.RoutingStrategy.ValueString())
+	if state.RoutingStrategy.ValueString() != "Nearest" {
+		t.Errorf("routing_strategy = %q, want the admin-UI label", state.RoutingStrategy.ValueString())
 	}
-	if state.RecoveryDelaySeconds.ValueInt64() != 1800 {
-		t.Errorf("recovery_delay_seconds = %d", state.RecoveryDelaySeconds.ValueInt64())
+	if state.RequiredGatewayStability.ValueString() != "30 minutes" {
+		t.Errorf("required_gateway_stability = %q, want the admin-UI label", state.RequiredGatewayStability.ValueString())
 	}
 	if state.CreatedAt.ValueString() != "2026-08-27T11:45:56Z" {
 		t.Errorf("created_at = %q, want an RFC 3339 timestamp", state.CreatedAt.ValueString())

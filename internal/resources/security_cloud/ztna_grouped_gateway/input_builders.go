@@ -24,8 +24,8 @@ func buildGroupedGatewayCreateInput(ctx context.Context, plan GroupedGatewayReso
 	return &securitycloud.GroupedGatewayCreateRequest{
 		Name:               plan.Name.ValueString(),
 		GatewayIds:         gatewayIDs,
-		RoutingStrategy:    plan.RoutingStrategy.ValueString(),
-		RecoveryDelayInSec: int(plan.RecoveryDelaySeconds.ValueInt64()),
+		RoutingStrategy:    wireStrategyFor(plan.RoutingStrategy.ValueString()),
+		RecoveryDelayInSec: int(wireStabilityFor(plan.RequiredGatewayStability.ValueString())),
 		TenantIds:          tenantIDs,
 	}, diags
 }
@@ -47,8 +47,8 @@ func buildGroupedGatewayPatchInput(ctx context.Context, plan GroupedGatewayResou
 	}
 
 	name := plan.Name.ValueString()
-	strategy := plan.RoutingStrategy.ValueString()
-	recoveryDelay := int(plan.RecoveryDelaySeconds.ValueInt64())
+	strategy := wireStrategyFor(plan.RoutingStrategy.ValueString())
+	recoveryDelay := int(wireStabilityFor(plan.RequiredGatewayStability.ValueString()))
 
 	return &securitycloud.GroupedGatewayPatchRequest{
 		Name:               &name,

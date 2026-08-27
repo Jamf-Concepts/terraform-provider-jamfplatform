@@ -4,27 +4,26 @@
 resource "jamfplatform_security_cloud_ztna_grouped_gateway" "eu" {
   name = "EU Egress"
 
-  # Order matters: it is the priority order the FIRST_AVAILABLE (ACTIVE_STANDBY)
-  # strategy walks, and the admin UI shows it as a drag-to-reorder list.
+  # Order matters: it is the priority order the "First available" strategy walks,
+  # and the admin UI shows it as a drag-to-reorder list.
   gateway_ids = [
     jamfplatform_security_cloud_ztna_gateway.london.id,
     jamfplatform_security_cloud_ztna_gateway.frankfurt.id,
   ]
 
-  # ACTIVE_STANDBY ("First available"), RANDOM ("Random") or NEAREST ("Nearest").
-  routing_strategy = "ACTIVE_STANDBY"
+  # "First available", "Random" or "Nearest".
+  routing_strategy = "First available"
 
-  # "Required gateway stability". Required whatever the strategy, even though only
-  # ACTIVE_STANDBY uses it.
-  recovery_delay_seconds = 1800
+  # Required whatever the strategy, even though only "First available" uses it.
+  required_gateway_stability = "30 minutes"
 
   tenant_ids = [var.security_cloud_tenant_id]
 }
 
 resource "jamfplatform_security_cloud_ztna_gateway" "london" {
-  name       = "London Internet Egress"
-  datacenter = "eu-west-2"
-  tenant_ids = [var.security_cloud_tenant_id]
+  name          = "London Internet Egress"
+  egress_region = "Europe - UK"
+  tenant_ids    = [var.security_cloud_tenant_id]
 
   contact = {
     name  = "Network Operations"
@@ -33,9 +32,9 @@ resource "jamfplatform_security_cloud_ztna_gateway" "london" {
 }
 
 resource "jamfplatform_security_cloud_ztna_gateway" "frankfurt" {
-  name       = "Frankfurt Internet Egress"
-  datacenter = "eu-central-1"
-  tenant_ids = [var.security_cloud_tenant_id]
+  name          = "Frankfurt Internet Egress"
+  egress_region = "Europe - Germany"
+  tenant_ids    = [var.security_cloud_tenant_id]
 
   contact = {
     name  = "Network Operations"

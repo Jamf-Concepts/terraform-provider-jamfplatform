@@ -23,18 +23,37 @@
 // flag carries information the `ipsec` block does not already imply. Deriving it
 // removes a whole class of config that could only ever be rejected.
 //
-// Two naming decisions worth stating, since both depart from the wire:
+// Attribute names follow the admin UI rather than the wire wherever the two
+// diverge, per STYLE_GUIDE §Attribute names mirror the Jamf Pro admin UI. Because
+// the guide also forbids comments inside function bodies, the wire mapping lives
+// here rather than beside each attribute — this table is where to look when
+// searching for a field name seen in an API response:
 //
-//   - The tunnel endpoints are `jamf_side` and `customer_side`, not `left` and
-//     `right`. The admin UI's Encryption Domain step labels them "Jamf Security
-//     Cloud side" and "Customer side"; `left`/`right` is strongSwan jargon that
-//     appears nowhere a Jamf administrator would see.
-//   - The cipher-suite blocks keep the names `ike` and `esp` even though the UI
-//     labels them "Phase 1" and "Phase 2". Here the wire name is the clearer of
-//     the two — Phase 1 *is* the IKE SA and Phase 2 *is* the ESP child SA, and an
-//     attribute called `phase_1` says nothing about what it configures. Each
-//     description leads with the UI label so a plan reviewer can still match the
-//     screen.
+//	Terraform attribute                    Wire field
+//	------------------------------------   --------------------------------
+//	egress_region                          datacenter
+//	ipsec_source_ip_addresses              availabilityZones
+//	dedicated_egress_ip_addresses          dedicatedIps.ips
+//	ipsec.key_exchange_protocol            ipsec.keyExchange
+//	ipsec.phase_1                          ipsec.ike
+//	ipsec.phase_2                          ipsec.esp
+//	ipsec.phase_N.diffie_hellman_group     ipsec.{ike,esp}.dhGroups
+//	ipsec.phase_N.sa_lifetime_seconds      ipsec.{ike,esp}.lifetimeInSec
+//	ipsec.jamf_side                        ipsec.left
+//	ipsec.customer_side                    ipsec.right
+//	ipsec.*.ike_domain_id                  ipsec.{left,right}.id
+//	ipsec.jamf_side.subnet                 ipsec.left.subnets (single element)
+//	ipsec.jamf_side.authentication_secret  ipsec.left.secret
+//
+// Two of those are worth a word. `left`/`right` is strongSwan jargon that appears
+// nowhere a Jamf administrator would see — the Encryption Domain step labels the
+// two ends "Jamf Security Cloud side" and "Customer side". And `availabilityZones`
+// is not merely different from its label but actively misleading: the SDK itself
+// notes that despite the name, the values are IPv4 addresses rather than zone
+// identifiers.
+//
+// Enumerated attributes take the admin UI's labels too, translated to stored
+// values at the boundary; see mappings.go for the tables and their provenance.
 package ztna_gateway
 
 import (
@@ -106,7 +125,7 @@ func (r *GatewayResource) IdentitySchema(_ context.Context, _ resource.IdentityS
 // block, at plan time rather than mid-apply.
 func (r *GatewayResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
-		ipsecAvailabilityZonesValidator{},
+		ipsecSourceAddressesValidator{},
 	}
 }
 
@@ -139,14 +158,14 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
-			"datacenter": schema.StringAttribute{
+			"egress_region": schema.StringAttribute{
 				MarkdownDescription: "**\"Egress region\"** in the Jamf Security Cloud admin UI — the region this " +
 					"gateway is deployed to. Changing it re-provisions the gateway in the new region: connectivity " +
 					"drops, the reported status returns to `PENDING`, and any dedicated egress IP addresses stay " +
-					"stale until provisioning completes. Valid values: " + markdownList(datacenterValues()) + ".",
+					"stale until provisioning completes. Valid values: " + markdownList(egressRegionValues()) + ".",
 				Required: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(datacenterValues()...),
+					stringvalidator.OneOf(egressRegionValues()...),
 				},
 			},
 			"contact": schema.SingleNestedAttribute{
@@ -188,7 +207,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					setvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
 				},
 			},
-			"availability_zones": schema.SetAttribute{
+			"ipsec_source_ip_addresses": schema.SetAttribute{
 				MarkdownDescription: "**\"Jamf Security Cloud IPsec source IP addresses\"** in the Jamf Security " +
 					"Cloud admin UI — the addresses IPsec traffic from Jamf Security Cloud originates from, which " +
 					"your firewall must allow. Supply both addresses your egress region offers for dynamic " +
@@ -239,7 +258,7 @@ func ipsecAttribute() schema.SingleNestedAttribute {
 			),
 		},
 		Attributes: map[string]schema.Attribute{
-			"key_exchange": schema.StringAttribute{
+			"key_exchange_protocol": schema.StringAttribute{
 				MarkdownDescription: "**\"Key exchange protocol\"** in the Jamf Security Cloud admin UI. Valid " +
 					"values: " + markdownList(keyExchangeValues()) + ".",
 				Required: true,
@@ -247,10 +266,10 @@ func ipsecAttribute() schema.SingleNestedAttribute {
 					stringvalidator.OneOf(keyExchangeValues()...),
 				},
 			},
-			"ike": cipherSuiteAttribute(
+			"phase_1": cipherSuiteAttribute(
 				"**\"Phase 1\"** in the Jamf Security Cloud admin UI — the cipher suite protecting the key exchange itself.",
 			),
-			"esp": cipherSuiteAttribute(
+			"phase_2": cipherSuiteAttribute(
 				"**\"Phase 2\"** in the Jamf Security Cloud admin UI — the cipher suite protecting the tunnelled traffic.",
 			),
 			"jamf_side":     jamfSideAttribute(),
@@ -270,7 +289,7 @@ func cipherSuiteAttribute(description string) schema.SingleNestedAttribute {
 		Attributes: map[string]schema.Attribute{
 			"encryption": schema.StringAttribute{
 				MarkdownDescription: "**\"Encryption\"** in the Jamf Security Cloud admin UI. Valid values: " +
-					markdownList(encryptionValues()) + " (shown as `3DES`, `AES-128` and `AES-256`).",
+					markdownList(encryptionValues()) + ".",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(encryptionValues()...),
@@ -278,22 +297,21 @@ func cipherSuiteAttribute(description string) schema.SingleNestedAttribute {
 			},
 			"integrity": schema.StringAttribute{
 				MarkdownDescription: "**\"Integrity\"** in the Jamf Security Cloud admin UI. Valid values: " +
-					markdownList(integrityValues()) + " (shown as `MD5`, `SHA-1`, `SHA-256` and `SHA-512`).",
+					markdownList(integrityValues()) + ".",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(integrityValues()...),
 				},
 			},
-			"dh_group": schema.StringAttribute{
-				MarkdownDescription: "**\"Diffie-Hellman Group\"** in the Jamf Security Cloud admin UI, which names " +
-					"each group alongside this value — `Group 14 (modp2048)` is `modp2048`. Valid values: " +
-					markdownList(dhGroupValues()) + ".",
+			"diffie_hellman_group": schema.StringAttribute{
+				MarkdownDescription: "**\"Diffie-Hellman Group\"** in the Jamf Security Cloud admin UI. Valid " +
+					"values: " + markdownList(diffieHellmanGroupValues()) + ".",
 				Required: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(dhGroupValues()...),
+					stringvalidator.OneOf(diffieHellmanGroupValues()...),
 				},
 			},
-			"lifetime_seconds": schema.Int64Attribute{
+			"sa_lifetime_seconds": schema.Int64Attribute{
 				MarkdownDescription: "**\"Security Association (SA) Lifetime\"** in the Jamf Security Cloud admin " +
 					"UI, in seconds.",
 				Required: true,
@@ -319,7 +337,7 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
-			"ike_id": schema.StringAttribute{
+			"ike_domain_id": schema.StringAttribute{
 				MarkdownDescription: "**\"Jamf Security Cloud IKE domain ID\"** in the Jamf Security Cloud admin " +
 					"UI — the IKE identity Jamf presents, for example `wpa.wandera.com`.",
 				Required: true,
@@ -337,11 +355,11 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 					privateCIDR(),
 				},
 			},
-			"shared_secret": schema.StringAttribute{
+			"authentication_secret": schema.StringAttribute{
 				MarkdownDescription: "**\"Authentication secret\"** in the Jamf Security Cloud admin UI — the IPsec " +
 					"pre-shared key, applied to both ends of the tunnel. `WriteOnly` — sent to Jamf Security Cloud " +
 					"on writes but **never persisted in Terraform state**, because Jamf never returns it. Pair with " +
-					"`shared_secret_wo_version` to rotate it. It can be rotated but not cleared.",
+					"`authentication_secret_wo_version` to rotate it. It can be rotated but not cleared.",
 				Required:  true,
 				Sensitive: true,
 				WriteOnly: true,
@@ -349,8 +367,8 @@ func jamfSideAttribute() schema.SingleNestedAttribute {
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
-			"shared_secret_wo_version": schema.Int64Attribute{
-				MarkdownDescription: "Rotation trigger for the `WriteOnly` `shared_secret`. Bump this integer to " +
+			"authentication_secret_wo_version": schema.Int64Attribute{
+				MarkdownDescription: "Rotation trigger for the `WriteOnly` `authentication_secret`. Bump this integer to " +
 					"force an update that re-sends the secret. Set it to `1` on create. Leaving it unset or " +
 					"unchanged means \"leave the stored key alone\" — the provider omits the secret from the next " +
 					"update so Jamf Security Cloud retains the existing one.",
@@ -379,7 +397,7 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
-			"ike_id": schema.StringAttribute{
+			"ike_domain_id": schema.StringAttribute{
 				MarkdownDescription: "**\"Your IKE domain ID\"** in the Jamf Security Cloud admin UI — the IKE " +
 					"identity your concentrator presents.",
 				Required: true,
@@ -459,7 +477,7 @@ func (r *GatewayResource) Configure(ctx context.Context, req resource.ConfigureR
 // ImportState handles import by the Jamf Security Cloud gateway ID.
 //
 // The IPsec pre-shared key cannot come back on import — Jamf Security Cloud never
-// returns it — so an imported IPsec gateway needs `ipsec.jamf_side.shared_secret`
+// returns it — so an imported IPsec gateway needs `ipsec.jamf_side.authentication_secret`
 // supplied in configuration before the next apply will succeed.
 func (r *GatewayResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)

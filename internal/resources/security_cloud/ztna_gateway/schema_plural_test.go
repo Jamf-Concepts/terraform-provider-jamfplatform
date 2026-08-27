@@ -42,7 +42,7 @@ func TestGatewaysDataSource_Schema(t *testing.T) {
 	if !ok {
 		t.Fatalf("gateways must be a ListNestedAttribute, got %T", s.Attributes["gateways"])
 	}
-	for _, name := range []string{"id", "name", "datacenter", "contact", "enabled", "ipsec", "status"} {
+	for _, name := range []string{"id", "name", "egress_region", "contact", "enabled", "ipsec", "status"} {
 		if _, present := gateways.NestedObject.Attributes[name]; !present {
 			t.Errorf("gateways missing nested attribute %q", name)
 		}

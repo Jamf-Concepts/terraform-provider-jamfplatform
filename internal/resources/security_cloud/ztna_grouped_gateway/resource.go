@@ -17,7 +17,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -106,7 +105,7 @@ func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRe
 			"gateway_ids": schema.ListAttribute{
 				MarkdownDescription: "**\"Choose your gateways\"** in the Jamf Security Cloud admin UI — the IDs of " +
 					"the member gateways, at least two. **Order is significant**: it is the priority order the " +
-					"`FIRST_AVAILABLE` strategy walks, and the admin UI presents it as a drag-to-reorder list. " +
+					"`First available` strategy walks, and the admin UI presents it as a drag-to-reorder list. " +
 					"Jamf Security Cloud stores the order exactly as given.\n\n" +
 					"Members must be your own dedicated gateways, all of the same form — mixing an IPsec gateway " +
 					"with an internet one is refused, and so is naming one of Jamf's shared gateways.",
@@ -120,24 +119,24 @@ func (r *GroupedGatewayResource) Schema(ctx context.Context, _ resource.SchemaRe
 			"routing_strategy": schema.StringAttribute{
 				MarkdownDescription: "**\"Routing strategy\"** in the Jamf Security Cloud admin UI — which member " +
 					"a device uses:\n\n" +
-					"- `NEAREST` — **\"Nearest\"**: the geographically closest available member.\n" +
-					"- `RANDOM` — **\"Random\"**: a random available member, for load balancing.\n" +
-					"- `ACTIVE_STANDBY` — **\"First available\"**: the first available member in `gateway_ids` " +
-					"order, failing over to the next and back again after `recovery_delay_seconds`.",
+					"- `Nearest` — the geographically closest available member.\n" +
+					"- `Random` — a random available member, for load balancing.\n" +
+					"- `First available` — the first available member in `gateway_ids` order, failing over to the " +
+					"next and back again after `required_gateway_stability`.",
 				Required: true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(routingStrategyValues()...),
 				},
 			},
-			"recovery_delay_seconds": schema.Int64Attribute{
+			"required_gateway_stability": schema.StringAttribute{
 				MarkdownDescription: "**\"Required gateway stability\"** in the Jamf Security Cloud admin UI — how " +
-					"long a recovered member must stay healthy before traffic returns to it, in seconds. Applies " +
-					"to `ACTIVE_STANDBY`, and is **required regardless of strategy**: Jamf Security Cloud rejects " +
-					"a create without it even when the value is ignored. Valid values: " +
-					markdownIntList(recoveryDelayValues()) + " (5 minutes, 30 minutes, 1 hour, 3 hours, 8 hours).",
+					"long a recovered member must stay healthy before traffic returns to it. Applies to the " +
+					"`First available` strategy, and is **required whatever the strategy**: Jamf Security Cloud " +
+					"rejects a create without it even when the value is ignored. Valid values: " +
+					markdownList(gatewayStabilityValues()) + ".",
 				Required: true,
-				Validators: []validator.Int64{
-					int64validator.OneOf(recoveryDelayValues()...),
+				Validators: []validator.String{
+					stringvalidator.OneOf(gatewayStabilityValues()...),
 				},
 			},
 			"tenant_ids": schema.SetAttribute{

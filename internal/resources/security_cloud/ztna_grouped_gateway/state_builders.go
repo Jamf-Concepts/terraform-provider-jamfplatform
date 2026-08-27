@@ -26,8 +26,8 @@ func assignGroupedGatewayResourceModel(ctx context.Context, state *GroupedGatewa
 		state.ID = types.StringValue(g.ID)
 	}
 	state.Name = types.StringValue(g.Name)
-	state.RoutingStrategy = types.StringValue(g.RoutingStrategy)
-	state.RecoveryDelaySeconds = types.Int64Value(int64(g.RecoveryDelayInSec))
+	state.RoutingStrategy = types.StringValue(labelForStrategy(g.RoutingStrategy))
+	state.RequiredGatewayStability = types.StringValue(labelForStability(int64(g.RecoveryDelayInSec)))
 	state.CreatedAt = types.StringValue(g.CreatedAt.Format(time.RFC3339))
 
 	gatewayIDs, gatewayDiags := types.ListValueFrom(ctx, types.StringType, g.GatewayIds)
@@ -48,8 +48,8 @@ func assignGroupedGatewayDataSourceModel(ctx context.Context, state *GroupedGate
 
 	state.ID = types.StringValue(g.ID)
 	state.Name = types.StringValue(g.Name)
-	state.RoutingStrategy = types.StringValue(g.RoutingStrategy)
-	state.RecoveryDelaySeconds = types.Int64Value(int64(g.RecoveryDelayInSec))
+	state.RoutingStrategy = types.StringValue(labelForStrategy(g.RoutingStrategy))
+	state.RequiredGatewayStability = types.StringValue(labelForStability(int64(g.RecoveryDelayInSec)))
 	state.CreatedAt = types.StringValue(g.CreatedAt.Format(time.RFC3339))
 
 	gatewayIDs, gatewayDiags := types.ListValueFrom(ctx, types.StringType, g.GatewayIds)
@@ -69,12 +69,12 @@ func buildGroupedGatewaysResultModel(ctx context.Context, g securitycloud.Groupe
 	var ds GroupedGatewayDataSourceModel
 	diags := assignGroupedGatewayDataSourceModel(ctx, &ds, &g)
 	return GroupedGatewaysDataSourceResultModel{
-		ID:                   ds.ID,
-		Name:                 ds.Name,
-		GatewayIDs:           ds.GatewayIDs,
-		RoutingStrategy:      ds.RoutingStrategy,
-		RecoveryDelaySeconds: ds.RecoveryDelaySeconds,
-		TenantIDs:            ds.TenantIDs,
-		CreatedAt:            ds.CreatedAt,
+		ID:                       ds.ID,
+		Name:                     ds.Name,
+		GatewayIDs:               ds.GatewayIDs,
+		RoutingStrategy:          ds.RoutingStrategy,
+		RequiredGatewayStability: ds.RequiredGatewayStability,
+		TenantIDs:                ds.TenantIDs,
+		CreatedAt:                ds.CreatedAt,
 	}, diags
 }

@@ -54,8 +54,8 @@ output "eu_egress_members" {
 
 - `created_at` (String) When the grouped gateway was created.
 - `gateway_ids` (List of String) IDs of the member gateways, in priority order.
-- `recovery_delay_seconds` (Number) How long a recovered member must stay healthy before traffic returns to it, in seconds.
-- `routing_strategy` (String) Which member a device uses: `NEAREST`, `RANDOM` or `ACTIVE_STANDBY`.
+- `required_gateway_stability` (String) How long a recovered member must stay healthy before traffic returns to it.
+- `routing_strategy` (String) Which member a device uses: `Nearest`, `Random` or `First available`.
 - `tenant_ids` (List of String) IDs of the tenants granted access to this grouped gateway.
 
 <a id="nestedatt--timeouts"></a>

@@ -29,7 +29,7 @@ func TestGroupedGatewayResource_Schema(t *testing.T) {
 	s := resourceSchema(t)
 
 	for _, name := range []string{
-		"id", "name", "gateway_ids", "routing_strategy", "recovery_delay_seconds",
+		"id", "name", "gateway_ids", "routing_strategy", "required_gateway_stability",
 		"tenant_ids", "created_at", "timeouts",
 	} {
 		if _, ok := s.Attributes[name]; !ok {
@@ -37,7 +37,7 @@ func TestGroupedGatewayResource_Schema(t *testing.T) {
 		}
 	}
 
-	for _, name := range []string{"name", "gateway_ids", "routing_strategy", "recovery_delay_seconds", "tenant_ids"} {
+	for _, name := range []string{"name", "gateway_ids", "routing_strategy", "required_gateway_stability", "tenant_ids"} {
 		if !s.Attributes[name].IsRequired() {
 			t.Errorf("%s must be required", name)
 		}
@@ -107,7 +107,7 @@ func TestGroupedGatewayDataSource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	for _, name := range []string{"id", "name", "gateway_ids", "routing_strategy", "recovery_delay_seconds", "tenant_ids", "created_at", "timeouts"} {
+	for _, name := range []string{"id", "name", "gateway_ids", "routing_strategy", "required_gateway_stability", "tenant_ids", "created_at", "timeouts"} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}

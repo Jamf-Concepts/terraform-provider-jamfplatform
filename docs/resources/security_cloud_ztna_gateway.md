@@ -47,9 +47,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 # Form 1 — dedicated internet gateway. Omit ipsec, and Jamf provisions a pair of
 # private egress IP addresses, reported in dedicated_egress_ip_addresses.
 resource "jamfplatform_security_cloud_ztna_gateway" "internet" {
-  name       = "London Internet Egress"
-  datacenter = "eu-west-2"
-  tenant_ids = [var.security_cloud_tenant_id]
+  name          = "London Internet Egress"
+  egress_region = "Europe - UK"
+  tenant_ids    = [var.security_cloud_tenant_id]
 
   contact = {
     name  = "Network Operations"
@@ -61,58 +61,58 @@ resource "jamfplatform_security_cloud_ztna_gateway" "internet" {
 # concentrator. Adding or removing the block later replaces the gateway: Jamf
 # Security Cloud will not convert one form into the other.
 resource "jamfplatform_security_cloud_ztna_gateway" "ipsec" {
-  name       = "Frankfurt Private Apps"
-  datacenter = "eu-central-1"
-  tenant_ids = [var.security_cloud_tenant_id]
+  name          = "Frankfurt Private Apps"
+  egress_region = "Europe - Germany"
+  tenant_ids    = [var.security_cloud_tenant_id]
 
   contact = {
     name  = "Network Operations"
     email = "netops@example.com"
   }
 
-  # The source addresses your firewall must allow. The admin UI lists the
-  # addresses each egress region offers when you pick the region; supply both for
-  # dynamic addressing, or one to pin a single source.
-  availability_zones = ["3.66.107.208", "3.121.43.105"]
+  # The addresses your firewall must allow. The admin UI lists the ones each
+  # egress region offers when you pick the region; supply both for dynamic
+  # addressing, or one to pin a single source.
+  ipsec_source_ip_addresses = ["3.66.107.208", "3.121.43.105"]
 
   ipsec = {
-    key_exchange = "ikev2"
+    key_exchange_protocol = "IKEv2"
 
-    # "Phase 1" and "Phase 2" in the admin UI. The Diffie-Hellman group values
-    # appear there alongside the group number — "Group 14 (modp2048)".
-    ike = {
-      encryption       = "aes256"
-      integrity        = "sha512"
-      dh_group         = "modp2048"
-      lifetime_seconds = 28800
+    # Every value below is the label the admin UI shows, not the value stored
+    # behind it.
+    phase_1 = {
+      encryption           = "AES-256"
+      integrity            = "SHA-512"
+      diffie_hellman_group = "Group 14 (modp2048)"
+      sa_lifetime_seconds  = 28800
     }
 
-    esp = {
-      encryption       = "aes256"
-      integrity        = "sha512"
-      dh_group         = "modp2048"
-      lifetime_seconds = 28800
+    phase_2 = {
+      encryption           = "AES-256"
+      integrity            = "SHA-512"
+      diffie_hellman_group = "Group 14 (modp2048)"
+      sa_lifetime_seconds  = 28800
     }
 
     jamf_side = {
-      host   = "%any"
-      ike_id = "wpa.wandera.com"
+      host          = "%any"
+      ike_domain_id = "wpa.wandera.com"
 
       # Exactly one private range, and it must not exist anywhere else on your
       # network: 10.0.0.0/8 (/8-/30), 172.16.0.0/12 (/12-/30) or
       # 192.168.0.0/16 (/16-/30).
       subnet = "172.16.0.0/12"
 
-      # Never stored in Terraform state. Bump shared_secret_wo_version to rotate
-      # it; leaving the version alone keeps the key Jamf already has.
-      shared_secret            = var.ipsec_shared_secret
-      shared_secret_wo_version = 1
+      # Never stored in Terraform state. Bump authentication_secret_wo_version to
+      # rotate it; leaving the version alone keeps the key Jamf already has.
+      authentication_secret            = var.ipsec_authentication_secret
+      authentication_secret_wo_version = 1
     }
 
     customer_side = {
-      host    = "203.0.113.10"
-      ike_id  = "vpn.example.com"
-      subnets = ["10.100.0.0/16", "10.101.0.0/16"]
+      host          = "203.0.113.10"
+      ike_domain_id = "vpn.example.com"
+      subnets       = ["10.100.0.0/16", "10.101.0.0/16"]
 
       # Case-sensitive. See the schema for the full list.
       vendor = "strongSwan"
@@ -125,7 +125,7 @@ variable "security_cloud_tenant_id" {
   type        = string
 }
 
-variable "ipsec_shared_secret" {
+variable "ipsec_authentication_secret" {
   description = "IPSec pre-shared key."
   type        = string
   sensitive   = true
@@ -138,17 +138,17 @@ variable "ipsec_shared_secret" {
 ### Required
 
 - `contact` (Attributes) **"Contact name"** and **"Contact email"** in the Jamf Security Cloud admin UI — who Jamf should reach about this gateway's operation. (see [below for nested schema](#nestedatt--contact))
-- `datacenter` (String) **"Egress region"** in the Jamf Security Cloud admin UI — the region this gateway is deployed to. Changing it re-provisions the gateway in the new region: connectivity drops, the reported status returns to `PENDING`, and any dedicated egress IP addresses stay stale until provisioning completes. Valid values: `af-south-1`, `ap-east-1`, `ap-northeast-1`, `ap-south-1`, `ap-southeast-1`, `ap-southeast-2`, `ca-central-1`, `eu-central-1`, `eu-west-1`, `eu-west-2`, `sa-east-1`, `us-east-1`, `us-west-2`.
+- `egress_region` (String) **"Egress region"** in the Jamf Security Cloud admin UI — the region this gateway is deployed to. Changing it re-provisions the gateway in the new region: connectivity drops, the reported status returns to `PENDING`, and any dedicated egress IP addresses stay stale until provisioning completes. Valid values: `Africa - Cape Town`, `Asia - Hong Kong`, `Asia - Japan`, `Asia - Mumbai`, `Asia - Singapore`, `Australia`, `Europe - Germany`, `Europe - Ireland`, `Europe - UK`, `North America - Canada`, `North America - USA East`, `North America - USA West`, `South America - Brazil`.
 - `name` (String) **"Gateway name"** in the Jamf Security Cloud admin UI.
 - `tenant_ids` (Set of String) IDs of the tenants granted access to this gateway. At least one, and every one must belong to the same organization as the credentials the provider is configured with — a tenant outside it is refused.
 
 ### Optional
 
-- `availability_zones` (Set of String) **"Jamf Security Cloud IPsec source IP addresses"** in the Jamf Security Cloud admin UI — the addresses IPsec traffic from Jamf Security Cloud originates from, which your firewall must allow. Supply both addresses your egress region offers for dynamic addressing, or one to pin a single source address. Only valid on an IPsec gateway: a dedicated internet gateway must leave this unset.
-
-The accepted addresses are fixed per egress region and are the ones the admin UI lists when you pick the region. The provider does not check them at plan time because the accepted set is not published anywhere it can read.
 - `enabled` (Boolean) Whether the deployment is active. A disabled gateway reports its status as `DISABLED` and carries no traffic. Defaults to `true`.
 - `ipsec` (Attributes) IPsec tunnel configuration. Present on a dedicated IPsec gateway, absent on a dedicated internet gateway. Adding or removing the whole block replaces the gateway. (see [below for nested schema](#nestedatt--ipsec))
+- `ipsec_source_ip_addresses` (Set of String) **"Jamf Security Cloud IPsec source IP addresses"** in the Jamf Security Cloud admin UI — the addresses IPsec traffic from Jamf Security Cloud originates from, which your firewall must allow. Supply both addresses your egress region offers for dynamic addressing, or one to pin a single source address. Only valid on an IPsec gateway: a dedicated internet gateway must leave this unset.
+
+The accepted addresses are fixed per egress region and are the ones the admin UI lists when you pick the region. The provider does not check them at plan time because the accepted set is not published anywhere it can read.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -172,10 +172,10 @@ Required:
 Required:
 
 - `customer_side` (Attributes) **"Customer side"** in the Jamf Security Cloud admin UI — your own VPN concentrator, and the subnets reachable through it. (see [below for nested schema](#nestedatt--ipsec--customer_side))
-- `esp` (Attributes) **"Phase 2"** in the Jamf Security Cloud admin UI — the cipher suite protecting the tunnelled traffic. (see [below for nested schema](#nestedatt--ipsec--esp))
-- `ike` (Attributes) **"Phase 1"** in the Jamf Security Cloud admin UI — the cipher suite protecting the key exchange itself. (see [below for nested schema](#nestedatt--ipsec--ike))
 - `jamf_side` (Attributes) **"Jamf Security Cloud side"** in the Jamf Security Cloud admin UI — the endpoint Jamf presents to your VPN concentrator. (see [below for nested schema](#nestedatt--ipsec--jamf_side))
-- `key_exchange` (String) **"Key exchange protocol"** in the Jamf Security Cloud admin UI. Valid values: `ikev1`, `ikev2`.
+- `key_exchange_protocol` (String) **"Key exchange protocol"** in the Jamf Security Cloud admin UI. Valid values: `IKEv1`, `IKEv2`.
+- `phase_1` (Attributes) **"Phase 1"** in the Jamf Security Cloud admin UI — the cipher suite protecting the key exchange itself. (see [below for nested schema](#nestedatt--ipsec--phase_1))
+- `phase_2` (Attributes) **"Phase 2"** in the Jamf Security Cloud admin UI — the cipher suite protecting the tunnelled traffic. (see [below for nested schema](#nestedatt--ipsec--phase_2))
 
 <a id="nestedatt--ipsec--customer_side"></a>
 ### Nested Schema for `ipsec.customer_side`
@@ -183,7 +183,7 @@ Required:
 Required:
 
 - `host` (String) **"Your IPsec gateway IP address"** in the Jamf Security Cloud admin UI.
-- `ike_id` (String) **"Your IKE domain ID"** in the Jamf Security Cloud admin UI — the IKE identity your concentrator presents.
+- `ike_domain_id` (String) **"Your IKE domain ID"** in the Jamf Security Cloud admin UI — the IKE identity your concentrator presents.
 - `subnets` (Set of String) **"Customer subnets"** in the Jamf Security Cloud admin UI — the subnets reachable through this gateway, in CIDR notation, usually where your applications live. At least one. `0.0.0.0/0` is accepted, and narrowing access on the firewall instead is the documented approach for most firewalls.
 - `vendor` (String) **"IPsec network vendor"** in the Jamf Security Cloud admin UI — the VPN vendor of your concentrator. Case-sensitive. Valid values: `Checkpoint`, `Cisco`, `Fortinet`, `Juniper`, `Palo Alto`, `SonicWall`, `Sophos`, `Sourcefire`, `strongSwan`, `Watchguard`, `Other`.
 
@@ -192,45 +192,45 @@ Read-Only:
 - `auth_method` (String) Authentication method Jamf Security Cloud reports for this endpoint. Read-only.
 
 
-<a id="nestedatt--ipsec--esp"></a>
-### Nested Schema for `ipsec.esp`
-
-Required:
-
-- `dh_group` (String) **"Diffie-Hellman Group"** in the Jamf Security Cloud admin UI, which names each group alongside this value — `Group 14 (modp2048)` is `modp2048`. Valid values: `modp1024`, `modp1536`, `modp2048`, `modp3072`, `modp4096`, `ecp256`, `ecp384`, `ecp521`.
-- `encryption` (String) **"Encryption"** in the Jamf Security Cloud admin UI. Valid values: `3des`, `aes128`, `aes256` (shown as `3DES`, `AES-128` and `AES-256`).
-- `integrity` (String) **"Integrity"** in the Jamf Security Cloud admin UI. Valid values: `md5`, `sha1`, `sha256`, `sha512` (shown as `MD5`, `SHA-1`, `SHA-256` and `SHA-512`).
-- `lifetime_seconds` (Number) **"Security Association (SA) Lifetime"** in the Jamf Security Cloud admin UI, in seconds.
-
-
-<a id="nestedatt--ipsec--ike"></a>
-### Nested Schema for `ipsec.ike`
-
-Required:
-
-- `dh_group` (String) **"Diffie-Hellman Group"** in the Jamf Security Cloud admin UI, which names each group alongside this value — `Group 14 (modp2048)` is `modp2048`. Valid values: `modp1024`, `modp1536`, `modp2048`, `modp3072`, `modp4096`, `ecp256`, `ecp384`, `ecp521`.
-- `encryption` (String) **"Encryption"** in the Jamf Security Cloud admin UI. Valid values: `3des`, `aes128`, `aes256` (shown as `3DES`, `AES-128` and `AES-256`).
-- `integrity` (String) **"Integrity"** in the Jamf Security Cloud admin UI. Valid values: `md5`, `sha1`, `sha256`, `sha512` (shown as `MD5`, `SHA-1`, `SHA-256` and `SHA-512`).
-- `lifetime_seconds` (Number) **"Security Association (SA) Lifetime"** in the Jamf Security Cloud admin UI, in seconds.
-
-
 <a id="nestedatt--ipsec--jamf_side"></a>
 ### Nested Schema for `ipsec.jamf_side`
 
 Required:
 
+- `authentication_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Authentication secret"** in the Jamf Security Cloud admin UI — the IPsec pre-shared key, applied to both ends of the tunnel. `WriteOnly` — sent to Jamf Security Cloud on writes but **never persisted in Terraform state**, because Jamf never returns it. Pair with `authentication_secret_wo_version` to rotate it. It can be rotated but not cleared.
 - `host` (String) Endpoint address, or `%any` to accept any address.
-- `ike_id` (String) **"Jamf Security Cloud IKE domain ID"** in the Jamf Security Cloud admin UI — the IKE identity Jamf presents, for example `wpa.wandera.com`.
-- `shared_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) **"Authentication secret"** in the Jamf Security Cloud admin UI — the IPsec pre-shared key, applied to both ends of the tunnel. `WriteOnly` — sent to Jamf Security Cloud on writes but **never persisted in Terraform state**, because Jamf never returns it. Pair with `shared_secret_wo_version` to rotate it. It can be rotated but not cleared.
+- `ike_domain_id` (String) **"Jamf Security Cloud IKE domain ID"** in the Jamf Security Cloud admin UI — the IKE identity Jamf presents, for example `wpa.wandera.com`.
 - `subnet` (String) **"Jamf Security Cloud subnet"** in the Jamf Security Cloud admin UI — the range all end-user traffic originates from through the tunnel, in CIDR notation. Must be a private range: `10.0.0.0/8` with a `/8`–`/30` prefix, `172.16.0.0/12` with `/12`–`/30`, or `192.168.0.0/16` with `/16`–`/30`. The range must not exist anywhere else on your network.
 
 Optional:
 
-- `shared_secret_wo_version` (Number) Rotation trigger for the `WriteOnly` `shared_secret`. Bump this integer to force an update that re-sends the secret. Set it to `1` on create. Leaving it unset or unchanged means "leave the stored key alone" — the provider omits the secret from the next update so Jamf Security Cloud retains the existing one.
+- `authentication_secret_wo_version` (Number) Rotation trigger for the `WriteOnly` `authentication_secret`. Bump this integer to force an update that re-sends the secret. Set it to `1` on create. Leaving it unset or unchanged means "leave the stored key alone" — the provider omits the secret from the next update so Jamf Security Cloud retains the existing one.
 
 Read-Only:
 
 - `auth_method` (String) Authentication method Jamf Security Cloud reports for this endpoint. Read-only.
+
+
+<a id="nestedatt--ipsec--phase_1"></a>
+### Nested Schema for `ipsec.phase_1`
+
+Required:
+
+- `diffie_hellman_group` (String) **"Diffie-Hellman Group"** in the Jamf Security Cloud admin UI. Valid values: `Group 2 (modp1024)`, `Group 5 (modp1536)`, `Group 14 (modp2048)`, `Group 15 (modp3072)`, `Group 16 (modp4096)`, `Group 19 (ecp256)`, `Group 20 (ecp384)`, `Group 21 (ecp521)`.
+- `encryption` (String) **"Encryption"** in the Jamf Security Cloud admin UI. Valid values: `3DES`, `AES-128`, `AES-256`.
+- `integrity` (String) **"Integrity"** in the Jamf Security Cloud admin UI. Valid values: `MD5`, `SHA-1`, `SHA-256`, `SHA-512`.
+- `sa_lifetime_seconds` (Number) **"Security Association (SA) Lifetime"** in the Jamf Security Cloud admin UI, in seconds.
+
+
+<a id="nestedatt--ipsec--phase_2"></a>
+### Nested Schema for `ipsec.phase_2`
+
+Required:
+
+- `diffie_hellman_group` (String) **"Diffie-Hellman Group"** in the Jamf Security Cloud admin UI. Valid values: `Group 2 (modp1024)`, `Group 5 (modp1536)`, `Group 14 (modp2048)`, `Group 15 (modp3072)`, `Group 16 (modp4096)`, `Group 19 (ecp256)`, `Group 20 (ecp384)`, `Group 21 (ecp521)`.
+- `encryption` (String) **"Encryption"** in the Jamf Security Cloud admin UI. Valid values: `3DES`, `AES-128`, `AES-256`.
+- `integrity` (String) **"Integrity"** in the Jamf Security Cloud admin UI. Valid values: `MD5`, `SHA-1`, `SHA-256`, `SHA-512`.
+- `sa_lifetime_seconds` (Number) **"Security Association (SA) Lifetime"** in the Jamf Security Cloud admin UI, in seconds.
 
 
 
@@ -266,7 +266,7 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 # Gateways are imported by gateway ID.
 #
 # The IPSec pre-shared key cannot be imported — Jamf Security Cloud never returns
-# it — so add `ipsec.jamf_side.shared_secret` to your configuration before the
+# it — so add `ipsec.jamf_side.authentication_secret` to your configuration before the
 # next apply.
 terraform import jamfplatform_security_cloud_ztna_gateway.ipsec a1b2
 ```

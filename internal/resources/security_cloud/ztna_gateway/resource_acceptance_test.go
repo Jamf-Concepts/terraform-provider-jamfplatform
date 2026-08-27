@@ -31,10 +31,14 @@ import (
 // so the tests keep well clear of each other rather than relying on that being
 // coincidental.
 const (
-	regionA = "eu-west-2"
-	regionB = "eu-central-1"
-	regionC = "eu-west-1"
+	regionA = "Europe - UK"
+	regionB = "Europe - Germany"
+	regionC = "Europe - Ireland"
 )
+
+// regionALabel is the same value under a name that reads correctly where a test
+// asserts what the schema reports rather than what it was configured with.
+const regionALabel = regionA
 
 // Peer addresses come from RFC 5737's TEST-NET blocks, which are reserved for
 // documentation and never routed.
@@ -89,7 +93,7 @@ func TestAccResource_SecurityCloudZtnaGateway_InternetGateway(t *testing.T) {
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "test" {
 						name       = %q
-						datacenter = %q
+						egress_region = %q
 						tenant_ids = [%q]
 
 						contact = {
@@ -101,10 +105,10 @@ func TestAccResource_SecurityCloudZtnaGateway_InternetGateway(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_gateway.test", "id"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "name", name),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "datacenter", regionA),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "egress_region", regionA),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "enabled", "true"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "contact.name", "Terraform Acceptance"),
-					resource.TestCheckNoResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.key_exchange"),
+					resource.TestCheckNoResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.key_exchange_protocol"),
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_gateway.test", "status.state"),
 				),
 			},
@@ -112,7 +116,7 @@ func TestAccResource_SecurityCloudZtnaGateway_InternetGateway(t *testing.T) {
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "test" {
 						name       = %q
-						datacenter = %q
+						egress_region = %q
 						enabled    = false
 						tenant_ids = [%q]
 
@@ -159,31 +163,30 @@ func TestAccResource_SecurityCloudZtnaGateway_IPSecGateway(t *testing.T) {
 		CheckDestroy:             testAccCheckGatewayDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: ipsecGatewayConfig(name, regionB, tenantID, "10.20.0.0/16", peerHostA, "aes256", "sha512", "modp2048", 28800, `["0.0.0.0/0"]`, 1),
+				Config: ipsecGatewayConfig(name, regionB, tenantID, "10.20.0.0/16", peerHostA, "AES-256", "SHA-512", "Group 14 (modp2048)", 28800, `["0.0.0.0/0"]`, 1),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_gateway.test", "id"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.key_exchange", "ikev2"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.ike.encryption", "aes256"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.ike.dh_group", "modp2048"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.key_exchange_protocol", "IKEv2"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.phase_1.encryption", "AES-256"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.phase_1.diffie_hellman_group", "Group 14 (modp2048)"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.subnet", "10.20.0.0/16"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.auth_method", "psk"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.customer_side.vendor", "strongSwan"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.customer_side.subnets.#", "1"),
-					// The pre-shared key must never reach state, whatever the config said.
-					resource.TestCheckNoResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.shared_secret"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.shared_secret_wo_version", "1"),
+					resource.TestCheckNoResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.authentication_secret"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.authentication_secret_wo_version", "1"),
 				),
 			},
 			{
-				Config: ipsecGatewayConfig(name, regionB, tenantID, "10.20.0.0/16", peerHostB, "aes128", "sha256", "ecp256", 3600, `["10.30.0.0/16", "192.168.50.0/24"]`, 2),
+				Config: ipsecGatewayConfig(name, regionB, tenantID, "10.20.0.0/16", peerHostB, "AES-128", "SHA-256", "Group 19 (ecp256)", 3600, `["10.30.0.0/16", "192.168.50.0/24"]`, 2),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.ike.encryption", "aes128"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.ike.integrity", "sha256"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.ike.dh_group", "ecp256"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.ike.lifetime_seconds", "3600"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.phase_1.encryption", "AES-128"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.phase_1.integrity", "SHA-256"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.phase_1.diffie_hellman_group", "Group 19 (ecp256)"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.phase_1.sa_lifetime_seconds", "3600"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.customer_side.host", peerHostB),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.customer_side.subnets.#", "2"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.shared_secret_wo_version", "2"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.jamf_side.authentication_secret_wo_version", "2"),
 				),
 			},
 			{
@@ -192,8 +195,8 @@ func TestAccResource_SecurityCloudZtnaGateway_IPSecGateway(t *testing.T) {
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{
 					"timeouts",
-					"ipsec.jamf_side.shared_secret",
-					"ipsec.jamf_side.shared_secret_wo_version",
+					"ipsec.jamf_side.authentication_secret",
+					"ipsec.jamf_side.authentication_secret_wo_version",
 				},
 			},
 		},
@@ -219,7 +222,7 @@ func TestAccResource_SecurityCloudZtnaGateway_FormChangeForcesReplace(t *testing
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "test" {
 						name       = %q
-						datacenter = %q
+						egress_region = %q
 						tenant_ids = [%q]
 
 						contact = {
@@ -231,13 +234,13 @@ func TestAccResource_SecurityCloudZtnaGateway_FormChangeForcesReplace(t *testing
 				Check: resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_gateway.test", "id"),
 			},
 			{
-				Config: ipsecGatewayConfig(name, regionC, tenantID, "192.168.60.0/24", peerHostA, "aes256", "sha512", "modp2048", 28800, `["0.0.0.0/0"]`, 1),
+				Config: ipsecGatewayConfig(name, regionC, tenantID, "192.168.60.0/24", peerHostA, "AES-256", "SHA-512", "Group 14 (modp2048)", 28800, `["0.0.0.0/0"]`, 1),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction("jamfplatform_security_cloud_ztna_gateway.test", plancheck.ResourceActionReplace),
 					},
 				},
-				Check: resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.key_exchange", "ikev2"),
+				Check: resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_gateway.test", "ipsec.key_exchange_protocol", "IKEv2"),
 			},
 		},
 	})
@@ -247,7 +250,7 @@ func TestAccResource_SecurityCloudZtnaGateway_FormChangeForcesReplace(t *testing
 // cross-field rule at plan time. The server refuses the combination with a message
 // about a field the provider does not even expose, so catching it here is the only
 // way the user hears about the actual conflict.
-func TestAccResource_SecurityCloudZtnaGateway_AvailabilityZonesRequireIPSec(t *testing.T) {
+func TestAccResource_SecurityCloudZtnaGateway_SourceAddressesRequireIPSec(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
 	tenantID := testhelpers.RequireSecurityCloudTenantID(t)
 	suffix := testhelpers.RunSuffix()
@@ -261,7 +264,7 @@ func TestAccResource_SecurityCloudZtnaGateway_AvailabilityZonesRequireIPSec(t *t
 						name               = "tf-acc-jsc-gw-az-%s"
 						datacenter         = %q
 						tenant_ids         = [%q]
-						availability_zones = ["3.9.67.90"]
+						ipsec_source_ip_addresses = ["3.9.67.90"]
 
 						contact = {
 							name  = "Terraform Acceptance"
@@ -269,7 +272,7 @@ func TestAccResource_SecurityCloudZtnaGateway_AvailabilityZonesRequireIPSec(t *t
 						}
 					}
 				`, suffix, regionA, tenantID),
-				ExpectError: regexpAvailabilityZonesNeedIPSec,
+				ExpectError: regexpSourceAddressesNeedIPSec,
 			},
 		},
 	})
@@ -288,7 +291,7 @@ func TestAccResource_SecurityCloudZtnaGateway_InvalidJamfSubnetRejectedAtPlan(t 
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      ipsecGatewayConfig("tf-acc-jsc-gw-badsubnet-"+suffix, regionA, tenantID, "8.8.8.0/24", peerHostA, "aes256", "sha512", "modp2048", 28800, `["0.0.0.0/0"]`, 1),
+				Config:      ipsecGatewayConfig("tf-acc-jsc-gw-badsubnet-"+suffix, regionA, tenantID, "8.8.8.0/24", peerHostA, "AES-256", "SHA-512", "Group 14 (modp2048)", 28800, `["0.0.0.0/0"]`, 1),
 				ExpectError: regexpSubnetNotPrivate,
 			},
 		},
@@ -308,7 +311,7 @@ func TestAccResource_SecurityCloudZtnaGateway_InvalidCipherRejectedAtPlan(t *tes
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      ipsecGatewayConfig("tf-acc-jsc-gw-badcipher-"+suffix, regionA, tenantID, "10.40.0.0/16", peerHostA, "aes999", "sha512", "modp2048", 28800, `["0.0.0.0/0"]`, 1),
+				Config:      ipsecGatewayConfig("tf-acc-jsc-gw-badcipher-"+suffix, regionA, tenantID, "10.40.0.0/16", peerHostA, "AES-999", "SHA-512", "Group 14 (modp2048)", 28800, `["0.0.0.0/0"]`, 1),
 				ExpectError: regexpInvalidAttributeValueMatch,
 			},
 		},
@@ -330,7 +333,7 @@ func TestAccResource_SecurityCloudZtnaGateway_LowercaseVendorRejectedAtPlan(t *t
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "test" {
 						name       = "tf-acc-jsc-gw-vendor-%s"
-						datacenter = %q
+						egress_region = %q
 						tenant_ids = [%q]
 
 						contact = {
@@ -339,21 +342,21 @@ func TestAccResource_SecurityCloudZtnaGateway_LowercaseVendorRejectedAtPlan(t *t
 						}
 
 						ipsec = {
-							key_exchange = "ikev2"
-							ike = { encryption = "aes256", integrity = "sha512", dh_group = "modp2048", lifetime_seconds = 28800 }
-							esp = { encryption = "aes256", integrity = "sha512", dh_group = "modp2048", lifetime_seconds = 28800 }
+							key_exchange_protocol = "IKEv2"
+							phase_1 = { encryption = "AES-256", integrity = "SHA-512", diffie_hellman_group = "Group 14 (modp2048)", sa_lifetime_seconds = 28800 }
+							phase_2 = { encryption = "AES-256", integrity = "SHA-512", diffie_hellman_group = "Group 14 (modp2048)", sa_lifetime_seconds = 28800 }
 							jamf_side = {
-								host                     = "%%any"
-								ike_id                   = "wpa.wandera.com"
-								subnet                   = "10.50.0.0/16"
-								shared_secret            = "tf-acc-secret-0001"
-								shared_secret_wo_version = 1
+								host                             = "%%any"
+								ike_domain_id                    = "wpa.wandera.com"
+								subnet                           = "10.50.0.0/16"
+								authentication_secret            = "tf-acc-secret-0001"
+								authentication_secret_wo_version = 1
 							}
 							customer_side = {
-								host    = %q
-								ike_id  = "peer.tf-acc.example.com"
-								subnets = ["0.0.0.0/0"]
-								vendor  = "strongswan"
+								host          = %q
+								ike_domain_id = "peer.tf-acc.example.com"
+								subnets       = ["0.0.0.0/0"]
+								vendor        = "strongswan"
 							}
 						}
 					}
@@ -380,7 +383,7 @@ func TestAccDataSource_SecurityCloudZtnaGateway_ByIDAndName(t *testing.T) {
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "src" {
 						name       = %q
-						datacenter = %q
+						egress_region = %q
 						tenant_ids = [%q]
 
 						contact = {
@@ -400,7 +403,7 @@ func TestAccDataSource_SecurityCloudZtnaGateway_ByIDAndName(t *testing.T) {
 				`, name, regionA, tenantID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrPair("data.jamfplatform_security_cloud_ztna_gateway.by_id", "name", "jamfplatform_security_cloud_ztna_gateway.src", "name"),
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_gateway.by_id", "datacenter", regionA),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_gateway.by_id", "egress_region", regionA),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_gateway.by_id", "dedicated_egress_ips_enabled", "true"),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_security_cloud_ztna_gateway.by_name", "id", "jamfplatform_security_cloud_ztna_gateway.src", "id"),
 				),
@@ -452,7 +455,7 @@ func TestAccDataSource_SecurityCloudZtnaGateways_ListsCreatedGateway(t *testing.
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "src" {
 						name       = %q
-						datacenter = %q
+						egress_region = %q
 						tenant_ids = [%q]
 
 						contact = {
@@ -499,7 +502,7 @@ func TestAccListResource_SecurityCloudZtnaGateway_Basic(t *testing.T) {
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "src" {
 						name       = %q
-						datacenter = %q
+						egress_region = %q
 						tenant_ids = [%q]
 
 						contact = {
@@ -528,7 +531,7 @@ func TestAccListResource_SecurityCloudZtnaGateway_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
-							{Path: tfjsonpath.New("datacenter"), KnownValue: knownvalue.StringExact(regionA)},
+							{Path: tfjsonpath.New("egress_region"), KnownValue: knownvalue.StringExact(regionALabel)},
 						},
 					),
 				},
@@ -544,7 +547,7 @@ func ipsecGatewayConfig(name, region, tenantID, jamfSubnet, peerHost, encryption
 	return fmt.Sprintf(`
 		resource "jamfplatform_security_cloud_ztna_gateway" "test" {
 			name       = %q
-			datacenter = %q
+			egress_region = %q
 			tenant_ids = [%q]
 
 			contact = {
@@ -553,35 +556,35 @@ func ipsecGatewayConfig(name, region, tenantID, jamfSubnet, peerHost, encryption
 			}
 
 			ipsec = {
-				key_exchange = "ikev2"
+				key_exchange_protocol = "IKEv2"
 
-				ike = {
-					encryption       = %q
-					integrity        = %q
-					dh_group         = %q
-					lifetime_seconds = %d
+				phase_1 = {
+					encryption           = %q
+					integrity            = %q
+					diffie_hellman_group = %q
+					sa_lifetime_seconds  = %d
 				}
 
-				esp = {
-					encryption       = %q
-					integrity        = %q
-					dh_group         = %q
-					lifetime_seconds = %d
+				phase_2 = {
+					encryption           = %q
+					integrity            = %q
+					diffie_hellman_group = %q
+					sa_lifetime_seconds  = %d
 				}
 
 				jamf_side = {
-					host                     = "%%any"
-					ike_id                   = "wpa.wandera.com"
-					subnet                   = %q
-					shared_secret            = "tf-acc-secret-%d"
-					shared_secret_wo_version = %d
+					host                             = "%%any"
+					ike_domain_id                    = "wpa.wandera.com"
+					subnet                           = %q
+					authentication_secret            = "tf-acc-secret-%d"
+					authentication_secret_wo_version = %d
 				}
 
 				customer_side = {
-					host    = %q
-					ike_id  = "peer.tf-acc.example.com"
-					subnets = %s
-					vendor  = "strongSwan"
+					host          = %q
+					ike_domain_id = "peer.tf-acc.example.com"
+					subnets       = %s
+					vendor        = "strongSwan"
 				}
 			}
 		}
@@ -596,7 +599,7 @@ func ipsecGatewayConfig(name, region, tenantID, jamfSubnet, peerHost, encryption
 // diagnostic text at roughly 80 columns, so each pattern matches a short phrase
 // that cannot be split across a line break.
 var (
-	regexpAvailabilityZonesNeedIPSec = regexp.MustCompile(`Availability zones require an IPsec gateway`)
+	regexpSourceAddressesNeedIPSec   = regexp.MustCompile(`IPsec source addresses require an IPsec gateway`)
 	regexpSubnetNotPrivate           = regexp.MustCompile(`is not a private range`)
 	regexpInvalidAttributeValueMatch = regexp.MustCompile(`Invalid Attribute Value Match`)
 	regexpExactlyOneSelector         = regexp.MustCompile(`Invalid Attribute Combination`)

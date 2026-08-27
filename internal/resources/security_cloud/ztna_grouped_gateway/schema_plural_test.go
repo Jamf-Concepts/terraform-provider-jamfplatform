@@ -42,7 +42,7 @@ func TestGroupedGatewaysDataSource_Schema(t *testing.T) {
 	if !ok {
 		t.Fatalf("grouped_gateways must be a ListNestedAttribute, got %T", s.Attributes["grouped_gateways"])
 	}
-	for _, name := range []string{"id", "name", "gateway_ids", "routing_strategy", "recovery_delay_seconds", "tenant_ids", "created_at"} {
+	for _, name := range []string{"id", "name", "gateway_ids", "routing_strategy", "required_gateway_stability", "tenant_ids", "created_at"} {
 		if _, present := groups.NestedObject.Attributes[name]; !present {
 			t.Errorf("grouped_gateways missing nested attribute %q", name)
 		}

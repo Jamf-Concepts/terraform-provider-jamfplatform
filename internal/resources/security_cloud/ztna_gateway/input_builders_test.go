@@ -74,8 +74,8 @@ func TestBuildGatewayCreateInput_CollapsesCipherValuesToSingleElementArrays(t *t
 		integrity  []string
 		dhGroups   []string
 	}{
-		"ike": {got.Ipsec.Ike.Encryption, got.Ipsec.Ike.Integrity, got.Ipsec.Ike.DhGroups},
-		"esp": {got.Ipsec.Esp.Encryption, got.Ipsec.Esp.Integrity, got.Ipsec.Esp.DhGroups},
+		"phase_1": {got.Ipsec.Ike.Encryption, got.Ipsec.Ike.Integrity, got.Ipsec.Ike.DhGroups},
+		"phase_2": {got.Ipsec.Esp.Encryption, got.Ipsec.Esp.Integrity, got.Ipsec.Esp.DhGroups},
 	} {
 		for name, values := range map[string][]string{
 			"encryption": suite.encryption,
@@ -90,6 +90,35 @@ func TestBuildGatewayCreateInput_CollapsesCipherValuesToSingleElementArrays(t *t
 
 	if len(got.Ipsec.Left.Subnets) != 1 {
 		t.Errorf("the Jamf-side subnet must go out as exactly one element, got %v", got.Ipsec.Left.Subnets)
+	}
+}
+
+// TestBuildGatewayCreateInput_TranslatesLabelsToStoredValues pins the other half of
+// the boundary. The schema takes the admin UI's labels, so every enumerated field
+// has to reach the wire as the value the API stores — sending a label would be
+// rejected with the unattributed "Request body is missing or malformed".
+func TestBuildGatewayCreateInput_TranslatesLabelsToStoredValues(t *testing.T) {
+	plan := ipsecGatewayPlan(t, 1)
+
+	got, diags := buildGatewayCreateInput(context.Background(), plan, plan)
+	if diags.HasError() {
+		t.Fatalf("diagnostics: %v", diags)
+	}
+
+	if got.Datacenter != "eu-west-2" {
+		t.Errorf("datacenter = %q, want the stored value for \"Europe - UK\"", got.Datacenter)
+	}
+	if got.Ipsec.KeyExchange != "ikev2" {
+		t.Errorf("keyExchange = %q, want the stored value for \"IKEv2\"", got.Ipsec.KeyExchange)
+	}
+	if got.Ipsec.Ike.Encryption[0] != "aes256" {
+		t.Errorf("ike.encryption = %q, want the stored value for \"AES-256\"", got.Ipsec.Ike.Encryption[0])
+	}
+	if got.Ipsec.Ike.Integrity[0] != "sha512" {
+		t.Errorf("ike.integrity = %q, want the stored value for \"SHA-512\"", got.Ipsec.Ike.Integrity[0])
+	}
+	if got.Ipsec.Ike.DhGroups[0] != "modp2048" {
+		t.Errorf("ike.dhGroups = %q, want the stored value for \"Group 14 (modp2048)\"", got.Ipsec.Ike.DhGroups[0])
 	}
 }
 
@@ -142,7 +171,7 @@ func TestSharedSecretRotated_NoPriorBlockCountsAsRotation(t *testing.T) {
 func TestBuildGatewayPatchInput_ClearsAvailabilityZonesWhenUnset(t *testing.T) {
 	state := ipsecGatewayPlan(t, 1)
 	plan := ipsecGatewayPlan(t, 1)
-	plan.AvailabilityZones = types.SetNull(types.StringType)
+	plan.IPSecSourceIPAddresses = types.SetNull(types.StringType)
 
 	got, diags := buildGatewayPatchInput(context.Background(), plan, state, plan)
 	if diags.HasError() {
@@ -160,12 +189,12 @@ func TestBuildGatewayPatchInput_ClearsAvailabilityZonesWhenUnset(t *testing.T) {
 func internetGatewayPlan(t *testing.T) GatewayResourceModel {
 	t.Helper()
 	return GatewayResourceModel{
-		ID:         types.StringValue("e045"),
-		Name:       types.StringValue("tf-internet"),
-		Datacenter: types.StringValue("eu-west-2"),
-		Contact:    &ContactModel{Name: types.StringValue("TF"), Email: types.StringValue("tf@example.com")},
-		Enabled:    types.BoolValue(true),
-		TenantIDs:  stringSet(t, probeTenant),
+		ID:           types.StringValue("e045"),
+		Name:         types.StringValue("tf-internet"),
+		EgressRegion: types.StringValue("eu-west-2"),
+		Contact:      &ContactModel{Name: types.StringValue("TF"), Email: types.StringValue("tf@example.com")},
+		Enabled:      types.BoolValue(true),
+		TenantIDs:    stringSet(t, probeTenant),
 	}
 }
 
@@ -174,29 +203,29 @@ func internetGatewayPlan(t *testing.T) GatewayResourceModel {
 func ipsecGatewayPlan(t *testing.T, woVersion int64) GatewayResourceModel {
 	t.Helper()
 	return GatewayResourceModel{
-		ID:                types.StringValue("c08e"),
-		Name:              types.StringValue("tf-ipsec"),
-		Datacenter:        types.StringValue("eu-west-2"),
-		Contact:           &ContactModel{Name: types.StringValue("TF"), Email: types.StringValue("tf@example.com")},
-		Enabled:           types.BoolValue(true),
-		TenantIDs:         stringSet(t, probeTenant),
-		AvailabilityZones: stringSet(t, "3.9.67.90"),
+		ID:                     types.StringValue("c08e"),
+		Name:                   types.StringValue("tf-ipsec"),
+		EgressRegion:           types.StringValue("eu-west-2"),
+		Contact:                &ContactModel{Name: types.StringValue("TF"), Email: types.StringValue("tf@example.com")},
+		Enabled:                types.BoolValue(true),
+		TenantIDs:              stringSet(t, probeTenant),
+		IPSecSourceIPAddresses: stringSet(t, "3.9.67.90"),
 		IPSec: &IPSecModel{
-			KeyExchange: types.StringValue("ikev2"),
-			IKE:         cipherSuitePlan(),
-			ESP:         cipherSuitePlan(),
+			KeyExchangeProtocol: types.StringValue("IKEv2"),
+			Phase1:              cipherSuitePlan(),
+			Phase2:              cipherSuitePlan(),
 			JamfSide: &JamfSideModel{
-				Host:                  types.StringValue("%any"),
-				IKEID:                 types.StringValue("wpa.wandera.com"),
-				Subnet:                types.StringValue("172.16.0.0/12"),
-				SharedSecret:          types.StringValue("probe-secret"),
-				SharedSecretWoVersion: types.Int64Value(woVersion),
+				Host:                          types.StringValue("%any"),
+				IKEDomainID:                   types.StringValue("wpa.wandera.com"),
+				Subnet:                        types.StringValue("172.16.0.0/12"),
+				AuthenticationSecret:          types.StringValue("probe-secret"),
+				AuthenticationSecretWoVersion: types.Int64Value(woVersion),
 			},
 			CustomerSide: &CustomerSideModel{
-				Host:    types.StringValue("198.51.100.7"),
-				IKEID:   types.StringValue("peer.example.com"),
-				Subnets: stringSet(t, "0.0.0.0/0"),
-				Vendor:  types.StringValue("strongSwan"),
+				Host:        types.StringValue("198.51.100.7"),
+				IKEDomainID: types.StringValue("peer.example.com"),
+				Subnets:     stringSet(t, "0.0.0.0/0"),
+				Vendor:      types.StringValue("strongSwan"),
 			},
 		},
 	}
@@ -205,10 +234,10 @@ func ipsecGatewayPlan(t *testing.T, woVersion int64) GatewayResourceModel {
 // cipherSuitePlan builds a cipher-suite phase.
 func cipherSuitePlan() *CipherSuiteModel {
 	return &CipherSuiteModel{
-		Encryption:      types.StringValue("aes256"),
-		Integrity:       types.StringValue("sha512"),
-		DHGroup:         types.StringValue("modp2048"),
-		LifetimeSeconds: types.Int64Value(28800),
+		Encryption:         types.StringValue("AES-256"),
+		Integrity:          types.StringValue("SHA-512"),
+		DiffieHellmanGroup: types.StringValue("Group 14 (modp2048)"),
+		SALifetimeSeconds:  types.Int64Value(28800),
 	}
 }
 

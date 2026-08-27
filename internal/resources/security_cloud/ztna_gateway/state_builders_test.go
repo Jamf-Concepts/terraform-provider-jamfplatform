@@ -61,8 +61,17 @@ func TestAssignGatewayResourceModel_IPSecGateway(t *testing.T) {
 	if state.IPSec == nil {
 		t.Fatal("the IPsec block must survive the read")
 	}
-	if got := state.IPSec.IKE.Encryption.ValueString(); got != "aes256" {
-		t.Errorf("ike.encryption = %q, want the single value collapsed out of the wire array", got)
+	if got := state.IPSec.Phase1.Encryption.ValueString(); got != "AES-256" {
+		t.Errorf("phase_1.encryption = %q, want the admin-UI label for the single value collapsed out of the wire array", got)
+	}
+	if got := state.IPSec.Phase1.DiffieHellmanGroup.ValueString(); got != "Group 14 (modp2048)" {
+		t.Errorf("phase_1.diffie_hellman_group = %q, want the admin-UI label", got)
+	}
+	if got := state.IPSec.KeyExchangeProtocol.ValueString(); got != "IKEv2" {
+		t.Errorf("key_exchange_protocol = %q, want the admin-UI label", got)
+	}
+	if got := state.EgressRegion.ValueString(); got != "Europe - UK" {
+		t.Errorf("egress_region = %q, want the admin-UI label", got)
 	}
 	if got := state.IPSec.JamfSide.Subnet.ValueString(); got != "172.16.0.0/12" {
 		t.Errorf("jamf_side.subnet = %q", got)
@@ -85,8 +94,8 @@ func TestAssignGatewayResourceModel_PreservesRotationTrigger(t *testing.T) {
 		t.Fatalf("diagnostics: %v", diags)
 	}
 
-	if got := state.IPSec.JamfSide.SharedSecretWoVersion.ValueInt64(); got != 7 {
-		t.Errorf("shared_secret_wo_version = %d, want the value carried over from the prior model", got)
+	if got := state.IPSec.JamfSide.AuthenticationSecretWoVersion.ValueInt64(); got != 7 {
+		t.Errorf("authentication_secret_wo_version = %d, want the value carried over from the prior model", got)
 	}
 }
 
@@ -117,8 +126,8 @@ func TestAssignGatewayResourceModel_AbsentAvailabilityZonesStayNull(t *testing.T
 	if diags.HasError() {
 		t.Fatalf("diagnostics: %v", diags)
 	}
-	if !state.AvailabilityZones.IsNull() {
-		t.Errorf("availability_zones = %v, want null when the server reports none", state.AvailabilityZones)
+	if !state.IPSecSourceIPAddresses.IsNull() {
+		t.Errorf("availability_zones = %v, want null when the server reports none", state.IPSecSourceIPAddresses)
 	}
 }
 

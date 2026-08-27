@@ -72,8 +72,8 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 				Config: memberGatewaysConfig(suffix, tenantID) + fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "test" {
 						name                   = %q
-						routing_strategy       = "ACTIVE_STANDBY"
-						recovery_delay_seconds = 1800
+						routing_strategy           = "First available"
+						required_gateway_stability = "30 minutes"
 
 						gateway_ids = [
 							jamfplatform_security_cloud_ztna_gateway.a.id,
@@ -86,8 +86,8 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_grouped_gateway.test", "id"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "name", name),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "routing_strategy", "ACTIVE_STANDBY"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "recovery_delay_seconds", "1800"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "routing_strategy", "First available"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "required_gateway_stability", "1800"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "gateway_ids.#", "2"),
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_grouped_gateway.test", "created_at"),
 					resource.TestCheckResourceAttrPair(
@@ -100,8 +100,8 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 				Config: memberGatewaysConfig(suffix, tenantID) + fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "test" {
 						name                   = %q
-						routing_strategy       = "NEAREST"
-						recovery_delay_seconds = 3600
+						routing_strategy           = "Nearest"
+						required_gateway_stability = "1 hour"
 
 						gateway_ids = [
 							jamfplatform_security_cloud_ztna_gateway.b.id,
@@ -113,9 +113,8 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 				`, nameUpdated, tenantID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "name", nameUpdated),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "routing_strategy", "NEAREST"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "recovery_delay_seconds", "3600"),
-					// The reversal must have landed: element 0 is now the second gateway.
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "routing_strategy", "Nearest"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "required_gateway_stability", "3600"),
 					resource.TestCheckResourceAttrPair(
 						"jamfplatform_security_cloud_ztna_grouped_gateway.test", "gateway_ids.0",
 						"jamfplatform_security_cloud_ztna_gateway.b", "id",
@@ -155,8 +154,8 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_MixedFormsRefused(t *testin
 				Config: mixedFormGatewaysConfig(suffix, tenantID) + fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "test" {
 						name                   = "tf-acc-jsc-gg-mixed-%s"
-						routing_strategy       = "NEAREST"
-						recovery_delay_seconds = 1800
+						routing_strategy           = "Nearest"
+						required_gateway_stability = "30 minutes"
 
 						gateway_ids = [
 							jamfplatform_security_cloud_ztna_gateway.internet.id,
@@ -172,11 +171,11 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_MixedFormsRefused(t *testin
 	})
 }
 
-// TestAccResource_SecurityCloudZtnaGroupedGateway_InvalidRecoveryDelayRejectedAtPlan
+// TestAccResource_SecurityCloudZtnaGroupedGateway_InvalidGatewayStabilityRejectedAtPlan
 // pins the one real enum in this resource. The value is required even for the two
 // strategies that ignore it, and the Go zero value — what an omitted integer would
 // send — is refused.
-func TestAccResource_SecurityCloudZtnaGroupedGateway_InvalidRecoveryDelayRejectedAtPlan(t *testing.T) {
+func TestAccResource_SecurityCloudZtnaGroupedGateway_InvalidGatewayStabilityRejectedAtPlan(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
 	tenantID := testhelpers.RequireSecurityCloudTenantID(t)
 	suffix := testhelpers.RunSuffix()
@@ -188,8 +187,8 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_InvalidRecoveryDelayRejecte
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "test" {
 						name                   = "tf-acc-jsc-gg-baddelay-%s"
-						routing_strategy       = "NEAREST"
-						recovery_delay_seconds = 900
+						routing_strategy           = "Nearest"
+						required_gateway_stability = "15 minutes"
 						gateway_ids            = ["a1b2", "c3d4"]
 						tenant_ids             = [%q]
 					}
@@ -200,8 +199,8 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_InvalidRecoveryDelayRejecte
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "test" {
 						name                   = "tf-acc-jsc-gg-onemember-%s"
-						routing_strategy       = "NEAREST"
-						recovery_delay_seconds = 1800
+						routing_strategy           = "Nearest"
+						required_gateway_stability = "30 minutes"
 						gateway_ids            = ["a1b2"]
 						tenant_ids             = [%q]
 					}
@@ -228,8 +227,8 @@ func TestAccDataSource_SecurityCloudZtnaGroupedGateway_ByIDAndName(t *testing.T)
 				Config: memberGatewaysConfig(suffix, tenantID) + fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "src" {
 						name                   = %q
-						routing_strategy       = "RANDOM"
-						recovery_delay_seconds = 300
+						routing_strategy           = "Random"
+						required_gateway_stability = "5 minutes"
 
 						gateway_ids = [
 							jamfplatform_security_cloud_ztna_gateway.a.id,
@@ -249,8 +248,8 @@ func TestAccDataSource_SecurityCloudZtnaGroupedGateway_ByIDAndName(t *testing.T)
 					}
 				`, name, tenantID),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "routing_strategy", "RANDOM"),
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "recovery_delay_seconds", "300"),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "routing_strategy", "Random"),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "required_gateway_stability", "300"),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "gateway_ids.#", "2"),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_name", "id", "jamfplatform_security_cloud_ztna_grouped_gateway.src", "id"),
 				),
@@ -275,8 +274,8 @@ func TestAccDataSource_SecurityCloudZtnaGroupedGateways_ListsCreatedGroup(t *tes
 				Config: memberGatewaysConfig(suffix, tenantID) + fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "src" {
 						name                   = %q
-						routing_strategy       = "NEAREST"
-						recovery_delay_seconds = 1800
+						routing_strategy           = "Nearest"
+						required_gateway_stability = "30 minutes"
 
 						gateway_ids = [
 							jamfplatform_security_cloud_ztna_gateway.a.id,
@@ -322,8 +321,8 @@ func TestAccListResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 				Config: memberGatewaysConfig(suffix, tenantID) + fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_grouped_gateway" "src" {
 						name                   = %q
-						routing_strategy       = "NEAREST"
-						recovery_delay_seconds = 1800
+						routing_strategy           = "Nearest"
+						required_gateway_stability = "30 minutes"
 
 						gateway_ids = [
 							jamfplatform_security_cloud_ztna_gateway.a.id,
@@ -353,7 +352,7 @@ func TestAccListResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 						queryfilter.ByDisplayName(knownvalue.StringExact(name)),
 						[]querycheck.KnownValueCheck{
 							{Path: tfjsonpath.New("name"), KnownValue: knownvalue.StringExact(name)},
-							{Path: tfjsonpath.New("routing_strategy"), KnownValue: knownvalue.StringExact("NEAREST")},
+							{Path: tfjsonpath.New("routing_strategy"), KnownValue: knownvalue.StringExact("Nearest")},
 						},
 					),
 				},
@@ -370,7 +369,7 @@ func memberGatewaysConfig(suffix, tenantID string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_security_cloud_ztna_gateway" "a" {
 			name       = "tf-acc-jsc-gg-member-a-%s"
-			datacenter = "eu-west-2"
+			egress_region = "Europe - UK"
 			tenant_ids = [%q]
 
 			contact = {
@@ -381,7 +380,7 @@ func memberGatewaysConfig(suffix, tenantID string) string {
 
 		resource "jamfplatform_security_cloud_ztna_gateway" "b" {
 			name       = "tf-acc-jsc-gg-member-b-%s"
-			datacenter = "eu-central-1"
+			egress_region = "Europe - Germany"
 			tenant_ids = [%q]
 
 			contact = {
@@ -398,7 +397,7 @@ func mixedFormGatewaysConfig(suffix, tenantID string) string {
 	return fmt.Sprintf(`
 		resource "jamfplatform_security_cloud_ztna_gateway" "internet" {
 			name       = "tf-acc-jsc-gg-inet-%s"
-			datacenter = "eu-west-2"
+			egress_region = "Europe - UK"
 			tenant_ids = [%q]
 
 			contact = {
@@ -409,7 +408,7 @@ func mixedFormGatewaysConfig(suffix, tenantID string) string {
 
 		resource "jamfplatform_security_cloud_ztna_gateway" "ipsec" {
 			name       = "tf-acc-jsc-gg-ipsec-%s"
-			datacenter = "eu-central-1"
+			egress_region = "Europe - Germany"
 			tenant_ids = [%q]
 
 			contact = {
@@ -418,23 +417,23 @@ func mixedFormGatewaysConfig(suffix, tenantID string) string {
 			}
 
 			ipsec = {
-				key_exchange = "ikev2"
-				ike = { encryption = "aes256", integrity = "sha512", dh_group = "modp2048", lifetime_seconds = 28800 }
-				esp = { encryption = "aes256", integrity = "sha512", dh_group = "modp2048", lifetime_seconds = 28800 }
+				key_exchange_protocol = "IKEv2"
+				phase_1 = { encryption = "AES-256", integrity = "SHA-512", diffie_hellman_group = "Group 14 (modp2048)", sa_lifetime_seconds = 28800 }
+				phase_2 = { encryption = "AES-256", integrity = "SHA-512", diffie_hellman_group = "Group 14 (modp2048)", sa_lifetime_seconds = 28800 }
 
 				jamf_side = {
-					host                     = "%%any"
-					ike_id                   = "wpa.wandera.com"
-					subnet                   = "10.60.0.0/16"
-					shared_secret            = "tf-acc-secret-mixed"
-					shared_secret_wo_version = 1
+					host                             = "%%any"
+					ike_domain_id                    = "wpa.wandera.com"
+					subnet                           = "10.60.0.0/16"
+					authentication_secret            = "tf-acc-secret-mixed"
+					authentication_secret_wo_version = 1
 				}
 
 				customer_side = {
-					host    = "198.51.100.9"
-					ike_id  = "peer.tf-acc.example.com"
-					subnets = ["0.0.0.0/0"]
-					vendor  = "strongSwan"
+					host          = "198.51.100.9"
+					ike_domain_id = "peer.tf-acc.example.com"
+					subnets       = ["0.0.0.0/0"]
+					vendor        = "strongSwan"
 				}
 			}
 		}

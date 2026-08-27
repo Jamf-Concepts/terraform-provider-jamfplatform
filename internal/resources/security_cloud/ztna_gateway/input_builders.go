@@ -29,7 +29,7 @@ func buildGatewayCreateInput(ctx context.Context, plan, config GatewayResourceMo
 	enabled := plan.Enabled.ValueBool()
 	req := &securitycloud.GatewayCreateRequest{
 		Name:       plan.Name.ValueString(),
-		Datacenter: plan.Datacenter.ValueString(),
+		Datacenter: wireValueFor(plan.EgressRegion.ValueString(), datacenterLabels),
 		Contact:    buildContactInput(plan.Contact),
 		Enabled:    &enabled,
 		TenantIds:  tenantIDs,
@@ -43,9 +43,9 @@ func buildGatewayCreateInput(ctx context.Context, plan, config GatewayResourceMo
 		return req, diags
 	}
 
-	if !plan.AvailabilityZones.IsNull() && !plan.AvailabilityZones.IsUnknown() {
-		zones := make([]string, 0, len(plan.AvailabilityZones.Elements()))
-		diags.Append(plan.AvailabilityZones.ElementsAs(ctx, &zones, false)...)
+	if !plan.IPSecSourceIPAddresses.IsNull() && !plan.IPSecSourceIPAddresses.IsUnknown() {
+		zones := make([]string, 0, len(plan.IPSecSourceIPAddresses.Elements()))
+		diags.Append(plan.IPSecSourceIPAddresses.ElementsAs(ctx, &zones, false)...)
 		req.AvailabilityZones = &zones
 	}
 
@@ -76,7 +76,7 @@ func buildGatewayPatchInput(ctx context.Context, plan, state, config GatewayReso
 	diags.Append(plan.TenantIDs.ElementsAs(ctx, &tenantIDs, false)...)
 
 	name := plan.Name.ValueString()
-	datacenter := plan.Datacenter.ValueString()
+	datacenter := wireValueFor(plan.EgressRegion.ValueString(), datacenterLabels)
 	enabled := plan.Enabled.ValueBool()
 
 	req := &securitycloud.GatewayPatchRequest{
@@ -94,12 +94,12 @@ func buildGatewayPatchInput(ctx context.Context, plan, state, config GatewayReso
 		return req, diags
 	}
 
-	if plan.AvailabilityZones.IsNull() || plan.AvailabilityZones.IsUnknown() {
+	if plan.IPSecSourceIPAddresses.IsNull() || plan.IPSecSourceIPAddresses.IsUnknown() {
 		empty := []string{}
 		req.AvailabilityZones = &empty
 	} else {
-		zones := make([]string, 0, len(plan.AvailabilityZones.Elements()))
-		diags.Append(plan.AvailabilityZones.ElementsAs(ctx, &zones, false)...)
+		zones := make([]string, 0, len(plan.IPSecSourceIPAddresses.Elements()))
+		diags.Append(plan.IPSecSourceIPAddresses.ElementsAs(ctx, &zones, false)...)
 		req.AvailabilityZones = &zones
 	}
 
@@ -137,17 +137,17 @@ func buildIPSecCreateInput(ctx context.Context, plan *IPSecModel, config *IPSecM
 	}
 
 	req := &securitycloud.GatewayIpSecRequest{
-		KeyExchange: plan.KeyExchange.ValueString(),
-		Ike:         buildCipherSuiteInput(plan.IKE),
-		Esp:         buildCipherSuiteInput(plan.ESP),
+		KeyExchange: wireValueFor(plan.KeyExchangeProtocol.ValueString(), keyExchangeLabels),
+		Ike:         buildCipherSuiteInput(plan.Phase1),
+		Esp:         buildCipherSuiteInput(plan.Phase2),
 		Left: securitycloud.ConnectionConfigLeftRequest{
 			Host:    plan.JamfSide.Host.ValueString(),
-			ID:      plan.JamfSide.IKEID.ValueString(),
+			ID:      plan.JamfSide.IKEDomainID.ValueString(),
 			Subnets: []string{plan.JamfSide.Subnet.ValueString()},
 		},
 		Right: securitycloud.ConnectionConfigRightRequest{
 			Host:    plan.CustomerSide.Host.ValueString(),
-			ID:      plan.CustomerSide.IKEID.ValueString(),
+			ID:      plan.CustomerSide.IKEDomainID.ValueString(),
 			Subnets: subnets,
 			Vendor:  plan.CustomerSide.Vendor.ValueString(),
 		},
@@ -171,16 +171,16 @@ func buildIPSecPatchInput(ctx context.Context, plan, prior, config *IPSecModel) 
 		return nil, diags
 	}
 
-	keyExchange := plan.KeyExchange.ValueString()
+	keyExchange := wireValueFor(plan.KeyExchangeProtocol.ValueString(), keyExchangeLabels)
 	jamfHost := plan.JamfSide.Host.ValueString()
-	jamfID := plan.JamfSide.IKEID.ValueString()
+	jamfID := plan.JamfSide.IKEDomainID.ValueString()
 	jamfSubnets := []string{plan.JamfSide.Subnet.ValueString()}
 	customerHost := plan.CustomerSide.Host.ValueString()
-	customerID := plan.CustomerSide.IKEID.ValueString()
+	customerID := plan.CustomerSide.IKEDomainID.ValueString()
 	vendor := plan.CustomerSide.Vendor.ValueString()
 
-	ike := buildCipherSuiteInput(plan.IKE)
-	esp := buildCipherSuiteInput(plan.ESP)
+	ike := buildCipherSuiteInput(plan.Phase1)
+	esp := buildCipherSuiteInput(plan.Phase2)
 
 	req := &securitycloud.GatewayIpSecPatchRequest{
 		KeyExchange: &keyExchange,
@@ -209,17 +209,17 @@ func buildIPSecPatchInput(ctx context.Context, plan, prior, config *IPSecModel) 
 }
 
 // buildCipherSuiteInput converts one cipher-suite phase into the wire shape. Each
-// algorithm becomes a single-element array, which is the only size the server
-// accepts.
+// algorithm is translated from its admin-UI label to the stored value and becomes
+// a single-element array, which is the only size the server accepts.
 func buildCipherSuiteInput(suite *CipherSuiteModel) securitycloud.CipherSuiteConfig {
 	if suite == nil {
 		return securitycloud.CipherSuiteConfig{}
 	}
 	return securitycloud.CipherSuiteConfig{
-		Encryption:    []string{suite.Encryption.ValueString()},
-		Integrity:     []string{suite.Integrity.ValueString()},
-		DhGroups:      []string{suite.DHGroup.ValueString()},
-		LifetimeInSec: suite.LifetimeSeconds.ValueInt64(),
+		Encryption:    []string{wireValueFor(suite.Encryption.ValueString(), encryptionLabels)},
+		Integrity:     []string{wireValueFor(suite.Integrity.ValueString(), integrityLabels)},
+		DhGroups:      []string{wireValueFor(suite.DiffieHellmanGroup.ValueString(), dhGroupLabels)},
+		LifetimeInSec: suite.SALifetimeSeconds.ValueInt64(),
 	}
 }
 
@@ -244,7 +244,7 @@ func sharedSecretRotated(plan, prior *IPSecModel) bool {
 	if prior == nil || prior.JamfSide == nil {
 		return true
 	}
-	return !plan.JamfSide.SharedSecretWoVersion.Equal(prior.JamfSide.SharedSecretWoVersion)
+	return !plan.JamfSide.AuthenticationSecretWoVersion.Equal(prior.JamfSide.AuthenticationSecretWoVersion)
 }
 
 // configSharedSecret reads the WriteOnly pre-shared key out of the config model.
@@ -252,7 +252,7 @@ func configSharedSecret(config *IPSecModel) string {
 	if config == nil || config.JamfSide == nil {
 		return ""
 	}
-	return config.JamfSide.SharedSecret.ValueString()
+	return config.JamfSide.AuthenticationSecret.ValueString()
 }
 
 // configIPSec returns the config model's IPsec block, if any.

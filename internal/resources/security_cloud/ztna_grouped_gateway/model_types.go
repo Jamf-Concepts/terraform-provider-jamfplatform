@@ -12,14 +12,14 @@ import (
 // GroupedGatewayResourceModel represents the Terraform resource model for a Jamf
 // Security Cloud ZTNA grouped gateway.
 type GroupedGatewayResourceModel struct {
-	ID                   types.String           `tfsdk:"id"`
-	Name                 types.String           `tfsdk:"name"`
-	GatewayIDs           types.List             `tfsdk:"gateway_ids"`
-	RoutingStrategy      types.String           `tfsdk:"routing_strategy"`
-	RecoveryDelaySeconds types.Int64            `tfsdk:"recovery_delay_seconds"`
-	TenantIDs            types.Set              `tfsdk:"tenant_ids"`
-	CreatedAt            types.String           `tfsdk:"created_at"`
-	Timeouts             resourceTimeouts.Value `tfsdk:"timeouts"`
+	ID                       types.String           `tfsdk:"id"`
+	Name                     types.String           `tfsdk:"name"`
+	GatewayIDs               types.List             `tfsdk:"gateway_ids"`
+	RoutingStrategy          types.String           `tfsdk:"routing_strategy"`
+	RequiredGatewayStability types.String           `tfsdk:"required_gateway_stability"`
+	TenantIDs                types.Set              `tfsdk:"tenant_ids"`
+	CreatedAt                types.String           `tfsdk:"created_at"`
+	Timeouts                 resourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // groupedGatewayIdentityModel represents the identity object for grouped gateway
@@ -31,14 +31,14 @@ type groupedGatewayIdentityModel struct {
 // GroupedGatewayDataSourceModel represents the Terraform data source model for a
 // single grouped gateway.
 type GroupedGatewayDataSourceModel struct {
-	ID                   types.String             `tfsdk:"id"`
-	Name                 types.String             `tfsdk:"name"`
-	GatewayIDs           types.List               `tfsdk:"gateway_ids"`
-	RoutingStrategy      types.String             `tfsdk:"routing_strategy"`
-	RecoveryDelaySeconds types.Int64              `tfsdk:"recovery_delay_seconds"`
-	TenantIDs            types.List               `tfsdk:"tenant_ids"`
-	CreatedAt            types.String             `tfsdk:"created_at"`
-	Timeouts             datasourceTimeouts.Value `tfsdk:"timeouts"`
+	ID                       types.String             `tfsdk:"id"`
+	Name                     types.String             `tfsdk:"name"`
+	GatewayIDs               types.List               `tfsdk:"gateway_ids"`
+	RoutingStrategy          types.String             `tfsdk:"routing_strategy"`
+	RequiredGatewayStability types.String             `tfsdk:"required_gateway_stability"`
+	TenantIDs                types.List               `tfsdk:"tenant_ids"`
+	CreatedAt                types.String             `tfsdk:"created_at"`
+	Timeouts                 datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // GroupedGatewaysDataSourceModel represents the Terraform data source model for
@@ -52,13 +52,13 @@ type GroupedGatewaysDataSourceModel struct {
 // GroupedGatewaysDataSourceResultModel represents a single grouped gateway in the
 // plural data source results.
 type GroupedGatewaysDataSourceResultModel struct {
-	ID                   types.String `tfsdk:"id"`
-	Name                 types.String `tfsdk:"name"`
-	GatewayIDs           types.List   `tfsdk:"gateway_ids"`
-	RoutingStrategy      types.String `tfsdk:"routing_strategy"`
-	RecoveryDelaySeconds types.Int64  `tfsdk:"recovery_delay_seconds"`
-	TenantIDs            types.List   `tfsdk:"tenant_ids"`
-	CreatedAt            types.String `tfsdk:"created_at"`
+	ID                       types.String `tfsdk:"id"`
+	Name                     types.String `tfsdk:"name"`
+	GatewayIDs               types.List   `tfsdk:"gateway_ids"`
+	RoutingStrategy          types.String `tfsdk:"routing_strategy"`
+	RequiredGatewayStability types.String `tfsdk:"required_gateway_stability"`
+	TenantIDs                types.List   `tfsdk:"tenant_ids"`
+	CreatedAt                types.String `tfsdk:"created_at"`
 }
 
 // GroupedGatewayListResourceModel represents the config model for grouped gateway

@@ -41,27 +41,26 @@ The Jamf Platform API integration used by the provider must be granted the follo
 resource "jamfplatform_security_cloud_ztna_grouped_gateway" "eu" {
   name = "EU Egress"
 
-  # Order matters: it is the priority order the FIRST_AVAILABLE (ACTIVE_STANDBY)
-  # strategy walks, and the admin UI shows it as a drag-to-reorder list.
+  # Order matters: it is the priority order the "First available" strategy walks,
+  # and the admin UI shows it as a drag-to-reorder list.
   gateway_ids = [
     jamfplatform_security_cloud_ztna_gateway.london.id,
     jamfplatform_security_cloud_ztna_gateway.frankfurt.id,
   ]
 
-  # ACTIVE_STANDBY ("First available"), RANDOM ("Random") or NEAREST ("Nearest").
-  routing_strategy = "ACTIVE_STANDBY"
+  # "First available", "Random" or "Nearest".
+  routing_strategy = "First available"
 
-  # "Required gateway stability". Required whatever the strategy, even though only
-  # ACTIVE_STANDBY uses it.
-  recovery_delay_seconds = 1800
+  # Required whatever the strategy, even though only "First available" uses it.
+  required_gateway_stability = "30 minutes"
 
   tenant_ids = [var.security_cloud_tenant_id]
 }
 
 resource "jamfplatform_security_cloud_ztna_gateway" "london" {
-  name       = "London Internet Egress"
-  datacenter = "eu-west-2"
-  tenant_ids = [var.security_cloud_tenant_id]
+  name          = "London Internet Egress"
+  egress_region = "Europe - UK"
+  tenant_ids    = [var.security_cloud_tenant_id]
 
   contact = {
     name  = "Network Operations"
@@ -70,9 +69,9 @@ resource "jamfplatform_security_cloud_ztna_gateway" "london" {
 }
 
 resource "jamfplatform_security_cloud_ztna_gateway" "frankfurt" {
-  name       = "Frankfurt Internet Egress"
-  datacenter = "eu-central-1"
-  tenant_ids = [var.security_cloud_tenant_id]
+  name          = "Frankfurt Internet Egress"
+  egress_region = "Europe - Germany"
+  tenant_ids    = [var.security_cloud_tenant_id]
 
   contact = {
     name  = "Network Operations"
@@ -91,16 +90,16 @@ variable "security_cloud_tenant_id" {
 
 ### Required
 
-- `gateway_ids` (List of String) **"Choose your gateways"** in the Jamf Security Cloud admin UI — the IDs of the member gateways, at least two. **Order is significant**: it is the priority order the `FIRST_AVAILABLE` strategy walks, and the admin UI presents it as a drag-to-reorder list. Jamf Security Cloud stores the order exactly as given.
+- `gateway_ids` (List of String) **"Choose your gateways"** in the Jamf Security Cloud admin UI — the IDs of the member gateways, at least two. **Order is significant**: it is the priority order the `First available` strategy walks, and the admin UI presents it as a drag-to-reorder list. Jamf Security Cloud stores the order exactly as given.
 
 Members must be your own dedicated gateways, all of the same form — mixing an IPsec gateway with an internet one is refused, and so is naming one of Jamf's shared gateways.
 - `name` (String) **"Name"** in the Jamf Security Cloud admin UI.
-- `recovery_delay_seconds` (Number) **"Required gateway stability"** in the Jamf Security Cloud admin UI — how long a recovered member must stay healthy before traffic returns to it, in seconds. Applies to `ACTIVE_STANDBY`, and is **required regardless of strategy**: Jamf Security Cloud rejects a create without it even when the value is ignored. Valid values: `300`, `1800`, `3600`, `10800`, `28800` (5 minutes, 30 minutes, 1 hour, 3 hours, 8 hours).
+- `required_gateway_stability` (String) **"Required gateway stability"** in the Jamf Security Cloud admin UI — how long a recovered member must stay healthy before traffic returns to it. Applies to the `First available` strategy, and is **required whatever the strategy**: Jamf Security Cloud rejects a create without it even when the value is ignored. Valid values: `5 minutes`, `30 minutes`, `1 hour`, `3 hours`, `8 hours`.
 - `routing_strategy` (String) **"Routing strategy"** in the Jamf Security Cloud admin UI — which member a device uses:
 
-- `NEAREST` — **"Nearest"**: the geographically closest available member.
-- `RANDOM` — **"Random"**: a random available member, for load balancing.
-- `ACTIVE_STANDBY` — **"First available"**: the first available member in `gateway_ids` order, failing over to the next and back again after `recovery_delay_seconds`.
+- `Nearest` — the geographically closest available member.
+- `Random` — a random available member, for load balancing.
+- `First available` — the first available member in `gateway_ids` order, failing over to the next and back again after `required_gateway_stability`.
 - `tenant_ids` (Set of String) IDs of the tenants granted access to this grouped gateway. At least one, and every one must belong to the same organization as the credentials the provider is configured with.
 
 ### Optional

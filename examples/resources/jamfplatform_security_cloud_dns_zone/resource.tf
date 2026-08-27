@@ -57,9 +57,9 @@ resource "jamfplatform_security_cloud_dns_zone" "private" {
 }
 
 resource "jamfplatform_security_cloud_ztna_gateway" "private_apps" {
-  name       = "Private Apps Egress"
-  datacenter = "eu-west-2"
-  tenant_ids = [var.security_cloud_tenant_id]
+  name          = "Private Apps Egress"
+  egress_region = "Europe - UK"
+  tenant_ids    = [var.security_cloud_tenant_id]
 
   contact = {
     name  = "Network Operations"

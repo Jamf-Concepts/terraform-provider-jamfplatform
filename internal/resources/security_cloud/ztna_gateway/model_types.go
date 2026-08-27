@@ -14,11 +14,11 @@ import (
 type GatewayResourceModel struct {
 	ID                         types.String           `tfsdk:"id"`
 	Name                       types.String           `tfsdk:"name"`
-	Datacenter                 types.String           `tfsdk:"datacenter"`
+	EgressRegion               types.String           `tfsdk:"egress_region"`
 	Contact                    *ContactModel          `tfsdk:"contact"`
 	Enabled                    types.Bool             `tfsdk:"enabled"`
 	TenantIDs                  types.Set              `tfsdk:"tenant_ids"`
-	AvailabilityZones          types.Set              `tfsdk:"availability_zones"`
+	IPSecSourceIPAddresses     types.Set              `tfsdk:"ipsec_source_ip_addresses"`
 	DedicatedEgressIPAddresses types.List             `tfsdk:"dedicated_egress_ip_addresses"`
 	IPSec                      *IPSecModel            `tfsdk:"ipsec"`
 	Status                     types.Object           `tfsdk:"status"`
@@ -33,40 +33,40 @@ type ContactModel struct {
 
 // IPSecModel represents the IPsec tunnel configuration of a gateway.
 type IPSecModel struct {
-	KeyExchange  types.String       `tfsdk:"key_exchange"`
-	IKE          *CipherSuiteModel  `tfsdk:"ike"`
-	ESP          *CipherSuiteModel  `tfsdk:"esp"`
-	JamfSide     *JamfSideModel     `tfsdk:"jamf_side"`
-	CustomerSide *CustomerSideModel `tfsdk:"customer_side"`
+	KeyExchangeProtocol types.String       `tfsdk:"key_exchange_protocol"`
+	Phase1              *CipherSuiteModel  `tfsdk:"phase_1"`
+	Phase2              *CipherSuiteModel  `tfsdk:"phase_2"`
+	JamfSide            *JamfSideModel     `tfsdk:"jamf_side"`
+	CustomerSide        *CustomerSideModel `tfsdk:"customer_side"`
 }
 
 // CipherSuiteModel represents one IPsec cipher-suite phase. The wire carries each
 // algorithm as a single-element array; the model holds the one value it accepts.
 type CipherSuiteModel struct {
-	Encryption      types.String `tfsdk:"encryption"`
-	Integrity       types.String `tfsdk:"integrity"`
-	DHGroup         types.String `tfsdk:"dh_group"`
-	LifetimeSeconds types.Int64  `tfsdk:"lifetime_seconds"`
+	Encryption         types.String `tfsdk:"encryption"`
+	Integrity          types.String `tfsdk:"integrity"`
+	DiffieHellmanGroup types.String `tfsdk:"diffie_hellman_group"`
+	SALifetimeSeconds  types.Int64  `tfsdk:"sa_lifetime_seconds"`
 }
 
 // JamfSideModel represents the Jamf-side tunnel endpoint. Wire object: `left`.
 type JamfSideModel struct {
-	Host                  types.String `tfsdk:"host"`
-	IKEID                 types.String `tfsdk:"ike_id"`
-	Subnet                types.String `tfsdk:"subnet"`
-	SharedSecret          types.String `tfsdk:"shared_secret"`
-	SharedSecretWoVersion types.Int64  `tfsdk:"shared_secret_wo_version"`
-	AuthMethod            types.String `tfsdk:"auth_method"`
+	Host                          types.String `tfsdk:"host"`
+	IKEDomainID                   types.String `tfsdk:"ike_domain_id"`
+	Subnet                        types.String `tfsdk:"subnet"`
+	AuthenticationSecret          types.String `tfsdk:"authentication_secret"`
+	AuthenticationSecretWoVersion types.Int64  `tfsdk:"authentication_secret_wo_version"`
+	AuthMethod                    types.String `tfsdk:"auth_method"`
 }
 
 // CustomerSideModel represents the remote-peer tunnel endpoint. Wire object:
 // `right`.
 type CustomerSideModel struct {
-	Host       types.String `tfsdk:"host"`
-	IKEID      types.String `tfsdk:"ike_id"`
-	Subnets    types.Set    `tfsdk:"subnets"`
-	Vendor     types.String `tfsdk:"vendor"`
-	AuthMethod types.String `tfsdk:"auth_method"`
+	Host        types.String `tfsdk:"host"`
+	IKEDomainID types.String `tfsdk:"ike_domain_id"`
+	Subnets     types.Set    `tfsdk:"subnets"`
+	Vendor      types.String `tfsdk:"vendor"`
+	AuthMethod  types.String `tfsdk:"auth_method"`
 }
 
 // gatewayIdentityModel represents the identity object for gateway resources and
@@ -81,11 +81,11 @@ type gatewayIdentityModel struct {
 type GatewayDataSourceModel struct {
 	ID                         types.String             `tfsdk:"id"`
 	Name                       types.String             `tfsdk:"name"`
-	Datacenter                 types.String             `tfsdk:"datacenter"`
+	EgressRegion               types.String             `tfsdk:"egress_region"`
 	Contact                    types.Object             `tfsdk:"contact"`
 	Enabled                    types.Bool               `tfsdk:"enabled"`
 	TenantIDs                  types.List               `tfsdk:"tenant_ids"`
-	AvailabilityZones          types.List               `tfsdk:"availability_zones"`
+	IPSecSourceIPAddresses     types.List               `tfsdk:"ipsec_source_ip_addresses"`
 	DedicatedEgressIPsEnabled  types.Bool               `tfsdk:"dedicated_egress_ips_enabled"`
 	DedicatedEgressIPAddresses types.List               `tfsdk:"dedicated_egress_ip_addresses"`
 	IPSec                      types.Object             `tfsdk:"ipsec"`
@@ -106,11 +106,11 @@ type GatewaysDataSourceModel struct {
 type GatewaysDataSourceResultModel struct {
 	ID                         types.String `tfsdk:"id"`
 	Name                       types.String `tfsdk:"name"`
-	Datacenter                 types.String `tfsdk:"datacenter"`
+	EgressRegion               types.String `tfsdk:"egress_region"`
 	Contact                    types.Object `tfsdk:"contact"`
 	Enabled                    types.Bool   `tfsdk:"enabled"`
 	TenantIDs                  types.List   `tfsdk:"tenant_ids"`
-	AvailabilityZones          types.List   `tfsdk:"availability_zones"`
+	IPSecSourceIPAddresses     types.List   `tfsdk:"ipsec_source_ip_addresses"`
 	DedicatedEgressIPsEnabled  types.Bool   `tfsdk:"dedicated_egress_ips_enabled"`
 	DedicatedEgressIPAddresses types.List   `tfsdk:"dedicated_egress_ip_addresses"`
 	IPSec                      types.Object `tfsdk:"ipsec"`

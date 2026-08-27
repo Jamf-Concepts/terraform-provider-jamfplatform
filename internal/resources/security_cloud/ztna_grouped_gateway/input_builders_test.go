@@ -18,7 +18,7 @@ const probeTenant = "928260f5-01f3-4881-bd2e-f28faa0dbab2"
 // first-available strategy, so a builder that sorted or reordered would change
 // what the group does.
 func TestBuildGroupedGatewayCreateInput_PreservesMemberOrder(t *testing.T) {
-	plan := groupedGatewayPlan(t, "ACTIVE_STANDBY", 1800, "df90", "9702", "c6f0")
+	plan := groupedGatewayPlan(t, "First available", "30 minutes", "df90", "9702", "c6f0")
 
 	got, diags := buildGroupedGatewayCreateInput(context.Background(), plan)
 	if diags.HasError() {
@@ -36,22 +36,22 @@ func TestBuildGroupedGatewayCreateInput_PreservesMemberOrder(t *testing.T) {
 	}
 }
 
-// TestBuildGroupedGatewayCreateInput_AlwaysSendsRecoveryDelay pins the odd
+// TestBuildGroupedGatewayCreateInput_AlwaysSendsGatewayStability pins the odd
 // requirement: the field is required on create for every strategy, even the two
 // that ignore it, and the Go zero value is rejected.
-func TestBuildGroupedGatewayCreateInput_AlwaysSendsRecoveryDelay(t *testing.T) {
-	for _, strategy := range []string{"ACTIVE_STANDBY", "RANDOM", "NEAREST"} {
-		plan := groupedGatewayPlan(t, strategy, 300, "df90", "9702")
+func TestBuildGroupedGatewayCreateInput_AlwaysSendsGatewayStability(t *testing.T) {
+	for label, wire := range map[string]string{"First available": "ACTIVE_STANDBY", "Random": "RANDOM", "Nearest": "NEAREST"} {
+		plan := groupedGatewayPlan(t, label, "5 minutes", "df90", "9702")
 
 		got, diags := buildGroupedGatewayCreateInput(context.Background(), plan)
 		if diags.HasError() {
-			t.Fatalf("%s: diagnostics: %v", strategy, diags)
+			t.Fatalf("%s: diagnostics: %v", label, diags)
 		}
 		if got.RecoveryDelayInSec != 300 {
-			t.Errorf("%s: recoveryDelayInSec = %d, want 300 — required regardless of strategy", strategy, got.RecoveryDelayInSec)
+			t.Errorf("%s: recoveryDelayInSec = %d, want 300 — required regardless of strategy", label, got.RecoveryDelayInSec)
 		}
-		if got.RoutingStrategy != strategy {
-			t.Errorf("routingStrategy = %q, want %q", got.RoutingStrategy, strategy)
+		if got.RoutingStrategy != wire {
+			t.Errorf("routingStrategy = %q, want the stored value %q for label %q", got.RoutingStrategy, wire, label)
 		}
 	}
 }
@@ -61,7 +61,7 @@ func TestBuildGroupedGatewayCreateInput_AlwaysSendsRecoveryDelay(t *testing.T) {
 // desired state and a patch that dropped one would silently stop applying a change
 // the user made.
 func TestBuildGroupedGatewayPatchInput_SendsEveryField(t *testing.T) {
-	plan := groupedGatewayPlan(t, "NEAREST", 3600, "9702", "df90")
+	plan := groupedGatewayPlan(t, "Nearest", "1 hour", "9702", "df90")
 
 	got, diags := buildGroupedGatewayPatchInput(context.Background(), plan)
 	if diags.HasError() {
@@ -72,10 +72,10 @@ func TestBuildGroupedGatewayPatchInput_SendsEveryField(t *testing.T) {
 		t.Errorf("name = %v", got.Name)
 	}
 	if got.RoutingStrategy == nil || *got.RoutingStrategy != "NEAREST" {
-		t.Errorf("routingStrategy = %v", got.RoutingStrategy)
+		t.Errorf("routingStrategy = %v, want the stored value for \"Nearest\"", got.RoutingStrategy)
 	}
 	if got.RecoveryDelayInSec == nil || *got.RecoveryDelayInSec != 3600 {
-		t.Errorf("recoveryDelayInSec = %v", got.RecoveryDelayInSec)
+		t.Errorf("recoveryDelayInSec = %v, want the stored value for \"1 hour\"", got.RecoveryDelayInSec)
 	}
 	if got.GatewayIds == nil || len(*got.GatewayIds) != 2 {
 		t.Fatalf("gatewayIds = %v, want 2 entries", got.GatewayIds)
@@ -89,7 +89,7 @@ func TestBuildGroupedGatewayPatchInput_SendsEveryField(t *testing.T) {
 }
 
 // groupedGatewayPlan builds a resource model with the given membership order.
-func groupedGatewayPlan(t *testing.T, strategy string, recoveryDelay int64, gatewayIDs ...string) GroupedGatewayResourceModel {
+func groupedGatewayPlan(t *testing.T, strategy, stability string, gatewayIDs ...string) GroupedGatewayResourceModel {
 	t.Helper()
 
 	elems := make([]attr.Value, 0, len(gatewayIDs))
@@ -106,11 +106,11 @@ func groupedGatewayPlan(t *testing.T, strategy string, recoveryDelay int64, gate
 	}
 
 	return GroupedGatewayResourceModel{
-		ID:                   types.StringValue("b6ed74d2-165c-4503-8572-07eb8ef44195"),
-		Name:                 types.StringValue("tf-group"),
-		GatewayIDs:           list,
-		RoutingStrategy:      types.StringValue(strategy),
-		RecoveryDelaySeconds: types.Int64Value(recoveryDelay),
-		TenantIDs:            tenants,
+		ID:                       types.StringValue("b6ed74d2-165c-4503-8572-07eb8ef44195"),
+		Name:                     types.StringValue("tf-group"),
+		GatewayIDs:               list,
+		RoutingStrategy:          types.StringValue(strategy),
+		RequiredGatewayStability: types.StringValue(stability),
+		TenantIDs:                tenants,
 	}
 }

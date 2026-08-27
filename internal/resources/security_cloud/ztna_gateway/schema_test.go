@@ -28,15 +28,15 @@ func TestGatewayResource_Schema(t *testing.T) {
 	s := resourceSchema(t)
 
 	for _, name := range []string{
-		"id", "name", "datacenter", "contact", "enabled", "tenant_ids",
-		"availability_zones", "dedicated_egress_ip_addresses", "ipsec", "status", "timeouts",
+		"id", "name", "egress_region", "contact", "enabled", "tenant_ids",
+		"ipsec_source_ip_addresses", "dedicated_egress_ip_addresses", "ipsec", "status", "timeouts",
 	} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}
 	}
 
-	for _, name := range []string{"name", "datacenter", "contact", "tenant_ids"} {
+	for _, name := range []string{"name", "egress_region", "contact", "tenant_ids"} {
 		if !s.Attributes[name].IsRequired() {
 			t.Errorf("%s must be required", name)
 		}
@@ -98,19 +98,19 @@ func TestGatewayResource_IPSecShape(t *testing.T) {
 		t.Fatalf("ipsec must be a SingleNestedAttribute, got %T", s.Attributes["ipsec"])
 	}
 
-	for _, name := range []string{"key_exchange", "ike", "esp", "jamf_side", "customer_side"} {
+	for _, name := range []string{"key_exchange_protocol", "phase_1", "phase_2", "jamf_side", "customer_side"} {
 		if _, present := ipsec.Attributes[name]; !present {
 			t.Errorf("ipsec missing %q", name)
 		}
 	}
 
-	for _, phase := range []string{"ike", "esp"} {
+	for _, phase := range []string{"phase_1", "phase_2"} {
 		suite, suiteOK := ipsec.Attributes[phase].(rschema.SingleNestedAttribute)
 		if !suiteOK {
 			t.Errorf("ipsec.%s must be a SingleNestedAttribute, got %T", phase, ipsec.Attributes[phase])
 			continue
 		}
-		for _, name := range []string{"encryption", "integrity", "dh_group"} {
+		for _, name := range []string{"encryption", "integrity", "diffie_hellman_group"} {
 			attr, present := suite.Attributes[name]
 			if !present {
 				t.Errorf("ipsec.%s missing %q", phase, name)
@@ -139,29 +139,29 @@ func TestGatewayResource_IPSecShape(t *testing.T) {
 	}
 }
 
-// TestGatewayResource_SharedSecretIsWriteOnly pins the credential handling: the
+// TestGatewayResource_AuthenticationSecretIsWriteOnly pins the credential handling: the
 // pre-shared key must never reach the state file, and it needs its rotation
 // companion because a WriteOnly value is invisible to drift detection.
-func TestGatewayResource_SharedSecretIsWriteOnly(t *testing.T) {
+func TestGatewayResource_AuthenticationSecretIsWriteOnly(t *testing.T) {
 	s := resourceSchema(t)
 	ipsec := s.Attributes["ipsec"].(rschema.SingleNestedAttribute)
 	jamfSide := ipsec.Attributes["jamf_side"].(rschema.SingleNestedAttribute)
 
-	secret, ok := jamfSide.Attributes["shared_secret"].(rschema.StringAttribute)
+	secret, ok := jamfSide.Attributes["authentication_secret"].(rschema.StringAttribute)
 	if !ok {
-		t.Fatalf("shared_secret must be a StringAttribute, got %T", jamfSide.Attributes["shared_secret"])
+		t.Fatalf("authentication_secret must be a StringAttribute, got %T", jamfSide.Attributes["authentication_secret"])
 	}
 	if !secret.WriteOnly {
-		t.Error("shared_secret must be WriteOnly so the pre-shared key never lands in state")
+		t.Error("authentication_secret must be WriteOnly so the pre-shared key never lands in state")
 	}
 	if !secret.Sensitive {
-		t.Error("shared_secret must be Sensitive")
+		t.Error("authentication_secret must be Sensitive")
 	}
 	if secret.Computed {
-		t.Error("shared_secret must not be Computed — Jamf Security Cloud never returns it")
+		t.Error("authentication_secret must not be Computed — Jamf Security Cloud never returns it")
 	}
-	if _, present := jamfSide.Attributes["shared_secret_wo_version"]; !present {
-		t.Error("a WriteOnly secret must carry its shared_secret_wo_version rotation companion")
+	if _, present := jamfSide.Attributes["authentication_secret_wo_version"]; !present {
+		t.Error("a WriteOnly secret must carry its authentication_secret_wo_version rotation companion")
 	}
 }
 
@@ -206,7 +206,7 @@ func TestGatewayDataSource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	for _, name := range []string{"id", "name", "datacenter", "contact", "enabled", "tenant_ids", "ipsec", "status", "timeouts"} {
+	for _, name := range []string{"id", "name", "egress_region", "contact", "enabled", "tenant_ids", "ipsec", "status", "timeouts"} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}
