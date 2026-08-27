@@ -56,9 +56,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role_privileges"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_settings"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_installer_title"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_form_field"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_store_country_codes"
@@ -448,7 +445,6 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		icon.NewIconResource,
 		inventory_preload_record.NewInventoryPreloadRecordResource,
 		licensed_software.NewLicensedSoftwareResource,
-		app_installer.NewAppInstallerResource,
 		app_request_form_field.NewAppRequestFormFieldResource,
 		app_request_settings.NewAppRequestSettingsResource,
 		ebook.NewEbookResource,
@@ -474,7 +470,6 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		advanced_mobile_device_search.NewAdvancedMobileDeviceSearchResource,
 		advanced_user_search.NewAdvancedUserSearchResource,
 		advanced_volume_purchasing_content_search.NewAdvancedVolumePurchasingContentSearchResource,
-		app_installer_settings.NewAppInstallerSettingsResource,
 		self_service_plus_settings.NewSelfServicePlusSettingsResource,
 		activation_code.NewActivationCodeResource,
 		computer_check_in_settings.NewComputerCheckInSettingsResource,
@@ -576,10 +571,6 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		ibeacon.NewIbeaconDataSource,
 		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
-		app_installer.NewAppInstallerDataSource,
-		app_installer.NewAppInstallersDataSource,
-		app_installer_title.NewAppInstallerTitleDataSource,
-		app_installer_title.NewAppInstallerTitlesDataSource,
 		app_request_form_field.NewAppRequestFormFieldDataSource,
 		app_store_country_codes.NewAppStoreCountryCodesDataSource,
 		ebook.NewEbookDataSource,
@@ -600,7 +591,6 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		user_initiated_enrollment_settings.NewUserInitiatedEnrollmentSettingsDataSource,
 		script.NewScriptDataSource,
 		script.NewScriptsDataSource,
-		app_installer_settings.NewAppInstallerSettingsDataSource,
 		self_service_plus_settings.NewSelfServicePlusSettingsDataSource,
 		activation_code.NewActivationCodeDataSource,
 		computer_check_in_settings.NewComputerCheckInSettingsDataSource,
@@ -689,7 +679,6 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		inventory_preload_record.NewInventoryPreloadRecordListResource,
 		pki_json_web_token_configuration.NewJSONWebTokenConfigurationListResource,
 		licensed_software.NewLicensedSoftwareListResource,
-		app_installer.NewAppInstallerListResource,
 		app_request_form_field.NewAppRequestFormFieldListResource,
 		ebook.NewEbookListResource,
 		mac_app_store_app.NewMacAppListResource,
