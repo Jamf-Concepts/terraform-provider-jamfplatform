@@ -262,7 +262,7 @@ func TestAccResource_SecurityCloudZtnaGateway_SourceAddressesRequireIPSec(t *tes
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_ztna_gateway" "test" {
 						name               = "tf-acc-jsc-gw-az-%s"
-						datacenter         = %q
+						egress_region      = %q
 						tenant_ids         = [%q]
 						ipsec_source_ip_addresses = ["3.9.67.90"]
 
@@ -602,5 +602,5 @@ var (
 	regexpSourceAddressesNeedIPSec   = regexp.MustCompile(`IPsec source addresses require an IPsec gateway`)
 	regexpSubnetNotPrivate           = regexp.MustCompile(`is not a private range`)
 	regexpInvalidAttributeValueMatch = regexp.MustCompile(`Invalid Attribute Value Match`)
-	regexpExactlyOneSelector         = regexp.MustCompile(`Invalid Attribute Combination`)
+	regexpExactlyOneSelector         = regexp.MustCompile(`Exactly one of these attributes must be configured`)
 )

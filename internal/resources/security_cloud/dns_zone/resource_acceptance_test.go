@@ -100,7 +100,7 @@ func TestAccResource_SecurityCloudDNSZone_Basic(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("jamfplatform_security_cloud_dns_zone.test", "domains.*", "*."+domain),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.#", "1"),
 					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.*", map[string]string{
-						"ip":         testNameServerIPOne,
+						"ip_address": testNameServerIPOne,
 						"gateway_id": gateways[0],
 					}),
 				),
@@ -129,11 +129,11 @@ func TestAccResource_SecurityCloudDNSZone_Basic(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("jamfplatform_security_cloud_dns_zone.test", "domains.*", domainUpdated),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.#", "2"),
 					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.*", map[string]string{
-						"ip":         testNameServerIPTwo,
+						"ip_address": testNameServerIPTwo,
 						"gateway_id": gateways[0],
 					}),
 					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.*", map[string]string{
-						"ip":         testNameServerIPThree,
+						"ip_address": testNameServerIPThree,
 						"gateway_id": gateways[1],
 					}),
 				),
@@ -240,7 +240,6 @@ func TestAccResource_SecurityCloudDNSZone_Disappears(t *testing.T) {
 						t.Fatalf("drift preconfig: deleting DNS zone %s: %v", zoneID, err)
 					}
 				},
-				Config:             config,
 				RefreshState:       true,
 				ExpectNonEmptyPlan: true,
 			},
@@ -389,7 +388,7 @@ func TestAccDataSource_SecurityCloudDNSZone_ByIDAndName(t *testing.T) {
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "domains.#", "1"),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "domains.0", domain),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "authoritative_name_servers.#", "1"),
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "authoritative_name_servers.0.ip", testNameServerIPOne),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "authoritative_name_servers.0.ip_address", testNameServerIPOne),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "authoritative_name_servers.0.gateway_id", gateways[0]),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_security_cloud_dns_zone.by_name", "id", "jamfplatform_security_cloud_dns_zone.src", "id"),
 				),
@@ -556,5 +555,5 @@ var (
 	regexpDuplicateIP        = regexp.MustCompile(`Duplicate ip_address within set`)
 	regexpInvalidIP          = regexp.MustCompile(`Invalid IPv4 address`)
 	regexpGatewayNotFound    = regexp.MustCompile(`Referenced gateway not found`)
-	regexpExactlyOneSelector = regexp.MustCompile(`Invalid Attribute Combination`)
+	regexpExactlyOneSelector = regexp.MustCompile(`Exactly one of these attributes must be configured`)
 )

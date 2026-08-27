@@ -87,7 +87,7 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_grouped_gateway.test", "id"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "name", name),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "routing_strategy", "First available"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "required_gateway_stability", "1800"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "required_gateway_stability", "30 minutes"),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "gateway_ids.#", "2"),
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_ztna_grouped_gateway.test", "created_at"),
 					resource.TestCheckResourceAttrPair(
@@ -114,7 +114,7 @@ func TestAccResource_SecurityCloudZtnaGroupedGateway_Basic(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "name", nameUpdated),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "routing_strategy", "Nearest"),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "required_gateway_stability", "3600"),
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_ztna_grouped_gateway.test", "required_gateway_stability", "1 hour"),
 					resource.TestCheckResourceAttrPair(
 						"jamfplatform_security_cloud_ztna_grouped_gateway.test", "gateway_ids.0",
 						"jamfplatform_security_cloud_ztna_gateway.b", "id",
@@ -249,7 +249,7 @@ func TestAccDataSource_SecurityCloudZtnaGroupedGateway_ByIDAndName(t *testing.T)
 				`, name, tenantID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "routing_strategy", "Random"),
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "required_gateway_stability", "300"),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "required_gateway_stability", "5 minutes"),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_id", "gateway_ids.#", "2"),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_security_cloud_ztna_grouped_gateway.by_name", "id", "jamfplatform_security_cloud_ztna_grouped_gateway.src", "id"),
 				),
