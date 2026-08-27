@@ -284,3 +284,28 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |
 | `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` | Declares that the configured `JAMFPLATFORM_ENVIRONMENT_ID` belongs to a Jamf Security Cloud tenant. Must equal it. Unset or mismatched → every Security Cloud test skips |
 | `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two. Also names the tenant a ZTNA gateway grants access to — the gateway tests skip without it, because `tenantIds` is required on every gateway and is validated against the caller's organization |
+
+### Jamf Security Cloud coverage is opt-in, and partly tenant-scope-only
+
+Neither declaration variable is set in CI, so **every Jamf Security Cloud acceptance
+test skips there** — 29 of them, each printing the reason. The suite is green and the
+coverage is zero; do not read one as the other. They are exercised by running locally
+against an entitled tenant.
+
+Turning them on is just setting `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` to the same
+value as `JAMFPLATFORM_TENANT_ID`. The gate requires the two to match, so a value
+left over from a different tenant skips rather than running against the wrong estate.
+
+**Under an environment-scoped integration the ZTNA gateway tests cannot run at all.**
+`tenantIds` is required on every gateway and grouped gateway and is validated against
+the caller's organization, and nothing in the API exposes the tenants belonging to an
+environment — so there is no id for a test to name. `RequireSecurityCloudTenantID`
+skips rather than guessing. Custom DNS zones and the shared-gateway catalogue have no
+such field and are unaffected.
+
+Also untested: the Security Cloud surface under `X-Environment-Id`. Every wire probe
+behind these resources used a tenant-scoped integration.
+`providerdata.ConfigureSecurityCloud` admits both scopes on the strength of the spec,
+not a probe. If `/api/securitycloud` turns out not to answer under an environment
+header, the fix is to drop `ScopeEnvironment` from that call — the same one-token
+narrowing the scope gate was built for.
