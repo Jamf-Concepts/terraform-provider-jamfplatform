@@ -146,8 +146,10 @@ tfsec-report.json
 
 # -----------------------------------------------------------------------------
 # Claude Code local state (worktrees, agent runs, settings overrides)
+# The skills directory is committed: it encodes the construct-build workflow.
 # -----------------------------------------------------------------------------
-.claude/
+.claude/*
+!.claude/skills/
 
 # -----------------------------------------------------------------------------
 # Local planning artifacts (not committed)
