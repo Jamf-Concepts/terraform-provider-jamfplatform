@@ -283,4 +283,4 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_ENVIRONMENT_ID`| Platform environment ID — preferred scope; mutually exclusive with the next row |
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |
 | `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` | Declares that the configured `JAMFPLATFORM_ENVIRONMENT_ID` belongs to a Jamf Security Cloud tenant. Must equal it. Unset or mismatched → every Security Cloud test skips |
-| `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two |
+| `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two. Also names the tenant a ZTNA gateway grants access to — the gateway tests skip without it, because `tenantIds` is required on every gateway and is validated against the caller's organization |

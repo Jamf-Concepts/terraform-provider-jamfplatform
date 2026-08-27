@@ -30,7 +30,8 @@ internal/
 │   ├── device_group/  # Resource, data source, list resource                 (Platform Services)
 │   ├── device_groups/ # Plural data source                                   (Platform Services)
 │   ├── devices/       # Plural data source                                   (Platform Services)
-│   ├── security_cloud/ # Jamf Security Cloud — flat single tier: dns_zone/   (Security Cloud)
+│   ├── security_cloud/ # Jamf Security Cloud — flat single tier                (Security Cloud)
+│   │                  #   dns_zone/, ztna_gateway/, ztna_grouped_gateway/, ztna_shared_gateways/
 │   │                  #   (folder name = Terraform slug minus `jamfplatform_security_cloud_`)
 │   └── pro/           # Jamf Pro resources — flat single tier: every leaf package sits directly under pro/
 │                      #   (folder name = Terraform slug minus `jamfplatform_pro_`, snake_case). No domain tier.
@@ -83,6 +84,8 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 | Classic XML merge PUT where empty clears (always-emit scalars / clear-by-omission) + Location/Purchasing blocks + read-only attachments (bearer-auth-refused upload) | `internal/resources/pro/mobile_device_enrollment_profile/` |
 | Provider-defined function (offline; `types.Dynamic` decode + shared core) | `internal/functions/mobileconfig/` |
 | Jamf Security Cloud CRUD (+ DS singular/plural + list; no tenant version gate) | `internal/resources/security_cloud/dns_zone/` |
+| Two-form resource where the form is immutable and derived from a block's presence | `internal/resources/security_cloud/ztna_gateway/` |
+| Read-only server catalogue, plural DS only (no per-id endpoint) | `internal/resources/security_cloud/ztna_shared_gateways/` |
 
 ## Impact alerts — one-paragraph orientation
 
@@ -124,10 +127,18 @@ holding Jamf Pro, so a Pro version fetch would be both meaningless and fatal. Tw
 differ from every other namespace and are easy to get wrong. First, **entitlement is not
 authentication** — a valid integration can still be refused with `403 NOT_ENTITLED`, so
 resources translate that code into a named diagnostic instead of surfacing the raw error.
-Second, **cross-namespace references are server-enforced and one-directional**: a DNS
-zone's name servers each name a ZTNA gateway by ID, and a zone cannot be written before
-its gateway exists (`422 GATEWAY_NOT_FOUND`), so the diagnostic must point at
-`name_servers` rather than the zone. Acceptance tests gate on
+Second, **cross-namespace references are server-enforced in both directions**: a DNS
+zone's name servers each name a gateway by ID — a shared, dedicated or grouped gateway, all
+three accepted — and a zone cannot be written before its gateway exists
+(`422 GATEWAY_NOT_FOUND`), so that diagnostic points at `name_servers` rather than the zone;
+conversely a gateway that anything still references refuses to be deleted with a bare
+`409 CONFLICT` naming nothing, which is a Terraform destroy-ordering trap and gets its own
+diagnostic. Two shapes recur across the namespace and are worth knowing before reading any of
+it: a **cipher/algorithm field is an array the server accepts exactly one element in**, so it
+is modelled as a single string and collapsed at the boundary; and an **enum violation returns
+`400 [INVALID_FIELD] Request body is missing or malformed.`** with no field and no value,
+which is why every enum is validated at plan time from the SDK's own generated `*Values()`
+helper rather than a restated list. Acceptance tests gate on
 `testhelpers.AccPreCheckSecurityCloud`, which requires the operator to *declare* that the
 configured scope is a Security Cloud one (`JAMFPLATFORM_SECURITY_CLOUD_{ENVIRONMENT,TENANT}_ID`,
 matching the scope in use) and skips otherwise — a Pro-only acceptance tenant is a

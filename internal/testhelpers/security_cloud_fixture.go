@@ -7,6 +7,7 @@ package testhelpers
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
 
@@ -66,4 +67,27 @@ func RequireSecurityCloudSharedGatewayIDs(t *testing.T, count int) []string {
 		ids = append(ids, g.ID)
 	}
 	return ids
+}
+
+// RequireSecurityCloudTenantID returns the tenant ID a Security Cloud gateway must
+// be granted access to.
+//
+// `tenantIds` is required on every gateway and grouped gateway, and Jamf Security
+// Cloud validates each entry against the caller's organization: an ID outside it
+// is refused with `400 BAD_REQUEST` ("No mapping found for one of the supplied
+// ids"). So the value cannot be invented — it has to be the tenant the provider is
+// scoped to, which AccPreCheckSecurityCloud has already established the operator
+// declared.
+//
+// Under an environment-scoped integration there is no single tenant ID to use, and
+// nothing readable to derive one from, so the test skips. That is the honest
+// outcome rather than guessing: a gateway test that cannot name a tenant has
+// nothing to assert.
+func RequireSecurityCloudTenantID(t *testing.T) string {
+	t.Helper()
+	tenantID := os.Getenv("JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID")
+	if tenantID == "" {
+		t.Skip("Skipping: JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID must name the tenant a ZTNA gateway grants access to; an environment-scoped run has no single tenant ID to use")
+	}
+	return tenantID
 }

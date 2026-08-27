@@ -603,7 +603,7 @@ Terraform construct names follow `jamfplatform_<domain>_<entity>` (or `jamfplatf
 - `jamfplatform_blueprints_blueprint` (resource, data source, list resource)
 - `jamfplatform_cbengine_benchmark` (resource, data source, list resource)
 - `jamfplatform_device_erase` / `_restart` / `_shutdown` / `_unmanage` (actions)
-- `jamfplatform_security_cloud_dns_zone` (resource, data source, list resource)
+- `jamfplatform_security_cloud_dns_zone` / `_ztna_gateway` / `_ztna_grouped_gateway` (resource, data source, list resource)
 
 ### Test names
 
@@ -657,6 +657,40 @@ artifacts that appear nowhere in the admin UI, so they are not part of the Terra
 6. **Entitlement is separate from authentication.** A tenant can authenticate fine and
    still not have a Security Cloud surface; the API says so with `403 NOT_ENTITLED`.
    Translate that code into a named diagnostic rather than letting the raw error through.
+
+### Security Cloud shapes that recur
+
+Three patterns show up across the Security Cloud namespaces often enough to state once here
+rather than rediscover per resource. All three were wire-probed on 2026-08-27.
+
+**A single-element array is a scalar.** Several fields are declared as arrays but rejected at
+any size but one — the IPsec cipher suites' `encryption`, `integrity` and `dhGroups`, and the
+Jamf-side `left.subnets`. Model these as a single string or number and collapse at the
+boundary in the input/state builders. A list would only offer users room the server refuses,
+and the refusal message names the field's size rather than the mistake.
+
+**An enum violation is unattributed.** An unknown enum value comes back as
+`400 [INVALID_FIELD] Request body is missing or malformed.` — no field, no offending value.
+Validate every enum at plan time, and build both the `OneOf` validator and the documented
+value list from the SDK's generated `*Values()` helper so they cannot drift from each other or
+from the API. Where the SDK documents a set but generates no helper (grouped gateway's
+`recoveryDelayInSec`), restate it in the package's `enums.go` and say why in a comment.
+
+**Deleting a referenced object is a bare 409.** Jamf Security Cloud refuses to delete anything
+another object points at — a gateway named by a DNS zone's name server or by a grouped
+gateway's membership — with `409 CONFLICT` and no structured detail identifying the referrer.
+This is the Terraform destroy-ordering trap described in
+[§Referenced-by-name dependencies](#referenced-by-name-dependencies--has_dependencies-on-delete):
+removing the reference *and* destroying the target in one apply lets Terraform sequence the
+destroy first. Translate the 409 into a diagnostic that names the possible referrers and says
+to split the applies, because the server will not.
+
+**A read-only status timestamp does not belong in the schema.** The gateway's
+`status.updatedAt` and the grouped gateway's `updatedAt` advance on every server-side
+re-evaluation. A Computed attribute over such a value makes every refresh report the object as
+changed outside Terraform, about something no configuration can act on. Omit it and say so in
+the state builder's doc comment; keep the fields that settle (`status.state`,
+`status.tunnelState`) and the ones that never move (`createdAt`).
 
 ### Security Cloud Configure: use the `providerdata.ConfigureSecurityCloud` helper
 
