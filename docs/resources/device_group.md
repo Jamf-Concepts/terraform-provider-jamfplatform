@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:device-groups` |
-  | `delete:pro:device-groups` |
-  | `read:pro:device-groups` |
-  | `update:pro:device-groups` |
+  | `device-groups:create` |
+  | `device-groups:delete` |
+  | `device-groups:read` |
+  | `device-groups:update` |
 ---
 
 # jamfplatform_device_group (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:device-groups` |
-| `delete:pro:device-groups` |
-| `read:pro:device-groups` |
-| `update:pro:device-groups` |
+| `device-groups:create` |
+| `device-groups:delete` |
+| `device-groups:read` |
+| `device-groups:update` |
 
 ## Example Usage
 

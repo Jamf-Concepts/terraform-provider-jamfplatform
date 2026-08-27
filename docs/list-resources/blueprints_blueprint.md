@@ -8,8 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:blueprints` |
-  | `read:school:blueprints` |
+  | `blueprints:read` |
 ---
 
 # jamfplatform_blueprints_blueprint (List Resource)
@@ -22,8 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:blueprints` |
-| `read:school:blueprints` |
+| `blueprints:read` |
 
 ## Example Usage
 

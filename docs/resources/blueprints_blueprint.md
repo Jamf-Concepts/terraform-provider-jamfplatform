@@ -8,14 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:blueprints` |
-  | `create:school:blueprints` |
-  | `delete:pro:blueprints` |
-  | `delete:school:blueprints` |
-  | `read:pro:blueprints` |
-  | `read:school:blueprints` |
-  | `update:pro:blueprints` |
-  | `update:school:blueprints` |
+  | `blueprints:create` |
+  | `blueprints:delete` |
+  | `blueprints:read` |
+  | `blueprints:update` |
 ---
 
 # jamfplatform_blueprints_blueprint (Resource)
@@ -28,14 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:blueprints` |
-| `create:school:blueprints` |
-| `delete:pro:blueprints` |
-| `delete:school:blueprints` |
-| `read:pro:blueprints` |
-| `read:school:blueprints` |
-| `update:pro:blueprints` |
-| `update:school:blueprints` |
+| `blueprints:create` |
+| `blueprints:delete` |
+| `blueprints:read` |
+| `blueprints:update` |
 
 ## Example Usage
 

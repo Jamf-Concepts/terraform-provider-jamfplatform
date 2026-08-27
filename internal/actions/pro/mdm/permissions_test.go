@@ -302,7 +302,7 @@ func TestSendCommandPrivileges_Rendered(t *testing.T) {
 		if !strings.Contains(section, "execute:pro:computer-commands") {
 			t.Fatalf("section did not render the command execute privilege:\n%s", section)
 		}
-		if !strings.Contains(section, "read:pro:devices") {
+		if !strings.Contains(section, "devices:read") {
 			t.Fatalf("section did not render the devices read privilege:\n%s", section)
 		}
 	}

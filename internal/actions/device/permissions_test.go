@@ -124,16 +124,21 @@ func TestUnmanageDeviceSDKMethods_MatchInvokeCalls(t *testing.T) {
 }
 
 // TestActionPrivileges_Rendered guards that the tables actually rendered into
-// the action descriptions (catches an empty/parse-skipped registry).
+// the action descriptions (catches an empty/parse-skipped registry). Erase and
+// unmanage carry the destructive privilege; restart and shutdown carry the
+// ordinary one.
 func TestActionPrivileges_Rendered(t *testing.T) {
-	for name, rendered := range map[string]string{
-		"eraseDevicePrivileges":    eraseDevicePrivileges,
-		"restartDevicePrivileges":  restartDevicePrivileges,
-		"shutdownDevicePrivileges": shutdownDevicePrivileges,
-		"unmanageDevicePrivileges": unmanageDevicePrivileges,
+	for name, tc := range map[string]struct {
+		rendered string
+		want     string
+	}{
+		"eraseDevicePrivileges":    {eraseDevicePrivileges, "destructive-device-actions:execute"},
+		"restartDevicePrivileges":  {restartDevicePrivileges, "device-actions:execute"},
+		"shutdownDevicePrivileges": {shutdownDevicePrivileges, "device-actions:execute"},
+		"unmanageDevicePrivileges": {unmanageDevicePrivileges, "destructive-device-actions:execute"},
 	} {
-		if !strings.Contains(rendered, "execute:pro:device-actions") {
-			t.Errorf("%s did not render the device-actions privilege:\n%s", name, rendered)
+		if !strings.Contains(tc.rendered, tc.want) {
+			t.Errorf("%s did not render %q:\n%s", name, tc.want, tc.rendered)
 		}
 	}
 }

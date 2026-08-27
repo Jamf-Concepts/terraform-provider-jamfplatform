@@ -9,9 +9,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
+  | — | `devices:read` |
   | — | `execute:pro:computer-commands` |
   | — | `execute:pro:mobile-device-commands` |
-  | — | `read:pro:devices` |
   | Read Mobile Devices | `read:pro:mobile-devices` |
 ---
 
@@ -27,9 +27,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
+| — | `devices:read` |
 | — | `execute:pro:computer-commands` |
 | — | `execute:pro:mobile-device-commands` |
-| — | `read:pro:devices` |
 | Read Mobile Devices | `read:pro:mobile-devices` |
 
 ## Example Usage
