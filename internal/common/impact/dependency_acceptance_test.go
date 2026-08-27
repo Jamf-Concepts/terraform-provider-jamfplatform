@@ -8,6 +8,7 @@ package impact
 import (
 	"context"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -115,15 +116,17 @@ func TestAcceptance_DependencyIndex_SweepsLiveTenant(t *testing.T) {
 	}
 }
 
-// TestAcceptance_DependencyIndex_PackagesAreFound is the regression guard for the
-// reason this feature reads whole policies rather than subsets.
+// TestAcceptance_DependencyIndex_PackagesAreFound reports what the tenant's own
+// policies reference, and asserts the index agrees with the wire.
 //
-// The Classic API's subset endpoint returns HTTP 200 with an empty body for
-// PackageConfiguration even when the policy has packages, so an implementation
-// that used subsets would build an index with no package references at all and
-// silently report "no policy uses this package". This test fails if that
-// regression is ever introduced, provided the tenant has at least one policy
-// installing a package.
+// It deliberately asserts nothing when the tenant installs no packages. The
+// regression this once tried to catch — a sweep reading Classic subsets, which
+// answer 200 with an empty PackageConfiguration — is indistinguishable from an
+// estate whose policies simply install nothing, so inferring it from
+// "scripts referenced, packages not" fails on any such tenant. That guard now
+// lives where the distinction is observable, in
+// TestDependencyIndex_ReadsWholePoliciesNotSubsets, which drives the real
+// PolicySource against a server reproducing the empty-subset behaviour.
 func TestAcceptance_DependencyIndex_PackagesAreFound(t *testing.T) {
 	c := liveCache(t)
 	ctx := context.Background()
@@ -143,9 +146,41 @@ func TestAcceptance_DependencyIndex_PackagesAreFound(t *testing.T) {
 		}
 	}
 	t.Logf("distinct packages referenced: %d; distinct scripts referenced: %d", packageRefs, scriptRefs)
-	if scriptRefs > 0 && packageRefs == 0 {
-		t.Error("policies reference scripts but no packages at all — the classic subset endpoint " +
-			"drops PackageConfiguration silently, so this is the signature of a regression back to subset reads")
+
+	// The wire, read independently of the index: how many packages the tenant's
+	// policies actually install. Zero is a legitimate estate, and the only honest
+	// response to it is to assert nothing.
+	ids, err := c.policySrc.PolicyIDs(ctx)
+	if err != nil {
+		t.Fatalf("listing policies: %v", err)
+	}
+	wirePackages := map[string]struct{}{}
+	for _, id := range ids {
+		pol, err := c.policySrc.Policy(ctx, id)
+		if err != nil || pol == nil {
+			continue
+		}
+		if pol.PackageConfiguration == nil || pol.PackageConfiguration.Packages == nil ||
+			pol.PackageConfiguration.Packages.Package == nil {
+			continue
+		}
+		for _, pkg := range *pol.PackageConfiguration.Packages.Package {
+			if pkg.ID != nil && *pkg.ID > 0 {
+				wirePackages[strconv.Itoa(*pkg.ID)] = struct{}{}
+			}
+		}
+	}
+	if len(wirePackages) == 0 {
+		t.Skip("no policy in this tenant installs a package; nothing to assert")
+	}
+	if packageRefs != len(wirePackages) {
+		t.Errorf("index holds %d distinct package(s), the wire names %d — the index and the "+
+			"tenant disagree about which packages policies install", packageRefs, len(wirePackages))
+	}
+	for id := range wirePackages {
+		if len(idx.uses[dependencyKey{DependencyPackage, id}]) == 0 {
+			t.Errorf("package %s is installed by a policy on the wire but absent from the index", id)
+		}
 	}
 }
 
