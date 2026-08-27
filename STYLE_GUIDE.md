@@ -54,7 +54,7 @@ Packages that only contain a data source use `model_types.go` for their model st
 
 ### Plural (list) data sources
 
-A plural data source (`jamfplatform_pro_categories`) lives **in the same package as its singular counterpart** (`category/`), not in a separate `categories/` package. Add `datasource_plural.go` for the implementation; its model structs join the package's existing `model_types.go` alongside every other construct's models. Reuse the singular package's exported schema helpers, state builders, and SDK wiring wherever the shapes overlap (see `app_installer/` and `app_installer_title/` for full reuse).
+A plural data source (`jamfplatform_pro_categories`) lives **in the same package as its singular counterpart** (`category/`), not in a separate `categories/` package. Add `datasource_plural.go` for the implementation; its model structs join the package's existing `model_types.go` alongside every other construct's models. Reuse the singular package's exported schema helpers, state builders, and SDK wiring wherever the shapes overlap.
 
 - The plural read timeout const is `defaultPluralReadTimeout` to avoid colliding with the singular's `defaultReadTimeout`; `minJamfProVersion` is shared (declared once in the package).
 - Where the list endpoint returns a strict subset of the singular's fields, the plural carries its own result model (e.g. `UserGroupsDataSourceResultModel`) so the sparse shape is explicit in one package rather than implied across two directories.
@@ -1092,7 +1092,7 @@ This applies uniformly to **all** full-replace resources, including fully-owned 
 
 **Write-only secrets are the exception to full-replace.** A write-only keystore/identity object (e.g. a signing certificate) may be **preserve-on-omit**: omitting the object keeps the stored secret, while a sibling toggle (not the object) is what deletes it. Wire-probe the lifecycle (set / keep-on-omit / delete) explicitly. In the merge, set such pointers to `nil` so `omitempty` omits them (preserves the secret) — **never** echo the server's `null` back, and only build the object when the user is uploading. See `applyCertToBody` in `user_initiated_enrollment_settings`. This mirrors the WriteOnly + `_wo_version` rotation pattern in [§Plaintext secrets](#plaintext-secrets--writeonly-with-_wo_version-rotation-companion).
 
-**Individually-optional nullable fields inside a full-replace block.** Some full-replace nested blocks accept each field as independently optional **and nullable**: the server echoes `null` for an unset field (never a zero value) and **rejects** a blank string or non-positive number on any field that *is* present. For these (e.g. `jamfplatform_pro_app_installer.notification_settings`), model each field **Optional-only** (not `Optional+Computed` — there is no server default to absorb), **omit** unset fields from the request (send `nil`, never `""`/`0`), and preserve `null` in the flatten so state matches config. Add present-only validators (`LengthAtLeast(1)`, `AtLeast(1)`) so the server's constraint surfaces at plan time. Field-level full-replace still holds — dropping a previously-set field clears it to `null`. Reserve `Optional+Computed` for the sibling fields the server genuinely defaults (a boolean defaulting to `false`); a single block can mix the two principled-ly. **Don't zero-fill** "to send a complete body" — that's the trap that turns an unset field into a `400`.
+**Individually-optional nullable fields inside a full-replace block.** Some full-replace nested blocks accept each field as independently optional **and nullable**: the server echoes `null` for an unset field (never a zero value) and **rejects** a blank string or non-positive number on any field that *is* present. For these, model each field **Optional-only** (not `Optional+Computed` — there is no server default to absorb), **omit** unset fields from the request (send `nil`, never `""`/`0`), and preserve `null` in the flatten so state matches config. Add present-only validators (`LengthAtLeast(1)`, `AtLeast(1)`) so the server's constraint surfaces at plan time. Field-level full-replace still holds — dropping a previously-set field clears it to `null`. Reserve `Optional+Computed` for the sibling fields the server genuinely defaults (a boolean defaulting to `false`); a single block can mix the two principled-ly. **Don't zero-fill** "to send a complete body" — that's the trap that turns an unset field into a `400`.
 
 ### Merge-patch (`PATCH` → `204`) settings updates
 
@@ -1161,7 +1161,7 @@ Some Jamf Pro objects refuse deletion while another object references them — e
 
 ### Referencing a server-managed catalog by name
 
-When a resource references a **server-managed catalog** object — one the user never creates, e.g. the App Installer title catalog — prefer exposing it **by name** with the ID `Computed`, rather than forcing the user to supply an opaque server ID:
+When a resource references a **server-managed catalog** object — one the user never creates, e.g. a title catalog the server publishes — prefer exposing it **by name** with the ID `Computed`, rather than forcing the user to supply an opaque server ID:
 
 - Expose `<thing>_name` as `Required`; keep `<thing>_id` `Computed` (plain `Computed`, no `UseStateForUnknown` — it is derived from the mutable name, so it must recompute when the name changes; see [§Server-derived computed fields](#server-derived-computed-fields--optionalcomputed-attributes)).
 - **Resolve name → ID at apply** (Create/Update) via the SDK's `Resolve…IDByName`; a miss is a clear "not in catalog" error.
@@ -1169,7 +1169,7 @@ When a resource references a **server-managed catalog** object — one the user 
 - **Safe only with an exact-match resolver.** A case-insensitive/fuzzy resolver would accept `"010 editor"`, store it, then reverse-resolve to the canonical `"Jamf Composer"` → perpetual diff. Confirm the SDK resolver matches exactly (the platform `ResolveByNameClientPaged` does — `v != name`); if it doesn't, fetch the canonical name after resolving and error when it differs from the user's input.
 - **Plan-time name validation IS appropriate here** — unlike the sibling-resource case above. A server catalog is never created in the same apply, so a best-effort live-list/`GET` check (warn on transport error, error on a genuine miss, skip null/unknown) fails fast without breaking compose. Mirror `api_role`'s privilege validator.
 
-Reference: `jamfplatform_pro_app_installer.app_title_name` → Computed `app_title_id`.
+No shipped construct currently uses this shape; the pattern is recorded here for the next one that does.
 
 ### Classic membership: author by username, mirror the resolved ID set as Computed
 
