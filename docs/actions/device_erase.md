@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `execute:pro:device-actions` |
+  | `destructive-device-actions:execute` |
 ---
 
 # jamfplatform_device_erase (Action)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `execute:pro:device-actions` |
+| `destructive-device-actions:execute` |
 
 ## Example Usage
 

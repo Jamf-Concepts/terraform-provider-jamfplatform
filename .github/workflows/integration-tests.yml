@@ -59,9 +59,12 @@ jobs:
       - run: go test -v -race -cover -count=1 ./...
 
   # Compute the minimal acceptance scope for this PR: the changed packages plus
-  # everything that transitively depends on them (scripts/acctargets). A change
-  # to a global file (go.mod, CI, testhelpers, the provider hub) resolves to
-  # "./..." — the full suite.
+  # everything that transitively depends on them (scripts/acctargets). Changed Go
+  # files are attributed at declaration granularity, so purely ADDING to a hub
+  # package (providerdata, testhelpers, internal/common/*) reaches only that
+  # package, and a registration-only edit to the provider hub reaches only the
+  # constructs whose constructors moved. A change to a global file (go.mod,
+  # GNUmakefile, this workflow) still resolves to "./..." — the full suite.
   plan-acc:
     name: Plan Acceptance Scope
     needs: unit
@@ -82,7 +85,7 @@ jobs:
         run: |
           base="origin/${{ github.base_ref }}"
           git fetch --no-tags origin "${{ github.base_ref }}" || true
-          pkgs="$(go run scripts/acctargets/main.go "$base")"
+          pkgs="$(go run -tags acctargets ./scripts/acctargets "$base")"
           echo "Acceptance scope: ${pkgs:-<none — no acceptance packages affected>}"
           echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
 

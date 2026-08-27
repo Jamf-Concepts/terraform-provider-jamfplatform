@@ -8,9 +8,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:compliance-benchmarks` |
-  | `delete:pro:compliance-benchmarks` |
-  | `read:pro:compliance-benchmarks` |
+  | `compliance-benchmarks:create` |
+  | `compliance-benchmarks:delete` |
+  | `compliance-benchmarks:read` |
 ---
 
 # jamfplatform_cbengine_benchmark (Resource)
@@ -23,9 +23,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:compliance-benchmarks` |
-| `delete:pro:compliance-benchmarks` |
-| `read:pro:compliance-benchmarks` |
+| `compliance-benchmarks:create` |
+| `compliance-benchmarks:delete` |
+| `compliance-benchmarks:read` |
 
 ## Example Usage
 

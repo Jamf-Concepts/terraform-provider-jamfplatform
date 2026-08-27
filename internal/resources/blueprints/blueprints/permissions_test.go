@@ -71,7 +71,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered is a guard that the table actually rendered
 // into the data source description (catches an empty/parse-skipped registry).
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:blueprints") {
+	if !strings.Contains(dataSourcePrivileges, "blueprints:read") {
 		t.Fatalf("dataSourcePrivileges did not render the blueprints privileges:\n%s", dataSourcePrivileges)
 	}
 }

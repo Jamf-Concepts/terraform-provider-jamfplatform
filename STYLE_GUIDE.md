@@ -159,7 +159,9 @@ When the wire name is already a reasonable match for the UI label (e.g. `encrypt
 "create_mobile_account": optBool("**\"Create Mobile Account\"** in the Jamf Pro admin UI. …"),
 ```
 
-The rename rule applies to all current and future Jamf Pro resources. Where an existing shipped resource has cryptic wire-name attributes, do not retrofit in a feature PR — schedule a dedicated rename PR (the change is breaking for users).
+The rename rule applies to all current and future Jamf Pro **and Jamf Security Cloud** resources — the reasoning is about the gap between a wire payload and the screen an administrator reads, which is not specific to one product. Where an existing shipped resource has cryptic wire-name attributes, do not retrofit in a feature PR — schedule a dedicated rename PR (the change is breaking for users).
+
+**The wire name cannot go in a comment beside the attribute**, despite the snippet above: [§Go Conventions](#go-conventions) forbids comments inside function bodies, and a schema is built inside one. Put the whole wire mapping in the package doc comment instead, as a table — `internal/resources/security_cloud/ztna_gateway/resource.go` is the reference. That reads better anyway: one place to scan when chasing a field name seen in an API response, rather than a dozen scattered one-liners.
 
 ### User-facing descriptions are UI-aligned, not wire-aligned
 
@@ -603,6 +605,7 @@ Terraform construct names follow `jamfplatform_<domain>_<entity>` (or `jamfplatf
 - `jamfplatform_blueprints_blueprint` (resource, data source, list resource)
 - `jamfplatform_cbengine_benchmark` (resource, data source, list resource)
 - `jamfplatform_device_erase` / `_restart` / `_shutdown` / `_unmanage` (actions)
+- `jamfplatform_security_cloud_dns_zone` / `_ztna_gateway` / `_ztna_grouped_gateway` (resource, data source, list resource)
 
 ### Test names
 
@@ -623,6 +626,94 @@ tf-acc-static-computer
 tf-acc-benchmark-all-rules
 tf-acc-bp-scope-passcode
 ```
+
+## Jamf Security Cloud Resource Naming
+
+Resources backed by the `securitycloud/` package of `jamfplatform-go-sdk` carry the
+`jamfplatform_security_cloud_` prefix. The SDK generates all five Security Cloud API
+namespaces — `jsc-categories`, `jsc-dns`, `jsc-ztna`, `securitycloud-devices` and
+`uem-connect` — into that one Go package, but those namespace names are gateway routing
+artifacts that appear nowhere in the admin UI, so they are not part of the Terraform name.
+
+### Rules
+
+1. **Terraform construct name**: `jamfplatform_security_cloud_<resource>`, regardless of
+   which API namespace inside the SDK package backs it. Same reasoning as
+   [§Jamf Pro Resource Naming](#jamf-pro-resource-naming): the API-layer split is not the
+   user's problem.
+2. **Slug source**: the admin-UI label, not the SDK filename, wherever the two diverge.
+   `zones.go` under *Integrations → Custom DNS → DNS zones* becomes
+   `security_cloud_dns_zone` — the `dns_` qualifier comes from the UI section, because
+   "zone" alone is ambiguous once ZTNA gateways and device groups are also in the
+   namespace.
+3. **Singular vs plural**: as for Jamf Pro — singular resource and by-id/by-name data
+   source, plural data source and list resource.
+4. **Go package path**: `internal/resources/security_cloud/<resource>/` — flat, one leaf
+   package per construct family, folder name equal to the Terraform slug minus the
+   `jamfplatform_security_cloud_` prefix. Code shared across two or more Security Cloud
+   packages lives under `internal/common/<topic>/`, never in a sibling.
+5. **No tenant version gate.** Security Cloud is continuously deployed and has no
+   customer-tenant version, so these constructs declare no `minJamfProVersion` and must
+   **not** be routed through `ConfigurePro` / `ConfigureProClassic` — those fetch the Jamf
+   Pro version, which a Security Cloud-only tenant cannot answer.
+6. **Entitlement is separate from authentication.** A tenant can authenticate fine and
+   still not have a Security Cloud surface; the API says so with `403 NOT_ENTITLED`.
+   Translate that code into a named diagnostic rather than letting the raw error through.
+
+### Security Cloud shapes that recur
+
+Three patterns show up across the Security Cloud namespaces often enough to state once here
+rather than rediscover per resource. All three were wire-probed on 2026-08-27.
+
+**A single-element array is a scalar.** Several fields are declared as arrays but rejected at
+any size but one — the IPsec cipher suites' `encryption`, `integrity` and `dhGroups`, and the
+Jamf-side `left.subnets`. Model these as a single string or number and collapse at the
+boundary in the input/state builders. A list would only offer users room the server refuses,
+and the refusal message names the field's size rather than the mistake.
+
+**An enum violation is unattributed.** An unknown enum value comes back as
+`400 [INVALID_FIELD] Request body is missing or malformed.` — no field, no offending value.
+Validate every enum at plan time, and build both the `OneOf` validator and the documented
+value list from the SDK's generated `*Values()` helper so they cannot drift from each other or
+from the API. Where the SDK documents a set but generates no helper (grouped gateway's
+`recoveryDelayInSec`), restate it in the package's `enums.go` and say why in a comment.
+
+**Deleting a referenced object is a bare 409.** Jamf Security Cloud refuses to delete anything
+another object points at — a gateway named by a DNS zone's name server or by a grouped
+gateway's membership — with `409 CONFLICT` and no structured detail identifying the referrer.
+This is the Terraform destroy-ordering trap described in
+[§Referenced-by-name dependencies](#referenced-by-name-dependencies--has_dependencies-on-delete):
+removing the reference *and* destroying the target in one apply lets Terraform sequence the
+destroy first. Translate the 409 into a diagnostic that names the possible referrers and says
+to split the applies, because the server will not.
+
+**A read-only status timestamp does not belong in the schema.** The gateway's
+`status.updatedAt` and the grouped gateway's `updatedAt` advance on every server-side
+re-evaluation. A Computed attribute over such a value makes every refresh report the object as
+changed outside Terraform, about something no configuration can act on. Omit it and say so in
+the state builder's doc comment; keep the fields that settle (`status.state`,
+`status.tunnelState`) and the ones that never move (`createdAt`).
+
+### Security Cloud Configure: use the `providerdata.ConfigureSecurityCloud` helper
+
+```go
+func (r *Resource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+    client, diags := providerdata.ConfigureSecurityCloud(ctx, req.ProviderData, "jamfplatform_security_cloud_<name>")
+    resp.Diagnostics.Append(diags...)
+    if resp.Diagnostics.HasError() {
+        return
+    }
+    r.client = client
+}
+```
+
+It type-asserts `*providerdata.Data`, applies the `RequireScope` gate
+(`ScopeEnvironment, ScopeTenant`) and returns a `*securitycloud.Client`. It deliberately
+does not go through `configureSub` — see rule 5.
+
+Acceptance tests gate on `testhelpers.AccPreCheckSecurityCloud`, which skips unless the
+operator has declared that the configured scope belongs to a Security Cloud tenant; see
+[TESTING.md](TESTING.md).
 
 ## Jamf Pro Resource Naming
 
@@ -709,6 +800,7 @@ if resp.Diagnostics.HasError() {
 ```
 
 - **Pro and ProClassic constructs need no call site** — the gate is applied once inside `configureSub`, so `ConfigurePro` / `ConfigureProClassic` already enforce environment-or-tenant for every `pro/` package and Pro action.
+- **Security Cloud constructs need no call site either** — `providerdata.ConfigureSecurityCloud` applies the same environment-or-tenant gate (see [§Jamf Security Cloud Resource Naming](#jamf-security-cloud-resource-naming)).
 - **Platform Services constructs wire it explicitly**, immediately after the `*providerdata.Data` type assertion. Every one currently declares `ScopeEnvironment, ScopeTenant`.
 - **Argument order is presentation order** — it is the order the diagnostic lists the scopes in, so environment comes first.
 - **Do not gate in provider Configure instead.** The answer differs per API family — Blueprints and Compliance Benchmarks become environment-only at the Platform API GA, at which point those call sites simply drop `ScopeTenant` — and a provider-level assertion would also block the organization-level constructs that legitimately run without a scope header.

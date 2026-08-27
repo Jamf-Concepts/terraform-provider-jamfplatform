@@ -7,6 +7,7 @@ This document covers the testing strategy and instructions for the Terraform Pro
 | Category               | Build Tag    | Requires API | Command                                                                                       |
 |------------------------|--------------|--------------|-----------------------------------------------------------------------------------------------|
 | Unit                   | (none)       | No           | `make test`                                                                                   |
+| Unit (tooling)         | `acctargets` | No           | `make test-scripts` — `scripts/acctargets`, which `go test ./...` cannot see behind its build tag |
 | Acceptance (all)       | `acceptance` | Yes          | `make testacc`                                                                                |
 | Acceptance (changed)   | `acceptance` | Yes          | `make testacc-changed` (changed packages + their transitive dependents)                       |
 | Acceptance (targeted)  | `acceptance` | Yes          | `make testacc-run RUN=<regex> PKG=<package>` (e.g. `RUN=TestAccResource_ProSite_Basic PKG=./internal/resources/pro/site/...`) |
@@ -29,6 +30,11 @@ export JAMFPLATFORM_BASE_URL="https://us.apigw.jamf.com"
 export JAMFPLATFORM_CLIENT_ID="your-client-id"
 export JAMFPLATFORM_CLIENT_SECRET="your-client-secret"
 export JAMFPLATFORM_ENVIRONMENT_ID="your-environment-id" # preferred; or JAMFPLATFORM_TENANT_ID (legacy), never both
+
+# Jamf Security Cloud tests additionally require you to DECLARE that the scope above
+# is a Security Cloud one. The value must match the scope actually configured; unset
+# or mismatched and every Security Cloud test skips rather than failing.
+export JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID="$JAMFPLATFORM_ENVIRONMENT_ID"
 
 go test -v -cover -count=1 -tags=acceptance -p=1 ./...
 ```
@@ -57,9 +63,26 @@ with `BASE=<ref>`) and walks the package import graph:
 - Change a shared helper (e.g. `internal/common/scope/`) → that package **and**
   every consumer (`policy`, the apps, `user_group`, the VPP resources, the
   config profiles, the advanced searches, …) run.
-- Change a global file — `go.mod`/`go.sum`, anything under `.github/workflows/`,
-  `internal/testhelpers/`, or the provider hub `internal/provider/` — resolves
-  to the full suite (`./...`).
+- **Add** to a hub package — a new `providerdata` helper, a new `testhelpers`
+  fixture, a new shared validator — → only that package. Changed Go files are
+  compared declaration by declaration, and no unchanged package can reference a
+  declaration that did not exist at the base ref. Any package that gained such a
+  reference changed too, and selects itself.
+- **Modify or remove** an existing declaration in one of those hubs → the full
+  fan-out, because that genuinely can reach every consumer.
+- Register or unregister a construct in `internal/provider/provider.go` → only
+  the packages whose constructors moved. Any other edit to that file (a
+  `Configure` change, a new provider attribute) falls back to the full fan-out.
+  Reordering a list changes no constructor and so selects nothing.
+- Change a global file — `go.mod`/`go.sum`, the `GNUmakefile`, anything under
+  `.github/workflows/`, or `scripts/acctargets/` itself — resolves to the full
+  suite (`./...`).
+
+Every uncertainty resolves to the wider answer: an unparseable revision, a
+declaration that moved, a registration list that is no longer a plain list. Over-
+running costs time; under-running costs a regression. `make test-scripts` runs the
+tool's own unit tests, which `go test ./...` cannot see (the tool is behind the
+`acctargets` build tag so it stays out of the provider binary).
 
 The graph deliberately **cuts `internal/provider`'s out-edges**. The provider
 imports every resource package purely to register it, and `testhelpers` imports
@@ -277,3 +300,30 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret                                           |
 | `JAMFPLATFORM_ENVIRONMENT_ID`| Platform environment ID — preferred scope; mutually exclusive with the next row |
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |
+| `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` | Declares that the configured `JAMFPLATFORM_ENVIRONMENT_ID` belongs to a Jamf Security Cloud tenant. Must equal it. Unset or mismatched → every Security Cloud test skips |
+| `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two. Also names the tenant a ZTNA gateway grants access to — the gateway tests skip without it, because `tenantIds` is required on every gateway and is validated against the caller's organization |
+
+### Jamf Security Cloud coverage is opt-in, and partly tenant-scope-only
+
+Neither declaration variable is set in CI, so **every Jamf Security Cloud acceptance
+test skips there** — 29 of them, each printing the reason. The suite is green and the
+coverage is zero; do not read one as the other. They are exercised by running locally
+against an entitled tenant.
+
+Turning them on is just setting `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` to the same
+value as `JAMFPLATFORM_TENANT_ID`. The gate requires the two to match, so a value
+left over from a different tenant skips rather than running against the wrong estate.
+
+**Under an environment-scoped integration the ZTNA gateway tests cannot run at all.**
+`tenantIds` is required on every gateway and grouped gateway and is validated against
+the caller's organization, and nothing in the API exposes the tenants belonging to an
+environment — so there is no id for a test to name. `RequireSecurityCloudTenantID`
+skips rather than guessing. Custom DNS zones and the shared-gateway catalogue have no
+such field and are unaffected.
+
+Also untested: the Security Cloud surface under `X-Environment-Id`. Every wire probe
+behind these resources used a tenant-scoped integration.
+`providerdata.ConfigureSecurityCloud` admits both scopes on the strength of the spec,
+not a probe. If `/api/securitycloud` turns out not to answer under an environment
+header, the fix is to drop `ScopeEnvironment` from that call — the same one-token
+narrowing the scope gate was built for.

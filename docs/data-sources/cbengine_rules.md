@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:compliance-benchmarks` |
+  | `compliance-benchmarks:read` |
 ---
 
 # jamfplatform_cbengine_rules (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:compliance-benchmarks` |
+| `compliance-benchmarks:read` |
 
 ## Example Usage
 
