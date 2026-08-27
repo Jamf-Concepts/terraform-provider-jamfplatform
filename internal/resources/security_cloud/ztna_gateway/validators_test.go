@@ -82,40 +82,10 @@ func TestCIDRBlock(t *testing.T) {
 	}
 }
 
-func TestIPv4Address(t *testing.T) {
-	cases := []struct {
-		name    string
-		value   types.String
-		wantErr bool
-	}{
-		{"dotted quad", types.StringValue("3.9.67.90"), false},
-		{"ipv6", types.StringValue("2001:db8::1"), true},
-		{"cidr", types.StringValue("3.9.67.90/32"), true},
-		{"nonsense", types.StringValue("nope"), true},
-		{"null defers to server", types.StringNull(), false},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			req := validator.StringRequest{
-				Path:        path.Root("ipsec_source_ip_addresses"),
-				ConfigValue: tc.value,
-			}
-			var resp validator.StringResponse
-			ipv4Address().ValidateString(context.Background(), req, &resp)
-
-			if got := resp.Diagnostics.HasError(); got != tc.wantErr {
-				t.Errorf("HasError() = %v, want %v (diagnostics: %v)", got, tc.wantErr, resp.Diagnostics)
-			}
-		})
-	}
-}
-
 func TestValidatorDescriptions(t *testing.T) {
 	for name, v := range map[string]validator.String{
 		"privateCIDR": privateCIDR(),
 		"cidrBlock":   cidrBlock(),
-		"ipv4Address": ipv4Address(),
 	} {
 		if v.Description(context.Background()) == "" {
 			t.Errorf("%s must describe itself", name)

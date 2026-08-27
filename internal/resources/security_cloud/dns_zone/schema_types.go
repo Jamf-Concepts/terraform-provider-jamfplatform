@@ -20,7 +20,7 @@ var dnsZoneTimeoutAttributeTypes = map[string]attr.Type{
 // nameServerAttributeTypes defines the object attribute types for one
 // authoritative name server entry.
 var nameServerAttributeTypes = map[string]attr.Type{
-	"ip":         types.StringType,
+	"ip_address": types.StringType,
 	"gateway_id": types.StringType,
 }
 

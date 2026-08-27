@@ -68,9 +68,9 @@ func TestAccDataSource_SecurityCloudZtnaSharedGateways_ResolvesDNSZoneGateway(t 
 						name    = "tf-acc-jsc-shared-gw-` + suffix + `"
 						domains = ["tf-acc-shared-` + suffix + `.example.com"]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = "203.0.113.53"
+								ip_address = "203.0.113.53"
 								gateway_id = local.nearest
 							},
 						]
@@ -78,7 +78,7 @@ func TestAccDataSource_SecurityCloudZtnaSharedGateways_ResolvesDNSZoneGateway(t 
 				`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_dns_zone.test", "id"),
-					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_dns_zone.test", "name_servers.0.gateway_id"),
+					resource.TestCheckResourceAttrSet("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.0.gateway_id"),
 				),
 			},
 		},

@@ -68,15 +68,15 @@ Optional:
 
 Read-Only:
 
+- `authoritative_name_servers` (Attributes List) Authoritative name servers for this zone. (see [below for nested schema](#nestedatt--dns_zones--authoritative_name_servers))
 - `domains` (List of String) Domains that match this zone.
 - `id` (String) Zone ID assigned by Jamf Security Cloud.
 - `name` (String) Zone name.
-- `name_servers` (Attributes List) Authoritative name servers for this zone. (see [below for nested schema](#nestedatt--dns_zones--name_servers))
 
-<a id="nestedatt--dns_zones--name_servers"></a>
-### Nested Schema for `dns_zones.name_servers`
+<a id="nestedatt--dns_zones--authoritative_name_servers"></a>
+### Nested Schema for `dns_zones.authoritative_name_servers`
 
 Read-Only:
 
 - `gateway_id` (String) ID of the gateway this name server is reachable through.
-- `ip` (String) Name server IPv4 address.
+- `ip_address` (String) Name server IPv4 address.

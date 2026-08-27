@@ -83,7 +83,7 @@ func nameServerObjectValues(servers []securitycloud.NameServer) ([]attr.Value, d
 	values := make([]attr.Value, 0, len(servers))
 	for _, s := range servers {
 		obj, objDiags := types.ObjectValue(nameServerAttributeTypes, map[string]attr.Value{
-			"ip":         types.StringValue(s.IP),
+			"ip_address": types.StringValue(s.IP),
 			"gateway_id": types.StringValue(s.GatewayID),
 		})
 		diags.Append(objDiags...)

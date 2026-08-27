@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -31,41 +30,6 @@ var jamfSidePrivateRanges = []privateRange{
 	{cidr: "10.0.0.0/8", minPrefix: 8, maxPrefix: 30},
 	{cidr: "172.16.0.0/12", minPrefix: 12, maxPrefix: 30},
 	{cidr: "192.168.0.0/16", minPrefix: 16, maxPrefix: 30},
-}
-
-// ipv4AddressValidator checks that a string attribute holds an IPv4 address in
-// dotted-quad form.
-type ipv4AddressValidator struct{}
-
-// ipv4Address returns a validator.String enforcing dotted-quad IPv4 form.
-func ipv4Address() validator.String {
-	return ipv4AddressValidator{}
-}
-
-// Description returns a plain-text description of the validator.
-func (ipv4AddressValidator) Description(_ context.Context) string {
-	return "must be an IPv4 address in dotted-quad form"
-}
-
-// MarkdownDescription returns the markdown description of the validator.
-func (v ipv4AddressValidator) MarkdownDescription(ctx context.Context) string {
-	return v.Description(ctx)
-}
-
-// ValidateString implements validator.String.
-func (v ipv4AddressValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-	value := req.ConfigValue.ValueString()
-	if ip := net.ParseIP(value); ip != nil && ip.To4() != nil && strings.Count(value, ".") == 3 {
-		return
-	}
-	resp.Diagnostics.AddAttributeError(
-		req.Path,
-		"Invalid IPv4 address",
-		"Expected an IPv4 address in dotted-quad form. Got: "+value,
-	)
 }
 
 // cidrBlockValidator checks that a string attribute holds an IPv4 CIDR block.

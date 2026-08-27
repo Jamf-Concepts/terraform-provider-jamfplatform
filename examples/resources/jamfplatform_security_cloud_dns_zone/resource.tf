@@ -30,13 +30,13 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
   ]
 
   # Each IP address may appear only once in a zone.
-  name_servers = [
+  authoritative_name_servers = [
     {
-      ip         = "203.0.113.53"
+      ip_address = "203.0.113.53"
       gateway_id = local.nearest_data_center
     },
     {
-      ip         = "198.51.100.53"
+      ip_address = "198.51.100.53"
       gateway_id = local.uk_shared_pool
     },
   ]
@@ -48,9 +48,9 @@ resource "jamfplatform_security_cloud_dns_zone" "private" {
   name    = "Private Apps"
   domains = ["private.example.com"]
 
-  name_servers = [
+  authoritative_name_servers = [
     {
-      ip         = "10.100.0.53"
+      ip_address = "10.100.0.53"
       gateway_id = jamfplatform_security_cloud_ztna_gateway.private_apps.id
     },
   ]

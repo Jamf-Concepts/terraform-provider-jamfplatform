@@ -28,7 +28,7 @@ func TestDNSZoneResource_Metadata(t *testing.T) {
 func TestDNSZoneResource_Schema(t *testing.T) {
 	s := resourceSchema(t)
 
-	for _, name := range []string{"id", "name", "domains", "name_servers", "timeouts"} {
+	for _, name := range []string{"id", "name", "domains", "authoritative_name_servers", "timeouts"} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}
@@ -39,7 +39,7 @@ func TestDNSZoneResource_Schema(t *testing.T) {
 		t.Errorf("id must be computed-only, got required=%v computed=%v", id.IsRequired(), id.IsComputed())
 	}
 
-	for _, name := range []string{"name", "domains", "name_servers"} {
+	for _, name := range []string{"name", "domains", "authoritative_name_servers"} {
 		if !s.Attributes[name].IsRequired() {
 			t.Errorf("%s must be required", name)
 		}
@@ -57,26 +57,26 @@ func TestDNSZoneResource_CollectionsAreSets(t *testing.T) {
 	if _, ok := s.Attributes["domains"].(rschema.SetAttribute); !ok {
 		t.Errorf("domains must be a SetAttribute, got %T", s.Attributes["domains"])
 	}
-	if _, ok := s.Attributes["name_servers"].(rschema.SetNestedAttribute); !ok {
-		t.Errorf("name_servers must be a SetNestedAttribute, got %T", s.Attributes["name_servers"])
+	if _, ok := s.Attributes["authoritative_name_servers"].(rschema.SetNestedAttribute); !ok {
+		t.Errorf("authoritative_name_servers must be a SetNestedAttribute, got %T", s.Attributes["authoritative_name_servers"])
 	}
 }
 
 func TestDNSZoneResource_NameServerAttributes(t *testing.T) {
 	s := resourceSchema(t)
 
-	nested, ok := s.Attributes["name_servers"].(rschema.SetNestedAttribute)
+	nested, ok := s.Attributes["authoritative_name_servers"].(rschema.SetNestedAttribute)
 	if !ok {
-		t.Fatalf("name_servers must be a SetNestedAttribute, got %T", s.Attributes["name_servers"])
+		t.Fatalf("authoritative_name_servers must be a SetNestedAttribute, got %T", s.Attributes["authoritative_name_servers"])
 	}
-	for _, name := range []string{"ip", "gateway_id"} {
+	for _, name := range []string{"ip_address", "gateway_id"} {
 		attr, present := nested.NestedObject.Attributes[name]
 		if !present {
-			t.Errorf("name_servers missing nested attribute %q", name)
+			t.Errorf("authoritative_name_servers missing nested attribute %q", name)
 			continue
 		}
 		if !attr.IsRequired() {
-			t.Errorf("name_servers.%s must be required", name)
+			t.Errorf("authoritative_name_servers.%s must be required", name)
 		}
 	}
 }
@@ -115,7 +115,7 @@ func TestDNSZoneDataSource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	for _, name := range []string{"id", "name", "domains", "name_servers", "timeouts"} {
+	for _, name := range []string{"id", "name", "domains", "authoritative_name_servers", "timeouts"} {
 		if _, ok := s.Attributes[name]; !ok {
 			t.Errorf("missing attribute %q", name)
 		}
@@ -132,8 +132,8 @@ func TestDNSZoneDataSource_Schema(t *testing.T) {
 	if _, ok := s.Attributes["domains"].(dsschema.ListAttribute); !ok {
 		t.Errorf("data source domains must be a ListAttribute, got %T", s.Attributes["domains"])
 	}
-	if _, ok := s.Attributes["name_servers"].(dsschema.ListNestedAttribute); !ok {
-		t.Errorf("data source name_servers must be a ListNestedAttribute, got %T", s.Attributes["name_servers"])
+	if _, ok := s.Attributes["authoritative_name_servers"].(dsschema.ListNestedAttribute); !ok {
+		t.Errorf("data source name_servers must be a ListNestedAttribute, got %T", s.Attributes["authoritative_name_servers"])
 	}
 }
 

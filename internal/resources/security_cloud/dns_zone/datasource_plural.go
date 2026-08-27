@@ -73,12 +73,12 @@ func (d *DNSZonesDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 							Computed:            true,
 							ElementType:         types.StringType,
 						},
-						"name_servers": schema.ListNestedAttribute{
+						"authoritative_name_servers": schema.ListNestedAttribute{
 							MarkdownDescription: "Authoritative name servers for this zone.",
 							Computed:            true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
-									"ip": schema.StringAttribute{
+									"ip_address": schema.StringAttribute{
 										MarkdownDescription: "Name server IPv4 address.",
 										Computed:            true,
 									},

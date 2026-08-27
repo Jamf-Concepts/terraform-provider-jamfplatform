@@ -9,6 +9,24 @@
 // hostnames under the zone's domains resolve via authoritative name servers the
 // customer nominates rather than the public resolvers, which is what makes
 // private applications reachable over ZTNA.
+//
+// Attribute names follow the admin UI rather than the wire wherever the two
+// diverge, per STYLE_GUIDE §Attribute names mirror the Jamf Pro admin UI. Because
+// the guide also forbids comments inside function bodies, the wire mapping lives
+// here:
+//
+//	Terraform attribute                        Wire field
+//	----------------------------------------   -------------------------
+//	authoritative_name_servers                 nameServers
+//	authoritative_name_servers[].ip_address    nameServers[].ip
+//	authoritative_name_servers[].gateway_id    nameServers[].gatewayId
+//
+// `gateway_id` is the one place the attribute does not take the UI's label. The UI
+// calls the column "Reachable via" and fills it with gateway names, but that phrase
+// describes a relationship rather than naming a field, and `reachable_via = "a7d2"`
+// would say nothing about what the value is. The ID rather than the name is
+// deliberate too: gateway names are not unique, and an ID is what a reference to a
+// sibling gateway resource yields.
 package dns_zone
 
 import (
@@ -122,21 +140,21 @@ func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					setvalidator.ValueStringsAre(stringvalidator.LengthAtLeast(1)),
 				},
 			},
-			"name_servers": schema.SetNestedAttribute{
+			"authoritative_name_servers": schema.SetNestedAttribute{
 				MarkdownDescription: "**\"Authoritative name servers\"** in the Jamf Security Cloud admin UI — the name " +
 					"servers that resolve hostnames for this zone's domains. Between 1 and 20 entries. Each name server " +
 					"must be reachable via the gateway it is paired with.",
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"ip": schema.StringAttribute{
+						"ip_address": schema.StringAttribute{
 							MarkdownDescription: "**\"Name server IP address\"** in the Jamf Security Cloud admin UI. " +
 								"An IPv4 address in dotted-quad form; IPv6 is not accepted. Each IP address may appear " +
 								"only once in a zone, even when paired with different gateways. Jamf Security Cloud also " +
 								"refuses reserved ranges such as private and loopback addresses.",
 							Required: true,
 							Validators: []validator.String{
-								ipv4Address(),
+								commonvalidators.IPv4Address(),
 							},
 						},
 						"gateway_id": schema.StringAttribute{
@@ -154,7 +172,7 @@ func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				},
 				Validators: []validator.Set{
 					setvalidator.SizeBetween(minNameServers, maxNameServers),
-					commonvalidators.UniqueStringFieldSet("ip"),
+					commonvalidators.UniqueStringFieldSet("ip_address"),
 				},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{

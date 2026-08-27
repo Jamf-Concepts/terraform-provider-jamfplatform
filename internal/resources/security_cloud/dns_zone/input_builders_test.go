@@ -85,7 +85,7 @@ func planModel(t *testing.T, name string, domains []string, nameServers []NameSe
 	nsValues := make([]attr.Value, 0, len(nameServers))
 	for _, ns := range nameServers {
 		obj, objDiags := types.ObjectValue(nameServerAttributeTypes, map[string]attr.Value{
-			"ip":         ns.IP,
+			"ip_address": ns.IP,
 			"gateway_id": ns.GatewayID,
 		})
 		if objDiags.HasError() {

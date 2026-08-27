@@ -50,7 +50,7 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 			)
 		case codeGatewayNotFound:
 			diags.AddAttributeError(
-				path.Root("name_servers"),
+				path.Root("authoritative_name_servers"),
 				"Referenced gateway not found",
 				"One of this zone's name servers names a gateway that does not exist in Jamf Security Cloud. The "+
 					"gateway must exist before the zone can reference it — check `gateway_id` against your ZTNA "+
@@ -59,7 +59,7 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 			)
 		case codeNameServerIPRestricted, codeNameServerIPOutOfRange:
 			diags.AddAttributeError(
-				path.Root("name_servers"),
+				path.Root("authoritative_name_servers"),
 				"Name server IP address not allowed",
 				"Jamf Security Cloud refuses this name server address. Reserved ranges — private, loopback and "+
 					"similar — are not accepted. Reported by Jamf Security Cloud: "+detail.Description,

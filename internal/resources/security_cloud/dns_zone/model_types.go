@@ -15,13 +15,13 @@ type DNSZoneResourceModel struct {
 	ID          types.String           `tfsdk:"id"`
 	Name        types.String           `tfsdk:"name"`
 	Domains     types.Set              `tfsdk:"domains"`
-	NameServers types.Set              `tfsdk:"name_servers"`
+	NameServers types.Set              `tfsdk:"authoritative_name_servers"`
 	Timeouts    resourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
 // NameServerModel represents one authoritative name server entry.
 type NameServerModel struct {
-	IP        types.String `tfsdk:"ip"`
+	IP        types.String `tfsdk:"ip_address"`
 	GatewayID types.String `tfsdk:"gateway_id"`
 }
 
@@ -38,7 +38,7 @@ type DNSZoneDataSourceModel struct {
 	ID          types.String             `tfsdk:"id"`
 	Name        types.String             `tfsdk:"name"`
 	Domains     types.List               `tfsdk:"domains"`
-	NameServers types.List               `tfsdk:"name_servers"`
+	NameServers types.List               `tfsdk:"authoritative_name_servers"`
 	Timeouts    datasourceTimeouts.Value `tfsdk:"timeouts"`
 }
 
@@ -56,7 +56,7 @@ type DNSZonesDataSourceResultModel struct {
 	ID          types.String `tfsdk:"id"`
 	Name        types.String `tfsdk:"name"`
 	Domains     types.List   `tfsdk:"domains"`
-	NameServers types.List   `tfsdk:"name_servers"`
+	NameServers types.List   `tfsdk:"authoritative_name_servers"`
 }
 
 // DNSZoneListResourceModel represents the config model for DNS zone list

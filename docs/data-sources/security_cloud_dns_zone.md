@@ -53,8 +53,8 @@ output "internal_services_domains" {
 
 ### Read-Only
 
+- `authoritative_name_servers` (Attributes List) Authoritative name servers that resolve hostnames for this zone's domains. (see [below for nested schema](#nestedatt--authoritative_name_servers))
 - `domains` (List of String) Domains that match this zone.
-- `name_servers` (Attributes List) Authoritative name servers that resolve hostnames for this zone's domains. (see [below for nested schema](#nestedatt--name_servers))
 
 <a id="nestedatt--timeouts"></a>
 ### Nested Schema for `timeouts`
@@ -64,10 +64,10 @@ Optional:
 - `read` (String) A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as "30s" or "2h45m". Valid time units are "s" (seconds), "m" (minutes), "h" (hours).
 
 
-<a id="nestedatt--name_servers"></a>
-### Nested Schema for `name_servers`
+<a id="nestedatt--authoritative_name_servers"></a>
+### Nested Schema for `authoritative_name_servers`
 
 Read-Only:
 
 - `gateway_id` (String) ID of the gateway this name server is reachable through.
-- `ip` (String) Name server IPv4 address.
+- `ip_address` (String) Name server IPv4 address.

@@ -76,6 +76,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
+	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
@@ -220,7 +221,7 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				ElementType: types.StringType,
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
-					setvalidator.ValueStringsAre(ipv4Address()),
+					setvalidator.ValueStringsAre(commonvalidators.IPv4Address()),
 				},
 			},
 			"dedicated_egress_ip_addresses": schema.ListAttribute{

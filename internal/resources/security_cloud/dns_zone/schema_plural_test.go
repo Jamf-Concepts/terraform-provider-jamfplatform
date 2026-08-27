@@ -42,7 +42,7 @@ func TestDNSZonesDataSource_Schema(t *testing.T) {
 	if !ok {
 		t.Fatalf("dns_zones must be a ListNestedAttribute, got %T", s.Attributes["dns_zones"])
 	}
-	for _, name := range []string{"id", "name", "domains", "name_servers"} {
+	for _, name := range []string{"id", "name", "domains", "authoritative_name_servers"} {
 		if _, present := zones.NestedObject.Attributes[name]; !present {
 			t.Errorf("dns_zones missing nested attribute %q", name)
 		}

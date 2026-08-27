@@ -67,13 +67,13 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
   ]
 
   # Each IP address may appear only once in a zone.
-  name_servers = [
+  authoritative_name_servers = [
     {
-      ip         = "203.0.113.53"
+      ip_address = "203.0.113.53"
       gateway_id = local.nearest_data_center
     },
     {
-      ip         = "198.51.100.53"
+      ip_address = "198.51.100.53"
       gateway_id = local.uk_shared_pool
     },
   ]
@@ -85,9 +85,9 @@ resource "jamfplatform_security_cloud_dns_zone" "private" {
   name    = "Private Apps"
   domains = ["private.example.com"]
 
-  name_servers = [
+  authoritative_name_servers = [
     {
-      ip         = "10.100.0.53"
+      ip_address = "10.100.0.53"
       gateway_id = jamfplatform_security_cloud_ztna_gateway.private_apps.id
     },
   ]
@@ -115,9 +115,9 @@ variable "security_cloud_tenant_id" {
 
 ### Required
 
+- `authoritative_name_servers` (Attributes Set) **"Authoritative name servers"** in the Jamf Security Cloud admin UI — the name servers that resolve hostnames for this zone's domains. Between 1 and 20 entries. Each name server must be reachable via the gateway it is paired with. (see [below for nested schema](#nestedatt--authoritative_name_servers))
 - `domains` (Set of String) **"Domains"** in the Jamf Security Cloud admin UI — the domains that match this zone. Subdomains take a wildcard, and the parent domain must be listed explicitly alongside it: `company.com` covers only the parent domain and `*.company.com` covers only the subdomains. Between 1 and 100 entries. A domain already claimed by another zone is rejected.
 - `name` (String) **"Zone name"** in the Jamf Security Cloud admin UI. Up to 100 characters. Zone names are not required to be unique, so prefer the zone ID when referencing a zone elsewhere.
-- `name_servers` (Attributes Set) **"Authoritative name servers"** in the Jamf Security Cloud admin UI — the name servers that resolve hostnames for this zone's domains. Between 1 and 20 entries. Each name server must be reachable via the gateway it is paired with. (see [below for nested schema](#nestedatt--name_servers))
 
 ### Optional
 
@@ -127,13 +127,13 @@ variable "security_cloud_tenant_id" {
 
 - `id` (String) Zone ID assigned by Jamf Security Cloud.
 
-<a id="nestedatt--name_servers"></a>
-### Nested Schema for `name_servers`
+<a id="nestedatt--authoritative_name_servers"></a>
+### Nested Schema for `authoritative_name_servers`
 
 Required:
 
 - `gateway_id` (String) **"Reachable via"** in the Jamf Security Cloud admin UI — the ID of the gateway this name server is reachable through. Accepts a Jamf-managed shared gateway ("Nearest Data Center" or one of the shared IP pools) or one of your own ZTNA gateways. The gateway must already exist: a zone referencing an unknown gateway is refused.
-- `ip` (String) **"Name server IP address"** in the Jamf Security Cloud admin UI. An IPv4 address in dotted-quad form; IPv6 is not accepted. Each IP address may appear only once in a zone, even when paired with different gateways. Jamf Security Cloud also refuses reserved ranges such as private and loopback addresses.
+- `ip_address` (String) **"Name server IP address"** in the Jamf Security Cloud admin UI. An IPv4 address in dotted-quad form; IPv6 is not accepted. Each IP address may appear only once in a zone, even when paired with different gateways. Jamf Security Cloud also refuses reserved ranges such as private and loopback addresses.
 
 
 <a id="nestedatt--timeouts"></a>

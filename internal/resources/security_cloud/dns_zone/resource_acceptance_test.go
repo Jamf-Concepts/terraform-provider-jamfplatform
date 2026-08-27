@@ -84,9 +84,9 @@ func TestAccResource_SecurityCloudDNSZone_Basic(t *testing.T) {
 						name    = %q
 						domains = [%q, %q]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 						]
@@ -98,8 +98,8 @@ func TestAccResource_SecurityCloudDNSZone_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "domains.#", "2"),
 					resource.TestCheckTypeSetElemAttr("jamfplatform_security_cloud_dns_zone.test", "domains.*", domain),
 					resource.TestCheckTypeSetElemAttr("jamfplatform_security_cloud_dns_zone.test", "domains.*", "*."+domain),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "name_servers.#", "1"),
-					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "name_servers.*", map[string]string{
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.#", "1"),
+					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.*", map[string]string{
 						"ip":         testNameServerIPOne,
 						"gateway_id": gateways[0],
 					}),
@@ -111,13 +111,13 @@ func TestAccResource_SecurityCloudDNSZone_Basic(t *testing.T) {
 						name    = %q
 						domains = [%q]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 						]
@@ -127,12 +127,12 @@ func TestAccResource_SecurityCloudDNSZone_Basic(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "name", nameUpdated),
 					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "domains.#", "1"),
 					resource.TestCheckTypeSetElemAttr("jamfplatform_security_cloud_dns_zone.test", "domains.*", domainUpdated),
-					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "name_servers.#", "2"),
-					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "name_servers.*", map[string]string{
+					resource.TestCheckResourceAttr("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.#", "2"),
+					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.*", map[string]string{
 						"ip":         testNameServerIPTwo,
 						"gateway_id": gateways[0],
 					}),
-					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "name_servers.*", map[string]string{
+					resource.TestCheckTypeSetElemNestedAttrs("jamfplatform_security_cloud_dns_zone.test", "authoritative_name_servers.*", map[string]string{
 						"ip":         testNameServerIPThree,
 						"gateway_id": gateways[1],
 					}),
@@ -169,9 +169,9 @@ func TestAccResource_SecurityCloudDNSZone_ServerSortedDomainsProduceNoDiff(t *te
 			name    = %q
 			domains = [%q, %q, %q]
 
-			name_servers = [
+			authoritative_name_servers = [
 				{
-					ip         = %q
+					ip_address = %q
 					gateway_id = %q
 				},
 			]
@@ -211,9 +211,9 @@ func TestAccResource_SecurityCloudDNSZone_Disappears(t *testing.T) {
 			name    = %q
 			domains = [%q]
 
-			name_servers = [
+			authoritative_name_servers = [
 				{
-					ip         = %q
+					ip_address = %q
 					gateway_id = %q
 				},
 			]
@@ -266,13 +266,13 @@ func TestAccResource_SecurityCloudDNSZone_DuplicateNameServerIPRejectedAtPlan(t 
 						name    = "tf-acc-jsc-dns-zone-dupe-%s"
 						domains = ["tf-acc-dupe-%s.example.com"]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 						]
@@ -301,9 +301,9 @@ func TestAccResource_SecurityCloudDNSZone_InvalidNameServerIPRejectedAtPlan(t *t
 						name    = "tf-acc-jsc-dns-zone-badip-%s"
 						domains = ["tf-acc-badip-%s.example.com"]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = "2001:db8::53"
+								ip_address = "2001:db8::53"
 								gateway_id = %q
 							},
 						]
@@ -334,9 +334,9 @@ func TestAccResource_SecurityCloudDNSZone_UnknownGatewayPointsAtNameServers(t *t
 						name    = "tf-acc-jsc-dns-zone-nogw-%s"
 						domains = ["tf-acc-nogw-%s.example.com"]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = "zzzz"
 							},
 						]
@@ -367,9 +367,9 @@ func TestAccDataSource_SecurityCloudDNSZone_ByIDAndName(t *testing.T) {
 						name    = %q
 						domains = [%q]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 						]
@@ -388,9 +388,9 @@ func TestAccDataSource_SecurityCloudDNSZone_ByIDAndName(t *testing.T) {
 					resource.TestCheckResourceAttrPair("data.jamfplatform_security_cloud_dns_zone.by_id", "name", "jamfplatform_security_cloud_dns_zone.src", "name"),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "domains.#", "1"),
 					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "domains.0", domain),
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "name_servers.#", "1"),
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "name_servers.0.ip", testNameServerIPOne),
-					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "name_servers.0.gateway_id", gateways[0]),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "authoritative_name_servers.#", "1"),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "authoritative_name_servers.0.ip", testNameServerIPOne),
+					resource.TestCheckResourceAttr("data.jamfplatform_security_cloud_dns_zone.by_id", "authoritative_name_servers.0.gateway_id", gateways[0]),
 					resource.TestCheckResourceAttrPair("data.jamfplatform_security_cloud_dns_zone.by_name", "id", "jamfplatform_security_cloud_dns_zone.src", "id"),
 				),
 			},
@@ -446,9 +446,9 @@ func TestAccDataSource_SecurityCloudDNSZones_ListsCreatedZone(t *testing.T) {
 						name    = %q
 						domains = [%q]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 						]
@@ -494,9 +494,9 @@ func TestAccListResource_SecurityCloudDNSZone_Basic(t *testing.T) {
 						name    = %q
 						domains = [%q]
 
-						name_servers = [
+						authoritative_name_servers = [
 							{
-								ip         = %q
+								ip_address = %q
 								gateway_id = %q
 							},
 						]
@@ -553,8 +553,8 @@ func captureDNSZoneID(address string, into *string) resource.TestCheckFunc {
 // diagnostic text at roughly 80 columns, so each pattern matches a short phrase
 // that cannot be split across a line break.
 var (
-	regexpDuplicateIP        = regexp.MustCompile(`Duplicate ip within set`)
-	regexpInvalidIP          = regexp.MustCompile(`Invalid name server IP address`)
+	regexpDuplicateIP        = regexp.MustCompile(`Duplicate ip_address within set`)
+	regexpInvalidIP          = regexp.MustCompile(`Invalid IPv4 address`)
 	regexpGatewayNotFound    = regexp.MustCompile(`Referenced gateway not found`)
 	regexpExactlyOneSelector = regexp.MustCompile(`Invalid Attribute Combination`)
 )

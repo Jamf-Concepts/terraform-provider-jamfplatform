@@ -41,9 +41,9 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
   name    = "Internal Services"
   domains = ["corp.example.com"]
 
-  name_servers = [
+  authoritative_name_servers = [
     {
-      ip         = "10.100.0.53"
+      ip_address = "10.100.0.53"
       gateway_id = data.jamfplatform_security_cloud_ztna_gateway.by_name.id
     },
   ]
