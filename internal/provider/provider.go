@@ -145,6 +145,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_assignment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
 )
 
 // Constants for environment variable names.
@@ -505,6 +506,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_assignment.NewVPPAssignmentResource,
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
+		dns_zone.NewDNSZoneResource,
 	}
 }
 
@@ -533,6 +535,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		building.NewBuildingsDataSource,
 		category.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		dns_zone.NewDNSZoneDataSource,
+		dns_zone.NewDNSZonesDataSource,
 		computer_extension_attribute.NewComputerExtensionAttributeDataSource,
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeDataSource,
 		user_extension_attribute.NewUserExtensionAttributeDataSource,
@@ -649,6 +653,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		allowed_file_extension.NewAllowedFileExtensionListResource,
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
+		dns_zone.NewDNSZoneListResource,
 		file_share_distribution_point.NewFileShareDistributionPointListResource,
 		computer_extension_attribute.NewComputerExtensionAttributeListResource,
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeListResource,

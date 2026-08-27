@@ -30,6 +30,11 @@ export JAMFPLATFORM_CLIENT_ID="your-client-id"
 export JAMFPLATFORM_CLIENT_SECRET="your-client-secret"
 export JAMFPLATFORM_ENVIRONMENT_ID="your-environment-id" # preferred; or JAMFPLATFORM_TENANT_ID (legacy), never both
 
+# Jamf Security Cloud tests additionally require you to DECLARE that the scope above
+# is a Security Cloud one. The value must match the scope actually configured; unset
+# or mismatched and every Security Cloud test skips rather than failing.
+export JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID="$JAMFPLATFORM_ENVIRONMENT_ID"
+
 go test -v -cover -count=1 -tags=acceptance -p=1 ./...
 ```
 
@@ -277,3 +282,5 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_CLIENT_SECRET` | OAuth client secret                                           |
 | `JAMFPLATFORM_ENVIRONMENT_ID`| Platform environment ID — preferred scope; mutually exclusive with the next row |
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |
+| `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` | Declares that the configured `JAMFPLATFORM_ENVIRONMENT_ID` belongs to a Jamf Security Cloud tenant. Must equal it. Unset or mismatched → every Security Cloud test skips |
+| `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two |

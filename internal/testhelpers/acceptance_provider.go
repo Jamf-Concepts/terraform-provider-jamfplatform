@@ -54,3 +54,45 @@ func AccPreCheckOffline(t *testing.T) {
 	t.Helper()
 	t.Setenv("TF_ACC", "1")
 }
+
+// AccPreCheckSecurityCloud is the precheck for Jamf Security Cloud acceptance
+// tests. It runs AccPreCheck, then requires the operator to have *declared* that
+// the scope the provider is configured with belongs to a Security Cloud tenant,
+// via JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID or
+// JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID. The declared ID must equal the
+// JAMFPLATFORM_* scope actually in use; anything else skips.
+//
+// Why a declaration rather than a probe: Security Cloud is a separate
+// entitlement, so a perfectly valid acceptance tenant can hold Jamf Pro and not
+// hold this. Pointing the suite at such a tenant must skip these tests, not fail
+// them. Requiring the ID to match the configured scope is what makes the
+// declaration load-bearing — a stale value left over from a different tenant
+// skips instead of green-lighting a run against the wrong estate.
+//
+// It deliberately does not introduce a second credential set. One integration
+// serves every construct in this provider, and a parallel Security Cloud
+// credential path would mean every Security Cloud acceptance config had to emit
+// its own provider block, diverging from the rest of the suite for no gain.
+func AccPreCheckSecurityCloud(t *testing.T) {
+	t.Helper()
+	AccPreCheck(t)
+
+	declaredEnvironment := os.Getenv("JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID")
+	declaredTenant := os.Getenv("JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID")
+	if declaredEnvironment == "" && declaredTenant == "" {
+		t.Skip("one of JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID or JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID must be set to declare that the configured scope is a Jamf Security Cloud one")
+	}
+	if declaredEnvironment != "" && declaredTenant != "" {
+		t.Skip("JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID and JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID are both set; unset one so the declared Security Cloud scope is unambiguous")
+	}
+
+	if declaredEnvironment != "" {
+		if configured := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID"); configured != declaredEnvironment {
+			t.Skipf("JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID (%s) does not match the configured JAMFPLATFORM_ENVIRONMENT_ID (%s); the provider is not scoped to the declared Security Cloud environment", declaredEnvironment, configured)
+		}
+		return
+	}
+	if configured := os.Getenv("JAMFPLATFORM_TENANT_ID"); configured != declaredTenant {
+		t.Skipf("JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID (%s) does not match the configured JAMFPLATFORM_TENANT_ID (%s); the provider is not scoped to the declared Security Cloud tenant", declaredTenant, configured)
+	}
+}
