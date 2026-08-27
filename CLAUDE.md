@@ -170,6 +170,7 @@ Jamf offers three scopes when an API integration is created, and the provider mi
 | `generate` | Copyright headers + `terraform fmt examples/` + docs |
 | `apple-profiles` | Regenerate `internal/common/appleprofiles/profiles.json` from apple/device-management (network; not part of `generate`) |
 | `test` | Unit tests (excludes `acceptance` build tag) |
+| `test-scripts` | Unit tests for `scripts/acctargets` (behind the `acctargets` build tag, so `go test ./...` misses it) |
 | `testacc` | Acceptance tests (sets `TF_ACC=1`, requires tenant) |
 | `testacc-run` | Targeted acc rerun (`RUN=<regex> PKG=<path>`) |
 

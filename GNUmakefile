@@ -6,8 +6,11 @@ build:
 install: build
 	go install -v ./...
 
+# lint covers the default build plus the build-tagged tooling under scripts/,
+# which the default invocation cannot see.
 lint:
 	golangci-lint run
+	golangci-lint run --build-tags acctargets ./scripts/acctargets/
 
 generate:
 	cd tools; go generate ./...
@@ -70,6 +73,11 @@ TESTARGS ?=
 testacc-run:
 	TF_ACC=1 go test -v -cover -count=1 -tags acceptance -timeout 120m -p=1 -run '$(RUN)' $(TESTARGS) $(PKG)
 
+# test-scripts runs the unit tests for the build-tagged tooling under scripts/,
+# which `go test ./...` cannot see.
+test-scripts:
+	go test -count=1 -tags acctargets ./scripts/acctargets/
+
 # testacc-changed runs acceptance tests only for the packages affected by the
 # current change set: the changed packages plus everything that transitively
 # depends on them (see scripts/acctargets). Override BASE to diff against a ref
@@ -78,7 +86,7 @@ testacc-run:
 #   make testacc-changed BASE=origin/feat/pro-expansion
 BASE ?=
 testacc-changed:
-	@pkgs="$$(go run scripts/acctargets/main.go $(BASE))"; \
+	@pkgs="$$(go run -tags acctargets ./scripts/acctargets $(BASE))"; \
 	if [ -z "$$pkgs" ]; then \
 		echo "No acceptance packages affected by the current changes."; \
 		exit 0; \
@@ -86,4 +94,4 @@ testacc-changed:
 	echo "Acceptance scope: $$pkgs"; \
 	TF_ACC=1 go test -v -cover -count=1 -tags acceptance -timeout 120m -p=1 $$pkgs
 
-.PHONY: fmt fix lint apple-profiles test testacc testacc-run testacc-changed build install generate
+.PHONY: fmt fix lint apple-profiles test test-scripts testacc testacc-run testacc-changed build install generate

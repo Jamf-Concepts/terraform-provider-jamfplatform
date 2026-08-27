@@ -7,6 +7,7 @@ This document covers the testing strategy and instructions for the Terraform Pro
 | Category               | Build Tag    | Requires API | Command                                                                                       |
 |------------------------|--------------|--------------|-----------------------------------------------------------------------------------------------|
 | Unit                   | (none)       | No           | `make test`                                                                                   |
+| Unit (tooling)         | `acctargets` | No           | `make test-scripts` — `scripts/acctargets`, which `go test ./...` cannot see behind its build tag |
 | Acceptance (all)       | `acceptance` | Yes          | `make testacc`                                                                                |
 | Acceptance (changed)   | `acceptance` | Yes          | `make testacc-changed` (changed packages + their transitive dependents)                       |
 | Acceptance (targeted)  | `acceptance` | Yes          | `make testacc-run RUN=<regex> PKG=<package>` (e.g. `RUN=TestAccResource_ProSite_Basic PKG=./internal/resources/pro/site/...`) |
@@ -62,9 +63,26 @@ with `BASE=<ref>`) and walks the package import graph:
 - Change a shared helper (e.g. `internal/common/scope/`) → that package **and**
   every consumer (`policy`, the apps, `user_group`, the VPP resources, the
   config profiles, the advanced searches, …) run.
-- Change a global file — `go.mod`/`go.sum`, anything under `.github/workflows/`,
-  `internal/testhelpers/`, or the provider hub `internal/provider/` — resolves
-  to the full suite (`./...`).
+- **Add** to a hub package — a new `providerdata` helper, a new `testhelpers`
+  fixture, a new shared validator — → only that package. Changed Go files are
+  compared declaration by declaration, and no unchanged package can reference a
+  declaration that did not exist at the base ref. Any package that gained such a
+  reference changed too, and selects itself.
+- **Modify or remove** an existing declaration in one of those hubs → the full
+  fan-out, because that genuinely can reach every consumer.
+- Register or unregister a construct in `internal/provider/provider.go` → only
+  the packages whose constructors moved. Any other edit to that file (a
+  `Configure` change, a new provider attribute) falls back to the full fan-out.
+  Reordering a list changes no constructor and so selects nothing.
+- Change a global file — `go.mod`/`go.sum`, the `GNUmakefile`, anything under
+  `.github/workflows/`, or `scripts/acctargets/` itself — resolves to the full
+  suite (`./...`).
+
+Every uncertainty resolves to the wider answer: an unparseable revision, a
+declaration that moved, a registration list that is no longer a plain list. Over-
+running costs time; under-running costs a regression. `make test-scripts` runs the
+tool's own unit tests, which `go test ./...` cannot see (the tool is behind the
+`acctargets` build tag so it stays out of the provider binary).
 
 The graph deliberately **cuts `internal/provider`'s out-edges**. The provider
 imports every resource package purely to register it, and `testhelpers` imports
