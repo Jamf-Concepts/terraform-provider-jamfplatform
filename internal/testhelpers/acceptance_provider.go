@@ -96,3 +96,21 @@ func AccPreCheckSecurityCloud(t *testing.T) {
 		t.Skipf("JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID (%s) does not match the configured JAMFPLATFORM_TENANT_ID (%s); the provider is not scoped to the declared Security Cloud tenant", declaredTenant, configured)
 	}
 }
+
+// AccTenantIDOrSkip returns the tenant ID the provider is configured with, or
+// skips when the run is environment-scoped.
+//
+// For the handful of assertions that need to compare a value the tenant reports
+// against the scope the provider was pointed at. Under an environment scope
+// there is nothing local to compare with — the provider sends an environment ID
+// and the gateway resolves the tenant server-side — so the honest outcome is a
+// skip rather than an assertion built on a value the test cannot know.
+func AccTenantIDOrSkip(t *testing.T) string {
+	t.Helper()
+
+	tenant := os.Getenv("JAMFPLATFORM_TENANT_ID")
+	if tenant == "" {
+		t.Skip("JAMFPLATFORM_TENANT_ID must be set for this test; an environment-scoped run has no locally known tenant ID to compare against")
+	}
+	return tenant
+}

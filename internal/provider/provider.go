@@ -28,6 +28,7 @@ import (
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
 	mdmactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/mdm"
 	patchactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/patch"
+	uemconnectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/security_cloud/uem_connect"
 	mcxforcedpayload "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -134,6 +135,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/supervision_identity"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/tenant_id"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_group"
@@ -143,6 +145,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/uem_connect"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_grouped_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_shared_gateways"
@@ -508,6 +511,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
 		dns_zone.NewDNSZoneResource,
+		uem_connect.NewUEMConnectResource,
 		ztna_gateway.NewGatewayResource,
 		ztna_grouped_gateway.NewGroupedGatewayResource,
 	}
@@ -540,6 +544,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		category.NewCategoryDataSource,
 		dns_zone.NewDNSZoneDataSource,
 		dns_zone.NewDNSZonesDataSource,
+		uem_connect.NewUEMConnectDataSource,
 		ztna_gateway.NewGatewayDataSource,
 		ztna_gateway.NewGatewaysDataSource,
 		ztna_grouped_gateway.NewGroupedGatewayDataSource,
@@ -571,6 +576,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileDataSource,
 		supervision_identity.NewSupervisionIdentityDataSource,
+		tenant_id.NewTenantIDDataSource,
 		ibeacon.NewIbeaconDataSource,
 		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
@@ -657,6 +663,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
 		dns_zone.NewDNSZoneListResource,
+		uem_connect.NewUEMConnectListResource,
 		ztna_gateway.NewGatewayListResource,
 		ztna_grouped_gateway.NewGroupedGatewayListResource,
 		file_share_distribution_point.NewFileShareDistributionPointListResource,
@@ -740,6 +747,7 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		mdmactions.NewRenewMdmProfileAction,
 		mdmactions.NewFlushMdmCommandsAction,
 		maintenanceactions.NewRedeployManagementFrameworkAction,
+		uemconnectactions.NewSynchronizeAction,
 		maintenanceactions.NewFlushPolicyLogsAction,
 		patchactions.NewRetryPatchPolicyLogsAction,
 		jamfprotectactions.NewSyncPlansAction,
