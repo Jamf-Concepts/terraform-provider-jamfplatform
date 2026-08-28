@@ -46,6 +46,12 @@ import (
 //
 // isImport is the one case where the gate has to be lifted: an import starts from
 // no state at all, so every block is nil and nothing else can populate them.
+//
+// A response carrying no syncConfig is refused rather than absorbed. The two
+// attributes it feeds are Optional+Computed with schema defaults, so the plan always
+// holds a known value for them; committing nulls would trip the framework's
+// consistency check with a message naming no cause, where this names one. The data
+// source has no such contract and tolerates the nulls.
 func assignUEMConnectResourceModel(state *UEMConnectResourceModel, config *securitycloud.ConnectorConfig, isImport bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -85,6 +91,17 @@ func assignUEMConnectResourceModel(state *UEMConnectResourceModel, config *secur
 	state.DeviceRiskUEMSignalingEnabled = types.BoolValue(config.DeviceRiskTagging)
 	state.ConcurrentDeviceSyncEnabled = types.BoolValue(config.ConcurrentSyncEnabled)
 
+	if config.SyncConfig == nil {
+		diags.AddError(
+			"Jamf Security Cloud reported no sync configuration",
+			"The integration was read successfully but carried no syncConfig, which is where the auto-delete "+
+				"behavior and the disable-on-auth-error setting live. Both attributes carry a schema default, so "+
+				"the plan holds a value there is now nothing to satisfy. Re-run to refresh; if it persists, "+
+				"please report it.",
+		)
+		return diags
+	}
+
 	behaviour, authError, behaviourDiags := syncConfigToState(config.SyncConfig)
 	diags.Append(behaviourDiags...)
 	if diags.HasError() {
@@ -105,6 +122,11 @@ func assignUEMConnectResourceModel(state *UEMConnectResourceModel, config *secur
 
 // syncConfigToState translates the two settings the response nests under
 // syncConfig but the update request carries at the top level.
+//
+// A nil syncConfig yields nulls here and is left to the caller to judge: the data
+// source's equivalents are plain Computed, so nulls are a truthful reading, while
+// the resource's carry schema defaults and therefore have a planned value to
+// satisfy — see assignUEMConnectResourceModel.
 func syncConfigToState(cfg *securitycloud.SyncConfig) (behaviour types.String, disableOnAuthError types.Bool, diags diag.Diagnostics) {
 	if cfg == nil {
 		return types.StringNull(), types.BoolNull(), diags

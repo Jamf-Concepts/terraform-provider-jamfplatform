@@ -22,6 +22,22 @@
 //	                              enabled=false, and the PUT is idempotent, so
 //	                              one code path serves both states.
 //
+// Three more on the namespace belong to no construct here, and are recorded so
+// their absence reads as a decision rather than an oversight:
+//
+//	CancelUemConnectorSyncV1       cancelling a run started by the synchronize
+//	                              action would need the transaction ID that
+//	                              action does not return, and Terraform has no
+//	                              shape for "undo the action I just invoked".
+//	ListUemConnectorSyncRunsV1     the sync run history, including the device
+//	                              counts the connector record omits. A data
+//	                              source over it would report values that change
+//	                              with no configuration change; the data source's
+//	                              latest_sync covers the current run.
+//	DeployActivationProfileToUemV1 vulnerability management enrolment, which the
+//	                              package doc records as unmanageable — the
+//	                              deploy has no read to reconcile against.
+//
 // The settings write is a full replacement: an omitted field is reset to Jamf's
 // default rather than left alone. Create and Update therefore always send the
 // complete desired state — see buildSyncSettingsInput.
@@ -85,6 +101,14 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	plan.ID = types.StringValue(created.ID)
+	// Committed before the follow-up writes so a failure between them leaves the
+	// integration recoverable. The address is Unknown on the platform_tenant form —
+	// the tenant resolves it — and an unknown value in the state a failed apply
+	// returns is itself a provider fault, which would bury the diagnostic this
+	// early commit exists to deliver. The trailing GET fills it in.
+	if plan.UEMServerURL.IsUnknown() {
+		plan.UEMServerURL = types.StringNull()
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return

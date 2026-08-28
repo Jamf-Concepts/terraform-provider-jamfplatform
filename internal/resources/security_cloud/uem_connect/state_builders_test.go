@@ -217,7 +217,6 @@ func TestAssignResourceModel_PreservesGroupMappingOrder(t *testing.T) {
 // nested objects entirely, which must not panic.
 func TestAssignResourceModel_NilNestedResponses(t *testing.T) {
 	config := jamfProConnector()
-	config.SyncConfig = nil
 	config.DeviceFieldMappings = nil
 	config.GroupSettings = nil
 
@@ -231,8 +230,23 @@ func TestAssignResourceModel_NilNestedResponses(t *testing.T) {
 	if state.GroupMembershipMapping != nil {
 		t.Error("group_membership_mapping should be nil when the response omits it")
 	}
-	if !state.UEMAutoDeleteBehaviour.IsNull() {
-		t.Error("uem_auto_delete_behavior should be null when the response omits syncConfig")
+}
+
+// TestAssignResourceModel_NilSyncConfig pins that an absent syncConfig is reported
+// rather than absorbed.
+//
+// Both attributes it carries are Optional+Computed with a schema default, so the
+// plan always holds a known value for them. Returning null would trip the
+// framework's consistency check with a message naming no cause; the diagnostic names
+// one.
+func TestAssignResourceModel_NilSyncConfig(t *testing.T) {
+	config := jamfProConnector()
+	config.SyncConfig = nil
+
+	var state UEMConnectResourceModel
+	diags := assignUEMConnectResourceModel(&state, config, true)
+	if !diags.HasError() {
+		t.Fatal("a response with no syncConfig should be an error, got none")
 	}
 }
 

@@ -8,7 +8,10 @@
 // Nothing else on that menu belongs here. "Disable" is the resource's `enabled`
 // attribute and "Delete" is destroying the resource — both are state, and an
 // action for either would be a second way to change something Terraform already
-// manages.
+// manages. Cancelling a running sync (CancelUemConnectorSyncV1) is left out for a
+// different reason: it needs the transaction ID of the run to cancel, which the
+// trigger does not return, and Terraform has no shape for undoing an action that
+// has already been invoked.
 package uemconnectactions
 
 import (

@@ -252,15 +252,16 @@ func TestUEMConnectResource_IdentitySchema(t *testing.T) {
 	}
 }
 
-// TestUEMConnectResource_ConfigValidators pins that both cross-field rules are
-// declared: exactly one authentication form, and the OAuth form together with the
-// address it needs.
+// TestUEMConnectResource_ConfigValidators pins that all three cross-field rules are
+// declared: exactly one authentication form, the OAuth form together with the
+// address it needs, and the address refused on the platform_tenant form, where Jamf
+// Security Cloud resolves it from the tenant instead.
 func TestUEMConnectResource_ConfigValidators(t *testing.T) {
 	r := NewUEMConnectResource().(*UEMConnectResource)
 	validators := r.ConfigValidators(context.Background())
 
-	if len(validators) != 2 {
-		t.Fatalf("got %d config validators, want 2", len(validators))
+	if len(validators) != 3 {
+		t.Fatalf("got %d config validators, want 3", len(validators))
 	}
 }
 

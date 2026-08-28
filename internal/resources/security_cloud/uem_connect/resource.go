@@ -30,7 +30,9 @@
 //
 // There is no update operation for the connection itself; only sync settings and
 // enablement can be written after create. So vendor, server address and both
-// authentication blocks force replacement.
+// authentication blocks force replacement — including oauth.client_secret_wo_version,
+// because no endpoint accepts credentials for an integration that already exists, so
+// re-sending a rotated secret means creating the integration again.
 //
 // # Wire mapping
 //
@@ -95,6 +97,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -129,6 +132,12 @@ const (
 // field, so an unattributed error would leave the user hunting which of several
 // mappings is wrong.
 var jamfProGroupIDPattern = regexp.MustCompile(`^(computer|mobile)_[0-9]+$`)
+
+// serverURLPattern is the shape a Jamf Pro address has to take. Checked at plan
+// time because the server's only signal is UEM_CONNECTION_FAILED after a failed
+// connection test, which reports a missing scheme, an unreachable instance and bad
+// credentials as one indistinguishable reason.
+var serverURLPattern = regexp.MustCompile(`^https?://\S+$`)
 
 var (
 	_ resource.Resource                     = &UEMConnectResource{}
@@ -178,6 +187,10 @@ func (r *UEMConnectResource) ConfigValidators(context.Context) []resource.Config
 			path.MatchRoot("oauth"),
 			path.MatchRoot("uem_server_url"),
 		),
+		resourcevalidator.Conflicting(
+			path.MatchRoot("platform_tenant"),
+			path.MatchRoot("uem_server_url"),
+		),
 	}
 }
 
@@ -220,13 +233,15 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 			},
 			"uem_server_url": schema.StringAttribute{
 				MarkdownDescription: "**\"UEM server URL\"** in the Jamf Security Cloud admin UI — the full address " +
-					"of the Jamf Pro instance, including `https://`. Required with `oauth`. With " +
-					"`platform_tenant` it is resolved from the tenant and should be left unset; anything set here " +
-					"is ignored.",
+					"of the Jamf Pro instance, including `https://`. Required with `oauth`. Must not be set " +
+					"with `platform_tenant`, which resolves the address from the tenant itself.",
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
+					stringvalidator.RegexMatches(
+						serverURLPattern,
+						"must be the full address of the Jamf Pro instance including its scheme, for example `https://your-instance.jamfcloud.com`",
+					),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -282,11 +297,20 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 						},
 					},
 					"client_secret_wo_version": schema.Int64Attribute{
-						MarkdownDescription: "Increment to send the current `client_secret` again, after rotating " +
-							"the credential in Jamf Pro. The secret itself is not stored, so there is nothing to " +
-							"compare against and no other way to trigger a rotation.",
+						MarkdownDescription: "Increment after rotating the credential in Jamf Pro to send the new " +
+							"`client_secret`. The secret itself is not stored, so there is nothing to compare " +
+							"against and no other way to trigger a rotation.\n\n" +
+							"Jamf Security Cloud has no endpoint that updates an existing integration's " +
+							"credentials, so a rotation **replaces** the integration, which briefly interrupts " +
+							"syncing.",
 						Optional: true,
+						PlanModifiers: []planmodifier.Int64{
+							int64planmodifier.RequiresReplace(),
+						},
 					},
+				},
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.RequiresReplace(),
 				},
 			},
 			"enabled": schema.BoolAttribute{
@@ -377,7 +401,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 							stringvalidator.OneOf(deviceNameMappingValues...),
 						},
 						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
+							stringplanmodifier.UseNonNullStateForUnknown(),
 						},
 					},
 					"user_name": schema.StringAttribute{
@@ -390,7 +414,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 							stringvalidator.OneOf(userNameMappingValues...),
 						},
 						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
+							stringplanmodifier.UseNonNullStateForUnknown(),
 						},
 					},
 					"user_id": schema.StringAttribute{
@@ -403,7 +427,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 							stringvalidator.OneOf(userIDMappingValues...),
 						},
 						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
+							stringplanmodifier.UseNonNullStateForUnknown(),
 						},
 					},
 					"phone_number": schema.StringAttribute{
@@ -416,7 +440,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 							stringvalidator.OneOf(phoneNumberMappingValues...),
 						},
 						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
+							stringplanmodifier.UseNonNullStateForUnknown(),
 						},
 					},
 					"email": schema.SingleNestedAttribute{
@@ -435,7 +459,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 									stringvalidator.OneOf(userEmailMappingTypeValues...),
 								},
 								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
+									stringplanmodifier.UseNonNullStateForUnknown(),
 								},
 							},
 							"prefix": schema.StringAttribute{
@@ -455,7 +479,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 								Optional: true,
 								Computed: true,
 								PlanModifiers: []planmodifier.Bool{
-									boolplanmodifier.UseStateForUnknown(),
+									boolplanmodifier.UseNonNullStateForUnknown(),
 								},
 							},
 						},
@@ -474,7 +498,7 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 						Optional: true,
 						Computed: true,
 						PlanModifiers: []planmodifier.Bool{
-							boolplanmodifier.UseStateForUnknown(),
+							boolplanmodifier.UseNonNullStateForUnknown(),
 						},
 					},
 					"default_security_cloud_group_id": schema.StringAttribute{

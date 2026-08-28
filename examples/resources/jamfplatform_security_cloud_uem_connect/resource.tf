@@ -31,7 +31,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   #
   #     # The secret is write-only: it is sent on apply and never stored in state,
   #     # so there is nothing to compare against. Increment this to send a rotated
-  #     # secret.
+  #     # secret — Jamf Security Cloud cannot update the credentials of an
+  #     # integration that already exists, so doing so replaces the integration and
+  #     # briefly interrupts syncing.
   #     client_secret_wo_version = 1
   #   }
 

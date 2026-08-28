@@ -77,7 +77,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   #
   #     # The secret is write-only: it is sent on apply and never stored in state,
   #     # so there is nothing to compare against. Increment this to send a rotated
-  #     # secret.
+  #     # secret — Jamf Security Cloud cannot update the credentials of an
+  #     # integration that already exists, so doing so replaces the integration and
+  #     # briefly interrupts syncing.
   #     client_secret_wo_version = 1
   #   }
 
@@ -194,7 +196,7 @@ variable "field_staff_security_cloud_group_id" {
 - `keep_deleted_or_retired` — keep deleted or retired devices in Jamf Security Cloud.
 - `remove_deleted_or_retired` — remove deleted or retired devices from Jamf Security Cloud.
 - `remove_deleted_or_unmanaged` — also remove devices Jamf Pro no longer manages, after `unmanaged_sync_threshold` consecutive syncs without them.
-- `uem_server_url` (String) **"UEM server URL"** in the Jamf Security Cloud admin UI — the full address of the Jamf Pro instance, including `https://`. Required with `oauth`. With `platform_tenant` it is resolved from the tenant and should be left unset; anything set here is ignored.
+- `uem_server_url` (String) **"UEM server URL"** in the Jamf Security Cloud admin UI — the full address of the Jamf Pro instance, including `https://`. Required with `oauth`. Must not be set with `platform_tenant`, which resolves the address from the tenant itself.
 - `unmanaged_sync_threshold` (Number) How many consecutive syncs a device may be missing from Jamf Pro before Jamf Security Cloud treats it as unmanaged. `0` removes it on the first sync it is missing from. Only has an effect when `uem_auto_delete_behavior` is `remove_deleted_or_unmanaged`.
 - `user_data_field_mapping` (Attributes) **"User data field mapping"** in the Jamf Security Cloud admin UI — which Jamf Pro attribute each Jamf Security Cloud device field is populated from. Omit the whole block for the defaults, which is what the admin UI's "Use default data field mapping" checkbox selects. (see [below for nested schema](#nestedatt--user_data_field_mapping))
 
@@ -237,7 +239,9 @@ Required:
 
 Optional:
 
-- `client_secret_wo_version` (Number) Increment to send the current `client_secret` again, after rotating the credential in Jamf Pro. The secret itself is not stored, so there is nothing to compare against and no other way to trigger a rotation.
+- `client_secret_wo_version` (Number) Increment after rotating the credential in Jamf Pro to send the new `client_secret`. The secret itself is not stored, so there is nothing to compare against and no other way to trigger a rotation.
+
+Jamf Security Cloud has no endpoint that updates an existing integration's credentials, so a rotation **replaces** the integration, which briefly interrupts syncing.
 
 
 <a id="nestedatt--platform_tenant"></a>

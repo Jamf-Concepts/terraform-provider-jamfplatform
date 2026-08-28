@@ -8,13 +8,16 @@ package uem_connect_test
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck/queryfilter"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -166,6 +169,13 @@ func checkIntegrationDestroyed(t *testing.T) resource.TestCheckFunc {
 			if err == nil {
 				return fmt.Errorf("UEM Connect integration %s still exists after destroy", rs.Primary.ID)
 			}
+			// Only a not-found is proof of destruction. A 403, a 500 or a dropped
+			// connection says nothing about whether the integration is gone, and
+			// accepting one would make this check pass for the wrong reason.
+			apiErr := jamfplatform.AsAPIError(err)
+			if apiErr == nil || !apiErr.HasStatus(http.StatusNotFound) {
+				return fmt.Errorf("reading UEM Connect integration %s back after destroy failed with something other than a not-found, so it cannot be confirmed gone: %w", rs.Primary.ID, err)
+			}
 		}
 		return nil
 	}
@@ -174,13 +184,16 @@ func checkIntegrationDestroyed(t *testing.T) resource.TestCheckFunc {
 // TestAccResource_SecurityCloudUEMConnect_PlatformTenant is the main lifecycle test
 // for the preferred authentication form, and carries the update round-trip.
 //
-// Step 1 creates at the defaults. Step 2 changes every attribute that can be
-// changed in place and adds two group mappings and a full data field mapping — the
-// point being that the settings write is a full replacement, so a step that changed
-// one field would pass while silently resetting the rest. Step 3 removes one group
+// Step 1 creates at the defaults. Step 2 declares both optional blocks for the first
+// time while leaving most of their members unset, which is the transition where a
+// nested Optional+Computed member has a null prior state — the case a plan modifier
+// copying that null would break. Step 3 changes every attribute that can be changed
+// in place and adds two group mappings and a full data field mapping — the point
+// being that the settings write is a full replacement, so a step that changed one
+// field would pass while silently resetting the rest. Step 4 removes one group
 // mapping and keeps the other, since a nested collection needs both an add and a
-// remove exercised. Step 4 empties the list, which is how mappings are cleared and
-// is not the same as omitting it. Step 5 imports.
+// remove exercised. Step 5 empties the list, which is how mappings are cleared and
+// is not the same as omitting it. Step 6 imports.
 func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
 	requireNoExistingIntegration(t)
@@ -217,6 +230,49 @@ func TestAccResource_SecurityCloudUEMConnect_PlatformTenant(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "device_risk_uem_signaling_enabled", "false"),
 					resource.TestCheckResourceAttr(resourceName, "disable_sync_on_auth_error", "true"),
 					resource.TestCheckResourceAttr(resourceName, "concurrent_device_sync_enabled", "true"),
+				),
+			},
+			{
+				// Declaring a block for the first time while leaving most of its
+				// members unset. Prior state at every nested path is null here,
+				// because step 1 managed neither block — the case that makes
+				// UseStateForUnknown the wrong modifier inside a nested attribute: it
+				// copies that null into the plan for an attribute the server is about
+				// to populate, and the apply is then refused rather than accepting
+				// the server's default.
+				Config: fmt.Sprintf(`
+					resource "jamfplatform_security_cloud_uem_connect" "test" {
+						uem_vendor = "JAMF_PRO"
+						platform_tenant = {
+							tenant_id = %q
+						}
+
+						user_data_field_mapping = {
+							device_name = "SERIAL_NUMBER"
+							email = {
+								source = "SERIAL_NUMBER"
+								suffix = "example.test"
+							}
+						}
+
+						group_membership_mapping = {
+							mappings = [
+								{ uem_group_id = "computer_30", security_cloud_group_id = %[2]q },
+							]
+						}
+					}
+				`, tenant, placeholderDeviceGroupID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "user_data_field_mapping.device_name", "SERIAL_NUMBER"),
+					// The four members the configuration left unset arrive from the
+					// server at its defaults, which is the assertion that matters: a
+					// null would mean the plan had committed to one and the apply had
+					// to be refused.
+					resource.TestCheckResourceAttr(resourceName, "user_data_field_mapping.user_name", "USER_NAME"),
+					resource.TestCheckResourceAttr(resourceName, "user_data_field_mapping.user_id", "EXTERNAL_USER_ID"),
+					resource.TestCheckResourceAttr(resourceName, "user_data_field_mapping.phone_number", "PHONE_NUMBER"),
+					resource.TestCheckResourceAttrSet(resourceName, "user_data_field_mapping.email.only_if_email_missing"),
+					resource.TestCheckResourceAttrSet(resourceName, "group_membership_mapping.enabled"),
 				),
 			},
 			{
@@ -392,8 +448,16 @@ func TestAccResource_SecurityCloudUEMConnect_OAuth(t *testing.T) {
 				),
 			},
 			{
-				// Rotating the counter re-sends the same secret. It must apply
-				// cleanly and change nothing observable.
+				// Rotating the counter is the only way to send a new secret, and no
+				// Jamf Security Cloud endpoint accepts credentials for an integration
+				// that already exists — so it has to replace. An in-place update here
+				// would apply cleanly, converge, and leave the old secret on the
+				// tenant with nothing to say so.
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(resourceName, plancheck.ResourceActionDestroyBeforeCreate),
+					},
+				},
 				Config: fmt.Sprintf(`
 					resource "jamfplatform_security_cloud_uem_connect" "test" {
 						uem_vendor = %q
@@ -533,6 +597,37 @@ func TestAccResource_SecurityCloudUEMConnect_Validation(t *testing.T) {
 					}
 				`,
 				ExpectError: regexp.MustCompile(`These attributes must be configured together`),
+			},
+			{
+				// The address belongs to the OAuth form only. On the platform_tenant
+				// form Jamf Security Cloud resolves it from the tenant, so a value
+				// here would be either silently overwritten or a failed apply.
+				Config: `
+					resource "jamfplatform_security_cloud_uem_connect" "test" {
+						uem_vendor     = "JAMF_PRO"
+						uem_server_url = "https://example.jamfcloud.com"
+						platform_tenant = {
+							tenant_id = "00000000-0000-0000-0000-000000000000"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`(?s)cannot be configured\s+together:\s+\[platform_tenant,uem_server_url\]`),
+			},
+			{
+				// The address has to carry its scheme. Without one Jamf Security
+				// Cloud's only signal is a failed connection test reporting three
+				// unrelated causes as one.
+				Config: `
+					resource "jamfplatform_security_cloud_uem_connect" "test" {
+						uem_vendor     = "JAMF_PRO"
+						uem_server_url = "example.jamfcloud.com"
+						oauth = {
+							client_id     = "client"
+							client_secret = "secret"
+						}
+					}
+				`,
+				ExpectError: regexp.MustCompile(`(?s)including its\s+scheme`),
 			},
 			{
 				Config: `
