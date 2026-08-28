@@ -5,6 +5,7 @@ package dns_zone
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 )
@@ -13,13 +14,16 @@ import (
 // endpoints. Wire-probed against production EU on 2026-08-27; each one is
 // translated into a diagnostic attached to the attribute that caused it, because
 // the raw message names the code and not the fix.
+// Every code this resource translates is in the SDK's generated
+// `ApiErrorItemCode` enum, which the DNS namespace declares in its spec schema,
+// so all six are taken from there rather than restated as literals.
 const (
-	codeDomainConflict         = "DOMAIN_CONFLICT"
-	codeGatewayNotFound        = "GATEWAY_NOT_FOUND"
-	codeNameServerIPRestricted = "NAMESERVER_IP_RESTRICTED"
-	codeNameServerIPOutOfRange = "NAMESERVER_IP_OUT_OF_RANGE"
-	codeListSizeExceeded       = "LIST_SIZE_EXCEEDED"
-	codeNotEntitled            = "NOT_ENTITLED"
+	codeDomainConflict         = securitycloud.ApiErrorItemCodeDomainConflict
+	codeGatewayNotFound        = securitycloud.ApiErrorItemCodeGatewayNotFound
+	codeNameServerIPRestricted = securitycloud.ApiErrorItemCodeNameserverIpRestricted
+	codeNameServerIPOutOfRange = securitycloud.ApiErrorItemCodeNameserverIpOutOfRange
+	codeListSizeExceeded       = securitycloud.ApiErrorItemCodeListSizeExceeded
+	codeNotEntitled            = securitycloud.ApiErrorItemCodeNotEntitled
 )
 
 // appendWriteDiagnostics turns a create/update failure into the most specific
