@@ -15,7 +15,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 )
 
-const testBaseURL = "https://us.apigw.jamf.com"
+const testBaseURL = "https://us.api.jamfcloud.com"
 
 // stubEgressIP swaps the egress lookup for the duration of a test so the blocked
 // branch is exercised without touching the network.

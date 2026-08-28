@@ -178,7 +178,7 @@ Before committing: `make fix fmt lint test`. Then `make generate` if any schema 
 
 ## Environment Variables
 
-- `JAMFPLATFORM_BASE_URL` — `https://us.apigw.jamf.com` / `eu.apigw.jamf.com` / `apac.apigw.jamf.com`.
+- `JAMFPLATFORM_BASE_URL` — `https://us.api.jamfcloud.com` / `eu.api.jamfcloud.com` / `apac.api.jamfcloud.com`. The gateway root, host only: it serves `/auth/token` and every namespace at the root, so a `/api` path breaks authentication. The beta `{region}.apigw.jamf.com` was retired at the Platform API GA.
 - `JAMFPLATFORM_CLIENT_ID` / `JAMFPLATFORM_CLIENT_SECRET` — API client credentials.
 - `JAMFPLATFORM_ENVIRONMENT_ID` — platform-environment scope, sent as `X-Environment-Id`. **Preferred.**
 - `JAMFPLATFORM_TENANT_ID` — tenant scope, sent as `X-Tenant-Id`. **Legacy.** Mutually exclusive with the above; both are optional — see §API integration scope.

@@ -110,7 +110,7 @@ terraform {
 
 provider "jamfplatform" {
   # Or supply via JAMFPLATFORM_* environment variables (see below).
-  base_url      = "https://us.apigw.jamf.com"
+  base_url      = "https://us.api.jamfcloud.com"
   client_id     = "..."
   client_secret = "..."
   environment_id = "..." # preferred; or tenant_id (legacy), never both
@@ -122,7 +122,7 @@ provider "jamfplatform" {
 Export your tenant credentials and run Terraform directly — skip `init`:
 
 ```bash
-export JAMFPLATFORM_BASE_URL="https://us.apigw.jamf.com"
+export JAMFPLATFORM_BASE_URL="https://us.api.jamfcloud.com"
 export JAMFPLATFORM_CLIENT_ID="..."
 export JAMFPLATFORM_CLIENT_SECRET="..."
 export JAMFPLATFORM_ENVIRONMENT_ID="..." # preferred; or JAMFPLATFORM_TENANT_ID (legacy), never both

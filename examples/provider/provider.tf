@@ -7,7 +7,7 @@ terraform {
 }
 
 provider "jamfplatform" {
-  base_url      = "https://us.apigw.jamf.com" # or "https://eu.apigw.jamf.com", "https://apac.apigw.jamf.com"
+  base_url      = "https://us.api.jamfcloud.com" # or "https://eu.api.jamfcloud.com", "https://apac.api.jamfcloud.com"
   client_id     = "example-client-id"
   client_secret = "example-client-secret"
   # The "Platform environment" your API integration targets. This is the
