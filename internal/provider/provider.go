@@ -28,6 +28,7 @@ import (
 	msuactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/managed_software_updates"
 	mdmactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/mdm"
 	patchactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/pro/patch"
+	uemconnectactions "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/actions/security_cloud/uem_connect"
 	mcxforcedpayload "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
@@ -746,6 +747,7 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		mdmactions.NewRenewMdmProfileAction,
 		mdmactions.NewFlushMdmCommandsAction,
 		maintenanceactions.NewRedeployManagementFrameworkAction,
+		uemconnectactions.NewSynchronizeAction,
 		maintenanceactions.NewFlushPolicyLogsAction,
 		patchactions.NewRetryPatchPolicyLogsAction,
 		jamfprotectactions.NewSyncPlansAction,
