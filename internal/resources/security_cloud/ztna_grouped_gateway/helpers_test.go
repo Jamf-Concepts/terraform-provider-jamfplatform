@@ -48,6 +48,14 @@ func TestAppendWriteDiagnostics_MapsMembershipCodes(t *testing.T) {
 			wantText: "shared_gateways",
 		},
 		{
+			// A member that does not exist and a member owned by someone else share
+			// one code, so the diagnostic has to offer both readings.
+			name:     "missing member points at the member list",
+			err:      apiError(422, codeGatewayNotFound, "A gateway in gatewayIds does not exist or is not accessible to this customer."),
+			wantPath: path.Root("gateway_ids"),
+			wantText: "belongs to another customer",
+		},
+		{
 			name:     "unknown id points at tenant_ids",
 			err:      apiError(400, codeBadRequest, "No mapping found for one of the supplied ids"),
 			wantPath: path.Root("tenant_ids"),

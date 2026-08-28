@@ -53,6 +53,13 @@ func TestAppendWriteDiagnostics_MapsCodes(t *testing.T) {
 			wantText: "same organization",
 		},
 		{
+			// A quota, not a mistake: no attribute path, because the addresses are
+			// computed and there is no input an edit could fix.
+			name:     "dedicated IP limit carries no attribute path",
+			err:      apiError(409, codeDedicatedIPsLimit, "The dedicated IP address limit has been reached (5 of 5)."),
+			wantText: "no dedicated IP addresses left",
+		},
+		{
 			name:     "not entitled names the entitlement",
 			err:      apiError(403, codeNotEntitled, "Not entitled."),
 			wantText: "does not have the ZTNA surface enabled",
