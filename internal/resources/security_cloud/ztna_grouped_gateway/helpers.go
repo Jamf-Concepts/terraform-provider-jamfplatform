@@ -7,25 +7,42 @@ import (
 	"net/http"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 )
 
 // Machine-readable error codes the grouped-gateway endpoints return. Wire-probed
-// against production EU on 2026-08-27.
+// against production EU on 2026-08-27, except codeGatewayNotFound, which is
+// taken from the spec's shared 422 catalogue (SDK spec v1807).
+//
+// Codes the SDK does not carry as constants. Only the DNS namespace declares its
+// error codes in a schema enum, so `securitycloud.ApiErrorItemCode*` covers that
+// vocabulary and nothing else — the ZTNA codes below appear in the spec only as
+// response examples, which the generator does not emit. Referenced from the SDK
+// wherever it has the constant, and declared here where it does not.
 const (
+	codeGatewayNotFound = securitycloud.ApiErrorItemCodeGatewayNotFound
+	codeNotEntitled     = securitycloud.ApiErrorItemCodeNotEntitled
+
 	codeMixedTunnelTypes    = "MIXED_TUNNEL_TYPES"
 	codeSharedGatewayMember = "SHARED_GATEWAY_MEMBER"
-	codeNotEntitled         = "NOT_ENTITLED"
 	codeBadRequest          = "BAD_REQUEST"
 )
 
 // appendWriteDiagnostics turns a create/update failure into the most specific
 // diagnostic the error body supports, and reports whether it recognised one.
 //
-// The two membership codes are the ones worth translating, because both describe
-// a property of the *members* rather than of the group being written, and neither
-// message says which member is at fault.
+// The membership codes are the ones worth translating, because each describes a
+// property of the *members* rather than of the group being written, and none of
+// the messages says which member is at fault.
+//
+// `GATEWAY_NOT_FOUND` is the same ordering trap the DNS zone has for its name
+// servers: a member gateway must exist before the group can name it, and
+// Terraform will plan the group's create alongside the member's when the
+// dependency edge is only implicit. It also covers a gateway that exists but
+// belongs to another customer, which the spec folds into the same code, so the
+// diagnostic names both readings rather than asserting the id is absent.
 func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
@@ -50,6 +67,16 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 					"— those cannot be grouped, and are read with "+
 					"`jamfplatform_security_cloud_ztna_shared_gateways`. Reported by Jamf Security Cloud: "+
 					detail.Description,
+			)
+		case codeGatewayNotFound:
+			diags.AddAttributeError(
+				path.Root("gateway_ids"),
+				"Member gateway not found",
+				"One of the IDs in `gateway_ids` does not name a gateway this account can reach — either it does "+
+					"not exist, or it belongs to another customer. Every member must exist before the group can "+
+					"reference it, so if the member is managed in the same configuration, make the dependency "+
+					"explicit with `depends_on` or by referencing its `id` attribute. Reported by Jamf Security "+
+					"Cloud: "+detail.Description,
 			)
 		case codeBadRequest:
 			diags.AddAttributeError(

@@ -26,7 +26,7 @@ go test -v -cover -count=1 ./...
 Acceptance tests create, read, update, and delete real resources against a live Jamf Platform tenant. They are gated behind the `//go:build acceptance` build tag so they never run by default.
 
 ```bash
-export JAMFPLATFORM_BASE_URL="https://us.apigw.jamf.com"
+export JAMFPLATFORM_BASE_URL="https://us.api.jamfcloud.com"
 export JAMFPLATFORM_CLIENT_ID="your-client-id"
 export JAMFPLATFORM_CLIENT_SECRET="your-client-secret"
 export JAMFPLATFORM_ENVIRONMENT_ID="your-environment-id" # preferred; or JAMFPLATFORM_TENANT_ID (legacy), never both
