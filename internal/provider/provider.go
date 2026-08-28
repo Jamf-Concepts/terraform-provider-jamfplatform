@@ -144,6 +144,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/uem_connect"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_grouped_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_shared_gateways"
@@ -509,6 +510,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
 		dns_zone.NewDNSZoneResource,
+		uem_connect.NewUEMConnectResource,
 		ztna_gateway.NewGatewayResource,
 		ztna_grouped_gateway.NewGroupedGatewayResource,
 	}
@@ -541,6 +543,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		category.NewCategoryDataSource,
 		dns_zone.NewDNSZoneDataSource,
 		dns_zone.NewDNSZonesDataSource,
+		uem_connect.NewUEMConnectDataSource,
 		ztna_gateway.NewGatewayDataSource,
 		ztna_gateway.NewGatewaysDataSource,
 		ztna_grouped_gateway.NewGroupedGatewayDataSource,
@@ -659,6 +662,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
 		dns_zone.NewDNSZoneListResource,
+		uem_connect.NewUEMConnectListResource,
 		ztna_gateway.NewGatewayListResource,
 		ztna_grouped_gateway.NewGroupedGatewayListResource,
 		file_share_distribution_point.NewFileShareDistributionPointListResource,
