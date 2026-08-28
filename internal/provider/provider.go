@@ -297,6 +297,9 @@ func (p *JamfPlatformProvider) Configure(ctx context.Context, req provider.Confi
 		)
 		return
 	}
+	if summary, detail := baseURLPathWarning(baseURL); summary != "" {
+		resp.Diagnostics.AddWarning(summary, detail)
+	}
 
 	clientID := data.ClientID.ValueString()
 	if clientID == "" {
