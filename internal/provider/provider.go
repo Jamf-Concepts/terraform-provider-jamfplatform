@@ -134,6 +134,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_failover_url"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/sso_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/supervision_identity"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/tenant_id"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_extension_attribute"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/user_group"
@@ -571,6 +572,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		enrollment_customization.NewEnrollmentCustomizationDataSource,
 		mobile_device_enrollment_profile.NewEnrollmentProfileDataSource,
 		supervision_identity.NewSupervisionIdentityDataSource,
+		tenant_id.NewTenantIDDataSource,
 		ibeacon.NewIbeaconDataSource,
 		inventory_preload_record.NewInventoryPreloadRecordDataSource,
 		licensed_software.NewLicensedSoftwareDataSource,
