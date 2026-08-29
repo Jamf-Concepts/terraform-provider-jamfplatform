@@ -6,6 +6,8 @@ package macos_onboarding
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // onboardingTimeoutAttributeTypes defines the timeout attribute types for the resource.
@@ -16,15 +18,18 @@ var onboardingTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
-// selfServiceEntityType wire enum values. The OpenAPI spec documents seven values
-// (the four below plus OS_X_EBOOK, OS_X_PATCH_POLICY, and the UNKNOWN fallback);
-// only these four have a corresponding UI tab and eligible-* discovery endpoint, so
-// the resource accepts only these four (wire-confirmed 2026-06-11).
+// selfServiceEntityType wire enum values, aliased from the SDK.
+//
+// Deliberately narrower than pro.OnboardingItemSelfServiceEntityTypeValues(),
+// which generates seven: the four below plus OS_X_EBOOK, OS_X_PATCH_POLICY and
+// the UNKNOWN fallback. Only these four have a corresponding UI tab and
+// eligible-* discovery endpoint (wire-confirmed 2026-06-11), so the resource
+// accepts only these four. The set is curated; the spellings are the SDK's.
 const (
-	entityTypePolicy        = "OS_X_POLICY"
-	entityTypeConfigProfile = "OS_X_CONFIG_PROFILE"
-	entityTypeMacApp        = "OS_X_MAC_APP"
-	entityTypeAppInstaller  = "OS_X_APP_INSTALLER"
+	entityTypePolicy        = pro.OnboardingItemSelfServiceEntityTypeOsXPolicy
+	entityTypeConfigProfile = pro.OnboardingItemSelfServiceEntityTypeOsXConfigProfile
+	entityTypeMacApp        = pro.OnboardingItemSelfServiceEntityTypeOsXMacApp
+	entityTypeAppInstaller  = pro.OnboardingItemSelfServiceEntityTypeOsXAppInstaller
 )
 
 // validEntityTypes is the accepted self_service_entity_type vocabulary (OneOf).
