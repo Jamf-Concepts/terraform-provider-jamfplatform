@@ -14,9 +14,9 @@ import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 // generic ones, INVALID_FIELD and NOT_ENTITLED, which are therefore aliased from
 // it rather than restated. Only a code the enum genuinely lacks is written as a
 // literal here, per STYLE_GUIDE §Security Cloud shapes that recur. Every sibling
-// package does the same; mappings_test.go enforces it mechanically, so an SDK
-// release that adds one of the literals below fails the build rather than leaving
-// a silent duplicate.
+// package does the same; enum_literals_test.go enforces it mechanically, so an
+// SDK release that adds one of the literals below fails the build rather than
+// leaving a silent duplicate.
 const (
 	// codeInvalidField accompanies the 400 for a blank name. This surface fills in
 	// `field` and a human description, which the shared Security Cloud enum failure
