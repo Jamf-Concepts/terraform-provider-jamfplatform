@@ -35,7 +35,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 	model.Updated = types.StringValue(blueprint.Updated.Format(time.RFC3339))
 	if blueprint.DeploymentState != nil {
 		model.DeploymentState = types.StringValue(blueprint.DeploymentState.State)
-		model.Deployed = types.BoolValue(strings.EqualFold(blueprint.DeploymentState.State, "DEPLOYED"))
+		model.Deployed = types.BoolValue(strings.EqualFold(blueprint.DeploymentState.State, blueprintDeploymentStateDeployed))
 	} else {
 		model.DeploymentState = types.StringValue("")
 		model.Deployed = types.BoolValue(false)

@@ -3,6 +3,8 @@
 
 package mobile_device_prestage_enrollment
 
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
 // skipSetupItems wire-key ⇔ snake_case mapping is hand-encoded inside
 // buildSkipSetupItemsMap (input_builders.go), flattenSkipSetupItems
 // (state_builders.go) and diffSkipSetupItems (state_builders.go). The 45-row
@@ -16,17 +18,16 @@ package mobile_device_prestage_enrollment
 // place so schema validators and tests share the source of truth.
 var (
 	// prestageMinimumOsTargetVersionValues is shared by the iOS and iPadOS
-	// min-OS enforcement enums.
-	prestageMinimumOsTargetVersionValues = []string{
-		"NO_ENFORCEMENT",
-		"MINIMUM_OS_LATEST_VERSION",
-		"MINIMUM_OS_LATEST_MAJOR_VERSION",
-		"MINIMUM_OS_LATEST_MINOR_VERSION",
-		"MINIMUM_OS_SPECIFIC_VERSION",
-	}
+	// min-OS enforcement enums, which the API declares identically. Keyed on
+	// the iOS vocabulary; TestMinimumOsVocabulariesAgree fails if a future SDK
+	// release stops the two agreeing, since one shared var could then only be
+	// right for one of them.
+	prestageMinimumOsTargetVersionValues = pro.MobileDevicePrestageV3PrestageMinimumOsTargetVersionTypeIosValues()
 
 	// assignNamesUsingValues are the UI-label strings that ARE the wire
-	// values for `names.assignNamesUsing` (§4.2).
+	// values for `names.assignNamesUsing` (§4.2). The spec models the field as a
+	// plain string and generates no enum, so these stay literals — asserted per
+	// value in TestEnumLiteralsComeFromTheSDK.
 	assignNamesUsingValues = []string{
 		"Default Names",
 		"List of Names",

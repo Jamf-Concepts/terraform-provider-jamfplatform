@@ -6,6 +6,8 @@ package service_discovery_enrollment
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // serviceDiscoveryEnrollmentTimeoutAttributeTypes defines the timeout attribute
@@ -17,13 +19,15 @@ var serviceDiscoveryEnrollmentTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
-// enrollmentType wire enum values (api/pro_api.json ServiceDiscoveryVersion). The
-// SDK exposes ServiceDiscoveryVersion as a bare string alias with no constants, so
-// the vocabulary is carried here and enforced with a OneOf validator.
+// enrollmentType wire enum values, aliased from pro.ServiceDiscoveryVersion.
+//
+// The SDK did once expose ServiceDiscoveryVersion as a bare string alias with no
+// constants, which is why these were literals; it now generates all three, so
+// they alias.
 const (
-	enrollmentTypeNone    = "none"
-	enrollmentTypeMDMBYOD = "mdm-byod"
-	enrollmentTypeMDMADDE = "mdm-adde"
+	enrollmentTypeNone    = pro.ServiceDiscoveryVersionNone
+	enrollmentTypeMDMBYOD = pro.ServiceDiscoveryVersionMDMByod
+	enrollmentTypeMDMADDE = pro.ServiceDiscoveryVersionMDMAdde
 )
 
 // validEnrollmentTypes is the accepted enrollment_type vocabulary (OneOf).

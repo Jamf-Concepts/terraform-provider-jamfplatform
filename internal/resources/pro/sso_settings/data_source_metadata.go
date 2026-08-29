@@ -107,7 +107,7 @@ func (d *SsoSpMetadataDataSource) Read(ctx context.Context, req datasource.ReadR
 		resp.Diagnostics.AddError("Unable to read Jamf Pro SSO settings before metadata download", err.Error())
 		return
 	}
-	if settings != nil && settings.ConfigurationType == "OIDC" {
+	if settings != nil && settings.ConfigurationType == configurationTypeOIDC {
 		resp.Diagnostics.AddWarning(
 			"Jamf Pro SP metadata not available",
 			"The tenant is in pure OIDC mode; there is no SAML Service Provider metadata to download. Set `configuration_type` to `SAML` or `OIDC_WITH_SAML` on `jamfplatform_pro_sso_settings` to enable metadata download.",

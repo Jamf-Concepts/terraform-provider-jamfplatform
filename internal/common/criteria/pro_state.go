@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -35,7 +36,11 @@ func BuildSmartSearchCriteria(models []CriterionModel) []pro.SmartSearchCriterio
 		if !c.Priority.IsNull() && !c.Priority.IsUnknown() {
 			priority = int(c.Priority.ValueInt64())
 		}
-		andOr := "and"
+		// The Pro JSON SmartSearchCriterion types andOr as a plain string with no
+		// generated enum, so the constant comes from the classic Criterion,
+		// which is the only generated vocabulary for the concept and carries
+		// the identical two values. Nothing to conflict with.
+		andOr := proclassic.CriterionAndOrAnd
 		if !c.AndOr.IsNull() && !c.AndOr.IsUnknown() && c.AndOr.ValueString() != "" {
 			andOr = c.AndOr.ValueString()
 		}

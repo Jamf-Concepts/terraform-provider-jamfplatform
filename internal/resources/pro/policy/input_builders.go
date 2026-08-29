@@ -547,10 +547,10 @@ func printerActionToWire(action types.String) *string {
 	}
 	switch action.ValueString() {
 	case "Map":
-		v := "install"
+		v := proclassic.PolicyPrintersPrinterItemActionInstall
 		return &v
 	case "Unmap":
-		v := "uninstall"
+		v := proclassic.PolicyPrintersPrinterItemActionUninstall
 		return &v
 	default:
 		// Validator should have rejected anything else; fall through to

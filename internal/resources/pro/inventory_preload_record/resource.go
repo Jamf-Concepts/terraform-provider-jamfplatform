@@ -32,6 +32,16 @@ import (
 // endpoint was deprecated in 2020), so no per-resource gate is needed.
 const minJamfProVersion = ""
 
+// validDeviceTypes is the accepted device_type set. Deliberately narrower than
+// pro.InventoryPreloadRecordV2DeviceTypeValues(), which also generates Unknown:
+// Unknown is what the field reads back as for a record whose type the server
+// cannot classify, not a type a caller can ask for. The set is curated; the
+// spellings are the SDK's.
+var validDeviceTypes = []string{
+	pro.InventoryPreloadRecordV2DeviceTypeComputer,
+	pro.InventoryPreloadRecordV2DeviceTypeMobileDevice,
+}
+
 // InventoryPreloadRecordResource implements the Terraform resource for Jamf Pro
 // Inventory Preload records.
 type InventoryPreloadRecordResource struct {
@@ -120,7 +130,7 @@ func (r *InventoryPreloadRecordResource) Schema(ctx context.Context, req resourc
 				MarkdownDescription: "Type of device the record applies to. Valid values: `Computer`, `Mobile Device`. Can be changed in place.",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("Computer", "Mobile Device"),
+					stringvalidator.OneOf(validDeviceTypes...),
 				},
 			},
 			"username":      fullReplaceStringAttribute("Username assigned to the device."),

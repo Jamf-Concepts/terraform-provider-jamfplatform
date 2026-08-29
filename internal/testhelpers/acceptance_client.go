@@ -243,7 +243,7 @@ func waitForBenchmarkSyncState(t *testing.T, cbClient *compliancebenchmarks.Clie
 			t.Logf("Benchmark %s not found in list, may already be deleted", benchmarkID)
 			return
 		}
-		if state == "SYNCED" || state == "FAILED" {
+		if state == compliancebenchmarks.BenchmarkV2SyncStateSynced || state == compliancebenchmarks.BenchmarkV2SyncStateFailed {
 			t.Logf("Benchmark %s reached state %s", benchmarkID, state)
 			return
 		}

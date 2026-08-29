@@ -30,11 +30,14 @@ import (
 // below ProviderMinJamfProVersion.
 const minJamfProVersion = ""
 
-// Dock item type enum values accepted by the classic /dockitems endpoint.
+// Dock item type enum values accepted by the classic /dockitems endpoint,
+// aliased from the SDK. Note the classic vocabulary is title-cased —
+// pro.DockItemType, the Pro JSON one, spells the same three values APP / FILE /
+// FOLDER, so the two are not interchangeable.
 const (
-	DockItemTypeApp    = "App"
-	DockItemTypeFile   = "File"
-	DockItemTypeFolder = "Folder"
+	DockItemTypeApp    = proclassic.DockItemTypeApp
+	DockItemTypeFile   = proclassic.DockItemTypeFile
+	DockItemTypeFolder = proclassic.DockItemTypeFolder
 )
 
 // DockItemResource implements the Terraform resource for Jamf Pro dock items.

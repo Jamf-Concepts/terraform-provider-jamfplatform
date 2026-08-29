@@ -6,6 +6,8 @@ package cloud_identity_provider
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // Provider-name discriminator values. Kept in one place so the schema
@@ -18,12 +20,15 @@ import (
 // directly; on read, providerNameFromWire maps the response back. `GOOGLE` is
 // identical on both sides.
 const (
-	providerGoogle  = "GOOGLE"
+	providerGoogle = pro.CloudIDPCommonProviderNameGoogle
+
+	// providerEntraID is provider-facing only: the API has no such value, so
+	// there is no constant to alias.
 	providerEntraID = "ENTRA_ID"
 
 	// wireProviderAzure is the legacy value the Jamf Pro API uses for Microsoft
 	// Entra ID (cloudIdPCommon.providerName and the /cloud-azure endpoints).
-	wireProviderAzure = "AZURE"
+	wireProviderAzure = pro.CloudIDPCommonProviderNameAzure
 )
 
 // providerNameFromWire maps a Jamf Pro API providerName back to the

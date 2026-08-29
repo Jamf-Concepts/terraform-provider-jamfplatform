@@ -52,7 +52,7 @@ func buildAccountGroupInput(ctx context.Context, plan AccountGroupResourceModel)
 	}
 
 	// Privileges: only when Custom and the block is present with content.
-	if plan.PrivilegeSet.ValueString() == "Custom" && plan.Privileges != nil && !plan.Privileges.IsEmpty() {
+	if plan.PrivilegeSet.ValueString() == proclassic.GroupPrivilegeSetCustom && plan.Privileges != nil && !plan.Privileges.IsEmpty() {
 		privMap, d := plan.Privileges.ToMap(ctx)
 		diags.Append(d...)
 		if diags.HasError() {

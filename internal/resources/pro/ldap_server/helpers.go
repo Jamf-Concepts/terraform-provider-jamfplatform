@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 // Wire enum values for the Jamf ProClassic /ldapservers endpoint, captured by
@@ -23,30 +25,39 @@ const (
 	// server_type. UI "Directory Service": "Microsoft's Active Directory" →
 	// Active Directory, "Apple's Open Directory" → Open Directory, "Novell's
 	// eDirectory" → eDirectory, "Configure Manually" → Custom.
-	serverTypeActiveDirectory = "Active Directory"
-	serverTypeOpenDirectory   = "Open Directory"
-	serverTypeEDirectory      = "eDirectory"
-	serverTypeCustom          = "Custom"
+	serverTypeActiveDirectory = proclassic.LdapServerConnectionServerTypeActiveDirectory
+	serverTypeOpenDirectory   = proclassic.LdapServerConnectionServerTypeOpenDirectory
+	serverTypeEDirectory      = proclassic.LdapServerConnectionServerTypeEDirectory
+	serverTypeCustom          = proclassic.LdapServerConnectionServerTypeCustom
 
 	// authentication_type. Mixed case is load-bearing: none/simple are
-	// lower-case but CRAM-MD5/DIGEST-MD5 are upper-case on the wire.
-	authTypeNone      = "none"
-	authTypeSimple    = "simple"
-	authTypeCRAMMD5   = "CRAM-MD5"
-	authTypeDigestMD5 = "DIGEST-MD5"
+	// lower-case but CRAM-MD5/DIGEST-MD5 are upper-case on the wire — which is
+	// exactly why these alias rather than restate.
+	authTypeNone      = proclassic.LdapServerConnectionAuthenticationTypeNone
+	authTypeSimple    = proclassic.LdapServerConnectionAuthenticationTypeSimple
+	authTypeCRAMMD5   = proclassic.LdapServerConnectionAuthenticationTypeCramMd5
+	authTypeDigestMD5 = proclassic.LdapServerConnectionAuthenticationTypeDigestMd5
 
-	// referral_response. Empty string = "Use default from LDAP service".
+	// referral_response. The empty string means "Use default from LDAP
+	// service"; it is the absence of a choice rather than a member of
+	// proclassic.LdapServerConnectionReferralResponse, which generates only the
+	// two real values.
 	referralDefault = ""
-	referralFollow  = "follow"
-	referralIgnore  = "ignore"
+	referralFollow  = proclassic.LdapServerConnectionReferralResponseFollow
+	referralIgnore  = proclassic.LdapServerConnectionReferralResponseIgnore
 
-	// map_object_class_to_any_or_all. UI "Object Class Limitation".
-	objectClassAny = "any"
-	objectClassAll = "all"
+	// map_object_class_to_any_or_all. UI "Object Class Limitation". The classic
+	// spec declares this vocabulary once per mapping block (user, user-group,
+	// user-group-membership) with identical members; one pair serves all three,
+	// which TestMappingVocabulariesAgree pins.
+	objectClassAny = proclassic.LdapServerMappingsForUsersUserMappingsMapObjectClassToAnyOrAllAny
+	objectClassAll = proclassic.LdapServerMappingsForUsersUserMappingsMapObjectClassToAnyOrAllAll
 
-	// search_scope.
-	searchScopeAllSubtrees    = "All Subtrees"
-	searchScopeFirstLevelOnly = "First Level Only"
+	// search_scope. Declared once per mapping block like the above; note the
+	// Pro JSON vocabulary spells these ALL_SUBTREES / FIRST_LEVEL_ONLY, so the
+	// classic constants are the only correct ones here.
+	searchScopeAllSubtrees    = proclassic.LdapServerMappingsForUsersUserMappingsSearchScopeAllSubtrees
+	searchScopeFirstLevelOnly = proclassic.LdapServerMappingsForUsersUserMappingsSearchScopeFirstLevelOnly
 
 	// user_group_membership_stored_in. UI "Membership Location" dropdown shows
 	// Group Object / User Object / Other, but only these two values round-trip
@@ -55,8 +66,8 @@ const (
 	// that doesn't match either template; its extra fields (object_classes,
 	// search_base, username_mapping, group_id_mapping) are plain optional
 	// attributes here and round-trip regardless of membership_location.
-	membershipGroupObject = "group object"
-	membershipUserObject  = "user object"
+	membershipGroupObject = proclassic.LdapServerMappingsForUsersUserGroupMembershipMappingsUserGroupMembershipStoredInGroupObject
+	membershipUserObject  = proclassic.LdapServerMappingsForUsersUserGroupMembershipMappingsUserGroupMembershipStoredInUserObject
 )
 
 // Alphabetised OneOf value lists for diff-stable schema docs.

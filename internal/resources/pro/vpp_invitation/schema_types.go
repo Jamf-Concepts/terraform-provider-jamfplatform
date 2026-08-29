@@ -6,6 +6,8 @@ package vpp_invitation
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 // vppInvitationTimeoutAttributeTypes defines the timeout attribute types for the
@@ -37,11 +39,11 @@ var usageObjectType = types.ObjectType{AttrTypes: usageAttrTypes}
 // with 409 "Invalid distribution method"). "Send emails" additionally requires
 // the sender_name / sender_email_address / subject / message fields.
 var distributionMethods = []string{
-	"Prompt users to accept/make available in Self Service",
-	"Make available in Self Service only",
-	"Send emails",
+	proclassic.VppInvitationGeneralDistributionMethodPromptUsersToAcceptMakeAvailableInSelfService,
+	proclassic.VppInvitationGeneralDistributionMethodMakeAvailableInSelfServiceOnly,
+	proclassic.VppInvitationGeneralDistributionMethodSendEmails,
 }
 
 // distributionMethodSendEmails is the email-dispatch distribution method that
 // gates the sender_* / subject / message / require_login fields.
-const distributionMethodSendEmails = "Send emails"
+const distributionMethodSendEmails = proclassic.VppInvitationGeneralDistributionMethodSendEmails

@@ -3,10 +3,13 @@
 
 package blueprint
 
-// Constants for blueprint deployment states.
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+
+// Constants for blueprint deployment states. The SDK also generates
+// OUT_OF_DATE, which nothing here compares against.
 const (
-	blueprintDeploymentStateDeployed    = "DEPLOYED"
-	blueprintDeploymentStateNotDeployed = "NOT_DEPLOYED"
+	blueprintDeploymentStateDeployed    = blueprints.DeploymentStateStateDeployed
+	blueprintDeploymentStateNotDeployed = blueprints.DeploymentStateStateNotDeployed
 )
 
 // stronglyTypedComponentIdentifiers lists all component identifiers that have strongly-typed representations.

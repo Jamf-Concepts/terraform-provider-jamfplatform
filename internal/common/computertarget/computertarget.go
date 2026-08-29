@@ -74,7 +74,7 @@ func ResolveComputerID(ctx context.Context, client *pro.Client, resp *action.Inv
 		// branches below reach the same deprecated surface through SDK resolve
 		// helpers, which carry no Deprecated marker of their own — so migrating
 		// this one call in isolation would buy nothing. See the package doc.
-		matches, err := client.ListComputersInventoryV3(ctx, []string{"GENERAL"}, nil, fmt.Sprintf("general.managementId==%q", managementID)) //nolint:staticcheck // SA1019: no v4 client generated yet — see the package doc
+		matches, err := client.ListComputersInventoryV3(ctx, []string{pro.ComputerSectionV3General}, nil, fmt.Sprintf("general.managementId==%q", managementID)) //nolint:staticcheck // SA1019: no v4 client generated yet — see the package doc
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Computer Lookup Failed",

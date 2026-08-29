@@ -3,6 +3,8 @@
 
 package macos_configuration_profile
 
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
+
 // Level field wire/UI mappings. The Jamf Pro admin UI dropdown for the
 // "Level" field offers `Computer Level` and `User Level`. The classic API
 // wire is asymmetric: write `Computer` / `User`, read `System` / `User`.
@@ -22,6 +24,15 @@ const (
 	levelWireReadCC  = "System"   // wire-read form for Computer Level
 	levelWireReadUC  = "User"     // wire-read form for User Level (symmetric)
 )
+
+// The four level values above stay literals deliberately, and not because the
+// SDK lacks a vocabulary: proclassic.OsXConfigurationProfileGeneralLevel
+// generates "computer" and "user". The wire probe recorded above found neither
+// spelling — the write path accepts "Computer"/"User" and the read path returns
+// "System"/"User" — so the generated set disagrees with the endpoint on both
+// sides. Aliasing it would put a rejected value on the wire. Flagged upstream as
+// a spec defect; asserted per value in TestEnumLiteralsComeFromTheSDK so this
+// stops being an exemption the moment the spec is corrected.
 
 // levelToWireWrite translates the TF/UI-facing value (`Computer Level` or
 // `User Level`) into the value the classic API write path accepts.
@@ -53,8 +64,8 @@ func levelFromWireRead(wireValue string) string {
 // labels match the wire spellings exactly. The set is constrained for
 // schema validators.
 const (
-	distributionMethodInstallAutomatically = "Install Automatically"
-	distributionMethodMakeAvailableInSS    = "Make Available in Self Service"
+	distributionMethodInstallAutomatically = proclassic.OsXConfigurationProfileGeneralDistributionMethodInstallAutomatically
+	distributionMethodMakeAvailableInSS    = proclassic.OsXConfigurationProfileGeneralDistributionMethodMakeAvailableInSelfService
 )
 
 // validDistributionMethods is the canonical set accepted by the classic API.

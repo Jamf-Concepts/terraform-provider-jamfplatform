@@ -37,15 +37,16 @@ import (
 // needed. Matches every other settings sibling.
 const minJamfProVersion = ""
 
-// Wire enum values for file_sharing_connection_type and https_security_type.
-// Sourced from the API, not the admin-UI labels.
+// Wire enum values for file_sharing_connection_type and https_security_type,
+// aliased from the SDK's generated vocabularies rather than restated, so a spec
+// change reaches them. These are the API's spellings, not the admin-UI labels.
 const (
-	connectionTypeAFP  = "AFP"
-	connectionTypeSMB  = "SMB"
-	connectionTypeNone = "NONE"
+	connectionTypeAFP  = pro.DistributionPointFileSharingConnectionTypeAfp
+	connectionTypeSMB  = pro.DistributionPointFileSharingConnectionTypeSmb
+	connectionTypeNone = pro.DistributionPointFileSharingConnectionTypeNone
 
-	httpsSecurityUsernamePassword = "USERNAME_PASSWORD"
-	httpsSecurityNone             = "NONE"
+	httpsSecurityUsernamePassword = pro.DistributionPointHttpsSecurityTypeUsernamePassword
+	httpsSecurityNone             = pro.DistributionPointHttpsSecurityTypeNone
 
 	// Failover (backup_distribution_point_id) sentinels. A real failover is the
 	// id of another file share distribution point (a positive integer); the two

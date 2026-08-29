@@ -7,16 +7,22 @@ import (
 	datasourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	resourceTimeouts "github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // Jamf Connect auto-deployment types. The wire tokens are cryptic; the
 // schema descriptions translate them into the admin-UI "Update Type" labels
 // (Manual / Maintenance / Minor & Maintenance) and the deploy toggle.
 const (
-	autoDeploymentNone          = "NONE"                      // toggle off — server manages nothing; version ignored
-	autoDeploymentInitialOnly   = "INITIAL_INSTALLATION_ONLY" // UI "Manual"
-	autoDeploymentPatch         = "PATCH_UPDATES"             // UI "Maintenance"
-	autoDeploymentMinorAndPatch = "MINOR_AND_PATCH_UPDATES"   // UI "Minor & Maintenance"
+	// NONE is the toggle off — the server manages nothing and the version is ignored.
+	autoDeploymentNone = pro.LinkedConnectProfileAutoDeploymentTypeNone
+	// INITIAL_INSTALLATION_ONLY is the UI's "Manual".
+	autoDeploymentInitialOnly = pro.LinkedConnectProfileAutoDeploymentTypeInitialInstallationOnly
+	// PATCH_UPDATES is the UI's "Maintenance".
+	autoDeploymentPatch = pro.LinkedConnectProfileAutoDeploymentTypePatchUpdates
+	// MINOR_AND_PATCH_UPDATES is the UI's "Minor & Maintenance".
+	autoDeploymentMinorAndPatch = pro.LinkedConnectProfileAutoDeploymentTypeMinorAndPatchUpdates
 )
 
 // JamfConnectResourceModel is the Terraform model for an adopted Jamf Connect

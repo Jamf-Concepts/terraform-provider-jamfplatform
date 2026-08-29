@@ -3,12 +3,18 @@
 
 package volume_purchasing_notification
 
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
 // Wire enum values, wire-probed against the live endpoint (a junk value returns
 // 400 INVALID_FIELD listing the accepted set). These back static OneOf validators.
 const (
-	// Triggers — UI "Notifications" trigger checkboxes.
-	triggerRemovedFromAppStore = "REMOVED_FROM_APP_STORE" // UI "Item removed from the App Store"
-	triggerNoMoreLicenses      = "NO_MORE_LICENSES"       // UI "No more licenses available"
+	// Triggers — UI "Notifications" trigger checkboxes. Aliased from the
+	// VolumePurchasingSubscriptionBase vocabulary, which is the type the input
+	// builder writes.
+	// UI "Item removed from the App Store".
+	triggerRemovedFromAppStore = pro.VolumePurchasingSubscriptionBaseTriggersRemovedFromAppStore
+	// UI "No more licenses available".
+	triggerNoMoreLicenses = pro.VolumePurchasingSubscriptionBaseTriggersNoMoreLicenses
 
 	// frequencyDaily is the only accepted internal-recipient frequency. The UI
 	// exposes no frequency control (the Scope tab is "Users to distribute a daily

@@ -57,7 +57,7 @@ func ResolveComputerIDByName(ctx context.Context, t *testing.T, name string) str
 	t.Helper()
 
 	matches, err := pro.New(NewAcceptanceClient(t)).ListComputersInventoryV3( //nolint:staticcheck // SA1019: no v4 client generated yet — see the doc comment
-		ctx, []string{"GENERAL"}, nil, fmt.Sprintf("general.name==%q", name),
+		ctx, []string{pro.ComputerSectionV4General}, nil, fmt.Sprintf("general.name==%q", name),
 	)
 	if err != nil {
 		t.Fatalf("resolving computer %q: %v", name, err)

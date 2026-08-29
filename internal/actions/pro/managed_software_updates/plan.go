@@ -36,27 +36,30 @@ var _ action.Action = (*PlanAction)(nil)
 var _ action.ActionWithConfigure = (*PlanAction)(nil)
 var _ action.ActionWithConfigValidators = (*PlanAction)(nil)
 
-// Write-accepted enum subsets (wire-probed 2026-06-13). UNKNOWN is excluded from both:
-// versionType=UNKNOWN is wire-rejected (400) and updateAction=UNKNOWN is degenerate.
+// Write-accepted enum subsets (wire-probed 2026-06-13), keyed on the
+// PlanConfigurationPost vocabularies — the type this action actually posts.
+//
+// updateActions and versionTypes are deliberately narrower than the generated
+// sets, which each also carry UNKNOWN: versionType=UNKNOWN is wire-rejected
+// (400) and updateAction=UNKNOWN is degenerate. The sets are curated; the
+// spellings are the SDK's. objectTypes matches its generated set exactly, so it
+// calls the helper.
 var (
 	updateActions = []string{
-		"DOWNLOAD_ONLY",
-		"DOWNLOAD_INSTALL",
-		"DOWNLOAD_INSTALL_ALLOW_DEFERRAL",
-		"DOWNLOAD_INSTALL_RESTART",
-		"DOWNLOAD_INSTALL_SCHEDULE",
+		pro.PlanConfigurationPostUpdateActionDownloadOnly,
+		pro.PlanConfigurationPostUpdateActionDownloadInstall,
+		pro.PlanConfigurationPostUpdateActionDownloadInstallAllowDeferral,
+		pro.PlanConfigurationPostUpdateActionDownloadInstallRestart,
+		pro.PlanConfigurationPostUpdateActionDownloadInstallSchedule,
 	}
 	versionTypes = []string{
-		"LATEST_MAJOR",
-		"LATEST_MINOR",
-		"LATEST_ANY",
-		"SPECIFIC_VERSION",
-		"CUSTOM_VERSION",
+		pro.PlanConfigurationPostVersionTypeLatestMajor,
+		pro.PlanConfigurationPostVersionTypeLatestMinor,
+		pro.PlanConfigurationPostVersionTypeLatestAny,
+		pro.PlanConfigurationPostVersionTypeSpecificVersion,
+		pro.PlanConfigurationPostVersionTypeCustomVersion,
 	}
-	objectTypes = []string{
-		"COMPUTER_GROUP",
-		"MOBILE_DEVICE_GROUP",
-	}
+	objectTypes = pro.PlanGroupPostObjectTypeValues()
 )
 
 // PlanAction submits a Managed Software Updates plan targeting a group.

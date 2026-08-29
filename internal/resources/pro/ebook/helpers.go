@@ -14,11 +14,12 @@ import (
 
 // deploymentTypeSelfService and deploymentTypeAutomatic are the two wire values
 // the classic /ebooks endpoint accepts for general.deployment_type (UI
-// "Distribution Method"). The literals must match the server bytes exactly,
-// including the slash.
+// "Distribution Method"). They must match the server bytes exactly, including
+// the slash — which is the argument for taking them from the SDK rather than
+// retyping them.
 const (
-	deploymentTypeSelfService = "Make Available in Self Service"
-	deploymentTypeAutomatic   = "Install Automatically/Prompt Users to Install"
+	deploymentTypeSelfService = proclassic.EbookGeneralDeploymentTypeMakeAvailableInSelfService
+	deploymentTypeAutomatic   = proclassic.EbookGeneralDeploymentTypeInstallAutomaticallyPromptUsersToInstall
 )
 
 // extractEbookID returns the assigned ID as a string from a Create/GET

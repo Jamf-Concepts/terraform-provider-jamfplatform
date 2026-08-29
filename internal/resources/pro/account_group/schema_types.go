@@ -6,6 +6,8 @@ package account_group
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 // accountGroupTimeoutAttributeTypes defines the timeout attribute types for the
@@ -17,9 +19,18 @@ var accountGroupTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
-// accessLevelValues are the classic access_level enum values for a group
-// (groups have no "Group Access"). UI: "Access Level".
-var accessLevelValues = []string{"Full Access", "Site Access"}
+// accessLevelValues are the classic access_level enum values for a group.
+// UI: "Access Level".
+//
+// Deliberately narrower than proclassic.GroupAccessLevelValues(), which also
+// generates "Group Access": a group cannot itself be group-scoped. The set is
+// curated; the spellings are the SDK's. Unlike jamfplatform_pro_account, this
+// resource is classic end to end, so these labels are the wire vocabulary and
+// aliasing them ties the schema to the endpoint it actually writes.
+var accessLevelValues = []string{
+	proclassic.GroupAccessLevelFullAccess,
+	proclassic.GroupAccessLevelSiteAccess,
+}
 
 // privilegeSetValues are the classic privilege_set enum values. UI: "Privilege Set".
-var privilegeSetValues = []string{"Administrator", "Auditor", "Enrollment Only", "Custom"}
+var privilegeSetValues = proclassic.GroupPrivilegeSetValues()

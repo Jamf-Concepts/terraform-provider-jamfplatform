@@ -6,6 +6,8 @@ package computer_extension_attribute
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // computerExtensionAttributeTimeoutAttributeTypes defines the timeout attribute
@@ -17,43 +19,45 @@ var computerExtensionAttributeTimeoutAttributeTypes = map[string]attr.Type{
 	"delete": types.StringType,
 }
 
-// Probed enum value sets (live tenant, 2026-06-02). Build OneOf validators from
-// these; do not assume — Jamf rejects out-of-set values with 400.
+// Enum value sets, taken from the SDK's generated helpers so the OneOf
+// validators cannot drift from the API. A live-tenant probe (2026-06-02)
+// agreed with the spec on all four sets, and Jamf rejects an out-of-set value
+// with 400.
+//
+// The plural ComputerExtensionAttributes* vocabularies are the right ones
+// here: the singular ComputerExtensionAttribute* types belong to the computer
+// *inventory* read and differ — DATE_TIME rather than DATE, LDAP rather than
+// DIRECTORY_SERVICE_ATTRIBUTE_MAPPING — so keying on those would put values on
+// the wire that this endpoint refuses.
 var (
 	// validDataTypes is the "Data type" dropdown: String / Integer / Date.
-	validDataTypes = []string{"STRING", "INTEGER", "DATE"}
+	validDataTypes = pro.ComputerExtensionAttributesDataTypeValues()
 
 	// validInputTypes is the "Input type" set. The modern admin UI offers only
 	// TEXT / POPUP / SCRIPT for new computer EAs, but the API accepts and
 	// round-trips DIRECTORY_SERVICE_ATTRIBUTE_MAPPING and existing LDAP-mapped
-	// EAs use it, so it is retained here so such EAs can be imported and managed.
-	validInputTypes = []string{"TEXT", "POPUP", "SCRIPT", "DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"}
+	// EAs use it, so the full generated set is kept so such EAs can be imported
+	// and managed.
+	validInputTypes = pro.ComputerExtensionAttributesInputTypeValues()
 
 	// validManageExistingData is the accepted set for manage_existing_data
 	// (wire-probed: the Pro PUT for a SCRIPT EA requires DELETE or RETAIN).
-	validManageExistingData = []string{"DELETE", "RETAIN"}
-
-	// manageExistingDataDefault is sent when a SCRIPT EA update disables the EA
-	// and the user omitted manage_existing_data — RETAIN preserves
-	// already-collected inventory data, the safe default. See
-	// manageExistingDataFor for when the field is sent at all.
-	manageExistingDataDefault = "RETAIN"
+	validManageExistingData = pro.ComputerExtensionAttributesManageExistingDataValues()
 
 	// validInventoryDisplays is the "Inventory display" dropdown (6 tabs).
-	validInventoryDisplays = []string{
-		"GENERAL",
-		"HARDWARE",
-		"OPERATING_SYSTEM",
-		"USER_AND_LOCATION",
-		"PURCHASING",
-		"EXTENSION_ATTRIBUTES",
-	}
+	validInventoryDisplays = pro.ComputerExtensionAttributesInventoryDisplayTypeValues()
 )
+
+// manageExistingDataDefault is sent when a SCRIPT EA update disables the EA and
+// the user omitted manage_existing_data — RETAIN preserves already-collected
+// inventory data, the safe default. See manageExistingDataFor for when the
+// field is sent at all.
+const manageExistingDataDefault = pro.ComputerExtensionAttributesManageExistingDataRetain
 
 // Input-type discriminator constants.
 const (
-	inputTypeText   = "TEXT"
-	inputTypePopup  = "POPUP"
-	inputTypeScript = "SCRIPT"
-	inputTypeLDAP   = "DIRECTORY_SERVICE_ATTRIBUTE_MAPPING"
+	inputTypeText   = pro.ComputerExtensionAttributesInputTypeText
+	inputTypePopup  = pro.ComputerExtensionAttributesInputTypePopup
+	inputTypeScript = pro.ComputerExtensionAttributesInputTypeScript
+	inputTypeLDAP   = pro.ComputerExtensionAttributesInputTypeDirectoryServiceAttributeMapping
 )

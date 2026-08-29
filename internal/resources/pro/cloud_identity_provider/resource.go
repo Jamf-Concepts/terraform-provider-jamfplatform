@@ -125,7 +125,7 @@ func (r *CloudIdentityProviderResource) Schema(ctx context.Context, req resource
 							"server_url":         defaultedString("**\"Server\"** in the Jamf Pro admin UI. Google Secure LDAP hostname. Defaults to `ldap.google.com`.", "ldap.google.com"),
 							"domain_name":        requiredString("**\"Domain\"** in the Jamf Pro admin UI. The directory domain (e.g. `example.com`)."),
 							"port":               defaultedInt64("**\"Port\"** in the Jamf Pro admin UI. LDAPS port. Defaults to `636`.", 636),
-							"connection_type":    defaultedStringOneOf("**\"Connection type\"** in the Jamf Pro admin UI. Defaults to `LDAPS`.", "LDAPS", []string{"LDAPS"}),
+							"connection_type":    defaultedStringOneOf("**\"Connection type\"** in the Jamf Pro admin UI. Defaults to `LDAPS`.", pro.CloudLdapServerRequestConnectionTypeLdaps, []string{pro.CloudLdapServerRequestConnectionTypeLdaps}),
 							"connection_timeout": defaultedInt64("**\"Connection timeout\"** in the Jamf Pro admin UI, in seconds. Defaults to `15`.", 15),
 							"search_timeout":     defaultedInt64("**\"Search timeout\"** in the Jamf Pro admin UI, in seconds. Defaults to `60`.", 60),
 							"use_wildcards":      defaultedBool("**\"Use wildcards\"** in the Jamf Pro admin UI. Defaults to `true`.", true),

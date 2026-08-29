@@ -14,7 +14,7 @@ import (
 
 // appTypeNone is the server's app_type value for a client with no active
 // credentials (never generated, or revoked by disabling the client).
-const appTypeNone = "NONE"
+const appTypeNone = pro.ApiIntegrationResponseAppTypeNone
 
 // idString renders the integration's int ID as the canonical string Terraform
 // ID / import string.

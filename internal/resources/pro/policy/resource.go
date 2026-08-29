@@ -179,7 +179,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 								Computed:            true,
 								Validators: []validator.Set{
 									setvalidator.ValueStringsAre(
-										stringvalidator.OneOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"),
+										stringvalidator.OneOf(proclassic.PolicyGeneralDateTimeLimitationsNoExecuteOnDayValues()...),
 									),
 								},
 							},
@@ -407,7 +407,7 @@ func (r *PolicyResource) Schema(ctx context.Context, req resource.SchemaRequest,
 							Computed:            true,
 							PlanModifiers:       []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 							Validators: []validator.String{
-								stringvalidator.OneOf("Create", "Reset", "Delete", "DisableFileVault"),
+								stringvalidator.OneOf(proclassic.PolicyAccountMaintenanceAccountsAccountItemActionValues()...),
 							},
 						},
 						"username": optComputedString("Account username."),

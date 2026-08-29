@@ -43,7 +43,7 @@ const minJamfProVersion = ""
 // selfservice = UI "Make Available in Self Service"; prompt = UI "Install
 // Automatically". Invalid values coerce to prompt server-side, so the provider
 // validates to the two to surface the choice explicitly.
-var distributionMethods = []string{"selfservice", "prompt"}
+var distributionMethods = proclassic.PatchPolicyGeneralDistributionMethodValues()
 
 // PatchPolicyResource implements the Terraform resource for Jamf Pro patch
 // policies. No directory-service preflight is wired: patch-policy scope exposes

@@ -134,8 +134,14 @@ Each of these has been paid for late at least once. The right-hand column is wha
   can carry the generic codes while carrying none of your construct's, so "the SDK has none of
   these" is a claim to verify per code — it has been wrong twice, and a comment asserting it
   hid the defect both times. A deliberate subset keeps its curated list but uses SDK constants
-  as the elements. Pin it with `TestErrorCodeLiteralsAreNotInTheSDKEnum` (copy from
-  `device_group/mappings_test.go`) rather than trusting a reviewer's eye.
+  as the elements. Pin it with an `enum_literals_test.go` calling
+  `internal/common/enumguard` — it parses the package's own `const`/`var`/`:=` declarations and
+  inlined `OneOf` sets, so a `var validFoos = []string{…}` cannot slip past. Copy
+  `internal/resources/pro/ebook/enum_literals_test.go`, or
+  `pro/macos_configuration_profile/enum_literals_test.go` if you need exemptions. `Absent` means
+  the SDK carries no constant (checked against `Covered`, so a later SDK release that adds it
+  fails); `Ignore` means a different vocabulary shares the spelling (not checked). Getting that
+  pair the wrong way round reports a promotion that never happened.
   ([STYLE_GUIDE §Enum values and error codes come from the SDK](../../../STYLE_GUIDE.md#enum-values-and-error-codes-come-from-the-sdk-not-from-literals))
 - **Don't** ship `*[]any` or other under-specified SDK types.
 - **Don't** copy a wire-shape assumption from another construct — even in the same namespace.

@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // cdnTypeRequiredFields maps each non-JCDS cdn_type to the attributes the Jamf
@@ -27,9 +29,9 @@ import (
 // JAMF_CLOUD requires no credential fields (only the optional `master` toggle),
 // so it is absent from the map.
 var cdnTypeRequiredFields = map[string][]string{
-	"RACKSPACE_CLOUD_FILES": {"username", "password"},
-	"AMAZON_S3":             {"username", "password"},
-	"AKAMAI":                {"username", "password", "upload_url", "directory", "download_url"},
+	pro.CloudDistributionPointCdnTypeRackspaceCloudFiles: {"username", "password"},
+	pro.CloudDistributionPointCdnTypeAmazonS3:            {"username", "password"},
+	pro.CloudDistributionPointCdnTypeAkamai:              {"username", "password", "upload_url", "directory", "download_url"},
 }
 
 // cdnTypeRequiredFieldsConfigValidator enforces the per-cdn_type required-field
@@ -124,7 +126,7 @@ func validateCdnTypeRequiredFields(data CloudDistributionPointResourceModel) dia
 	// AWS CloudFront signed-URL private key: required when cdn_type is AMAZON_S3
 	// AND signed URLs are enabled. Defers on unknown require_signed_urls or
 	// unknown private_key.
-	if cdnType == "AMAZON_S3" && !data.RequireSignedURLs.IsUnknown() {
+	if cdnType == pro.CloudDistributionPointCdnTypeAmazonS3 && !data.RequireSignedURLs.IsUnknown() {
 		signedURLs := !data.RequireSignedURLs.IsNull() && data.RequireSignedURLs.ValueBool()
 		if signedURLs && !data.PrivateKey.IsUnknown() && (data.PrivateKey.IsNull() || data.PrivateKey.ValueString() == "") {
 			diags.Append(diag.NewAttributeErrorDiagnostic(
