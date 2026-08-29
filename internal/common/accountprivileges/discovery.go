@@ -12,7 +12,9 @@ import (
 
 // administratorPrivilegeSet is the privilege_set label whose grid enumerates
 // the full set of privileges grantable on the tenant — the catalog closure.
-const administratorPrivilegeSet = "Administrator"
+// Accounts and groups spell it identically; TestPrivilegeSetVocabulariesAgree
+// pins that, since one constant serves both lookups.
+const administratorPrivilegeSet = proclassic.AccountPrivilegeSetAdministrator
 
 // Discoverer is the minimal classic client surface needed to discover the
 // tenant's privilege catalog. *proclassic.Client satisfies it; tests supply a
