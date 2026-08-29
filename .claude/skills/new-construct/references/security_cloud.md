@@ -28,12 +28,32 @@ The 409 is a Terraform destroy-ordering trap: removing the reference *and* destr
 target in one apply lets Terraform sequence the destroy first. Say so, because the server
 will not.
 
-## Build every enum from the SDK's own helper
+## Build every enum from the SDK's own helper — error codes included
 
 Because an enum violation is unattributed, validate at plan time — and build **both** the
 `OneOf` validator and the documented value list from the SDK's generated `*Values()` helper,
-so they cannot drift from each other or from the API. Where the SDK documents a set but
-generates no helper, restate it in `mappings.go` and say why in a comment.
+so they cannot drift from each other or from the API.
+
+**The same rule governs the error codes in `mappings.go`,** and this is the half that gets
+missed. Alias the SDK constant — `codeNotEntitled = securitycloud.ApiErrorItemCodeNotEntitled`
+— and restate a literal only for a code the SDK genuinely lacks.
+
+`ApiErrorItemCode` is the DNS namespace's error schema, so it carries no construct-specific
+code (`GROUP_ALREADY_EXISTS`, `RESERVED_GROUP_NAME`, …) but **does** carry the generic
+`INVALID_FIELD` and `NOT_ENTITLED`. A package that restates those alongside its own codes is
+wrong in a way its own "the SDK carries none of these" comment conceals. That shipped twice.
+Check each code individually against `ApiErrorItemCodeValues()`; do not reason about the set.
+
+A deliberate subset stays hand-curated — `EmailMappingTypeValues()` is a superset spanning
+every UEM vendor, so `uem_connect` narrows it per vendor on purpose — but its elements are
+still SDK constants, not literals.
+
+**Pin it with a test rather than trusting review.** Copy
+`device_group/mappings_test.go`'s `TestErrorCodeLiteralsAreNotInTheSDKEnum`: it parses the
+package's own consts and fails on any string literal the SDK already provides, so it catches
+both a new mistake and a literal a future SDK release promotes into the enum.
+
+Full rule, provider-wide: STYLE_GUIDE §Enum values and error codes come from the SDK.
 
 ## Single-element arrays are scalars
 
