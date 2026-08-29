@@ -212,12 +212,8 @@ func (d *UEMConnectDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		}
 		return
 	}
-	if page == nil || len(page.Results) == 0 {
-		resp.Diagnostics.AddError(
-			"No UEM Connect integration on this tenant",
-			"Jamf Security Cloud reports no UEM Connect integration for this tenant. Set one up before reading it, "+
-				"with jamfplatform_security_cloud_uem_connect or in the Jamf Security Cloud admin UI.",
-		)
+	resp.Diagnostics.Append(appendMissingIntegrationDiagnostics(page)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 

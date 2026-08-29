@@ -131,12 +131,24 @@ func (d *DNSZoneDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
+	if !data.ID.IsNull() && data.ID.ValueString() == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"DNS zone ID is empty",
+			"`id` is set to an empty string, which ExactlyOneOf still counts as configured, so `name` cannot "+
+				"be used instead. This usually means a variable or a reference resolved to \"\" — set `id` to "+
+				"an ID, or remove it and set `name`.",
+		)
+		return
+	}
+
 	var zone *securitycloud.Zone
 	var err error
-	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		zone, err = d.client.GetDnsZoneV1(readCtx, data.ID.ValueString())
-	} else {
+	byName := data.ID.IsNull()
+	if byName {
 		zone, err = d.client.ResolveDnsZoneV1ByName(readCtx, data.Name.ValueString())
+	} else {
+		zone, err = d.client.GetDnsZoneV1(readCtx, data.ID.ValueString())
 	}
 	if err != nil {
 		if ambiguous, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
@@ -145,6 +157,16 @@ func (d *DNSZoneDataSource) Read(ctx context.Context, req datasource.ReadRequest
 				"Jamf Security Cloud does not require zone names to be unique, and more than one zone is named "+
 					data.Name.ValueString()+". Look the zone up by `id` instead. Matching zone IDs: "+
 					strings.Join(ambiguous.Matches, ", "),
+			)
+			return
+		}
+		if byName && helpers.IsNotFoundError(err) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Unable to find Jamf Security Cloud DNS zone",
+				"No DNS zone on this tenant is named \""+data.Name.ValueString()+"\". Names are matched "+
+					"exactly, so one differing only in capitalisation or surrounding whitespace will not be "+
+					"found. Use the `jamfplatform_security_cloud_dns_zones` data source to list what exists.",
 			)
 			return
 		}
