@@ -3,6 +3,8 @@
 
 package computer_prestage_enrollment
 
+import "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
+
 // skipSetupItems wire-key ⇔ snake_case mapping is hand-encoded inside
 // buildSkipSetupItemsMap (input_builders.go) and flattenSkipSetupItems
 // (state_builders.go). The 25-row table lives there rather than as a map
@@ -10,19 +12,20 @@ package computer_prestage_enrollment
 // runtime lookup, and so static analysis catches a missing key at compile
 // time when a field is renamed.
 
-// Enum value sets (per OpenAPI spec + live wire-probe). Kept in one place so
-// schema validators and tests share the source of truth.
+// Enum value sets, taken from the SDK's generated helpers where they exist so
+// the schema validators cannot drift from the API. Kept in one place so the
+// validators and the tests share the source of truth.
+//
+// prefillTypeValues is the exception and stays a literal pair: the spec
+// documents the vocabulary in prose only — pro/types.go says "Values accepted
+// are only CUSTOM and DEVICE_OWNER" above the PrefillType field — and generates
+// no enum for it, so there is nothing to alias. Asserted per value in
+// TestEnumLiteralsComeFromTheSDK.
 var (
-	recoveryLockPasswordTypeValues       = []string{"MANUAL", "RANDOM"}
-	prestageMinimumOsTargetVersionValues = []string{
-		"NO_ENFORCEMENT",
-		"MINIMUM_OS_LATEST_VERSION",
-		"MINIMUM_OS_LATEST_MAJOR_VERSION",
-		"MINIMUM_OS_LATEST_MINOR_VERSION",
-		"MINIMUM_OS_SPECIFIC_VERSION",
-	}
-	userAccountTypeValues = []string{"ADMINISTRATOR", "STANDARD", "SKIP"}
-	prefillTypeValues     = []string{"CUSTOM", "DEVICE_OWNER"}
+	recoveryLockPasswordTypeValues       = pro.ComputerPrestageV3RecoveryLockPasswordTypeValues()
+	prestageMinimumOsTargetVersionValues = pro.ComputerPrestageV3PrestageMinimumOsTargetVersionTypeValues()
+	userAccountTypeValues                = pro.AccountSettingsRequestUserAccountTypeValues()
+	prefillTypeValues                    = []string{"CUSTOM", "DEVICE_OWNER"}
 )
 
 // Sentinel constants for nested block IDs / "none" values.

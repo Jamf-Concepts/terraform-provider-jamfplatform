@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // platformSsoBundleConfigured reports whether platform_sso_app_bundle_id holds a
@@ -106,7 +108,7 @@ func (recoveryLockPasswordTypeRandomConflictsWithPasswordValidator) ValidateStri
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
-	if req.ConfigValue.ValueString() != "RANDOM" {
+	if req.ConfigValue.ValueString() != pro.ComputerPrestageV3RecoveryLockPasswordTypeRandom {
 		return
 	}
 	companion := path.Root("recovery_lock_password")
@@ -178,7 +180,7 @@ func (recoveryLockPasswordRequiresManualAndEnabledValidator) ValidateString(ctx 
 	if pwdType.IsNull() || pwdType.IsUnknown() {
 		return
 	}
-	if pwdType.ValueString() != "MANUAL" {
+	if pwdType.ValueString() != pro.ComputerPrestageV3RecoveryLockPasswordTypeManual {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("recovery_lock_password"),
 			`recovery_lock_password requires recovery_lock_password_type = "MANUAL"`,
