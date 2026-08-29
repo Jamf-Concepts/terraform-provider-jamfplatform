@@ -79,10 +79,19 @@ type Params struct {
 	// enum.
 	Absent map[string]string
 
-	// Ignore lists literal values that are not enum members at all —
-	// attribute names, map keys, sentinels, prose — which happen to collide
-	// with an unrelated SDK vocabulary. Each entry needs a reason for the
-	// same reason Absent does.
+	// Ignore lists literal values that are not members of any vocabulary in
+	// Covered, even though they spell one. Two shapes: something that is not
+	// an enum value at all — an attribute name, a map key, a sentinel, an
+	// English noun — and a genuine member of a *different* vocabulary that
+	// the SDK does not generate. Each entry needs a reason for the same
+	// reason Absent does.
+	//
+	// The distinction from Absent matters: Absent asserts the SDK carries no
+	// constant for the value and is therefore checked against Covered, so an
+	// SDK release that starts generating it fails. Ignore asserts the value
+	// belongs to a different set, which a foreign vocabulary gaining or
+	// losing the spelling says nothing about, so it is not checked. Putting a
+	// cross-vocabulary collision in Absent reports a spurious promotion.
 	Ignore map[string]string
 }
 
@@ -95,6 +104,10 @@ type Findings struct {
 	Promoted []string
 	// Stale are Absent or Ignore entries no literal in the package uses.
 	Stale []string
+	// Vacuous is set when every value in Covered is exempted, so no literal
+	// could ever be reported. A guard that cannot fail is worse than none —
+	// it reads as coverage while asserting nothing — so this is a failure.
+	Vacuous string
 	// Examined is how many string literals were parsed.
 	Examined int
 }
@@ -154,6 +167,22 @@ func Check(p Params) (Findings, error) {
 					"%q is exempted but no literal in the package uses it — drop the exemption", v,
 				))
 			}
+		}
+	}
+
+	if len(covered) > 0 {
+		live := 0
+		for v := range covered {
+			_, excused := p.Absent[v]
+			_, ignored := p.Ignore[v]
+			if !excused && !ignored {
+				live++
+			}
+		}
+		if live == 0 {
+			out.Vacuous = "every value in Covered is exempted, so this guard cannot fail — " +
+				"name a vocabulary the package could actually restate, or drop the test and " +
+				"record the gap instead"
 		}
 	}
 
@@ -262,10 +291,13 @@ func Union(sets ...[]string) []string {
 // Problems returns every failure in one slice, so a caller can report them
 // without having to know which of the three kinds each one is.
 func (f Findings) Problems() []string {
-	out := make([]string, 0, len(f.Restated)+len(f.Promoted)+len(f.Stale))
+	out := make([]string, 0, len(f.Restated)+len(f.Promoted)+len(f.Stale)+1)
 	out = append(out, f.Restated...)
 	out = append(out, f.Promoted...)
 	out = append(out, f.Stale...)
+	if f.Vacuous != "" {
+		out = append(out, f.Vacuous)
+	}
 	return out
 }
 

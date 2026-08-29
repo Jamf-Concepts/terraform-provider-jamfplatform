@@ -242,3 +242,44 @@ func describe(v string) string {
 		t.Errorf("Restated = %v, want none", got.Restated)
 	}
 }
+
+// TestCheckReportsVacuousGuard is the meta-check. Exempting every value in
+// Covered leaves a test that passes on any input, which reads as coverage while
+// asserting nothing — the exact failure the mutation pass is meant to expose,
+// caught structurally instead.
+func TestCheckReportsVacuousGuard(t *testing.T) {
+	dir := write(t, "package p\n\nconst codeThing = \"COVERED\"\n")
+
+	got, err := Check(Params{
+		Dir:     dir,
+		Covered: []string{"COVERED"},
+		Ignore:  map[string]string{"COVERED": "belongs to another vocabulary"},
+	})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if got.Vacuous == "" {
+		t.Fatal("Vacuous is empty, want a finding")
+	}
+	if len(got.Problems()) != 1 {
+		t.Errorf("Problems = %v, want just the vacuity finding", got.Problems())
+	}
+}
+
+// TestCheckAllowsPartialExemption is the counterpart: a guard with some values
+// exempted and some live is doing its job.
+func TestCheckAllowsPartialExemption(t *testing.T) {
+	dir := write(t, "package p\n\nconst codeThing = \"OTHER\"\n")
+
+	got, err := Check(Params{
+		Dir:     dir,
+		Covered: []string{"COVERED", "OTHER"},
+		Absent:  map[string]string{"OTHER": "not generated"},
+	})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if got.Vacuous != "" {
+		t.Errorf("Vacuous = %q, want empty", got.Vacuous)
+	}
+}
