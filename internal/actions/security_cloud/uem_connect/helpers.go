@@ -2,16 +2,27 @@
 // SPDX-License-Identifier: MPL-2.0
 
 // Package uemconnectactions implements the fire-once Jamf Security Cloud UEM
-// Connect actions: jamfplatform_security_cloud_uem_connect_synchronize, the
-// admin UI's *Actions → Synchronize*.
+// Connect actions:
 //
-// Nothing else on that menu belongs here. "Disable" is the resource's `enabled`
-// attribute and "Delete" is destroying the resource — both are state, and an
-// action for either would be a second way to change something Terraform already
-// manages. Cancelling a running sync (CancelUemConnectorSyncV1) is left out for a
-// different reason: it needs the transaction ID of the run to cancel, which the
-// trigger does not return, and Terraform has no shape for undoing an action that
-// has already been invoked.
+//   - jamfplatform_security_cloud_uem_connect_synchronize — the admin UI's
+//     *Actions → Synchronize* on a UEM Connect integration.
+//   - jamfplatform_security_cloud_activation_profile_deploy — the *Deploy to Jamf
+//     Pro* button under *UEM actions* on an activation profile's deployment page.
+//
+// Nothing else on the integration's Actions menu belongs here. "Disable" is the
+// resource's `enabled` attribute and "Delete" is destroying the resource — both are
+// state, and an action for either would be a second way to change something
+// Terraform already manages. Cancelling a running sync
+// (CancelUemConnectorSyncV1) is left out for a different reason: it needs the
+// transaction ID of the run to cancel, which the trigger does not return, and
+// Terraform has no shape for undoing an action that has already been invoked.
+//
+// The deploy is an action rather than a resource for a reason the wire settled
+// rather than taste. Its scoping field only ever adds: deploying group 3 onto a
+// profile scoped to groups 1 and 2 leaves it scoped to 1, 2 and 3, an empty list
+// changes nothing, and omitting the field changes nothing either. There is no
+// route that removes a deployment, and no route that reads or lists activation
+// profiles. A resource would promise convergence none of that can deliver.
 package uemconnectactions
 
 import (
@@ -24,17 +35,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
-)
-
-// Machine-readable error codes this action translates. Wire-probed against
-// production EU on 2026-08-28.
-//
-// NOT_ENTITLED comes from the SDK's generated enum; CONNECTOR_DISABLED is a
-// literal because the UEM Connect spec declares no error-code enum of its own.
-// The resource package makes the same split for the same reason.
-const (
-	codeConnectorDisabled = "CONNECTOR_DISABLED"
-	codeNotEntitled       = securitycloud.ApiErrorItemCodeNotEntitled
 )
 
 // uemConnectAction shares Configure logic across the UEM Connect actions.
@@ -131,18 +131,27 @@ func appendInvokeDiagnostics(diags *diag.Diagnostics, err error) bool {
 					"the Jamf Security Cloud admin UI. Reported by Jamf Security Cloud: "+detail.Description,
 			)
 		case codeNotEntitled:
-			diags.AddError(
-				"Tenant not entitled to Jamf Security Cloud UEM Connect",
-				"The credentials authenticated successfully but this tenant does not have the UEM Connect surface "+
-					"enabled. Contact Jamf to have it provisioned. Reported by Jamf Security Cloud: "+
-					detail.Description,
-			)
+			addNotEntitled(diags, detail.Description)
 		default:
 			continue
 		}
 		matched = true
 	}
 	return matched
+}
+
+// addNotEntitled reports a tenant that authenticated but does not hold the UEM
+// Connect surface.
+//
+// Shared by both actions because entitlement is not authentication: a perfectly
+// valid integration is still refused with NOT_ENTITLED, and the raw error says
+// nothing about what to do next.
+func addNotEntitled(diags *diag.Diagnostics, description string) {
+	diags.AddError(
+		"Tenant not entitled to Jamf Security Cloud UEM Connect",
+		"The credentials authenticated successfully but this tenant does not have the UEM Connect surface "+
+			"enabled. Contact Jamf to have it provisioned. Reported by Jamf Security Cloud: "+description,
+	)
 }
 
 // isNotFound reports whether an error is Jamf Security Cloud saying the named
