@@ -375,7 +375,7 @@ func (s tenantSource) Members(ctx context.Context, platformID string) ([]string,
 // inventory filter matches. Only the general section is requested, since the
 // management identifier is the single field needed.
 func (s tenantSource) ComputerManagementIDs(ctx context.Context, filter string) ([]string, error) {
-	rows, err := s.pro.ListComputersInventoryV4(ctx, []string{"GENERAL"}, nil, filter)
+	rows, err := s.pro.ListComputersInventoryV4(ctx, []string{pro.ComputerSectionV4General}, nil, filter)
 	if err != nil {
 		return nil, fmt.Errorf("reading computers matching the scope: %w", err)
 	}
@@ -394,7 +394,7 @@ func (s tenantSource) ComputerManagementIDs(ctx context.Context, filter string) 
 // The response is a union discriminated by operating system, and only one variant
 // is populated per record — so the identifier has to be read from whichever it is.
 func (s tenantSource) MobileManagementIDs(ctx context.Context, filter string) ([]string, error) {
-	rows, err := s.pro.ListMobileDevicesDetailV2(ctx, []string{"GENERAL"}, nil, filter)
+	rows, err := s.pro.ListMobileDevicesDetailV2(ctx, []string{pro.MobileDeviceSectionGeneral}, nil, filter)
 	if err != nil {
 		return nil, fmt.Errorf("reading mobile devices matching the scope: %w", err)
 	}
@@ -458,7 +458,7 @@ func (s tenantSource) Groups(ctx context.Context) ([]Group, error) {
 	out := make([]Group, 0, len(rows))
 	for _, r := range rows {
 		dt := DeviceTypeComputer
-		if DeviceType(r.GroupType) == DeviceTypeMobile {
+		if r.GroupType == pro.GroupDtoV1GroupTypeMobile {
 			dt = DeviceTypeMobile
 		}
 		out = append(out, Group{
