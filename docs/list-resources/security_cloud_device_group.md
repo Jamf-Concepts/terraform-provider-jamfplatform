@@ -3,7 +3,7 @@
 page_title: "jamfplatform_security_cloud_device_group List Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Lists every Jamf Security Cloud device group on the tenant that Terraform can manage. Jamf Security Cloud exposes no filter parameters for groups, so this list resource takes no filter configuration. The built-in group is not listed: it has no identifier, so it cannot be imported or managed. Use the jamfplatform_security_cloud_device_groups data source to see it.
+  Lists every Jamf Security Cloud device group on the tenant that Terraform can manage. Jamf Security Cloud exposes no filter parameters for groups, so this list resource takes no filter configuration. Results are sorted by name by the provider. The built-in group is not listed: it has no identifier, so it cannot be imported or managed. Use the jamfplatform_security_cloud_device_groups data source to see it.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_security_cloud_device_group (List Resource)
 
-Lists every Jamf Security Cloud device group on the tenant that Terraform can manage. Jamf Security Cloud exposes no filter parameters for groups, so this list resource takes no filter configuration. The built-in group is not listed: it has no identifier, so it cannot be imported or managed. Use the jamfplatform_security_cloud_device_groups data source to see it.
+Lists every Jamf Security Cloud device group on the tenant that Terraform can manage. Jamf Security Cloud exposes no filter parameters for groups, so this list resource takes no filter configuration. Results are sorted by name by the provider. The built-in group is not listed: it has no identifier, so it cannot be imported or managed. Use the jamfplatform_security_cloud_device_groups data source to see it.
 
 **Required Jamf privileges**
 

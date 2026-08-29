@@ -228,3 +228,71 @@ func TestGroupsNamedExactly_NilList(t *testing.T) {
 		t.Errorf("got %d matches from a nil list, want 0", len(got))
 	}
 }
+
+// TestSortGroupsByName pins the order the plural data source and the list resource
+// document. The endpoint accepts no sort parameter, so this is the provider's
+// guarantee, not the server's — an unsorted input must come back sorted.
+func TestSortGroupsByName(t *testing.T) {
+	items := []securitycloud.GroupListItem{
+		{ID: "c", Name: "Field Staff"},
+		{ID: "", Name: defaultGroupName},
+		{ID: "a", Name: "Executives"},
+		{ID: "b", Name: "Contractors"},
+	}
+
+	got := sortGroupsByName(items)
+
+	want := []string{"Contractors", defaultGroupName, "Executives", "Field Staff"}
+	if len(got) != len(want) {
+		t.Fatalf("got %d items, want %d", len(got), len(want))
+	}
+	for i, name := range want {
+		if got[i].Name != name {
+			t.Errorf("sorted[%d].Name = %q, want %q", i, got[i].Name, name)
+		}
+	}
+}
+
+// TestSortGroupsByName_DoesNotMutateInput guards the callers: the plural data
+// source and the list resource both read from the same response, and the list
+// resource layers manageableGroups on top. A sort in place would make one
+// construct's behaviour depend on whether the other ran first.
+func TestSortGroupsByName_DoesNotMutateInput(t *testing.T) {
+	items := []securitycloud.GroupListItem{
+		{ID: "b", Name: "Bravo"},
+		{ID: "a", Name: "Alpha"},
+	}
+
+	sortGroupsByName(items)
+
+	if items[0].Name != "Bravo" {
+		t.Errorf("input was reordered: items[0].Name = %q, want %q", items[0].Name, "Bravo")
+	}
+}
+
+// TestSortGroupsByName_IsCaseSensitive pins that the comparison does not fold
+// case, for the same reason groupsNamedExactly does not: uniqueness on this API is
+// case-sensitive, so "example" and "Example" are different groups and must have a
+// stable order relative to each other rather than an arbitrary one.
+func TestSortGroupsByName_IsCaseSensitive(t *testing.T) {
+	items := []securitycloud.GroupListItem{
+		{ID: "a", Name: "example"},
+		{ID: "b", Name: "Example"},
+	}
+
+	got := sortGroupsByName(items)
+
+	if got[0].Name != "Example" {
+		t.Errorf("sorted[0].Name = %q, want %q — uppercase sorts first bytewise", got[0].Name, "Example")
+	}
+}
+
+// TestSortGroupsByName_Empty guards the empty and nil inputs the callers can hand it.
+func TestSortGroupsByName_Empty(t *testing.T) {
+	if got := sortGroupsByName(nil); len(got) != 0 {
+		t.Errorf("nil input produced %d items, want 0", len(got))
+	}
+	if got := sortGroupsByName([]securitycloud.GroupListItem{}); len(got) != 0 {
+		t.Errorf("empty input produced %d items, want 0", len(got))
+	}
+}

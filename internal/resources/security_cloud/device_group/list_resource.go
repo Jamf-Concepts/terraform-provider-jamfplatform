@@ -32,8 +32,9 @@ func NewDeviceGroupListResource() list.ListResource {
 // DeviceGroupListResource implements Terraform query list support for Jamf
 // Security Cloud device groups. The group list endpoint accepts no query
 // parameters at all — not even a sort expression — so there is no filter block
-// and no sort to pin: the resource returns every manageable group on the tenant
-// in the server's own name order.
+// and the order is imposed by the provider rather than requested from the server:
+// the resource returns every manageable group on the tenant sorted by name. See
+// sortGroupsByName for why an observed server order is not relied on.
 type DeviceGroupListResource struct {
 	client *securitycloud.Client
 }
@@ -59,8 +60,9 @@ func (r *DeviceGroupListResource) ListResourceConfigSchema(_ context.Context, _ 
 	resp.Schema = listschema.Schema{
 		Description: "Lists every Jamf Security Cloud device group on the tenant that Terraform can manage. Jamf " +
 			"Security Cloud exposes no filter parameters for groups, so this list resource takes no filter " +
-			"configuration. The built-in group is not listed: it has no identifier, so it cannot be imported or " +
-			"managed. Use the jamfplatform_security_cloud_device_groups data source to see it." + listResourcePrivileges,
+			"configuration. Results are sorted by name by the provider. The built-in group is not listed: " +
+			"it has no identifier, so it cannot be imported or managed. Use the " +
+			"jamfplatform_security_cloud_device_groups data source to see it." + listResourcePrivileges,
 		Attributes: map[string]listschema.Attribute{},
 	}
 }
@@ -96,7 +98,7 @@ func (r *DeviceGroupListResource) List(ctx context.Context, req list.ListRequest
 		return
 	}
 
-	manageable := manageableGroups(groups.Groups)
+	manageable := manageableGroups(sortGroupsByName(groups.Groups))
 
 	maxResults := req.Limit
 	if maxResults <= 0 || maxResults > int64(len(manageable)) {

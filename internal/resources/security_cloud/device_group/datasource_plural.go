@@ -63,8 +63,10 @@ func (d *DeviceGroupsDataSource) Schema(ctx context.Context, _ datasource.Schema
 				Computed:            true,
 			},
 			"device_groups": schema.ListNestedAttribute{
-				MarkdownDescription: "The device groups on the tenant, ordered by name.",
-				Computed:            true,
+				MarkdownDescription: "The device groups on the tenant, sorted by name by the provider. Jamf " +
+					"Security Cloud exposes no sort parameter for groups, so the order is the provider's " +
+					"guarantee rather than the server's.",
+				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
@@ -133,8 +135,9 @@ func (d *DeviceGroupsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 
 	data.ID = types.StringValue(pluralDataSourceID)
-	data.DeviceGroups = make([]DeviceGroupsDataSourceResultModel, 0, len(groups.Groups))
-	for _, g := range groups.Groups {
+	sorted := sortGroupsByName(groups.Groups)
+	data.DeviceGroups = make([]DeviceGroupsDataSourceResultModel, 0, len(sorted))
+	for _, g := range sorted {
 		data.DeviceGroups = append(data.DeviceGroups, buildDeviceGroupsResultModel(g))
 	}
 

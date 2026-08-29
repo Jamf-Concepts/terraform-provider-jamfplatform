@@ -123,6 +123,14 @@ func (r *DeviceGroupResource) IdentitySchema(_ context.Context, _ resource.Ident
 // STYLE_GUIDE §Full-replace endpoints, whose Optional+Computed default applies to
 // optional scalars and explicitly carves out API-required fields. With one
 // required field there is no sparse body to model either.
+//
+// The absent length validator is deliberate and contradicts the bundled spec, so
+// do not "correct" it on an SDK bump. `securitycloud_device_groups_api.json`
+// declares maxLength 255 on all four name schemas; the server does not enforce it.
+// Wire-probed 2026-08-29: names of 255, 256, 1024 and 65536 characters were each
+// accepted with 201 and read back byte-intact. Wire truth beats the spec here, and
+// a LengthAtMost(255) would refuse configs the API stores happily. Unlike
+// dns_zone, whose 1-to-100 limit the server does enforce.
 func (r *DeviceGroupResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a Jamf Security Cloud device group. Device groups are how access is assigned: " +

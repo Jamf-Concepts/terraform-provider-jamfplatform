@@ -4,6 +4,9 @@
 package device_group
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -95,4 +98,28 @@ func groupsNamedExactly(items []securitycloud.GroupListItem, name string) []secu
 		}
 	}
 	return matches
+}
+
+// sortGroupsByName returns items ordered by name, so the plural data source and
+// the list resource can promise an order instead of describing one they observed.
+//
+// The group list endpoint accepts no parameters at all — not even a sort, which is
+// what dns_zone passes to pin its own order — so the server's ordering is
+// undocumented and unowned. It has been observed to come back name-ascending, but
+// an observation is not a contract, and `device_groups[0].id` is a reasonable thing
+// to write against a documented order: were the server to switch to insertion
+// order, creating a group in the admin UI would silently retarget that reference
+// with no diff to warn on. Sorting here makes the documented behaviour the
+// provider's own guarantee rather than the server's habit.
+//
+// The comparison is bytewise for the same reason the name lookup is: uniqueness on
+// this API is case-sensitive, so folding case would order two genuinely different
+// groups arbitrarily against each other. The sort is stable, so the built-in group
+// keeps its position among any same-named entries rather than moving between runs.
+func sortGroupsByName(items []securitycloud.GroupListItem) []securitycloud.GroupListItem {
+	sorted := slices.Clone(items)
+	slices.SortStableFunc(sorted, func(a, b securitycloud.GroupListItem) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return sorted
 }

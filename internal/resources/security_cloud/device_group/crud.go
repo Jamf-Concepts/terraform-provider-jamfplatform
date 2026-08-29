@@ -196,9 +196,15 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 // device-groups:update privilege that makes the v1 PUT return 200. A control probe
 // on a deliberately bogus path returns the identical body, which is what
 // identifies it as an unrouted endpoint rather than a privilege gap; PATCH is not
-// served at either version either. Raised upstream. Revisit when the v2 route
-// starts answering — the only change needed is the call and dropping this
-// suppression, since the request and response shapes are already identical.
+// served at either version either. Raised upstream.
+//
+// Revisit when the v2 route starts answering, but note the swap is not call-for-call:
+// the request body is identical (*UpdateGroupRequest both sides), yet v1 answers 200
+// with the stored object and v2 answers 204 with none, so the SDK generates
+// `UpdateDeviceGroupV2(ctx, id, req) error` against v1's `(*Group, error)`. The call
+// site below discards the object already, so the change is to
+// `if err := r.client.UpdateDeviceGroupV2(...)` plus dropping this suppression — the
+// arity differs and the current line will not compile as-is.
 func (r *DeviceGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan DeviceGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)

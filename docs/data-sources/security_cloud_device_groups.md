@@ -53,7 +53,7 @@ output "group_ids_by_name" {
 
 ### Read-Only
 
-- `device_groups` (Attributes List) The device groups on the tenant, ordered by name. (see [below for nested schema](#nestedatt--device_groups))
+- `device_groups` (Attributes List) The device groups on the tenant, sorted by name by the provider. Jamf Security Cloud exposes no sort parameter for groups, so the order is the provider's guarantee rather than the server's. (see [below for nested schema](#nestedatt--device_groups))
 - `id` (String) Fixed identifier for this data source.
 
 <a id="nestedatt--timeouts"></a>

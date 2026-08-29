@@ -4,8 +4,9 @@
 package device_group
 
 import (
-	"os"
-	"regexp"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"sort"
 	"strings"
 	"testing"
@@ -15,14 +16,15 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/permissions"
 )
 
-// clientCallRe matches SDK client method calls of the form
-// <receiver>.client.<Method>( — covering r.client / d.client receivers used by
-// the resource, data sources, and list resource in this package.
-var clientCallRe = regexp.MustCompile(`\bclient\.([A-Za-z0-9]+)\(`)
-
 // calledMethods returns the distinct SDK client method names invoked in the given
 // source file, restricted to methods known to the SDK privilege registry so
 // unrelated identifiers (helpers, framework calls) are ignored.
+//
+// The scan walks the parsed AST rather than matching `client.<Method>(` textually,
+// because a textual match also fires inside comments and string literals. The doc
+// comment above Update names `UpdateDeviceGroupV2` while explaining why that method
+// is deliberately NOT called, and a textual scan read that prose as a call site —
+// reporting an undeclared method the code does not use. Only a CallExpr counts.
 //
 // Sibling packages carry a syntheticMethodBacking map here, mapping a
 // Resolve<X>ByName / Apply<X> helper onto the generated method whose privileges it
@@ -33,17 +35,30 @@ var clientCallRe = regexp.MustCompile(`\bclient\.([A-Za-z0-9]+)\(`)
 // ListDeviceGroupsV2 as uncalled.
 func calledMethods(t *testing.T, filename string) map[string]bool {
 	t.Helper()
-	src, err := os.ReadFile(filename)
+	file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.SkipObjectResolution)
 	if err != nil {
-		t.Fatalf("reading %s: %v", filename, err)
+		t.Fatalf("parsing %s: %v", filename, err)
 	}
+
 	called := map[string]bool{}
-	for _, m := range clientCallRe.FindAllStringSubmatch(string(src), -1) {
-		name := m[1]
-		if _, ok := securitycloud.Privileges[name]; ok {
-			called[name] = true
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
 		}
-	}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		receiver, ok := sel.X.(*ast.SelectorExpr)
+		if !ok || receiver.Sel.Name != "client" {
+			return true
+		}
+		if _, ok := securitycloud.Privileges[sel.Sel.Name]; ok {
+			called[sel.Sel.Name] = true
+		}
+		return true
+	})
 	return called
 }
 

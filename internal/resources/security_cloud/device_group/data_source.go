@@ -98,6 +98,12 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 // Refusing it matters because a group with no ID cannot be referenced by anything:
 // handing back an empty string would produce a config that plans and then fails
 // against the API.
+//
+// The empty-`id` guard exists because ExactlyOneOf counts a set-but-empty string as
+// configured, so `id = var.group_id` with an unset variable satisfies the validator
+// and then falls through to whichever branch is left. Without the guard the name
+// branch would run with a null name and report that no group is named "" — an
+// error against an attribute the operator never set.
 func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	if d.client == nil {
 		resp.Diagnostics.AddError(
@@ -123,7 +129,18 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	var group *securitycloud.Group
 
-	if !data.ID.IsNull() && data.ID.ValueString() != "" {
+	if !data.ID.IsNull() && data.ID.ValueString() == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"Device group ID is empty",
+			"`id` is set to an empty string. Jamf Security Cloud has no group with an empty identifier, and an "+
+				"empty string still counts as configured, so `name` cannot be used instead. This usually means a "+
+				"variable or a reference resolved to \"\" — set `id` to a group ID, or remove it and set `name`.",
+		)
+		return
+	}
+
+	if !data.ID.IsNull() {
 		got, err := d.client.GetDeviceGroupV1(readCtx, data.ID.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to find Jamf Security Cloud device group", err.Error())
