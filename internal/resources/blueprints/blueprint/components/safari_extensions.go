@@ -53,12 +53,12 @@ func SafariExtensionsComponentSchema() map[string]schema.Attribute {
 					"state": schema.StringAttribute{
 						MarkdownDescription: "Extension state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
 						Optional:            true,
-						Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+						Validators:          []validator.String{stringvalidator.OneOf(blueprints.AutomaticActionValueValues()...)},
 					},
 					"private_browsing": schema.StringAttribute{
 						MarkdownDescription: "Private browsing state. Valid values are `Allowed`, `AlwaysOn`, `AlwaysOff`.",
 						Optional:            true,
-						Validators:          []validator.String{stringvalidator.OneOf("Allowed", "AlwaysOn", "AlwaysOff")},
+						Validators:          []validator.String{stringvalidator.OneOf(blueprints.AutomaticActionValueValues()...)},
 					},
 					"allowed_domains": schema.SetNestedAttribute{
 						MarkdownDescription: "Set of allowed domains for this extension.",
