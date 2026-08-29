@@ -50,8 +50,10 @@ const (
 	defaultDeleteTimeout = 60 * time.Second
 )
 
-// priorityValues enumerates the accepted Jamf Pro script priority values.
-var priorityValues = []string{"BEFORE", "AFTER", "AT_REBOOT"}
+// priorityValues enumerates the accepted Jamf Pro script priority values, taken
+// from the SDK's generated helper so the OneOf validator cannot drift from the
+// API.
+var priorityValues = pro.ScriptPriorityValues()
 
 // NewScriptResource returns a new instance of ScriptResource.
 func NewScriptResource() resource.Resource {
