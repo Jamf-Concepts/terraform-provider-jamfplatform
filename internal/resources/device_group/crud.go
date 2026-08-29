@@ -288,7 +288,7 @@ func (r *DeviceGroupResource) Read(ctx context.Context, req resource.ReadRequest
 	var members []string
 	manageMembers := isImport || helpers.IsConfiguredValue(state.Members)
 	manageDescription := isImport || helpers.IsConfiguredValue(state.Description)
-	if strings.EqualFold(grp.GroupType, "STATIC") && manageMembers {
+	if strings.EqualFold(grp.GroupType, devicegroups.GroupTypeV1Static) && manageMembers {
 		var err error
 		members, err = r.client.ListDeviceGroupMembers(readCtx, grp.ID)
 		if err != nil {
