@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
 )
 
 // forceInstallLocalDateTimePattern matches the local date/time form Jamf Pro
@@ -49,7 +51,7 @@ func (v specificVersionRequiredValidator) ValidateAction(ctx context.Context, re
 		return
 	}
 	vt := versionType.ValueString()
-	if vt != "SPECIFIC_VERSION" && vt != "CUSTOM_VERSION" {
+	if vt != pro.PlanConfigurationPostVersionTypeSpecificVersion && vt != pro.PlanConfigurationPostVersionTypeCustomVersion {
 		return
 	}
 
@@ -110,7 +112,7 @@ func (v buildVersionCustomOnlyValidator) ValidateAction(ctx context.Context, req
 	if versionType.IsNull() || versionType.IsUnknown() {
 		return
 	}
-	if versionType.ValueString() == "CUSTOM_VERSION" {
+	if versionType.ValueString() == pro.PlanConfigurationPostVersionTypeCustomVersion {
 		return
 	}
 
