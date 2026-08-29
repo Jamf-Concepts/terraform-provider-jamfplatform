@@ -144,11 +144,13 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_assignment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/content_categories"
 	securityclouddevicegroup "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/device_group"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/uem_connect"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_grouped_gateway"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_predefined_apps"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_shared_gateways"
 )
 
@@ -544,6 +546,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		building.NewBuildingsDataSource,
 		category.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		content_categories.NewContentCategoriesDataSource,
 		securityclouddevicegroup.NewDeviceGroupDataSource,
 		securityclouddevicegroup.NewDeviceGroupsDataSource,
 		dns_zone.NewDNSZoneDataSource,
@@ -553,6 +556,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		ztna_gateway.NewGatewaysDataSource,
 		ztna_grouped_gateway.NewGroupedGatewayDataSource,
 		ztna_grouped_gateway.NewGroupedGatewaysDataSource,
+		ztna_predefined_apps.NewPredefinedAppsDataSource,
 		ztna_shared_gateways.NewSharedGatewaysDataSource,
 		computer_extension_attribute.NewComputerExtensionAttributeDataSource,
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeDataSource,

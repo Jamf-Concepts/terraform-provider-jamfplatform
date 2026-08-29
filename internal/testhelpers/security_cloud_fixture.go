@@ -91,3 +91,89 @@ func RequireSecurityCloudTenantID(t *testing.T) string {
 	}
 	return tenantID
 }
+
+// contentCategoriesOnce caches the content-category read so the acceptance suite
+// hits the endpoint at most once per run.
+var contentCategoriesOnce sync.Once
+
+// contentCategories holds the cached content-category list.
+var contentCategories []securitycloud.Category
+
+// contentCategoriesErr captures the read failure, if any.
+var contentCategoriesErr error
+
+// RequireSecurityCloudContentCategories returns the Jamf-curated content category
+// catalogue for tests that need a real category reference.
+//
+// The catalogue is Jamf's, not the tenant's — identical for every entitled tenant
+// and not writable, so there is nothing to create and nothing to clean up. A read
+// failure or an empty catalogue SKIPS rather than fails, for the same reason
+// RequireSecurityCloudSharedGatewayIDs does: a tenant without the entitlement is a
+// legitimate environment, and concluding "the data source is broken" from absent
+// tenant data is the wrong inference.
+func RequireSecurityCloudContentCategories(t *testing.T) []securitycloud.Category {
+	t.Helper()
+
+	contentCategoriesOnce.Do(func() {
+		c, err := initAcceptanceClient()
+		if err != nil {
+			contentCategoriesErr = err
+			return
+		}
+		list, listErr := securitycloud.New(c).ListContentCategoriesV1(context.Background())
+		if listErr != nil {
+			contentCategoriesErr = listErr
+			return
+		}
+		contentCategories = list.Results
+	})
+
+	if contentCategoriesErr != nil {
+		t.Skipf("Skipping: cannot read Jamf Security Cloud content categories (tenant may lack the entitlement): %v", contentCategoriesErr)
+	}
+	if len(contentCategories) == 0 {
+		t.Skip("Skipping: tenant exposes no Jamf Security Cloud content categories")
+	}
+	return contentCategories
+}
+
+// predefinedAppsOnce caches the predefined-app read so the acceptance suite hits
+// the endpoint at most once per run.
+var predefinedAppsOnce sync.Once
+
+// predefinedApps holds the cached predefined-app list.
+var predefinedApps []securitycloud.PredefinedApp
+
+// predefinedAppsErr captures the read failure, if any.
+var predefinedAppsErr error
+
+// RequireSecurityCloudPredefinedApps returns the Jamf-curated Zero Trust Network
+// Access app templates for tests that need a real template reference.
+//
+// Same contract as RequireSecurityCloudContentCategories: a Jamf-managed catalogue,
+// nothing to create, and absence skips rather than fails.
+func RequireSecurityCloudPredefinedApps(t *testing.T) []securitycloud.PredefinedApp {
+	t.Helper()
+
+	predefinedAppsOnce.Do(func() {
+		c, err := initAcceptanceClient()
+		if err != nil {
+			predefinedAppsErr = err
+			return
+		}
+		list, listErr := securitycloud.New(c).ListZtnaPredefinedAppsV1(context.Background())
+		if listErr != nil {
+			predefinedAppsErr = listErr
+			return
+		}
+		predefinedApps = list.Results
+	})
+
+	if predefinedAppsErr != nil {
+		t.Skipf("Skipping: cannot read Jamf Security Cloud predefined ZTNA apps (tenant may lack the entitlement): %v", predefinedAppsErr)
+	}
+	if len(predefinedApps) == 0 {
+		t.Skip("Skipping: tenant exposes no Jamf Security Cloud predefined ZTNA apps")
+	}
+	return predefinedApps
+}
