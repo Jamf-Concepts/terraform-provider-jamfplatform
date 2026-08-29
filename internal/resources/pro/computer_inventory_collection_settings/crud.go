@@ -28,7 +28,7 @@ import (
 // accepts. The wire enum rejects FONT/PLUGIN, so this resource manages application
 // search paths exclusively (the Fonts/Plug-ins custom paths in the admin UI are not
 // reachable through the V2 API).
-const applicationPathScope = "APP"
+const applicationPathScope = pro.CreatePathScopeApp
 
 // reconcileApplicationPaths brings the tenant's user-created application search paths in
 // line with the planned set. It is a no-op when the attribute is unmanaged (null/unknown),
