@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 )
 
 // CriterionAttributes returns the resource-schema attribute map for a single
@@ -61,9 +63,9 @@ func CriterionAttributes(operators []string) map[string]schema.Attribute {
 			MarkdownDescription: "How this criterion joins to the next. Valid values are `and` or `or`. Defaults to `and` if omitted.",
 			Optional:            true,
 			Computed:            true,
-			Default:             stringdefault.StaticString("and"),
+			Default:             stringdefault.StaticString(proclassic.CriterionAndOrAnd),
 			Validators: []validator.String{
-				stringvalidator.OneOf("and", "or"),
+				stringvalidator.OneOf(proclassic.CriterionAndOrValues()...),
 			},
 		},
 		"has_opening_parenthesis": schema.BoolAttribute{
