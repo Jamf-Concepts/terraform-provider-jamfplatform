@@ -1136,6 +1136,30 @@ Jamf Pro objects that exist one-per-tenant and are exposed as Update-only on the
 
 **Before opening the PR**: run `make fix fmt lint test` (must be clean) then `make generate` to rebuild `docs/resources/pro_<name>.md` and `docs/data-sources/pro_<name>.md`. Commit the generated docs with the source.
 
+### Tenant singletons with a real clear
+
+A third shape sits between [§Singleton resources](#singleton-resources) and ordinary CRUD: an object that exists **one per tenant with no identifier**, like a singleton, but whose `Delete` the API genuinely honours and whose **absence is observable**. Both Jamf Security Cloud custom DNS singletons are this shape — `jamfplatform_security_cloud_dns_search_domain` and `jamfplatform_security_cloud_dns_hostname_mappings`. Do not force one into §Singleton resources: its no-op `Delete` would leave `terraform destroy` silently not clearing tenant-wide configuration that the API is perfectly willing to clear.
+
+**Follow §Singleton resources for** the fixed `helpers.SingletonID`, the identity schema, the `id` attribute shape, the validated import identifier, and the defensive nil-client guards in every handler.
+
+**Diverge on exactly three points:**
+
+1. **`Delete` calls the clear endpoint for real.** Probe whether clearing an already-clear object is idempotent — both DNS endpoints answer `204` either way, so neither needs a not-found special case beyond the usual `helpers.IsNotFoundError` guard.
+2. **`CheckDestroy` is the ordinary contract** — assert the object is gone. The inverted singleton `CheckDestroy` (assert it still exists) would pass while the provider silently cleared nothing, which is the failure this shape most invites.
+3. **`Read` treats absence as deleted** and calls `resp.State.RemoveResource`. **How absence presents is per construct — probe it, do not inherit it.** The two DNS singletons disagree: an unset search domain is a `404` carrying `SEARCH_DOMAIN_NOT_SET`, while an empty hostname-mapping set is an ordinary `200` with `totalCount: 0`. One is caught by `helpers.IsNotFoundError`; the other has to be recognised from the payload.
+
+**`Create` must refuse to clobber.** These endpoints are unconditional upserts that report no conflict, so nothing on the wire separates "creating the tenant's value" from "silently replacing what an administrator set by hand" — and two Terraform configurations both declaring the resource would overwrite each other in silence. `Create` reads first and errors with the import command when a value already exists. That preflight read is why the resource's declared SDK methods include the read privilege; `permissions_test.go` catches it if the list is not updated.
+
+A singular data source is worth providing, and **whether an empty result is an error is the wire's call, not a house style**: reading an unset search domain errors, because a data source silently yielding `""` would feed that into whatever referenced it; reading an empty mapping set returns an empty collection, because a `for` expression over it needs no special case.
+
+### Attribute defaults do not work inside `SetNestedAttribute`
+
+An attribute `Default` (`booldefault.StaticBool`, and by construction its siblings) placed on an attribute **nested inside a `SetNestedAttribute`** overrides a value the configuration set **explicitly**, producing a permanent no-op diff. Verified against a live tenant on 2026-08-29 on `security_cloud/dns_hostname_mappings`: with `Optional + Computed + booldefault.StaticBool(false)`, a configuration saying `connect_to_ztna = true` planned as `false`, so every plan after the first proposed the same change forever. **It reproduces with a single element**, so it is not the set-element correlation problem that usually explains this shape.
+
+Prefer **`Required`** for such an attribute. It removes the mechanism instead of working around it, and where the admin UI shows the control on every row — as it does for both traffic-vectoring checkboxes — every element genuinely has a value to state.
+
+Two things this does *not* say. An `Optional` attribute inside a `SetNestedAttribute` with **neither** `Computed` nor `Default` is unaffected, verified in the same session. And **no unit test catches this** — the schema builds, the state builders round-trip, and every assertion passes. Pin the shape instead: assert `Required` and `Default == nil` in `schema_test.go`, with the reason, so a well-meaning later change to `Optional + Default` fails at the gate rather than in a user's plan.
+
 ### Full-replace endpoints & shared backing stores
 
 Some Jamf Pro `PUT` endpoints are **full-replace**: any field omitted from the request body is reset to its server-side default, not left untouched. This is **not** discoverable from the SDK type or the OpenAPI spec — you **must** wire-probe it during the in-design phase. Probe: `GET` the object, `PUT` a body with one field changed and several others omitted, then `GET` again. If the omitted fields reverted to defaults, the endpoint is full-replace. Probe **both directions** (omit field A, then omit field B) — `/v4/enrollment` resets *every* omitted scalar. Record the finding in the spike doc and the `crud.go` annotation block.

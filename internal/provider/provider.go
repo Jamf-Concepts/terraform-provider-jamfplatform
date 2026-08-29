@@ -146,6 +146,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/content_categories"
 	securityclouddevicegroup "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/device_group"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_hostname_mappings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_search_domain"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/uem_connect"
@@ -515,6 +516,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
 		securityclouddevicegroup.NewDeviceGroupResource,
+		dns_hostname_mappings.NewHostnameMappingsResource,
 		dns_search_domain.NewSearchDomainResource,
 		dns_zone.NewDNSZoneResource,
 		uem_connect.NewUEMConnectResource,
@@ -551,6 +553,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		content_categories.NewContentCategoriesDataSource,
 		securityclouddevicegroup.NewDeviceGroupDataSource,
 		securityclouddevicegroup.NewDeviceGroupsDataSource,
+		dns_hostname_mappings.NewHostnameMappingsDataSource,
 		dns_search_domain.NewSearchDomainDataSource,
 		dns_zone.NewDNSZoneDataSource,
 		dns_zone.NewDNSZonesDataSource,
