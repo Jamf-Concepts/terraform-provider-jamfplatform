@@ -26,9 +26,9 @@ var resourceSDKMethods = []string{
 var resourcePrivileges = permissions.Section(securitycloud.Privileges, resourceSDKMethods...)
 
 // dataSourceSDKMethods lists the SDK methods the singular device group data
-// source calls. The name lookup goes through ResolveDeviceGroupV2ByName, a
-// synthetic helper the privilege registry does not carry; it reads the group
-// list, so the list method stands in for it here.
+// source calls: the id lookup reads one group, and the name lookup matches over
+// the group list locally rather than through a synthetic resolver — see the
+// "Deliberately not used" block in crud.go.
 var dataSourceSDKMethods = []string{
 	"GetDeviceGroupV1",
 	"ListDeviceGroupsV2",

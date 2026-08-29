@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 )
@@ -138,5 +139,92 @@ func TestAppendWriteDiagnostics_NonAPIError(t *testing.T) {
 	}
 	if diags.HasError() {
 		t.Errorf("a non-API error must add no diagnostics, got %v", diags)
+	}
+}
+
+// TestGroupsNamedExactly_BuiltInGroupIsReturnedNotSwallowed is the regression
+// guard for the singular data source's built-in refusal.
+//
+// The refusal is only reachable if the lookup hands the caller an entry with an
+// empty ID. The SDK's ResolveDeviceGroupV2ByName does the opposite — it fails with
+// "matched element has no id field" and discards the element — which made the
+// refusal dead code and its acceptance test red. Matching locally must keep the
+// id-less entry visible.
+func TestGroupsNamedExactly_BuiltInGroupIsReturnedNotSwallowed(t *testing.T) {
+	items := []securitycloud.GroupListItem{
+		{ID: "a", Name: "Alpha"},
+		{ID: "", Name: defaultGroupName},
+	}
+
+	got := groupsNamedExactly(items, defaultGroupName)
+
+	if len(got) != 1 {
+		t.Fatalf("got %d matches, want 1", len(got))
+	}
+	if got[0].ID != "" {
+		t.Errorf("ID = %q, want the empty ID to survive so the caller can refuse it", got[0].ID)
+	}
+	if got[0].Name != defaultGroupName {
+		t.Errorf("Name = %q, want %q", got[0].Name, defaultGroupName)
+	}
+}
+
+// TestGroupsNamedExactly pins the comparison. Jamf Security Cloud's own
+// uniqueness check is case-sensitive, so folding case here could return a
+// different group than the one the operator named.
+func TestGroupsNamedExactly(t *testing.T) {
+	items := []securitycloud.GroupListItem{
+		{ID: "a", Name: "Executives"},
+		{ID: "b", Name: "executives"},
+		{ID: "c", Name: "Field Staff"},
+	}
+
+	tests := []struct {
+		name    string
+		lookup  string
+		wantIDs []string
+	}{
+		{name: "exact match", lookup: "Executives", wantIDs: []string{"a"}},
+		{name: "case differs — a different group", lookup: "EXECUTIVES", wantIDs: nil},
+		{name: "internal whitespace is significant", lookup: "Field  Staff", wantIDs: nil},
+		{name: "no match", lookup: "Contractors", wantIDs: nil},
+		{name: "empty name matches nothing", lookup: "", wantIDs: nil},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := groupsNamedExactly(items, tc.lookup)
+
+			if len(got) != len(tc.wantIDs) {
+				t.Fatalf("got %d matches, want %d (%v)", len(got), len(tc.wantIDs), got)
+			}
+			for i, id := range tc.wantIDs {
+				if got[i].ID != id {
+					t.Errorf("matches[%d].ID = %q, want %q", i, got[i].ID, id)
+				}
+			}
+		})
+	}
+}
+
+// TestGroupsNamedExactly_DuplicateNamesAreAllReturned keeps the caller's
+// ambiguity branch reachable. The server refuses to store a duplicate name, so
+// this should never happen in practice — which is exactly why the helper must not
+// quietly return the first of two rather than letting the caller say so.
+func TestGroupsNamedExactly_DuplicateNamesAreAllReturned(t *testing.T) {
+	items := []securitycloud.GroupListItem{
+		{ID: "a", Name: "Executives"},
+		{ID: "b", Name: "Executives"},
+	}
+
+	if got := groupsNamedExactly(items, "Executives"); len(got) != 2 {
+		t.Errorf("got %d matches, want both so the caller can refuse an ambiguous name", len(got))
+	}
+}
+
+// TestGroupsNamedExactly_NilList guards the empty-tenant path.
+func TestGroupsNamedExactly_NilList(t *testing.T) {
+	if got := groupsNamedExactly(nil, "Executives"); len(got) != 0 {
+		t.Errorf("got %d matches from a nil list, want 0", len(got))
 	}
 }

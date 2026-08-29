@@ -20,19 +20,17 @@ import (
 // the resource, data sources, and list resource in this package.
 var clientCallRe = regexp.MustCompile(`\bclient\.([A-Za-z0-9]+)\(`)
 
-// syntheticMethodBacking maps a synthetic SDK helper onto the generated method
-// whose privileges it actually consumes. The privilege registry omits
-// Resolve<X>ByName / Apply<X> by design, so a call site using one would otherwise
-// look like it needs no privileges at all. ResolveDeviceGroupV2ByName reads the
-// group list, so it stands in for ListDeviceGroupsV2.
-var syntheticMethodBacking = map[string]string{
-	"ResolveDeviceGroupV2ByName": "ListDeviceGroupsV2",
-}
-
 // calledMethods returns the distinct SDK client method names invoked in the given
 // source file, restricted to methods known to the SDK privilege registry so
-// unrelated identifiers (helpers, framework calls) are ignored. Synthetic helpers
-// are resolved to the generated method they call.
+// unrelated identifiers (helpers, framework calls) are ignored.
+//
+// Sibling packages carry a syntheticMethodBacking map here, mapping a
+// Resolve<X>ByName / Apply<X> helper onto the generated method whose privileges it
+// consumes, because the registry omits those by design. This package calls no such
+// helper — the singular data source matches names over ListDeviceGroupsV2 itself —
+// so there is nothing to map. Reintroducing a synthetic call without the map is
+// still caught: the registry does not carry it, so the declared list would report
+// ListDeviceGroupsV2 as uncalled.
 func calledMethods(t *testing.T, filename string) map[string]bool {
 	t.Helper()
 	src, err := os.ReadFile(filename)
@@ -42,9 +40,6 @@ func calledMethods(t *testing.T, filename string) map[string]bool {
 	called := map[string]bool{}
 	for _, m := range clientCallRe.FindAllStringSubmatch(string(src), -1) {
 		name := m[1]
-		if backing, ok := syntheticMethodBacking[name]; ok {
-			name = backing
-		}
 		if _, ok := securitycloud.Privileges[name]; ok {
 			called[name] = true
 		}

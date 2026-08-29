@@ -306,7 +306,7 @@ Bound to the `acceptance` environment:
 ### Jamf Security Cloud coverage is opt-in, and partly tenant-scope-only
 
 Neither declaration variable is set in CI, so **every Jamf Security Cloud acceptance
-test skips there** — 46 of them, each printing the reason. The suite is green and the
+test skips there** — 48 of them, each printing the reason. The suite is green and the
 coverage is zero; do not read one as the other. They are exercised by running locally
 against an entitled tenant.
 

@@ -5,6 +5,7 @@ package device_group
 
 import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 )
@@ -67,4 +68,31 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 		matched = true
 	}
 	return matched
+}
+
+// groupsNamedExactly returns every group list entry whose name matches name
+// exactly.
+//
+// The comparison is exact because Jamf Security Cloud's own uniqueness check is:
+// "Example" and "example" are two different groups, so folding case here could
+// hand back the wrong one.
+//
+// This exists instead of the SDK's ResolveDeviceGroupV2ByName, which cannot be
+// used for the singular data source's name lookup. Where the match is the
+// implicit "Default Group" — the one entry the list returns with no id key — the
+// SDK resolver fails with "matched element has no id field" and discards the
+// matched element, so a caller can never see the id-less entry in order to refuse
+// it by name. Matching locally over the same list keeps that case reachable.
+//
+// The caller distinguishes the outcomes: no elements is not-found, one element is
+// the answer, and more than one is a name the server should have refused to store
+// twice.
+func groupsNamedExactly(items []securitycloud.GroupListItem, name string) []securitycloud.GroupListItem {
+	matches := make([]securitycloud.GroupListItem, 0, 1)
+	for _, item := range items {
+		if item.Name == name {
+			matches = append(matches, item)
+		}
+	}
+	return matches
 }

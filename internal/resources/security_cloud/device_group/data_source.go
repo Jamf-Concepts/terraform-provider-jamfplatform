@@ -86,16 +86,18 @@ func (d *DeviceGroupDataSource) Configure(ctx context.Context, req datasource.Co
 
 // Read fetches a device group by ID or name and populates Terraform state.
 //
-// The name path goes through the SDK's client-side resolver over the v2 list. It
-// cannot report an ambiguous match in practice — Jamf Security Cloud refuses a
-// duplicate name and the resolver compares exactly — so the SDK's
-// AmbiguousMatchError is left to the generic error path rather than given wording
-// of its own.
+// The name path matches over the v2 list locally rather than through the SDK's
+// ResolveDeviceGroupV2ByName, because that resolver cannot express the one result
+// this data source has to refuse. The implicit "Default Group" is in the list and
+// matches by name, but Jamf Security Cloud gives it no identifier — and the SDK
+// resolver turns exactly that case into "matched element has no id field" while
+// discarding the matched element, so the refusal below would be unreachable and
+// the operator would get an SDK-internal string with no remedy. See
+// groupsNamedExactly in helpers.go.
 //
-// It can, however, match the implicit "Default Group", which the list returns
-// with no identifier. That is the one result this data source has to refuse: a
-// group with no ID cannot be referenced by anything, so handing back an empty
-// string would produce a config that plans and then fails against the API.
+// Refusing it matters because a group with no ID cannot be referenced by anything:
+// handing back an empty string would produce a config that plans and then fails
+// against the API.
 func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	if d.client == nil {
 		resp.Diagnostics.AddError(
@@ -129,11 +131,34 @@ func (d *DeviceGroupDataSource) Read(ctx context.Context, req datasource.ReadReq
 		}
 		group = got
 	} else {
-		item, err := d.client.ResolveDeviceGroupV2ByName(readCtx, data.Name.ValueString())
+		listed, err := d.client.ListDeviceGroupsV2(readCtx)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to find Jamf Security Cloud device group", err.Error())
 			return
 		}
+
+		matches := groupsNamedExactly(listed.Groups, data.Name.ValueString())
+		switch {
+		case len(matches) == 0:
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Unable to find Jamf Security Cloud device group",
+				"No device group on this tenant is named \""+data.Name.ValueString()+"\". Jamf Security Cloud "+
+					"compares names exactly, so a group differing only in capitalisation is a different group and "+
+					"will not be found here.",
+			)
+			return
+		case len(matches) > 1:
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Multiple Jamf Security Cloud device groups share that name",
+				"Jamf Security Cloud refuses to store two groups under the same name, so this should not be "+
+					"reachable. Look the group up by `id` instead.",
+			)
+			return
+		}
+
+		item := matches[0]
 		if item.ID == "" {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("name"),

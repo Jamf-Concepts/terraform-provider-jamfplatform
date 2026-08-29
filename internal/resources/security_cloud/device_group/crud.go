@@ -6,12 +6,22 @@
 //   securitycloud.GetDeviceGroupV1
 //   securitycloud.UpdateDeviceGroupV1
 //   securitycloud.DeleteDeviceGroupV1
-//   securitycloud.ListDeviceGroupsV2 (data sources / list resource)
-//   securitycloud.ResolveDeviceGroupV2ByName (singular data source, name lookup)
+//   securitycloud.ListDeviceGroupsV2 (data sources, list resource, and the
+//                                     singular data source's name lookup)
 //
 // Deliberately not used:
 //   securitycloud.ListDeviceGroupsV1   deprecated in the spec (deprecation-date
 //                                      2026-08-12); content identical to V2.
+//   securitycloud.ResolveDeviceGroupV2ByName
+//                                      cannot express the built-in group. Where
+//                                      the match is the implicit "Default Group",
+//                                      which the list returns with no id key, the
+//                                      resolver fails with "matched element has no
+//                                      id field" and discards the matched element,
+//                                      so the singular data source could never
+//                                      reach its own id-less refusal. The name
+//                                      lookup matches over ListDeviceGroupsV2
+//                                      locally instead — see groupsNamedExactly.
 //   securitycloud.UpdateDeviceGroupV2  the spec's nominated successor to the
 //                                      deprecated V1 update, but the gateway does
 //                                      not route PUT /v2/groups/{id} — 403, same
@@ -45,6 +55,11 @@ import (
 // return differently from what was sent, and although the plan-time validator
 // rejects the whitespace that would cause it, reading back keeps the resource
 // honest if the server ever normalises something else.
+//
+// The empty-id guard before that read is not defensive noise: an empty id builds
+// the collection path, and this API answers GET /v1/groups/ with the whole group
+// list rather than a 404 (wire-probed 2026-08-29), so an unguarded read-back would
+// surface as a decode failure rather than as the missing identifier it is.
 func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan DeviceGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -65,6 +80,16 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
 			resp.Diagnostics.AddError("Error creating Jamf Security Cloud device group", err.Error())
 		}
+		return
+	}
+
+	if created.ID == "" {
+		resp.Diagnostics.AddError(
+			"Jamf Security Cloud returned no device group ID",
+			"The create call succeeded but the response carried no identifier, so the group cannot be read back "+
+				"or tracked in state. The group may still have been created — check the Jamf Security Cloud admin "+
+				"UI before retrying, and remove it if it is there.",
+		)
 		return
 	}
 
