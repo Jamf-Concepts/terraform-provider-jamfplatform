@@ -47,6 +47,7 @@ internal/
 │   ├── appleprofiles/ # Apple configuration profile schemas (generated table + plan-time payload validation)
 │   ├── availabletitles/ # Shared patch available-titles lookup (patch_external_source, patch_internal_source)
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
+│   ├── enumguard/     # Recurrence guard: no enum value or error code restated as a literal the SDK generates
 │   ├── files/         # Shared upload-source plumbing for resources that upload file content
 │   ├── filters/       # RSQL + classic filter schema/expression builder
 │   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version

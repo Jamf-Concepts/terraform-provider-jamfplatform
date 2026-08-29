@@ -48,10 +48,14 @@ A deliberate subset stays hand-curated — `EmailMappingTypeValues()` is a super
 every UEM vendor, so `uem_connect` narrows it per vendor on purpose — but its elements are
 still SDK constants, not literals.
 
-**Pin it with a test rather than trusting review.** Copy
-`device_group/mappings_test.go`'s `TestErrorCodeLiteralsAreNotInTheSDKEnum`: it parses the
-package's own consts and fails on any string literal the SDK already provides, so it catches
-both a new mistake and a literal a future SDK release promotes into the enum.
+**Pin it with a test rather than trusting review.** Add an `enum_literals_test.go` calling
+`internal/common/enumguard` (shape: `internal/resources/security_cloud/device_group/enum_literals_test.go`).
+It parses the package's own `const` and `var` declarations, func-body `:=` bindings and any
+vocabulary inlined into a `OneOf` call, then fails on every string literal the SDK already
+provides — so it catches both a new mistake and a literal a future SDK release promotes into the
+enum. Each code the SDK genuinely lacks goes in `Absent` **with its own reason**; a value that
+merely shares a spelling with a different vocabulary goes in `Ignore` instead, because `Absent`
+is re-checked against the SDK on every release and `Ignore` is not.
 
 Full rule, provider-wide: STYLE_GUIDE §Enum values and error codes come from the SDK.
 

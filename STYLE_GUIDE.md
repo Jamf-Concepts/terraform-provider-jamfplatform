@@ -229,12 +229,38 @@ group-specific code — but it does carry the generic `INVALID_FIELD` and `NOT_E
 package restating those alongside its own codes is wrong in a way its own comment conceals.
 That exact defect shipped twice and was caught by review both times.
 
-**So do not rely on review for this — pin it with a test.** Parse the package's own `const`
-declarations and assert that no string-literal constant duplicates a value the SDK's `*Values()`
-helper already provides. Reference: `internal/resources/security_cloud/device_group/mappings_test.go`
-(`TestErrorCodeLiteralsAreNotInTheSDKEnum`). Parsing the source rather than restating a list is
+**So do not rely on review for this — pin it with a test.** Every package that names an enum
+value or an error code carries an `enum_literals_test.go` calling `internal/common/enumguard`,
+which parses the package's own source and reports any string literal the package *declares* that
+the SDK's `*Values()` helpers already cover. Parsing the source rather than restating a list is
 what makes it self-maintaining: it fires both on a new literal that should have been an alias,
-and on a literal that a future SDK release promotes into the enum.
+and on a literal that a future SDK release promotes into the enum. References:
+`internal/resources/pro/ebook/enum_literals_test.go` (the plain shape) and
+`internal/resources/pro/macos_configuration_profile/enum_literals_test.go` (exemptions with
+per-value reasons).
+
+The walker covers package-level `const` **and** `var` declarations — including the elements of a
+slice or map composite literal and its keys — func-body short (`:=`) declarations, and the
+vocabulary inlined into a `stringvalidator.OneOf` / `OneOfCaseInsensitive` /
+`stringdefault.StaticString` call. A `const`-only parse is not enough, and that is not a
+hypothetical: almost every restated enum in this provider is a `var validFoos = []string{…}`
+feeding a `OneOf` validator, or is spelled out in the `OneOf` call itself, and a builder naming
+the one wire value it is about to send writes it as `v := "install"`. What the guard deliberately
+does **not** cover is a literal that is only *used* — compared against, returned, or passed as an
+argument to anything but those two framework calls. Reaching those would mean treating every
+string in the package as an enum reference, which fires on prose and on unrelated vocabularies
+that share a spelling; the line is declaration versus use. Auditing the use sites is a review's
+job, not the guard's.
+
+Two exemption maps, and the difference between them is load-bearing — a rollout defect turned on
+exactly this. `Absent` asserts the SDK carries **no** constant for the value, so it *is* checked
+against `Covered`: an SDK release that starts generating the value fails the test and tells you to
+alias it. `Ignore` asserts the value belongs to a **different** vocabulary that merely shares the
+spelling, which says nothing about the sets in `Covered`, so it is *not* checked. Filing a
+cross-vocabulary collision under `Absent` therefore reports a spurious promotion. Both maps take
+a per-value reason, for the same reason the comment rule above demands one. An entry no literal in
+the package uses is also a failure, as is a guard whose whole `Covered` set is exempted
+(`Findings.Vacuous`) — that reads as coverage while asserting nothing.
 
 ### Sets vs Lists
 
