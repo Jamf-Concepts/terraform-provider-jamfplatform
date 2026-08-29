@@ -131,12 +131,24 @@ func (d *GroupedGatewayDataSource) Read(ctx context.Context, req datasource.Read
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
+	if !data.ID.IsNull() && data.ID.ValueString() == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"ZTNA grouped gateway ID is empty",
+			"`id` is set to an empty string, which ExactlyOneOf still counts as configured, so `name` cannot "+
+				"be used instead. This usually means a variable or a reference resolved to \"\" — set `id` to "+
+				"an ID, or remove it and set `name`.",
+		)
+		return
+	}
+
 	var group *securitycloud.GroupedGateway
 	var err error
-	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		group, err = d.client.GetZtnaGroupedGatewayV1(readCtx, data.ID.ValueString())
-	} else {
+	byName := data.ID.IsNull()
+	if byName {
 		group, err = d.client.ResolveZtnaGroupedGatewayV1ByName(readCtx, data.Name.ValueString())
+	} else {
+		group, err = d.client.GetZtnaGroupedGatewayV1(readCtx, data.ID.ValueString())
 	}
 	if err != nil {
 		if ambiguous, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
@@ -145,6 +157,16 @@ func (d *GroupedGatewayDataSource) Read(ctx context.Context, req datasource.Read
 				"Jamf Security Cloud does not require grouped gateway names to be unique, and more than one is "+
 					"named "+data.Name.ValueString()+". Look it up by `id` instead. Matching IDs: "+
 					strings.Join(ambiguous.Matches, ", "),
+			)
+			return
+		}
+		if byName && helpers.IsNotFoundError(err) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Unable to find Jamf Security Cloud ZTNA grouped gateway",
+				"No ZTNA grouped gateway on this tenant is named \""+data.Name.ValueString()+"\". Names are matched "+
+					"exactly, so one differing only in capitalisation or surrounding whitespace will not be "+
+					"found. Use the `jamfplatform_security_cloud_ztna_grouped_gateways` data source to list what exists.",
 			)
 			return
 		}

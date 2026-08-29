@@ -206,6 +206,19 @@ func TestIsNotFoundError(t *testing.T) {
 		{"nil", nil, false},
 		{"plain error", errors.New("some error"), false},
 		{"404 response", &jamfplatform.APIResponseError{StatusCode: 404}, true},
+		// The 400 + INVALID_ID arm is the Pro-ism half of this function and had no
+		// fixture at all: removing it left the suite green. The 404 case above carries
+		// no Details, so it can only pass via the status arm — the two are pinned
+		// independently.
+		{"400 with INVALID_ID", &jamfplatform.APIResponseError{
+			StatusCode: 400,
+			Errors:     []jamfplatform.ErrorDetail{{Code: "INVALID_ID"}},
+		}, true},
+		{"400 with another code", &jamfplatform.APIResponseError{
+			StatusCode: 400,
+			Errors:     []jamfplatform.ErrorDetail{{Code: "INVALID_FIELD"}},
+		}, false},
+		{"400 with no details", &jamfplatform.APIResponseError{StatusCode: 400}, false},
 		{"500 response", &jamfplatform.APIResponseError{StatusCode: 500}, false},
 		{"200 response", &jamfplatform.APIResponseError{StatusCode: 200}, false},
 	}

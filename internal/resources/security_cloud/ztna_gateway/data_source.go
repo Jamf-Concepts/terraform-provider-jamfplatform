@@ -213,12 +213,24 @@ func (d *GatewayDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	readCtx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
+	if !data.ID.IsNull() && data.ID.ValueString() == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("id"),
+			"ZTNA gateway ID is empty",
+			"`id` is set to an empty string, which ExactlyOneOf still counts as configured, so `name` cannot "+
+				"be used instead. This usually means a variable or a reference resolved to \"\" — set `id` to "+
+				"an ID, or remove it and set `name`.",
+		)
+		return
+	}
+
 	var gateway *securitycloud.Gateway
 	var err error
-	if !data.ID.IsNull() && data.ID.ValueString() != "" {
-		gateway, err = d.client.GetZtnaGatewayV1(readCtx, data.ID.ValueString())
-	} else {
+	byName := data.ID.IsNull()
+	if byName {
 		gateway, err = d.client.ResolveZtnaGatewayV1ByName(readCtx, data.Name.ValueString())
+	} else {
+		gateway, err = d.client.GetZtnaGatewayV1(readCtx, data.ID.ValueString())
 	}
 	if err != nil {
 		if ambiguous, ok := errors.AsType[*jamfplatform.AmbiguousMatchError](err); ok {
@@ -227,6 +239,16 @@ func (d *GatewayDataSource) Read(ctx context.Context, req datasource.ReadRequest
 				"Jamf Security Cloud does not require gateway names to be unique, and more than one gateway is "+
 					"named "+data.Name.ValueString()+". Look the gateway up by `id` instead. Matching gateway "+
 					"IDs: "+strings.Join(ambiguous.Matches, ", "),
+			)
+			return
+		}
+		if byName && helpers.IsNotFoundError(err) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("name"),
+				"Unable to find Jamf Security Cloud ZTNA gateway",
+				"No ZTNA gateway on this tenant is named \""+data.Name.ValueString()+"\". Names are matched "+
+					"exactly, so one differing only in capitalisation or surrounding whitespace will not be "+
+					"found. Use the `jamfplatform_security_cloud_ztna_gateways` data source to list what exists.",
 			)
 			return
 		}

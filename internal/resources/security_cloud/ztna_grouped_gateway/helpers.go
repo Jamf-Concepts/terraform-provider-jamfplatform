@@ -5,6 +5,7 @@ package ztna_grouped_gateway
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -26,6 +27,7 @@ const (
 	codeNotEntitled     = securitycloud.ApiErrorItemCodeNotEntitled
 
 	codeMixedTunnelTypes    = "MIXED_TUNNEL_TYPES"
+	codeMixedDedicatedIPs   = "MIXED_DEDICATED_IPS_TYPES"
 	codeSharedGatewayMember = "SHARED_GATEWAY_MEMBER"
 	codeBadRequest          = "BAD_REQUEST"
 )
@@ -36,6 +38,11 @@ const (
 // The membership codes are the ones worth translating, because each describes a
 // property of the *members* rather than of the group being written, and none of
 // the messages says which member is at fault.
+//
+// `MIXED_DEDICATED_IPS_TYPES` is the one that most needs it: the server's message
+// names `dedicatedIps.enabled`, a wire field with no counterpart on this schema at
+// all, so without a translation the operator has to know it means
+// `dedicated_egress_ips_enabled` on each member gateway.
 //
 // `GATEWAY_NOT_FOUND` is the same ordering trap the DNS zone has for its name
 // servers: a member gateway must exist before the group can name it, and
@@ -58,6 +65,15 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 				"Every member of a grouped gateway must be the same form — all dedicated IPsec gateways, or all "+
 					"dedicated internet gateways. A gateway is an IPsec gateway when it has an `ipsec` block. "+
 					"Reported by Jamf Security Cloud: "+detail.Description,
+			)
+		case codeMixedDedicatedIPs:
+			diags.AddAttributeError(
+				path.Root("gateway_ids"),
+				"Member gateways disagree about dedicated egress IPs",
+				"Every member of a grouped gateway must have the same dedicated egress IP setting — either all "+
+					"members have them or none does. The server names the wire field `dedicatedIps.enabled`; on a "+
+					"`jamfplatform_security_cloud_ztna_gateway` that is `dedicated_egress_ips_enabled`. Reported by "+
+					"Jamf Security Cloud: "+detail.Description,
 			)
 		case codeSharedGatewayMember:
 			diags.AddAttributeError(
@@ -103,9 +119,16 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 // appendDeleteDiagnostics explains the delete refusal, which is an ordering
 // problem rather than a configuration mistake.
 //
-// A grouped gateway that something still points at — a custom DNS zone's name
-// server, say — is refused with a bare `409 CONFLICT` carrying no detail about the
-// referrer.
+// A grouped gateway that something still points at is refused with a
+// `409 CONFLICT`. The bundled spec names GROUPED_GATEWAY_REFERENCED_BY_DNS_ZONES
+// and GROUPED_GATEWAY_REFERENCED_BY_ACCESS_POLICIES; the 2026-08-27 probe of the
+// zone case answered a bare 409 with no structured detail, so the codes are not
+// something the wire has been seen to send. Details() is appended when present
+// rather than relied on.
+//
+// Access policies matter most in that list because the provider does not manage
+// them: that reference lives in the admin UI, and no apply ordering will release
+// it.
 func appendDeleteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil || !apiErr.HasStatus(http.StatusConflict) {
@@ -113,10 +136,27 @@ func appendDeleteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	}
 	diags.AddError(
 		"Grouped gateway is still referenced",
-		"Jamf Security Cloud refuses to delete a grouped gateway that something still points at, such as a custom "+
-			"DNS zone name server. It does not say which. Remove the reference first, in a separate apply, then "+
-			"destroy the group: dropping the reference and the group in one apply lets Terraform sequence the "+
-			"destroy before the update that would have released it.",
+		"Jamf Security Cloud refuses to delete a grouped gateway that something still points at: a ZTNA access "+
+			"policy, or a custom DNS zone name server. Access policies are not managed by this provider, so if no "+
+			"zone names this group, check its access policies in the Jamf Security Cloud admin UI. For a reference "+
+			"Terraform does manage, remove it first in a separate apply, then destroy the group: dropping the "+
+			"reference and the group in one apply lets Terraform sequence the destroy before the update that would "+
+			"have released it."+reportedDetails(apiErr),
 	)
 	return true
+}
+
+// reportedDetails renders whatever structured detail an error carries, for the
+// diagnostics that cannot assume one is present. See the delete conflict above for
+// why this is appended rather than depended on.
+func reportedDetails(apiErr *jamfplatform.APIResponseError) string {
+	var b strings.Builder
+	for _, detail := range apiErr.Details() {
+		if detail.Description == "" {
+			continue
+		}
+		b.WriteString(" Reported by Jamf Security Cloud: ")
+		b.WriteString(detail.Description)
+	}
+	return b.String()
 }

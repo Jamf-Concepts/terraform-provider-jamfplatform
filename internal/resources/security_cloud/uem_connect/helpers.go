@@ -162,3 +162,25 @@ func timePointerValue(v *time.Time) types.String {
 	}
 	return types.StringValue(v.Format(time.RFC3339))
 }
+
+// appendMissingIntegrationDiagnostics refuses a read of a tenant that holds no UEM
+// Connect integration.
+//
+// This is the guard in front of `page.Results[0]`, so a regression here is a
+// provider panic rather than a diagnostic — and unlike most of this package's
+// guards it is reachable in entirely ordinary use, by reading the data source
+// before creating an integration. It lives here rather than inline in the data
+// source so a unit test can drive it: the shape it guards is a plain SDK struct,
+// while the data source's Read needs a live client.
+func appendMissingIntegrationDiagnostics(page *securitycloud.ConnectorPage) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if page != nil && len(page.Results) > 0 {
+		return diags
+	}
+	diags.AddError(
+		"No UEM Connect integration on this tenant",
+		"Jamf Security Cloud reports no UEM Connect integration for this tenant. Set one up before reading it, "+
+			"with jamfplatform_security_cloud_uem_connect or in the Jamf Security Cloud admin UI.",
+	)
+	return diags
+}

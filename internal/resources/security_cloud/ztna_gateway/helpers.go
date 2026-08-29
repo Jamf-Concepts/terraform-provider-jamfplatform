@@ -5,6 +5,7 @@ package ztna_gateway
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -100,12 +101,21 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 // appendDeleteDiagnostics explains the one delete failure that is not a mistake
 // in the configuration but an ordering problem in the plan.
 //
-// Jamf Security Cloud refuses to delete a gateway that anything still references —
-// a custom DNS zone's name server, or membership of a grouped gateway — with a
-// bare `409 CONFLICT` and no structured detail naming the referrer (wire-probed
-// 2026-08-27 from both directions). Terraform will happily plan that destroy when
-// the config dependency edge disappears in the same apply that removes the
-// reference, so this is worth spelling out rather than passing through.
+// Jamf Security Cloud refuses to delete a gateway that anything still references,
+// with a `409 CONFLICT`. Terraform will happily plan that destroy when the config
+// dependency edge disappears in the same apply that removes the reference, so this
+// is worth spelling out rather than passing through.
+//
+// Two things about the referrer list. First, a ZTNA access policy is one, and it is
+// the referrer Terraform can do nothing about: the provider does not manage access
+// policies, so the reference lives in the admin UI and no apply ordering will
+// release it. The bundled spec names GATEWAY_REFERENCED_BY_ACCESS_POLICIES,
+// GATEWAY_REFERENCED_BY_DNS_ZONES and GATEWAY_REFERENCED_BY_GROUPED_GATEWAYS.
+// Second, the 2026-08-27 probe of the zone and grouped-gateway cases returned a
+// bare 409 with no structured detail, so the spec's codes are not something the
+// wire has been seen to send. Details() is therefore appended when present rather
+// than relied on, and the wording no longer asserts that the body says nothing —
+// that was true of the two cases probed, not of the endpoint.
 func appendDeleteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil || !apiErr.HasStatus(http.StatusConflict) {
@@ -113,10 +123,31 @@ func appendDeleteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	}
 	diags.AddError(
 		"Gateway is still referenced",
-		"Jamf Security Cloud refuses to delete a gateway that something still points at — a custom DNS zone name "+
-			"server, or membership of a grouped gateway. It does not say which. Remove the reference first, in a "+
-			"separate apply, then destroy the gateway: dropping the reference and the gateway in one apply lets "+
-			"Terraform sequence the destroy before the update that would have released it.",
+		"Jamf Security Cloud refuses to delete a gateway that something still points at: a ZTNA access policy, a "+
+			"custom DNS zone name server, or membership of a grouped gateway. Access policies are not managed by "+
+			"this provider, so if no zone or grouped gateway names this gateway, check its access policies in the "+
+			"Jamf Security Cloud admin UI. For a reference Terraform does manage, remove it first in a separate "+
+			"apply, then destroy the gateway: dropping the reference and the gateway in one apply lets Terraform "+
+			"sequence the destroy before the update that would have released it."+reportedDetails(apiErr),
 	)
 	return true
+}
+
+// reportedDetails renders whatever structured detail an error carries, for the
+// diagnostics that cannot assume one is present.
+//
+// The delete conflict is the case: the probed referrer cases answered with a bare
+// 409, while the spec documents per-referrer codes. Appending what is there costs
+// nothing when there is nothing, and stops the diagnostic contradicting the body
+// if the endpoint starts sending one.
+func reportedDetails(apiErr *jamfplatform.APIResponseError) string {
+	var b strings.Builder
+	for _, detail := range apiErr.Details() {
+		if detail.Description == "" {
+			continue
+		}
+		b.WriteString(" Reported by Jamf Security Cloud: ")
+		b.WriteString(detail.Description)
+	}
+	return b.String()
 }

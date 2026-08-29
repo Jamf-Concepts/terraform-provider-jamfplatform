@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -129,8 +130,14 @@ func TestIsNotFound(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{"404 status", apiError(http.StatusNotFound, codeNotFound, "Config with ID '0' doesn't exist"), true},
+		// isNotFound has two independent arms — the 404 status, then a Details() scan
+		// for codeNotFound. A fixture carrying both cannot tell you which one fired,
+		// and the case below named "404 status" used to carry both: mutating
+		// http.StatusNotFound to any other status left the whole suite green,
+		// including that case. Each arm now has a fixture only it can satisfy.
+		{"status without the code", apiError(http.StatusNotFound, "SOMETHING_ELSE", "gone"), true},
 		{"code without the status", apiError(http.StatusBadRequest, codeNotFound, "gone"), true},
+		{"both the status and the code", apiError(http.StatusNotFound, codeNotFound, "Config with ID '0' doesn't exist"), true},
 		{"a conflict is not a not-found", apiError(http.StatusConflict, codeConfigAlreadyExists, "exists"), false},
 		{"a transport error is not a not-found", errors.New("connection refused"), false},
 		{"nil", nil, false},
@@ -166,5 +173,32 @@ func TestSortedMapKeys(t *testing.T) {
 			t.Errorf("keys = %v, want %v", got, want)
 			break
 		}
+	}
+}
+
+// TestAppendMissingIntegrationDiagnostics pins the guard standing in front of
+// `page.Results[0]` in the data source. A regression here is a panic, not a
+// diagnostic, and it is reachable by reading the data source on a tenant that has
+// no integration yet.
+func TestAppendMissingIntegrationDiagnostics(t *testing.T) {
+	tests := []struct {
+		name    string
+		page    *securitycloud.ConnectorPage
+		wantErr bool
+	}{
+		{"nil page", nil, true},
+		{"empty results", &securitycloud.ConnectorPage{Results: []securitycloud.ConnectorConfig{}}, true},
+		{"nil results slice", &securitycloud.ConnectorPage{}, true},
+		{"one integration", &securitycloud.ConnectorPage{Results: []securitycloud.ConnectorConfig{{ID: "abc"}}}, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			diags := appendMissingIntegrationDiagnostics(tc.page)
+
+			if diags.HasError() != tc.wantErr {
+				t.Fatalf("HasError() = %v, want %v (%v)", diags.HasError(), tc.wantErr, diags)
+			}
+		})
 	}
 }
