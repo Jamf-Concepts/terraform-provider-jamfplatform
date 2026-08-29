@@ -37,7 +37,7 @@ func EnsurePrincipalCloudDistributionPoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading cloud distribution point: %v", err)
 	}
-	if got == nil || strings.EqualFold(got.CdnType, "NONE") {
+	if got == nil || strings.EqualFold(got.CdnType, pro.CloudDistributionPointCdnTypeNone) {
 		t.Skip("skipping: no cloud distribution point configured on tenant; cannot make one principal without a destructive create")
 	}
 
