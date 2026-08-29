@@ -121,8 +121,10 @@ Terraform construct name format: `jamfplatform_security_cloud_<resource>`; Go pa
 Security Cloud API namespaces (`jsc-categories`, `jsc-dns`, `jsc-ztna`,
 `securitycloud-devices`, `uem-connect`) are generated into one SDK package,
 `jamfplatform/securitycloud`, and every method routes through the unified
-`/api/securitycloud` prefix — wire-verified in production EU on 2026-08-27 for the DNS
-surface under a tenant-scoped integration. Configure goes through
+`/securitycloud` prefix — wire-verified in production EU on 2026-08-27 for the DNS
+surface and 2026-08-29 for UEM Connect, both under a tenant-scoped integration. There is
+no `/api` segment: the Platform API GA dropped it everywhere, and a request carrying it
+gets the gateway's own bare `404 page not found` rather than a JSON error. Configure goes through
 `providerdata.ConfigureSecurityCloud`, **not** `ConfigurePro`: Security Cloud is
 continuously deployed with no customer-tenant version, and a tenant can hold it without
 holding Jamf Pro, so a Pro version fetch would be both meaningless and fatal. Two things
@@ -140,10 +142,14 @@ that a ZTNA app still names deletes cleanly and silently empties the app's assig
 — so probe the referenced delete for each new construct rather than inheriting either answer.
 Three shapes recur across the namespace and are worth knowing before reading any of
 it: a **cipher/algorithm field is an array the server accepts exactly one element in**, so it
-is modelled as a single string and collapsed at the boundary; an **enum violation returns
-`400 [INVALID_FIELD] Request body is missing or malformed.`** with no field and no value,
-which is why every enum is validated at plan time from the SDK's own generated `*Values()`
-helper rather than a restated list; and an **unmapped route answers `403 BAD_PERMISSIONS`,
+is modelled as a single string and collapsed at the boundary; an **enum violation is
+unattributed, but not identically so across services** — `jsc-dns` and `jsc-ztna` answer
+`400 [INVALID_FIELD] Request body is missing or malformed.` with no field and no value,
+while `uem-connect` answers `422 VALIDATION_FAILED` leaking Jackson's message, which does
+name the accepted values; either way every enum is validated at plan time from the SDK's
+own generated `*Values()` helper rather than a restated list, and the per-service
+difference is one more reason not to write a diagnostic against a code another construct
+observed; and an **unmapped route answers `403 BAD_PERMISSIONS`,
 indistinguishable from a real privilege gap** (a bogus path returns the same body), so that
 code is deliberately never translated into a diagnostic and a spec-advertised endpoint the
 gateway 403s on is presumed unrouted rather than unprivileged. Acceptance tests gate on

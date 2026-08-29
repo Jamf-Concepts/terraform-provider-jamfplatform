@@ -753,6 +753,7 @@ func (p *JamfPlatformProvider) Actions(ctx context.Context) []func() action.Acti
 		mdmactions.NewFlushMdmCommandsAction,
 		maintenanceactions.NewRedeployManagementFrameworkAction,
 		uemconnectactions.NewSynchronizeAction,
+		uemconnectactions.NewDeployActivationProfileAction,
 		maintenanceactions.NewFlushPolicyLogsAction,
 		patchactions.NewRetryPatchPolicyLogsAction,
 		jamfprotectactions.NewSyncPlansAction,

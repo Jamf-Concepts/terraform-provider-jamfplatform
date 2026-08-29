@@ -27,3 +27,22 @@ var synchronizeSDKMethods = []string{
 // synchronizePrivileges is the rendered "Required Jamf privileges" Markdown
 // section for the synchronize action.
 var synchronizePrivileges = permissions.Section(securitycloud.Privileges, synchronizeSDKMethods...)
+
+// deployActivationProfileSDKMethods lists the SDK methods the
+// jamfplatform_security_cloud_activation_profile_deploy action's Invoke path
+// calls. It mirrors the "SDK endpoints used" block in
+// deploy_activation_profile.go and drives the "Required Jamf privileges" table
+// appended to the action MarkdownDescription. permissions_test.go asserts this
+// list stays in sync with the actual client.<Method> calls and with the SDK
+// privilege registry.
+//
+// One method only: unlike synchronize, this action needs no connector lookup —
+// the route takes the activation profile code rather than a connector ID, and
+// Jamf Security Cloud resolves the tenant's connector itself.
+var deployActivationProfileSDKMethods = []string{
+	"DeployActivationProfileToUemV1",
+}
+
+// deployActivationProfilePrivileges is the rendered "Required Jamf privileges"
+// Markdown section for the deploy action.
+var deployActivationProfilePrivileges = permissions.Section(securitycloud.Privileges, deployActivationProfileSDKMethods...)

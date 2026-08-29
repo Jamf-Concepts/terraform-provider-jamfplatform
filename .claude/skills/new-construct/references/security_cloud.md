@@ -20,7 +20,9 @@ error.
 | Server says | Actually means | Point the diagnostic at |
 |---|---|---|
 | `403 NOT_ENTITLED` | tenant lacks the Security Cloud surface | the construct, naming the entitlement |
-| `400 [INVALID_FIELD] Request body is missing or malformed.` | an enum value the server does not accept — **no field, no value named** | prevented at plan time; validate every enum |
+| `400 [INVALID_FIELD] Request body is missing or malformed.` | an enum value `jsc-dns` / `jsc-ztna` do not accept — **no field, no value named** | prevented at plan time; validate every enum |
+| `422 VALIDATION_FAILED` | the same mistake on `uem-connect`, which leaks Jackson's message and *does* name the accepted values — **so this is not a namespace-wide shape** | same: prevented at plan time. Do not write a diagnostic against the code another construct observed |
+| `422 CONNECTOR_MISCONFIGURED` "UEM is misconfigured" | on the activation profile deploy: a Jamf Pro group ID that does not exist, or belongs to the wrong kind of group for the chosen OS. Nothing is misconfigured | the group field, naming which kind of group the OS takes |
 | `422 GATEWAY_NOT_FOUND` | a DNS zone written before its gateway exists | `name_servers`, not the zone |
 | `409 CONFLICT` (bare) | something still references the object you are deleting | a destroy-ordering diagnostic naming the possible referrers |
 
@@ -89,6 +91,6 @@ environment-scoped integration at all, because no API exposes an environment's t
 
 Untested, and worth stating in any PR that touches Configure: the Security Cloud surface under
 `X-Environment-Id`. Every wire probe used a tenant-scoped integration;
-`ConfigureSecurityCloud` admits both scopes on the strength of the spec. If `/api/securitycloud`
+`ConfigureSecurityCloud` admits both scopes on the strength of the spec. If `/securitycloud`
 turns out not to answer under an environment header, the fix is dropping `ScopeEnvironment`
 from that one call.

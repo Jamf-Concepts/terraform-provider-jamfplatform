@@ -5,6 +5,7 @@ package uemconnectactions
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"testing"
 
@@ -97,6 +98,155 @@ func TestSynchronizeAction_DescriptionsAreUIAligned(t *testing.T) {
 	for _, desc := range descriptions {
 		lower := strings.ToLower(desc)
 		for _, banned := range []string{"endpoint", "/v1/", " sdk", "202", "http"} {
+			if strings.Contains(lower, banned) {
+				t.Errorf("description contains wire vocabulary %q:\n%s", banned, desc)
+			}
+		}
+	}
+}
+
+func deploySchema(t *testing.T) actionschema.Schema {
+	t.Helper()
+	a := NewDeployActivationProfileAction()
+	var resp action.SchemaResponse
+	a.(*DeployActivationProfileAction).Schema(context.Background(), action.SchemaRequest{}, &resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("schema diagnostics: %v", resp.Diagnostics)
+	}
+	return resp.Schema
+}
+
+func TestDeployActivationProfileAction_Metadata(t *testing.T) {
+	a := NewDeployActivationProfileAction()
+	var resp action.MetadataResponse
+	a.(*DeployActivationProfileAction).Metadata(context.Background(), action.MetadataRequest{ProviderTypeName: "jamfplatform"}, &resp)
+
+	want := "jamfplatform_security_cloud_activation_profile_deploy"
+	if resp.TypeName != want {
+		t.Errorf("type name = %q, want %q", resp.TypeName, want)
+	}
+}
+
+// TestDeployActivationProfileAction_Attributes pins the shape: the code and the
+// operating system are both required because nothing can resolve either, and the
+// groups are optional because the deploy is legal without them — though the
+// description has to say what that leaves behind.
+func TestDeployActivationProfileAction_Attributes(t *testing.T) {
+	s := deploySchema(t)
+
+	required := []string{"activation_profile_code", "os"}
+	for _, name := range required {
+		attr, ok := s.Attributes[name]
+		if !ok {
+			t.Errorf("missing attribute %s", name)
+			continue
+		}
+		if !attr.IsRequired() {
+			t.Errorf("%s must be required", name)
+		}
+	}
+
+	groups, ok := s.Attributes["jamf_pro_group_ids"]
+	if !ok {
+		t.Fatal("missing attribute jamf_pro_group_ids")
+	}
+	if !groups.IsOptional() || groups.IsRequired() {
+		t.Error("jamf_pro_group_ids must be optional")
+	}
+
+	if len(s.Attributes) != 3 {
+		names := make([]string, 0, len(s.Attributes))
+		for name := range s.Attributes {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		t.Errorf("expected exactly the three documented attributes, got %v", names)
+	}
+}
+
+// TestDeployActivationProfileAction_NoUEMAttribute pins the deliberate omission.
+// The admin UI offers thirteen UEM solutions and the API accepts only Jamf Pro, so
+// an attribute here would be a choice with one legal answer — and a caller who set
+// it to anything else would get an unattributed refusal mid-apply.
+func TestDeployActivationProfileAction_NoUEMAttribute(t *testing.T) {
+	s := deploySchema(t)
+
+	for _, name := range []string{"uem", "uem_vendor", "uem_platform"} {
+		if _, ok := s.Attributes[name]; ok {
+			t.Errorf("schema declares %q, which has exactly one legal value and belongs in a constant", name)
+		}
+	}
+}
+
+// TestDeployActivationProfileAction_DescriptionWarnsAboutScope is the honesty test
+// that matters most here, and the one the wire probes exist to justify. Two
+// behaviours are invisible from a successful apply: scope accumulates and is never
+// cleared, and a first deployment with no groups leaves the configuration profile
+// reaching nothing. Both are reported as success.
+func TestDeployActivationProfileAction_DescriptionWarnsAboutScope(t *testing.T) {
+	s := deploySchema(t)
+	desc := strings.TrimSuffix(s.MarkdownDescription, deployActivationProfilePrivileges)
+
+	for _, fragment := range []string{"only ever accumulates", "never removes", "scopes the configuration profile to " +
+		"nothing", "reaches no devices"} {
+		if !strings.Contains(desc, fragment) {
+			t.Errorf("description does not warn about %q:\n%s", fragment, desc)
+		}
+	}
+}
+
+// TestDeployActivationProfileAction_OSValuesDocumented pins that every accepted
+// value is named in the description. The validator and the list are built from the
+// same function, so this catches the list being replaced by a hand-written one.
+func TestDeployActivationProfileAction_OSValuesDocumented(t *testing.T) {
+	s := deploySchema(t)
+
+	attr, ok := s.Attributes["os"]
+	if !ok {
+		t.Fatal("missing attribute os")
+	}
+	desc := attr.GetMarkdownDescription()
+
+	for _, value := range osValues() {
+		if !strings.Contains(desc, "`"+value+"`") {
+			t.Errorf("os description does not document accepted value %q:\n%s", value, desc)
+		}
+	}
+}
+
+// TestDeployActivationProfileAction_GroupDescriptionSaysWhichKind pins the one
+// cross-field rule a caller cannot discover from the schema: which kind of Jamf Pro
+// group each operating system takes. It cannot be validated at plan time — the
+// group's kind is only knowable from the tenant — so the description carries it.
+func TestDeployActivationProfileAction_GroupDescriptionSaysWhichKind(t *testing.T) {
+	s := deploySchema(t)
+
+	attr, ok := s.Attributes["jamf_pro_group_ids"]
+	if !ok {
+		t.Fatal("missing attribute jamf_pro_group_ids")
+	}
+	desc := attr.GetMarkdownDescription()
+
+	for _, fragment := range []string{"Computer groups", "mobile device groups", "`" + macOSValue + "`"} {
+		if !strings.Contains(desc, fragment) {
+			t.Errorf("jamf_pro_group_ids description does not mention %q:\n%s", fragment, desc)
+		}
+	}
+}
+
+// TestDeployActivationProfileAction_DescriptionsAreUIAligned pins STYLE_GUIDE
+// §User-facing descriptions are UI-aligned, not wire-aligned.
+func TestDeployActivationProfileAction_DescriptionsAreUIAligned(t *testing.T) {
+	s := deploySchema(t)
+
+	descriptions := []string{strings.TrimSuffix(s.MarkdownDescription, deployActivationProfilePrivileges)}
+	for _, attr := range s.Attributes {
+		descriptions = append(descriptions, attr.GetMarkdownDescription())
+	}
+
+	for _, desc := range descriptions {
+		lower := strings.ToLower(desc)
+		for _, banned := range []string{"endpoint", "/v1/", " sdk", "204", "http", "uemgroups", "payload"} {
 			if strings.Contains(lower, banned) {
 				t.Errorf("description contains wire vocabulary %q:\n%s", banned, desc)
 			}
