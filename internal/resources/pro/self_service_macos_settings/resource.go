@@ -120,8 +120,8 @@ func (r *SelfServiceMacosSettingsResource) ModifyPlan(ctx context.Context, req r
 // user-declared) "Saml" that the server will coerce away because login_method is planned
 // "NotRequired".
 func predictAuthTypeUnknown(loginMethod, plannedAuthType, configAuthType types.String) bool {
-	return !loginMethod.IsNull() && !loginMethod.IsUnknown() && loginMethod.ValueString() == "NotRequired" &&
-		!plannedAuthType.IsNull() && !plannedAuthType.IsUnknown() && plannedAuthType.ValueString() == "Saml" &&
+	return !loginMethod.IsNull() && !loginMethod.IsUnknown() && loginMethod.ValueString() == pro.SelfServiceLoginSettingsUserLoginLevelNotRequired &&
+		!plannedAuthType.IsNull() && !plannedAuthType.IsUnknown() && plannedAuthType.ValueString() == pro.SelfServiceLoginSettingsAuthTypeSaml &&
 		configAuthType.IsNull()
 }
 
@@ -178,7 +178,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("NotRequired", "Anonymous", "Required"),
+					stringvalidator.OneOf(pro.SelfServiceLoginSettingsUserLoginLevelValues()...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -196,7 +196,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("Basic", "Saml"),
+					stringvalidator.OneOf(pro.SelfServiceLoginSettingsAuthTypeValues()...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
@@ -250,12 +250,7 @@ func (r *SelfServiceMacosSettingsResource) Schema(ctx context.Context, req resou
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(
-						pro.SelfServiceInteractionSettingsDefaultLandingPageHome,
-						pro.SelfServiceInteractionSettingsDefaultLandingPageBrowse,
-						pro.SelfServiceInteractionSettingsDefaultLandingPageHistory,
-						pro.SelfServiceInteractionSettingsDefaultLandingPageNotifications,
-					),
+					stringvalidator.OneOf(pro.SelfServiceInteractionSettingsDefaultLandingPageValues()...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
