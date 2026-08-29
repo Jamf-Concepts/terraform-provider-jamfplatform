@@ -16,17 +16,23 @@ import (
 
 // deploymentTypeSelfService and deploymentTypeAutomatic are the two wire values
 // the classic /mobiledeviceapplications endpoint accepts for
-// general.deployment_type. The literals must match the server bytes exactly,
-// including the slash.
+// general.deployment_type (UI "Distribution Method"). They must match the
+// server bytes exactly, including the slash — which is the argument for taking
+// them from the SDK rather than retyping them.
 const (
-	deploymentTypeSelfService = "Make Available in Self Service"
-	deploymentTypeAutomatic   = "Install Automatically/Prompt Users to Install"
+	deploymentTypeSelfService = proclassic.MobileDeviceApplicationGeneralDeploymentTypeMakeAvailableInSelfService
+	deploymentTypeAutomatic   = proclassic.MobileDeviceApplicationGeneralDeploymentTypeInstallAutomaticallyPromptUsersToInstall
 )
 
 // osTypeIOS and osTypeTVOS are the two values the server accepts for
 // general.os_type. The server requires os_type on every write to an in-house
 // (internal_app=true) app — which is the common case — so the provider always
 // sends it. Echoed on GET once set.
+//
+// These stay literals: MobileDeviceApplicationGeneral.OsType carries no
+// "Allowed values" annotation and the SDK generates no os_type vocabulary for
+// any construct, so there is no constant to alias. The package guard exempts
+// both values by name so an SDK release that starts generating them fails.
 const (
 	osTypeIOS  = "iOS"
 	osTypeTVOS = "tvOS"

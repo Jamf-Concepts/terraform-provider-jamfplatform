@@ -55,10 +55,12 @@ func levelFromWireRead(wireValue string) string {
 }
 
 // Distribution method wire values are symmetric — the admin UI labels match
-// the wire spellings exactly.
+// the wire spellings exactly. The spec generates this vocabulary under the
+// field name deploymentMethod rather than distributionMethod, so the constants
+// carry the SDK's DeploymentMethod prefix.
 const (
-	distributionMethodInstallAutomatically = "Install Automatically"
-	distributionMethodMakeAvailableInSS    = "Make Available in Self Service"
+	distributionMethodInstallAutomatically = proclassic.MobileDeviceConfigurationProfileGeneralDeploymentMethodInstallAutomatically
+	distributionMethodMakeAvailableInSS    = proclassic.MobileDeviceConfigurationProfileGeneralDeploymentMethodMakeAvailableInSelfService
 )
 
 var validDistributionMethods = []string{
