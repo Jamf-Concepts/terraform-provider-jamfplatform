@@ -127,6 +127,16 @@ Each of these has been paid for late at least once. The right-hand column is wha
 ## 4. Guard-rails (DON'T)
 
 - **Don't** invent SDK functions, fields, or enum values. Stop and ask; fix upstream.
+- **Don't** write a string literal where the SDK generates a constant — **check each value
+  individually, not the set**. Covers schema value enums (build the `OneOf` validator *and* the
+  documented list from `*Values()`) *and* the error codes in `mappings.go` (alias
+  `securitycloud.ApiErrorItemCodeNotEntitled`, don't retype `"NOT_ENTITLED"`). A generated set
+  can carry the generic codes while carrying none of your construct's, so "the SDK has none of
+  these" is a claim to verify per code — it has been wrong twice, and a comment asserting it
+  hid the defect both times. A deliberate subset keeps its curated list but uses SDK constants
+  as the elements. Pin it with `TestErrorCodeLiteralsAreNotInTheSDKEnum` (copy from
+  `device_group/mappings_test.go`) rather than trusting a reviewer's eye.
+  ([STYLE_GUIDE §Enum values and error codes come from the SDK](../../../STYLE_GUIDE.md#enum-values-and-error-codes-come-from-the-sdk-not-from-literals))
 - **Don't** ship `*[]any` or other under-specified SDK types.
 - **Don't** copy a wire-shape assumption from another construct — even in the same namespace.
   Probe afresh.

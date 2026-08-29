@@ -31,7 +31,8 @@ internal/
 │   ├── device_groups/ # Plural data source                                   (Platform Services)
 │   ├── devices/       # Plural data source                                   (Platform Services)
 │   ├── security_cloud/ # Jamf Security Cloud — flat single tier                (Security Cloud)
-│   │                  #   dns_zone/, ztna_gateway/, ztna_grouped_gateway/, ztna_shared_gateways/
+│   │                  #   device_group/, dns_zone/, uem_connect/, ztna_gateway/,
+│   │                  #   ztna_grouped_gateway/, ztna_shared_gateways/
 │   │                  #   (folder name = Terraform slug minus `jamfplatform_security_cloud_`)
 │   └── pro/           # Jamf Pro resources — flat single tier: every leaf package sits directly under pro/
 │                      #   (folder name = Terraform slug minus `jamfplatform_pro_`, snake_case). No domain tier.
@@ -133,12 +134,18 @@ three accepted — and a zone cannot be written before its gateway exists
 (`422 GATEWAY_NOT_FOUND`), so that diagnostic points at `name_servers` rather than the zone;
 conversely a gateway that anything still references refuses to be deleted with a bare
 `409 CONFLICT` naming nothing, which is a Terraform destroy-ordering trap and gets its own
-diagnostic. Two shapes recur across the namespace and are worth knowing before reading any of
+diagnostic. That last behaviour is **per construct, not a namespace rule** — a device group
+that a ZTNA app still names deletes cleanly and silently empties the app's assignment instead
+— so probe the referenced delete for each new construct rather than inheriting either answer.
+Three shapes recur across the namespace and are worth knowing before reading any of
 it: a **cipher/algorithm field is an array the server accepts exactly one element in**, so it
-is modelled as a single string and collapsed at the boundary; and an **enum violation returns
+is modelled as a single string and collapsed at the boundary; an **enum violation returns
 `400 [INVALID_FIELD] Request body is missing or malformed.`** with no field and no value,
 which is why every enum is validated at plan time from the SDK's own generated `*Values()`
-helper rather than a restated list. Acceptance tests gate on
+helper rather than a restated list; and an **unmapped route answers `403 BAD_PERMISSIONS`,
+indistinguishable from a real privilege gap** (a bogus path returns the same body), so that
+code is deliberately never translated into a diagnostic and a spec-advertised endpoint the
+gateway 403s on is presumed unrouted rather than unprivileged. Acceptance tests gate on
 `testhelpers.AccPreCheckSecurityCloud`, which requires the operator to *declare* that the
 configured scope is a Security Cloud one (`JAMFPLATFORM_SECURITY_CLOUD_{ENVIRONMENT,TENANT}_ID`,
 matching the scope in use) and skips otherwise — a Pro-only acceptance tenant is a

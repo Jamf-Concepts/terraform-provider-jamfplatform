@@ -201,6 +201,41 @@ Two rules for these tables:
 - **Derive the documented value list from the same slice the `OneOf` validator uses** (a small `markdownValueList`-style helper), so the `MarkdownDescription` and the validator cannot drift apart — single source of truth, mirroring the version-const interpolation policy.
 - **Acceptance cannot verify the table.** Writing through the map and reading through its inverse round-trips *by construction*, so a wrong-but-consistent entry (`"30 days"` mapped to the wrong number) passes every unit and acceptance test silently. Anchor at least one entry to the live wire during the build, and **wire-probe the table by driving the actual admin UI** (set each preset in Jamf, GET the stored value) — the round-trip test is not a substitute. Flag any unverified entries in the PR.
 
+### Enum values and error codes come from the SDK, not from literals
+
+**If the SDK generates a constant for a value, use the constant.** This applies provider-wide,
+to every namespace, and to two surfaces that are easy to treat as unrelated:
+
+- **Schema value enums.** Build *both* the `OneOf` validator and the documented value list from
+  the SDK's generated `*Values()` helper, so neither can drift from the other or from the API.
+- **Machine-readable error codes** used to translate a failure into a diagnostic. Alias the SDK
+  constant (`codeNotEntitled = securitycloud.ApiErrorItemCodeNotEntitled`), never restate the
+  string.
+
+Two shapes are legitimate and must not be "fixed" into the rule above:
+
+- **A deliberate subset.** Where a generated set is a superset of what one caller accepts — the
+  SDK says as much for `EmailMappingTypeValues()`, which spans every UEM vendor — keep the
+  hand-curated list, because the curation is the point. But its *elements* are still SDK
+  constants, not literals: the set is yours, the spellings are the SDK's.
+- **A genuinely absent constant.** Where the SDK documents a set but generates no helper, or
+  carries no constant for a code the wire sends, restate it in the package's `mappings.go` and
+  say *why* in a comment.
+
+That last exemption is where this rule keeps failing, so state the reason precisely. A comment
+claiming the SDK "carries none of these codes" must be true of **every** code beneath it. Jamf
+Security Cloud's `ApiErrorItemCode` is the DNS namespace's error schema and carries no
+group-specific code — but it does carry the generic `INVALID_FIELD` and `NOT_ENTITLED`, so a
+package restating those alongside its own codes is wrong in a way its own comment conceals.
+That exact defect shipped twice and was caught by review both times.
+
+**So do not rely on review for this — pin it with a test.** Parse the package's own `const`
+declarations and assert that no string-literal constant duplicates a value the SDK's `*Values()`
+helper already provides. Reference: `internal/resources/security_cloud/device_group/mappings_test.go`
+(`TestErrorCodeLiteralsAreNotInTheSDKEnum`). Parsing the source rather than restating a list is
+what makes it self-maintaining: it fires both on a new literal that should have been an alias,
+and on a literal that a future SDK release promotes into the enum.
+
 ### Sets vs Lists
 
 - **Sets** for user-supplied unordered collections where deduplication and order-independent comparison matter (e.g. `members`, `raw_component`).
@@ -662,8 +697,8 @@ artifacts that appear nowhere in the admin UI, so they are not part of the Terra
 
 ### Security Cloud shapes that recur
 
-Three patterns show up across the Security Cloud namespaces often enough to state once here
-rather than rediscover per resource. All three were wire-probed on 2026-08-27.
+These patterns show up across the Security Cloud namespaces often enough to state once here
+rather than rediscover per resource. Wire-probed on 2026-08-27 unless a later date is given.
 
 **A single-element array is a scalar.** Several fields are declared as arrays but rejected at
 any size but one — the IPsec cipher suites' `encryption`, `integrity` and `dhGroups`, and the
@@ -678,14 +713,35 @@ value list from the SDK's generated `*Values()` helper so they cannot drift from
 from the API. Where the SDK documents a set but generates no helper (grouped gateway's
 `recoveryDelayInSec`), restate it in the package's `enums.go` and say why in a comment.
 
-**Deleting a referenced object is a bare 409.** Jamf Security Cloud refuses to delete anything
-another object points at — a gateway named by a DNS zone's name server or by a grouped
-gateway's membership — with `409 CONFLICT` and no structured detail identifying the referrer.
-This is the Terraform destroy-ordering trap described in
+**Whether a referenced object can be deleted is per construct — probe it.** For *gateways*,
+Jamf Security Cloud refuses to delete anything another object points at — a gateway named by a
+DNS zone's name server or by a grouped gateway's membership — with `409 CONFLICT` and no
+structured detail identifying the referrer. That is the Terraform destroy-ordering trap
+described in
 [§Referenced-by-name dependencies](#referenced-by-name-dependencies--has_dependencies-on-delete):
 removing the reference *and* destroying the target in one apply lets Terraform sequence the
 destroy first. Translate the 409 into a diagnostic that names the possible referrers and says
 to split the applies, because the server will not.
+
+**Device groups behave the opposite way** (wire-probed 2026-08-29), which is why this is a
+probe and not a rule: deleting a group that a ZTNA app's `assignments.inclusions.groups` still
+names returns `204`, and the app is silently left at `allUsers: false` with an empty group list
+— a combination the API rejects on *write*. There is no 409 to translate and nothing for
+Terraform to sequence, so the hazard belongs in the resource's description rather than in a
+diagnostic. Do not carry either behaviour across from one construct to another; probe the
+delete of a referenced object per construct.
+
+**An unmapped route answers `403 BAD_PERMISSIONS`, not `404`** (wire-probed 2026-08-29). A
+`GET` on a deliberately bogus Security Cloud path returns exactly the body a genuinely
+unprivileged call does, so the status is ambiguous by construction and **must not be
+translated into a "grant this privilege" diagnostic** — it would be wrong half the time.
+Two consequences. First, when the bundled spec advertises an endpoint the gateway 403s on,
+that is evidence the route is unmapped rather than that a privilege is missing: confirm it by
+probing a bogus path with the same token, and by checking a sibling call under the same
+privilege still succeeds (`PUT /securitycloud/v2/groups/{id}` fails this way while
+`PUT /securitycloud/v1/groups/{id}` succeeds under the same `device-groups:update`). Second,
+this is *not* the entitlement failure: `403 NOT_ENTITLED` is a different code and does deserve
+its own named diagnostic.
 
 **A read-only status timestamp does not belong in the schema.** The gateway's
 `status.updatedAt` and the grouped gateway's `updatedAt` advance on every server-side
