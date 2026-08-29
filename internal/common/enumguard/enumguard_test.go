@@ -283,3 +283,158 @@ func TestCheckAllowsPartialExemption(t *testing.T) {
 		t.Errorf("Vacuous = %q, want empty", got.Vacuous)
 	}
 }
+
+// TestCheckFindsLocalDefine covers the shape the guard's own review found
+// unprotected: a builder naming the one wire value it is about to send. Five
+// shipped packages had no other restated enum, so missing this made their guards
+// pass on mutated source.
+func TestCheckFindsLocalDefine(t *testing.T) {
+	dir := write(t, `package p
+
+func printerActionToWire(action string) *string {
+	switch action {
+	case "Map":
+		v := "COVERED"
+		return &v
+	}
+	return nil
+}
+`)
+
+	got, err := Check(Params{Dir: dir, Covered: []string{"COVERED"}})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if len(got.Restated) != 1 {
+		t.Fatalf("Restated = %v, want 1 finding", got.Restated)
+	}
+	if !strings.Contains(got.Restated[0], "printerActionToWire -> v") {
+		t.Errorf("finding does not name the enclosing function and variable: %s", got.Restated[0])
+	}
+	if !strings.Contains(got.Restated[0], "mappings.go:6") {
+		t.Errorf("finding does not carry file:line: %s", got.Restated[0])
+	}
+}
+
+// TestCheckPassesOnLocalDefineOfSDKConstant is the fixed form of the same site:
+// the value comes from the SDK, so there is no literal to report.
+func TestCheckPassesOnLocalDefineOfSDKConstant(t *testing.T) {
+	dir := write(t, `package p
+
+func printerActionToWire() *string {
+	v := proclassic.PolicyPrintersPrinterItemActionInstall
+	return &v
+}
+`)
+
+	got, err := Check(Params{Dir: dir, Covered: []string{"COVERED"}})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if len(got.Problems()) != 0 {
+		t.Errorf("Problems = %v, want none", got.Problems())
+	}
+	if got.Examined != 0 {
+		t.Errorf("Examined = %d, want 0 — an aliased constant is not a literal", got.Examined)
+	}
+}
+
+// TestCheckFindsLocalDefineOfComposite keeps stringLits' recursion rules on the
+// right-hand side, so a slice or map of literals bound with := is covered the
+// same way a package-level var is.
+func TestCheckFindsLocalDefineOfComposite(t *testing.T) {
+	dir := write(t, `package p
+
+func build() []string {
+	valid := []string{"OTHER", "COVERED"}
+	return valid
+}
+`)
+
+	got, err := Check(Params{Dir: dir, Covered: []string{"COVERED"}})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if len(got.Restated) != 1 {
+		t.Fatalf("Restated = %v, want 1 finding", got.Restated)
+	}
+	if !strings.Contains(got.Restated[0], "build -> valid") {
+		t.Errorf("finding does not name the enclosing function and variable: %s", got.Restated[0])
+	}
+}
+
+// TestCheckStillIgnoresUsesInFunctionBodies pins the boundary the := support
+// must not erode: walking one statement shape does not turn the guard into a
+// walker of every string in a function. A comparison operand, a case value and a
+// returned literal are uses, not declarations.
+func TestCheckStillIgnoresUsesInFunctionBodies(t *testing.T) {
+	dir := write(t, `package p
+
+func classify(v string) string {
+	if v == "COVERED" {
+		return "COVERED"
+	}
+	switch v {
+	case "COVERED":
+		return "COVERED"
+	}
+	label := fmt.Sprintf("saw %s", "COVERED")
+	_ = label
+	out := thing{Kind: "COVERED"}
+	_ = out
+	return "COVERED"
+}
+`)
+
+	got, err := Check(Params{Dir: dir, Covered: []string{"COVERED"}})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if len(got.Restated) != 0 {
+		t.Errorf("Restated = %v, want none", got.Restated)
+	}
+	if got.Examined != 0 {
+		t.Errorf("Examined = %d, want 0", got.Examined)
+	}
+}
+
+// TestCheckFindsLocalDefineOfMap pins the other half of definedLits' allowance:
+// a map right-hand side keeps stringLits' key-and-value recursion.
+func TestCheckFindsLocalDefineOfMap(t *testing.T) {
+	dir := write(t, `package p
+
+func build() map[string]string {
+	toWire := map[string]string{"KEY": "COVERED"}
+	return toWire
+}
+`)
+
+	got, err := Check(Params{Dir: dir, Covered: []string{"COVERED", "KEY"}})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if len(got.Restated) != 2 {
+		t.Fatalf("Restated = %v, want both the key and the value", got.Restated)
+	}
+}
+
+// TestCheckIgnoresStructLiteralInLocalDefine keeps definedLits' one deliberate
+// narrowing visible: a `Field: "value"` element populates a type the package did
+// not declare, so it stays an audit's problem rather than the guard's.
+func TestCheckIgnoresStructLiteralInLocalDefine(t *testing.T) {
+	dir := write(t, `package p
+
+func build() any {
+	body := proclassic.Criterion{AndOr: "COVERED"}
+	return body
+}
+`)
+
+	got, err := Check(Params{Dir: dir, Covered: []string{"COVERED"}})
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if len(got.Restated) != 0 {
+		t.Errorf("Restated = %v, want none", got.Restated)
+	}
+}

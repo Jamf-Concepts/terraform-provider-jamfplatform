@@ -18,19 +18,29 @@
 // It walks const *and* var declarations, including the elements of slice and
 // map composite literals, because a restated enum is far more often a
 // `var validFoos = []string{...}` feeding a OneOf validator than a lone const.
-// It also reaches inside function bodies for the two framework call shapes that
-// declare an accepted set in all but name — stringvalidator.OneOf and
+// It also reaches inside function bodies for three shapes. Two are the framework
+// calls that declare an accepted set in all but name — stringvalidator.OneOf and
 // stringdefault.StaticString — since a schema that inlines its vocabulary is
-// restating it just as surely as a package-level var would.
+// restating it just as surely as a package-level var would. The third is a short
+// variable declaration, `v := "install"`, which is how a builder names the one
+// wire value it is about to send. That third shape was missing until this
+// package's own review found five shipped packages whose only restated enum had
+// it, leaving those guards unable to protect their own source.
 //
 // It reads every non-test file in the package directory, so moving a
 // declaration between files cannot slip past it.
 //
-// What it deliberately does not cover: a literal compared against in ordinary
-// logic (`if cdnType == "AMAZON_S3"`, `case "PENDING":`). Reaching those would
-// mean treating every string comparison in the package as an enum reference,
-// which fires on prose and on unrelated vocabularies that happen to share a
-// spelling. Those are an audit's job, not a guard's.
+// What it deliberately does not cover: a literal that is not declared but merely
+// used — compared against in ordinary logic (`if cdnType == "AMAZON_S3"`, `case
+// "PENDING":`), returned (`return "PENDING"`), passed as an argument to anything
+// but the two framework calls above, or assigned to a field of a struct literal
+// built inside a function. Reaching those would mean treating every string in
+// the package as an enum reference, which fires on prose and on unrelated
+// vocabularies that happen to share a spelling. Those are an audit's job, not a
+// guard's. The line the walker draws is declaration versus use: a short variable
+// declaration is collected because the name it binds is the value the code goes
+// on to send, whereas the same literal one line later in a `case` is only being
+// recognised.
 package enumguard
 
 import (
@@ -46,11 +56,13 @@ import (
 	"strings"
 )
 
-// Literal is one string literal found in a package's const or var
-// declarations, tagged with the declaration it belongs to so a failure names
-// something a reader can grep for.
+// Literal is one string literal found in a declaration the package makes — a
+// const, a var, an inlined framework set or a func-body short variable
+// declaration — tagged with that declaration so a failure names something a
+// reader can grep for.
 type Literal struct {
-	// Decl is the name of the const or var the literal was declared under.
+	// Decl names the declaration the literal was found under: a const or var
+	// name, or "func -> name" for a literal declared inside a function body.
 	Decl string
 	// Value is the literal's unquoted content.
 	Value string
@@ -112,8 +124,9 @@ type Findings struct {
 	Examined int
 }
 
-// Check parses the package in p.Dir and reports every string literal in its
-// const and var declarations that the SDK already covers.
+// Check parses the package in p.Dir and reports every string literal the
+// package declares — see the package doc for exactly which shapes count as a
+// declaration — that the SDK already covers.
 func Check(p Params) (Findings, error) {
 	dir := p.Dir
 	if dir == "" {
@@ -192,8 +205,9 @@ func Check(p Params) (Findings, error) {
 	return out, nil
 }
 
-// collect returns every string literal declared in a const or var in the
-// package's non-test files.
+// collect returns every string literal the package's non-test files declare: in
+// a package-level const or var, in an inlined framework set, or on the
+// right-hand side of a func-body short variable declaration.
 func collect(dir string) ([]Literal, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -215,6 +229,7 @@ func collect(dir string) ([]Literal, error) {
 		for _, decl := range file.Decls {
 			if fn, ok := decl.(*ast.FuncDecl); ok {
 				out = append(out, inlineSets(fset, name, fn)...)
+				out = append(out, localDefines(fset, name, fn)...)
 				continue
 			}
 			gen, ok := decl.(*ast.GenDecl)
@@ -248,9 +263,9 @@ func collect(dir string) ([]Literal, error) {
 }
 
 // stringLits returns every string BasicLit reachable from expr without
-// descending into a function body — a literal inside a helper function is not
-// a declared enum value, and pulling those in would make the guard fire on
-// prose.
+// descending into a call, a comparison or a function body — a literal that is
+// only an argument or an operand is not a declared enum value, and pulling those
+// in would make the guard fire on prose.
 func stringLits(expr ast.Expr) []*ast.BasicLit {
 	var out []*ast.BasicLit
 	switch e := expr.(type) {
@@ -345,4 +360,70 @@ func inlineSets(fset *token.FileSet, file string, fn *ast.FuncDecl) []Literal {
 		return true
 	})
 	return out
+}
+
+// localDefines returns the string literals a function body binds with a short
+// variable declaration, attributed as "func -> name" so a failure points at the
+// builder that inlined the value. Only the right-hand side is walked, and only
+// through definedLits, so a call argument, a comparison operand and a `case`
+// value are not collected: what separates this shape from those is that `:=`
+// declares the value the code goes on to send, rather than recognising one it was
+// handed.
+func localDefines(fset *token.FileSet, file string, fn *ast.FuncDecl) []Literal {
+	if fn.Body == nil {
+		return nil
+	}
+	var out []Literal
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		assign, ok := n.(*ast.AssignStmt)
+		if !ok || assign.Tok != token.DEFINE {
+			return true
+		}
+		for i, rhs := range assign.Rhs {
+			name := "_"
+			if len(assign.Lhs) == len(assign.Rhs) {
+				if ident, ok := assign.Lhs[i].(*ast.Ident); ok {
+					name = ident.Name
+				}
+			} else if ident, ok := assign.Lhs[0].(*ast.Ident); ok {
+				name = ident.Name
+			}
+			for _, lit := range definedLits(rhs) {
+				unquoted, err := strconv.Unquote(lit.Value)
+				if err != nil {
+					continue
+				}
+				out = append(out, Literal{
+					Decl:  fn.Name.Name + " -> " + name,
+					Value: unquoted,
+					Pos:   fmt.Sprintf("%s:%d", file, fset.Position(lit.Pos()).Line),
+				})
+			}
+		}
+		return true
+	})
+	return out
+}
+
+// definedLits is the right-hand side of a short variable declaration narrowed to
+// the shapes that are a declaration of a value rather than a use of one: a bare
+// literal, and a slice or map of literals. It hands those to stringLits so the
+// recursion rules stay identical to a package-level var, and stops at everything
+// else — a call, a comparison, a conversion — because a literal there is an
+// argument or an operand. A struct literal is excluded at the top level too,
+// since its `Field: "value"` elements are populating a type the package did not
+// declare; auditing those is a separate job from guarding a declared vocabulary.
+func definedLits(expr ast.Expr) []*ast.BasicLit {
+	switch e := expr.(type) {
+	case *ast.BasicLit:
+		return stringLits(e)
+	case *ast.ParenExpr:
+		return definedLits(e.X)
+	case *ast.CompositeLit:
+		switch e.Type.(type) {
+		case *ast.ArrayType, *ast.MapType:
+			return stringLits(e)
+		}
+	}
+	return nil
 }
