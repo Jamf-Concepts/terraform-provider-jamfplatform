@@ -65,7 +65,7 @@ import (
 // task, matched client-side with EqualFold. Live-confirmed; the response enum
 // (unlike the broken status filter) uses this value. Other observed values:
 // VERIFIED_INSTALL / COMPLETE (success), INSTALL_IN_PROGRESS (pending).
-const statusFailed = "GAVE_UP"
+const statusFailed = pro.DeploymentTaskStatusGaveUp
 
 var _ action.Action = (*RetryDeploymentAction)(nil)
 var _ action.ActionWithConfigure = (*RetryDeploymentAction)(nil)
