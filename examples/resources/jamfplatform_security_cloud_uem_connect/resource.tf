@@ -77,22 +77,42 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # a second run.
   #
   # Jamf Security Cloud verifies neither side of a mapping exists, so a wrong ID is
-  # accepted and simply never matches — nothing will tell you it is wrong.
+  # accepted and simply never matches — nothing will tell you it is wrong. That is
+  # the argument for referencing a jamfplatform_security_cloud_device_group rather
+  # than pasting a UUID: Terraform then guarantees the group exists, and creates it
+  # before the mapping that names it.
   group_membership_mapping = {
-    enabled                         = true
-    default_security_cloud_group_id = var.unassigned_security_cloud_group_id
+    enabled = true
+
+    # Omit default_security_cloud_group_id entirely and unmatched devices join the
+    # built-in "Default Group", which has no ID and so cannot be named here.
+    default_security_cloud_group_id = jamfplatform_security_cloud_device_group.unassigned.id
 
     mappings = [
       {
         uem_group_id            = "${jamfplatform_device_group.executives.device_type}_${jamfplatform_device_group.executives.jamf_pro_id}"
-        security_cloud_group_id = var.executives_security_cloud_group_id
+        security_cloud_group_id = jamfplatform_security_cloud_device_group.executives.id
       },
       {
         uem_group_id            = "${jamfplatform_device_group.field_staff.device_type}_${jamfplatform_device_group.field_staff.jamf_pro_id}"
-        security_cloud_group_id = var.field_staff_security_cloud_group_id
+        security_cloud_group_id = jamfplatform_security_cloud_device_group.field_staff.id
       },
     ]
   }
+}
+
+# The Jamf Security Cloud side of each mapping. These hold nothing but a name —
+# membership comes from the mapping above.
+resource "jamfplatform_security_cloud_device_group" "executives" {
+  name = "Executives"
+}
+
+resource "jamfplatform_security_cloud_device_group" "field_staff" {
+  name = "Field Staff"
+}
+
+resource "jamfplatform_security_cloud_device_group" "unassigned" {
+  name = "Unassigned Devices"
 }
 
 resource "jamfplatform_device_group" "executives" {
@@ -107,20 +127,4 @@ resource "jamfplatform_device_group" "field_staff" {
   device_type = "mobile"
   group_type  = "static"
   members     = []
-}
-
-variable "unassigned_security_cloud_group_id" {
-  description = "Jamf Security Cloud group devices join when no mapping matches. Leave unset for the built-in Default Group."
-  type        = string
-  default     = null
-}
-
-variable "executives_security_cloud_group_id" {
-  description = "Jamf Security Cloud group the mapped Jamf Pro computer group's members join."
-  type        = string
-}
-
-variable "field_staff_security_cloud_group_id" {
-  description = "Jamf Security Cloud group the mapped Jamf Pro mobile device group's members join."
-  type        = string
 }

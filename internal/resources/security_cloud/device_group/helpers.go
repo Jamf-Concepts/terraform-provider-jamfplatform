@@ -1,0 +1,70 @@
+// Copyright Jamf Software LLC 2026
+// SPDX-License-Identifier: MPL-2.0
+
+package device_group
+
+import (
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+)
+
+// appendWriteDiagnostics turns a create/update failure into the most specific
+// diagnostic the error body supports, and reports whether it recognised one.
+//
+// Only codes whose remedy is not obvious from the server's own wording are
+// translated. GROUP_ALREADY_EXISTS earns one because the message says a name is
+// taken without saying that the comparison is exact, so an operator who has
+// already checked the UI for "Example" will not think to look for "example".
+// RESERVED_GROUP_NAME earns one because the built-in group is not manageable at
+// all, which the message does not say. INVALID_FIELD earns one because the
+// server's "must not be blank" is reached by a whitespace-only name too.
+//
+// BAD_PERMISSIONS is deliberately absent — see mappings.go for why translating it
+// would be a guess.
+func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
+	apiErr := jamfplatform.AsAPIError(err)
+	if apiErr == nil {
+		return false
+	}
+	matched := false
+	for _, detail := range apiErr.Details() {
+		switch detail.Code {
+		case codeGroupAlreadyExists:
+			diags.AddAttributeError(
+				path.Root("name"),
+				"Device group name already in use",
+				"Jamf Security Cloud requires device group names to be unique on the tenant. The comparison is "+
+					"exact, so a group differing only in capitalisation still counts as a different name and is not "+
+					"the one clashing here. Reported by Jamf Security Cloud: "+detail.Description,
+			)
+		case codeReservedGroupName:
+			diags.AddAttributeError(
+				path.Root("name"),
+				"Device group name is reserved",
+				"Jamf Security Cloud reserves this name for the built-in group every tenant carries, and matches it "+
+					"regardless of capitalisation and surrounding whitespace. That group cannot be managed by "+
+					"Terraform — it has no identifier — so pick a different name. Reported by Jamf Security Cloud: "+
+					detail.Description,
+			)
+		case codeInvalidField:
+			diags.AddAttributeError(
+				path.Root("name"),
+				"Device group name not accepted",
+				"Jamf Security Cloud rejected this group name. A name that is empty, or made up only of whitespace, "+
+					"counts as blank. Reported by Jamf Security Cloud: "+detail.Description,
+			)
+		case codeNotEntitled:
+			diags.AddError(
+				"Tenant not entitled to Jamf Security Cloud device groups",
+				"The credentials authenticated successfully but this tenant does not have the device groups surface "+
+					"enabled. Contact Jamf to have it provisioned. Reported by Jamf Security Cloud: "+
+					detail.Description,
+			)
+		default:
+			continue
+		}
+		matched = true
+	}
+	return matched
+}
