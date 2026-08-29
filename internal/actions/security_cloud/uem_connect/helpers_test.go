@@ -316,11 +316,13 @@ func TestDeployedMessage(t *testing.T) {
 		}
 	}
 
-	// The no-groups line must not read as success at scoping: the wire probe
-	// established that omitting groups leaves the scope untouched, which on a
-	// first deployment means the configuration profile reaches nothing.
+	// The no-groups line must not read as success at scoping, and must not claim
+	// the scope was merely left alone either: wire probing established that a first
+	// deployment with no groups creates a configuration profile scoped to nothing,
+	// which "unchanged" on its own would describe as a non-event. Both outcomes have
+	// to be named, because deployedMessage cannot tell which one happened.
 	without := deployedMessage("ky2lgv2t", "macos", nil)
-	for _, want := range []string{"no groups were named", "unchanged"} {
+	for _, want := range []string{"no groups were named", "keeps the scope it had", "reaches no devices"} {
 		if !strings.Contains(without, want) {
 			t.Errorf("no-groups message does not contain %q: %s", want, without)
 		}

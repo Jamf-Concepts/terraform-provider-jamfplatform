@@ -204,11 +204,19 @@ func groupIDsFromSet(ctx context.Context, set types.Set, diags *diag.Diagnostics
 
 // deployedMessage describes what the deploy did, naming the groups so the progress
 // output records the scope that was added rather than only that something was.
+//
+// The no-groups line names both outcomes because nothing here can tell them apart:
+// Invoke reads no server state, so it does not know whether a configuration profile
+// already existed. "Unchanged" alone would be true of a repeat and false of a first
+// deployment, which creates a configuration profile scoped to nothing — the case the
+// schema's second warning exists for, and the one an operator scanning apply output
+// would otherwise read as nothing to act on.
 func deployedMessage(code, osValue string, groups []string) string {
 	if len(groups) == 0 {
 		return fmt.Sprintf(
-			"Deployed activation profile %s (%s) to Jamf Pro; no groups were named, so the configuration "+
-				"profile's scope is unchanged", code, osValue)
+			"Deployed activation profile %s (%s) to Jamf Pro; no groups were named, so an existing "+
+				"configuration profile keeps the scope it had, and a newly created one is scoped to "+
+				"nothing and reaches no devices", code, osValue)
 	}
 	return fmt.Sprintf(
 		"Deployed activation profile %s (%s) to Jamf Pro and added %s to the configuration profile's scope",

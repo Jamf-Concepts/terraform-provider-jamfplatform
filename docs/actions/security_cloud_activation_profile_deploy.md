@@ -50,11 +50,13 @@ variable "activation_profile_code" {
 resource "jamfplatform_device_group" "tablets" {
   name        = "Managed iPads"
   device_type = "mobile"
+  group_type  = "static"
 }
 
 resource "jamfplatform_device_group" "laptops" {
   name        = "Managed Macs"
   device_type = "computer"
+  group_type  = "static"
 }
 
 # jamf_pro_group_ids takes bare Jamf Pro group IDs, so jamf_pro_id goes in
