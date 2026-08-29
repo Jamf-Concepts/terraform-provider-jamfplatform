@@ -70,11 +70,26 @@ func (d *SearchDomainDataSource) Configure(ctx context.Context, req datasource.C
 	d.client = client
 }
 
+// noSearchDomainConfiguredError is the diagnostic the data source raises when the
+// tenant holds no search domain, kept in one place so the two paths that reach it
+// cannot drift apart.
+func noSearchDomainConfiguredError() (string, string) {
+	return "No Jamf Security Cloud search domain configured",
+		"This tenant has no search domain set, so there is nothing to read. Set one in the Jamf Security " +
+			"Cloud admin UI under Custom DNS, or manage it with the " +
+			"jamfplatform_security_cloud_dns_search_domain resource."
+}
+
 // Read fetches the tenant's search domain and populates Terraform state.
 //
 // An unconfigured search domain answers 404, which is an error here rather than an
 // empty result: a data source that silently produced an empty string would feed that
 // into whatever referenced it.
+//
+// A successful read carrying no value raises the same error, which is what makes the
+// promise above hold for both shapes. That one is defence rather than an observed
+// answer — absence presents as a 404, and Create's preflight guards the same shape
+// on the write path.
 func (d *SearchDomainDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	if d.client == nil {
 		resp.Diagnostics.AddError(providerNotConfiguredError())
@@ -98,15 +113,15 @@ func (d *SearchDomainDataSource) Read(ctx context.Context, req datasource.ReadRe
 	got, err := d.client.GetDnsSearchDomainV1(readCtx)
 	if err != nil {
 		if helpers.IsNotFoundError(err) {
-			resp.Diagnostics.AddError(
-				"No Jamf Security Cloud search domain configured",
-				"This tenant has no search domain set, so there is nothing to read. Set one in the Jamf Security "+
-					"Cloud admin UI under Custom DNS, or manage it with the "+
-					"jamfplatform_security_cloud_dns_search_domain resource.",
-			)
+			resp.Diagnostics.AddError(noSearchDomainConfiguredError())
 			return
 		}
 		resp.Diagnostics.AddError("Unable to read Jamf Security Cloud search domain", err.Error())
+		return
+	}
+
+	if got == nil || got.Suffix == "" {
+		resp.Diagnostics.AddError(noSearchDomainConfiguredError())
 		return
 	}
 

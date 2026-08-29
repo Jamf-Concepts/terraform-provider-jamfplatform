@@ -14,17 +14,28 @@ import (
 )
 
 // label63 and label64 sit either side of the per-label bound the endpoints enforce.
+// The cyrillic fixtures are two bytes per rune, so each one is over the byte bound
+// while inside the character bound the endpoints actually apply: cyrillic40 is a
+// 40-character label of 80 bytes, and name207 is a 207-character name of 407 bytes.
 var (
-	label63 = strings.Repeat("a", 63)
-	label64 = strings.Repeat("a", 64)
-	name253 = strings.Repeat(label63+".", 3) + strings.Repeat("a", 61)
-	name254 = strings.Repeat("a", 254)
+	label63    = strings.Repeat("a", 63)
+	label64    = strings.Repeat("a", 64)
+	name253    = strings.Repeat(label63+".", 3) + strings.Repeat("a", 61)
+	name254    = strings.Repeat("a", 254)
+	cyrillic40 = strings.Repeat("б", 40)
+	cyrillic64 = strings.Repeat("б", 64)
+	name207    = strings.Repeat(strings.Repeat("б", 60)+".", 3) + strings.Repeat("б", 20) + ".com"
 )
 
 // TestDNSHostname pins the grammar to the inputs probed against both the search
 // domain and the hostname mappings endpoints on 2026-08-29. Each case names the
 // status the wire returned, so a future change here has to argue with the server
 // rather than with a guess: `accepted` cases were answered 204, `refused` cases 400.
+// A second round on 2026-08-29 added the digit-leading final labels (400 from both
+// endpoints) and the multi-byte length cases (204 from both), which together
+// established that the final-label rule is "begins with a digit" and that the length
+// bounds count characters. The 64-rune multi-byte label is the one case here the wire
+// did not answer: it follows from the character bound the other two proved.
 func TestDNSHostname(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -42,6 +53,8 @@ func TestDNSHostname(t *testing.T) {
 		{"numeric first label", "123.foo", false},
 		{"63-character label", label63 + ".example.com", false},
 		{"253 characters", name253, false},
+		{"40-rune multi-byte label", cyrillic40 + ".example.com", false},
+		{"207 runes over the byte bound", name207, false},
 
 		{"empty", "", true},
 		{"wildcard", "*.example.com", true},
@@ -52,11 +65,14 @@ func TestDNSHostname(t *testing.T) {
 		{"leading underscore", "_underscore-lead.com", true},
 		{"trailing underscore", "trail_.com", true},
 		{"numeric final label", "foo.123", true},
+		{"digit-leading final label", "foo.1abc", true},
+		{"digit-leading short final label", "foo.9x", true},
 		{"dotted quad", "1.2.3.4", true},
 		{"five numeric labels", "1.2.3.4.5", true},
 		{"out-of-range quad", "999.999.999.999", true},
 		{"spaces", "not a domain!!", true},
 		{"64-character label", label64 + ".example.com", true},
+		{"64-rune multi-byte label", cyrillic64 + ".example.com", true},
 		{"254 characters", name254, true},
 	}
 
@@ -103,7 +119,8 @@ func TestDNSHostnameProblemNamesTheFault(t *testing.T) {
 		"*.example.com":          "Wildcards are not accepted",
 		".example.com":           "empty label",
 		"-lead.example.com":      "begin and end with",
-		"foo.123":                "entirely numeric",
+		"foo.123":                "begin with a digit",
+		"foo.1abc":               "begin with a digit",
 		label64 + ".example.com": "63 characters",
 		name254:                  "253 characters",
 	}
@@ -114,5 +131,24 @@ func TestDNSHostnameProblemNamesTheFault(t *testing.T) {
 				t.Fatalf("dnsHostnameProblem(%q) = %q, want it to mention %q", value, got, want)
 			}
 		})
+	}
+}
+
+// TestFirstAndLastRuneDecode pins the boundary helpers to whole runes rather than
+// bytes. dnsHostnameProblem cannot tell the difference — byte-indexing a multi-byte
+// rune yields a value above 127, which isDNSLabelBoundary accepts for the wrong
+// reason — so the intent is only testable on the helpers directly.
+func TestFirstAndLastRuneDecode(t *testing.T) {
+	if got := firstRune("ünicode"); got != 'ü' {
+		t.Errorf("firstRune(%q) = %q, want %q", "ünicode", got, 'ü')
+	}
+	if got := lastRune("unicodë"); got != 'ë' {
+		t.Errorf("lastRune(%q) = %q, want %q", "unicodë", got, 'ë')
+	}
+	if got := firstRune("abc"); got != 'a' {
+		t.Errorf("firstRune(%q) = %q, want %q", "abc", got, 'a')
+	}
+	if got := lastRune("abc"); got != 'c' {
+		t.Errorf("lastRune(%q) = %q, want %q", "abc", got, 'c')
 	}
 }

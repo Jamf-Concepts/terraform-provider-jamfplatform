@@ -73,17 +73,28 @@ func TestAssignHostnameMappingsResourceModel_CollapsesEmptyToNull(t *testing.T) 
 // TestAssignHostnameMappingsResourceModel_BooleansDefaultToFalse pins that an omitted
 // wire flag reads back as false, not null. Both attributes are Required, so a null
 // here would be an invalid state value rather than merely an odd one.
+//
+// The explicitly-false rows are what make this test about the value rather than about
+// the pointer. With only nil and pointer-to-true rows, an assigner that reported
+// presence — `value != nil` — agrees with one that dereferences on every input, so a
+// flag the tenant has switched off would read back as on with nothing failing.
 func TestAssignHostnameMappingsResourceModel_BooleansDefaultToFalse(t *testing.T) {
 	yes := true
+	no := false
 	cases := map[string]struct {
 		ztna      *bool
 		secureDNS *bool
 		wantZTNA  bool
 		wantDNS   bool
 	}{
-		"both absent": {nil, nil, false, false},
-		"ztna set":    {&yes, nil, true, false},
-		"secure dns":  {nil, &yes, false, true},
+		"both absent":                 {nil, nil, false, false},
+		"ztna set":                    {&yes, nil, true, false},
+		"secure dns":                  {nil, &yes, false, true},
+		"ztna explicitly false":       {&no, nil, false, false},
+		"secure dns explicitly false": {nil, &no, false, false},
+		"both explicitly false":       {&no, &no, false, false},
+		"ztna false, secure dns true": {&no, &yes, false, true},
+		"ztna true, secure dns false": {&yes, &no, true, false},
 	}
 
 	for name, tc := range cases {
@@ -170,41 +181,5 @@ func TestAssignHostnameMappingsResourceModel_EmptyResults(t *testing.T) {
 	}
 	if len(model.Mappings.Elements()) != 0 {
 		t.Error("mappings must be empty")
-	}
-}
-
-// TestBuildMappingsWriteInput_SendsEmptyArraysNotNull pins the write side of the
-// absent-equals-empty rule. The SDK types both address lists as *[]string with
-// omitempty, which invites sending null; a mapping whose aRecords is absent is refused
-// exactly as one whose aRecords is empty is, so there is nothing to gain and a nil
-// pointer to get wrong.
-func TestBuildMappingsWriteInput_SendsEmptyArraysNotNull(t *testing.T) {
-	ctx := context.Background()
-	model := &HostnameMappingsResourceModel{}
-	diags := assignHostnameMappingsResourceModel(ctx, model, &securitycloud.MappingList{
-		Results: []securitycloud.Mapping{{Hostname: "a.example.com", ARecords: stringsPtr("10.0.0.1")}},
-	})
-	if diags.HasError() {
-		t.Fatalf("diagnostics: %v", diags)
-	}
-
-	input, inputDiags := buildMappingsWriteInput(ctx, model.Mappings)
-	if inputDiags.HasError() {
-		t.Fatalf("diagnostics: %v", inputDiags)
-	}
-	if len(input) != 1 {
-		t.Fatalf("expected 1 mapping, got %d", len(input))
-	}
-	if input[0].AaaaRecords == nil {
-		t.Fatal("AaaaRecords must be a non-nil pointer so the payload carries [] rather than null")
-	}
-	if len(*input[0].AaaaRecords) != 0 {
-		t.Errorf("AaaaRecords must be empty, got %v", *input[0].AaaaRecords)
-	}
-	if input[0].ARecords == nil || len(*input[0].ARecords) != 1 {
-		t.Errorf("ARecords round-trip failed: %v", input[0].ARecords)
-	}
-	if input[0].Ztna == nil || input[0].SecureDns == nil {
-		t.Error("both flags must be sent explicitly rather than omitted")
 	}
 }

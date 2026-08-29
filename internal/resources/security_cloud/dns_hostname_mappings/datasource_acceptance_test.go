@@ -20,7 +20,7 @@ import (
 // side, which is the deliberate difference from the resource model.
 func TestAccDataSource_SecurityCloudDNSHostnameMappings_ReadsManagedValues(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearHostnameMappings(t)
+	requireEmptyHostnameMappings(t)
 	suffix := testhelpers.RunSuffix()
 	hostname := "tf-acc-ds-" + suffix + ".example.com"
 
@@ -65,7 +65,7 @@ func TestAccDataSource_SecurityCloudDNSHostnameMappings_ReadsManagedValues(t *te
 // to fail on — whereas an unset search domain is a 404 and does error.
 func TestAccDataSource_SecurityCloudDNSHostnameMappings_EmptyIsNotAnError(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearHostnameMappings(t)
+	requireEmptyHostnameMappings(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,

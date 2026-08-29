@@ -71,8 +71,17 @@ func TestIPv6AddressDefersOnNullAndUnknown(t *testing.T) {
 // mappingObject builds one mapping element for the cross-field validator tests.
 func mappingObject(t *testing.T, hostname string, ipv4, ipv6 types.Set) types.Object {
 	t.Helper()
+	return mappingObjectNamed(t, types.StringValue(hostname), ipv4, ipv6)
+}
+
+// mappingObjectNamed builds one mapping element whose host name may be null or
+// unknown, which mappingObject cannot express. A host name computed from another
+// resource is a real configuration — and the only one that reaches the diagnostic's
+// fallback wording.
+func mappingObjectNamed(t *testing.T, hostname types.String, ipv4, ipv6 types.Set) types.Object {
+	t.Helper()
 	object, diags := types.ObjectValue(mappingAttributeTypes, map[string]attr.Value{
-		"hostname":              types.StringValue(hostname),
+		"hostname":              hostname,
 		"ipv4_addresses":        ipv4,
 		"ipv6_addresses":        ipv6,
 		"connect_to_ztna":       types.BoolValue(false),
@@ -183,6 +192,42 @@ func TestEachMappingHasAnAddressNamesBothFields(t *testing.T) {
 		if !strings.Contains(detail, want) {
 			t.Errorf("diagnostic must mention %q, got: %s", want, detail)
 		}
+	}
+}
+
+// TestEachMappingHasAnAddressNamesAnUnnamedMapping covers the diagnostic's fallback
+// wording, which a fixture with a known host name never reaches.
+//
+// The case is real rather than defensive: a host name interpolated from another
+// resource is unknown at plan time while both address lists are known, so
+// hasUnknownAddresses does not defer and the mapping is judged with nothing to call
+// it. Printing an empty pair of quotes there would read as a mapping whose host name
+// is the empty string.
+func TestEachMappingHasAnAddressNamesAnUnnamedMapping(t *testing.T) {
+	nullSet := types.SetNull(types.StringType)
+
+	for name, hostname := range map[string]types.String{
+		"unknown": types.StringUnknown(),
+		"null":    types.StringNull(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			resp := &validator.SetResponse{}
+			EachMappingHasAnAddress().ValidateSet(context.Background(), validator.SetRequest{
+				Path:        path.Root("mappings"),
+				ConfigValue: mappingSet(t, mappingObjectNamed(t, hostname, nullSet, nullSet)),
+			}, resp)
+
+			if !resp.Diagnostics.HasError() {
+				t.Fatal("expected a diagnostic: an unnamed mapping with no address is still invalid")
+			}
+			detail := resp.Diagnostics.Errors()[0].Detail()
+			if !strings.Contains(detail, "one of the mappings") {
+				t.Errorf("diagnostic must fall back to naming the collection, got: %s", detail)
+			}
+			if strings.Contains(detail, "\"\"") {
+				t.Errorf("diagnostic must not print an empty quoted host name, got: %s", detail)
+			}
+		})
 	}
 }
 

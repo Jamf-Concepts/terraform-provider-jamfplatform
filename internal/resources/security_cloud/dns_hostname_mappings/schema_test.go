@@ -5,15 +5,19 @@ package dns_hostname_mappings
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dsschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 )
 
 func TestHostnameMappingsResource_Metadata(t *testing.T) {
@@ -124,13 +128,85 @@ func TestHostnameMappingsResource_BooleansAreRequiredWithoutDefaults(t *testing.
 // set, so a mapping added elsewhere disappears on the next apply.
 func TestHostnameMappingsResource_DescribesWholeCollectionOwnership(t *testing.T) {
 	s := resourceSchema(t)
-	if got := s.MarkdownDescription; !strings.Contains(got, "entire") {
-		t.Errorf("resource description must say it owns the entire set, got: %s", got)
+	if got := s.MarkdownDescription; !strings.Contains(got, "**entire** set") {
+		t.Errorf("resource description must say it owns the **entire** set, got: %s", got)
 	}
 
 	mappings := s.Attributes["mappings"].GetMarkdownDescription()
 	if !strings.Contains(mappings, "destroy the resource") {
 		t.Errorf("mappings description must point at destroy rather than an empty collection, got: %s", mappings)
+	}
+}
+
+// describable is what the wiring assertions below match on: every framework
+// validator renders a description, and a description survives the rename of an
+// unexported validator type that a type assertion would not.
+type describable interface {
+	Description(context.Context) string
+}
+
+// validatorDescriptions renders each validator in a schema slice.
+func validatorDescriptions[T describable](ctx context.Context, validators []T) []string {
+	out := make([]string, 0, len(validators))
+	for _, v := range validators {
+		out = append(out, v.Description(ctx))
+	}
+	return out
+}
+
+// requireValidators asserts that every expected validator is wired to an attribute.
+//
+// Presence rather than an exact slice, so a validator added later — the sibling
+// agent's trailing-dot rule on `hostname` is the immediate case — does not fail a
+// test that has nothing to say about it.
+func requireValidators(t *testing.T, attribute string, got, want []string) {
+	t.Helper()
+	for _, w := range want {
+		if !slices.Contains(got, w) {
+			t.Errorf("%s is missing a validator described as %q; wired: %v", attribute, w, got)
+		}
+	}
+}
+
+// TestHostnameMappingsResource_ValidatorsAreWired pins each schema Validators slice.
+//
+// Deleting one of these entries compiles and leaves the whole package suite green,
+// because the validators' own unit tests call them directly rather than through the
+// schema — so the unwired validator keeps passing its tests while no plan ever runs
+// it. Every entry here is load-bearing on a failure the server reports badly or not
+// at all: a duplicate host name is a 500 naming nothing, a mapping with no address is
+// blamed on aRecords whichever list was omitted, and an address in the wrong family
+// is a bare "Invalid field value.".
+func TestHostnameMappingsResource_ValidatorsAreWired(t *testing.T) {
+	ctx := context.Background()
+	mappings := resourceSchema(t).Attributes["mappings"].(rschema.SetNestedAttribute)
+
+	requireValidators(t, "mappings", validatorDescriptions(ctx, mappings.Validators), []string{
+		setvalidator.SizeBetween(minMappings, maxMappings).Description(ctx),
+		commonvalidators.UniqueStringFieldSet("hostname").Description(ctx),
+		EachMappingHasAnAddress().Description(ctx),
+	})
+
+	hostname, ok := mappings.NestedObject.Attributes["hostname"].(rschema.StringAttribute)
+	if !ok {
+		t.Fatalf("hostname must be a StringAttribute, got %T", mappings.NestedObject.Attributes["hostname"])
+	}
+	requireValidators(t, "hostname", validatorDescriptions(ctx, hostname.Validators), []string{
+		commonvalidators.DNSHostname().Description(ctx),
+	})
+
+	for name, element := range map[string]validator.String{
+		"ipv4_addresses": commonvalidators.IPv4Address(),
+		"ipv6_addresses": IPv6Address(),
+	} {
+		addresses, ok := mappings.NestedObject.Attributes[name].(rschema.SetAttribute)
+		if !ok {
+			t.Fatalf("%s must be a SetAttribute, got %T", name, mappings.NestedObject.Attributes[name])
+		}
+		requireValidators(t, name, validatorDescriptions(ctx, addresses.Validators), []string{
+			setvalidator.SizeBetween(minAddresses, maxAddresses).Description(ctx),
+			setvalidator.ValueStringsAre(element).Description(ctx),
+		})
 	}
 }
 

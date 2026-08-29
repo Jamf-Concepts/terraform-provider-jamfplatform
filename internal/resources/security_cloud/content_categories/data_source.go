@@ -7,15 +7,23 @@
 //
 // Content categories are Jamf's own classification of web and app traffic —
 // "Social", "Gambling", "Cloud & File Storage" and so on. They are the same for
-// every entitled tenant and cannot be created, changed or deleted, which is why
-// this package holds only a plural data source: the API exposes no per-id endpoint
-// to build a singular one on, and a list resource over a fixed catalogue nobody
+// every entitled tenant and cannot be created, changed or deleted, so this package
+// holds only a plural data source: a list resource over a fixed catalogue nobody
 // manages would be ceremony without a payoff.
+//
+// Plural-only is a choice, not a constraint the API imposes. The catalogue is
+// unpaginated and small, so one call serves every use; and the lookup a singular
+// data source would exist for — by display name — already ships in the SDK
+// client-side, as ResolveContentCategoryV1ByName and
+// ResolveContentCategoryV1IDByName. A singular data source would add a Terraform
+// construct that wraps a client-side filter over a list this one already returns.
+// Add one if a configuration turns out to want the filtering server-side of the
+// HCL, not because the wire forces it.
 //
 // The reason it exists is discovery, and one trap in particular. A category carries
 // two names: `display_name` ("Social") and an internal `name`
-// ("Category - Social"). A ZTNA app's category must match the **display name**, and
-// the internal name is informational only — wire-confirmed by the SDK, whose
+// ("Category - Social"). Anything matching a category matches the **display name**,
+// and the internal name is informational only — wire-confirmed by the SDK, whose
 // generated resolver looks the catalogue up by `displayName`. Hard-coding either
 // string into a configuration also risks drifting from a catalogue Jamf revises, so
 // reading the ID or display name from here is the safer reference.
@@ -71,8 +79,12 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 		MarkdownDescription: "Reads the content categories available in Jamf Security Cloud — Jamf's own " +
 			"classification of web and app traffic, such as `Social` or `Cloud & File Storage`. The catalogue " +
 			"is curated by Jamf, identical for every entitled tenant, and cannot be changed.\n\n" +
-			"Use this to reference a category without hard-coding a name Jamf may revise. Note that a " +
-			"category has two names: reference `display_name`, not `name`." + dataSourcePrivileges,
+			"Use this to reference a category without hard-coding a name Jamf may revise — in an output, " +
+			"or to pre-stage an identifier. Note that a category has two names: reference `display_name`, " +
+			"not `name`.\n\n" +
+			"Zero Trust Network Access apps, which are what match a category, are not yet managed by this " +
+			"provider, so today the value read here is for reference rather than for wiring into another " +
+			"resource." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed identifier for this data source.",
@@ -90,8 +102,10 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 						},
 						"display_name": schema.StringAttribute{
 							MarkdownDescription: "The category name as shown in Jamf Security Cloud, for " +
-								"example `Social`. **This is the name a Zero Trust Network Access app's " +
-								"category must match.**",
+								"example `Social`. **This is the name that identifies the category** — a " +
+								"Zero Trust Network Access app's category matches on it, and it is the name " +
+								"to reference. Zero Trust Network Access apps are not yet managed by this " +
+								"provider.",
 							Computed: true,
 						},
 						"name": schema.StringAttribute{

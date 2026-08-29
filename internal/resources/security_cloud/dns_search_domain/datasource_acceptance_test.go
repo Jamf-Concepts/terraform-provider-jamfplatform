@@ -6,11 +6,9 @@
 package dns_search_domain_test
 
 import (
-	"context"
 	"regexp"
 	"testing"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -21,7 +19,7 @@ import (
 // search domain the resource wrote, closing the loop between the two.
 func TestAccDataSource_SecurityCloudDNSSearchDomain_ReadsManagedValue(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearSearchDomain(t)
+	requireNoSearchDomain(t)
 	suffix := testhelpers.RunSuffix()
 	domain := "tf-acc-ds-" + suffix + ".example.com"
 
@@ -52,13 +50,12 @@ func TestAccDataSource_SecurityCloudDNSSearchDomain_ReadsManagedValue(t *testing
 // unconfigured tenant is an error rather than an empty string. A data source that
 // quietly produced "" would feed that into whatever referenced it, and the endpoint's
 // 404 is unambiguous enough that there is no reason to guess.
+//
+// The unset state is a precondition, not something to arrange: clearing to reach it
+// would destroy a tenant-wide setting this test does not own, so it skips instead.
 func TestAccDataSource_SecurityCloudDNSSearchDomain_ErrorsWhenUnset(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-
-	c := securitycloud.New(testhelpers.NewAcceptanceClient(t))
-	if err := c.ClearDnsSearchDomainV1(context.Background()); err != nil {
-		t.Fatalf("cannot clear the tenant's search domain: %v", err)
-	}
+	requireNoSearchDomain(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,

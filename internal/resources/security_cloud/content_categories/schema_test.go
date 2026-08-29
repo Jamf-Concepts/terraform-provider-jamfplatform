@@ -69,9 +69,9 @@ func TestContentCategoriesDataSource_IsEntirelyReadOnly(t *testing.T) {
 }
 
 // TestContentCategoriesDataSource_PointsAtDisplayName is the one description this
-// data source exists to carry. A category has two names and only one of them works
-// as a Zero Trust Network Access app's category; a reader who picks `name` gets a
-// server-side rejection naming neither field.
+// data source exists to carry. A category has two names and only one of them
+// identifies it; a reader who picks `name` gets a server-side rejection naming
+// neither field.
 func TestContentCategoriesDataSource_PointsAtDisplayName(t *testing.T) {
 	d := NewContentCategoriesDataSource()
 	var resp datasource.SchemaResponse
@@ -79,11 +79,26 @@ func TestContentCategoriesDataSource_PointsAtDisplayName(t *testing.T) {
 
 	categories := resp.Schema.Attributes["content_categories"].(dsschema.ListNestedAttribute)
 	displayName := categories.NestedObject.Attributes["display_name"].GetMarkdownDescription()
-	if !strings.Contains(displayName, "must match") {
-		t.Errorf("display_name description must say it is the name to match, got: %s", displayName)
+	if !strings.Contains(displayName, "identifies the category") {
+		t.Errorf("display_name description must say it is the name that identifies the category, got: %s", displayName)
 	}
 	internal := categories.NestedObject.Attributes["name"].GetMarkdownDescription()
 	if !strings.Contains(internal, "display_name") {
 		t.Errorf("name description must redirect the reader to display_name, got: %s", internal)
+	}
+}
+
+// TestContentCategoriesDataSource_DisclaimsUnbuiltConsumer pins the honesty of the
+// schema description. The construct that consumes a category — a Zero Trust Network
+// Access app — is not shipped by this provider, so an operator reading the
+// description must not be sent looking for a resource that does not exist. Delete
+// this assertion when the app resource lands, not before.
+func TestContentCategoriesDataSource_DisclaimsUnbuiltConsumer(t *testing.T) {
+	d := NewContentCategoriesDataSource()
+	var resp datasource.SchemaResponse
+	d.(*ContentCategoriesDataSource).Schema(context.Background(), datasource.SchemaRequest{}, &resp)
+
+	if !strings.Contains(resp.Schema.GetMarkdownDescription(), "not yet managed by this provider") {
+		t.Errorf("schema description must say Zero Trust Network Access apps are not yet managed by this provider, got: %s", resp.Schema.GetMarkdownDescription())
 	}
 }

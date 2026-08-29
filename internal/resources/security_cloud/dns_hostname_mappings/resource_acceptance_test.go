@@ -49,16 +49,26 @@ func testAccCheckHostnameMappingsDestroy(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
-// clearHostnameMappings removes any mappings left on the tenant, so a test starts from
-// the empty state its Create step needs.
+// requireEmptyHostnameMappings skips unless the tenant already holds no mappings.
 //
-// Create deliberately refuses to discard an existing set, which makes the tenant's
-// prior state part of the test's preconditions rather than something to work around.
-func clearHostnameMappings(t *testing.T) {
+// It does not clear them, and that is the whole point. These mappings drive internal
+// name resolution for every enrolled device on the tenant, the endpoint is a full
+// replace with no per-mapping route, and nothing here could put back a set it
+// overwrote. So a populated tenant is a precondition these tests do not meet, not
+// state to wipe on the way past — the same judgement the resource itself makes when
+// Create refuses to clobber an existing set.
+//
+// A read that fails skips too: absence cannot be inferred from a failed read, and
+// guessing "probably empty" is how the destructive version got written.
+func requireEmptyHostnameMappings(t *testing.T) {
 	t.Helper()
 	c := securitycloud.New(testhelpers.NewAcceptanceClient(t))
-	if err := c.ClearDnsCustomHostnameMappingsV1(context.Background()); err != nil {
-		t.Fatalf("cannot clear the tenant's hostname mappings before the test: %v", err)
+	got, err := c.GetDnsCustomHostnameMappingsV1(context.Background())
+	if err != nil {
+		t.Skipf("could not read the tenant's hostname mappings, so cannot tell whether this test would destroy them: %v", err)
+	}
+	if got != nil && len(got.Results) > 0 {
+		t.Skipf("this test would destroy the tenant's %d existing hostname mapping(s); remove them by hand first if they are disposable", len(got.Results))
 	}
 }
 
@@ -72,7 +82,7 @@ func clearHostnameMappings(t *testing.T) {
 // mappings at all.
 func TestAccResource_SecurityCloudDNSHostnameMappings_Lifecycle(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearHostnameMappings(t)
+	requireEmptyHostnameMappings(t)
 	suffix := testhelpers.RunSuffix()
 
 	first := "tf-acc-one-" + suffix + ".example.com"
@@ -170,7 +180,7 @@ func TestAccResource_SecurityCloudDNSHostnameMappings_Lifecycle(t *testing.T) {
 // rather than diff on every plan.
 func TestAccResource_SecurityCloudDNSHostnameMappings_ServerDedupesAddresses(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearHostnameMappings(t)
+	requireEmptyHostnameMappings(t)
 	suffix := testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{
@@ -204,7 +214,7 @@ func TestAccResource_SecurityCloudDNSHostnameMappings_ServerDedupesAddresses(t *
 // plan at all.
 func TestAccResource_SecurityCloudDNSHostnameMappings_OrderDoesNotDiff(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearHostnameMappings(t)
+	requireEmptyHostnameMappings(t)
 	suffix := testhelpers.RunSuffix()
 
 	z := "tf-acc-z-" + suffix + ".example.com"
@@ -251,8 +261,13 @@ func TestAccResource_SecurityCloudDNSHostnameMappings_OrderDoesNotDiff(t *testin
 // takeover — PUT is an unconditional full replace reporting no conflict — so this
 // asserts the provider supplies the refusal the server does not, and that the refusal
 // leaves the existing mappings intact.
+//
+// The pre-existing mapping it seeds is the test's own, which is why the cleanup clears
+// rather than restoring: it runs only on a tenant that held no mappings to begin with,
+// so clearing returns the tenant to the state it was found in.
 func TestAccResource_SecurityCloudDNSHostnameMappings_CreateRefusesToClobber(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
+	requireEmptyHostnameMappings(t)
 	suffix := testhelpers.RunSuffix()
 
 	c := securitycloud.New(testhelpers.NewAcceptanceClient(t))
@@ -405,7 +420,7 @@ func TestAccResource_SecurityCloudDNSHostnameMappings_RejectsElevenAddresses(t *
 // import identifier is checked rather than normalised.
 func TestAccResource_SecurityCloudDNSHostnameMappings_ImportRejectsOtherIDs(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearHostnameMappings(t)
+	requireEmptyHostnameMappings(t)
 	suffix := testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{

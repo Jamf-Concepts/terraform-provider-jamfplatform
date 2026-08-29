@@ -57,7 +57,6 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
@@ -70,12 +69,6 @@ import (
 	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
-
-// maxDomainNameLength is the longest search domain Jamf Security Cloud stores.
-// Wire-probed on 2026-08-29: 253 characters is accepted and 254 is refused with
-// 400 INVALID_FIELD naming `suffix` and the bound, which makes this one of the two
-// cases on this endpoint where the server names the field at all.
-const maxDomainNameLength = 253
 
 // SearchDomainResource implements the Terraform resource for the Jamf Security
 // Cloud search domain.
@@ -142,7 +135,6 @@ func (r *SearchDomainResource) Schema(ctx context.Context, _ resource.SchemaRequ
 					"Wildcards are not accepted, and letter case is stored exactly as written.",
 				Required: true,
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(1, maxDomainNameLength),
 					commonvalidators.DNSHostname(),
 				},
 			},

@@ -94,7 +94,7 @@ Required:
 
 - `connect_to_secure_dns` (Boolean) **"Connect to Secure DNS"** under Traffic vectoring in the Jamf Security Cloud admin UI — whether this host name's traffic is routed through Secure DNS. Set it explicitly on every mapping.
 - `connect_to_ztna` (Boolean) **"Connect to ZTNA"** under Traffic vectoring in the Jamf Security Cloud admin UI — whether this host name's traffic is routed through Zero Trust Network Access. Set it explicitly on every mapping; note that the admin UI's add dialog pre-selects this checkbox, so a mapping added there and one written here do not start from the same value.
-- `hostname` (String) **"Insert hostname"** in the Jamf Security Cloud admin UI — the fully qualified host name this mapping applies to. Up to 253 characters. Wildcards are not accepted, and letter case is stored exactly as written.
+- `hostname` (String) **"Insert hostname"** in the Jamf Security Cloud admin UI — the fully qualified host name this mapping applies to. Up to 253 characters. Wildcards are not accepted, and letter case is stored exactly as written. Write the name without a trailing dot: Jamf Security Cloud stores the name without one, so a configuration carrying one could never match the stored value.
 
 Optional:
 

@@ -4,7 +4,8 @@ page_title: "jamfplatform_security_cloud_ztna_predefined_apps Data Source - terr
 subcategory: ""
 description: |-
   Reads the predefined Zero Trust Network Access app templates available in Jamf Security Cloud — Jamf's own definitions of well-known applications such as Slack or Salesforce, each bundling the hostnames that application uses. The catalogue is curated by Jamf, identical for every entitled tenant, and cannot be changed.
-  Use this to build an app from a template without hard-coding its identifier, and to review the hostnames the template brings with it.
+  Use this to read a template's identifier without hard-coding it, and to review the hostnames the template brings with it.
+  Zero Trust Network Access apps are not yet managed by this provider, so the identifier read here is for reference today — an output, or a value to pre-stage a configuration on — rather than something another resource can be wired to.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
@@ -16,7 +17,9 @@ description: |-
 
 Reads the predefined Zero Trust Network Access app templates available in Jamf Security Cloud — Jamf's own definitions of well-known applications such as `Slack` or `Salesforce`, each bundling the hostnames that application uses. The catalogue is curated by Jamf, identical for every entitled tenant, and cannot be changed.
 
-Use this to build an app from a template without hard-coding its identifier, and to review the hostnames the template brings with it.
+Use this to read a template's identifier without hard-coding it, and to review the hostnames the template brings with it.
+
+Zero Trust Network Access apps are not yet managed by this provider, so the identifier read here is for reference today — an output, or a value to pre-stage a configuration on — rather than something another resource can be wired to.
 
 **Required Jamf privileges**
 

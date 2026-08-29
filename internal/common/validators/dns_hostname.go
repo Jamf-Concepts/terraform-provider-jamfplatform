@@ -12,14 +12,17 @@ import (
 )
 
 // maxDNSNameLength is the longest name the Jamf Security Cloud custom DNS
-// endpoints accept, measured on the raw string. The search-domain endpoint states
-// it outright ("size must be between 1 and 253"), which is a plain string-length
-// bound rather than a wire-format one, so a trailing root dot counts towards it.
+// endpoints accept, counted in characters. The search-domain endpoint states it
+// outright ("size must be between 1 and 253"), which is a Java `@Size` on the
+// string rather than a wire-format bound, so it counts characters and not bytes —
+// a 52-character Cyrillic name of 92 bytes is accepted — and a trailing root dot
+// counts towards it.
 const maxDNSNameLength = 253
 
-// maxDNSLabelLength is the longest single dot-separated label accepted. 63 is the
-// DNS limit and the endpoints enforce it: a 64-character label is refused, a
-// 63-character one accepted.
+// maxDNSLabelLength is the longest single dot-separated label accepted, counted in
+// characters for the same reason as maxDNSNameLength. 63 is the DNS limit and the
+// endpoints enforce it: a 64-character label is refused, a 63-character one
+// accepted.
 const maxDNSLabelLength = 63
 
 // dnsHostnameValidator checks that a string attribute holds a DNS host name of the
@@ -39,14 +42,15 @@ type dnsHostnameValidator struct{}
 // The accepted grammar was established by probing 20 inputs against both endpoints
 // on 2026-08-29; every verdict matched, which is why one validator serves both:
 //
-//   - up to 253 characters overall, each label 1 to 63
+//   - up to 253 characters overall, each label 1 to 63 — characters, not bytes
 //   - a single trailing dot is allowed (the root label); no other empty label is
 //   - labels hold letters, digits, hyphen, underscore and any non-ASCII rune —
 //     `xn--bcher-kva.example.com` and `ünïcode.example.com` are both accepted, and
 //     case is stored verbatim rather than normalised
 //   - a label may not begin or end with a hyphen or an underscore
-//   - the final label may not be entirely numeric, which is what separates the
-//     accepted `123.foo` from the refused `foo.123` and `1.2.3.4`
+//   - the final label may not begin with a digit, which is what separates the
+//     accepted `123.foo` from the refused `foo.123`, `foo.1abc` and `1.2.3.4` —
+//     only the *final* label is held to it, so a leading numeric label is fine
 //   - a single label is fine: `corp` is accepted
 //
 // That is Guava's `InternetDomainName.isValid` without the public-suffix check,
@@ -67,7 +71,7 @@ func DNSHostname() validator.String {
 // Description returns a plain-text description of the validator.
 func (dnsHostnameValidator) Description(_ context.Context) string {
 	return "must be a DNS host name of up to 253 characters, with labels of up to 63 characters " +
-		"separated by dots, no wildcards, and a final label that is not entirely numeric"
+		"separated by dots, no wildcards, and a final label that does not begin with a digit"
 }
 
 // MarkdownDescription returns the markdown description of the validator.
@@ -104,7 +108,7 @@ func dnsHostnameProblem(name string) string {
 	if name == "" {
 		return "A host name is required."
 	}
-	if len(name) > maxDNSNameLength {
+	if utf8.RuneCountInString(name) > maxDNSNameLength {
 		return "A host name may be at most 253 characters."
 	}
 
@@ -113,7 +117,7 @@ func dnsHostnameProblem(name string) string {
 		if label == "" {
 			return "A host name may not contain an empty label, and may not begin with a dot."
 		}
-		if len(label) > maxDNSLabelLength {
+		if utf8.RuneCountInString(label) > maxDNSLabelLength {
 			return "Each label in a host name may be at most 63 characters."
 		}
 		for _, r := range label {
@@ -126,8 +130,8 @@ func dnsHostnameProblem(name string) string {
 			return "Each label in a host name must begin and end with a letter, a digit or a non-ASCII character."
 		}
 	}
-	if isAllDigits(labels[len(labels)-1]) {
-		return "The final label in a host name may not be entirely numeric, which also rules out a bare " +
+	if final := labels[len(labels)-1]; isASCIIDigit(firstRune(final)) {
+		return "The final label in a host name may not begin with a digit, which also rules out a bare " +
 			"IP address."
 	}
 	return ""
@@ -168,12 +172,11 @@ func lastRune(s string) rune {
 	return runes[len(runes)-1]
 }
 
-// isAllDigits reports whether s consists only of ASCII digits.
-func isAllDigits(s string) bool {
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
+// isASCIIDigit reports whether r is an ASCII digit. Deliberately ASCII-only, for
+// the same reason isDNSLabelRune waves every non-ASCII rune through: probing
+// covered ASCII digits, so restricting a non-ASCII decimal digit here would be a
+// guess at a Java library's `CharMatcher.digit()` that could refuse a name the
+// endpoints accept.
+func isASCIIDigit(r rune) bool {
+	return r >= '0' && r <= '9'
 }

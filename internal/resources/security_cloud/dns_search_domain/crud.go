@@ -29,13 +29,23 @@ func providerNotConfiguredError() (string, string) {
 		"The provider client was not configured. Please ensure the provider block is set up correctly."
 }
 
-// Create sets the tenant's search domain, refusing to overwrite an existing one.
+// Create sets the tenant's search domain, refusing to overwrite a different one.
 //
-// The preflight read is the whole point. PUT is an unconditional upsert that reports
-// no conflict, so without reading first a plan that looks like a create would
-// silently replace a search domain an administrator set by hand, and two Terraform
-// configurations both managing this resource would overwrite each other in silence.
-// Refusing and pointing at import is the only signal Terraform can give.
+// The preflight read is the whole point. The write is an unconditional upsert that
+// reports no conflict, so without reading first a plan that looks like a create
+// would silently replace a search domain an administrator set by hand, and two
+// Terraform configurations both managing this resource would overwrite each other in
+// silence. Refusing, and naming both causes, is the only signal Terraform can give.
+//
+// A stored value equal to the planned one is adopted rather than refused, because
+// the likeliest way to reach it is this handler's own interrupted write. Create
+// makes three calls, and the confirming read is the one that can fail after the
+// write has already landed — a timeout, a transient 5xx, a dropped connection —
+// leaving the tenant configured and Terraform holding no state. The only move left
+// is to apply again, which re-enters Create; a preflight testing presence alone
+// would refuse the provider's own write and blame an administrator for it. Matching
+// on the value keeps the refusal for a genuine conflict and lets a byte-identical
+// retry finish.
 func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(providerNotConfiguredError())
@@ -58,13 +68,18 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 
 	existing, err := r.client.GetDnsSearchDomainV1(createCtx)
 	switch {
+	case err == nil && existing != nil && existing.Suffix == plan.DomainName.ValueString():
+		tflog.Info(ctx, "the Jamf Security Cloud search domain already holds the planned value, adopting it")
 	case err == nil && existing != nil && existing.Suffix != "":
 		resp.Diagnostics.AddError(
 			"Search domain already configured",
 			"This tenant already has the search domain \""+existing.Suffix+"\" set, and Jamf Security Cloud "+
-				"allows only one. Creating it here would replace that value without warning. Import the existing "+
-				"search domain instead:\n\n"+
-				"    terraform import jamfplatform_security_cloud_dns_search_domain.<name> "+helpers.SingletonID,
+				"allows only one. Creating it here would replace that value without warning.\n\n"+
+				"If an administrator set that search domain and you want Terraform to manage it, import it:\n\n"+
+				"    terraform import jamfplatform_security_cloud_dns_search_domain.<name> "+helpers.SingletonID+
+				"\n\nIf your configuration declares this resource more than once, the second block is the cause "+
+				"instead, and importing is the wrong answer: there is one search domain per tenant, so remove the "+
+				"duplicate and keep a single block.",
 		)
 		return
 	case err != nil && !helpers.IsNotFoundError(err):
@@ -86,6 +101,16 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 		resp.Diagnostics.AddError("Error reading the Jamf Security Cloud search domain just written", err.Error())
 		return
 	}
+	if got == nil {
+		resp.Diagnostics.AddError(
+			"Jamf Security Cloud returned no search domain after writing one",
+			"The write succeeded but the confirming read returned an empty response, so the stored value "+
+				"cannot be recorded in state. The search domain may now be set on the tenant without Terraform "+
+				"tracking it — import it to reconcile:\n\n"+
+				"    terraform import jamfplatform_security_cloud_dns_search_domain.<name> "+helpers.SingletonID,
+		)
+		return
+	}
 	assignSearchDomainResourceModel(&plan, got)
 	plan.ID = types.StringValue(helpers.SingletonID)
 
@@ -104,6 +129,12 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 // empty 200, so absence is unambiguous and the resource is dropped from state — the
 // ordinary contract for a deleted object, and the divergence from
 // STYLE_GUIDE §Singleton resources described in the package doc comment.
+//
+// A successful read carrying no value is treated as the same absence. That is
+// defence rather than an observed shape, and it keeps the three handlers agreeing:
+// Create's preflight already reads an empty value as nothing configured, so a Read
+// committing "" instead would leave the two disagreeing about whether the tenant has
+// a search domain at all.
 func (r *SearchDomainResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(providerNotConfiguredError())
@@ -137,6 +168,12 @@ func (r *SearchDomainResource) Read(ctx context.Context, req resource.ReadReques
 			return
 		}
 		resp.Diagnostics.AddError("Error reading Jamf Security Cloud search domain", err.Error())
+		return
+	}
+
+	if got == nil || got.Suffix == "" {
+		tflog.Info(ctx, "Jamf Security Cloud search domain not set, removing from state")
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -186,6 +223,16 @@ func (r *SearchDomainResource) Update(ctx context.Context, req resource.UpdateRe
 		resp.Diagnostics.AddError("Error reading the Jamf Security Cloud search domain just written", err.Error())
 		return
 	}
+	if got == nil {
+		resp.Diagnostics.AddError(
+			"Jamf Security Cloud returned no search domain after writing one",
+			"The write succeeded but the confirming read returned an empty response, so the stored value "+
+				"cannot be recorded in state. The search domain may now be set on the tenant without Terraform "+
+				"tracking it — import it to reconcile:\n\n"+
+				"    terraform import jamfplatform_security_cloud_dns_search_domain.<name> "+helpers.SingletonID,
+		)
+		return
+	}
 	assignSearchDomainResourceModel(&plan, got)
 	plan.ID = types.StringValue(helpers.SingletonID)
 
@@ -201,9 +248,14 @@ func (r *SearchDomainResource) Update(ctx context.Context, req resource.UpdateRe
 // Delete clears the tenant's search domain.
 //
 // A real clear, not the no-op STYLE_GUIDE §Singleton resources describes: the
-// endpoint honours DELETE and answers 204 whether or not anything was set, so an
-// already-cleared search domain needs no special case. Destroying this resource
-// removes the search domain for the whole tenant.
+// endpoint honours the clear and answers 204 whether or not anything was set.
+// Destroying this resource removes the search domain for the whole tenant.
+//
+// Because 204 is the answer either way, a 404 on this path is unexpected, and the
+// only one tolerated is the documented SEARCH_DOMAIN_NOT_SET. Every other 404 —
+// the gateway's own bare "page not found" for a route it does not serve, say —
+// carries no such code and must surface: reading it as "already cleared" would drop
+// the resource from state while the search domain stayed live on the tenant.
 func (r *SearchDomainResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(providerNotConfiguredError())
@@ -225,8 +277,10 @@ func (r *SearchDomainResource) Delete(ctx context.Context, req resource.DeleteRe
 	defer cancel()
 
 	if err := r.client.ClearDnsSearchDomainV1(deleteCtx); err != nil {
-		if helpers.IsNotFoundError(err) {
-			tflog.Info(ctx, "Jamf Security Cloud search domain already cleared")
+		if isSearchDomainNotSet(err) {
+			tflog.Info(ctx, "Jamf Security Cloud search domain reported as not set while clearing it", map[string]any{
+				"api_error": err.Error(),
+			})
 			return
 		}
 		resp.Diagnostics.AddError("Error clearing Jamf Security Cloud search domain", fmt.Sprintf("API error: %v", err))

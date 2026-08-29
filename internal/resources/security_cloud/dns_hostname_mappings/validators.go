@@ -67,6 +67,72 @@ func (v ipv6AddressValidator) ValidateString(_ context.Context, req validator.St
 	)
 }
 
+// noTrailingRootDotValidator checks that a string attribute holds a host name that
+// does not end in the root dot.
+type noTrailingRootDotValidator struct{}
+
+// NoTrailingRootDot returns a validator.String refusing a host name written with a
+// trailing root dot.
+//
+// Package-local for the same reason as IPv6Address above: one consumer, and
+// STYLE_GUIDE §Shared abstractions puts the extraction trigger at two. This one is
+// unlikely ever to reach two, because the behaviour it guards is per construct.
+//
+// Why it exists: this endpoint strips a trailing root dot on write. `Trail.Example.COM.`
+// sent, `Trail.Example.COM` stored — letter case untouched, the dot the only
+// transform. Wire-probed against production EU on 2026-08-29. The sibling custom
+// search domain endpoint keeps the dot (`trailing.example.com.` stored verbatim), so
+// the shared commonvalidators.DNSHostname is right to accept the form and must keep
+// accepting it: the divergence belongs here, not there.
+//
+// Refusing at plan time is the only remedy Terraform leaves. `mappings` is Required,
+// so core compares the planned value — which is the configuration's, unchanged — with
+// the state the apply produces, and the state comes from the read-back, which carries
+// no dot. The result is a hard "Provider produced inconsistent result after apply" on
+// every apply. Normalising the value on the way out does not help, because the plan
+// still holds the dot. A plan modifier cannot normalise it either: core requires a
+// non-Computed Required attribute's planned value to equal its configured value.
+// Keeping the planned string in state rather than the read-back fails on refresh,
+// where there is no plan to compare against.
+//
+// Only the trailing dot is judged here. Every other grammar rule stays with
+// commonvalidators.DNSHostname, which runs alongside this validator on the same
+// attribute.
+//
+// Null and unknown values defer to the server, per STYLE_GUIDE §Config-time
+// validators.
+func NoTrailingRootDot() validator.String {
+	return noTrailingRootDotValidator{}
+}
+
+// Description returns a plain-text description of the validator.
+func (noTrailingRootDotValidator) Description(_ context.Context) string {
+	return "must be a host name written without a trailing dot"
+}
+
+// MarkdownDescription returns the markdown description of the validator.
+func (v noTrailingRootDotValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+// ValidateString implements validator.String.
+func (v noTrailingRootDotValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	value := req.ConfigValue.ValueString()
+	if !strings.HasSuffix(value, ".") {
+		return
+	}
+	resp.Diagnostics.AddAttributeError(
+		req.Path,
+		"Host name ends in a trailing dot",
+		"Jamf Security Cloud stores a hostname mapping without the trailing dot, so a configuration "+
+			"carrying one can never match the value read back and every apply would fail. Write the host "+
+			"name without the trailing dot. Got: "+value,
+	)
+}
+
 // eachMappingHasAnAddressValidator checks that every mapping in the set resolves to
 // at least one address.
 type eachMappingHasAnAddressValidator struct{}

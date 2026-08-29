@@ -48,18 +48,28 @@ func testAccCheckSearchDomainDestroy(t *testing.T) resource.TestCheckFunc {
 	}
 }
 
-// clearSearchDomain removes any search domain left on the tenant, so a test starts
-// from the absent state its Create step needs.
+// requireNoSearchDomain skips the test unless the tenant holds no search domain, so
+// a test only runs when the absent state its Create step needs is already the case.
 //
 // Create deliberately refuses to overwrite an existing search domain, which makes
-// the tenant's prior state part of the test's preconditions rather than something to
-// work around. Clearing is the honest reset: there is one search domain per tenant
-// and nothing else can be holding it.
-func clearSearchDomain(t *testing.T) {
+// the tenant's prior state a precondition rather than something to arrange. Clearing
+// to arrange it would destroy tenant-wide configuration this test does not own and
+// cannot restore: there is one search domain per tenant, so whatever holds it was
+// set by an administrator or by a concurrent run. Skipping says so instead — an
+// occupied tenant is a legitimate environment, not a failure, the same reasoning
+// AccPreCheckSecurityCloud applies to a Pro-only tenant.
+func requireNoSearchDomain(t *testing.T) {
 	t.Helper()
 	c := securitycloud.New(testhelpers.NewAcceptanceClient(t))
-	if err := c.ClearDnsSearchDomainV1(context.Background()); err != nil {
-		t.Fatalf("cannot clear the tenant's search domain before the test: %v", err)
+	got, err := c.GetDnsSearchDomainV1(context.Background())
+	if err != nil {
+		if helpers.IsNotFoundError(err) {
+			return
+		}
+		t.Fatalf("cannot read the tenant's search domain: %v", err)
+	}
+	if got != nil && got.Suffix != "" {
+		t.Skipf("this test would destroy the tenant's existing search domain %q", got.Suffix)
 	}
 }
 
@@ -73,7 +83,7 @@ func clearSearchDomain(t *testing.T) {
 // no search domain at all.
 func TestAccResource_SecurityCloudDNSSearchDomain_Lifecycle(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearSearchDomain(t)
+	requireNoSearchDomain(t)
 	suffix := testhelpers.RunSuffix()
 
 	first := "tf-acc-" + suffix + ".example.com"
@@ -121,7 +131,7 @@ func TestAccResource_SecurityCloudDNSSearchDomain_Lifecycle(t *testing.T) {
 // tenant holds and hide the mistake.
 func TestAccResource_SecurityCloudDNSSearchDomain_ImportRejectsOtherIDs(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	clearSearchDomain(t)
+	requireNoSearchDomain(t)
 	suffix := testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{
@@ -151,6 +161,7 @@ func TestAccResource_SecurityCloudDNSSearchDomain_ImportRejectsOtherIDs(t *testi
 // the provider supplies the refusal the server does not.
 func TestAccResource_SecurityCloudDNSSearchDomain_CreateRefusesToClobber(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
+	requireNoSearchDomain(t)
 	suffix := testhelpers.RunSuffix()
 
 	c := securitycloud.New(testhelpers.NewAcceptanceClient(t))

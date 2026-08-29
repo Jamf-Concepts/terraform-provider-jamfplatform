@@ -59,7 +59,23 @@
 //     forever against a configuration containing a duplicate.
 //   - A duplicate hostname across two mappings answers 500 with an empty `errors`
 //     array — nothing named, nothing to translate. Hence the plan-time uniqueness
-//     check.
+//     check, which compares host names byte-exactly and must keep doing so: the
+//     endpoint is case-sensitive, and `Case.example.com` alongside `case.example.com`
+//     is accepted with both mappings stored. Folding the comparison would reject a
+//     configuration the server takes.
+//   - A trailing root dot is stripped on write. `Trail.Example.COM.` sent stores as
+//     `Trail.Example.COM`; letter case is untouched, so the dot is the only transform.
+//     The sibling search domain endpoint keeps the dot, so this is per construct
+//     rather than a namespace rule. Because `mappings` is Required, Terraform compares
+//     the configured value with the stored one and the stripped dot fails the apply
+//     outright — hence NoTrailingRootDot refuses the form at plan time rather than the
+//     provider normalising it, which would leave the plan and the state disagreeing
+//     just the same.
+//   - `dot.example.com.` alongside `dot.example.com` is the *same* name to this
+//     endpoint and answers the same unattributable 500 as any other duplicate. That is
+//     the second reason the dot-terminated form is refused at plan time: with it gone,
+//     no configuration can reach that 500 through a difference the byte-exact
+//     uniqueness check cannot see.
 //   - Caps are 500 mappings, 10 IPv4 and 10 IPv6 addresses per mapping. The
 //     per-mapping caps name their field; the 500 does not.
 //   - Omitted address lists read back as `[]`, and omitted booleans as false. The
@@ -92,12 +108,18 @@
 // same session by a configuration that omits ipv6_addresses on some mappings and
 // plans clean.
 //
-// # Create refuses to clobber
+// # Create refuses to clobber, but adopts its own interrupted write
 //
-// PUT is an unconditional full replace reporting no conflict, so nothing on the wire
-// separates "creating the tenant's mappings" from "silently discarding the ones an
-// administrator added by hand". Create reads first and refuses when the set is
-// already non-empty, pointing the operator at import.
+// A full replace reports no conflict, so nothing on the wire separates "creating the
+// tenant's mappings" from "silently discarding the ones an administrator added by
+// hand". Create reads first and refuses when the stored set differs from the planned
+// one, pointing the operator at import — or, for the other cause the refusal has, at
+// removing a second instance of this one-per-tenant resource.
+//
+// A stored set that already *equals* the plan is adopted rather than refused, because
+// that is what an interrupted create leaves behind: Create writes and then reads the
+// result back, and a failure of that confirming read leaves the tenant configured with
+// no Terraform state to show it. See storedMappingsMatchPlan.
 package dns_hostname_mappings
 
 import (
@@ -202,10 +224,13 @@ func (r *HostnameMappingsResource) Schema(ctx context.Context, _ resource.Schema
 						"hostname": schema.StringAttribute{
 							MarkdownDescription: "**\"Insert hostname\"** in the Jamf Security Cloud admin UI — " +
 								"the fully qualified host name this mapping applies to. Up to 253 characters. " +
-								"Wildcards are not accepted, and letter case is stored exactly as written.",
+								"Wildcards are not accepted, and letter case is stored exactly as written. Write " +
+								"the name without a trailing dot: Jamf Security Cloud stores the name without " +
+								"one, so a configuration carrying one could never match the stored value.",
 							Required: true,
 							Validators: []validator.String{
 								commonvalidators.DNSHostname(),
+								NoTrailingRootDot(),
 							},
 						},
 						"ipv4_addresses": schema.SetAttribute{

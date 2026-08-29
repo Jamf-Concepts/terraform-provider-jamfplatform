@@ -18,6 +18,12 @@
 // choice reviewable: a template can carry a dozen or more, and adopting one means
 // adopting all of them.
 //
+// Note that the consuming construct is not built. This provider does not manage
+// Zero Trust Network Access apps yet, so today the identifiers read here are for
+// reference and for pre-staging a configuration — an output, or a value an
+// administrator carries into the admin UI — not something another resource can be
+// wired to.
+//
 // Wire-probed 2026-08-29 in production EU: 30 templates, unpaginated, `totalCount`
 // equal to the number of results, names unique, and returned in an order that is
 // neither sorted nor documented — so the order is passed through as the server
@@ -32,6 +38,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -71,8 +78,11 @@ func (d *PredefinedAppsDataSource) Schema(ctx context.Context, _ datasource.Sche
 			"Security Cloud — Jamf's own definitions of well-known applications such as `Slack` or " +
 			"`Salesforce`, each bundling the hostnames that application uses. The catalogue is curated by " +
 			"Jamf, identical for every entitled tenant, and cannot be changed.\n\n" +
-			"Use this to build an app from a template without hard-coding its identifier, and to review the " +
-			"hostnames the template brings with it." + dataSourcePrivileges,
+			"Use this to read a template's identifier without hard-coding it, and to review the hostnames the " +
+			"template brings with it.\n\n" +
+			"Zero Trust Network Access apps are not yet managed by this provider, so the identifier read here " +
+			"is for reference today — an output, or a value to pre-stage a configuration on — rather than " +
+			"something another resource can be wired to." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed identifier for this data source.",
@@ -152,7 +162,7 @@ func (d *PredefinedAppsDataSource) Read(ctx context.Context, req datasource.Read
 	data.ID = types.StringValue(dataSourceID)
 	data.PredefinedApps = make([]PredefinedAppResultModel, 0, len(apps.Results))
 	for _, a := range apps.Results {
-		hostnames, hostnameDiags := types.ListValueFrom(ctx, types.StringType, a.Hostnames)
+		hostnames, hostnameDiags := hostnameListValue(ctx, a.Hostnames)
 		resp.Diagnostics.Append(hostnameDiags...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -166,4 +176,23 @@ func (d *PredefinedAppsDataSource) Read(ctx context.Context, req datasource.Read
 
 	tflog.Trace(ctx, "read Jamf Security Cloud predefined ZTNA apps data source", map[string]any{"count": len(data.PredefinedApps)})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// hostnameListValue converts a template's hostnames into a list, normalising a nil
+// slice to an empty list rather than a null one.
+//
+// types.ListValueFrom reflects a nil []string into a NULL list, and a `for`
+// expression over a null list is a plan-time error — so a template carrying no
+// hostnames would hand the operator an error instead of an empty result. This
+// matches the sibling dns_hostname_mappings data source, which normalises the same
+// way for the same reason.
+//
+// Every one of the 30 templates in the 2026-08-29 production EU probe carried
+// hostnames, so a zero-hostname template may not exist today. This is consistency
+// with the sibling and cheap insurance, not a fix for an observed failure.
+func hostnameListValue(ctx context.Context, hostnames []string) (types.List, diag.Diagnostics) {
+	if hostnames == nil {
+		return types.ListValueFrom(ctx, types.StringType, []string{})
+	}
+	return types.ListValueFrom(ctx, types.StringType, hostnames)
 }

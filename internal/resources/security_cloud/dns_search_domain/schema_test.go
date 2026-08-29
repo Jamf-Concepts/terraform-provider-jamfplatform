@@ -10,8 +10,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
+	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 )
 
 func TestSearchDomainResource_Metadata(t *testing.T) {
@@ -47,6 +49,38 @@ func TestSearchDomainResource_Schema(t *testing.T) {
 	}
 	if s.Attributes["id"].IsRequired() || s.Attributes["id"].IsOptional() {
 		t.Error("id must be Computed-only")
+	}
+}
+
+// TestSearchDomainResource_DomainNameValidatorIsWired reads the schema's own
+// Validators slice, which nothing else in this suite does: with the assertions above
+// alone, deleting the validator from the schema left every test passing while every
+// malformed name went to the server for an opaque 400 naming no field.
+//
+// The match is on the validator's own description rather than its type, which is
+// unexported, so the assertion says "this behaviour is wired in" rather than pinning
+// an internal name.
+//
+// Exactly one validator is the second half of the assertion. The shared DNS host
+// name validator already bounds the empty and over-long cases, so a length validator
+// beside it produces two diagnostics for one typo — which is what this package
+// shipped before.
+func TestSearchDomainResource_DomainNameValidatorIsWired(t *testing.T) {
+	ctx := context.Background()
+	r := NewSearchDomainResource()
+	var resp resource.SchemaResponse
+	r.(*SearchDomainResource).Schema(ctx, resource.SchemaRequest{}, &resp)
+
+	attr, ok := resp.Schema.Attributes["domain_name"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("domain_name is %T, want schema.StringAttribute", resp.Schema.Attributes["domain_name"])
+	}
+	if len(attr.Validators) != 1 {
+		t.Fatalf("domain_name carries %d validators, want exactly 1: the DNS host name validator already "+
+			"bounds length, so a second one duplicates every diagnostic", len(attr.Validators))
+	}
+	if got, want := attr.Validators[0].Description(ctx), commonvalidators.DNSHostname().Description(ctx); got != want {
+		t.Errorf("domain_name validator description = %q, want the shared DNS host name validator's %q", got, want)
 	}
 }
 

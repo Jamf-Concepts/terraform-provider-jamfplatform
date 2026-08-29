@@ -38,6 +38,12 @@ func providerNotConfiguredError() (string, string) {
 // configurations both managing this resource would overwrite each other in silence.
 // Refusing and pointing at import is the only signal Terraform can give.
 //
+// It compares against the planned mappings rather than testing for presence, so that a
+// stored set equal to the plan is adopted and only a differing one is refused. That is
+// what makes a create retryable after its own confirming read has failed: the tenant is
+// then configured with no state to show it, and refusing the retry would leave the
+// operator importing the provider's own work. See storedMappingsMatchPlan.
+//
 // A not-found is treated as nothing configured rather than as a failure. The endpoint
 // answers an empty set with a 200 and no results, so this branch should be
 // unreachable — but Read already treats a 404 as absence, and having the two disagree
@@ -63,20 +69,34 @@ func (r *HostnameMappingsResource) Create(ctx context.Context, req resource.Crea
 	defer cancel()
 
 	existing, err := r.client.GetDnsCustomHostnameMappingsV1(createCtx)
-	switch {
-	case err == nil && existing != nil && len(existing.Results) > 0:
-		resp.Diagnostics.AddError(
-			"Hostname mappings already configured",
-			"This tenant already has "+strconv.Itoa(len(existing.Results))+" hostname mapping(s), and this "+
-				"resource owns the entire set — creating it here would discard them without warning. Import the "+
-				"existing mappings instead:\n\n"+
-				"    terraform import jamfplatform_security_cloud_dns_hostname_mappings.<name> "+helpers.SingletonID,
-		)
-		return
-	case err != nil && !helpers.IsNotFoundError(err):
+	if err != nil && !helpers.IsNotFoundError(err) {
 		if !appendWriteDiagnostics(&resp.Diagnostics, err) {
 			resp.Diagnostics.AddError("Error checking for existing Jamf Security Cloud hostname mappings", err.Error())
 		}
+		return
+	}
+
+	storedCount := storedMappingCount(existing)
+	matchesPlan, matchDiags := storedMappingsMatchPlan(createCtx, plan.Mappings, existing)
+	resp.Diagnostics.Append(matchDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	switch {
+	case storedCount > 0 && matchesPlan:
+		tflog.Info(ctx, "the stored Jamf Security Cloud hostname mappings already match the plan, adopting them")
+	case storedCount > 0:
+		resp.Diagnostics.AddError(
+			"Hostname mappings already configured",
+			"This tenant already has "+strconv.Itoa(storedCount)+" hostname mapping(s) that differ from this "+
+				"configuration, and this resource owns the entire set — creating it here would discard them "+
+				"without warning. If they were added in the admin UI or by another tool, import them instead of "+
+				"recreating them:\n\n"+
+				"    terraform import jamfplatform_security_cloud_dns_hostname_mappings.<name> "+helpers.SingletonID+
+				"\n\nIf instead this configuration declares this resource more than once, remove the duplicate "+
+				"block: there is one mapping set per tenant, so a second instance can only overwrite the first.",
+		)
 		return
 	}
 
