@@ -96,8 +96,10 @@ type policyListConfigModel struct {
 // List executes the query and streams policy identities back to Terraform.
 //
 // Filling in full resource state costs one read per policy: the listing omits the settings, so there
-// is no way to answer IncludeResource from the list alone. The reads are serial and bounded by the
-// caller's limit, which keeps a query over a large tenant inside the platform's request budget.
+// is no way to answer IncludeResource from the list alone. The reads are serial, which keeps a query
+// over a large tenant inside the platform's request budget, but they are bounded only when the caller
+// sets a limit — the listing itself is always fetched in full, and an unlimited query with
+// IncludeResource reads every policy on the tenant.
 func (r *PolicyListResource) List(ctx context.Context, req list.ListRequest, stream *list.ListResultsStream) {
 	if r.client == nil {
 		stream.Results = list.ListResultsStreamDiagnostics(diag.Diagnostics{

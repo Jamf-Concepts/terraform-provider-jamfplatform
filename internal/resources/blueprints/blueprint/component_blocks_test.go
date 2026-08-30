@@ -6,6 +6,7 @@ package blueprint
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
@@ -197,6 +198,13 @@ func TestUpdateModelFromAPIResponse_BlockMode(t *testing.T) {
 				ActivationPredicate: new("ANY @status(x) == 'y'"),
 				Components:          []blueprints.Component{{Identifier: "com.jamf.custom.thing", Configuration: json.RawMessage(`{"a":"2"}`)}},
 			},
+			{
+				Name: new("Step 3"),
+				Components: []blueprints.Component{{
+					Identifier:    "com.jamf.ai-governance",
+					Configuration: json.RawMessage(`{"policies":[{"policyId":"11111111-2222-3333-4444-555555555555","versionNumber":3}]}`),
+				}},
+			},
 		},
 	}
 
@@ -204,8 +212,8 @@ func TestUpdateModelFromAPIResponse_BlockMode(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	if len(model.ComponentBlocks) != 2 {
-		t.Fatalf("expected 2 component blocks, got %d", len(model.ComponentBlocks))
+	if len(model.ComponentBlocks) != 3 {
+		t.Fatalf("expected 3 component blocks, got %d", len(model.ComponentBlocks))
 	}
 	if model.ComponentBlocks[0].Name.ValueString() != "Step 1" {
 		t.Errorf("expected block 0 name 'Step 1', got %q", model.ComponentBlocks[0].Name.ValueString())
@@ -217,10 +225,24 @@ func TestUpdateModelFromAPIResponse_BlockMode(t *testing.T) {
 		t.Errorf("expected block 1 activation predicate, got %q", model.ComponentBlocks[1].ActivationConditions.ValueString())
 	}
 	// Same non-typed identifier lands in each block's raw_component independently.
-	for i, block := range model.ComponentBlocks {
+	for i, block := range model.ComponentBlocks[:2] {
 		if len(block.Components) != 1 || block.Components[0].Identifier.ValueString() != "com.jamf.custom.thing" {
 			t.Errorf("expected block %d raw component 'com.jamf.custom.thing', got %+v", i, block.Components)
 		}
+	}
+
+	aiGovernance := model.ComponentBlocks[2].AIGovernance
+	if aiGovernance == nil || len(aiGovernance.Policies) != 1 {
+		t.Fatalf("expected block 2 ai_governance to carry one policy, got %+v", aiGovernance)
+	}
+	if got := aiGovernance.Policies[0].PolicyID.ValueString(); got != "11111111-2222-3333-4444-555555555555" {
+		t.Errorf("expected the policy id from the wire, got %q", got)
+	}
+	if got := aiGovernance.Policies[0].Version.ValueInt64(); got != 3 {
+		t.Errorf("expected version 3, got %d", got)
+	}
+	if len(model.ComponentBlocks[2].Components) != 0 {
+		t.Errorf("com.jamf.ai-governance must not also land in raw_component, got %+v", model.ComponentBlocks[2].Components)
 	}
 
 	// Flat attributes must be cleared in block mode.
@@ -285,5 +307,225 @@ func TestUpdateModelFromAPIResponse_EmptyPriorUsesBlockMode(t *testing.T) {
 	}
 	if model.Components != nil {
 		t.Error("expected flat raw_component nil when reading in block mode")
+	}
+}
+
+// --- Typed component registration ---
+
+// typedComponentCase pins one entry of stronglyTypedComponentIdentifiers to the component_blocks
+// schema attribute that represents it, a wire configuration for it, and a check that the attribute
+// was populated.
+type typedComponentCase struct {
+	identifier      string
+	schemaAttribute string
+	configuration   json.RawMessage
+	populated       func(ComponentBlockModel) bool
+}
+
+// typedComponentCases enumerates every component identifier the provider maps onto a typed
+// component_blocks attribute instead of raw_component. Registering one takes an entry in
+// stronglyTypedComponentIdentifiers as well as the model field, schema attribute, read mapping and
+// write collector, and a missing entry makes the component populate its typed attribute *and*
+// raw_component — which fails an apply with "Provider produced inconsistent result after apply"
+// rather than anything a compiler or a schema test can see. The table exists so that gap is a unit
+// failure for all of them at once.
+//
+// Most rows carry `{}`: what each row guards is the identifier's routing, not the payload, and
+// every typed component decodes an empty object into an all-null value. The two rows that carry a
+// shape are the ones whose attribute stays empty without one — AI Governance, whose policies list
+// is the component's whole content, and the legacy configuration profile, which is derived from
+// payloadContent rather than from a typed struct.
+func typedComponentCases() []typedComponentCase {
+	empty := json.RawMessage(`{}`)
+	return []typedComponentCase{
+		{
+			identifier:      "com.jamf.ai-governance",
+			schemaAttribute: "ai_governance",
+			configuration:   json.RawMessage(`{"policies":[{"policyId":"11111111-2222-3333-4444-555555555555","versionNumber":3}]}`),
+			populated:       func(b ComponentBlockModel) bool { return b.AIGovernance != nil && len(b.AIGovernance.Policies) == 1 },
+		},
+		{
+			identifier:      "com.jamf.ddm.audio-accessory-settings",
+			schemaAttribute: "audio_accessory_settings",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.AudioAccessorySettings != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.custom-declarations",
+			schemaAttribute: "custom_declarations",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.CustomDeclarations != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.disk-management",
+			schemaAttribute: "disk_management_settings",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.DiskManagementSettings != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.math-settings",
+			schemaAttribute: "math_settings",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.MathSettings != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.passcode-settings",
+			schemaAttribute: "passcode_policy",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.PasscodePolicy != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.safari-bookmarks",
+			schemaAttribute: "safari_bookmarks",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.SafariBookmarks != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.safari-extensions",
+			schemaAttribute: "safari_extensions",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.SafariExtensions != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.safari-settings",
+			schemaAttribute: "safari_settings",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.SafariSettings != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.service-background-tasks",
+			schemaAttribute: "service_background_tasks",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.ServiceBackgroundTasks != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.service-configuration-files",
+			schemaAttribute: "service_configuration_files",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.ServiceConfigurationFiles != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.sw-updates",
+			schemaAttribute: "software_update",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.SoftwareUpdate != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm.software-update-settings",
+			schemaAttribute: "software_update_settings",
+			configuration:   empty,
+			populated:       func(b ComponentBlockModel) bool { return b.SoftwareUpdateSettings != nil },
+		},
+		{
+			identifier:      "com.jamf.ddm-configuration-profile",
+			schemaAttribute: "legacy_payloads",
+			configuration:   json.RawMessage(`{"payloadDisplayName":"BP","payloadContent":[{"payloadType":"com.apple.dock","payloadIdentifier":"jamf.dock","tilesize":50}]}`),
+			populated:       func(b ComponentBlockModel) bool { return len(b.LegacyPayloads) == 1 },
+		},
+	}
+}
+
+func TestTypedComponentCases_CoverRegistrationAndSchema(t *testing.T) {
+	attributes := componentBlockAttributes()
+	covered := make(map[string]struct{}, len(stronglyTypedComponentIdentifiers))
+
+	for _, tc := range typedComponentCases() {
+		if _, registered := stronglyTypedComponentIdentifiers[tc.identifier]; !registered {
+			t.Errorf("%q has a case but no stronglyTypedComponentIdentifiers entry, so it would also land in raw_component", tc.identifier)
+		}
+		if _, exists := attributes[tc.schemaAttribute]; !exists {
+			t.Errorf("%q names component_blocks attribute %q, which does not exist", tc.identifier, tc.schemaAttribute)
+		}
+		if _, duplicate := covered[tc.identifier]; duplicate {
+			t.Errorf("%q appears more than once in typedComponentCases", tc.identifier)
+		}
+		covered[tc.identifier] = struct{}{}
+	}
+
+	for identifier := range stronglyTypedComponentIdentifiers {
+		if _, ok := covered[identifier]; !ok {
+			t.Errorf("stronglyTypedComponentIdentifiers entry %q has no case in typedComponentCases — add one so its registration is guarded", identifier)
+		}
+	}
+}
+
+func TestTypedComponents_RoundTripWithoutLandingInRawComponent(t *testing.T) {
+	ctx := context.Background()
+
+	for _, tc := range typedComponentCases() {
+		t.Run(tc.identifier, func(t *testing.T) {
+			model := &BlueprintResourceModel{}
+			blueprint := &blueprints.BlueprintDetail{
+				DeploymentState: &blueprints.DeploymentState{State: "DEPLOYED"},
+				Steps: []blueprints.BlueprintStep{{
+					Name:       new("Block"),
+					Components: []blueprints.Component{{Identifier: tc.identifier, Configuration: tc.configuration}},
+				}},
+			}
+
+			diags := updateModelFromAPIResponse(ctx, model, blueprint)
+			if diags.HasError() {
+				t.Fatalf("unexpected read diagnostics: %v", diags)
+			}
+			if len(model.ComponentBlocks) != 1 {
+				t.Fatalf("expected 1 component block, got %d", len(model.ComponentBlocks))
+			}
+
+			block := model.ComponentBlocks[0]
+			if !tc.populated(block) {
+				t.Errorf("expected %q to populate the %q attribute, got block %+v", tc.identifier, tc.schemaAttribute, block)
+			}
+			if len(block.Components) != 0 {
+				t.Errorf("%q is strongly typed and must not also land in raw_component, got %+v", tc.identifier, block.Components)
+			}
+
+			r := &BlueprintResource{}
+			steps, buildDiags := r.buildSteps(ctx, &BlueprintResourceModel{
+				Name:            types.StringValue("BP"),
+				ComponentBlocks: model.ComponentBlocks,
+			})
+			if buildDiags.HasError() {
+				t.Fatalf("unexpected write diagnostics: %v", buildDiags)
+			}
+			if len(steps) != 1 {
+				t.Fatalf("expected 1 step, got %d", len(steps))
+			}
+			if len(steps[0].Components) != 1 || steps[0].Components[0].Identifier != tc.identifier {
+				t.Errorf("expected the step to carry exactly one %q component, got %+v", tc.identifier, steps[0].Components)
+			}
+		})
+	}
+}
+
+func TestBuildTypedComponent_UndecodableConfigurationWarns(t *testing.T) {
+	ctx := context.Background()
+	model := &BlueprintResourceModel{}
+	blueprint := &blueprints.BlueprintDetail{
+		DeploymentState: &blueprints.DeploymentState{State: "DEPLOYED"},
+		Steps: []blueprints.BlueprintStep{{
+			Name: new("Block"),
+			Components: []blueprints.Component{{
+				Identifier:    "com.jamf.ai-governance",
+				Configuration: json.RawMessage(`{"policies":"not-a-list"}`),
+			}},
+		}},
+	}
+
+	diags := updateModelFromAPIResponse(ctx, model, blueprint)
+	if diags.HasError() {
+		t.Fatalf("an undecodable component configuration must not fail the read: %v", diags)
+	}
+	if len(model.ComponentBlocks) != 1 || model.ComponentBlocks[0].AIGovernance != nil {
+		t.Fatalf("expected the component to be absent from state, got %+v", model.ComponentBlocks)
+	}
+
+	found := false
+	for _, d := range diags.Warnings() {
+		if d.Summary() == "Blueprint component configuration could not be read" && strings.Contains(d.Detail(), "com.jamf.ai-governance") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a warning naming com.jamf.ai-governance, got %v", diags)
 	}
 }

@@ -19,7 +19,7 @@ import (
 // asserted are known rather than whatever the tenant happens to hold.
 func TestAccDataSource_AIGovernancePolicy(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	name := "tf-acc-ai-ds-" + testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{

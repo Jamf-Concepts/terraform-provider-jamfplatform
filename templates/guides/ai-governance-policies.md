@@ -10,22 +10,17 @@ An **AI policy** is the managed configuration for one AI tool running on your Ma
 
 ## End to end
 
-Four resources: read the tool, write the policy, target a device group, deliver the published version.
+Three resources: write the policy, target a device group, deliver the published version.
 
 ```hcl
-# 1. The tool catalogue supplies the identifier and the current settings schema
-#    version, so the policy tracks whatever Jamf publishes rather than a version
-#    pinned by hand that will drift.
-data "jamfplatform_ai_governance_tool" "claude_code" {
-  id = "com.anthropic.claudecode"
-}
-
-# 2. The policy. Applying it publishes version 1.
+# 1. The policy. Applying it publishes version 1. schema_version is pinned to a
+#    literal, so the schema the settings are written against changes only when you
+#    change it — see "Pinning a schema version, or tracking the current one" below.
 resource "jamfplatform_ai_governance_policy" "engineering" {
   name           = "Claude Code — Engineering"
   description    = "Managed Claude Code settings for the engineering fleet."
-  tool_id        = data.jamfplatform_ai_governance_tool.claude_code.id
-  schema_version = data.jamfplatform_ai_governance_tool.claude_code.current_schema_version
+  tool_id        = "com.anthropic.claudecode"
+  schema_version = "2026-08-14"
 
   settings_json = jsonencode({
     model                  = "sonnet"
@@ -40,7 +35,7 @@ resource "jamfplatform_ai_governance_policy" "engineering" {
   })
 }
 
-# 3. Who receives it.
+# 2. Who receives it.
 resource "jamfplatform_device_group" "engineering_macs" {
   name        = "Engineering Macs"
   group_type  = "smart"
@@ -53,7 +48,7 @@ resource "jamfplatform_device_group" "engineering_macs" {
   }]
 }
 
-# 4. The blueprint delivers a published version. Interpolating published_version
+# 3. The blueprint delivers a published version. Interpolating published_version
 #    rather than writing a number keeps the blueprint moving with the policy —
 #    Jamf refuses a blueprint naming a version that does not exist.
 resource "jamfplatform_blueprints_blueprint" "ai_governance" {
@@ -79,9 +74,18 @@ resource "jamfplatform_blueprints_blueprint" "ai_governance" {
 
 Change the policy's settings and the next apply publishes version 2, the blueprint's pinned version follows, and the blueprint redeploys. Nothing else to do.
 
-### Tracking the current schema version, or pinning one
+### Pinning a schema version, or tracking the current one
 
-Reading `current_schema_version` from the tool data source keeps the policy on whatever Jamf publishes:
+Pinning a literal, as the example above does, is the safer default — the schema a policy is written against then moves only when you move it:
+
+```hcl
+resource "jamfplatform_ai_governance_policy" "pinned" {
+  # ...
+  schema_version = "2026-08-14"
+}
+```
+
+Reading `current_schema_version` from the tool data source instead keeps the policy on whatever Jamf publishes:
 
 ```hcl
 data "jamfplatform_ai_governance_tool" "claude_code" {
@@ -94,14 +98,7 @@ resource "jamfplatform_ai_governance_policy" "tracks_current" {
 }
 ```
 
-The trade-off is that a new schema version published by Jamf becomes a change in your next plan, and the settings you wrote may need reconciling with it. Pinning a literal is the conservative alternative:
-
-```hcl
-resource "jamfplatform_ai_governance_policy" "pinned" {
-  # ...
-  schema_version = "2026-08-14"
-}
-```
+That form has two costs, and the second is easy to miss. A new schema version published by Jamf becomes a change in your next plan, and the settings you wrote may need reconciling with it. And **the apply that moves the version on its own publishes nothing**: Jamf compares the settings, not the schema version, so a version change with unchanged settings mints no version and blueprints keep delivering the one published against the older schema. "Drafts, versions and what actually reaches a device" below sets out what to do about it.
 
 Either way, `terraform plan` warns when the version in use is no longer the current one, and `schema_drift` reports it in state. What the data source offers:
 
@@ -178,6 +175,12 @@ The provider validates `settings_json` against that schema before an apply, and 
 
 A few schema rules are not checked — conditional (`if`/`then`) rules, and format assertions. Jamf still enforces everything, so an apply can fail where a plan passed; the diagnostic says as much when it happens.
 
+#### A policy authored in the Jamf admin UI may hold settings its schema does not declare
+
+The Jamf Account admin UI can write settings that the schema published for that version does not list. Importing such a policy, or copying its settings into a configuration, therefore raises the undeclared-setting **warning** above on a policy that is working correctly.
+
+The warning is advisory in this case: Jamf stores the setting and reports it back unchanged. The known instance is `banner` on Claude Desktop — the `com.anthropic.claudefordesktop` schema for `2026-06-03` declares seven settings and not `banner`, yet a policy created in the admin UI carries it, and writing the same setting from Terraform is accepted. Leave it in place.
+
 ## Schema versions and drift
 
 A tool publishes new settings schema versions over time. A policy written against an older one keeps working, and reports `schema_drift`:
@@ -190,7 +193,7 @@ data "jamfplatform_ai_governance_policies" "needs_review" {
 
 `terraform plan` also warns on a drifted policy, naming the current version. Moving forward means setting `schema_version` to it and reconciling `settings_json` — settings the older schema did not declare become available, and any it declared that the newer one dropped must go.
 
-Pinning `schema_version` to a literal is the conservative choice; reading it from the tool data source keeps policies current at the cost of a plan-time change whenever Jamf publishes a new schema.
+Pinning `schema_version` to a literal is the conservative choice, for the reasons set out in "Pinning a schema version, or tracking the current one" above.
 
 ## Requirements
 

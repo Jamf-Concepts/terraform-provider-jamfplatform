@@ -91,9 +91,17 @@ func (v jsonObjectValue) Equal(o attr.Value) bool {
 	return v.StringValue.Equal(other.StringValue)
 }
 
-// StringSemanticEquals reports whether two values describe the same JSON. The framework calls it
-// when reconciling a planned value against the applied one and when refining a plan against prior
-// state, so returning true suppresses a difference that is only formatting.
+// StringSemanticEquals reports whether two values describe the same JSON, so returning true
+// suppresses a difference that is only formatting. The framework calls it only where a value the
+// provider returned is reconciled against the value it was handed — Create, Update and Read for a
+// resource, and a data source read. It is never called while planning, so it cannot by itself
+// suppress a difference between configuration and prior state.
+//
+// That is still enough to converge, because Update passes the *planned* state as the prior side of
+// the comparison and keeps the prior side when the two are equal. So when the platform's
+// re-serialisation is semantically equal to what the author wrote, the author's bytes are what land
+// in state. State adopts the configuration's formatting on the first apply, and that is precisely
+// why the plan modifier jsonObjectType's comment records as removed was unnecessary.
 //
 // A value that will not parse is compared byte-wise rather than reported here: the attribute's
 // validator already reports unparseable JSON against the right path, and a second diagnostic from

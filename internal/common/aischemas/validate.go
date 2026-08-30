@@ -15,18 +15,29 @@ import (
 )
 
 // walker carries the state one Validate call needs: the schema root for resolving local references,
-// the findings so far, and a cache of compiled patterns so a schema that reuses one does not
-// recompile it per value.
+// the findings so far, a cache of compiled patterns so a schema that reuses one does not recompile
+// it per value, and how many walkers deep this one is.
 type walker struct {
 	root     map[string]any
 	problems []Problem
 	patterns map[string]*regexp.Regexp
+	depth    int
 }
 
 // validate checks one value against one schema node, then descends. A value whose type is already
 // wrong is not descended into: the keyword checks below would all fail for the same reason, and a
 // single accurate finding beats a cascade.
+//
+// The depth guard is what terminates a cycle that never descends into the value. flatten's visited
+// set stops a pointer being re-entered at the same value, but a union or a `propertyNames`
+// constraint re-enters through a fresh walker, which has no visited set to inherit. A schema as
+// small as an anyOf holding a single self-reference would otherwise exhaust the stack, and a stack
+// overflow is fatal — recover cannot catch it, so the provider process dies mid-plan.
 func (w *walker) validate(node map[string]any, value any, ptr string) {
+	if w.depth > maxRefDepth {
+		return
+	}
+
 	nodes := w.flatten(node, map[string]struct{}{}, 0)
 	if len(nodes) == 0 {
 		return
@@ -239,6 +250,13 @@ func (w *walker) checkBranches(nodes []map[string]any, value any, ptr string) {
 
 // closestBranch validates a value against each branch and returns the detail of the first error from
 // the branch with the fewest, plus that count. A count of zero means some branch matched.
+//
+// A matching branch's advisory findings are promoted onto the parent before returning. Nothing else
+// re-checks that subtree — a bare `{"anyOf":[…]}` node declares no properties of its own, so the
+// undeclared-key check passes over every key of it — so discarding them would lose the one failure
+// the service never reports, exactly inside the unions Claude Code's hook shapes are written as. A
+// non-matching branch's advisories are dropped, because that branch is not the shape the value is
+// being read as.
 func (w *walker) closestBranch(branches []any, value any, ptr string) (string, int) {
 	best := ""
 	fewest := 0
@@ -247,7 +265,7 @@ func (w *walker) closestBranch(branches []any, value any, ptr string) (string, i
 		if !ok {
 			continue
 		}
-		nested := &walker{root: w.root}
+		nested := w.nested()
 		nested.validate(sub, value, ptr)
 
 		errors := 0
@@ -262,6 +280,11 @@ func (w *walker) closestBranch(branches []any, value any, ptr string) (string, i
 			}
 		}
 		if errors == 0 {
+			for _, problem := range nested.problems {
+				if problem.Advisory() {
+					w.add(problem)
+				}
+			}
 			return "", 0
 		}
 		if fewest == 0 || errors < fewest {
@@ -302,7 +325,7 @@ func (w *walker) validateObject(nodes []map[string]any, value map[string]any, pt
 // declares what its keys may be called.
 func (w *walker) checkPropertyName(shape objectShape, name, ptr string) {
 	for _, constraint := range shape.propertyNames {
-		nested := &walker{root: w.root}
+		nested := w.nested()
 		nested.validate(constraint, name, ptr)
 		for _, problem := range nested.problems {
 			w.add(problemAt(InvalidPropertyName, ptr, "the key %s is not accepted here: %s", strconv.Quote(name), problem.Detail))
@@ -364,6 +387,21 @@ func (w *walker) add(problem Problem) {
 		return
 	}
 	w.problems = append(w.problems, problem)
+}
+
+// nested returns a walker for re-entering validate at the same value — a branch of a union, or a key
+// judged against a `propertyNames` constraint — collecting its findings separately so the caller can
+// decide which of them count.
+//
+// It carries the parent's depth plus one, because neither construct consumes a level of the value
+// and the depth is therefore the only thing that terminates a cycle through them, and it shares the
+// parent's compiled-pattern cache, which a `propertyNames` pattern would otherwise recompile once
+// per key of the object.
+func (w *walker) nested() *walker {
+	if w.patterns == nil {
+		w.patterns = map[string]*regexp.Regexp{}
+	}
+	return &walker{root: w.root, patterns: w.patterns, depth: w.depth + 1}
 }
 
 // compile returns a compiled pattern, or nil when Go's regexp cannot express it.
@@ -446,7 +484,9 @@ func declaredTypes(node map[string]any) []string {
 }
 
 // matchesType reports whether a decoded JSON value satisfies one declared type name. `integer`
-// accepts a whole-valued number, which is how JSON expresses one.
+// accepts a whole-valued number, which is how JSON expresses one — judged by value rather than by a
+// round-trip through int64, so a number too large for an int64 is a range problem for the service to
+// report and not a type problem here.
 func matchesType(name string, value any) bool {
 	switch name {
 	case "object":
@@ -468,7 +508,7 @@ func matchesType(name string, value any) bool {
 		return ok
 	case "integer":
 		number, ok := jsonvalue.Numeric(value)
-		return ok && number == float64(int64(number))
+		return ok && jsonvalue.IsWhole(number)
 	default:
 		return true
 	}

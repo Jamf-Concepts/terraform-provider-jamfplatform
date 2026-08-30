@@ -41,21 +41,27 @@ func Numeric(value any) (float64, bool) {
 
 // FormatNumber renders a JSON number without exponent notation, so a large integer reads as the
 // digits the author wrote.
+//
+// The int64 path is taken only inside int64's range, and that bound is this function's own concern
+// rather than IsWhole's: converting an out-of-range float to int64 is implementation-defined in Go,
+// so 1e30 would otherwise print as int64's minimum instead of its own digits. The comparison is
+// strict against MaxInt64 because the constant rounds up to 2^63 as a float64, which does not fit.
 func FormatNumber(number float64) string {
-	if whole(number) {
+	if IsWhole(number) && number >= math.MinInt64 && number < math.MaxInt64 {
 		return strconv.FormatInt(int64(number), 10)
 	}
 	return strconv.FormatFloat(number, 'f', -1, 64)
 }
 
-// whole reports whether a JSON number has no fractional part and fits an int64. The bound matters:
-// converting an out-of-range float to int64 is implementation-defined in Go, so the round-trip
-// comparison this replaces called 1e30 fractional on amd64.
-func whole(number float64) bool {
+// IsWhole reports whether a JSON number has no fractional part. Integer-ness is a property of the
+// value, not of any machine type it might be squeezed into, so 1e30 is as whole as 3 — which is why
+// this deliberately carries no int64 bound and every caller that converts to int64 checks that
+// bound itself. The round-trip comparison this replaces, `number == float64(int64(number))`, folded
+// the two questions together and so called 1e30 fractional on amd64, where an out-of-range
+// float-to-int64 conversion is implementation-defined: a schema declaring `"type":"integer"` then
+// reported 1e30 as the self-contradictory "expected an integer, found a whole number".
+func IsWhole(number float64) bool {
 	if math.IsInf(number, 0) || math.IsNaN(number) {
-		return false
-	}
-	if number > math.MaxInt64 || number < math.MinInt64 {
 		return false
 	}
 	return math.Trunc(number) == number

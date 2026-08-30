@@ -11,11 +11,19 @@
 //
 // The check is deliberately partial, and the partiality is measured rather than assumed. Across the
 // three products the service serves today, every `$ref` is local (no network fetch during
-// validation), every `pattern` is RE2-compatible, and the composition load is `allOf` used as a
-// single-element `$ref` wrapper. The keywords below are implemented; the rest are skipped, and their
-// absence is a documented choice, not an oversight:
+// validation), and the composition load is `allOf` used as a single-element `$ref` wrapper.
 //
-//   - if/then/else and not: conditional application. Five sites across all three schemas, none of
+// One measured gap is live in production. Of the 16 `pattern` occurrences (8 distinct values) across
+// the five schema versions the service serves, one is not RE2-expressible: Claude Code 2026-05-19
+// declares a positive lookahead at $defs/permissionRule — `\((?=.*[^)*?])[^)]+\)` — which Go's
+// regexp rejects outright. That rule governs `permissions`, and 2026-05-19 is a version an operator
+// can pin, so a malformed permission rule on that schema version is unchecked here and caught only
+// by the service. Every other pattern compiles and is enforced.
+//
+// The keywords below are implemented; the rest are skipped, and their absence is a documented
+// choice, not an oversight:
+//
+//   - if/then/else and not: conditional application. Six sites across all three schemas, none of
 //     them a typo-catcher.
 //   - format: an annotation in draft-07, not an assertion.
 //   - patternProperties, dependencies, contains, multipleOf, minProperties, maxProperties: absent
@@ -33,11 +41,19 @@ package aischemas
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/jsonvalue"
 )
 
 // maxRefDepth bounds `$ref` expansion. The Codex schema is recursive, so a cycle that never
 // descends into a value would otherwise not terminate; the per-value visited set catches the common
 // case and this catches the rest.
+//
+// It also bounds nested-walker recursion, which is the more dangerous of the two: an `anyOf`,
+// `oneOf` or `propertyNames` branch re-enters the walker without consuming any value depth, so
+// `{"anyOf":[{"$ref":"#"}]}` overflowed the stack and killed the provider process mid-plan before
+// this bounded it. A stack overflow cannot be recovered from, so the constant is load-bearing for a
+// crash and not only for a slow walk.
 const maxRefDepth = 64
 
 // Document is a parsed vendor JSON Schema for one product at one schema version.
@@ -50,9 +66,15 @@ type Document struct {
 // Parse decodes a vendor schema document. The toolID and schemaVersion are carried only so
 // diagnostics can name what the settings were checked against.
 //
-// A schema that is not a JSON object — draft-07 permits a bare `true`/`false` schema — parses to a
-// Document that accepts everything, because a validator that rejected on an unusable schema would
-// block a configuration the service would take.
+// An empty body and a bare `true` — draft-07 permits a boolean schema — parse to a Document that
+// accepts everything, because a schema declaring no constraints is not grounds for rejecting a
+// configuration the service would take.
+//
+// Every other non-object root is an error rather than an accept-everything Document. A bare `false`
+// is a draft-07 schema that rejects everything, so treating it as its opposite would be the one
+// reading it cannot bear; an array, a string, a number, `null` or a double-encoded body is a
+// document this package cannot read at all. Both travel the error path the caller already reports
+// on, and Cache does not store a Document it never received.
 func Parse(toolID, schemaVersion string, raw json.RawMessage) (*Document, error) {
 	doc := &Document{toolID: toolID, schemaVersion: schemaVersion}
 	if len(raw) == 0 {
@@ -63,8 +85,17 @@ func Parse(toolID, schemaVersion string, raw json.RawMessage) (*Document, error)
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		return nil, fmt.Errorf("decode %s schema %s: %w", toolID, schemaVersion, err)
 	}
-	if root, ok := decoded.(map[string]any); ok {
+	switch root := decoded.(type) {
+	case map[string]any:
 		doc.root = root
+	case bool:
+		if !root {
+			return nil, fmt.Errorf("decode %s schema %s: the schema document is `false`, which accepts no settings at all",
+				toolID, schemaVersion)
+		}
+	default:
+		return nil, fmt.Errorf("decode %s schema %s: expected a JSON object or `true`, found %s",
+			toolID, schemaVersion, jsonvalue.Describe(decoded))
 	}
 	return doc, nil
 }

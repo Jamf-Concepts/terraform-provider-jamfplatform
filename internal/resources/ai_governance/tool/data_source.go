@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -113,6 +114,10 @@ type toolDataSourceModel struct {
 }
 
 // Read fetches the tool and the schema document for the requested version.
+//
+// An absent tool and a failed read are reported separately: only the first is a configuration
+// problem the reader can fix by correcting the identifier, and pointing a transient failure or an
+// entitlement gap at the catalogue sends the reader down the wrong path.
 func (d *ToolDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var config toolDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
@@ -122,12 +127,16 @@ func (d *ToolDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 	summary, err := d.client.GetTool(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to read AI tool",
-			"Jamf could not return the AI tool with the identifier "+config.ID.ValueString()+
-				". Read the available identifiers from the jamfplatform_ai_governance_tools data source. Reported by "+
-				"Jamf: "+err.Error(),
-		)
+		if helpers.IsNotFoundError(err) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("id"),
+				"AI tool not found",
+				"Jamf governs no AI tool with the identifier "+config.ID.ValueString()+". Identifiers are matched "+
+					"exactly. Read the available identifiers from the jamfplatform_ai_governance_tools data source.",
+			)
+			return
+		}
+		resp.Diagnostics.AddError("Unable to read AI tool", err.Error())
 		return
 	}
 

@@ -6,6 +6,7 @@ package policy
 import (
 	"context"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
@@ -25,6 +26,11 @@ type policyIdentityModel struct {
 // Creating a policy stages a draft and deploys nothing — a policy with no published version cannot
 // be referenced by a blueprint at all — so the publish is part of what an apply means here rather
 // than a separate operation.
+//
+// A failed publish is reported only after state has been committed. The framework returns whatever
+// resp.State holds when this function ends and never backfills it, so adding the diagnostic before
+// the write would make the error check that guards it fire and record nothing for a policy that now
+// exists — and because policy names are not unique, the next apply would create a second one.
 func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan policyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -48,17 +54,11 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	if err := r.publishIfNeeded(ctx, created.ID, plan.Publish.ValueBool()); err != nil {
-		resp.Diagnostics.AddError(
-			"AI policy created but not published",
-			"The policy was created with ID "+created.ID+" but publishing it failed, so it holds an unpublished "+
-				"draft and cannot be deployed by a blueprint yet. Terraform has recorded the policy; the next apply "+
-				"will retry publishing. Reported by Jamf: "+err.Error(),
-		)
-	}
+	publishErr := r.publishIfNeeded(ctx, created.ID, plan.Publish.ValueBool())
 
 	if !r.hydrate(ctx, &plan, created.ID, &resp.Diagnostics) {
 		resp.State.RemoveResource(ctx)
+		appendCreatePublishFailure(&resp.Diagnostics, created.ID, publishErr)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, policyIdentityModel{ID: plan.ID})...)
@@ -66,11 +66,17 @@ func (r *PolicyResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	appendCreatePublishFailure(&resp.Diagnostics, created.ID, publishErr)
 }
 
 // Read refreshes the policy. A policy that has been archived is reported as absent: archiving is a
 // soft delete the API renders as a 404 from every operation, so there is nothing to distinguish it
 // from a policy that never existed.
+//
+// The returned status is checked as well, rather than relying on that 404 alone. The service's own
+// spec declares ARCHIVED as a value GET /policies/{id} may report, and the SDK generates a constant
+// for it; wire probing on 2026-08-30 saw only the 404, but a service release that starts honouring
+// the spec would otherwise leave a plan reporting no changes for a policy delivered to no device.
 func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state policyModel
 	if req.State.Raw.IsNull() {
@@ -102,6 +108,18 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	if detail.Status == aigovernance.PolicyDetailStatusArchived {
+		resp.Diagnostics.AddWarning(
+			"AI policy has been archived",
+			"Jamf reports the policy with ID "+state.ID.ValueString()+" as archived, which is how it records a "+
+				"policy deleted outside Terraform. An archived policy is delivered to no device and its published "+
+				"versions are no longer served, so it has been removed from state and the next plan will propose "+
+				"creating it again.",
+		)
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 	if err := applyPolicyToState(&state, detail); err != nil {
 		resp.Diagnostics.AddError("Unable to read AI policy settings", err.Error())
 		return
@@ -119,6 +137,10 @@ func (r *PolicyResource) Read(ctx context.Context, req resource.ReadRequest, res
 // The platform compares the settings it holds against the ones sent, so an update that changes
 // nothing leaves no draft behind and the publish that follows is a no-op rather than a version
 // minted for nothing.
+//
+// A failed publish is reported only after state has been committed, for the reason Create records:
+// the diagnostic would otherwise fire the error check that guards the state write, leaving state at
+// the values it held before the update and hiding the draft the platform now holds.
 func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan policyModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -156,16 +178,11 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	if err := r.publishIfNeeded(ctx, id, plan.Publish.ValueBool()); err != nil {
-		resp.Diagnostics.AddError(
-			"AI policy updated but not published",
-			"The policy's draft was saved but publishing it failed, so blueprints continue to deploy the previously "+
-				"published version. The next apply will retry publishing. Reported by Jamf: "+err.Error(),
-		)
-	}
+	publishErr := r.publishIfNeeded(ctx, id, plan.Publish.ValueBool())
 
 	if !r.hydrate(ctx, &plan, id, &resp.Diagnostics) {
 		resp.State.RemoveResource(ctx)
+		appendUpdatePublishFailure(&resp.Diagnostics, publishErr)
 		return
 	}
 	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, policyIdentityModel{ID: plan.ID})...)
@@ -173,16 +190,20 @@ func (r *PolicyResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	appendUpdatePublishFailure(&resp.Diagnostics, publishErr)
 }
 
 // Delete archives the policy.
 //
 // Archiving succeeds even when a deployed blueprint references one of the policy's published
 // versions: the platform accepts the delete and leaves that blueprint pointing at a version it will
-// no longer serve, and a later write to the blueprint is then refused with POLICY_ARCHIVED. Nothing
-// can be done about that from this end, so the warning below is the whole remedy — Terraform cannot
-// see the blueprints, and there is no reverse lookup that works (the policy deployment endpoint
-// reports no blueprints even for one that is deployed).
+// no longer serve, and wire probing on 2026-08-30 established that the blueprint is then unwritable
+// in full — a merge PATCH carrying only a new description is refused with POLICY_ARCHIVED against
+// the component's policyId, and the steps cannot be emptied either. Nothing can be done about that
+// from this end, so the warning on a successful archive is the whole remedy: Terraform cannot see
+// the blueprints, and there is no reverse lookup that works (the policy deployment endpoint reports
+// no blueprints even for one that is deployed). A failed archive returns before the warning, so a
+// policy that still exists is never described as archived.
 func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var state policyModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -203,7 +224,49 @@ func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 			return
 		}
 		resp.Diagnostics.AddError("Unable to delete AI policy", err.Error())
+		return
 	}
+
+	resp.Diagnostics.AddWarning(
+		"Archived AI policy may still be referenced by a blueprint",
+		"Policy "+state.ID.ValueString()+" has been archived. Jamf does not block this even when a deployed "+
+			"blueprint pins one of its published versions, and no API reports which blueprints do. A blueprint "+
+			"still naming this policy cannot be written at all until the reference is replaced — even a change "+
+			"to its description is refused with POLICY_ARCHIVED.",
+	)
+}
+
+// appendCreatePublishFailure reports a publish that failed after the policy was created.
+//
+// The policy exists by then, so the wording sends the operator to the draft rather than to a retry:
+// state now records the policy, config matches it, and no computed attribute has a reason to go
+// unknown, so the next plan is empty and Terraform never calls Update again. Publishing the draft
+// takes a further change to the policy or the admin UI.
+func appendCreatePublishFailure(diags *diag.Diagnostics, id string, err error) {
+	if err == nil {
+		return
+	}
+	diags.AddError(
+		"AI policy created but not published",
+		"The policy was created with ID "+id+" but publishing it failed, so it holds an unpublished draft and "+
+			"cannot be deployed by a blueprint yet. Terraform has recorded the policy — do not create it again, "+
+			"because policy names are not unique and a second create would leave two. Publishing the draft takes "+
+			"either a later change to the policy or the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
+	)
+}
+
+// appendUpdatePublishFailure reports a publish that failed after the draft was saved. The draft is
+// recorded in state, so the next plan is empty for the reason appendCreatePublishFailure describes.
+func appendUpdatePublishFailure(diags *diag.Diagnostics, err error) {
+	if err == nil {
+		return
+	}
+	diags.AddError(
+		"AI policy updated but not published",
+		"The policy's draft was saved but publishing it failed, so blueprints continue to deploy the previously "+
+			"published version. Terraform has recorded the draft, so publishing it takes either a later change to "+
+			"the policy or the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
+	)
 }
 
 // publishIfNeeded publishes the policy's draft when the operator asked for it.

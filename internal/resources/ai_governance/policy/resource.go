@@ -41,10 +41,16 @@
 // /tools, and the platform reports an unknown one as TOOL_ID_UNKNOWN — so there is no single UI name
 // to defer to, and matching the diagnostic the practitioner will see wins.
 //
-// Four wire fields are deliberately unmapped. `status` is always ACTIVE for any policy the API will
-// return, because an archived one 404s. `version` is a row-revision counter that increments on
-// writes that change nothing. `createdBy` and `updatedBy` are opaque composite actor identifiers
-// that name the auth realm and appear nowhere in the UI.
+// `status` is read but exposed as no attribute: a policy reported as archived is treated as absent,
+// which is defence against a service release that starts honouring its own specification. Probing on
+// 2026-08-30 only ever saw an archived policy answer 404, but the specification declares archived as
+// a status a read may report, and the difference decides whether a deleted policy plans as gone or as
+// unchanged.
+//
+// Three wire fields are deliberately unmapped. `version` is a row-revision counter that increments
+// on writes that change nothing, and the SDK's policy detail type does not carry it, so exposing it
+// would need an SDK change before a provider one. `createdBy` and `updatedBy` are opaque composite
+// actor identifiers that name the auth realm and appear nowhere in the UI.
 package policy
 
 import (
@@ -186,7 +192,10 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 					"produces no change. Contents are checked during `terraform plan` against the tool's published " +
 					"schema for `schema_version`: a setting of the wrong type or outside its accepted values is an " +
 					"error, and a setting the schema does not declare is a warning, because a tool may accept settings " +
-					"added after that schema version was published.",
+					"added after that schema version was published.\n\n" +
+					"Keep credentials out of these settings: the value is held in Terraform state and shown in plan " +
+					"output in cleartext. Where a tool needs an API key, prefer a setting that names a command to " +
+					"fetch the key over one that carries the key itself.",
 				Required:   true,
 				CustomType: jsonObjectType{},
 				Validators: []validator.String{
@@ -244,9 +253,13 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 // Configure wires the AI Governance client and the shared schema cache into the resource.
 //
 // AI Governance is a continuously-deployed platform service with no customer-tenant version, so
-// there is no version gate. It is reached under an environment-scoped integration: the platform
-// answers a request carrying no scope header with REQUEST_CONTEXT_NOT_PROVIDED, and tenant scope is
-// untested against it, so the gate names environment alone rather than guessing.
+// there is no version gate. Environment is the only scope that reaches it, and both alternatives
+// were probed on 2026-08-30: with no scope header the platform answers REQUEST_CONTEXT_NOT_PROVIDED,
+// and under tenant scope it answers BAD_PERMISSIONS while a Jamf Pro request carrying the same
+// tenant header succeeds — so the header is accepted and the refusal belongs to this namespace. By
+// the rule this provider applies to that code (see CLAUDE.md), an unmapped route and a privilege gap
+// are indistinguishable, so tenant scope is treated as unreachable and widening the gate to it needs
+// a fresh probe, not a one-word edit.
 func (r *PolicyResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return

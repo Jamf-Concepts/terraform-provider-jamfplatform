@@ -72,6 +72,33 @@ func TestFormatNumberBeyondInt64(t *testing.T) {
 	}
 }
 
+// TestIsWhole pins that whole-ness is a property of the value and carries no int64 bound: 1e30 is a
+// whole number, and the round-trip comparison this replaced called it fractional on amd64, which is
+// how an "integer"-typed 1e30 came to be reported as "expected an integer, found a whole number".
+func TestIsWhole(t *testing.T) {
+	cases := []struct {
+		number float64
+		want   bool
+	}{
+		{0, true},
+		{3, true},
+		{-3, true},
+		{3.5, false},
+		{-0.25, false},
+		{1e30, true},
+		{-1e30, true},
+		{math.MaxFloat64, true},
+		{math.Inf(1), false},
+		{math.Inf(-1), false},
+		{math.NaN(), false},
+	}
+	for _, c := range cases {
+		if got := IsWhole(c.number); got != c.want {
+			t.Errorf("IsWhole(%v) = %v, want %v", c.number, got, c.want)
+		}
+	}
+}
+
 func TestFormatNumberNonFinite(t *testing.T) {
 	for _, number := range []float64{math.Inf(1), math.Inf(-1), math.NaN()} {
 		if got := FormatNumber(number); got == "" {

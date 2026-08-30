@@ -91,6 +91,41 @@ func TestApplyPolicyToStateNullables(t *testing.T) {
 	}
 }
 
+// TestApplyPolicyToStateBlankDescriptionIsNull pins that a description the platform stores as the
+// empty string — the form an update sends to clear one, and the only form it clears on — reads back
+// as null. Copying the blank through would put "" into state where the configuration says nothing
+// and fail the apply that removed the attribute.
+func TestApplyPolicyToStateBlankDescriptionIsNull(t *testing.T) {
+	blank := ""
+	detail := detailFixture()
+	detail.Description = &blank
+
+	var model policyModel
+	if err := applyPolicyToState(&model, detail); err != nil {
+		t.Fatalf("applyPolicyToState: %v", err)
+	}
+	if !model.Description.IsNull() {
+		t.Errorf("description should be null, got %q", model.Description.ValueString())
+	}
+}
+
+// TestApplyPolicyToStateKeepsAnExplicitBlankDescription pins the other side of that mapping: an
+// operator who wrote description = "" keeps it, rather than having it collapsed to null and tripping
+// the same inconsistency from the opposite direction.
+func TestApplyPolicyToStateKeepsAnExplicitBlankDescription(t *testing.T) {
+	blank := ""
+	detail := detailFixture()
+	detail.Description = &blank
+
+	model := policyModel{Description: types.StringValue("")}
+	if err := applyPolicyToState(&model, detail); err != nil {
+		t.Fatalf("applyPolicyToState: %v", err)
+	}
+	if model.Description.IsNull() || model.Description.ValueString() != "" {
+		t.Errorf("an explicitly blank description should be preserved, got %v", model.Description)
+	}
+}
+
 func TestRenderSettings(t *testing.T) {
 	cases := []struct {
 		name    string

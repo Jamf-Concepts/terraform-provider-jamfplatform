@@ -26,9 +26,11 @@ import (
 // have no client, which is what rules them out.
 //
 // Everything here is best-effort by construction. A catalogue or schema that cannot be fetched
-// produces no findings at all — the platform validates the write regardless, and a plan that failed
+// produces no findings — the platform validates the write regardless, and a plan that failed
 // because the provider could not reach an advisory endpoint would be worse than a plan that let the
-// apply report the problem.
+// apply report the problem. It does not pass silently, though: the operator is told once per plan
+// that no check ran, because the resource's own documentation promises the settings are checked
+// during plan, so a clean plan otherwise reads as confirmation that they were.
 func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() || r.client == nil {
 		return
@@ -57,9 +59,13 @@ func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 // A schema version behind the tool's current one is a warning rather than an error: the platform
 // keeps serving it, and its own schemaDrift flag exists to say so. Announcing it at plan time is
 // the point — schema_drift as a computed attribute only tells an operator after the fact.
+//
+// A catalogue that cannot be read reports the pair as good enough to go on with, so the plan
+// proceeds, and says so once per plan rather than once per policy.
 func (r *PolicyResource) checkCatalogue(ctx context.Context, diags *diag.Diagnostics, toolID, schemaVersion string) bool {
 	tool, found, err := r.schemas.Tool(ctx, toolID)
 	if err != nil {
+		r.noteValidationUnavailable(diags, "The AI tool catalogue could not be read", err)
 		return true
 	}
 	if !found {
@@ -105,6 +111,26 @@ func (r *PolicyResource) knownTools(ctx context.Context) string {
 	return "Available: " + strings.Join(rendered, ", ") + "."
 }
 
+// noteValidationUnavailable warns that plan-time settings validation did not run, once per plan.
+//
+// Not failing the plan is deliberate — the platform validates the write, and an advisory endpoint
+// the provider could not reach is no reason to block one. Passing silently is not: a role without
+// the ai-policies:read privilege these reads need, or a transient 5xx, would otherwise leave a plan
+// in which nothing was checked indistinguishable from a plan in which everything passed. The notice
+// fires once per configured provider instance, so a configuration holding twenty policies reports
+// it once — the rule impact alerts already follow for a tenant that cannot be read.
+func (r *PolicyResource) noteValidationUnavailable(diags *diag.Diagnostics, cause string, err error) {
+	if !r.schemas.NoticeOnce() {
+		return
+	}
+	diags.AddWarning(
+		"Settings validation unavailable",
+		fmt.Sprintf("%s, so settings_json was not checked against the tool's published schema during this plan: %s\n\n"+
+			"The check is advisory, so the plan is unaffected — Jamf validates the settings when they are written. "+
+			"No further notices will be shown for this plan.", cause, err),
+	)
+}
+
 // checkSettings validates the settings body against the tool's published schema.
 //
 // The error and warning split is the vendor schema's, not a choice: a setting of the wrong type or
@@ -126,6 +152,7 @@ func (r *PolicyResource) checkSettings(ctx context.Context, diags *diag.Diagnost
 
 	document, err := r.schemas.Document(ctx, toolID, schemaVersion)
 	if err != nil {
+		r.noteValidationUnavailable(diags, fmt.Sprintf("The %s settings schema %s could not be read", toolID, schemaVersion), err)
 		return
 	}
 
@@ -153,7 +180,7 @@ func renderProblem(problem aischemas.Problem, schemaVersion string) (string, str
 	switch problem.Kind {
 	case aischemas.UnrecognisedKey:
 		return "Setting is not declared for this schema version",
-			problem.Detail + " Checked against schema version " + schemaVersion +
+			location + ": " + problem.Detail + " Checked against schema version " + schemaVersion +
 				". If this tool has published a newer schema version that declares it, set schema_version to that instead."
 	case aischemas.MissingRequiredKey:
 		return "Required setting is missing", location + ": " + problem.Detail

@@ -105,6 +105,8 @@ output "claude_code_engineering_deployable_version" {
 - `settings_json` (String) The tool's settings as a JSON object string. Author it with `jsonencode({ ... })`, `file("settings.json")`, or by copying the configuration exported from the Jamf Account admin UI. Only the settings you include are managed; the tool's own defaults apply to the rest.
 
 Formatting and key order are not significant — the value is compared as JSON, so reindenting it produces no change. Contents are checked during `terraform plan` against the tool's published schema for `schema_version`: a setting of the wrong type or outside its accepted values is an error, and a setting the schema does not declare is a warning, because a tool may accept settings added after that schema version was published.
+
+Keep credentials out of these settings: the value is held in Terraform state and shown in plan output in cleartext. Where a tool needs an API key, prefer a setting that names a command to fetch the key over one that carries the key itself.
 - `tool_id` (String) **"Product"** in the Jamf Account admin UI — the identifier of the AI tool this policy configures, such as `com.anthropic.claudecode`. Read the available identifiers from the `jamfplatform_ai_governance_tools` data source. Changing the tool replaces the policy, because a policy's tool is fixed once it exists.
 
 ### Optional

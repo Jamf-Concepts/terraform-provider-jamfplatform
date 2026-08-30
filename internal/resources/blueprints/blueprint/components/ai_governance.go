@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
+	commonvalidators "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -28,6 +29,14 @@ import (
 // VALIDATION_FAILURE. A policy or version that does not exist is refused with
 // POLICY_VERSION_NOT_FOUND, and an archived policy with POLICY_ARCHIVED — both against
 // configuration.policies[n].policyId regardless of which of the two is actually wrong.
+//
+// Two further facts govern a component carrying more than one policy, wire-verified on the same
+// date. Order is preserved verbatim: a list sent reverse-sorted by policyId is returned
+// reverse-sorted, and a PATCH to sorted order and another back both round-trip faithfully — so
+// policies is a ListNestedAttribute, and a Set would lose an ordering the service keeps. And a
+// repeated policyId is refused rather than collapsed, with INVALID_CONFIGURATION naming
+// "duplicate policyId" against configuration.policies[1], which is why the schema below carries a
+// plan-time uniqueness validator: the same configuration would otherwise fail mid-apply.
 type AIGovernanceComponent struct {
 	Policies []AIGovernancePolicyReference `tfsdk:"policies"`
 }
@@ -79,6 +88,7 @@ func AIGovernanceComponentSchema() map[string]schema.Attribute {
 			},
 			Validators: []validator.List{
 				listvalidator.SizeAtLeast(1),
+				commonvalidators.UniqueStringFieldList("policy_id"),
 			},
 		},
 	}

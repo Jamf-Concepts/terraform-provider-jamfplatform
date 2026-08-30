@@ -31,6 +31,14 @@ var cacheMethodBacking = map[string]string{
 	"Document": "GetToolSchema",
 }
 
+// cacheBookkeepingMethods are schema cache methods that reach no API and so need no privilege.
+// NoticeOnce is the once-per-plan latch on the "validation unavailable" warning; declaring it here
+// rather than ignoring unmapped names keeps the mapping's guarantee, so a cache method that does
+// reach the SDK still fails calledMethods until it is mapped.
+var cacheBookkeepingMethods = map[string]bool{
+	"NoticeOnce": true,
+}
+
 // calledMethods returns the distinct SDK method names the given source files reach, directly or
 // through the schema cache, restricted to methods the SDK privilege registry knows so unrelated
 // identifiers are ignored.
@@ -48,6 +56,9 @@ func calledMethods(t *testing.T, filenames ...string) map[string]bool {
 			}
 		}
 		for _, match := range cacheCallRe.FindAllStringSubmatch(string(src), -1) {
+			if cacheBookkeepingMethods[match[1]] {
+				continue
+			}
 			backing, ok := cacheMethodBacking[match[1]]
 			if !ok {
 				t.Errorf("%s calls schemas.%s, which permissions_test.go does not map to an SDK method", filename, match[1])

@@ -194,13 +194,75 @@ func TestAnyOfReportsTheClosestBranch(t *testing.T) {
 	}
 }
 
-// TestAdvisoryFindingDoesNotDisqualifyABranch pins that an open branch carrying an unrecognised key
-// still counts as matching, so a union does not turn a warning into an error.
+// TestAdvisoryFindingDoesNotDisqualifyABranch pins both halves of how a union treats an advisory
+// finding: an open branch carrying an unrecognised key still counts as matching, so the union does
+// not turn a warning into an error, and the warning itself survives onto the result rather than
+// being discarded with the throwaway walker that produced it. Nothing else re-checks that subtree —
+// a bare anyOf node declares no properties of its own — so losing it would leave the undeclared-key
+// check absent exactly inside the unions Claude Code's hook shapes are written as.
 func TestAdvisoryFindingDoesNotDisqualifyABranch(t *testing.T) {
-	check(t, `{"type":"object","additionalProperties":false,"properties":{"x":{"anyOf":[
+	got := parse(t, `{"type":"object","additionalProperties":false,"properties":{"x":{"anyOf":[
 	    {"type":"object","additionalProperties":true,"properties":{"a":{"type":"string"}}},
 	    {"type":"string"}
-	  ]}}}`, `{"x":{"a":"ok","extra":1}}`, nil)
+	  ]}}}`).Validate(settings(t, `{"x":{"a":"ok","extra":1}}`))
+
+	if len(got) != 1 {
+		t.Fatalf("want the matched branch's one advisory finding, got %d:\n%s", len(got), render(got))
+	}
+	if got[0].Kind != UnrecognisedKey || got[0].Path != "/x/extra" {
+		t.Errorf("got kind %d at %q, want UnrecognisedKey at /x/extra", got[0].Kind, got[0].Path)
+	}
+	if !got[0].Advisory() {
+		t.Error("an undeclared key inside a matched branch of an open schema must stay advisory")
+	}
+}
+
+// TestNonMatchingBranchAdvisoryIsNotReported pins the other side of that promotion: a branch the
+// value does not match is not the shape it is being read as, so its advisory findings are dropped
+// and only the union summary is reported.
+func TestNonMatchingBranchAdvisoryIsNotReported(t *testing.T) {
+	check(t, `{"type":"object","additionalProperties":false,"properties":{"x":{"anyOf":[
+	    {"type":"object","required":["a"],"additionalProperties":true,"properties":{"a":{"type":"string"}}},
+	    {"type":"integer"}
+	  ]}}}`, `{"x":{"extra":1}}`, []Problem{{Kind: NoBranchMatches, Path: "/x"}})
+}
+
+// TestUnionRefCycleTerminates pins the depth guard. anyOf consumes no level of the value and
+// re-enters through a fresh walker with no visited set, so before the guard this exhausted the stack
+// — fatal, and beyond recover's reach, so the provider process died mid-plan.
+func TestUnionRefCycleTerminates(t *testing.T) {
+	done := make(chan []Problem, 1)
+	go func() {
+		done <- parse(t, `{"anyOf":[{"$ref":"#"}]}`).Validate(settings(t, `{"a":1}`))
+	}()
+	select {
+	case got := <-done:
+		if len(got) != 0 {
+			t.Fatalf("unexpected problems: %s", render(got))
+		}
+	case <-timeout():
+		t.Fatal("validation did not terminate on a union $ref cycle")
+	}
+}
+
+// TestPropertyNamesRefCycleTerminates pins the same guard on the other nested-walker site: a
+// propertyNames constraint whose union references the constraint itself.
+func TestPropertyNamesRefCycleTerminates(t *testing.T) {
+	done := make(chan []Problem, 1)
+	go func() {
+		done <- parse(t, `{"type":"object","properties":{"env":{"type":"object",
+		    "propertyNames":{"anyOf":[{"$ref":"#/properties/env/propertyNames"}]},
+		    "additionalProperties":{"type":"string"}}}}`).
+			Validate(settings(t, `{"env":{"A":"1"}}`))
+	}()
+	select {
+	case got := <-done:
+		if len(got) != 0 {
+			t.Fatalf("unexpected problems: %s", render(got))
+		}
+	case <-timeout():
+		t.Fatal("validation did not terminate on a propertyNames $ref cycle")
+	}
 }
 
 func TestMissingRequiredKey(t *testing.T) {
@@ -241,6 +303,58 @@ func TestNumericAndLengthBounds(t *testing.T) {
 			{Kind: LengthOutOfRange, Path: "/name"},
 			{Kind: OutOfRange, Path: "/port"},
 		})
+
+	check(t,
+		`{"type":"object","additionalProperties":false,"properties":{
+		  "hours":{"type":"integer","minimum":1,"maximum":72},
+		  "name":{"type":"string","minLength":2,"maxLength":4},
+		  "port":{"type":"integer","exclusiveMaximum":65536}
+		}}`,
+		`{"hours":0,"name":"toolong","port":65536}`,
+		[]Problem{
+			{Kind: OutOfRange, Path: "/hours"},
+			{Kind: LengthOutOfRange, Path: "/name"},
+			{Kind: OutOfRange, Path: "/port"},
+		})
+}
+
+// TestNumericEnumAndConst pins the comparator behind enum and const against numbers, which every
+// other case here spells as strings. A schema declaring a numeric enum is Codex's shape, and a
+// defect in this direction blocks a plan for a configuration the service accepts.
+func TestNumericEnumAndConst(t *testing.T) {
+	const enumSchema = `{"type":"object","additionalProperties":false,"properties":{"n":{"enum":[1,2,3]}}}`
+	check(t, enumSchema, `{"n":2}`, nil)
+	check(t, enumSchema, `{"n":4}`, []Problem{{Kind: NotInEnum, Path: "/n"}})
+	check(t, enumSchema, `{"n":"2"}`, []Problem{{Kind: NotInEnum, Path: "/n"}})
+
+	check(t, `{"type":"object","additionalProperties":false,"properties":{"n":{"enum":[1.0,2.0]}}}`, `{"n":2}`, nil)
+	check(t, `{"type":"object","additionalProperties":false,"properties":{"n":{"enum":[1,2]}}}`, `{"n":2.0}`, nil)
+
+	const constSchema = `{"type":"object","additionalProperties":false,"properties":{"port":{"const":8080}}}`
+	check(t, constSchema, `{"port":8080}`, nil)
+	check(t, constSchema, `{"port":9090}`, []Problem{{Kind: NotConst, Path: "/port"}})
+	check(t, constSchema, `{"port":"8080"}`, []Problem{{Kind: NotConst, Path: "/port"}})
+}
+
+// TestUniqueItemsComparesStructurally pins that uniqueness is judged by value through a nested
+// entry, not by identity or by the scalar comparison a top-level string exercises.
+func TestUniqueItemsComparesStructurally(t *testing.T) {
+	const objects = `{"type":"object","additionalProperties":false,"properties":{"rules":{"type":"array","uniqueItems":true,"items":{"type":"object"}}}}`
+	check(t, objects, `{"rules":[{"a":1},{"a":1}]}`, []Problem{{Kind: DuplicateItems, Path: "/rules"}})
+	check(t, objects, `{"rules":[{"a":1},{"a":2}]}`, nil)
+	check(t, objects, `{"rules":[{"a":1},{"a":1,"b":2}]}`, nil)
+
+	const arrays = `{"type":"object","additionalProperties":false,"properties":{"pairs":{"type":"array","uniqueItems":true,"items":{"type":"array"}}}}`
+	check(t, arrays, `{"pairs":[[1,2],[1,2]]}`, []Problem{{Kind: DuplicateItems, Path: "/pairs"}})
+	check(t, arrays, `{"pairs":[[1,2],[2,1]]}`, nil)
+}
+
+// TestLargeWholeNumberSatisfiesInteger pins that integer-ness is judged by value, not by a round
+// trip through int64: 1e30 is a whole number, so declaring it "integer" is not a type problem, and
+// the comparison this replaced reported the self-contradictory "expected an integer, found a whole
+// number".
+func TestLargeWholeNumberSatisfiesInteger(t *testing.T) {
+	check(t, `{"type":"object","additionalProperties":false,"properties":{"n":{"type":"integer"}}}`, `{"n":1e30}`, nil)
 }
 
 // TestLengthCountsRunesNotBytes pins that a multi-byte string is measured the way an author counts it.
@@ -259,6 +373,17 @@ func TestPatternAndItemRules(t *testing.T) {
 		[]Problem{
 			{Kind: PatternMismatch, Path: "/key"},
 			{Kind: DuplicateItems, Path: "/tags"},
+		})
+
+	check(t,
+		`{"type":"object","additionalProperties":false,"properties":{
+		  "few":{"type":"array","items":{"type":"string"},"minItems":2},
+		  "many":{"type":"array","items":{"type":"string"},"maxItems":1}
+		}}`,
+		`{"few":["a"],"many":["a","b"]}`,
+		[]Problem{
+			{Kind: ItemCountOutOfRange, Path: "/few"},
+			{Kind: ItemCountOutOfRange, Path: "/many"},
 		})
 }
 

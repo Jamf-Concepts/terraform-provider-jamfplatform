@@ -6,12 +6,10 @@
 package blueprint_test
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"testing"
 
-	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
@@ -21,24 +19,6 @@ import (
 // version it cannot serve. The same code covers an unknown policy and an unknown version, so the
 // wording is deliberately about the reference rather than about which half is wrong.
 var regexpPolicyVersionNotFound = regexp.MustCompile(`POLICY_VERSION_NOT_FOUND`)
-
-// requireAITool returns an AI tool from the catalogue, skipping when this environment does not offer
-// it.
-func requireAITool(t *testing.T, toolID string) aigovernance.ToolSummary {
-	t.Helper()
-	client := aigovernance.New(testhelpers.NewAcceptanceClient(t))
-	response, err := client.ListTools(context.Background())
-	if err != nil {
-		t.Skipf("cannot read the AI tool catalogue: %s", err)
-	}
-	for _, tool := range response.Results {
-		if tool.ID == toolID {
-			return tool
-		}
-	}
-	t.Skipf("this environment does not offer the AI tool %s", toolID)
-	return aigovernance.ToolSummary{}
-}
 
 // TestAccResource_Blueprint_AIGovernance is the end-to-end path an operator follows to govern an AI
 // tool from Terraform: author a policy, publish it, and deliver that published version through a
@@ -58,7 +38,7 @@ func requireAITool(t *testing.T, toolID string) aigovernance.ToolSummary {
 // keeps the suite from pushing AI tool configuration onto the sandbox's real enrolled Macs.
 func TestAccResource_Blueprint_AIGovernance(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireAITool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	suffix := testhelpers.RunSuffix()
 	policyName := "tf-acc-bp-ai-policy-" + suffix
 	blueprintName := "tf-acc-bp-ai-" + suffix
@@ -136,7 +116,7 @@ func TestAccResource_Blueprint_AIGovernance(t *testing.T) {
 // `published_version` yields a null the blueprint cannot use.
 func TestAccResource_Blueprint_AIGovernance_RejectsAnUnpublishedPolicy(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireAITool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	suffix := testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{

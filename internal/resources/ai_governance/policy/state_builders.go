@@ -10,6 +10,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
 // applyPolicyToState copies a fetched policy onto the model, leaving the operator-facing `publish`
@@ -19,6 +21,12 @@ import (
 // attribute's JSON semantic equality against the prior value, so a policy authored with
 // `jsonencode` — which sorts keys — does not drift against a payload the platform stores in the
 // order it was first written.
+//
+// The description is reconciled rather than copied. Clearing one means sending "" — the only body
+// this PATCH endpoint clears on — and the platform then stores and returns that blank verbatim, so
+// a straight copy would put "" into state where the configuration says nothing and fail the apply
+// with "inconsistent result after apply". A blank therefore reads back as null, except where the
+// operator wrote `description = ""` themselves, which is preserved so that spelling settles too.
 func applyPolicyToState(model *policyModel, detail *aigovernance.PolicyDetail) error {
 	settings, err := renderSettings(detail.Settings)
 	if err != nil {
@@ -27,7 +35,7 @@ func applyPolicyToState(model *policyModel, detail *aigovernance.PolicyDetail) e
 
 	model.ID = types.StringValue(detail.ID)
 	model.Name = types.StringValue(detail.Name)
-	model.Description = optionalString(detail.Description)
+	model.Description = helpers.ReconcileOptionalStringPointer(detail.Description, model.Description)
 	model.ToolID = types.StringValue(detail.ToolID)
 	model.SchemaVersion = types.StringValue(detail.SchemaVersion)
 	model.SettingsJSON = settings
@@ -65,14 +73,6 @@ func resolvePublish(prior types.Bool) types.Bool {
 		return types.BoolValue(true)
 	}
 	return prior
-}
-
-// optionalString maps a nullable wire string onto a Terraform value.
-func optionalString(value *string) types.String {
-	if value == nil {
-		return types.StringNull()
-	}
-	return types.StringValue(*value)
 }
 
 // optionalInt64 maps a nullable wire integer onto a Terraform value.

@@ -171,11 +171,16 @@ Terraform construct name format: `jamfplatform_ai_governance_<x>`; Go package
 the managed configuration for one AI tool — Claude Code, Claude Desktop or OpenAI Codex today — which
 Jamf Pro then delivers to Macs through a blueprint's `com.jamf.ai-governance` component. Family is
 **Platform Services**: hand-rolled Configure, no version gate, no SDK-endpoints annotation block —
-but the scope gate is `ScopeEnvironment` **alone**, because a request carrying no scope header is
-refused with `400 REQUEST_CONTEXT_NOT_PROVIDED` and tenant scope is unprobed. (Note this retires the
-Phase 11 epic's recorded blocker, which had the namespace down as organization-scope and therefore
-unbuildable; and the path is `/ai/governance/policies/v1/...`, not `/api/ai-governance/...`.) Four
-things drive the design and are easy to get wrong. First, **the settings body is the tool vendor's
+but the scope gate is `ScopeEnvironment` **alone**, and both alternatives are wire-probed: a request
+carrying no scope header is refused with `400 REQUEST_CONTEXT_NOT_PROVIDED`, and one carrying
+`X-Tenant-Id` is refused with `403 BAD_PERMISSIONS` — while `GET /pro/v1/csa/tenant-id` under that
+same header answers 200, so the header is accepted and the refusal belongs to this namespace. By this
+repo's own law (§Jamf Security Cloud: `403 BAD_PERMISSIONS` is indistinguishable from a privilege
+gap, so a spec-advertised route answering it is presumed unrouted) AI Governance is **not reachable**
+under tenant scope, and widening the gate is a fresh probe rather than a one-token edit. (Note this
+retires the Phase 11 epic's recorded blocker, which had the namespace down as organization-scope and
+therefore unbuildable; and the path is `/ai/governance/policies/v1/...`, not `/api/ai-governance/...`.)
+Four things drive the design and are easy to get wrong. First, **the settings body is the tool vendor's
 own JSON**, declared by a JSON Schema the platform serves per tool per schema version, 142 top-level
 properties for Claude Code and deeply nested for Codex — so it is one `settings_json` string
 attribute with JSON semantic equality, never generated typed attributes (schema versions coexist per
@@ -233,7 +238,7 @@ Before committing: `make fix fmt lint test`. Then `make generate` if any schema 
 - `JAMFPLATFORM_CLIENT_ID` / `JAMFPLATFORM_CLIENT_SECRET` — API client credentials.
 - `JAMFPLATFORM_ENVIRONMENT_ID` — platform-environment scope, sent as `X-Environment-Id`. **Preferred.**
 - `JAMFPLATFORM_TENANT_ID` — tenant scope, sent as `X-Tenant-Id`. **Legacy.** Mutually exclusive with the above; both are optional — see §API integration scope.
-- `JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID` — **acceptance tests only**. Declares that the configured environment holds Jamf AI Governance; must equal `JAMFPLATFORM_ENVIRONMENT_ID`. Unset or mismatched and every AI Governance acceptance test skips. Environment scope only — there is no tenant form, because the surface answers a request carrying no scope header with `REQUEST_CONTEXT_NOT_PROVIDED` and tenant scope against it is unprobed.
+- `JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID` — **acceptance tests only**. Declares that the configured environment holds Jamf AI Governance; must equal `JAMFPLATFORM_ENVIRONMENT_ID`. Unset or mismatched and every AI Governance acceptance test skips. Environment scope only — there is no tenant form, because the surface answers a request carrying no scope header with `REQUEST_CONTEXT_NOT_PROVIDED` and one carrying `X-Tenant-Id` with `403 BAD_PERMISSIONS`, which this repo reads as an unrouted namespace.
 - `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` / `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` — **acceptance tests only**. Declares that the configured scope belongs to a Jamf Security Cloud tenant; must equal the corresponding `JAMFPLATFORM_*` value. Unset or mismatched and every Security Cloud acceptance test skips — which is CI's current state, deliberately. The ZTNA gateway tests additionally require the *tenant* form: `tenantIds` is mandatory on a gateway and no API exposes an environment's tenants, so an environment-scoped run cannot supply one. See [TESTING.md](TESTING.md).
 - Acceptance tests additionally require `TF_ACC=1` (set automatically by `make testacc`), and one of the two scope variables.
 

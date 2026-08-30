@@ -343,7 +343,9 @@ func validateValue(declared *Schema, value any, path string, problems *[]Problem
 
 // matchesKind reports whether a decoded JSON value matches a declared type. Numbers arrive as
 // float64 from encoding/json, so an integer is a float64 with no fractional part; `data` and `date`
-// are carried as strings in JSON.
+// are carried as strings in JSON. Whole-ness is judged by value rather than by a round-trip through
+// int64, so a number beyond int64 stays an integer here and is reported by the 32-bit range check
+// below, which is the problem an author actually has.
 func matchesKind(declared Kind, value any) bool {
 	switch declared {
 	case KindAny:
@@ -353,7 +355,7 @@ func matchesKind(declared Kind, value any) bool {
 		return ok
 	case KindInteger:
 		number, ok := jsonvalue.Numeric(value)
-		return ok && number == float64(int64(number))
+		return ok && jsonvalue.IsWhole(number)
 	case KindReal:
 		_, ok := jsonvalue.Numeric(value)
 		return ok
@@ -371,7 +373,6 @@ func matchesKind(declared Kind, value any) bool {
 	}
 }
 
-// numeric returns a JSON number as a float64.
 // foldedIndex maps each declared key to itself by lower-cased name, for case-insensitive lookup.
 func foldedIndex(keys map[string]*Schema) map[string]string {
 	index := make(map[string]string, len(keys))

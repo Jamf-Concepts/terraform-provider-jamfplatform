@@ -57,17 +57,33 @@ func TestBuildUpdateRequestAlwaysSendsName(t *testing.T) {
 	}
 }
 
-// TestUnsetDescriptionIsOmitted pins that an unset description sends a nil pointer rather than an
-// empty string.
-func TestUnsetDescriptionIsOmitted(t *testing.T) {
+// TestUnsetDescriptionIsOmittedOnCreateAndBlankedOnUpdate pins the two halves of the description
+// contract. A create has nothing to preserve, so an unset description is omitted. An update is a
+// PATCH on which both an absent key and a JSON null mean "leave unchanged", so an unset description
+// has to be sent as the explicit blank the platform clears on — dropping it preserves the old value,
+// which Terraform then rejects as an inconsistent result and cannot plan its way out of.
+func TestUnsetDescriptionIsOmittedOnCreateAndBlankedOnUpdate(t *testing.T) {
 	plan := planFixture()
 	plan.Description = types.StringNull()
 
 	if got := buildCreateRequest(plan); got.Description != nil {
-		t.Errorf("create description = %v, want nil", *got.Description)
+		t.Errorf("create description = %q, want it omitted", *got.Description)
 	}
-	if got := buildUpdateRequest(plan); got.Description != nil {
-		t.Errorf("update description = %v, want nil", *got.Description)
+
+	got := buildUpdateRequest(plan)
+	if got.Description == nil {
+		t.Fatal("update description was omitted, which preserves the stored value instead of clearing it")
+	}
+	if *got.Description != "" {
+		t.Errorf("update description = %q, want an explicit blank", *got.Description)
+	}
+}
+
+// TestConfiguredDescriptionIsSentVerbatim pins that the blank only stands in for an unset value.
+func TestConfiguredDescriptionIsSentVerbatim(t *testing.T) {
+	got := buildUpdateRequest(planFixture())
+	if got.Description == nil || *got.Description != "Managed settings for engineering" {
+		t.Errorf("update description = %v, want the configured value", got.Description)
 	}
 }
 

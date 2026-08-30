@@ -15,32 +15,16 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+	"github.com/hashicorp/terraform-plugin-testing/statecheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/testhelpers"
 )
 
 const policyResource = "jamfplatform_ai_governance_policy.test"
-
-// requireTool returns a tool from the catalogue along with its current schema version, skipping when
-// the environment does not offer it. The catalogue is a platform capability rather than tenant data,
-// so a tool Jamf has not shipped to this environment is a reason to skip, not to fail.
-func requireTool(t *testing.T, toolID string) aigovernance.ToolSummary {
-	t.Helper()
-	client := aigovernance.New(testhelpers.NewAcceptanceClient(t))
-	response, err := client.ListTools(context.Background())
-	if err != nil {
-		t.Skipf("cannot read the AI tool catalogue: %s", err)
-	}
-	for _, tool := range response.Results {
-		if tool.ID == toolID {
-			return tool
-		}
-	}
-	t.Skipf("this environment does not offer the AI tool %s", toolID)
-	return aigovernance.ToolSummary{}
-}
 
 // testAccCheckPolicyDestroy verifies policies created during the test were archived. An archived
 // policy reads as absent, so a 404 is the pass condition.
@@ -75,7 +59,7 @@ func testAccCheckPolicyDestroy(t *testing.T) resource.TestCheckFunc {
 // saving a draft alone leaves the published version where it was.
 func TestAccResource_AIGovernancePolicy_Basic(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-ai-policy-" + suffix
 	nameUpdated := "tf-acc-ai-policy-updated-" + suffix
@@ -134,6 +118,62 @@ func TestAccResource_AIGovernancePolicy_Basic(t *testing.T) {
 	})
 }
 
+// TestAccResource_AIGovernancePolicy_DescriptionClearedAndBlank covers the two description
+// transitions the rest of the suite never reaches: removing the attribute from a configuration that
+// had one, and setting it to an explicit blank.
+//
+// Both need pinning for the same reason. Every other configuration here either carries a description
+// throughout or never carries one, so a policy whose description could be written but never cleared
+// passed the whole suite — the apply failed only on the present-to-absent step, which nothing took.
+//
+// The two outcomes are deliberately different and asserted as such: an absent attribute reads back
+// null, while an explicit blank is kept as a blank. Jamf reports both as an empty description, so it
+// is the configuration that decides which, and a later simplification of that handling would break
+// one without touching the other.
+func TestAccResource_AIGovernancePolicy_DescriptionClearedAndBlank(t *testing.T) {
+	testhelpers.AccPreCheckAIGovernance(t)
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
+	name := "tf-acc-ai-policy-desc-" + testhelpers.RunSuffix()
+
+	config := func(description string) string {
+		return fmt.Sprintf(`
+			resource "jamfplatform_ai_governance_policy" "test" {
+				name           = %q
+				%s
+				tool_id        = %q
+				schema_version = %q
+				settings_json  = jsonencode({ verbose = true })
+			}
+		`, name, description, tool.ID, tool.SchemaVersion)
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckPolicyDestroy(t),
+		Steps: []resource.TestStep{
+			{
+				Config: config(`description = "set by the provider acceptance suite"`),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(policyResource, tfjsonpath.New("description"),
+						knownvalue.StringExact("set by the provider acceptance suite")),
+				},
+			},
+			{
+				Config: config(""),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(policyResource, tfjsonpath.New("description"), knownvalue.Null()),
+				},
+			},
+			{
+				Config: config(`description = ""`),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(policyResource, tfjsonpath.New("description"), knownvalue.StringExact("")),
+				},
+			},
+		},
+	})
+}
+
 // TestAccResource_AIGovernancePolicy_UnchangedSettingsMintNoVersion pins the wire behaviour the
 // publish default rests on: the platform diffs the settings itself, so an apply that changes only the
 // name raises no draft and the publish that follows is a no-op rather than a version minted for
@@ -143,7 +183,7 @@ func TestAccResource_AIGovernancePolicy_Basic(t *testing.T) {
 // number would fall behind on each one.
 func TestAccResource_AIGovernancePolicy_UnchangedSettingsMintNoVersion(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	suffix := testhelpers.RunSuffix()
 
 	config := func(name string) string {
@@ -181,7 +221,7 @@ func TestAccResource_AIGovernancePolicy_UnchangedSettingsMintNoVersion(t *testin
 // unpublished draft and no published version, and enabling publish afterwards mints version 1.
 func TestAccResource_AIGovernancePolicy_DraftOnly(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	name := "tf-acc-ai-draft-" + testhelpers.RunSuffix()
 
 	config := func(publish bool) string {
@@ -234,7 +274,7 @@ func TestAccResource_AIGovernancePolicy_DraftOnly(t *testing.T) {
 // those: state never adopted the new formatting, so every later plan proposed the same update again.
 func TestAccResource_AIGovernancePolicy_ReformattedSettingsConverge(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	name := "tf-acc-ai-fmt-" + testhelpers.RunSuffix()
 
 	compact := fmt.Sprintf(`
@@ -292,8 +332,8 @@ func TestAccResource_AIGovernancePolicy_ReformattedSettingsConverge(t *testing.T
 // silently leave the tool as it was.
 func TestAccResource_AIGovernancePolicy_ToolChangeReplaces(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	first := requireTool(t, "com.anthropic.claudecode")
-	second := requireTool(t, "com.anthropic.claudefordesktop")
+	first := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
+	second := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudefordesktop")
 	name := "tf-acc-ai-replace-" + testhelpers.RunSuffix()
 
 	resource.Test(t, resource.TestCase{
@@ -335,7 +375,7 @@ func TestAccResource_AIGovernancePolicy_ToolChangeReplaces(t *testing.T) {
 // it. Skips when the tool offers only one schema version, which is a legitimate state.
 func TestAccResource_AIGovernancePolicy_SchemaDrift(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	if len(tool.SchemaVersions) < 2 {
 		t.Skipf("%s offers only one settings schema version, so drift cannot be exercised", tool.DisplayName)
 	}
@@ -411,7 +451,7 @@ func checkDriftedListingContains(name string) resource.TestCheckFunc {
 // before an apply, so each one is proved to fail the plan rather than the apply.
 func TestAccResource_AIGovernancePolicy_PlanTimeValidation(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	if !slices.Contains(tool.SchemaVersions, tool.SchemaVersion) {
 		t.Fatalf("the catalogue reports a current schema version %q that is not in its own version list", tool.SchemaVersion)
 	}
@@ -488,7 +528,7 @@ func TestAccResource_AIGovernancePolicy_PlanTimeValidation(t *testing.T) {
 // every operation on an archived policy returns.
 func TestAccResource_AIGovernancePolicy_Disappears(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	name := "tf-acc-ai-gone-" + testhelpers.RunSuffix()
 
 	config := fmt.Sprintf(`
@@ -552,7 +592,7 @@ func archiveOutOfBand(t *testing.T, name string) {
 // pretending a version was minted; the guide tells operators to change a setting as well.
 func TestAccResource_AIGovernancePolicy_SchemaVersionAloneMintsNoVersion(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
-	tool := requireTool(t, "com.anthropic.claudecode")
+	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
 	if len(tool.SchemaVersions) < 2 {
 		t.Skipf("%s offers only one settings schema version", tool.DisplayName)
 	}
