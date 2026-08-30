@@ -179,6 +179,10 @@ func updateStronglyTypedComponentsFromAPI(block *ComponentBlockModel, apiCompone
 		return target.FromRawConfiguration(raw)
 	})
 
+	block.AIGovernance = buildTypedComponent[components.AIGovernanceComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ai-governance", func(raw json.RawMessage, target *components.AIGovernanceComponent) error {
+		return target.FromRawConfiguration(raw)
+	})
+
 	block.CustomDeclarations = buildTypedComponent[components.CustomDeclarationsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.custom-declarations", func(raw json.RawMessage, target *components.CustomDeclarationsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})

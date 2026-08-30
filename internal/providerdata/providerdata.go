@@ -17,6 +17,7 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/aischemas"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 )
@@ -97,6 +98,29 @@ type Data struct {
 	// impact_alerts attribute is unset, which is the default — a nil cache
 	// reports nothing, so resources need no flag check of their own.
 	impactCache *impact.Cache
+
+	aiSchemaMu    sync.Mutex
+	aiSchemaCache *aischemas.Cache
+}
+
+// AISchemaCache returns the shared AI Governance product catalogue and vendor schema cache, building
+// it on first use. Unlike the impact cache this is not behind a provider flag: it backs validation
+// the AI Governance policy resource always performs, and it costs nothing until something asks it
+// for a schema.
+//
+// One cache per configured provider instance is the point. The Claude Code schema alone is 184 KB,
+// and every policy in a configuration would otherwise fetch its own copy on every plan.
+func (d *Data) AISchemaCache() *aischemas.Cache {
+	if d == nil {
+		return nil
+	}
+	d.aiSchemaMu.Lock()
+	defer d.aiSchemaMu.Unlock()
+
+	if d.aiSchemaCache == nil {
+		d.aiSchemaCache = aischemas.NewCache(d.Client)
+	}
+	return d.aiSchemaCache
 }
 
 // EnableImpactAlerts turns on plan-time impact alerts for this provider

@@ -311,6 +311,14 @@ func componentBlockAttributes() map[string]schema.Attribute {
 		},
 	}
 
+	attributes["ai_governance"] = schema.SingleNestedAttribute{
+		MarkdownDescription: "AI Governance component — delivers published AI policy versions, such as managed " +
+			"Claude Code or OpenAI Codex settings, to the devices this blueprint targets. See the " +
+			"[AI Governance policies guide](../guides/ai-governance-policies).",
+		Optional:   true,
+		Attributes: components.AIGovernanceComponentSchema(),
+	}
+
 	maps.Copy(attributes, sharedComponentAttributes(""))
 
 	return attributes

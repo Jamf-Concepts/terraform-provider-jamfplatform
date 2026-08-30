@@ -24,6 +24,8 @@ internal/
 ├── provider/          # Provider config, registration, logging
 ├── providerdata/      # Shared Data{} carrying SDK client + cached Pro version
 ├── resources/
+│   ├── ai_governance/ # policy/, tool/                                      (Jamf AI Governance)
+│   │                  #   (folder name = Terraform slug minus `jamfplatform_ai_governance_`)
 │   ├── blueprints/    # blueprint/, blueprints/, component/, components/    (Platform Services)
 │   ├── cbengine/      # benchmark/, benchmarks/, baselines/, rules/         (Platform Services)
 │   ├── device/        # Single device data source                            (Platform Services)
@@ -44,6 +46,7 @@ internal/
 │   ├── mobileconfig/       # mobileconfig(profile) — build a full .mobileconfig from HCL payloads; also holds the shared Assemble core
 │   └── mcx_forced_payload/ # mcx_forced_payload(domain, prefs) — MCX "Custom Settings" envelope; thin wrapper over mobileconfig.Assemble
 ├── common/
+│   ├── aischemas/     # Vendor JSON Schema fetch/cache/validate for AI Governance policy settings
 │   ├── appleprofiles/ # Apple configuration profile schemas (generated table + plan-time payload validation)
 │   ├── availabletitles/ # Shared patch available-titles lookup (patch_external_source, patch_internal_source)
 │   ├── criteria/      # Shared smart-group / advanced-search criteria operator vocabulary (device_group, user_group, future searches)
@@ -53,6 +56,7 @@ internal/
 │   ├── helpers/       # Type conversions, polling, timeout, state reconciliation, dynamic JSON, IDs, Pro version
 │   ├── impact/        # Plan-time impact alerts — device counts for scope changes (see §Impact alerts)
 │   ├── invitationcommon/ # Shared enrollment-invitation helpers (computer_invitation, mobile_device_invitation)
+│   ├── jsonvalue/     # Rendering a decoded JSON value for a diagnostic (aischemas, appleprofiles)
 │   ├── ldapgroups/    # Directory-service (LDAP / cloud-IdP) group resolution + scope preflight validation
 │   ├── payloadhelpers/ # mobileconfig mask / compare / identifier injection (macos/mobile_device_configuration_profile)
 │   ├── planmodifiers/ # Shared Terraform Plugin Framework plan modifiers
@@ -88,6 +92,7 @@ Each leaf resource folder mirrors the file split in [STYLE_GUIDE.md §Resource P
 | Jamf Security Cloud CRUD (+ DS singular/plural + list; no tenant version gate) | `internal/resources/security_cloud/dns_zone/` |
 | Two-form resource where the form is immutable and derived from a block's presence | `internal/resources/security_cloud/ztna_gateway/` |
 | Read-only server catalogue, plural DS only (no per-id endpoint) | `internal/resources/security_cloud/ztna_shared_gateways/` |
+| Free-form vendor JSON payload (JSON-string attribute + semantic equality + live schema validation) | `internal/resources/ai_governance/policy/` |
 
 ## Impact alerts — one-paragraph orientation
 
@@ -159,6 +164,38 @@ matching the scope in use) and skips otherwise — a Pro-only acceptance tenant 
 legitimate environment, not a failure. Full rules:
 [STYLE_GUIDE.md §Jamf Security Cloud Resource Naming](STYLE_GUIDE.md#jamf-security-cloud-resource-naming).
 
+## Jamf AI Governance — one-paragraph orientation
+
+Terraform construct name format: `jamfplatform_ai_governance_<x>`; Go package
+`internal/resources/ai_governance/<x>/`, flat single tier like `security_cloud/`. An **AI policy** is
+the managed configuration for one AI tool — Claude Code, Claude Desktop or OpenAI Codex today — which
+Jamf Pro then delivers to Macs through a blueprint's `com.jamf.ai-governance` component. Family is
+**Platform Services**: hand-rolled Configure, no version gate, no SDK-endpoints annotation block —
+but the scope gate is `ScopeEnvironment` **alone**, because a request carrying no scope header is
+refused with `400 REQUEST_CONTEXT_NOT_PROVIDED` and tenant scope is unprobed. (Note this retires the
+Phase 11 epic's recorded blocker, which had the namespace down as organization-scope and therefore
+unbuildable; and the path is `/ai/governance/policies/v1/...`, not `/api/ai-governance/...`.) Four
+things drive the design and are easy to get wrong. First, **the settings body is the tool vendor's
+own JSON**, declared by a JSON Schema the platform serves per tool per schema version, 142 top-level
+properties for Claude Code and deeply nested for Codex — so it is one `settings_json` string
+attribute with JSON semantic equality, never generated typed attributes (schema versions coexist per
+policy, `anyOf` unions have no framework equivalent, and two Claude Code schema versions shipped in
+three months). `internal/common/aischemas` fetches, caches and validates it at plan time; its
+partiality is measured, not assumed, and its package doc says which keywords are skipped and why.
+Second, **validation strength is a property of the vendor schema, not the service**: an undeclared key
+is silently *stored and never applied* where the schema allows extras (Claude Code) and rejected with
+`422` where it does not (Codex) — which is why an unrecognised key is a warning and everything else an
+error, and why it is the one failure the service itself never reports. Third, **a policy has a draft
+and a published history**: create publishes nothing, a blueprint pins a *version number*, the platform
+diffs settings itself so an apply changing only the name mints no version — and `schemaVersion` is
+part of neither diff, so moving a policy to a newer schema *without* touching the settings publishes
+nothing and leaves blueprints delivering the old schema. Fourth, **archiving is not blocked by a
+blueprint that references the policy**: the delete succeeds and leaves the blueprint pointing at a
+version the platform will no longer serve, with no reverse lookup to warn from
+(`GET /policies/{id}/deployment` returns an empty list even for a deployed referencing blueprint), so
+that trap is documentation only — the opposite of the ZTNA gateway law, and one more reason to probe
+referenced deletes per construct. User guidance is in `docs/guides/ai-governance-policies.md`.
+
 ## Jamf Pro resources — one-paragraph orientation
 
 Terraform construct name format: `jamfplatform_pro_<resource>` regardless of whether the SDK source is `pro/` or `proclassic/`. One `jamfplatform.Client` built from `JAMFPLATFORM_*` credentials serves both Platform Services and Pro. Every Pro resource declares an unexported `const minJamfProVersion` and funnels Configure through `providerdata.ConfigurePro` (no hand-rolled boilerplate). Each Pro resource's `crud.go` opens with an SDK-endpoints annotation block (`Status: current. Last reviewed YYYY-MM-DD.`) — Pro / ProClassic only; Platform Services resources are exempt. Full rules: [STYLE_GUIDE.md §Jamf Pro Resource Naming](STYLE_GUIDE.md#jamf-pro-resource-naming), §Minimum Jamf Pro version check, §Endpoint adoption & migration policy. Workflow for adding a Pro resource (incl. SDK-comparison + ProClassic payload audit gate): [CONTRIBUTING.md §Adding a Jamf Pro Resource](CONTRIBUTING.md#adding-a-jamf-pro-resource).
@@ -196,6 +233,7 @@ Before committing: `make fix fmt lint test`. Then `make generate` if any schema 
 - `JAMFPLATFORM_CLIENT_ID` / `JAMFPLATFORM_CLIENT_SECRET` — API client credentials.
 - `JAMFPLATFORM_ENVIRONMENT_ID` — platform-environment scope, sent as `X-Environment-Id`. **Preferred.**
 - `JAMFPLATFORM_TENANT_ID` — tenant scope, sent as `X-Tenant-Id`. **Legacy.** Mutually exclusive with the above; both are optional — see §API integration scope.
+- `JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID` — **acceptance tests only**. Declares that the configured environment holds Jamf AI Governance; must equal `JAMFPLATFORM_ENVIRONMENT_ID`. Unset or mismatched and every AI Governance acceptance test skips. Environment scope only — there is no tenant form, because the surface answers a request carrying no scope header with `REQUEST_CONTEXT_NOT_PROVIDED` and tenant scope against it is unprobed.
 - `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` / `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` — **acceptance tests only**. Declares that the configured scope belongs to a Jamf Security Cloud tenant; must equal the corresponding `JAMFPLATFORM_*` value. Unset or mismatched and every Security Cloud acceptance test skips — which is CI's current state, deliberately. The ZTNA gateway tests additionally require the *tenant* form: `tenantIds` is mandatory on a gateway and no API exposes an environment's tenants, so an environment-scoped run cannot supply one. See [TESTING.md](TESTING.md).
 - Acceptance tests additionally require `TF_ACC=1` (set automatically by `make testacc`), and one of the two scope variables.
 

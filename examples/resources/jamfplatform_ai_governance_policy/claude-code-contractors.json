@@ -1,0 +1,10 @@
+{
+  "model": "haiku",
+  "enforceAvailableModels": true,
+  "availableModels": ["haiku"],
+  "disableAllHooks": true,
+  "permissions": {
+    "allow": ["Read"],
+    "deny": ["Bash", "Write", "Edit"]
+  }
+}

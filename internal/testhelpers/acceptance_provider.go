@@ -97,6 +97,29 @@ func AccPreCheckSecurityCloud(t *testing.T) {
 	}
 }
 
+// AccPreCheckAIGovernance gates the Jamf AI Governance acceptance tests.
+//
+// Like the Security Cloud gate, it requires the operator to *declare* that the configured scope
+// belongs to a tenant holding AI Governance, and skips otherwise: an environment without the surface
+// is a legitimate acceptance environment, not a failure, and the alternative — inferring entitlement
+// from an empty policy list — would read a working tenant with no policies as an unentitled one.
+//
+// Environment scope only. AI Governance answers a request carrying no scope header with
+// REQUEST_CONTEXT_NOT_PROVIDED, and tenant scope against it is unprobed, so there is no tenant form
+// to declare.
+func AccPreCheckAIGovernance(t *testing.T) {
+	t.Helper()
+	AccPreCheck(t)
+
+	declared := os.Getenv("JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID")
+	if declared == "" {
+		t.Skip("JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID must be set to declare that the configured environment holds Jamf AI Governance")
+	}
+	if configured := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID"); configured != declared {
+		t.Skipf("JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID (%s) does not match the configured JAMFPLATFORM_ENVIRONMENT_ID (%s); the provider is not scoped to the declared AI Governance environment", declared, configured)
+	}
+}
+
 // AccTenantIDOrSkip returns the tenant ID the provider is configured with, or
 // skips when the run is environment-scoped.
 //

@@ -211,3 +211,55 @@ resource "jamfplatform_blueprints_blueprint" "activation_conditions_example" {
     },
   ]
 }
+
+# Deliver a managed AI tool configuration. The blueprint pins a published policy
+# version, so interpolating `published_version` keeps the two moving together —
+# Jamf refuses a blueprint that names a version which does not exist.
+data "jamfplatform_ai_governance_tool" "claude_code" {
+  id = "com.anthropic.claudecode"
+}
+
+resource "jamfplatform_ai_governance_policy" "engineering" {
+  name           = "Claude Code — Engineering"
+  tool_id        = data.jamfplatform_ai_governance_tool.claude_code.id
+  schema_version = data.jamfplatform_ai_governance_tool.claude_code.current_schema_version
+
+  settings_json = jsonencode({
+    model                  = "sonnet"
+    availableModels        = ["sonnet", "haiku"]
+    enforceAvailableModels = true
+  })
+}
+
+resource "jamfplatform_device_group" "engineering_macs" {
+  name        = "Engineering Macs"
+  group_type  = "smart"
+  device_type = "computer"
+
+  criteria = [{
+    criteria = "Department"
+    operator = "is"
+    value    = "Engineering"
+  }]
+}
+
+resource "jamfplatform_blueprints_blueprint" "ai_governance" {
+  name          = "AI Governance — Engineering"
+  description   = "Managed Claude Code settings."
+  deployed      = true
+  device_groups = [jamfplatform_device_group.engineering_macs.id]
+
+  component_blocks = [
+    {
+      name = "AI Governance"
+      ai_governance = {
+        policies = [
+          {
+            policy_id = jamfplatform_ai_governance_policy.engineering.id
+            version   = jamfplatform_ai_governance_policy.engineering.published_version
+          },
+        ]
+      }
+    },
+  ]
+}

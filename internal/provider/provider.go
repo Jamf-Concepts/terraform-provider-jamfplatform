@@ -32,6 +32,8 @@ import (
 	mcxforcedpayload "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mcx_forced_payload"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/functions/mobileconfig"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
+	aigovernancepolicy "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/policy"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/ai_governance/tool"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprint"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/blueprints"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/blueprints/component"
@@ -516,6 +518,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_assignment.NewVPPAssignmentResource,
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
+		aigovernancepolicy.NewPolicyResource,
 		securityclouddevicegroup.NewDeviceGroupResource,
 		dns_hostname_mappings.NewHostnameMappingsResource,
 		dns_search_domain.NewSearchDomainResource,
@@ -552,6 +555,10 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		building.NewBuildingsDataSource,
 		category.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		aigovernancepolicy.NewPolicyDataSource,
+		aigovernancepolicy.NewPoliciesDataSource,
+		tool.NewToolDataSource,
+		tool.NewToolsDataSource,
 		content_categories.NewContentCategoriesDataSource,
 		securityclouddevicegroup.NewDeviceGroupDataSource,
 		securityclouddevicegroup.NewDeviceGroupsDataSource,
@@ -681,6 +688,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		building.NewBuildingListResource,
 		category.NewCategoryListResource,
 		securityclouddevicegroup.NewDeviceGroupListResource,
+		aigovernancepolicy.NewPolicyListResource,
 		dns_zone.NewDNSZoneListResource,
 		uem_connect.NewUEMConnectListResource,
 		ztna_app.NewZtnaAppListResource,

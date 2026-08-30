@@ -109,6 +109,10 @@ func (r *BlueprintResource) collectBlockComponents(ctx context.Context, block Co
 
 // collectStronglyTypedComponents processes all strongly-typed components of a block.
 func (r *BlueprintResource) collectStronglyTypedComponents(allComponents *[]blueprints.Component, diags *diag.Diagnostics, block ComponentBlockModel) {
+	if block.AIGovernance != nil {
+		r.collectSingleComponent(allComponents, diags, block.AIGovernance, "AI governance")
+	}
+
 	if block.AudioAccessorySettings != nil {
 		r.collectSingleComponent(allComponents, diags, block.AudioAccessorySettings, "audio accessory settings")
 	}
