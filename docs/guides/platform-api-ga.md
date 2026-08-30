@@ -18,7 +18,7 @@ date will be announced separately.
 **Action is needed in every configuration built against the public beta.** Nothing carries over
 untouched: the gateway host, the credentials and the scope attribute all change, and several
 constructs have been removed. Upgrade promptly once GA is announced, as the beta gateway is
-retired at that point and all provider versions prior to `v0.29.0-rc.3` are bound to it.
+retired at that point and all provider versions prior to `v0.29.0-rc.4` are bound to it.
 
 Each section below states the action required, or says explicitly that none is.
 
@@ -40,7 +40,7 @@ terraform {
   required_providers {
     jamfplatform = {
       source  = "Jamf-Concepts/jamfplatform"
-      version = "0.29.0-rc.3"
+      version = "0.29.0-rc.4"
     }
   }
 }
@@ -222,11 +222,11 @@ directions:
 
 | Provider version | `base_url` |
 |---|---|
-| `v0.29.0-rc.2` and earlier | `https://{region}.apigw.jamf.com` — the beta host. The GA host is not supported on these versions. |
-| `v0.29.0-rc.3` and later | `https://{region}.api.jamfcloud.com` — required. The beta host is retired at GA. |
+| `v0.29.0-rc.3` and earlier | `https://{region}.apigw.jamf.com` — the beta host. The GA host is not supported on these versions. |
+| `v0.29.0-rc.4` and later | `https://{region}.api.jamfcloud.com` — required. The beta host is retired at GA. |
 
 Change the host and upgrade the provider in a single change. Neither the GA host on an earlier
-version nor the beta host on `v0.29.0-rc.3` or later is a supported combination. The GA host is
+version nor the beta host on `v0.29.0-rc.4` or later is a supported combination. The GA host is
 already live and accepts a public-beta API integration, so the change can be made and verified
 before GA, independently of the credential replacement.
 
