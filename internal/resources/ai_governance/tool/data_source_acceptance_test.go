@@ -100,7 +100,7 @@ func TestAccDataSource_AIGovernanceTool_UnknownTool(t *testing.T) {
 						id = "com.example.nope"
 					}
 				`,
-				ExpectError: regexp.MustCompile(`Unable\s+to\s+read\s+AI\s+tool`),
+				ExpectError: regexp.MustCompile(`AI\s+tool\s+not\s+found`),
 			},
 		},
 	})

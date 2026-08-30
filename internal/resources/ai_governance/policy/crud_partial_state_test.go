@@ -6,6 +6,7 @@ package policy
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +19,8 @@ import (
 	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/aischemas"
 )
 
 // Fixture values the stub server reports and the plans below are built from.
@@ -56,19 +59,34 @@ type policyStub struct {
 	deleteStatus int
 	// publishCalls counts the publish requests the stub received.
 	publishCalls atomic.Int64
+	// draftsPublished counts the publishes the stub accepted, and drives what the read reports: a
+	// policy whose draft has been published holds no draft and carries that version number.
+	draftsPublished atomic.Int64
 }
 
-// client starts the stub and returns an AI Governance client pointed at it. Retries are disabled so
-// a deliberate 5xx is answered once rather than waited on.
-func (s *policyStub) client(t *testing.T) *aigovernance.Client {
+// clients starts the stub and returns the base client together with the AI Governance client built
+// on it, so a test can point both the resource's API client and its schema cache at the same server.
+// Retries are disabled so a deliberate 5xx is answered once rather than waited on.
+func (s *policyStub) clients(t *testing.T) (*jamfplatform.Client, *aigovernance.Client) {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(server.Close)
-	return aigovernance.New(jamfplatform.NewClient(server.URL, "test-id", "test-secret", jamfplatform.WithRetryPolicy(0, 0, 0)))
+	base := jamfplatform.NewClient(server.URL, "test-id", "test-secret",
+		jamfplatform.WithRetryPolicy(0, 0, 0),
+		jamfplatform.WithMinRequestInterval(0),
+	)
+	return base, aigovernance.New(base)
 }
 
-// serve routes the four policy endpoints the resource reaches, plus the token endpoint every
-// request authenticates against.
+// client starts the stub and returns an AI Governance client pointed at it.
+func (s *policyStub) client(t *testing.T) *aigovernance.Client {
+	t.Helper()
+	_, api := s.clients(t)
+	return api
+}
+
+// serve routes the four policy endpoints the resource reaches, the two catalogue reads plan-time
+// validation makes, and the token endpoint every request authenticates against.
 func (s *policyStub) serve(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/auth/token":
@@ -83,7 +101,8 @@ func (s *policyStub) serve(w http.ResponseWriter, r *http.Request) {
 			writeAPIError(w, s.publishStatus, s.publishCode, "the publish failed")
 			return
 		}
-		writeJSONBody(w, http.StatusCreated, map[string]any{"id": "version-1", "versionNumber": 1})
+		version := s.draftsPublished.Add(1)
+		writeJSONBody(w, http.StatusCreated, map[string]any{"id": "version-1", "versionNumber": version})
 	case r.Method == http.MethodPost:
 		writeJSONBody(w, http.StatusCreated, map[string]any{"id": stubPolicyID})
 	case r.Method == http.MethodPatch:
@@ -98,6 +117,22 @@ func (s *policyStub) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	case strings.HasSuffix(r.URL.Path, "/tools"):
+		writeJSONBody(w, http.StatusOK, map[string]any{
+			"results": []map[string]any{{
+				"id":             stubToolID,
+				"displayName":    "Claude Code",
+				"schemaVersion":  stubSchemaVersion,
+				"schemaVersions": []string{stubSchemaVersion},
+			}},
+			"totalCount": 1,
+		})
+	case strings.Contains(r.URL.Path, "/schemas/"):
+		writeJSONBody(w, http.StatusOK, map[string]any{
+			"toolId":        stubToolID,
+			"schemaVersion": stubSchemaVersion,
+			"schema":        json.RawMessage(testSchema),
+		})
 	default:
 		if s.getStatus != 0 {
 			writeAPIError(w, s.getStatus, "", "the read-back failed")
@@ -117,20 +152,25 @@ func (s *policyStub) detail() map[string]any {
 	if status == "" {
 		status = aigovernance.PolicyDetailStatusActive
 	}
-	return map[string]any{
+	published := s.draftsPublished.Load()
+	body := map[string]any{
 		"id":            stubPolicyID,
 		"name":          name,
 		"toolId":        stubToolID,
 		"schemaVersion": stubSchemaVersion,
 		"settings":      json.RawMessage(stubSettings),
 		"status":        status,
-		"hasDraft":      true,
+		"hasDraft":      published == 0,
 		"schemaDrift":   false,
 		"createdAt":     stubCreatedAt,
 		"updatedAt":     stubUpdatedAt,
 		"createdBy":     "actor",
 		"updatedBy":     "actor",
 	}
+	if published > 0 {
+		body["currentVersionNumber"] = published
+	}
+	return body
 }
 
 // writeJSONBody writes a JSON response body with the given status.
@@ -175,9 +215,7 @@ func policyRaw(ctx context.Context, policySchema resourceschema.Schema, values m
 	for name, attributeType := range object.AttributeTypes {
 		all[name] = tftypes.NewValue(attributeType, nil)
 	}
-	for name, value := range values {
-		all[name] = value
-	}
+	maps.Copy(all, values)
 	return tftypes.NewValue(object, all)
 }
 
@@ -278,13 +316,10 @@ func TestCreate_PublishFailureStillRecordsThePolicy(t *testing.T) {
 	}
 
 	detail := resp.Diagnostics.Errors()[0].Detail()
-	for _, want := range []string{stubPolicyID, "unpublished draft", "do not create it again"} {
+	for _, want := range []string{stubPolicyID, "unpublished draft", "do not create it again", "next apply retries"} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("detail %q does not mention %q", detail, want)
 		}
-	}
-	if strings.Contains(detail, "next apply") {
-		t.Errorf("detail %q promises a retry on the next apply, which never happens: config now equals state, so the next plan is empty", detail)
 	}
 }
 
@@ -372,8 +407,8 @@ func TestUpdate_PublishFailureStillRecordsTheDraft(t *testing.T) {
 	if !strings.Contains(detail, "previously published version") {
 		t.Errorf("detail %q does not say what blueprints keep deploying", detail)
 	}
-	if strings.Contains(detail, "next apply") {
-		t.Errorf("detail %q promises a retry on the next apply, which never happens: config now equals state, so the next plan is empty", detail)
+	if !strings.Contains(detail, "next apply retries") {
+		t.Errorf("detail %q does not promise the retry planPublishOutcome makes real", detail)
 	}
 }
 
@@ -535,5 +570,92 @@ func TestDelete_FailedArchiveDoesNotWarn(t *testing.T) {
 	}
 	if got := len(resp.Diagnostics.Warnings()); got != 0 {
 		t.Errorf("warnings = %d, want 0 — the policy was not archived: %v", got, resp.Diagnostics.Warnings())
+	}
+}
+
+// TestPublishFailureIsRetriedByTheNextPlan chains the three calls the retry runs through, because
+// each one alone looks correct while the loop between them is broken. It is the unit-seam form of
+// what an acceptance test cannot reach: terraform-plugin-testing has no way to fail a publish on a
+// live tenant, and the failure this pins is exactly a publish that fails.
+//
+// Create leaves the policy in state with has_draft true. The plan Terraform then makes carries no
+// configuration change at all, so the only thing that can produce a diff is ModifyPlan — and without
+// one Update is never called and blueprints deliver the previous version's settings for good. The
+// retry publishes the draft as it stands, which is what the diagnostic promises.
+func TestPublishFailureIsRetriedByTheNextPlan(t *testing.T) {
+	ctx := context.Background()
+	policySchema, identity := policySchemas(ctx, t)
+
+	failing := &policyStub{publishStatus: http.StatusInternalServerError}
+	creating := &PolicyResource{client: failing.client(t)}
+	createRaw := createPlanRaw(ctx, policySchema)
+	createResp := resource.CreateResponse{State: tfsdk.State{Schema: policySchema}, Identity: &identity}
+	creating.Create(ctx, resource.CreateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: createRaw},
+		Config: tfsdk.Config{Schema: policySchema, Raw: createRaw},
+	}, &createResp)
+
+	if !createResp.Diagnostics.HasError() {
+		t.Fatal("a failed publish must be reported as an error")
+	}
+	var created policyModel
+	if diags := createResp.State.Get(ctx, &created); diags.HasError() {
+		t.Fatalf("reading back the created state: %v", diags)
+	}
+	if !created.HasDraft.ValueBool() {
+		t.Fatal("state must record the draft the failed publish left behind, or there is nothing to retry from")
+	}
+	if !created.PublishedVersion.IsNull() {
+		t.Fatalf("published_version = %s, want null — nothing was published", created.PublishedVersion)
+	}
+
+	retrying := &policyStub{}
+	base, api := retrying.clients(t)
+	r := &PolicyResource{client: api, schemas: aischemas.NewCache(base)}
+
+	unchanged := createResp.State.Raw
+	planResp := &resource.ModifyPlanResponse{Plan: tfsdk.Plan{Schema: policySchema, Raw: unchanged}}
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: unchanged},
+		Config: tfsdk.Config{Schema: policySchema, Raw: unchanged},
+		State:  tfsdk.State{Schema: policySchema, Raw: unchanged},
+	}, planResp)
+
+	if planResp.Diagnostics.HasError() {
+		t.Fatalf("planning the retry: %v", planResp.Diagnostics.Errors())
+	}
+	if planResp.Plan.Raw.Equal(unchanged) {
+		t.Fatal("the plan equals prior state, so Terraform reports no changes and the draft is never published")
+	}
+
+	updateResp := resource.UpdateResponse{
+		State:    tfsdk.State{Schema: policySchema, Raw: unchanged},
+		Identity: &identity,
+	}
+	r.Update(ctx, resource.UpdateRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: planResp.Plan.Raw},
+		Config: tfsdk.Config{Schema: policySchema, Raw: unchanged},
+		State:  tfsdk.State{Schema: policySchema, Raw: unchanged},
+	}, &updateResp)
+
+	if updateResp.Diagnostics.HasError() {
+		t.Fatalf("the retried apply: %v", updateResp.Diagnostics.Errors())
+	}
+	if got := retrying.publishCalls.Load(); got != 1 {
+		t.Errorf("publish requests = %d, want 1 — the retry has to reach the publish route", got)
+	}
+	if !updateResp.State.Raw.IsFullyKnown() {
+		t.Fatalf("committed state must be wholly known, got %s", updateResp.State.Raw)
+	}
+
+	var final policyModel
+	if diags := updateResp.State.Get(ctx, &final); diags.HasError() {
+		t.Fatalf("reading back the retried state: %v", diags)
+	}
+	if final.HasDraft.ValueBool() {
+		t.Error("has_draft = true after the retry published the draft")
+	}
+	if got := final.PublishedVersion.ValueInt64(); got != 1 {
+		t.Errorf("published_version = %d, want 1 — the retry mints the first version", got)
 	}
 }

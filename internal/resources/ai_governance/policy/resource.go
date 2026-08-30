@@ -207,7 +207,10 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 					"applied policy is always deployable. Publishing only happens when something actually changed — " +
 					"an apply that alters nothing does not mint a version. Set to `false` to stage changes as a draft " +
 					"and publish them in the Jamf Account admin UI instead; `has_draft` then reports that unpublished " +
-					"changes exist.",
+					"changes exist.\n\n" +
+					"While this is enabled, a draft that already exists is published by the next apply — whether it " +
+					"was left behind by a publish that failed, or saved in the Jamf Account admin UI. Such a plan " +
+					"shows `has_draft` and `published_version` as known after apply even when nothing else changed.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(true),
@@ -215,12 +218,16 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 			"published_version": schema.Int64Attribute{
 				MarkdownDescription: "**\"Published version\"** in the Jamf Account admin UI — the number of the most " +
 					"recently published version, counting from 1. Null until the policy is first published. This is " +
-					"the value a blueprint's AI Governance component pins.",
+					"the value a blueprint's AI Governance component pins.\n\n" +
+					"An apply that publishes nothing leaves it where it is, and the plan says so rather than showing " +
+					"it as known after apply — so renaming a policy does not disturb a blueprint that pins it.",
 				Computed: true,
 			},
 			"has_draft": schema.BoolAttribute{
-				MarkdownDescription: "Whether the policy holds changes that have not been published. Always `false` " +
-					"after an apply with `publish` enabled.",
+				MarkdownDescription: "Whether the policy holds changes that have not been published. `false` after a " +
+					"successful apply with `publish` enabled. A draft that outlives an apply — because publishing it " +
+					"failed, or because someone saved one in the Jamf Account admin UI — is published by the next " +
+					"apply while `publish` is enabled.",
 				Computed: true,
 			},
 			"schema_drift": schema.BoolAttribute{

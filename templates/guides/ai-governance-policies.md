@@ -121,6 +121,16 @@ Publishing is skipped automatically when nothing changed: renaming a policy does
 
 That comparison is settings-only, and it has one consequence worth knowing. **Moving `schema_version` forward without also changing the settings publishes nothing.** The policy's own `schema_drift` clears, but the version blueprints deliver is still the one published against the older schema. Change a setting in the same apply — or accept that the deployed version stays where it is until the next real change.
 
+Because an apply that publishes nothing leaves `published_version` alone, the plan says so: renaming a policy, or editing its description, shows no change to `published_version` and so does not disturb a blueprint that pins it.
+
+### When a publish fails
+
+Saving the draft and publishing it are two calls, and the second can fail on its own — a transient error, or an integration granted `ai-policies:write` but not the publish route. When it does, the apply reports an error and Terraform still records the policy, including `has_draft = true`; a policy that exists is never left out of state, because policy names are not unique and a second create would leave two of them.
+
+Blueprints keep delivering the previously published version until the publish succeeds. **The next apply retries it.** While `publish` is enabled, the surviving draft makes `has_draft` and `published_version` show as *known after apply* even when nothing else changed, so `terraform apply` has something to do and publishes the draft as it stands. Publishing it in the Jamf Account admin UI instead works just as well; the next refresh then reports `has_draft = false` and the plan goes quiet.
+
+The same mechanism publishes a draft somebody saved in the admin UI on a policy managed with `publish = true` — that is what `publish = true` means. If the draft's settings differ from the configuration, the ordinary `settings_json` diff reverts them first, so what gets published is what Terraform holds. Set `publish = false` on policies whose publishing someone else owns.
+
 ### Destroying a policy a blueprint still references
 
 Jamf lets you delete a policy a deployed blueprint references. It does not refuse, warn, or clean up the blueprint — the blueprint is left pointing at a version Jamf will no longer serve, and the next change to that blueprint is rejected because the policy is archived.
@@ -192,6 +202,8 @@ data "jamfplatform_ai_governance_policies" "needs_review" {
 ```
 
 `terraform plan` also warns on a drifted policy, naming the current version. Moving forward means setting `schema_version` to it and reconciling `settings_json` — settings the older schema did not declare become available, and any it declared that the newer one dropped must go.
+
+A `tool_id` or `schema_version` the catalogue no longer lists fails the plan when the configuration has just changed it — that is a typo, caught before an apply — and only warns when it is unchanged from the last apply. Jamf withdrawing a version from the catalogue must not fail plans whose real changes are elsewhere; the write itself reports the problem if the platform has stopped accepting it.
 
 Pinning `schema_version` to a literal is the conservative choice, for the reasons set out in "Pinning a schema version, or tracking the current one" above.
 

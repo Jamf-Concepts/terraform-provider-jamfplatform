@@ -71,13 +71,11 @@ func TestDocumentSharesOneFetchPerKey(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if _, err := cache.Document(context.Background(), "com.example.tool", "2026-01-01"); err != nil {
 				t.Errorf("Document: %v", err)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -105,13 +103,11 @@ func TestDocumentFetchesDistinctKeysConcurrently(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for _, version := range []string{"2026-01-01", "2026-05-19"} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if _, err := cache.Document(context.Background(), "com.example.tool", version); err != nil {
 				t.Errorf("Document(%s): %v", version, err)
 			}
-		}()
+		})
 	}
 
 	seen := map[string]bool{}

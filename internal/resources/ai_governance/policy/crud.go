@@ -238,10 +238,11 @@ func (r *PolicyResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 // appendCreatePublishFailure reports a publish that failed after the policy was created.
 //
-// The policy exists by then, so the wording sends the operator to the draft rather than to a retry:
-// state now records the policy, config matches it, and no computed attribute has a reason to go
-// unknown, so the next plan is empty and Terraform never calls Update again. Publishing the draft
-// takes a further change to the policy or the admin UI.
+// The retry the wording promises is real, and is the whole reason planPublishOutcome exists: state
+// records the draft this failure left behind, and the next plan turns that into a change to
+// has_draft and published_version, so Terraform calls Update and the publish is attempted again.
+// What the operator must not do is create the policy a second time, because policy names are not
+// unique and both would then exist — so the wording says so before it mentions the retry.
 func appendCreatePublishFailure(diags *diag.Diagnostics, id string, err error) {
 	if err == nil {
 		return
@@ -250,13 +251,14 @@ func appendCreatePublishFailure(diags *diag.Diagnostics, id string, err error) {
 		"AI policy created but not published",
 		"The policy was created with ID "+id+" but publishing it failed, so it holds an unpublished draft and "+
 			"cannot be deployed by a blueprint yet. Terraform has recorded the policy — do not create it again, "+
-			"because policy names are not unique and a second create would leave two. Publishing the draft takes "+
-			"either a later change to the policy or the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
+			"because policy names are not unique and a second create would leave two. The next apply retries the "+
+			"publish, and it can also be published in the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
 	)
 }
 
 // appendUpdatePublishFailure reports a publish that failed after the draft was saved. The draft is
-// recorded in state, so the next plan is empty for the reason appendCreatePublishFailure describes.
+// recorded in state, so the next apply retries the publish for the reason appendCreatePublishFailure
+// describes.
 func appendUpdatePublishFailure(diags *diag.Diagnostics, err error) {
 	if err == nil {
 		return
@@ -264,8 +266,8 @@ func appendUpdatePublishFailure(diags *diag.Diagnostics, err error) {
 	diags.AddError(
 		"AI policy updated but not published",
 		"The policy's draft was saved but publishing it failed, so blueprints continue to deploy the previously "+
-			"published version. Terraform has recorded the draft, so publishing it takes either a later change to "+
-			"the policy or the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
+			"published version. Terraform has recorded the draft, and the next apply retries the publish — it can "+
+			"also be published in the Jamf Account admin UI. Reported by Jamf: "+err.Error(),
 	)
 }
 

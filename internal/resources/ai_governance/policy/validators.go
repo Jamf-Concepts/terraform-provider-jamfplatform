@@ -12,25 +12,32 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/aischemas"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
 )
 
-// ModifyPlan checks the tool, the schema version and the settings body against what Jamf publishes,
-// during plan rather than at apply.
+// ModifyPlan predicts what this apply will do to the two attributes publishing moves, then checks
+// the tool, the schema version and the settings body against what Jamf publishes, during plan
+// rather than at apply.
 //
-// It lives here rather than in an attribute validator because it needs the API: the tool catalogue
-// and the vendor schema are server data, so there is no literal set to validate against and no
-// generated SDK constant to alias. Attribute validators run before the provider is configured and
-// have no client, which is what rules them out.
+// The checks live here rather than in an attribute validator because they need the API: the tool
+// catalogue and the vendor schema are server data, so there is no literal set to validate against
+// and no generated SDK constant to alias. Attribute validators run before the provider is configured
+// and have no client, which is what rules them out.
 //
-// Everything here is best-effort by construction. A catalogue or schema that cannot be fetched
-// produces no findings — the platform validates the write regardless, and a plan that failed
-// because the provider could not reach an advisory endpoint would be worse than a plan that let the
-// apply report the problem. It does not pass silently, though: the operator is told once per plan
-// that no check ran, because the resource's own documentation promises the settings are checked
-// during plan, so a clean plan otherwise reads as confirmation that they were.
+// Every check is best-effort by construction. A catalogue or schema that cannot be fetched produces
+// no findings — the platform validates the write regardless, and a plan that failed because the
+// provider could not reach an advisory endpoint would be worse than a plan that let the apply report
+// the problem. It does not pass silently, though: the operator is told once per plan that no check
+// ran, because the resource's own documentation promises the settings are checked during plan, so a
+// clean plan otherwise reads as confirmation that they were.
+//
+// The prediction runs before the checks and independently of them, because it has to hold for a plan
+// whose tool or schema version is still unknown — an unresolved interpolation stops the checks, and
+// a policy whose publish state Terraform then failed to plan would be worse than an unchecked one.
 func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	if req.Plan.Raw.IsNull() || r.client == nil {
 		return
@@ -41,16 +48,133 @@ func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	prior := priorPolicy(ctx, req.State, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	planPublishOutcome(ctx, resp, &plan, prior)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	if !helpers.IsConfiguredValue(plan.ToolID) || !helpers.IsConfiguredValue(plan.SchemaVersion) {
 		return
 	}
 
 	toolID := plan.ToolID.ValueString()
 	schemaVersion := plan.SchemaVersion.ValueString()
-	if !r.checkCatalogue(ctx, &resp.Diagnostics, toolID, schemaVersion) {
+	if !r.checkCatalogue(ctx, &resp.Diagnostics, toolID, schemaVersion, catalogueChanges(&plan, prior)) {
 		return
 	}
 	r.checkSettings(ctx, &resp.Diagnostics, &plan, toolID, schemaVersion)
+}
+
+// priorPolicy reads the prior state, reporting nil for a create — a plan with no prior state to
+// compare against, where every value is one the operator has just written.
+func priorPolicy(ctx context.Context, state tfsdk.State, diags *diag.Diagnostics) *policyModel {
+	if state.Raw.IsNull() {
+		return nil
+	}
+	var prior policyModel
+	diags.Append(state.Get(ctx, &prior)...)
+	if diags.HasError() {
+		return nil
+	}
+	return &prior
+}
+
+// planPublishOutcome plans the two attributes a publish moves, `has_draft` and `published_version`.
+//
+// It exists because the framework marks a Computed attribute unknown only when the proposed new
+// state differs from the prior state at all (fwserver.MarkComputedNilsAsUnknown, reached from
+// PlanResourceChange only under that condition). So the two cases this function handles are the two
+// the default gets wrong in opposite directions.
+//
+// A draft that survived into state with publishing enabled is planned as republished, both
+// attributes unknown, so a diff exists and Update runs. Without it, the plan after a failed publish
+// is empty: state records has_draft true, config equals state, nothing goes unknown, and Terraform
+// never calls Update — leaving blueprints delivering the previous version's settings for good, with
+// nothing anywhere to say so. Two facts make republishing safe rather than presumptuous. First, a
+// persistent has_draft with config equal to state has essentially one cause, a failed publish:
+// aigovernance.PolicyDetail's Settings and SchemaVersion are the *draft's* values, so a refresh
+// pulls an admin's UI edits into state, config then differs from it, and the ordinary settings diff
+// reverts them — a UI draft whose settings differ from the configuration never reaches this branch,
+// and one whose settings match it is harmless to publish. Second, the retry works: wire-probed on
+// 2026-08-30, a PATCH sending settings identical to an existing draft answers 204 and leaves
+// hasDraft true — the draft survives an identical write — and the POST /publish that follows answers
+// 201 with versionNumber 2 rather than 409 NO_DRAFT_TO_PUBLISH.
+//
+// Otherwise, when the platform will mint no version, published_version is held at the value it
+// already has. The platform diffs only the settings when deciding whether to raise a draft, so an
+// apply changing just the name or the description publishes nothing, and letting the number go
+// unknown makes every blueprint interpolating it plan an in-place update that resolves to the number
+// it already had. Both conjuncts are load-bearing: the settings must be semantically equal, and the
+// prior state must hold no draft. Where publishing is enabled the branch above already covers the
+// second — the settings are equal in the failed-publish case too, but the retry does mint a version —
+// and where it is disabled the conjunct is the only guard: an outstanding draft on a policy whose
+// publishing the operator has taken over is the one case where somebody publishing it in the admin UI
+// between plan and apply is expected rather than exceptional, so no number is predicted for it.
+// Semantic equality is called explicitly because the framework never applies it while planning: it
+// reconciles a value the provider returned against the value it was handed, so at plan time the two
+// sides are compared byte-wise and a reindented settings body would otherwise read as a change.
+//
+// A changed tool_id is excluded from the hold as well. It requires replacement, and although
+// Terraform re-plans the create half of a replace against a null prior state — which lands on the
+// create branch above and holds nothing — the guard keeps that correctness out of core's hands: a
+// replacement policy starts its version numbering again, so carrying the old policy's number into
+// its plan would be wrong rather than merely noisy.
+//
+// The hold is correct under `terraform plan -refresh=false` in every case where an apply follows,
+// with one bounded exception worth stating. Prior state is then whatever the last apply wrote, and
+// the number this predicts is the number the apply produces unless a version was published outside
+// Terraform in the meantime. If one was, and the same plan carries an unrelated change so that
+// Update runs, the read-back reports the higher number and Terraform reports an inconsistent result
+// after apply. That is a failed apply which one refresh clears, against plan noise on every rename
+// otherwise — and with no other change in the plan there is no apply to be inconsistent with,
+// because Terraform does not call Update for a plan whose only content is a value the provider held.
+func planPublishOutcome(ctx context.Context, resp *resource.ModifyPlanResponse, plan, prior *policyModel) {
+	if prior == nil {
+		return
+	}
+	if prior.HasDraft.ValueBool() && plansToPublish(plan) {
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("has_draft"), types.BoolUnknown())...)
+		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("published_version"), types.Int64Unknown())...)
+		return
+	}
+
+	equal, diags := prior.SettingsJSON.StringSemanticEquals(ctx, plan.SettingsJSON)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() || !equal || prior.HasDraft.ValueBool() || !prior.ToolID.Equal(plan.ToolID) {
+		return
+	}
+	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("published_version"), prior.PublishedVersion)...)
+}
+
+// plansToPublish reports whether this apply will attempt to publish. A value that is not yet known
+// counts as publishing: the attribute defaults to true, so null means yes, and an unknown cannot be
+// ruled out — treating either as no would suppress the republish a surviving draft needs.
+func plansToPublish(plan *policyModel) bool {
+	return !helpers.IsConfiguredValue(plan.Publish) || plan.Publish.ValueBool()
+}
+
+// catalogueChange records, for each of the two attributes checked against the tool catalogue,
+// whether this plan is what wrote the value.
+type catalogueChange struct {
+	toolID        bool
+	schemaVersion bool
+}
+
+// catalogueChanges reports which catalogue-checked attributes this plan changes. A create counts as
+// changing both: there is no prior value the operator can be said to have left alone.
+func catalogueChanges(plan, prior *policyModel) catalogueChange {
+	if prior == nil {
+		return catalogueChange{toolID: true, schemaVersion: true}
+	}
+	return catalogueChange{
+		toolID:        !prior.ToolID.Equal(plan.ToolID),
+		schemaVersion: !prior.SchemaVersion.Equal(plan.SchemaVersion),
+	}
 }
 
 // checkCatalogue validates the tool and its schema version against the catalogue, and reports
@@ -62,23 +186,25 @@ func (r *PolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 //
 // A catalogue that cannot be read reports the pair as good enough to go on with, so the plan
 // proceeds, and says so once per plan rather than once per policy.
-func (r *PolicyResource) checkCatalogue(ctx context.Context, diags *diag.Diagnostics, toolID, schemaVersion string) bool {
+//
+// A value the catalogue does not offer is reported at the severity addCatalogueFinding chooses, and
+// either way stops the settings check: a schema cannot be fetched for a tool or version the
+// catalogue does not list, so there is nothing left to validate against.
+func (r *PolicyResource) checkCatalogue(ctx context.Context, diags *diag.Diagnostics, toolID, schemaVersion string, changed catalogueChange) bool {
 	tool, found, err := r.schemas.Tool(ctx, toolID)
 	if err != nil {
 		r.noteValidationUnavailable(diags, "The AI tool catalogue could not be read", err)
 		return true
 	}
 	if !found {
-		diags.AddAttributeError(
-			path.Root("tool_id"),
+		addCatalogueFinding(diags, path.Root("tool_id"), changed.toolID,
 			"Unknown AI tool",
 			fmt.Sprintf("Jamf does not offer an AI tool with the identifier %q. %s", toolID, r.knownTools(ctx)),
 		)
 		return false
 	}
 	if !slices.Contains(tool.SchemaVersions, schemaVersion) {
-		diags.AddAttributeError(
-			path.Root("schema_version"),
+		addCatalogueFinding(diags, path.Root("schema_version"), changed.schemaVersion,
 			"Unknown settings schema version",
 			fmt.Sprintf("%s does not offer a settings schema version %q. Accepted versions: %s.",
 				tool.DisplayName, schemaVersion, strings.Join(tool.SchemaVersions, ", ")),
@@ -96,6 +222,37 @@ func (r *PolicyResource) checkCatalogue(ctx context.Context, diags *diag.Diagnos
 		)
 	}
 	return true
+}
+
+// catalogueUnchangedNote is appended to a catalogue finding the plan reports as a warning, so the
+// operator can tell a value they mistyped from one the world moved out from under.
+const catalogueUnchangedNote = "This value is unchanged from the last apply, so the plan reports it rather than " +
+	"failing: Jamf keeps serving an existing policy written against a value it has withdrawn from the catalogue, " +
+	"and refuses the write itself if it does not. The settings were not checked against a published schema during " +
+	"this plan."
+
+// addCatalogueFinding reports a value the tool catalogue does not offer, as an error when this plan
+// is what wrote it and a warning when it is not.
+//
+// The split matters because both findings are derived from live remote data, ModifyPlan runs for
+// every policy in the plan including the ones it changes nothing about, and the platform keeps
+// serving an older schema version for an existing policy — which is what schema_drift exists to
+// signal and what the resource documentation promises. The served version lists are short: Claude
+// Code offers two and published both within three months. If that is a cap rather than a coincidence,
+// the next schema retires the older one, and a hard error would then fail every plan touching a
+// policy pinned to it — including plans whose real changes are elsewhere in the workspace, with no
+// version pin to fall back on. So a create, or a tool_id or schema_version the operator has just
+// changed, keeps the error, because catching a typo at plan time is the whole point; a value they did
+// not touch is reported and left to the apply, where helpers.go already translates TOOL_ID_UNKNOWN
+// and SCHEMA_VERSION_UNKNOWN into the same guidance. This is the reasoning CLAUDE.md records for
+// appleprofiles — freshness is a scheduled concern, not a plan-time one — which the hard errors
+// contradicted.
+func addCatalogueFinding(diags *diag.Diagnostics, attribute path.Path, changed bool, summary, detail string) {
+	if changed {
+		diags.AddAttributeError(attribute, summary, detail)
+		return
+	}
+	diags.AddAttributeWarning(attribute, summary, detail+" "+catalogueUnchangedNote)
 }
 
 // knownTools renders the catalogue for a diagnostic, or says nothing when it cannot be read.

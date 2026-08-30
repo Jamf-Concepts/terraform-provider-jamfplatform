@@ -113,14 +113,18 @@ Keep credentials out of these settings: the value is held in Terraform state and
 
 - `description` (String) **"Description"** in the Jamf Account admin UI — what this policy is for.
 - `publish` (Boolean) Whether to publish a new version after saving changes. Defaults to `true`, so an applied policy is always deployable. Publishing only happens when something actually changed — an apply that alters nothing does not mint a version. Set to `false` to stage changes as a draft and publish them in the Jamf Account admin UI instead; `has_draft` then reports that unpublished changes exist.
+
+While this is enabled, a draft that already exists is published by the next apply — whether it was left behind by a publish that failed, or saved in the Jamf Account admin UI. Such a plan shows `has_draft` and `published_version` as known after apply even when nothing else changed.
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
 
 - `created_at` (String) When the policy was created, in RFC 3339 format.
-- `has_draft` (Boolean) Whether the policy holds changes that have not been published. Always `false` after an apply with `publish` enabled.
+- `has_draft` (Boolean) Whether the policy holds changes that have not been published. `false` after a successful apply with `publish` enabled. A draft that outlives an apply — because publishing it failed, or because someone saved one in the Jamf Account admin UI — is published by the next apply while `publish` is enabled.
 - `id` (String) Policy ID assigned by Jamf. Reference this from a blueprint's AI Governance component.
 - `published_version` (Number) **"Published version"** in the Jamf Account admin UI — the number of the most recently published version, counting from 1. Null until the policy is first published. This is the value a blueprint's AI Governance component pins.
+
+An apply that publishes nothing leaves it where it is, and the plan says so rather than showing it as known after apply — so renaming a policy does not disturb a blueprint that pins it.
 - `schema_drift` (Boolean) Whether `schema_version` is behind the version Jamf now offers for the tool. The policy keeps working; moving it forward means setting `schema_version` to the current version and reconciling `settings_json` with it.
 - `updated_at` (String) When the policy was last changed, in RFC 3339 format.
 

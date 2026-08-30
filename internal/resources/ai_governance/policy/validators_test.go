@@ -14,9 +14,11 @@ import (
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/aischemas"
@@ -194,6 +196,11 @@ func assertCounts(t *testing.T, diags diag.Diagnostics, wantErrors, wantWarnings
 	}
 }
 
+// changedCatalogue is the severity a create carries: both catalogue-checked values are ones the
+// operator has just written, so an unrecognised one is an error. The tests below that call
+// checkCatalogue directly are about what it recognises, not about who wrote the value.
+var changedCatalogue = catalogueChange{toolID: true, schemaVersion: true}
+
 // TestCheckSettingsUndeclaredKeyIsAWarning pins the classification the whole feature turns on: a key
 // the schema does not declare is stored by the platform and never applied by the tool, which is
 // advisory — the key may simply postdate the schema version — so it must not block a plan. Inverting
@@ -255,7 +262,7 @@ func TestCheckCatalogueWarnsOnASupersededSchemaVersion(t *testing.T) {
 	r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
 
 	var diags diag.Diagnostics
-	if !r.checkCatalogue(context.Background(), &diags, claudeCode().ID, "2026-05-19") {
+	if !r.checkCatalogue(context.Background(), &diags, claudeCode().ID, "2026-05-19", changedCatalogue) {
 		t.Error("a superseded schema version must still be checked against")
 	}
 
@@ -274,7 +281,7 @@ func TestCheckCatalogueRejectsAnUnknownTool(t *testing.T) {
 	r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
 
 	var diags diag.Diagnostics
-	if r.checkCatalogue(context.Background(), &diags, "com.example.nope", "2026-08-14") {
+	if r.checkCatalogue(context.Background(), &diags, "com.example.nope", "2026-08-14", changedCatalogue) {
 		t.Error("an unknown tool must stop the settings check")
 	}
 
@@ -297,7 +304,7 @@ func TestCheckCatalogueRejectsAnUnknownSchemaVersion(t *testing.T) {
 	r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
 
 	var diags diag.Diagnostics
-	if r.checkCatalogue(context.Background(), &diags, claudeCode().ID, "1999-01-01") {
+	if r.checkCatalogue(context.Background(), &diags, claudeCode().ID, "1999-01-01", changedCatalogue) {
 		t.Error("an unknown schema version must stop the settings check")
 	}
 
@@ -318,7 +325,7 @@ func TestUnreadableCatalogueWarnsOncePerPlan(t *testing.T) {
 	r := stubService{schema: testSchema, failTools: true}.resource(t)
 
 	var diags diag.Diagnostics
-	if !r.checkCatalogue(context.Background(), &diags, claudeCode().ID, claudeCode().SchemaVersion) {
+	if !r.checkCatalogue(context.Background(), &diags, claudeCode().ID, claudeCode().SchemaVersion, changedCatalogue) {
 		t.Error("a catalogue that cannot be read must not stop the plan")
 	}
 
@@ -330,7 +337,7 @@ func TestUnreadableCatalogueWarnsOncePerPlan(t *testing.T) {
 		t.Errorf("warning summary = %q", got)
 	}
 
-	if !r.checkCatalogue(context.Background(), &diags, claudeCode().ID, claudeCode().SchemaVersion) {
+	if !r.checkCatalogue(context.Background(), &diags, claudeCode().ID, claudeCode().SchemaVersion, changedCatalogue) {
 		t.Error("a catalogue that cannot be read must not stop the plan")
 	}
 	assertCounts(t, diags, 0, 1)
@@ -424,6 +431,497 @@ func TestModifyPlanClassifiesFindings(t *testing.T) {
 			}, &resp)
 
 			assertCounts(t, resp.Diagnostics, c.wantErrors, c.wantWarnings)
+		})
+	}
+}
+
+// publishFixture describes one side of a plan-prediction case — a prior state or a proposed plan —
+// naming only the fields the cases vary. An empty string takes the stub fixture's value, so a case
+// reads as the difference it is testing.
+type publishFixture struct {
+	name            string
+	toolID          string
+	schemaVersion   string
+	settings        string
+	hasDraft        bool
+	publishDisabled bool
+	publishUnknown  bool
+	noVersionYet    bool
+}
+
+// orDefault returns the value, or the fallback when it is empty.
+func orDefault(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+// publishValue renders the `publish` attribute the fixture asks for.
+func (f publishFixture) publishValue() tftypes.Value {
+	if f.publishUnknown {
+		return tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue)
+	}
+	return tftypes.NewValue(tftypes.Bool, !f.publishDisabled)
+}
+
+// publishedVersionValue renders the `published_version` a prior state holds: 1 for a policy that has
+// been published, null for one staged as a draft and never published.
+func (f publishFixture) publishedVersionValue() tftypes.Value {
+	if f.noVersionYet {
+		return tftypes.NewValue(tftypes.Number, nil)
+	}
+	return tftypes.NewValue(tftypes.Number, 1)
+}
+
+// stateRaw renders the fixture as the state an applied policy holds, with every value known.
+func (f publishFixture) stateRaw(ctx context.Context, policySchema resourceschema.Schema) tftypes.Value {
+	return policyRaw(ctx, policySchema, map[string]tftypes.Value{
+		"name":              tftypes.NewValue(tftypes.String, orDefault(f.name, "unit-test-policy")),
+		"tool_id":           tftypes.NewValue(tftypes.String, orDefault(f.toolID, stubToolID)),
+		"schema_version":    tftypes.NewValue(tftypes.String, orDefault(f.schemaVersion, stubSchemaVersion)),
+		"settings_json":     tftypes.NewValue(tftypes.String, orDefault(f.settings, stubSettings)),
+		"publish":           f.publishValue(),
+		"id":                tftypes.NewValue(tftypes.String, stubPolicyID),
+		"published_version": f.publishedVersionValue(),
+		"has_draft":         tftypes.NewValue(tftypes.Bool, f.hasDraft),
+		"schema_drift":      tftypes.NewValue(tftypes.Bool, false),
+		"created_at":        tftypes.NewValue(tftypes.String, stubCreatedAt),
+		"updated_at":        tftypes.NewValue(tftypes.String, stubCreatedAt),
+	})
+}
+
+// planRaw renders the fixture as the plan the framework hands ModifyPlan for an update: id and
+// created_at carried through by UseStateForUnknown, and every other Computed attribute Unknown,
+// which is what MarkComputedNilsAsUnknown produces for any plan that changes something.
+func (f publishFixture) planRaw(ctx context.Context, policySchema resourceschema.Schema) tftypes.Value {
+	return policyRaw(ctx, policySchema, map[string]tftypes.Value{
+		"name":              tftypes.NewValue(tftypes.String, orDefault(f.name, "unit-test-policy")),
+		"tool_id":           tftypes.NewValue(tftypes.String, orDefault(f.toolID, stubToolID)),
+		"schema_version":    tftypes.NewValue(tftypes.String, orDefault(f.schemaVersion, stubSchemaVersion)),
+		"settings_json":     tftypes.NewValue(tftypes.String, orDefault(f.settings, stubSettings)),
+		"publish":           f.publishValue(),
+		"id":                tftypes.NewValue(tftypes.String, stubPolicyID),
+		"created_at":        tftypes.NewValue(tftypes.String, stubCreatedAt),
+		"published_version": tftypes.NewValue(tftypes.Number, tftypes.UnknownValue),
+		"has_draft":         tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue),
+		"schema_drift":      tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue),
+		"updated_at":        tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
+	})
+}
+
+// noPriorState renders the prior state Terraform sends for a create: a wholly null object.
+func noPriorState(ctx context.Context, policySchema resourceschema.Schema) tftypes.Value {
+	return tftypes.NewValue(policySchema.Type().TerraformType(ctx), nil)
+}
+
+// runModifyPlan drives ModifyPlan the way fwserver does — resp.Plan seeded with the proposed plan,
+// req.State carrying the prior one — and hands back the response so the planned values and the
+// diagnostics can both be asserted.
+func runModifyPlan(ctx context.Context, t *testing.T, r *PolicyResource, policySchema resourceschema.Schema, priorRaw, planRaw tftypes.Value) *resource.ModifyPlanResponse {
+	t.Helper()
+	resp := &resource.ModifyPlanResponse{Plan: tfsdk.Plan{Schema: policySchema, Raw: planRaw}}
+	r.ModifyPlan(ctx, resource.ModifyPlanRequest{
+		Plan:   tfsdk.Plan{Schema: policySchema, Raw: planRaw},
+		Config: tfsdk.Config{Schema: policySchema, Raw: planRaw},
+		State:  tfsdk.State{Schema: policySchema, Raw: priorRaw},
+	}, resp)
+	return resp
+}
+
+// plannedPublishedVersion reads published_version back off the planned object.
+func plannedPublishedVersion(ctx context.Context, t *testing.T, resp *resource.ModifyPlanResponse) types.Int64 {
+	t.Helper()
+	var planned types.Int64
+	if diags := resp.Plan.GetAttribute(ctx, path.Root("published_version"), &planned); diags.HasError() {
+		t.Fatalf("reading the planned published_version: %v", diags)
+	}
+	return planned
+}
+
+// plannedHasDraft reads has_draft back off the planned object.
+func plannedHasDraft(ctx context.Context, t *testing.T, resp *resource.ModifyPlanResponse) types.Bool {
+	t.Helper()
+	var planned types.Bool
+	if diags := resp.Plan.GetAttribute(ctx, path.Root("has_draft"), &planned); diags.HasError() {
+		t.Fatalf("reading the planned has_draft: %v", diags)
+	}
+	return planned
+}
+
+// TestModifyPlanRepublishesASurvivingDraft pins the retry the publish-failure diagnostics promise.
+//
+// Every case here is the plan Terraform makes when the configuration has not changed — the shape a
+// failed publish leaves behind, and the one the whole finding turns on. The framework marks a
+// Computed attribute unknown only when the proposed plan already differs from prior state, so in
+// this shape has_draft and published_version arrive carrying their prior values: without ModifyPlan
+// making them unknown the plan is empty, Update is never called, and blueprints deliver the previous
+// version's settings for good.
+//
+// The publish = false case is the other half. Publication is then the operator's, and forcing a diff
+// would publish a draft they staged deliberately.
+func TestModifyPlanRepublishesASurvivingDraft(t *testing.T) {
+	cases := []struct {
+		name         string
+		prior        publishFixture
+		wantUnknowns bool
+	}{
+		{
+			name:         "a draft that survived a failed publish is republished",
+			prior:        publishFixture{hasDraft: true},
+			wantUnknowns: true,
+		},
+		{
+			name:         "a draft on a never-published policy is republished",
+			prior:        publishFixture{hasDraft: true, noVersionYet: true},
+			wantUnknowns: true,
+		},
+		{
+			name:  "a draft staged with publishing disabled is left alone",
+			prior: publishFixture{hasDraft: true, publishDisabled: true},
+		},
+		{
+			name:  "a published policy with no draft plans no republish",
+			prior: publishFixture{},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.Background()
+			r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
+			policySchema, _ := policySchemas(ctx, t)
+
+			unchanged := c.prior.stateRaw(ctx, policySchema)
+			resp := runModifyPlan(ctx, t, r, policySchema, unchanged, unchanged)
+
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("planning must not fail: %v", resp.Diagnostics.Errors())
+			}
+			hasDraft := plannedHasDraft(ctx, t, resp)
+			publishedVersion := plannedPublishedVersion(ctx, t, resp)
+
+			if c.wantUnknowns {
+				if !hasDraft.IsUnknown() {
+					t.Errorf("planned has_draft = %s, want unknown — without a diff Update is never called and the draft is never published", hasDraft)
+				}
+				if !publishedVersion.IsUnknown() {
+					t.Errorf("planned published_version = %s, want unknown — the retry mints a version", publishedVersion)
+				}
+				return
+			}
+			if hasDraft.IsUnknown() {
+				t.Error("planned has_draft is unknown, so an apply the operator did not ask for would publish their draft")
+			}
+			if got := hasDraft.ValueBool(); got != c.prior.hasDraft {
+				t.Errorf("planned has_draft = %t, want the prior %t", got, c.prior.hasDraft)
+			}
+			if publishedVersion.IsUnknown() {
+				t.Error("planned published_version is unknown, so a blueprint pinning it plans a write for a version that will not move")
+			}
+			if got := publishedVersion.ValueInt64(); got != 1 {
+				t.Errorf("planned published_version = %d, want the prior 1", got)
+			}
+		})
+	}
+}
+
+// TestModifyPlanRepublishesWhenPublishIsNotYetKnown pins the same republish for a `publish` value
+// interpolated from something the plan cannot resolve yet. Reading an unknown as "not publishing"
+// would leave the draft unpublished on a plan that goes on to publish it.
+func TestModifyPlanRepublishesWhenPublishIsNotYetKnown(t *testing.T) {
+	ctx := context.Background()
+	r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
+	policySchema, _ := policySchemas(ctx, t)
+
+	resp := runModifyPlan(ctx, t, r, policySchema,
+		publishFixture{hasDraft: true}.stateRaw(ctx, policySchema),
+		publishFixture{hasDraft: true, publishUnknown: true}.stateRaw(ctx, policySchema))
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("planning must not fail: %v", resp.Diagnostics.Errors())
+	}
+	if planned := plannedHasDraft(ctx, t, resp); !planned.IsUnknown() {
+		t.Errorf("planned has_draft = %s, want unknown", planned)
+	}
+	if planned := plannedPublishedVersion(ctx, t, resp); !planned.IsUnknown() {
+		t.Errorf("planned published_version = %s, want unknown", planned)
+	}
+}
+
+// TestPlansToPublish pins the reading of `publish` the republish depends on. Null is the schema
+// default, true, and an unknown cannot be ruled out — treating either as no would leave a surviving
+// draft unpublished for a plan that will in fact publish it.
+func TestPlansToPublish(t *testing.T) {
+	cases := []struct {
+		name  string
+		value types.Bool
+		want  bool
+	}{
+		{name: "explicitly enabled", value: types.BoolValue(true), want: true},
+		{name: "explicitly disabled", value: types.BoolValue(false)},
+		{name: "null takes the schema default", value: types.BoolNull(), want: true},
+		{name: "unknown cannot be ruled out", value: types.BoolUnknown(), want: true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := plansToPublish(&policyModel{Publish: c.value}); got != c.want {
+				t.Errorf("plansToPublish(%s) = %t, want %t", c.value, got, c.want)
+			}
+		})
+	}
+}
+
+// TestModifyPlanHoldsPublishedVersionWhenNothingWillBePublished pins the prediction a blueprint
+// depends on. The platform diffs only the settings when deciding whether to raise a draft, so a
+// rename publishes nothing — and letting the number go unknown makes every blueprint interpolating
+// it plan an in-place update that resolves to the number it already had.
+//
+// The reordered and reindented settings cases are the point of comparing semantically: the framework
+// never applies semantic equality while planning, so a byte-wise comparison would call an
+// unchanged-but-reformatted body a change and let the number go unknown for nothing.
+//
+// The last two cases are the ones the no-draft conjunct exists for. Where publishing is enabled the
+// republish above wins — the settings are equal, but the retry does mint a version, so holding the
+// number would put a value in the plan the apply then contradicts. Where it is disabled, an
+// outstanding draft is the one case where somebody publishing in the admin UI is expected rather than
+// exceptional, so no number is predicted for it either. Dropping the conjunct fails both.
+func TestModifyPlanHoldsPublishedVersionWhenNothingWillBePublished(t *testing.T) {
+	cases := []struct {
+		name     string
+		prior    publishFixture
+		plan     publishFixture
+		wantHeld bool
+	}{
+		{
+			name:     "a rename with identical settings holds the version",
+			prior:    publishFixture{},
+			plan:     publishFixture{name: "unit-test-policy-renamed"},
+			wantHeld: true,
+		},
+		{
+			name:     "settings reordered and reindented hold the version",
+			prior:    publishFixture{settings: `{"verbose":true,"permissions":{"allow":["Read"]}}`},
+			plan:     publishFixture{name: "renamed", settings: "{\n  \"permissions\": {\n    \"allow\": [\"Read\"]\n  },\n  \"verbose\": true\n}"},
+			wantHeld: true,
+		},
+		{
+			name:     "a schema version change alone holds the version, because Jamf diffs the settings",
+			prior:    publishFixture{schemaVersion: "2026-05-19"},
+			plan:     publishFixture{schemaVersion: stubSchemaVersion},
+			wantHeld: true,
+		},
+		{
+			name:  "changed settings leave the version unknown",
+			prior: publishFixture{},
+			plan:  publishFixture{settings: `{"verbose":false}`},
+		},
+		{
+			name:  "a reordered array is a change, so the version stays unknown",
+			prior: publishFixture{settings: `{"permissions":{"allow":["Bash(git:*)","Read"]}}`},
+			plan:  publishFixture{settings: `{"permissions":{"allow":["Read","Bash(git:*)"]}}`},
+		},
+		{
+			name:  "equal settings with a surviving draft leave the version unknown",
+			prior: publishFixture{hasDraft: true},
+			plan:  publishFixture{name: "unit-test-policy-renamed"},
+		},
+		{
+			name:  "a surviving draft with publishing disabled leaves the version unknown",
+			prior: publishFixture{hasDraft: true, publishDisabled: true},
+			plan:  publishFixture{hasDraft: true, publishDisabled: true, name: "unit-test-policy-renamed"},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.Background()
+			r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
+			policySchema, _ := policySchemas(ctx, t)
+
+			resp := runModifyPlan(ctx, t, r, policySchema,
+				c.prior.stateRaw(ctx, policySchema), c.plan.planRaw(ctx, policySchema))
+
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("planning must not fail: %v", resp.Diagnostics.Errors())
+			}
+			planned := plannedPublishedVersion(ctx, t, resp)
+			if !c.wantHeld {
+				if !planned.IsUnknown() {
+					t.Errorf("planned published_version = %s, want unknown — this apply publishes a version", planned)
+				}
+				return
+			}
+			if planned.IsUnknown() {
+				t.Fatal("planned published_version is unknown, so every blueprint pinning it plans a write for a number that will not change")
+			}
+			if got := planned.ValueInt64(); got != 1 {
+				t.Errorf("planned published_version = %d, want the prior value 1", got)
+			}
+		})
+	}
+}
+
+// TestModifyPlanHoldsANullPublishedVersion pins the hold on a policy staged as a draft and never
+// published: the prediction is null, not unknown, because a further apply with publishing still
+// disabled publishes nothing either.
+func TestModifyPlanHoldsANullPublishedVersion(t *testing.T) {
+	ctx := context.Background()
+	r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
+	policySchema, _ := policySchemas(ctx, t)
+
+	prior := publishFixture{publishDisabled: true, noVersionYet: true}
+	plan := publishFixture{publishDisabled: true, name: "unit-test-policy-renamed"}
+
+	resp := runModifyPlan(ctx, t, r, policySchema,
+		prior.stateRaw(ctx, policySchema), plan.planRaw(ctx, policySchema))
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("planning must not fail: %v", resp.Diagnostics.Errors())
+	}
+	planned := plannedPublishedVersion(ctx, t, resp)
+	if !planned.IsNull() {
+		t.Errorf("planned published_version = %s, want null — nothing has been published and nothing will be", planned)
+	}
+}
+
+// TestModifyPlanDoesNotHoldAcrossAToolChange pins the one exclusion the hold needs beyond the two
+// predicates: a changed tool_id replaces the policy, and a replacement starts version numbering
+// again, so the old policy's number must not follow it into the plan. Terraform re-plans the create
+// half of a replace against a null prior state, which lands on the create branch anyway — this keeps
+// that correctness out of core's hands.
+func TestModifyPlanDoesNotHoldAcrossAToolChange(t *testing.T) {
+	ctx := context.Background()
+	tools := []aigovernance.ToolSummary{claudeCode(), {
+		ID:             "com.openai.codex",
+		DisplayName:    "OpenAI Codex",
+		SchemaVersion:  stubSchemaVersion,
+		SchemaVersions: []string{stubSchemaVersion},
+	}}
+	r := stubService{tools: tools, schema: testSchema}.resource(t)
+	policySchema, _ := policySchemas(ctx, t)
+
+	resp := runModifyPlan(ctx, t, r, policySchema,
+		publishFixture{}.stateRaw(ctx, policySchema),
+		publishFixture{toolID: "com.openai.codex"}.planRaw(ctx, policySchema))
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("planning must not fail: %v", resp.Diagnostics.Errors())
+	}
+	if planned := plannedPublishedVersion(ctx, t, resp); !planned.IsUnknown() {
+		t.Errorf("planned published_version = %s, want unknown — the replacement policy numbers its versions from 1", planned)
+	}
+}
+
+// TestModifyPlanCreateLeavesBothAttributesUnknown pins the create case both predicates must leave
+// alone: there is no prior state to hold a value from or to find a draft in, and version 1 is
+// genuinely unknowable until the publish returns.
+func TestModifyPlanCreateLeavesBothAttributesUnknown(t *testing.T) {
+	ctx := context.Background()
+	r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
+	policySchema, _ := policySchemas(ctx, t)
+
+	resp := runModifyPlan(ctx, t, r, policySchema,
+		noPriorState(ctx, policySchema), createPlanRaw(ctx, policySchema))
+
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("planning a create must not fail: %v", resp.Diagnostics.Errors())
+	}
+	if planned := plannedPublishedVersion(ctx, t, resp); !planned.IsUnknown() {
+		t.Errorf("planned published_version = %s, want unknown on a create", planned)
+	}
+	if planned := plannedHasDraft(ctx, t, resp); !planned.IsUnknown() {
+		t.Errorf("planned has_draft = %s, want unknown on a create", planned)
+	}
+}
+
+// TestModifyPlanCatalogueSeverityFollowsWhoWroteTheValue pins the whole point of (20): a tool or
+// schema version the catalogue does not list fails the plan when the configuration has just changed
+// it — that is a typo, and catching it before an apply is the point — and only warns when it is
+// unchanged. The served version lists are short and Jamf may withdraw one it still serves policies
+// for, and a hard error would then fail plans whose real changes are elsewhere in the workspace.
+func TestModifyPlanCatalogueSeverityFollowsWhoWroteTheValue(t *testing.T) {
+	const withdrawn = "1999-01-01"
+	const absentTool = "com.example.nope"
+
+	cases := []struct {
+		name         string
+		create       bool
+		prior        publishFixture
+		plan         publishFixture
+		wantErrors   int
+		wantWarnings int
+		wantPath     string
+	}{
+		{
+			name:         "an unchanged withdrawn schema version warns",
+			prior:        publishFixture{schemaVersion: withdrawn},
+			plan:         publishFixture{schemaVersion: withdrawn},
+			wantWarnings: 1,
+			wantPath:     "schema_version",
+		},
+		{
+			name:       "a schema version the operator just changed errors",
+			prior:      publishFixture{},
+			plan:       publishFixture{schemaVersion: withdrawn},
+			wantErrors: 1,
+			wantPath:   "schema_version",
+		},
+		{
+			name:       "a create with an unknown schema version errors",
+			create:     true,
+			plan:       publishFixture{schemaVersion: withdrawn},
+			wantErrors: 1,
+			wantPath:   "schema_version",
+		},
+		{
+			name:         "an unchanged absent tool warns",
+			prior:        publishFixture{toolID: absentTool},
+			plan:         publishFixture{toolID: absentTool},
+			wantWarnings: 1,
+			wantPath:     "tool_id",
+		},
+		{
+			name:       "a tool the operator just changed errors",
+			prior:      publishFixture{},
+			plan:       publishFixture{toolID: absentTool},
+			wantErrors: 1,
+			wantPath:   "tool_id",
+		},
+		{
+			name:       "a create with an unknown tool errors",
+			create:     true,
+			plan:       publishFixture{toolID: absentTool},
+			wantErrors: 1,
+			wantPath:   "tool_id",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.Background()
+			r := stubService{tools: []aigovernance.ToolSummary{claudeCode()}, schema: testSchema}.resource(t)
+			policySchema, _ := policySchemas(ctx, t)
+
+			prior := c.prior.stateRaw(ctx, policySchema)
+			if c.create {
+				prior = noPriorState(ctx, policySchema)
+			}
+			resp := runModifyPlan(ctx, t, r, policySchema, prior, c.plan.planRaw(ctx, policySchema))
+
+			assertCounts(t, resp.Diagnostics, c.wantErrors, c.wantWarnings)
+
+			reported := append(resp.Diagnostics.Errors(), resp.Diagnostics.Warnings()...)
+			if len(reported) == 0 {
+				return
+			}
+			if got := diagnosticPath(reported[0]); got != c.wantPath {
+				t.Errorf("diagnostic path = %q, want %q", got, c.wantPath)
+			}
+			if c.wantWarnings == 1 && !strings.Contains(reported[0].Detail(), "unchanged from the last apply") {
+				t.Errorf("the warning must say why it is not an error: %s", reported[0].Detail())
+			}
 		})
 	}
 }
