@@ -241,13 +241,52 @@ func TestAccResource_SecurityCloudZtnaApp_Custom(t *testing.T) {
 	})
 }
 
+// requireUnusedPredefinedAppID returns a predefined application definition the tenant
+// does not already have an application for.
+//
+// Taking the first entry of the catalogue is not safe: Jamf Security Cloud allows only
+// one application per definition, and a tenant that already has one for the first entry
+// would fail every predefined test with `409 CONFLICT "Resource already exists."` —
+// which is a fixture collision, not a provider bug. The acceptance tenant this was
+// written against already had an application for the catalogue's first entry, so this
+// is an observed hazard rather than a hypothetical one.
+//
+// A tenant with an application for every definition SKIPS rather than fails: absent
+// fixture headroom is a property of the environment, not a defect in the resource.
+func requireUnusedPredefinedAppID(t *testing.T) string {
+	t.Helper()
+
+	catalogue := testhelpers.RequireSecurityCloudPredefinedApps(t)
+	c := securitycloud.New(testhelpers.NewAcceptanceClient(t))
+
+	apps, err := c.ListZtnaAppsV1(context.Background())
+	if err != nil {
+		t.Fatalf("listing access policy applications to find an unused predefined definition: %s", err)
+	}
+
+	used := map[string]struct{}{}
+	for _, app := range apps {
+		if app.PredefinedAppID != nil {
+			used[*app.PredefinedAppID] = struct{}{}
+		}
+	}
+	for _, definition := range catalogue {
+		if _, taken := used[definition.ID]; !taken {
+			return definition.ID
+		}
+	}
+
+	t.Skipf("Skipping: every one of the %d predefined application definitions already has an application on this tenant, so there is none free to create", len(catalogue))
+	return ""
+}
+
 // TestAccResource_SecurityCloudZtnaApp_Predefined covers the other mutually exclusive
 // shape. A predefined application's name is owned by the Jamf-maintained definition
 // and reads back null, and the definition's own host names never appear in
 // `hostnames` — only the additions do.
 func TestAccResource_SecurityCloudZtnaApp_Predefined(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	predefined := testhelpers.RequireSecurityCloudPredefinedApps(t)
+	predefinedID := requireUnusedPredefinedAppID(t)
 
 	suffix := testhelpers.RunSuffix()
 	host := "extra-" + suffix + testHostnameSuffix
@@ -267,11 +306,11 @@ func TestAccResource_SecurityCloudZtnaApp_Predefined(t *testing.T) {
 							mode = "Direct device routing"
 						}
 					}
-				`, predefined[0].ID),
+				`, predefinedID),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("app_type"), knownvalue.StringExact("Predefined")),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("name"), knownvalue.Null()),
-					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("predefined_app_id"), knownvalue.StringExact(predefined[0].ID)),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("predefined_app_id"), knownvalue.StringExact(predefinedID)),
 					// The definition contributes host names of its own, and they must not
 					// appear here — otherwise the configuration would diff against them.
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("hostnames"), knownvalue.Null()),
@@ -291,7 +330,7 @@ func TestAccResource_SecurityCloudZtnaApp_Predefined(t *testing.T) {
 							mode = "Direct device routing"
 						}
 					}
-				`, predefined[0].ID, host),
+				`, predefinedID, host),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("hostnames"), knownvalue.SetExact([]knownvalue.Check{
 						knownvalue.StringExact(host),
@@ -314,7 +353,7 @@ func TestAccResource_SecurityCloudZtnaApp_Predefined(t *testing.T) {
 // all, so an in-place attempt would be a write that silently does nothing.
 func TestAccResource_SecurityCloudZtnaApp_FormIsImmutable(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	predefined := testhelpers.RequireSecurityCloudPredefinedApps(t)
+	predefinedID := requireUnusedPredefinedAppID(t)
 
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-jsc-ztna-app-form-" + suffix
@@ -347,7 +386,7 @@ func TestAccResource_SecurityCloudZtnaApp_FormIsImmutable(t *testing.T) {
 							mode = "Direct device routing"
 						}
 					}
-				`, predefined[0].ID),
+				`, predefinedID),
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("app_type"), knownvalue.StringExact("Predefined")),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("name"), knownvalue.Null()),
@@ -413,7 +452,7 @@ func TestAccResource_SecurityCloudZtnaApp_Drift(t *testing.T) {
 func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
 	gateways := testhelpers.RequireSecurityCloudSharedGatewayIDs(t, 1)
-	predefined := testhelpers.RequireSecurityCloudPredefinedApps(t)
+	predefinedID := requireUnusedPredefinedAppID(t)
 
 	suffix := testhelpers.RunSuffix()
 
@@ -432,7 +471,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					all_device_groups = true
 					routing = { mode = "Direct device routing" }
 				}
-			`, suffix, predefined[0].ID),
+			`, suffix, predefinedID),
 			expectError: regexp.MustCompile(`cannot be renamed`),
 		},
 		{
@@ -631,7 +670,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 // diagnostic rather than a plan-time check.
 func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	predefined := testhelpers.RequireSecurityCloudPredefinedApps(t)
+	predefinedID := requireUnusedPredefinedAppID(t)
 
 	suffix := testhelpers.RunSuffix()
 	host := "conflict-" + suffix + testHostnameSuffix
@@ -746,7 +785,7 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						routing = { mode = "Direct device routing" }
 						depends_on        = [jamfplatform_security_cloud_ztna_app.first]
 					}
-				`, suffix, host, predefined[0].ID),
+				`, suffix, host, predefinedID),
 				ExpectError: regexp.MustCompile(`Predefined\s+application\s+already\s+in\s+use`),
 			},
 		},
@@ -760,7 +799,7 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 // all, so `name` cannot address one — a fact worth an assertion rather than a comment.
 func TestAccDataSource_SecurityCloudZtnaApp(t *testing.T) {
 	testhelpers.AccPreCheckSecurityCloud(t)
-	predefined := testhelpers.RequireSecurityCloudPredefinedApps(t)
+	predefinedID := requireUnusedPredefinedAppID(t)
 
 	suffix := testhelpers.RunSuffix()
 	name := "tf-acc-jsc-ztna-app-ds-" + suffix
@@ -802,7 +841,7 @@ func TestAccDataSource_SecurityCloudZtnaApp(t *testing.T) {
 				jamfplatform_security_cloud_ztna_app.predefined,
 			]
 		}
-	`, name, host, predefined[0].ID)
+	`, name, host, predefinedID)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -929,14 +968,13 @@ func TestAccListResource_SecurityCloudZtnaApp(t *testing.T) {
 				`, name),
 			},
 			{
+				// A query step's config is a .tfquery.hcl file, which accepts `provider` and
+				// `list` blocks only — repeating the resource here fails with "Blocks of type
+				// resource are not expected here". The application created by the preceding
+				// step is still on the tenant, which is what the checks below match against.
 				Query: true,
-				Config: fmt.Sprintf(`
-					resource "jamfplatform_security_cloud_ztna_app" "test" {
-						name              = %q
-						category          = "Uncategorized"
-						all_device_groups = true
-						routing = { mode = "Direct device routing" }
-					}
+				Config: `
+					provider "jamfplatform" {}
 
 					list "jamfplatform_security_cloud_ztna_app" "test" {
 						provider         = jamfplatform
@@ -944,7 +982,7 @@ func TestAccListResource_SecurityCloudZtnaApp(t *testing.T) {
 
 						config {}
 					}
-				`, name),
+				`,
 				QueryResultChecks: []querycheck.QueryResultCheck{
 					querycheck.ExpectLengthAtLeast("jamfplatform_security_cloud_ztna_app.test", 1),
 					querycheck.ExpectResourceKnownValues(
