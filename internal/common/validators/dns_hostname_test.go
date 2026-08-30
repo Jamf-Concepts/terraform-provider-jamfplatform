@@ -152,3 +152,88 @@ func TestFirstAndLastRuneDecode(t *testing.T) {
 		t.Errorf("lastRune(%q) = %q, want %q", "abc", got, 'c')
 	}
 }
+
+// TestDNSHostnameOrWildcard pins the ZTNA app host name grammar to the 12 inputs
+// probed against `POST /securitycloud/v1/ztna/apps` on 2026-08-30. `accepted` cases
+// were answered 201; `refused` cases 400 with `field: hostnames[]` and the single
+// message "Invalid hostname allowing wildcard prefix". The non-wildcard verdicts all
+// matched the DNS endpoints', which is what justifies sharing dnsHostnameProblem
+// between the two validators rather than keeping separate grammars.
+func TestDNSHostnameOrWildcard(t *testing.T) {
+	cases := []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"bare wildcard", "*", false},
+		{"wildcard label prefix", "*.example.com", false},
+		{"wildcard on a single label", "*.corp", false},
+		{"plain multi label", "sub.example.com", false},
+		{"single label", "single", false},
+		{"interior underscore", "a_b.example.com", false},
+		{"non-ascii", "exämple.com", false},
+		{"trailing root dot", "trailing.example.com.", false},
+		{"uppercase", "UPPER.EXAMPLE.COM", false},
+		{"63-character label behind a wildcard", "*." + label63 + ".example.com", false},
+
+		{"wildcard in an interior label", "sub.*.example.com", true},
+		{"two wildcards", "*.*.example.com", true},
+		{"wildcard glued to a label", "*x.example.com", true},
+		{"wildcard with nothing after it", "*.", true},
+		{"leading hyphen", "-bad.example.com", true},
+		{"numeric final label", "foo.123", true},
+		{"bare IPv4 address", "1.2.3.4", true},
+		{"embedded space", "has space.com", true},
+		{"64-character label", label64 + ".example.com", true},
+		{"254 characters", name254, true},
+		{"254 characters behind a wildcard", "*." + name254, true},
+		{"empty", "", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := validator.StringRequest{
+				Path:        path.Root("hostnames"),
+				ConfigValue: types.StringValue(tc.value),
+			}
+			resp := &validator.StringResponse{}
+			DNSHostnameOrWildcard().ValidateString(context.Background(), req, resp)
+
+			if got := resp.Diagnostics.HasError(); got != tc.wantErr {
+				t.Fatalf("DNSHostnameOrWildcard(%q) error = %v, want %v (%s)", tc.value, got, tc.wantErr, resp.Diagnostics)
+			}
+		})
+	}
+}
+
+// TestDNSHostnameOrWildcardDefersOnNullAndUnknown pins the config-time validator
+// contract: a value Terraform has not resolved yet is the server's problem, not a
+// plan-time error.
+func TestDNSHostnameOrWildcardDefersOnNullAndUnknown(t *testing.T) {
+	for name, value := range map[string]types.String{
+		"null":    types.StringNull(),
+		"unknown": types.StringUnknown(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			resp := &validator.StringResponse{}
+			DNSHostnameOrWildcard().ValidateString(context.Background(), validator.StringRequest{
+				Path:        path.Root("hostnames"),
+				ConfigValue: value,
+			}, resp)
+			if resp.Diagnostics.HasError() {
+				t.Fatalf("expected no error for a %s value, got %s", name, resp.Diagnostics)
+			}
+		})
+	}
+}
+
+// TestDNSHostnameOrWildcardReportsTheWildcard pins the message a misplaced wildcard
+// gets. dnsHostnameProblem checks label characters before label boundaries so that
+// `sub.*.example.com` is reported as a wildcard rather than as a label that "must
+// begin and end with a letter" — the whole reason that ordering exists.
+func TestDNSHostnameOrWildcardReportsTheWildcard(t *testing.T) {
+	got := dnsHostnameOrWildcardProblem("sub.*.example.com")
+	if !strings.Contains(got, "Wildcards") {
+		t.Fatalf("dnsHostnameOrWildcardProblem(%q) = %q, want it to mention wildcards", "sub.*.example.com", got)
+	}
+}
