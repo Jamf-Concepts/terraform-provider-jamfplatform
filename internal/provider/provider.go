@@ -144,11 +144,15 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_assignment"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/vpp_invitation"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/webhook"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/content_categories"
 	securityclouddevicegroup "github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/device_group"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_hostname_mappings"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_search_domain"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/uem_connect"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_grouped_gateway"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_predefined_apps"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_shared_gateways"
 )
 
@@ -512,6 +516,8 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		vpp_invitation.NewVPPInvitationResource,
 		webhook.NewWebhookResource,
 		securityclouddevicegroup.NewDeviceGroupResource,
+		dns_hostname_mappings.NewHostnameMappingsResource,
+		dns_search_domain.NewSearchDomainResource,
 		dns_zone.NewDNSZoneResource,
 		uem_connect.NewUEMConnectResource,
 		ztna_gateway.NewGatewayResource,
@@ -544,8 +550,11 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		building.NewBuildingsDataSource,
 		category.NewCategoriesDataSource,
 		category.NewCategoryDataSource,
+		content_categories.NewContentCategoriesDataSource,
 		securityclouddevicegroup.NewDeviceGroupDataSource,
 		securityclouddevicegroup.NewDeviceGroupsDataSource,
+		dns_hostname_mappings.NewHostnameMappingsDataSource,
+		dns_search_domain.NewSearchDomainDataSource,
 		dns_zone.NewDNSZoneDataSource,
 		dns_zone.NewDNSZonesDataSource,
 		uem_connect.NewUEMConnectDataSource,
@@ -553,6 +562,7 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		ztna_gateway.NewGatewaysDataSource,
 		ztna_grouped_gateway.NewGroupedGatewayDataSource,
 		ztna_grouped_gateway.NewGroupedGatewaysDataSource,
+		ztna_predefined_apps.NewPredefinedAppsDataSource,
 		ztna_shared_gateways.NewSharedGatewaysDataSource,
 		computer_extension_attribute.NewComputerExtensionAttributeDataSource,
 		mobile_device_extension_attribute.NewMobileDeviceExtensionAttributeDataSource,

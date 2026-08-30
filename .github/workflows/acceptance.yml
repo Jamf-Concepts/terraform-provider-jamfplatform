@@ -67,6 +67,23 @@ jobs:
           JAMFPLATFORM_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_ENVIRONMENT_ID }}
           JAMFPLATFORM_TENANT_ID: ${{ secrets.JAMFPLATFORM_TENANT_ID }}
 
+          # --- Jamf Security Cloud scope declaration ---
+          # Set EXACTLY ONE of these, matching whichever scope the run is
+          # configured with: AccPreCheckSecurityCloud skips when both carry a
+          # value, and skips when the one that is set does not equal the
+          # corresponding JAMFPLATFORM_* value. Today only the tenant form has a
+          # secret, so the environment form resolves empty and the pair is
+          # unambiguous.
+          #
+          # Deliberately separate secrets rather than copies of the scope vars
+          # above. Writing `${{ secrets.JAMFPLATFORM_TENANT_ID }}` here would
+          # satisfy the equality check by construction and thereby assert a
+          # Security Cloud entitlement nobody verified, turning a clean skip on a
+          # Pro-only tenant into a suite of failures. Unset leaves every Security
+          # Cloud suite skipping, which is a legitimate state, not a gap.
+          JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID: ${{ secrets.JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID }}
+          JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID: ${{ secrets.JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID }}
+
           # --- Automated Device Enrollment ---
           JAMFPLATFORM_ADE_TOKEN: ${{ secrets.JAMFPLATFORM_ADE_TOKEN }}
           JAMFPLATFORM_ADE_SERIAL: ${{ secrets.JAMFPLATFORM_ADE_SERIAL }}
