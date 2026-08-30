@@ -105,34 +105,18 @@ func priorPolicy(ctx context.Context, state tfsdk.State, diags *diag.Diagnostics
 // hasDraft true — the draft survives an identical write — and the POST /publish that follows answers
 // 201 with versionNumber 2 rather than 409 NO_DRAFT_TO_PUBLISH.
 //
-// Otherwise, when the platform will mint no version, published_version is held at the value it
-// already has. The platform diffs only the settings when deciding whether to raise a draft, so an
-// apply changing just the name or the description publishes nothing, and letting the number go
-// unknown makes every blueprint interpolating it plan an in-place update that resolves to the number
-// it already had. Both conjuncts are load-bearing: the settings must be semantically equal, and the
-// prior state must hold no draft. Where publishing is enabled the branch above already covers the
-// second — the settings are equal in the failed-publish case too, but the retry does mint a version —
-// and where it is disabled the conjunct is the only guard: an outstanding draft on a policy whose
-// publishing the operator has taken over is the one case where somebody publishing it in the admin UI
-// between plan and apply is expected rather than exceptional, so no number is predicted for it.
-// Semantic equality is called explicitly because the framework never applies it while planning: it
-// reconciles a value the provider returned against the value it was handed, so at plan time the two
-// sides are compared byte-wise and a reindented settings body would otherwise read as a change.
-//
-// A changed tool_id is excluded from the hold as well. It requires replacement, and although
-// Terraform re-plans the create half of a replace against a null prior state — which lands on the
-// create branch above and holds nothing — the guard keeps that correctness out of core's hands: a
-// replacement policy starts its version numbering again, so carrying the old policy's number into
-// its plan would be wrong rather than merely noisy.
-//
-// The hold is correct under `terraform plan -refresh=false` in every case where an apply follows,
-// with one bounded exception worth stating. Prior state is then whatever the last apply wrote, and
-// the number this predicts is the number the apply produces unless a version was published outside
-// Terraform in the meantime. If one was, and the same plan carries an unrelated change so that
-// Update runs, the read-back reports the higher number and Terraform reports an inconsistent result
-// after apply. That is a failed apply which one refresh clears, against plan noise on every rename
-// otherwise — and with no other change in the plan there is no apply to be inconsistent with,
-// because Terraform does not call Update for a plan whose only content is a value the provider held.
+// The reverse optimisation — holding published_version at its prior value when the settings are
+// semantically equal, so that a rename does not make every blueprint interpolating the number plan an
+// in-place update — was implemented and then removed deliberately. Do not restore it. It can only
+// ever fire when something else about the policy changed, because that is the sole condition under
+// which the framework marks the number unknown at all; and that is exactly the condition under which
+// Update runs and reads the real number back. So every firing of the hold is a firing where the
+// prediction can be contradicted, and it is contradicted whenever a version was published outside
+// Terraform since the state was last refreshed — an admin publishing in the admin UI is a supported
+// workflow, not an edge case. The contradiction surfaces as "Provider produced inconsistent result
+// after apply", which tells the operator the provider is broken when it is not. An unknown is the
+// truthful plan for a number this provider does not own: UseStateForUnknown is safe on id and
+// created_at because those cannot change, and published_version can.
 func planPublishOutcome(ctx context.Context, resp *resource.ModifyPlanResponse, plan, prior *policyModel) {
 	if prior == nil {
 		return
@@ -140,15 +124,7 @@ func planPublishOutcome(ctx context.Context, resp *resource.ModifyPlanResponse, 
 	if prior.HasDraft.ValueBool() && plansToPublish(plan) {
 		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("has_draft"), types.BoolUnknown())...)
 		resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("published_version"), types.Int64Unknown())...)
-		return
 	}
-
-	equal, diags := prior.SettingsJSON.StringSemanticEquals(ctx, plan.SettingsJSON)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() || !equal || prior.HasDraft.ValueBool() || !prior.ToolID.Equal(plan.ToolID) {
-		return
-	}
-	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("published_version"), prior.PublishedVersion)...)
 }
 
 // plansToPublish reports whether this apply will attempt to publish. A value that is not yet known

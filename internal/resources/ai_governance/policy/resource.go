@@ -219,8 +219,9 @@ func (r *PolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "**\"Published version\"** in the Jamf Account admin UI — the number of the most " +
 					"recently published version, counting from 1. Null until the policy is first published. This is " +
 					"the value a blueprint's AI Governance component pins.\n\n" +
-					"An apply that publishes nothing leaves it where it is, and the plan says so rather than showing " +
-					"it as known after apply — so renaming a policy does not disturb a blueprint that pins it.",
+					"Any change to the policy plans this as known after apply, because whether a version is minted " +
+					"depends on how Jamf compares the settings — and on whether anyone published in the admin UI " +
+					"meanwhile. An apply that publishes nothing leaves the number unchanged.",
 				Computed: true,
 			},
 			"has_draft": schema.BoolAttribute{

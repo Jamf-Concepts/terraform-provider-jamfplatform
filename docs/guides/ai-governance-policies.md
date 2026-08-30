@@ -121,7 +121,6 @@ Publishing is skipped automatically when nothing changed: renaming a policy does
 
 That comparison is settings-only, and it has one consequence worth knowing. **Moving `schema_version` forward without also changing the settings publishes nothing.** The policy's own `schema_drift` clears, but the version blueprints deliver is still the one published against the older schema. Change a setting in the same apply — or accept that the deployed version stays where it is until the next real change.
 
-Because an apply that publishes nothing leaves `published_version` alone, the plan says so: renaming a policy, or editing its description, shows no change to `published_version` and so does not disturb a blueprint that pins it.
 
 ### When a publish fails
 

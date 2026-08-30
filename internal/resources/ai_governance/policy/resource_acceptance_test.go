@@ -181,10 +181,7 @@ func TestAccResource_AIGovernancePolicy_DescriptionClearedAndBlank(t *testing.T)
 //
 // Without this the resource would mint a version on every apply, and a blueprint pinning a version
 // number would fall behind on each one.
-//
-// The rename step also pins the plan-time half: published_version is held at its prior value rather
-// than going unknown, so a rename does not re-plan every blueprint interpolating it. A Computed
-// attribute with no prior-value plan modifier would read as unknown here.
+
 func TestAccResource_AIGovernancePolicy_UnchangedSettingsMintNoVersion(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
 	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
@@ -211,12 +208,6 @@ func TestAccResource_AIGovernancePolicy_UnchangedSettingsMintNoVersion(t *testin
 			},
 			{
 				Config: config("tf-acc-ai-nover-renamed-" + suffix),
-				ConfigPlanChecks: resource.ConfigPlanChecks{
-					PreApply: []plancheck.PlanCheck{
-						plancheck.ExpectKnownValue(policyResource, tfjsonpath.New("published_version"),
-							knownvalue.Int64Exact(1)),
-					},
-				},
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(policyResource, "name", "tf-acc-ai-nover-renamed-"+suffix),
 					resource.TestCheckResourceAttr(policyResource, "published_version", "1"),

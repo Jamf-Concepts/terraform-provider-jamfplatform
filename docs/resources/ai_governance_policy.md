@@ -124,7 +124,7 @@ While this is enabled, a draft that already exists is published by the next appl
 - `id` (String) Policy ID assigned by Jamf. Reference this from a blueprint's AI Governance component.
 - `published_version` (Number) **"Published version"** in the Jamf Account admin UI — the number of the most recently published version, counting from 1. Null until the policy is first published. This is the value a blueprint's AI Governance component pins.
 
-An apply that publishes nothing leaves it where it is, and the plan says so rather than showing it as known after apply — so renaming a policy does not disturb a blueprint that pins it.
+Any change to the policy plans this as known after apply, because whether a version is minted depends on how Jamf compares the settings — and on whether anyone published in the admin UI meanwhile. An apply that publishes nothing leaves the number unchanged.
 - `schema_drift` (Boolean) Whether `schema_version` is behind the version Jamf now offers for the tool. The policy keeps working; moving it forward means setting `schema_version` to the current version and reconciling `settings_json` with it.
 - `updated_at` (String) When the policy was last changed, in RFC 3339 format.
 
