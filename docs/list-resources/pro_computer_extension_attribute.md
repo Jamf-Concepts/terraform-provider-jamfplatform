@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Computer Extension Attributes | `read:pro:computer-extension-attributes` |
+  | Read Computer Extension Attributes | `extension-attributes:read` |
 ---
 
 # jamfplatform_pro_computer_extension_attribute (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Computer Extension Attributes | `read:pro:computer-extension-attributes` |
+| Read Computer Extension Attributes | `extension-attributes:read` |
 
 ## Example Usage
 

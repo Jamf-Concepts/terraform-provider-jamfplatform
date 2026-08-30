@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:user-extension-attributes` |
-  | `delete:pro:user-extension-attributes` |
-  | `read:pro:user-extension-attributes` |
-  | `update:pro:user-extension-attributes` |
+  | `user-extension-attributes:create` |
+  | `user-extension-attributes:delete` |
+  | `user-extension-attributes:read` |
+  | `user-extension-attributes:update` |
 ---
 
 # jamfplatform_pro_user_extension_attribute (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:user-extension-attributes` |
-| `delete:pro:user-extension-attributes` |
-| `read:pro:user-extension-attributes` |
-| `update:pro:user-extension-attributes` |
+| `user-extension-attributes:create` |
+| `user-extension-attributes:delete` |
+| `user-extension-attributes:read` |
+| `user-extension-attributes:update` |
 
 ## Example Usage
 

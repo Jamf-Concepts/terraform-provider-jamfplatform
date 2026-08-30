@@ -88,7 +88,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:user-initiated-enrollment") {
+	if !strings.Contains(resourcePrivileges, "user-initiated-enrollment:update") {
 		t.Fatalf("resourcePrivileges did not render the enrollment privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -117,7 +117,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:user-initiated-enrollment") {
+	if !strings.Contains(dataSourcePrivileges, "user-initiated-enrollment:read") {
 		t.Fatalf("dataSourcePrivileges did not render the enrollment privileges:\n%s", dataSourcePrivileges)
 	}
 }

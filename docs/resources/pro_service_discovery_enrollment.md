@@ -11,8 +11,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
-  | Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
+  | Read User-Initiated Enrollment | `user-initiated-enrollment:read` |
+  | Update User-Initiated Enrollment | `user-initiated-enrollment:update` |
 ---
 
 # jamfplatform_pro_service_discovery_enrollment (Resource)
@@ -31,8 +31,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read User-Initiated Enrollment | `read:pro:user-initiated-enrollment` |
-| Update User-Initiated Enrollment | `update:pro:user-initiated-enrollment` |
+| Read User-Initiated Enrollment | `user-initiated-enrollment:read` |
+| Update User-Initiated Enrollment | `user-initiated-enrollment:update` |
 
 ## Example Usage
 

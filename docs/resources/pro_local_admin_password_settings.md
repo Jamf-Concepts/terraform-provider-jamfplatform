@@ -11,7 +11,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Update Local Admin Password Settings | `update:pro:local-admin-password-settings` |
+  | Update Local Admin Password Settings | `local-admin-passwords:update` |
 ---
 
 # jamfplatform_pro_local_admin_password_settings (Resource)
@@ -30,7 +30,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Update Local Admin Password Settings | `update:pro:local-admin-password-settings` |
+| Update Local Admin Password Settings | `local-admin-passwords:update` |
 
 ## Example Usage
 

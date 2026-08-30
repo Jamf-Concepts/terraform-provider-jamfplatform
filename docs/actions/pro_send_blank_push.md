@@ -7,11 +7,10 @@ description: |-
   All targeted devices are pushed in a single request. Devices that do not accept the push are reported individually as a warning; the invocation itself still succeeds.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `devices:read` |
-  | `execute:pro:computer-commands` |
-  | `execute:pro:mobile-device-commands` |
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | View MDM command information in Jamf Pro API | `device-actions:execute` |
+  | — | `devices:read` |
 ---
 
 # jamfplatform_pro_send_blank_push (Action)
@@ -24,11 +23,10 @@ All targeted devices are pushed in a single request. Devices that do not accept 
 
 The Jamf Platform API integration used by the provider must be granted the following privileges:
 
-| Required privilege |
-|---|
-| `devices:read` |
-| `execute:pro:computer-commands` |
-| `execute:pro:mobile-device-commands` |
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| View MDM command information in Jamf Pro API | `device-actions:execute` |
+| — | `devices:read` |
 
 ## Example Usage
 

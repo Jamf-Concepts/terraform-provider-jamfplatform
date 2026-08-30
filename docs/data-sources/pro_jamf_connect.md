@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Jamf Connect Deployments | `read:pro:jamf-connect-deployments` |
+  | Read Jamf Connect Deployments | `jamf-connect-deployments:read` |
 ---
 
 # jamfplatform_pro_jamf_connect (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Jamf Connect Deployments | `read:pro:jamf-connect-deployments` |
+| Read Jamf Connect Deployments | `jamf-connect-deployments:read` |
 
 ## Example Usage
 

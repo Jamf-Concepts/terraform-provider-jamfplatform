@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
+  | Read Computer Inventory Collection Settings | `computer-inventory-collection-settings:read` |
 ---
 
 # jamfplatform_pro_computer_inventory_collection_settings (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
+| Read Computer Inventory Collection Settings | `computer-inventory-collection-settings:read` |
 
 
 

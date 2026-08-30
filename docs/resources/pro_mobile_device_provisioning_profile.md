@@ -9,9 +9,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:provisioning-profiles` |
-  | `delete:pro:provisioning-profiles` |
-  | `read:pro:provisioning-profiles` |
+  | `provisioning-profiles:create` |
+  | `provisioning-profiles:delete` |
+  | `provisioning-profiles:read` |
 ---
 
 # jamfplatform_pro_mobile_device_provisioning_profile (Resource)
@@ -26,9 +26,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:provisioning-profiles` |
-| `delete:pro:provisioning-profiles` |
-| `read:pro:provisioning-profiles` |
+| `provisioning-profiles:create` |
+| `provisioning-profiles:delete` |
+| `provisioning-profiles:read` |
 
 ## Example Usage
 

@@ -9,10 +9,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:mobile-device-applications` |
-  | `delete:pro:mobile-device-applications` |
-  | `read:pro:mobile-device-applications` |
-  | `update:pro:mobile-device-applications` |
+  | `applications:create` |
+  | `applications:delete` |
+  | `applications:read` |
+  | `applications:update` |
 ---
 
 # jamfplatform_pro_mobile_device_app (Resource)
@@ -27,10 +27,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:mobile-device-applications` |
-| `delete:pro:mobile-device-applications` |
-| `read:pro:mobile-device-applications` |
-| `update:pro:mobile-device-applications` |
+| `applications:create` |
+| `applications:delete` |
+| `applications:read` |
+| `applications:update` |
 
 ## Example Usage
 

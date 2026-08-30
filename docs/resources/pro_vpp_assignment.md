@@ -9,10 +9,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:vpp-assignment` |
-  | `delete:pro:vpp-assignment` |
-  | `read:pro:vpp-assignment` |
-  | `update:pro:vpp-assignment` |
+  | `volume-purchasing-locations:create` |
+  | `volume-purchasing-locations:delete` |
+  | `volume-purchasing-locations:read` |
+  | `volume-purchasing-locations:update` |
 ---
 
 # jamfplatform_pro_vpp_assignment (Resource)
@@ -27,10 +27,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:vpp-assignment` |
-| `delete:pro:vpp-assignment` |
-| `read:pro:vpp-assignment` |
-| `update:pro:vpp-assignment` |
+| `volume-purchasing-locations:create` |
+| `volume-purchasing-locations:delete` |
+| `volume-purchasing-locations:read` |
+| `volume-purchasing-locations:update` |
 
 ## Example Usage
 

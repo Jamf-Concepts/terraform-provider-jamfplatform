@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:directory-bindings` |
+  | `directory-bindings:read` |
 ---
 
 # jamfplatform_pro_directory_binding (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:directory-bindings` |
+| `directory-bindings:read` |
 
 ## Example Usage
 

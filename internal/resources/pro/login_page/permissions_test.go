@@ -81,7 +81,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered is a guard that the table actually rendered
 // into the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:login-disclaimer") {
+	if !strings.Contains(resourcePrivileges, "login-disclaimer:update") {
 		t.Fatalf("resourcePrivileges did not render the login-disclaimer privilege:\n%s", resourcePrivileges)
 	}
 }

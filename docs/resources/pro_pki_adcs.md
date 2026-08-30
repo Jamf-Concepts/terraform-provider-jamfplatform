@@ -13,10 +13,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create AD CS Settings | `create:pro:ad-cs-settings` |
-  | Delete AD CS Settings | `delete:pro:ad-cs-settings` |
-  | Read AD CS Settings | `read:pro:ad-cs-settings` |
-  | Update AD CS Settings | `update:pro:ad-cs-settings` |
+  | Create AD CS Settings | `ad-cs-settings:create` |
+  | Delete AD CS Settings | `ad-cs-settings:delete` |
+  | Read AD CS Settings | `ad-cs-settings:read` |
+  | Update AD CS Settings | `ad-cs-settings:update` |
 ---
 
 # jamfplatform_pro_pki_adcs (Resource)
@@ -40,10 +40,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create AD CS Settings | `create:pro:ad-cs-settings` |
-| Delete AD CS Settings | `delete:pro:ad-cs-settings` |
-| Read AD CS Settings | `read:pro:ad-cs-settings` |
-| Update AD CS Settings | `update:pro:ad-cs-settings` |
+| Create AD CS Settings | `ad-cs-settings:create` |
+| Delete AD CS Settings | `ad-cs-settings:delete` |
+| Read AD CS Settings | `ad-cs-settings:read` |
+| Update AD CS Settings | `ad-cs-settings:update` |
 
 ## Example Usage
 

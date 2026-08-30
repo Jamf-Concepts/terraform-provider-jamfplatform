@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+  | Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
+| Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
 
 ## Example Usage
 

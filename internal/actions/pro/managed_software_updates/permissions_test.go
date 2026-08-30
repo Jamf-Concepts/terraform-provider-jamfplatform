@@ -112,7 +112,7 @@ func TestPlanSDKMethods_MatchCalls(t *testing.T) {
 // TestPlanPrivileges_Rendered guards that the table actually rendered into the
 // action description.
 func TestPlanPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(planPrivileges, "create:pro:managed-software-updates") {
+	if !strings.Contains(planPrivileges, "managed-software-updates:create") {
 		t.Fatalf("planPrivileges did not render the managed-software-updates privileges:\n%s", planPrivileges)
 	}
 }

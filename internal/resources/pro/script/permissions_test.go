@@ -124,7 +124,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"pluralDataSource": pluralDataSourcePrivileges,
 		"listResource":     listResourcePrivileges,
 	} {
-		if !strings.Contains(rendered, "pro:scripts") {
+		if !strings.Contains(rendered, "scripts:") {
 			t.Errorf("%s privileges did not render the scripts privileges:\n%s", name, rendered)
 		}
 	}

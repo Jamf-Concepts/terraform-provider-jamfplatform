@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Enrollment Customizations | `read:pro:enrollment-customizations` |
+  | Read Enrollment Customizations | `enrollment-customization:read` |
 ---
 
 # jamfplatform_pro_enrollment_customization (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Enrollment Customizations | `read:pro:enrollment-customizations` |
+| Read Enrollment Customizations | `enrollment-customization:read` |
 
 ## Example Usage
 

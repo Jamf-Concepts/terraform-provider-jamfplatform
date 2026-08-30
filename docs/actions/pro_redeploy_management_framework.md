@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `execute:pro:computer-commands` |
-  | `read:pro:computer-check-in` |
+  | `computer-check-in:read` |
+  | `device-actions:execute` |
 ---
 
 # jamfplatform_pro_redeploy_management_framework (Action)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `execute:pro:computer-commands` |
-| `read:pro:computer-check-in` |
+| `computer-check-in:read` |
+| `device-actions:execute` |
 
 ## Example Usage
 

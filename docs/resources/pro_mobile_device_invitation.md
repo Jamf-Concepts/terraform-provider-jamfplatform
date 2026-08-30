@@ -8,9 +8,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:mobile-device-enrollment-invitations` |
-  | `delete:pro:mobile-device-enrollment-invitations` |
-  | `read:pro:mobile-device-enrollment-invitations` |
+  | `enrollment-invitations:create` |
+  | `enrollment-invitations:delete` |
+  | `enrollment-invitations:read` |
 ---
 
 # jamfplatform_pro_mobile_device_invitation (Resource)
@@ -23,9 +23,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:mobile-device-enrollment-invitations` |
-| `delete:pro:mobile-device-enrollment-invitations` |
-| `read:pro:mobile-device-enrollment-invitations` |
+| `enrollment-invitations:create` |
+| `enrollment-invitations:delete` |
+| `enrollment-invitations:read` |
 
 ## Example Usage
 

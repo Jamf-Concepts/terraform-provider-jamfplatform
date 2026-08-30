@@ -18,10 +18,10 @@ func TestSection_BuildingCRUD(t *testing.T) {
 	for _, want := range []string{
 		"**Required Jamf privileges**",
 		"| Jamf Pro privilege | Scoped name |",
-		"| Create Buildings | `create:pro:buildings` |",
-		"| Read Buildings | `read:pro:buildings` |",
-		"| Update Buildings | `update:pro:buildings` |",
-		"| Delete Buildings | `delete:pro:buildings` |",
+		"| Create Buildings | `buildings:create` |",
+		"| Read Buildings | `buildings:read` |",
+		"| Update Buildings | `buildings:update` |",
+		"| Delete Buildings | `buildings:delete` |",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("Section() missing %q\n--- got ---\n%s", want, got)
@@ -30,11 +30,11 @@ func TestSection_BuildingCRUD(t *testing.T) {
 }
 
 func TestSection_DeduplicatesAcrossMethods(t *testing.T) {
-	// Read + Get for the same resource both require read:pro:buildings; the
+	// Read + Get for the same resource both require buildings:read; the
 	// table must list it once.
 	got := Section(pro.Privileges, "GetBuildingV1", "ListBuildingsV1")
-	if n := strings.Count(got, "`read:pro:buildings`"); n != 1 {
-		t.Fatalf("read:pro:buildings should appear once, got %d\n%s", n, got)
+	if n := strings.Count(got, "`buildings:read`"); n != 1 {
+		t.Fatalf("buildings:read should appear once, got %d\n%s", n, got)
 	}
 }
 
@@ -111,13 +111,13 @@ func TestVerifiedPairing(t *testing.T) {
 		},
 		{
 			name:   "legacy privilege spelling, aligned",
-			scoped: []string{"create:pro:packages", "read:pro:packages"},
+			scoped: []string{"packages:create", "packages:read"},
 			legacy: []string{"Create Packages", "Read Packages"},
 			want:   true,
 		},
 		{
 			name:   "legacy privilege spelling, swapped",
-			scoped: []string{"create:pro:packages", "read:pro:packages"},
+			scoped: []string{"packages:create", "packages:read"},
 			legacy: []string{"Read Packages", "Create Packages"},
 			want:   false,
 		},

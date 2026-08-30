@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create LDAP Servers | `create:pro:ldap-servers` |
-  | Delete LDAP Servers | `delete:pro:ldap-servers` |
-  | Read LDAP Servers | `read:pro:ldap-servers` |
-  | Update LDAP Servers | `update:pro:ldap-servers` |
+  | Create LDAP Servers | `ldap-servers:create` |
+  | Delete LDAP Servers | `ldap-servers:delete` |
+  | Read LDAP Servers | `ldap-servers:read` |
+  | Update LDAP Servers | `ldap-servers:update` |
 ---
 
 # jamfplatform_pro_cloud_identity_provider (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create LDAP Servers | `create:pro:ldap-servers` |
-| Delete LDAP Servers | `delete:pro:ldap-servers` |
-| Read LDAP Servers | `read:pro:ldap-servers` |
-| Update LDAP Servers | `update:pro:ldap-servers` |
+| Create LDAP Servers | `ldap-servers:create` |
+| Delete LDAP Servers | `ldap-servers:delete` |
+| Read LDAP Servers | `ldap-servers:read` |
+| Update LDAP Servers | `ldap-servers:update` |
 
 ## Example Usage
 

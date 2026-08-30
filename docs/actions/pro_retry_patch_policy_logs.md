@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Update Patch Policies | `update:pro:patch-policies` |
+  | Update Patch Policies | `patch-policies:update` |
 ---
 
 # jamfplatform_pro_retry_patch_policy_logs (Action)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Update Patch Policies | `update:pro:patch-policies` |
+| Update Patch Policies | `patch-policies:update` |
 
 ## Example Usage
 

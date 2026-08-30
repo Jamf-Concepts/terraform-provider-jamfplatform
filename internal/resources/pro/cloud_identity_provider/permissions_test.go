@@ -97,7 +97,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:ldap-servers") {
+	if !strings.Contains(resourcePrivileges, "ldap-servers:create") {
 		t.Fatalf("resourcePrivileges did not render the ldap-servers privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -120,7 +120,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 
 // TestDataSourcePrivileges_Rendered guards that the table rendered.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:ldap-servers") {
+	if !strings.Contains(dataSourcePrivileges, "ldap-servers:read") {
 		t.Fatalf("dataSourcePrivileges did not render the ldap-servers privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -144,7 +144,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 
 // TestPluralDataSourcePrivileges_Rendered guards that the table rendered.
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "read:pro:ldap-servers") {
+	if !strings.Contains(pluralDataSourcePrivileges, "ldap-servers:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the ldap-servers privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -167,7 +167,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 
 // TestListResourcePrivileges_Rendered guards that the table rendered.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:ldap-servers") {
+	if !strings.Contains(listResourcePrivileges, "ldap-servers:read") {
 		t.Fatalf("listResourcePrivileges did not render the ldap-servers privileges:\n%s", listResourcePrivileges)
 	}
 }

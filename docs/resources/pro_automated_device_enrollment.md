@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Device Enrollment Program Instances | `create:pro:device-enrollment-program-instances` |
-  | Delete Device Enrollment Program Instances | `delete:pro:device-enrollment-program-instances` |
-  | Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
-  | Update Device Enrollment Program Instances | `update:pro:device-enrollment-program-instances` |
+  | Create Device Enrollment Program Instances | `device-enrollment-program-instances:create` |
+  | Delete Device Enrollment Program Instances | `device-enrollment-program-instances:delete` |
+  | Read Device Enrollment Program Instances | `device-enrollment-program-instances:read` |
+  | Update Device Enrollment Program Instances | `device-enrollment-program-instances:update` |
 ---
 
 # jamfplatform_pro_automated_device_enrollment (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Device Enrollment Program Instances | `create:pro:device-enrollment-program-instances` |
-| Delete Device Enrollment Program Instances | `delete:pro:device-enrollment-program-instances` |
-| Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
-| Update Device Enrollment Program Instances | `update:pro:device-enrollment-program-instances` |
+| Create Device Enrollment Program Instances | `device-enrollment-program-instances:create` |
+| Delete Device Enrollment Program Instances | `device-enrollment-program-instances:delete` |
+| Read Device Enrollment Program Instances | `device-enrollment-program-instances:read` |
+| Update Device Enrollment Program Instances | `device-enrollment-program-instances:update` |
 
 ## Example Usage
 

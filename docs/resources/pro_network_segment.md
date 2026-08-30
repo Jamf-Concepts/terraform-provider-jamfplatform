@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:network-segments` |
-  | `delete:pro:network-segments` |
-  | `read:pro:network-segments` |
-  | `update:pro:network-segments` |
+  | `network-segments:create` |
+  | `network-segments:delete` |
+  | `network-segments:read` |
+  | `network-segments:update` |
 ---
 
 # jamfplatform_pro_network_segment (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:network-segments` |
-| `delete:pro:network-segments` |
-| `read:pro:network-segments` |
-| `update:pro:network-segments` |
+| `network-segments:create` |
+| `network-segments:delete` |
+| `network-segments:read` |
+| `network-segments:update` |
 
 ## Example Usage
 

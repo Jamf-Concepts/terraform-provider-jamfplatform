@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:patch-management-software-titles` |
+  | `patch-management-software-titles:read` |
 ---
 
 # jamfplatform_pro_patch_software_title (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:patch-management-software-titles` |
+| `patch-management-software-titles:read` |
 
 ## Example Usage
 

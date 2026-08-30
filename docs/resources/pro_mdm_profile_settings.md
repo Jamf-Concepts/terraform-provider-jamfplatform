@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Automatically Renew MDM Profile Settings | `read:pro:automatically-renew-mdm-profile-settings` |
-  | Update Automatically Renew MDM Profile Settings | `update:pro:automatically-renew-mdm-profile-settings` |
+  | Read Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:read` |
+  | Update Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:update` |
 ---
 
 # jamfplatform_pro_mdm_profile_settings (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Automatically Renew MDM Profile Settings | `read:pro:automatically-renew-mdm-profile-settings` |
-| Update Automatically Renew MDM Profile Settings | `update:pro:automatically-renew-mdm-profile-settings` |
+| Read Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:read` |
+| Update Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:update` |
 
 ## Example Usage
 

@@ -66,7 +66,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered is a guard that the table actually rendered
 // into the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:self-service-branding-configuration") {
+	if !strings.Contains(resourcePrivileges, "self-service:update") {
 		t.Fatalf("resourcePrivileges did not render the branding image privileges:\n%s", resourcePrivileges)
 	}
 }

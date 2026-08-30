@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Computer Check-In | `read:pro:computer-check-in` |
-  | Update Computer Check-In | `update:pro:computer-check-in` |
+  | Read Computer Check-In | `computer-check-in:read` |
+  | Update Computer Check-In | `computer-check-in:update` |
 ---
 
 # jamfplatform_pro_computer_check_in_settings (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Computer Check-In | `read:pro:computer-check-in` |
-| Update Computer Check-In | `update:pro:computer-check-in` |
+| Read Computer Check-In | `computer-check-in:read` |
+| Update Computer Check-In | `computer-check-in:update` |
 
 ## Example Usage
 

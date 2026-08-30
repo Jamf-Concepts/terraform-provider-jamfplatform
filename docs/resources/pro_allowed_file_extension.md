@@ -8,9 +8,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:allowed-file-extension` |
-  | `delete:pro:allowed-file-extension` |
-  | `read:pro:allowed-file-extension` |
+  | `allowed-file-extension:create` |
+  | `allowed-file-extension:delete` |
+  | `allowed-file-extension:read` |
 ---
 
 # jamfplatform_pro_allowed_file_extension (Resource)
@@ -23,9 +23,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:allowed-file-extension` |
-| `delete:pro:allowed-file-extension` |
-| `read:pro:allowed-file-extension` |
+| `allowed-file-extension:create` |
+| `allowed-file-extension:delete` |
+| `allowed-file-extension:read` |
 
 ## Example Usage
 

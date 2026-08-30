@@ -15,7 +15,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
+  | Update Self Service Branding Configuration | `self-service:update` |
 ---
 
 # jamfplatform_pro_self_service_branding_image (Resource)
@@ -42,7 +42,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
+| Update Self Service Branding Configuration | `self-service:update` |
 
 ## Example Usage
 

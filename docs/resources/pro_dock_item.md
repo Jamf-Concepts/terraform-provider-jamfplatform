@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:dock-items` |
-  | `delete:pro:dock-items` |
-  | `read:pro:dock-items` |
-  | `update:pro:dock-items` |
+  | `dock-items:create` |
+  | `dock-items:delete` |
+  | `dock-items:read` |
+  | `dock-items:update` |
 ---
 
 # jamfplatform_pro_dock_item (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:dock-items` |
-| `delete:pro:dock-items` |
-| `read:pro:dock-items` |
-| `update:pro:dock-items` |
+| `dock-items:create` |
+| `dock-items:delete` |
+| `dock-items:read` |
+| `dock-items:update` |
 
 ## Example Usage
 

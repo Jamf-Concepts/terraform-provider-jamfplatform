@@ -43,7 +43,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // source calls (data_source.go). The name-lookup path resolves via
 // ResolveEnrollmentCustomizationV2ByName, which is a synthetic resolver absent
 // from the SDK privilege registry; the privilege it requires
-// (read:pro:enrollment-customizations) is already covered by
+// (enrollment-customization:read) is already covered by
 // GetEnrollmentCustomizationV2.
 var dataSourceSDKMethods = []string{
 	"GetEnrollmentCustomizationV2",

@@ -89,7 +89,7 @@ func TestSyncPlansSDKMethods_MatchCalls(t *testing.T) {
 // TestSyncPlansPrivileges_Rendered guards that the table actually rendered into
 // the action description (catches an empty/parse-skipped registry).
 func TestSyncPlansPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(syncPlansPrivileges, "read:pro:jamf-protect-settings") {
+	if !strings.Contains(syncPlansPrivileges, "jamf-protect-deployments:read") {
 		t.Fatalf("syncPlansPrivileges did not render the jamf-protect-settings privileges:\n%s", syncPlansPrivileges)
 	}
 }
@@ -113,7 +113,7 @@ func TestRetryDeploymentSDKMethods_MatchCalls(t *testing.T) {
 // TestRetryDeploymentPrivileges_Rendered guards that the table actually rendered
 // into the action description.
 func TestRetryDeploymentPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(retryDeploymentPrivileges, "deploy:pro:jamf-protect-deployment-retry") {
+	if !strings.Contains(retryDeploymentPrivileges, "jamf-protect-deployments:deploy") {
 		t.Fatalf("retryDeploymentPrivileges did not render the deployment-retry privileges:\n%s", retryDeploymentPrivileges)
 	}
 }

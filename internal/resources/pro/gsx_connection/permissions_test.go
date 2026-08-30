@@ -79,7 +79,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered is a guard that the table actually rendered
 // into the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:gsx-connection") {
+	if !strings.Contains(resourcePrivileges, "gsx-connection:update") {
 		t.Fatalf("resourcePrivileges did not render the gsx-connection privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -109,7 +109,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered is a guard that the table actually rendered
 // into the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:gsx-connection") {
+	if !strings.Contains(dataSourcePrivileges, "gsx-connection:read") {
 		t.Fatalf("dataSourcePrivileges did not render the gsx-connection privileges:\n%s", dataSourcePrivileges)
 	}
 }

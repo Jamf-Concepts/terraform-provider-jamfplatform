@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
+  | Read Advanced User Content Searches | `advanced-user-searches:read` |
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
+| Read Advanced User Content Searches | `advanced-user-searches:read` |
 
 ## Example Usage
 

@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Advanced User Content Searches | `create:pro:advanced-user-content-searches` |
-  | Delete Advanced User Content Searches | `delete:pro:advanced-user-content-searches` |
-  | Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
-  | Update Advanced User Content Searches | `update:pro:advanced-user-content-searches` |
+  | Create Advanced User Content Searches | `advanced-user-searches:create` |
+  | Delete Advanced User Content Searches | `advanced-user-searches:delete` |
+  | Read Advanced User Content Searches | `advanced-user-searches:read` |
+  | Update Advanced User Content Searches | `advanced-user-searches:update` |
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Advanced User Content Searches | `create:pro:advanced-user-content-searches` |
-| Delete Advanced User Content Searches | `delete:pro:advanced-user-content-searches` |
-| Read Advanced User Content Searches | `read:pro:advanced-user-content-searches` |
-| Update Advanced User Content Searches | `update:pro:advanced-user-content-searches` |
+| Create Advanced User Content Searches | `advanced-user-searches:create` |
+| Delete Advanced User Content Searches | `advanced-user-searches:delete` |
+| Read Advanced User Content Searches | `advanced-user-searches:read` |
+| Update Advanced User Content Searches | `advanced-user-searches:update` |
 
 ## Example Usage
 

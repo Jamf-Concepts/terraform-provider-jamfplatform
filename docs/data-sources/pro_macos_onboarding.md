@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+  | Read Onboarding Configuration | `onboarding:read` |
 ---
 
 # jamfplatform_pro_macos_onboarding (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
+| Read Onboarding Configuration | `onboarding:read` |
 
 ## Example Usage
 

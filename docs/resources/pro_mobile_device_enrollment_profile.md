@@ -9,10 +9,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:enrollment-profiles` |
-  | `delete:pro:enrollment-profiles` |
-  | `read:pro:enrollment-profiles` |
-  | `update:pro:enrollment-profiles` |
+  | `enrollment-profiles:create` |
+  | `enrollment-profiles:delete` |
+  | `enrollment-profiles:read` |
+  | `enrollment-profiles:update` |
 ---
 
 # jamfplatform_pro_mobile_device_enrollment_profile (Resource)
@@ -27,10 +27,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:enrollment-profiles` |
-| `delete:pro:enrollment-profiles` |
-| `read:pro:enrollment-profiles` |
-| `update:pro:enrollment-profiles` |
+| `enrollment-profiles:create` |
+| `enrollment-profiles:delete` |
+| `enrollment-profiles:read` |
+| `enrollment-profiles:update` |
 
 ## Example Usage
 

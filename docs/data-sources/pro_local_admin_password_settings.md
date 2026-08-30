@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `update:pro:local-admin-password-settings` |
+  | `local-admin-passwords:update` |
 ---
 
 # jamfplatform_pro_local_admin_password_settings (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `update:pro:local-admin-password-settings` |
+| `local-admin-passwords:update` |
 
 ## Example Usage
 

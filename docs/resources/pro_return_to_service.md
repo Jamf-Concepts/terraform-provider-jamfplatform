@@ -8,9 +8,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Delete Return To Service Configurations | `delete:pro:return-to-service-configurations` |
-  | View Return To Service Configurations | `read:pro:return-to-service-configurations` |
-  | Edit Return To Service Configurations | `update:pro:return-to-service-configurations` |
+  | Delete Return To Service Configurations | `return-to-service:delete` |
+  | View Return To Service Configurations | `return-to-service:read` |
+  | Edit Return To Service Configurations | `return-to-service:update` |
 ---
 
 # jamfplatform_pro_return_to_service (Resource)
@@ -23,9 +23,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Delete Return To Service Configurations | `delete:pro:return-to-service-configurations` |
-| View Return To Service Configurations | `read:pro:return-to-service-configurations` |
-| Edit Return To Service Configurations | `update:pro:return-to-service-configurations` |
+| Delete Return To Service Configurations | `return-to-service:delete` |
+| View Return To Service Configurations | `return-to-service:read` |
+| Edit Return To Service Configurations | `return-to-service:update` |
 
 ## Example Usage
 

@@ -31,7 +31,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // Read path calls. The data source additionally invokes
 // ResolveInventoryPreloadRecordV2BySerialNumber, a name-resolver convenience
 // that is not a registry entry of its own — it issues the same
-// read:pro:inventory-preload-records call as GetInventoryPreloadRecordV2, whose
+// inventory-preload-records:read call as GetInventoryPreloadRecordV2, whose
 // privilege already covers it here, so the table is complete. The match test
 // filters client calls to registry-known methods to keep the resolver from
 // being counted as undeclared.

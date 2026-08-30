@@ -120,7 +120,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:sites") {
+	if !strings.Contains(resourcePrivileges, "sites:create") {
 		t.Fatalf("resourcePrivileges did not render the sites privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -138,7 +138,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:sites") {
+	if !strings.Contains(dataSourcePrivileges, "sites:read") {
 		t.Fatalf("dataSourcePrivileges did not render the sites privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -156,7 +156,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "read:pro:sites") {
+	if !strings.Contains(pluralDataSourcePrivileges, "sites:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the sites privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -174,7 +174,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:sites") {
+	if !strings.Contains(listResourcePrivileges, "sites:read") {
 		t.Fatalf("listResourcePrivileges did not render the sites privileges:\n%s", listResourcePrivileges)
 	}
 }

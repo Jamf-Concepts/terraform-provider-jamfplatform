@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Jamf Protect Settings | `read:pro:jamf-protect-settings` |
+  | Read Jamf Protect Settings | `jamf-protect-deployments:read` |
 ---
 
 # jamfplatform_pro_jamf_protect_plans_sync (Action)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Jamf Protect Settings | `read:pro:jamf-protect-settings` |
+| Read Jamf Protect Settings | `jamf-protect-deployments:read` |
 
 ## Example Usage
 

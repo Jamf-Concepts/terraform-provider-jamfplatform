@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Scripts | `create:pro:scripts` |
-  | Delete Scripts | `delete:pro:scripts` |
-  | Read Scripts | `read:pro:scripts` |
-  | Update Scripts | `update:pro:scripts` |
+  | Create Scripts | `scripts:create` |
+  | Delete Scripts | `scripts:delete` |
+  | Read Scripts | `scripts:read` |
+  | Update Scripts | `scripts:update` |
 ---
 
 # jamfplatform_pro_script (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Scripts | `create:pro:scripts` |
-| Delete Scripts | `delete:pro:scripts` |
-| Read Scripts | `read:pro:scripts` |
-| Update Scripts | `update:pro:scripts` |
+| Create Scripts | `scripts:create` |
+| Delete Scripts | `scripts:delete` |
+| Read Scripts | `scripts:read` |
+| Update Scripts | `scripts:update` |
 
 ## Example Usage
 

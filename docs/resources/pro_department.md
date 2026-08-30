@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Departments | `create:pro:departments` |
-  | Delete Departments | `delete:pro:departments` |
-  | Read Departments | `read:pro:departments` |
-  | Update Departments | `update:pro:departments` |
+  | Create Departments | `departments:create` |
+  | Delete Departments | `departments:delete` |
+  | Read Departments | `departments:read` |
+  | Update Departments | `departments:update` |
 ---
 
 # jamfplatform_pro_department (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Departments | `create:pro:departments` |
-| Delete Departments | `delete:pro:departments` |
-| Read Departments | `read:pro:departments` |
-| Update Departments | `update:pro:departments` |
+| Create Departments | `departments:create` |
+| Delete Departments | `departments:delete` |
+| Read Departments | `departments:read` |
+| Update Departments | `departments:update` |
 
 ## Example Usage
 

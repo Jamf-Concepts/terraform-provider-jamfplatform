@@ -29,7 +29,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // calls that resolve to a privilege entry. data_source.go also calls
 // ResolveAppRequestFormInputFieldV1ByName, but that resolver is a wrapper around the
 // list endpoint and is not itself a privilege-registry entry; its required privilege
-// (read:pro:app-request-settings) is identical to GetAppRequestFormInputFieldV1, so
+// (app-request:read) is identical to GetAppRequestFormInputFieldV1, so
 // the rendered table is complete. The drift-guard test filters file calls to methods
 // known to the registry, so the resolver is excluded there too.
 var dataSourceSDKMethods = []string{

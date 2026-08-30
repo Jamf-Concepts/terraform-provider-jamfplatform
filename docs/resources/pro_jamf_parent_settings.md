@@ -11,8 +11,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Parent App Settings | `read:pro:parent-app-settings` |
-  | Update Parent App Settings | `update:pro:parent-app-settings` |
+  | Read Parent App Settings | `parent-app:read` |
+  | Update Parent App Settings | `parent-app:update` |
 ---
 
 # jamfplatform_pro_jamf_parent_settings (Resource)
@@ -31,8 +31,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Parent App Settings | `read:pro:parent-app-settings` |
-| Update Parent App Settings | `update:pro:parent-app-settings` |
+| Read Parent App Settings | `parent-app:read` |
+| Update Parent App Settings | `parent-app:update` |
 
 ## Example Usage
 

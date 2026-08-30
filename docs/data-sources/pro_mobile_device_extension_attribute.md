@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
+  | Read Mobile Device Extension Attributes | `extension-attributes:read` |
 ---
 
 # jamfplatform_pro_mobile_device_extension_attribute (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
+| Read Mobile Device Extension Attributes | `extension-attributes:read` |
 
 ## Example Usage
 

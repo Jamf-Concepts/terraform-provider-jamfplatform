@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Advanced Mobile Device Searches | `create:pro:advanced-mobile-device-searches` |
-  | Delete Advanced Mobile Device Searches | `delete:pro:advanced-mobile-device-searches` |
-  | Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
-  | Update Advanced Mobile Device Searches | `update:pro:advanced-mobile-device-searches` |
+  | Create Advanced Mobile Device Searches | `advanced-device-searches:create` |
+  | Delete Advanced Mobile Device Searches | `advanced-device-searches:delete` |
+  | Read Advanced Mobile Device Searches | `advanced-device-searches:read` |
+  | Update Advanced Mobile Device Searches | `advanced-device-searches:update` |
 ---
 
 # jamfplatform_pro_advanced_mobile_device_search (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Advanced Mobile Device Searches | `create:pro:advanced-mobile-device-searches` |
-| Delete Advanced Mobile Device Searches | `delete:pro:advanced-mobile-device-searches` |
-| Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
-| Update Advanced Mobile Device Searches | `update:pro:advanced-mobile-device-searches` |
+| Create Advanced Mobile Device Searches | `advanced-device-searches:create` |
+| Delete Advanced Mobile Device Searches | `advanced-device-searches:delete` |
+| Read Advanced Mobile Device Searches | `advanced-device-searches:read` |
+| Update Advanced Mobile Device Searches | `advanced-device-searches:update` |
 
 ## Example Usage
 

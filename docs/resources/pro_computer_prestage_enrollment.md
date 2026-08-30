@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Computer PreStage Enrollments | `create:pro:computer-prestage-enrollments` |
-  | Delete Computer PreStage Enrollments | `delete:pro:computer-prestage-enrollments` |
-  | Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
-  | Update Computer PreStage Enrollments | `update:pro:computer-prestage-enrollments` |
+  | Create Computer PreStage Enrollments | `prestage-enrollments:create` |
+  | Delete Computer PreStage Enrollments | `prestage-enrollments:delete` |
+  | Read Computer PreStage Enrollments | `prestage-enrollments:read` |
+  | Update Computer PreStage Enrollments | `prestage-enrollments:update` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Computer PreStage Enrollments | `create:pro:computer-prestage-enrollments` |
-| Delete Computer PreStage Enrollments | `delete:pro:computer-prestage-enrollments` |
-| Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
-| Update Computer PreStage Enrollments | `update:pro:computer-prestage-enrollments` |
+| Create Computer PreStage Enrollments | `prestage-enrollments:create` |
+| Delete Computer PreStage Enrollments | `prestage-enrollments:delete` |
+| Read Computer PreStage Enrollments | `prestage-enrollments:read` |
+| Update Computer PreStage Enrollments | `prestage-enrollments:update` |
 
 ## Example Usage
 

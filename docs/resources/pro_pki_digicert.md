@@ -10,10 +10,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create DigiCert Settings | `create:pro:digicert-settings` |
-  | Delete DigiCert Settings | `delete:pro:digicert-settings` |
-  | Read DigiCert Settings | `read:pro:digicert-settings` |
-  | Update DigiCert Settings | `update:pro:digicert-settings` |
+  | Create DigiCert Settings | `digicert-settings:create` |
+  | Delete DigiCert Settings | `digicert-settings:delete` |
+  | Read DigiCert Settings | `digicert-settings:read` |
+  | Update DigiCert Settings | `digicert-settings:update` |
 ---
 
 # jamfplatform_pro_pki_digicert (Resource)
@@ -30,10 +30,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create DigiCert Settings | `create:pro:digicert-settings` |
-| Delete DigiCert Settings | `delete:pro:digicert-settings` |
-| Read DigiCert Settings | `read:pro:digicert-settings` |
-| Update DigiCert Settings | `update:pro:digicert-settings` |
+| Create DigiCert Settings | `digicert-settings:create` |
+| Delete DigiCert Settings | `digicert-settings:delete` |
+| Read DigiCert Settings | `digicert-settings:read` |
+| Update DigiCert Settings | `digicert-settings:update` |
 
 ## Example Usage
 

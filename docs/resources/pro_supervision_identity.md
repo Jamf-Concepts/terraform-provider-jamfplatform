@@ -9,8 +9,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Apple Configurator Enrollment | `read:pro:apple-configurator-enrollment` |
-  | Update Apple Configurator Enrollment | `update:pro:apple-configurator-enrollment` |
+  | Read Apple Configurator Enrollment | `apple-configurator-enrollment:read` |
+  | Update Apple Configurator Enrollment | `apple-configurator-enrollment:update` |
 ---
 
 # jamfplatform_pro_supervision_identity (Resource)
@@ -25,8 +25,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Apple Configurator Enrollment | `read:pro:apple-configurator-enrollment` |
-| Update Apple Configurator Enrollment | `update:pro:apple-configurator-enrollment` |
+| Read Apple Configurator Enrollment | `apple-configurator-enrollment:read` |
+| Update Apple Configurator Enrollment | `apple-configurator-enrollment:update` |
 
 ## Example Usage
 

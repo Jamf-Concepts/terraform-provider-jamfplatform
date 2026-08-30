@@ -10,10 +10,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:ldap-servers` |
-  | `delete:pro:ldap-servers` |
-  | `read:pro:ldap-servers` |
-  | `update:pro:ldap-servers` |
+  | `ldap-servers:create` |
+  | `ldap-servers:delete` |
+  | `ldap-servers:read` |
+  | `ldap-servers:update` |
 ---
 
 # jamfplatform_pro_ldap_server (Resource)
@@ -30,10 +30,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:ldap-servers` |
-| `delete:pro:ldap-servers` |
-| `read:pro:ldap-servers` |
-| `update:pro:ldap-servers` |
+| `ldap-servers:create` |
+| `ldap-servers:delete` |
+| `ldap-servers:read` |
+| `ldap-servers:update` |
 
 ## Example Usage
 

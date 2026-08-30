@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+  | Read Self Service Branding Configuration | `self-service:read` |
 ---
 
 # jamfplatform_pro_self_service_branding_ios (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+| Read Self Service Branding Configuration | `self-service:read` |
 
 ## Example Usage
 

@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Distribution Points | `read:pro:distribution-points` |
+  | Read Distribution Points | `distribution-points:read` |
 ---
 
 # jamfplatform_pro_file_share_distribution_point (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Distribution Points | `read:pro:distribution-points` |
+| Read Distribution Points | `distribution-points:read` |
 
 ## Example Usage
 

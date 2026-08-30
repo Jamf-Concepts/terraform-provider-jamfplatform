@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Mobile Device PreStage Enrollments | `create:pro:mobile-device-prestage-enrollments` |
-  | Delete Mobile Device PreStage Enrollments | `delete:pro:mobile-device-prestage-enrollments` |
-  | Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
-  | Update Mobile Device PreStage Enrollments | `update:pro:mobile-device-prestage-enrollments` |
+  | Create Mobile Device PreStage Enrollments | `prestage-enrollments:create` |
+  | Delete Mobile Device PreStage Enrollments | `prestage-enrollments:delete` |
+  | Read Mobile Device PreStage Enrollments | `prestage-enrollments:read` |
+  | Update Mobile Device PreStage Enrollments | `prestage-enrollments:update` |
 ---
 
 # jamfplatform_pro_mobile_device_prestage_enrollment (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Mobile Device PreStage Enrollments | `create:pro:mobile-device-prestage-enrollments` |
-| Delete Mobile Device PreStage Enrollments | `delete:pro:mobile-device-prestage-enrollments` |
-| Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
-| Update Mobile Device PreStage Enrollments | `update:pro:mobile-device-prestage-enrollments` |
+| Create Mobile Device PreStage Enrollments | `prestage-enrollments:create` |
+| Delete Mobile Device PreStage Enrollments | `prestage-enrollments:delete` |
+| Read Mobile Device PreStage Enrollments | `prestage-enrollments:read` |
+| Update Mobile Device PreStage Enrollments | `prestage-enrollments:update` |
 
 ## Example Usage
 

@@ -9,10 +9,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | — | `create:pro:patch-management-software-titles` |
-  | — | `delete:pro:patch-management-software-titles` |
-  | Read Patch Management Software Titles | `read:pro:patch-management-software-titles` |
-  | Update Patch Management Software Titles | `update:pro:patch-management-software-titles` |
+  | — | `patch-management-software-titles:create` |
+  | — | `patch-management-software-titles:delete` |
+  | Read Patch Management Software Titles | `patch-management-software-titles:read` |
+  | Update Patch Management Software Titles | `patch-management-software-titles:update` |
 ---
 
 # jamfplatform_pro_patch_software_title (Resource)
@@ -27,10 +27,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| — | `create:pro:patch-management-software-titles` |
-| — | `delete:pro:patch-management-software-titles` |
-| Read Patch Management Software Titles | `read:pro:patch-management-software-titles` |
-| Update Patch Management Software Titles | `update:pro:patch-management-software-titles` |
+| — | `patch-management-software-titles:create` |
+| — | `patch-management-software-titles:delete` |
+| Read Patch Management Software Titles | `patch-management-software-titles:read` |
+| Update Patch Management Software Titles | `patch-management-software-titles:update` |
 
 ## Example Usage
 

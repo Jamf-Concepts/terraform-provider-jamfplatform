@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
+  | Read Computer PreStage Enrollments | `prestage-enrollments:read` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Computer PreStage Enrollments | `read:pro:computer-prestage-enrollments` |
+| Read Computer PreStage Enrollments | `prestage-enrollments:read` |
 
 ## Example Usage
 

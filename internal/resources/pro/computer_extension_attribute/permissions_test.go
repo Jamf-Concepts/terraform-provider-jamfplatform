@@ -84,7 +84,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:computer-extension-attributes") {
+	if !strings.Contains(resourcePrivileges, "extension-attributes:create") {
 		t.Fatalf("resourcePrivileges did not render the computer-extension-attributes privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -102,7 +102,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:computer-extension-attributes") {
+	if !strings.Contains(dataSourcePrivileges, "extension-attributes:read") {
 		t.Fatalf("dataSourcePrivileges did not render the computer-extension-attributes privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -120,7 +120,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:computer-extension-attributes") {
+	if !strings.Contains(listResourcePrivileges, "extension-attributes:read") {
 		t.Fatalf("listResourcePrivileges did not render the computer-extension-attributes privileges:\n%s", listResourcePrivileges)
 	}
 }

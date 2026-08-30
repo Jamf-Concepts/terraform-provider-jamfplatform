@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Categories | `create:pro:categories` |
-  | Delete Categories | `delete:pro:categories` |
-  | Read Categories | `read:pro:categories` |
-  | Update Categories | `update:pro:categories` |
+  | Create Categories | `categories:create` |
+  | Delete Categories | `categories:delete` |
+  | Read Categories | `categories:read` |
+  | Update Categories | `categories:update` |
 ---
 
 # jamfplatform_pro_category (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Categories | `create:pro:categories` |
-| Delete Categories | `delete:pro:categories` |
-| Read Categories | `read:pro:categories` |
-| Update Categories | `update:pro:categories` |
+| Create Categories | `categories:create` |
+| Delete Categories | `categories:delete` |
+| Read Categories | `categories:read` |
+| Update Categories | `categories:update` |
 
 ## Example Usage
 

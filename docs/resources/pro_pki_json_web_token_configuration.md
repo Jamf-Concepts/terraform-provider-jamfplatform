@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:json-web-token-configuration` |
-  | `delete:pro:json-web-token-configuration` |
-  | `read:pro:json-web-token-configuration` |
-  | `update:pro:json-web-token-configuration` |
+  | `json-web-token-configuration:create` |
+  | `json-web-token-configuration:delete` |
+  | `json-web-token-configuration:read` |
+  | `json-web-token-configuration:update` |
 ---
 
 # jamfplatform_pro_pki_json_web_token_configuration (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:json-web-token-configuration` |
-| `delete:pro:json-web-token-configuration` |
-| `read:pro:json-web-token-configuration` |
-| `update:pro:json-web-token-configuration` |
+| `json-web-token-configuration:create` |
+| `json-web-token-configuration:delete` |
+| `json-web-token-configuration:read` |
+| `json-web-token-configuration:update` |
 
 ## Example Usage
 

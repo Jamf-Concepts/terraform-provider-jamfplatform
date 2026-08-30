@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:computer-enrollment-invitations` |
+  | `enrollment-invitations:read` |
 ---
 
 # jamfplatform_pro_computer_invitation (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:computer-enrollment-invitations` |
+| `enrollment-invitations:read` |
 
 ## Example Usage
 

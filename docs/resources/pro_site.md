@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:sites` |
-  | `delete:pro:sites` |
-  | `read:pro:sites` |
-  | `update:pro:sites` |
+  | `sites:create` |
+  | `sites:delete` |
+  | `sites:read` |
+  | `sites:update` |
 ---
 
 # jamfplatform_pro_site (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:sites` |
-| `delete:pro:sites` |
-| `read:pro:sites` |
-| `update:pro:sites` |
+| `sites:create` |
+| `sites:delete` |
+| `sites:read` |
+| `sites:update` |
 
 ## Example Usage
 

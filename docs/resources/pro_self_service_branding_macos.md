@@ -8,11 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
-  | Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
-  | Read Self Service | `read:pro:self-service` |
-  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
-  | Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
+  | Create Self Service Branding Configuration | `self-service:create` |
+  | Delete Self Service Branding Configuration | `self-service:delete` |
+  | Read Self Service Branding Configuration | `self-service:read` |
+  | Update Self Service Branding Configuration | `self-service:update` |
 ---
 
 # jamfplatform_pro_self_service_branding_macos (Resource)
@@ -25,11 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Self Service Branding Configuration | `create:pro:self-service-branding-configuration` |
-| Delete Self Service Branding Configuration | `delete:pro:self-service-branding-configuration` |
-| Read Self Service | `read:pro:self-service` |
-| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
-| Update Self Service Branding Configuration | `update:pro:self-service-branding-configuration` |
+| Create Self Service Branding Configuration | `self-service:create` |
+| Delete Self Service Branding Configuration | `self-service:delete` |
+| Read Self Service Branding Configuration | `self-service:read` |
+| Update Self Service Branding Configuration | `self-service:update` |
 
 ## Example Usage
 

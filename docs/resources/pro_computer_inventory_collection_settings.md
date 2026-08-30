@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Custom Paths | `create:pro:custom-paths` |
-  | Delete Custom Paths | `delete:pro:custom-paths` |
-  | Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
-  | Update Computer Inventory Collection Settings | `update:pro:computer-inventory-collection-settings` |
+  | Read Computer Inventory Collection Settings | `computer-inventory-collection-settings:read` |
+  | Update Computer Inventory Collection Settings | `computer-inventory-collection-settings:update` |
+  | Create Custom Paths | `custom-paths:create` |
+  | Delete Custom Paths | `custom-paths:delete` |
 ---
 
 # jamfplatform_pro_computer_inventory_collection_settings (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Custom Paths | `create:pro:custom-paths` |
-| Delete Custom Paths | `delete:pro:custom-paths` |
-| Read Computer Inventory Collection Settings | `read:pro:computer-inventory-collection-settings` |
-| Update Computer Inventory Collection Settings | `update:pro:computer-inventory-collection-settings` |
+| Read Computer Inventory Collection Settings | `computer-inventory-collection-settings:read` |
+| Update Computer Inventory Collection Settings | `computer-inventory-collection-settings:update` |
+| Create Custom Paths | `custom-paths:create` |
+| Delete Custom Paths | `custom-paths:delete` |
 
 ## Example Usage
 

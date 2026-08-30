@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:mac-applications` |
-  | `delete:pro:mac-applications` |
-  | `read:pro:mac-applications` |
-  | `update:pro:mac-applications` |
+  | `applications:create` |
+  | `applications:delete` |
+  | `applications:read` |
+  | `applications:update` |
 ---
 
 # jamfplatform_pro_mac_app_store_app (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:mac-applications` |
-| `delete:pro:mac-applications` |
-| `read:pro:mac-applications` |
-| `update:pro:mac-applications` |
+| `applications:create` |
+| `applications:delete` |
+| `applications:read` |
+| `applications:update` |
 
 ## Example Usage
 

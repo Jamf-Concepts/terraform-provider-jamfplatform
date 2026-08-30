@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:restricted-software` |
-  | `delete:pro:restricted-software` |
-  | `read:pro:restricted-software` |
-  | `update:pro:restricted-software` |
+  | `restricted-software:create` |
+  | `restricted-software:delete` |
+  | `restricted-software:read` |
+  | `restricted-software:update` |
 ---
 
 # jamfplatform_pro_restricted_software (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:restricted-software` |
-| `delete:pro:restricted-software` |
-| `read:pro:restricted-software` |
-| `update:pro:restricted-software` |
+| `restricted-software:create` |
+| `restricted-software:delete` |
+| `restricted-software:read` |
+| `restricted-software:update` |
 
 ## Example Usage
 

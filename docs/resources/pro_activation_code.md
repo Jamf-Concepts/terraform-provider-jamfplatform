@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:activation-code` |
-  | `update:pro:activation-code` |
+  | `activation-code:read` |
+  | `activation-code:update` |
 ---
 
 # jamfplatform_pro_activation_code (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:activation-code` |
-| `update:pro:activation-code` |
+| `activation-code:read` |
+| `activation-code:update` |
 
 ## Example Usage
 

@@ -6,10 +6,9 @@ description: |-
   Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Self Service | `read:pro:self-service` |
-  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+  | Required privilege |
+  |---|
+  | `self-service:read` |
 ---
 
 # jamfplatform_pro_self_service_branding_macos (Data Source)
@@ -20,10 +19,9 @@ Read the current Jamf Pro Self Service macOS branding configuration (Settings > 
 
 The Jamf Platform API integration used by the provider must be granted the following privileges:
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Self Service | `read:pro:self-service` |
-| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+| Required privilege |
+|---|
+| `self-service:read` |
 
 ## Example Usage
 

@@ -98,7 +98,7 @@ func TestFlushPolicyLogsSDKMethods_MatchCalls(t *testing.T) {
 // TestFlushPolicyLogsPrivileges_Rendered guards that the table actually rendered
 // into the action description (catches an empty/parse-skipped registry).
 func TestFlushPolicyLogsPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(flushPolicyLogsPrivileges, "execute:pro:flush-policy-logs") {
+	if !strings.Contains(flushPolicyLogsPrivileges, "flush-policy-logs:execute") {
 		t.Fatalf("flushPolicyLogsPrivileges did not render the flush-policy-logs privileges:\n%s", flushPolicyLogsPrivileges)
 	}
 }
@@ -122,7 +122,7 @@ func TestRedeployManagementFrameworkSDKMethods_MatchCalls(t *testing.T) {
 // TestRedeployManagementFrameworkPrivileges_Rendered guards that the table
 // actually rendered into the action description.
 func TestRedeployManagementFrameworkPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(redeployManagementFrameworkPrivileges, "execute:pro:computer-commands") {
+	if !strings.Contains(redeployManagementFrameworkPrivileges, "device-actions:execute") {
 		t.Fatalf("redeployManagementFrameworkPrivileges did not render the redeploy privileges:\n%s", redeployManagementFrameworkPrivileges)
 	}
 }

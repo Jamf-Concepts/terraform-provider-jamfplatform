@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read SMTP Server | `read:pro:smtp-server` |
-  | Update SMTP Server | `update:pro:smtp-server` |
+  | Read SMTP Server | `smtp-server:read` |
+  | Update SMTP Server | `smtp-server:update` |
 ---
 
 # jamfplatform_pro_smtp_server (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read SMTP Server | `read:pro:smtp-server` |
-| Update SMTP Server | `update:pro:smtp-server` |
+| Read SMTP Server | `smtp-server:read` |
+| Update SMTP Server | `smtp-server:update` |
 
 ## Example Usage
 

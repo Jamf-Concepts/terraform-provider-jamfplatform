@@ -94,7 +94,7 @@ func TestResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:patch-management-software-titles") {
+	if !strings.Contains(resourcePrivileges, "patch-management-software-titles:create") {
 		t.Fatalf("resourcePrivileges did not render the patch software title privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -117,7 +117,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 
 // TestDataSourcePrivileges_Rendered guards the data source table rendered.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:patch-management-software-titles") {
+	if !strings.Contains(dataSourcePrivileges, "patch-management-software-titles:read") {
 		t.Fatalf("dataSourcePrivileges did not render the patch software title privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -140,7 +140,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 
 // TestListResourcePrivileges_Rendered guards the list resource table rendered.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:patch-management-software-titles") {
+	if !strings.Contains(listResourcePrivileges, "patch-management-software-titles:read") {
 		t.Fatalf("listResourcePrivileges did not render the patch software title privileges:\n%s", listResourcePrivileges)
 	}
 }

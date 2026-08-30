@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `delete:pro:computer-commands` |
+  | `device-actions:delete` |
 ---
 
 # jamfplatform_pro_flush_mdm_commands (Action)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `delete:pro:computer-commands` |
+| `device-actions:delete` |
 
 ## Example Usage
 

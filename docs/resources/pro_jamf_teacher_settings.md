@@ -11,8 +11,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Teacher App Settings | `read:pro:teacher-app-settings` |
-  | Update Teacher App Settings | `update:pro:teacher-app-settings` |
+  | Read Teacher App Settings | `teacher-app:read` |
+  | Update Teacher App Settings | `teacher-app:update` |
 ---
 
 # jamfplatform_pro_jamf_teacher_settings (Resource)
@@ -31,8 +31,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Teacher App Settings | `read:pro:teacher-app-settings` |
-| Update Teacher App Settings | `update:pro:teacher-app-settings` |
+| Read Teacher App Settings | `teacher-app:read` |
+| Update Teacher App Settings | `teacher-app:update` |
 
 ## Example Usage
 

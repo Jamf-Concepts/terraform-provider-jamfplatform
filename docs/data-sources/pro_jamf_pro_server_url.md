@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read JSS URL | `read:pro:jss-url` |
+  | Read JSS URL | `jss-url:read` |
 ---
 
 # jamfplatform_pro_jamf_pro_server_url (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read JSS URL | `read:pro:jss-url` |
+| Read JSS URL | `jss-url:read` |
 
 ## Example Usage
 

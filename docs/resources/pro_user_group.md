@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:user-groups` |
-  | `delete:pro:user-groups` |
-  | `read:pro:user-groups` |
-  | `update:pro:user-groups` |
+  | `user-groups:create` |
+  | `user-groups:delete` |
+  | `user-groups:read` |
+  | `user-groups:update` |
 ---
 
 # jamfplatform_pro_user_group (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:user-groups` |
-| `delete:pro:user-groups` |
-| `read:pro:user-groups` |
-| `update:pro:user-groups` |
+| `user-groups:create` |
+| `user-groups:delete` |
+| `user-groups:read` |
+| `user-groups:update` |
 
 ## Example Usage
 

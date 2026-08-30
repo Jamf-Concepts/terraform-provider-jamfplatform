@@ -176,13 +176,13 @@ func TestSendBlankPushPrivileges_Rendered(t *testing.T) {
 }
 
 func TestRenewMdmProfilePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(renewMdmProfilePrivileges, "execute:pro:mobile-device-commands") {
+	if !strings.Contains(renewMdmProfilePrivileges, "device-actions:execute") {
 		t.Fatalf("renewMdmProfilePrivileges did not render the expected privilege:\n%s", renewMdmProfilePrivileges)
 	}
 }
 
 func TestFlushMdmCommandsPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(flushMdmCommandsPrivileges, "delete:pro:computer-commands") {
+	if !strings.Contains(flushMdmCommandsPrivileges, "device-actions:delete") {
 		t.Fatalf("flushMdmCommandsPrivileges did not render the expected privilege:\n%s", flushMdmCommandsPrivileges)
 	}
 }

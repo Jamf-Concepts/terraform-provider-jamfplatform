@@ -9,10 +9,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:patch-policies` |
-  | `delete:pro:patch-policies` |
-  | `read:pro:patch-policies` |
-  | `update:pro:patch-policies` |
+  | `patch-policies:create` |
+  | `patch-policies:delete` |
+  | `patch-policies:read` |
+  | `patch-policies:update` |
 ---
 
 # jamfplatform_pro_patch_policy (Resource)
@@ -27,10 +27,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:patch-policies` |
-| `delete:pro:patch-policies` |
-| `read:pro:patch-policies` |
-| `update:pro:patch-policies` |
+| `patch-policies:create` |
+| `patch-policies:delete` |
+| `patch-policies:read` |
+| `patch-policies:update` |
 
 ## Example Usage
 

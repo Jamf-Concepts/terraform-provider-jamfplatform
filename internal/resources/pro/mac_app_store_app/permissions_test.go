@@ -123,7 +123,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSource":   dataSourcePrivileges,
 		"listResource": listResourcePrivileges,
 	} {
-		if !strings.Contains(got, "pro:mac-applications") {
+		if !strings.Contains(got, "applications:") {
 			t.Errorf("%sPrivileges did not render the mac-applications privileges:\n%s", name, got)
 		}
 	}

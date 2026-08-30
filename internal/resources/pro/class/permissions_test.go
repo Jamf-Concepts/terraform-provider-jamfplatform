@@ -128,7 +128,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSource":   dataSourcePrivileges,
 		"listResource": listResourcePrivileges,
 	} {
-		if !strings.Contains(section, ":pro:classes") {
+		if !strings.Contains(section, "classes:") {
 			t.Errorf("%sPrivileges did not render the classes privileges:\n%s", name, section)
 		}
 	}

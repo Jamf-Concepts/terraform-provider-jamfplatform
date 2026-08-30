@@ -85,7 +85,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	for _, want := range []string{"read:pro:pki", "update:pro:pki"} {
+	for _, want := range []string{"pki:read", "pki:update"} {
 		if !strings.Contains(resourcePrivileges, want) {
 			t.Fatalf("resourcePrivileges did not render %q:\n%s", want, resourcePrivileges)
 		}
@@ -116,7 +116,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:pki") {
+	if !strings.Contains(dataSourcePrivileges, "pki:read") {
 		t.Fatalf("dataSourcePrivileges did not render the PKI read privilege:\n%s", dataSourcePrivileges)
 	}
 }

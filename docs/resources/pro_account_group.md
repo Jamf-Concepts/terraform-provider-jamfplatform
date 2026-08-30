@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:accounts` |
-  | `delete:pro:accounts` |
-  | `read:pro:accounts` |
-  | `update:pro:accounts` |
+  | `accounts:create` |
+  | `accounts:delete` |
+  | `accounts:read` |
+  | `accounts:update` |
 ---
 
 # jamfplatform_pro_account_group (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:accounts` |
-| `delete:pro:accounts` |
-| `read:pro:accounts` |
-| `update:pro:accounts` |
+| `accounts:create` |
+| `accounts:delete` |
+| `accounts:read` |
+| `accounts:update` |
 
 ## Example Usage
 

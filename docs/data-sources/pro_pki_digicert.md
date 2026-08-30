@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read DigiCert Settings | `read:pro:digicert-settings` |
+  | Read DigiCert Settings | `digicert-settings:read` |
 ---
 
 # jamfplatform_pro_pki_digicert (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read DigiCert Settings | `read:pro:digicert-settings` |
+| Read DigiCert Settings | `digicert-settings:read` |
 
 
 

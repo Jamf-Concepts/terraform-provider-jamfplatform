@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:disk-encryption-configurations` |
+  | `disk-encryption-configurations:read` |
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:disk-encryption-configurations` |
+| `disk-encryption-configurations:read` |
 
 ## Example Usage
 

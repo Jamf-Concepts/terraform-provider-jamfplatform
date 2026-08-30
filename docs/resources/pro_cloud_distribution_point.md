@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
-  | Update Cloud Distribution Point | `update:pro:cloud-distribution-point` |
+  | Read Cloud Distribution Point | `cloud-distribution-point:read` |
+  | Update Cloud Distribution Point | `cloud-distribution-point:update` |
 ---
 
 # jamfplatform_pro_cloud_distribution_point (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Cloud Distribution Point | `read:pro:cloud-distribution-point` |
-| Update Cloud Distribution Point | `update:pro:cloud-distribution-point` |
+| Read Cloud Distribution Point | `cloud-distribution-point:read` |
+| Update Cloud Distribution Point | `cloud-distribution-point:update` |
 
 ## Example Usage
 

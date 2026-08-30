@@ -31,7 +31,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // dataSourceSDKMethods lists the SDK methods the package data source (in
 // data_source.go) calls. The data source also calls ResolvePackageV1ByName,
 // but that is an SDK resolver helper layered over the GET /v1/packages list
-// endpoint — it requires no privilege beyond read:pro:packages, which
+// endpoint — it requires no privilege beyond packages:read, which
 // GetPackageV1 already documents — so it carries no registry entry and is not
 // listed here.
 var dataSourceSDKMethods = []string{
