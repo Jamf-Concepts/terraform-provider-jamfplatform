@@ -30,9 +30,10 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/jsonvalue"
 )
 
 //go:embed profiles.json
@@ -300,20 +301,20 @@ func validateValue(declared *Schema, value any, path string, problems *[]Problem
 			Path: path,
 			Detail: fmt.Sprintf(
 				"Apple declares %s here, but the value is %s; Jamf rejects a write whose value has the wrong type.",
-				article(string(declared.Type)), describe(value),
+				jsonvalue.Article(string(declared.Type)), jsonvalue.Describe(value),
 			),
 		})
 		return
 	}
 
 	if declared.Type == KindInteger {
-		if number, ok := numeric(value); ok && (number > maxJamfInteger || number < minJamfInteger) {
+		if number, ok := jsonvalue.Numeric(value); ok && (number > maxJamfInteger || number < minJamfInteger) {
 			*problems = append(*problems, Problem{
 				Kind: IntegerOutOfRange,
 				Path: path,
 				Detail: fmt.Sprintf(
 					"Apple leaves this integer unbounded, but Jamf stores it in a 32-bit signed field and rejects a write outside %d to %d; the value is %s.",
-					minJamfInteger, maxJamfInteger, formatNumber(number),
+					minJamfInteger, maxJamfInteger, jsonvalue.FormatNumber(number),
 				),
 			})
 		}
@@ -351,10 +352,10 @@ func matchesKind(declared Kind, value any) bool {
 		_, ok := value.(bool)
 		return ok
 	case KindInteger:
-		number, ok := numeric(value)
+		number, ok := jsonvalue.Numeric(value)
 		return ok && number == float64(int64(number))
 	case KindReal:
-		_, ok := numeric(value)
+		_, ok := jsonvalue.Numeric(value)
 		return ok
 	case KindString, KindData, KindDate:
 		_, ok := value.(string)
@@ -371,65 +372,6 @@ func matchesKind(declared Kind, value any) bool {
 }
 
 // numeric returns a JSON number as a float64.
-func numeric(value any) (float64, bool) {
-	switch typed := value.(type) {
-	case float64:
-		return typed, true
-	case float32:
-		return float64(typed), true
-	case int:
-		return float64(typed), true
-	case int64:
-		return float64(typed), true
-	case json.Number:
-		parsed, err := typed.Float64()
-		return parsed, err == nil
-	default:
-		return 0, false
-	}
-}
-
-// formatNumber renders a JSON number for a diagnostic without exponent notation, so a large integer
-// reads as the digits the author wrote.
-func formatNumber(number float64) string {
-	if number == float64(int64(number)) {
-		return strconv.FormatInt(int64(number), 10)
-	}
-	return strconv.FormatFloat(number, 'f', -1, 64)
-}
-
-// describe names a value's JSON type for a diagnostic.
-func describe(value any) string {
-	switch typed := value.(type) {
-	case bool:
-		return "a boolean"
-	case string:
-		return "a string"
-	case []any:
-		return "an array"
-	case map[string]any:
-		return "an object"
-	case nil:
-		return "null"
-	default:
-		if number, ok := numeric(typed); ok {
-			if number == float64(int64(number)) {
-				return "a whole number"
-			}
-			return "a fractional number"
-		}
-		return "an unexpected value"
-	}
-}
-
-// article prefixes a declared type name for readability in a sentence.
-func article(name string) string {
-	if strings.HasPrefix(name, "a") || strings.HasPrefix(name, "i") {
-		return "an " + name
-	}
-	return "a " + name
-}
-
 // foldedIndex maps each declared key to itself by lower-cased name, for case-insensitive lookup.
 func foldedIndex(keys map[string]*Schema) map[string]string {
 	index := make(map[string]string, len(keys))
