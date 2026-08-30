@@ -181,7 +181,6 @@ func TestAccResource_AIGovernancePolicy_DescriptionClearedAndBlank(t *testing.T)
 //
 // Without this the resource would mint a version on every apply, and a blueprint pinning a version
 // number would fall behind on each one.
-
 func TestAccResource_AIGovernancePolicy_UnchangedSettingsMintNoVersion(t *testing.T) {
 	testhelpers.AccPreCheckAIGovernance(t)
 	tool := testhelpers.RequireAIGovernanceTool(t, "com.anthropic.claudecode")
