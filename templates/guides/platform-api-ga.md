@@ -9,6 +9,12 @@ description: |-
 The Jamf Platform API is leaving public beta and will reach general availability shortly. The
 date will be announced separately.
 
+> **This guide is provisional and may change without notice.** The Platform API is still moving
+> ahead of GA, and a late change to it changes this page: the constructs listed as removed, the
+> attribute and scope behaviour, and the version numbers quoted throughout are all subject to
+> revision. Re-read it against the release you are actually upgrading to rather than working from
+> a copy taken earlier.
+
 **Action is needed in every configuration built against the public beta.** Nothing carries over
 untouched: the gateway host, the credentials and the scope attribute all change, and several
 constructs have been removed. Upgrade promptly once GA is announced, as the beta gateway is
@@ -48,10 +54,11 @@ release and is bound to the beta gateway, so an unconstrained configuration, or 
 a range, resolves to a version that cannot reach the API. Relax the constraint to `~> 0.29`, or
 remove it, once the stable release is available.
 
-This release can be adopted before GA. Setting `base_url` to the GA gateway is sufficient: an
-existing public-beta API integration authenticates against that host, and beta credentials remain
-valid until GA. Adopting early leaves only the credential replacement outstanding at GA, with the
-remaining changes already validated against your own configuration.
+This release can be adopted before GA, with no credential work to do so: an existing public-beta
+API integration authenticates against the GA host, and beta credentials remain valid until GA.
+Make the `base_url` change and the state removals described under [Action needed](#action-needed),
+and only the credential replacement is left outstanding at GA, with the remaining changes already
+validated against your own configuration.
 
 ## Action needed
 
@@ -187,13 +194,13 @@ Refer to that page for how to register an integration and where to obtain its cl
 secret.
 
 **Permissions are organised by capability and action** rather than by product privilege list. The
-names take the form `compliance-benchmarks:create` or `device-groups:read`. Every resource, data
-source, list resource and action page in this documentation carries a **Required Jamf privileges**
-table already expressed in that form. Use those tables to select permissions for the replacement
+names take the form `compliance-benchmarks:create` or `device-groups:read`. Resource, data source,
+list resource and action pages in this documentation carry a **Required Jamf privileges** table
+already expressed in that form. Use those tables to select permissions for the replacement
 integration, granting only what the constructs in use require.
 
 **Three scope levels are available.** A *platform environment* is a group of tenants across
-product types, and is the only scope with access to the Platform APIs. A *tenant* scope targets a
+product types, and is the scope to prefer for new integrations. A *tenant* scope targets a
 single Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud tenant, for single-product
 access. An *organization management* scope reaches a first set of organization-level resources;
 the provider currently rejects it at configure time with an explanatory diagnostic, as none of the
@@ -251,9 +258,11 @@ provider "jamfplatform" {
 Both attributes may also be supplied through `JAMFPLATFORM_ENVIRONMENT_ID` and
 `JAMFPLATFORM_TENANT_ID`. They are mutually exclusive and both optional: an integration targets
 one or the other, `environment_id` is preferred, and `tenant_id` is the legacy method of targeting
-integrations without a platform environment. A tenant-scoped GA integration remains valid where
-single-product access is intended, but does not reach the Platform API constructs, the AI
-Governance policies among them.
+integrations without a platform environment. A tenant-scoped GA integration remains valid and
+reaches every construct in this provider but one family: the AI Governance policies and the AI
+tool catalogue require environment scope, and refuse any other with a diagnostic naming the
+construct. Everything else — Blueprints, Compliance Benchmarks, device groups, devices, all of
+`jamfplatform_pro_*` and all of `jamfplatform_security_cloud_*` — works under either scope.
 
 Three failure modes follow from the change, in decreasing order of how easily they are diagnosed:
 
@@ -319,10 +328,10 @@ a credential problem, and the provider reports it as such.
 
 | Area | Constructs |
 |---|---|
-| Custom DNS | `dns_zone` (with data sources and list resource), `dns_search_domain`, `dns_hostname_mappings` |
+| Custom DNS | `dns_zone` (with data sources and list resource), `dns_search_domain` and `dns_hostname_mappings` (each with a data source) |
 | ZTNA gateways | `ztna_gateway` and `ztna_grouped_gateway` (both with data sources and list resources), `ztna_shared_gateways` data source |
 | ZTNA access policy | `ztna_app` (with data sources and list resource), `ztna_predefined_apps` data source |
-| Device groups | `security_cloud_device_group` (with data sources and list resource) |
+| Device groups | `security_cloud_device_group` (with data sources and list resource) — distinct from the Platform Services `jamfplatform_device_group` |
 | UEM Connect | `uem_connect` (with data source and list resource), plus the `uem_connect_synchronize` and `activation_profile_deploy` actions |
 | Catalogues | `content_categories` data source |
 
@@ -335,9 +344,11 @@ empties the app's assignment. The behaviour differs per construct.
 
 `jamfplatform_ai_governance_policy` manages the settings delivered to an AI tool — Claude Code,
 Claude Desktop and OpenAI Codex at present — and a blueprint delivers a pinned policy version to
-Macs. `jamfplatform_ai_governance_tool` and `jamfplatform_ai_governance_tools` read the product
+Macs. It ships with singular and plural data sources and a list resource.
+`jamfplatform_ai_governance_tool` and `jamfplatform_ai_governance_tools` read the product
 catalogue. The settings body is the tool vendor's own JSON, validated at plan time against the
-schema the platform serves. Further detail:
+schema the platform serves. This is the one construct family that requires environment scope,
+described under [Scope](#scope). Further detail:
 [AI Governance policies](ai-governance-policies).
 
 ### Elsewhere
