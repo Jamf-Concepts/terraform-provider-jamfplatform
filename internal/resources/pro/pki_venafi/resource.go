@@ -179,7 +179,7 @@ func (r *PkiVenafiResource) Configure(ctx context.Context, req resource.Configur
 // when jamf_public_key_rotation changes versus prior state the key will be
 // regenerated, so plan it Unknown to avoid a "provider produced inconsistent
 // result after apply" error. Otherwise the attribute-level UseStateForUnknown
-// keeps the stored key. Mirrors api_client's client_secret/credential_rotation.
+// keeps the stored key.
 func (r *PkiVenafiResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	// No prediction needed on create (no prior state) or destroy (null plan).
 	if req.Plan.Raw.IsNull() || req.State.Raw.IsNull() {

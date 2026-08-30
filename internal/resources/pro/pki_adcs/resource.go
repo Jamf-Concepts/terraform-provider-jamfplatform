@@ -167,7 +167,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"api_client_id": schema.StringAttribute{
-				MarkdownDescription: "**\"API Client ID\"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges. **`OUTBOUND` only.** Optional; omit to preserve the current value. (Reference a `jamfplatform_pro_api_client`'s `client_id`.)",
+				MarkdownDescription: "**\"API Client ID\"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges. **`OUTBOUND` only.** Optional; omit to preserve the current value. API clients are created in Jamf Account, not by this provider.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{

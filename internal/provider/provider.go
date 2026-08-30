@@ -56,7 +56,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_user_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_volume_purchasing_content_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/allowed_file_extension"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_client"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role_privileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_form_field"
@@ -426,7 +425,6 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 	return []func() resource.Resource{
 		account.NewAccountResource,
 		account_group.NewAccountGroupResource,
-		api_client.NewApiClientResource,
 		api_role.NewApiRoleResource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentResource,
 		benchmark.NewBenchmarkResource,
@@ -535,8 +533,6 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		account.NewAccountDataSource,
 		account_group.NewAccountGroupDataSource,
 		account_privileges.NewAccountPrivilegesDataSource,
-		api_client.NewApiClientDataSource,
-		api_client.NewApiClientsDataSource,
 		api_role.NewApiRoleDataSource,
 		api_role_privileges.NewApiRolePrivilegesDataSource,
 		api_role.NewApiRolesDataSource,
@@ -679,7 +675,6 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 	return []func() list.ListResource{
 		account.NewAccountListResource,
 		account_group.NewAccountGroupListResource,
-		api_client.NewApiClientListResource,
 		api_role.NewApiRoleListResource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentListResource,
 		benchmark.NewBenchmarkListResource,
