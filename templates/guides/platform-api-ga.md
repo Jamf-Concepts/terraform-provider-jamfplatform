@@ -81,8 +81,10 @@ required to adopt the release before GA.
 4. **Register a replacement API integration and update the provider credentials.** Record the
    permissions held by each beta integration beforehand, so the equivalents can be selected. See
    [API integration credentials](#api-integration-credentials).
-5. **Replace `tenant_id` with `environment_id`**, if the replacement integration is
-   environment-scoped, as most will be. See [Scope](#scope).
+5. **Replace `tenant_id` with `environment_id`.** Register the replacement as
+   environment-scoped unless single-product access is deliberately what you want: tenant scope is
+   the legacy option, costs one integration per tenant per product, and cannot hold the blueprint
+   or compliance-benchmark permissions at all. See [Scope](#scope).
 
 ## Removed constructs
 
@@ -200,9 +202,15 @@ already expressed in that form. Use those tables to select permissions for the r
 integration, granting only what the constructs in use require.
 
 **Three scope levels are available.** A *platform environment* is a group of tenants across
-product types, and is the scope to prefer for new integrations. A *tenant* scope targets a
-single Jamf Pro, Jamf School, Jamf Protect or Jamf Security Cloud tenant, for single-product
-access. An *organization management* scope reaches a first set of organization-level resources;
+product types, and is the scope to prefer for two concrete reasons: one environment-scoped
+integration covers the whole group, and it is the only scope on which the blueprint and
+compliance-benchmark permissions can be selected. A *tenant* scope targets a single Jamf Pro, Jamf
+School, Jamf Protect or Jamf Security Cloud tenant. Jamf describes it as the legacy method of
+targeting an integration without a platform environment, and it is one integration per tenant per
+product — a Jamf Pro tenant and a Jamf Protect tenant are two integrations to create and two
+credential pairs to rotate. Treat it as the exception, for a deliberately single-product
+integration, rather than the default. An *organization management* scope reaches a first set of
+organization-level resources;
 the provider currently rejects it at configure time with an explanatory diagnostic, as none of the
 constructs requiring it have been built. The scope selected determines the provider configuration
 described under [Scope](#scope).
@@ -258,11 +266,17 @@ provider "jamfplatform" {
 Both attributes may also be supplied through `JAMFPLATFORM_ENVIRONMENT_ID` and
 `JAMFPLATFORM_TENANT_ID`. They are mutually exclusive and both optional: an integration targets
 one or the other, `environment_id` is preferred, and `tenant_id` is the legacy method of targeting
-integrations without a platform environment. A tenant-scoped GA integration remains valid and
-reaches every construct in this provider but one family: the AI Governance policies and the AI
-tool catalogue require environment scope, and refuse any other with a diagnostic naming the
-construct. Everything else — Blueprints, Compliance Benchmarks, device groups, devices, all of
-`jamfplatform_pro_*` and all of `jamfplatform_security_cloud_*` — works under either scope.
+integrations without a platform environment. A tenant-scoped GA integration remains valid for
+single-product access, and `jamfplatform_pro_*` and `jamfplatform_security_cloud_*` work under
+either scope. Two sets of constructs are out of its reach, for two different reasons:
+
+- **AI Governance** is refused by the provider, at configure time, with a diagnostic naming the
+  construct. `jamfplatform_ai_governance_policy` and the tool catalogue require environment scope.
+- **Blueprints and compliance benchmarks** are refused by Jamf. Their permissions cannot be
+  selected when a tenant-scoped integration is created in Jamf Account at GA, so such an
+  integration can never hold them and the calls fail with `403 BAD_PERMISSIONS`. The provider
+  cannot pre-empt this, as a permission absent from the integration is indistinguishable from any
+  other privilege gap — so choose environment scope if the configuration manages either.
 
 Three failure modes follow from the change, in decreasing order of how easily they are diagnosed:
 
@@ -347,8 +361,8 @@ Claude Desktop and OpenAI Codex at present — and a blueprint delivers a pinned
 Macs. It ships with singular and plural data sources and a list resource.
 `jamfplatform_ai_governance_tool` and `jamfplatform_ai_governance_tools` read the product
 catalogue. The settings body is the tool vendor's own JSON, validated at plan time against the
-schema the platform serves. This is the one construct family that requires environment scope,
-described under [Scope](#scope). Further detail:
+schema the platform serves. This is the one construct family the provider itself gates on
+environment scope, described under [Scope](#scope). Further detail:
 [AI Governance policies](ai-governance-policies).
 
 ### Elsewhere
@@ -370,6 +384,6 @@ described under [Scope](#scope). Further detail:
 | `no schema available for <type>.<name> while reading state; this is a bug in Terraform and should be reported` | Not a Terraform defect. A removed resource remains in state; remove it with `terraform state rm`. Every operation in the workspace fails until it is removed. |
 | `404 page not found`, with no JSON body | `base_url` includes a path. Supply the host only. |
 | `403 OWNERSHIP_FORBIDDEN` | `environment_id` supplied for a tenant-scoped integration, or the reverse. |
-| `403 BAD_PERMISSIONS` | The integration lacks a permission the construct requires. The resource's documentation page lists them. |
+| `403 BAD_PERMISSIONS` | The integration lacks a permission the construct requires; the resource's documentation page lists them. On a blueprint or compliance benchmark, also the signature of a tenant-scoped integration: those permissions are selectable only on an environment-scoped one. |
 | `403 NOT_ENTITLED` on a Security Cloud construct | The tenant does not hold that Security Cloud capability. Additional permissions will not resolve it. |
 | Authentication fails outright | Beta credentials in use. Register a replacement integration in Jamf Account. |
