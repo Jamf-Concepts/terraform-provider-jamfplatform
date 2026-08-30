@@ -6,10 +6,10 @@ description: |-
   Redeploys the Jamf management framework (binary and MDM management profile) to a computer.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Computer Check-In | `execute:pro:computer-commands` |
-  | Send Computer Remote Command to Install Package | `read:pro:computer-check-in` |
+  | Required privilege |
+  |---|
+  | `execute:pro:computer-commands` |
+  | `read:pro:computer-check-in` |
 ---
 
 # jamfplatform_pro_redeploy_management_framework (Action)
@@ -20,10 +20,10 @@ Redeploys the Jamf management framework (binary and MDM management profile) to a
 
 The Jamf Platform API integration used by the provider must be granted the following privileges:
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Computer Check-In | `execute:pro:computer-commands` |
-| Send Computer Remote Command to Install Package | `read:pro:computer-check-in` |
+| Required privilege |
+|---|
+| `execute:pro:computer-commands` |
+| `read:pro:computer-check-in` |
 
 ## Example Usage
 

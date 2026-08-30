@@ -47,6 +47,60 @@ type privilege struct {
 	legacy string
 }
 
+// legacyVerbActions maps the verb a Jamf Pro privilege name starts with to the
+// action half of the scoped identifier it must correspond to. Only the four CRUD
+// verbs are listed: they are the ones whose pairing is mechanically checkable.
+var legacyVerbActions = map[string]string{
+	"Create": "create",
+	"Read":   "read",
+	"Update": "update",
+	"Delete": "delete",
+}
+
+// verifiedPairing reports whether Scoped[i] and Legacy[i] can be trusted to
+// describe the same privilege.
+//
+// A single privilege has no ordering to get wrong, so it is always trusted —
+// which keeps every ordinary one-privilege method's admin-UI label intact. From
+// two privileges up the pairing is checked: each legacy name's leading verb must
+// name the action its scoped partner ends in. A name whose verb is not one of
+// the four CRUD verbs (e.g. "Send Computer Remote Command to Install Package")
+// cannot be checked, so the whole method is treated as unverified rather than
+// half-trusted.
+func verifiedPairing(scoped, legacy []string) bool {
+	if len(scoped) < 2 {
+		return true
+	}
+	for i, name := range legacy {
+		verb, _, ok := strings.Cut(name, " ")
+		if !ok {
+			return false
+		}
+		action, known := legacyVerbActions[verb]
+		if !known {
+			return false
+		}
+		if !hasField(scoped[i], action) {
+			return false
+		}
+	}
+	return true
+}
+
+// hasField reports whether action is one of scoped's colon-delimited fields.
+// Matching any field rather than a fixed position keeps the check working across
+// both privilege spellings Jamf has shipped — the GA {capability}:{action} form
+// puts the action last, the older {action}:pro:{resource} form put it first —
+// without the check needing to know which one it is looking at.
+func hasField(scoped, action string) bool {
+	for field := range strings.SplitSeq(scoped, ":") {
+		if field == action {
+			return true
+		}
+	}
+	return false
+}
+
 // collect returns the deduplicated privileges required across the named
 // methods, plus the names not found in the registry. A missing slice lets the
 // caller (and the drift-guard test) detect a method that was renamed or
@@ -55,6 +109,16 @@ type privilege struct {
 // case; when they differ (a handful of cross-resource Pro operations) the
 // scoped identifiers are emitted without a legacy name rather than guessing a
 // pairing the SDK does not encode.
+//
+// Equal lengths are necessary but not sufficient, because the SDK emits Scoped
+// sorted and Legacy in spec order. Those agree only when spec order happens to
+// be alphabetical, so index pairing on a multi-privilege method can silently
+// mislabel every row — e.g. UpdateManagedSoftwareUpdateFeatureToggleV1 carries
+// Scoped [create, read, update] against Legacy [Read, Create, Update], which
+// pairs "Read Managed Software Updates" with `managed-software-updates:create`.
+// verifiedPairing therefore checks the pairing before it is trusted; an
+// unverifiable one is emitted unlabelled, because a missing label is honest and
+// a wrong one is not.
 func collect(reg Registry, methods []string) (privs []privilege, noPrivilege bool, missing []string) {
 	seen := make(map[string]int) // scoped -> index into privs
 	known := 0
@@ -65,7 +129,7 @@ func collect(reg Registry, methods []string) (privs []privilege, noPrivilege boo
 			continue
 		}
 		known++
-		aligned := len(mp.Scoped) == len(mp.Legacy)
+		aligned := len(mp.Scoped) == len(mp.Legacy) && verifiedPairing(mp.Scoped, mp.Legacy)
 		for i, scoped := range mp.Scoped {
 			legacy := ""
 			if aligned {
