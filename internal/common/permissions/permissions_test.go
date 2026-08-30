@@ -122,6 +122,29 @@ func TestVerifiedPairing(t *testing.T) {
 			want:   false,
 		},
 		{
+			name:   "same action, capability matches its description",
+			scoped: []string{"gsx-connection:read", "push-certificates:read"},
+			legacy: []string{"Read GSX Connection", "Read Push Certificates"},
+			want:   true,
+		},
+		{
+			// GetDeviceGroupsForDeviceV1 as published. Every action is "read", so
+			// the verb test passes whatever the order; only the capability check
+			// catches that `device-groups:read` is not "Read Computers".
+			name:   "same action, capability contradicts its description",
+			scoped: []string{"device-groups:read", "devices:read"},
+			legacy: []string{"Read Computers", "Read Mobile Devices"},
+			want:   false,
+		},
+		{
+			// Jamf spells the same noun two ways either side of the boundary;
+			// de-pluralising and splitting on punctuation has to absorb both.
+			name:   "singular/plural and hyphen spellings still match",
+			scoped: []string{"categories:read", "computer-check-in:read"},
+			legacy: []string{"Read Categories", "Read Computer Check-In"},
+			want:   true,
+		},
+		{
 			name:   "non-CRUD verb cannot be checked",
 			scoped: []string{"computer-check-in:read", "device-actions:execute"},
 			legacy: []string{"Send Computer Remote Command to Install Package", "Read Computer Check-In"},
@@ -190,5 +213,41 @@ func TestSection_WellPairedSiblingStillLabelsTheRow(t *testing.T) {
 	}
 	if strings.Contains(got, "| Update Packages | `packages:read` |") {
 		t.Errorf("an unverified pairing mislabelled a row:\n%s", got)
+	}
+}
+
+func TestSharesWord(t *testing.T) {
+	cases := []struct {
+		capability, description string
+		want                    bool
+	}{
+		{"device-groups", "Smart Mobile Device Groups", true},
+		{"device-groups", "Static Computer Groups", true},
+		{"device-groups", "Computers", false},
+		{"devices", "Mobile Devices", true},
+		{"categories", "Categories", true},
+		{"computer-check-in", "Computer Check-In", true},
+		{"gsx-connection", "GSX Connection", true},
+		{"push-certificates", "GSX Connection", false},
+		{"self-service", "Self Service", true},
+		{"packages", "Packages", true},
+		{"", "Packages", false},
+		{"packages", "", false},
+	}
+	for _, c := range cases {
+		if got := sharesWord(c.capability, c.description); got != c.want {
+			t.Errorf("sharesWord(%q, %q) = %v, want %v", c.capability, c.description, got, c.want)
+		}
+	}
+}
+
+// TestVerifiedPairing_SingleIsAlwaysTrusted pins the deliberate asymmetry: the
+// capability check is NOT applied to a lone privilege, because there is no
+// ordering to get wrong and many legitimate one-privilege methods carry a label
+// whose wording does not overlap its capability slug. Tightening this would
+// strip labels from ordinary constructs for no correctness gain.
+func TestVerifiedPairing_SingleIsAlwaysTrusted(t *testing.T) {
+	if !verifiedPairing([]string{"jamf-protect-deployments:read"}, []string{"Read Jamf Protect Settings"}) {
+		t.Error("a single privilege must stay trusted even when its label does not match its capability")
 	}
 }

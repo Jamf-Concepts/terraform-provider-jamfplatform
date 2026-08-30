@@ -20,6 +20,7 @@ import (
 	"maps"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 )
@@ -48,8 +49,8 @@ type privilege struct {
 }
 
 // legacyVerbActions maps the verb a Jamf Pro privilege name starts with to the
-// action half of the scoped identifier it must correspond to. Only the four CRUD
-// verbs are listed: they are the ones whose pairing is mechanically checkable.
+// action of the scoped identifier it must correspond to. Only the four CRUD
+// verbs are listed: they are the ones a privilege name states unambiguously.
 var legacyVerbActions = map[string]string{
 	"Create": "create",
 	"Read":   "read",
@@ -62,17 +63,31 @@ var legacyVerbActions = map[string]string{
 //
 // A single privilege has no ordering to get wrong, so it is always trusted —
 // which keeps every ordinary one-privilege method's admin-UI label intact. From
-// two privileges up the pairing is checked: each legacy name's leading verb must
-// name the action its scoped partner ends in. A name whose verb is not one of
-// the four CRUD verbs (e.g. "Send Computer Remote Command to Install Package")
-// cannot be checked, so the whole method is treated as unverified rather than
-// half-trusted.
+// two privileges up, each row must survive two independent checks:
+//
+//   - the legacy name's leading verb must name the action its scoped partner
+//     carries. A verb outside the four CRUD ones (e.g. "Send Computer Remote
+//     Command to Install Package") cannot be checked at all.
+//   - the legacy name's remaining words must share a word with the scoped
+//     identifier's capability. The verb alone is not enough: where every
+//     privilege on a method has the SAME action the verb test passes whatever
+//     the order, so it would wave through GetDeviceGroupsForDeviceV1's
+//     [device-groups:read, devices:read] against [Read Computers, Read Mobile
+//     Devices] — which labels `device-groups:read` "Read Computers". Nine pro
+//     methods are same-action pairs; this is what separates the eight whose
+//     order happens to be right from the one whose is not.
+//
+// Failing either check marks the whole method unverified rather than
+// half-trusted, because a set with one bad row gives no reason to trust the
+// others. That the two lists are sets rather than pairs is the SDK's documented
+// contract — 640 methods do not even agree on length — so this function is
+// deliberately conservative: it confirms a row rather than assuming one.
 func verifiedPairing(scoped, legacy []string) bool {
 	if len(scoped) < 2 {
 		return true
 	}
 	for i, name := range legacy {
-		verb, _, ok := strings.Cut(name, " ")
+		verb, rest, ok := strings.Cut(name, " ")
 		if !ok {
 			return false
 		}
@@ -83,8 +98,44 @@ func verifiedPairing(scoped, legacy []string) bool {
 		if !hasField(scoped[i], action) {
 			return false
 		}
+		capability, _, _ := strings.Cut(scoped[i], ":")
+		if !sharesWord(capability, rest) {
+			return false
+		}
 	}
 	return true
+}
+
+// sharesWord reports whether a capability slug and the descriptive half of a
+// Jamf Pro privilege name have a word in common — "device-groups" against
+// "Smart Mobile Device Groups" does, "device-groups" against "Computers" does
+// not. Both sides are lowercased, split on anything non-alphanumeric and
+// de-pluralised by a trailing "s", which is enough to match Jamf's own two
+// spellings of the same noun ("Categories"/`categories`, "Check-In"/`check-in`)
+// without a vocabulary to maintain.
+func sharesWord(capability, description string) bool {
+	want := make(map[string]bool)
+	for _, w := range splitWords(capability) {
+		want[w] = true
+	}
+	for _, w := range splitWords(description) {
+		if want[w] {
+			return true
+		}
+	}
+	return false
+}
+
+// splitWords lowercases s, splits it on every non-alphanumeric run and strips a
+// trailing "s" from each word.
+func splitWords(s string) []string {
+	var out []string
+	for _, w := range strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}) {
+		out = append(out, strings.TrimSuffix(w, "s"))
+	}
+	return out
 }
 
 // hasField reports whether action is one of scoped's colon-delimited fields.
