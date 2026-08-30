@@ -63,8 +63,12 @@ import (
 //
 // A failure after the first write leaves a real integration on the tenant, and
 // the diagnostics say so: silently reporting "create failed" would send the user
-// to re-apply into the one-per-tenant conflict instead of converging. The ID is
-// committed to state before the follow-up writes for the same reason.
+// to re-apply into the one-per-tenant conflict instead of converging. The ID and
+// identity are committed to state before the follow-up writes for the same reason,
+// which is also what covers a failed read-back at the end: state already holds the
+// integration by then, so that path reports what happened rather than orphaning it.
+// Values only the trailing read-back can fill are nulled before the early commit —
+// see nullUnknownReadBackValues.
 func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan UEMConnectResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -101,14 +105,8 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	plan.ID = types.StringValue(created.ID)
-	// Committed before the follow-up writes so a failure between them leaves the
-	// integration recoverable. The address is Unknown on the platform_tenant form —
-	// the tenant resolves it — and an unknown value in the state a failed apply
-	// returns is itself a provider fault, which would bury the diagnostic this
-	// early commit exists to deliver. The trailing GET fills it in.
-	if plan.UEMServerURL.IsUnknown() {
-		plan.UEMServerURL = types.StringNull()
-	}
+	nullUnknownReadBackValues(&plan)
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, uemConnectIdentityModel{ID: plan.ID})...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -122,8 +120,11 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading created Jamf Security Cloud UEM Connect integration",
-			"The integration was created and its settings applied, but reading it back failed, so Terraform state "+
-				"may not reflect it fully. Re-run to refresh. Reported: "+err.Error(),
+			"The integration was created with ID \""+created.ID+"\" and its settings applied, but reading it back "+
+				"failed, so Terraform has recorded its ID and the configured values without confirming what was "+
+				"stored. The next plan will refresh it — do not re-create it: Jamf Security Cloud allows one UEM "+
+				"Connect integration per tenant, so a second create would be refused. Underlying error: "+
+				err.Error(),
 		)
 		return
 	}
@@ -139,6 +140,48 @@ func (r *UEMConnectResource) Create(ctx context.Context, req resource.CreateRequ
 
 	tflog.Trace(ctx, "created Jamf Security Cloud UEM Connect integration", map[string]any{"id": created.ID})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// nullUnknownReadBackValues nulls the values only the trailing read-back can fill, so
+// that the state committed before it is wholly known.
+//
+// Terraform answers an unknown value in the state a failed apply returns with an
+// "invalid result object after apply" error of its own — a provider-bug notice that
+// would bury the diagnostic the early commit exists to deliver. The server address is
+// Unknown on the platform_tenant form, where the tenant resolves it. The mapping
+// fields are Optional and Computed with no default, and UseNonNullStateForUnknown has
+// no prior state to hold on to during a create, so each one the configuration leaves
+// out arrives Unknown as well. Both mapping blocks are checked for nil first because
+// each is a pointer, absent when the configuration omits it.
+func nullUnknownReadBackValues(plan *UEMConnectResourceModel) {
+	if plan.UEMServerURL.IsUnknown() {
+		plan.UEMServerURL = types.StringNull()
+	}
+	if mapping := plan.UserDataFieldMapping; mapping != nil {
+		if mapping.DeviceName.IsUnknown() {
+			mapping.DeviceName = types.StringNull()
+		}
+		if mapping.UserName.IsUnknown() {
+			mapping.UserName = types.StringNull()
+		}
+		if mapping.UserID.IsUnknown() {
+			mapping.UserID = types.StringNull()
+		}
+		if mapping.PhoneNumber.IsUnknown() {
+			mapping.PhoneNumber = types.StringNull()
+		}
+		if email := mapping.Email; email != nil {
+			if email.Source.IsUnknown() {
+				email.Source = types.StringNull()
+			}
+			if email.OnlyIfEmailMissing.IsUnknown() {
+				email.OnlyIfEmailMissing = types.BoolNull()
+			}
+		}
+	}
+	if group := plan.GroupMembershipMapping; group != nil && group.Enabled.IsUnknown() {
+		group.Enabled = types.BoolNull()
+	}
 }
 
 // Read refreshes Terraform state with the stored integration.

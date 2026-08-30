@@ -25,6 +25,14 @@ import (
 )
 
 // Create creates a new Jamf Security Cloud ZTNA grouped gateway.
+//
+// A read-back that fails after the create has succeeded still commits state. The group
+// exists on the tenant by then, and returning without state would leave it there
+// unmanaged, with the retry building a second group over the same member gateways
+// rather than converging. What is committed is the plan carrying the new ID — the
+// configured values are what the next refresh reconciles, and an errored apply does
+// not run Terraform's plan-consistency check. The one value only the read-back could
+// have filled is nulled first — see nullUnknownReadBackValues.
 func (r *GroupedGatewayResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan GroupedGatewayResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -58,7 +66,16 @@ func (r *GroupedGatewayResource) Create(ctx context.Context, req resource.Create
 
 	got, err := r.client.GetZtnaGroupedGatewayV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Security Cloud ZTNA grouped gateway", err.Error())
+		nullUnknownReadBackValues(&plan)
+		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, groupedGatewayIdentityModel{ID: plan.ID})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		resp.Diagnostics.AddError(
+			"Error reading created Jamf Security Cloud ZTNA grouped gateway",
+			"The grouped gateway was created with ID \""+created.ID+"\" but could not be read back, so Terraform "+
+				"has recorded its ID and the configured values without its creation timestamp. The next plan will "+
+				"refresh it — do not re-create it: a second create would build another group over the same member "+
+				"gateways and leave this one unmanaged. Underlying error: "+err.Error(),
+		)
 		return
 	}
 	resp.Diagnostics.Append(assignGroupedGatewayResourceModel(ctx, &plan, got)...)
@@ -73,6 +90,20 @@ func (r *GroupedGatewayResource) Create(ctx context.Context, req resource.Create
 
 	tflog.Trace(ctx, "created Jamf Security Cloud ZTNA grouped gateway", map[string]any{"id": created.ID})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// nullUnknownReadBackValues nulls the values only the create read-back could have
+// filled, so the partial state committed when it fails is wholly known.
+//
+// Terraform answers an unknown value in the state a failed apply returns with an
+// "invalid result object after apply" error of its own — a provider-bug notice that
+// would bury the diagnostic the partial state exists to deliver. created_at is the
+// one such value here: it is Computed with no default, so it is Unknown in every
+// create plan.
+func nullUnknownReadBackValues(plan *GroupedGatewayResourceModel) {
+	if plan.CreatedAt.IsUnknown() {
+		plan.CreatedAt = types.StringNull()
+	}
 }
 
 // Read refreshes the Terraform state with the latest grouped gateway

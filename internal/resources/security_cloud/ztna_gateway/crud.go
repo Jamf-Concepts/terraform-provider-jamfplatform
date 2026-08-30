@@ -29,6 +29,16 @@ import (
 // The create response carries only the new ID, so the gateway is read back for
 // the server-assigned parts — the status block, and the dedicated egress
 // addresses on an internet gateway.
+//
+// A read-back that fails after the create has succeeded still commits state. The
+// gateway exists on the tenant by then, and returning without state would leave it
+// running unmanaged: nothing stops Jamf Security Cloud provisioning a second gateway
+// on the retry, which would take another dedicated IP address from the account's
+// allotment and leave the first one to be found in the admin UI. What is committed is
+// the plan carrying the new ID — the configured values are what the next refresh
+// reconciles, and an errored apply does not run Terraform's plan-consistency check.
+// Values only the read-back could have filled are nulled first — see
+// nullUnknownReadBackValues.
 func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan, config GatewayResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -63,7 +73,17 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := r.client.GetZtnaGatewayV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Security Cloud ZTNA gateway", err.Error())
+		nullUnknownReadBackValues(&plan)
+		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, gatewayIdentityModel{ID: plan.ID})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		resp.Diagnostics.AddError(
+			"Error reading created Jamf Security Cloud ZTNA gateway",
+			"The gateway was created with ID \""+created.ID+"\" but could not be read back, so Terraform has "+
+				"recorded its ID and the configured values without the server-assigned status or dedicated egress "+
+				"addresses. The next plan will refresh those — do not re-create it: nothing prevents a second "+
+				"gateway being provisioned alongside this one, which would consume another dedicated IP address "+
+				"from the account's allotment and leave this one running unmanaged. Underlying error: "+err.Error(),
+		)
 		return
 	}
 	resp.Diagnostics.Append(assignGatewayResourceModel(ctx, &plan, got)...)
@@ -78,6 +98,34 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 
 	tflog.Trace(ctx, "created Jamf Security Cloud ZTNA gateway", map[string]any{"id": created.ID})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// nullUnknownReadBackValues nulls the values only the create read-back could have
+// filled, so the partial state committed when it fails is wholly known.
+//
+// Terraform answers an unknown value in the state a failed apply returns with an
+// "invalid result object after apply" error of its own — a provider-bug notice that
+// would bury the diagnostic the partial state exists to deliver. All four values here
+// are Computed with no default, so each is Unknown in every create plan: the status
+// block, the dedicated egress addresses, and the authentication method each tunnel
+// endpoint reports. `enabled` is Optional and Computed but carries a default, so the
+// framework has already resolved it at plan time.
+func nullUnknownReadBackValues(plan *GatewayResourceModel) {
+	if plan.Status.IsUnknown() {
+		plan.Status = types.ObjectNull(statusAttributeTypes)
+	}
+	if plan.DedicatedEgressIPAddresses.IsUnknown() {
+		plan.DedicatedEgressIPAddresses = types.ListNull(types.StringType)
+	}
+	if plan.IPSec == nil {
+		return
+	}
+	if plan.IPSec.JamfSide != nil && plan.IPSec.JamfSide.AuthMethod.IsUnknown() {
+		plan.IPSec.JamfSide.AuthMethod = types.StringNull()
+	}
+	if plan.IPSec.CustomerSide != nil && plan.IPSec.CustomerSide.AuthMethod.IsUnknown() {
+		plan.IPSec.CustomerSide.AuthMethod = types.StringNull()
+	}
 }
 
 // Read refreshes the Terraform state with the latest gateway representation.

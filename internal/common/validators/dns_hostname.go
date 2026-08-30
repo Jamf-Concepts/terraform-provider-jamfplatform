@@ -25,6 +25,15 @@ const maxDNSNameLength = 253
 // accepted.
 const maxDNSLabelLength = 63
 
+// wildcardAll is the ZTNA app host name that matches every destination — the
+// full-tunnel case. It is a host name pattern rather than an API enum value, which
+// is why it is a literal here and not an SDK constant.
+const wildcardAll = "*"
+
+// wildcardLabelPrefix is the only position a ZTNA app host name may carry a
+// wildcard in: replacing the whole leading label.
+const wildcardLabelPrefix = "*."
+
 // dnsHostnameValidator checks that a string attribute holds a DNS host name of the
 // form the Jamf Security Cloud custom DNS endpoints accept.
 type dnsHostnameValidator struct{}
@@ -59,8 +68,8 @@ type dnsHostnameValidator struct{}
 // the suspect is a Guava version or a switch away from it, not a typo here.
 //
 // Wildcards are refused by both endpoints, so they are refused here. A ZTNA app's
-// hostnames are a different vocabulary that does take them — this validator is not
-// the one for that field.
+// hostnames are a different vocabulary that does take them — use
+// DNSHostnameOrWildcard for that field.
 //
 // Null and unknown values defer to the server, per STYLE_GUIDE §Config-time
 // validators.
@@ -92,6 +101,89 @@ func (v dnsHostnameValidator) ValidateString(_ context.Context, req validator.St
 			reason+" Got: "+value,
 		)
 	}
+}
+
+// dnsHostnameOrWildcardValidator checks that a string attribute holds a DNS host
+// name of the form the Jamf Security Cloud ZTNA app endpoint accepts, which is the
+// same grammar as dnsHostnameValidator plus two wildcard forms.
+type dnsHostnameOrWildcardValidator struct{}
+
+// DNSHostnameOrWildcard returns a validator.String enforcing DNS host name form
+// with wildcard prefixes allowed.
+//
+// The ZTNA app `hostnames` field is a traffic-matching pattern rather than a name
+// to resolve, so it takes two forms the DNS endpoints refuse:
+//
+//   - `*` on its own, which matches everything — the full-tunnel case
+//   - a `*.` prefix on an otherwise valid name, e.g. `*.example.com`
+//
+// The wildcard may only replace a whole leading label: `sub.*.example.com`,
+// `*.*.example.com` and `*x.example.com` are all refused. Everything after the
+// prefix is held to the grammar dnsHostnameProblem enforces, which was
+// re-probed against this endpoint on 2026-08-30 across 12 inputs and matched the
+// DNS endpoints' verdict on every non-wildcard one — underscores away from a label
+// boundary, non-ASCII runes, a trailing root dot and a single bare label are all
+// accepted, and a final all-numeric label is refused. That is why the two share a
+// grammar function rather than each carrying their own copy.
+//
+// The endpoint answers every refusal with one message,
+// `400 [INVALID_FIELD] hostnames[]: Invalid hostname allowing wildcard prefix`,
+// which names neither the offending entry nor what was wrong with it.
+//
+// Null and unknown values defer to the server, per STYLE_GUIDE §Config-time
+// validators.
+func DNSHostnameOrWildcard() validator.String {
+	return dnsHostnameOrWildcardValidator{}
+}
+
+// Description returns a plain-text description of the validator.
+func (dnsHostnameOrWildcardValidator) Description(_ context.Context) string {
+	return "must be a DNS host name of up to 253 characters, optionally prefixed with \"*.\" to match " +
+		"subdomains, or \"*\" on its own to match everything"
+}
+
+// MarkdownDescription returns the markdown description of the validator.
+func (v dnsHostnameOrWildcardValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+// ValidateString implements validator.String.
+func (v dnsHostnameOrWildcardValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	value := req.ConfigValue.ValueString()
+	if reason := dnsHostnameOrWildcardProblem(value); reason != "" {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid host name",
+			reason+" Got: "+value,
+		)
+	}
+}
+
+// dnsHostnameOrWildcardProblem returns a sentence describing the first thing wrong
+// with name, or the empty string when it is acceptable.
+//
+// A bare `*` short-circuits, and a `*.` prefix is stripped before the remainder is
+// handed to the shared grammar. Anything else containing a `*` falls through to
+// dnsHostnameProblem, which reports it as a wildcard rather than as a stray
+// character — the reason that function checks label characters before label
+// boundaries.
+func dnsHostnameOrWildcardProblem(name string) string {
+	if name == wildcardAll {
+		return ""
+	}
+	if rest, ok := strings.CutPrefix(name, wildcardLabelPrefix); ok {
+		if rest == "" {
+			return "A wildcard prefix must be followed by a host name, as in `*.example.com`."
+		}
+		if utf8.RuneCountInString(name) > maxDNSNameLength {
+			return "A host name may be at most 253 characters, including the wildcard prefix."
+		}
+		return dnsHostnameProblem(rest)
+	}
+	return dnsHostnameProblem(name)
 }
 
 // dnsHostnameProblem returns a sentence describing the first thing wrong with name,

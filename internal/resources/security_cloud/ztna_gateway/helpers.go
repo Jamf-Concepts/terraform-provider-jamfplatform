@@ -106,16 +106,27 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 // dependency edge disappears in the same apply that removes the reference, so this
 // is worth spelling out rather than passing through.
 //
-// Two things about the referrer list. First, a ZTNA access policy is one, and it is
-// the referrer Terraform can do nothing about: the provider does not manage access
-// policies, so the reference lives in the admin UI and no apply ordering will
-// release it. The bundled spec names GATEWAY_REFERENCED_BY_ACCESS_POLICIES,
-// GATEWAY_REFERENCED_BY_DNS_ZONES and GATEWAY_REFERENCED_BY_GROUPED_GATEWAYS.
+// Three things about the referrer list. First, a ZTNA access policy is one, and
+// since `jamfplatform_security_cloud_ztna_app` landed it can be a reference
+// Terraform manages: the application's `routing.gateway_id` and
+// `routing_overrides[].routing.gateway_id` each name a gateway, so moving an
+// application from one gateway to another and destroying the old gateway in a single
+// apply is precisely the ordering trap above, and the two-apply sequence is the
+// remedy. Only an access policy created outside Terraform is beyond its reach, and
+// then the reference does live in the admin UI. The bundled spec names
+// GATEWAY_REFERENCED_BY_ACCESS_POLICIES, GATEWAY_REFERENCED_BY_DNS_ZONES and
+// GATEWAY_REFERENCED_BY_GROUPED_GATEWAYS.
 // Second, the 2026-08-27 probe of the zone and grouped-gateway cases returned a
 // bare 409 with no structured detail, so the spec's codes are not something the
 // wire has been seen to send. Details() is therefore appended when present rather
 // than relied on, and the wording no longer asserts that the body says nothing —
 // that was true of the two cases probed, not of the endpoint.
+// Third, the access-policy edge is unprobed as of 2026-08-30: the acceptance tenant
+// holds no customer-owned gateway and a shared gateway cannot be deleted, so whether
+// a gateway referenced only by an access policy really does answer 409 is inherited
+// from the spec rather than wire-verified. Probe it once a deletable gateway exists —
+// the rule for this namespace is that a referenced delete is probed per construct,
+// never inherited from a sibling.
 func appendDeleteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil || !apiErr.HasStatus(http.StatusConflict) {
@@ -124,9 +135,10 @@ func appendDeleteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	diags.AddError(
 		"Gateway is still referenced",
 		"Jamf Security Cloud refuses to delete a gateway that something still points at: a ZTNA access policy, a "+
-			"custom DNS zone name server, or membership of a grouped gateway. Access policies are not managed by "+
-			"this provider, so if no zone or grouped gateway names this gateway, check its access policies in the "+
-			"Jamf Security Cloud admin UI. For a reference Terraform does manage, remove it first in a separate "+
+			"custom DNS zone name server, or membership of a grouped gateway. Access policies created outside "+
+			"Terraform are invisible to it, so check the Jamf Security Cloud admin UI if no "+
+			"`jamfplatform_security_cloud_ztna_app`, zone or grouped gateway in your configuration names this "+
+			"gateway. For a reference Terraform does manage, remove it first in a separate "+
 			"apply, then destroy the gateway: dropping the reference and the gateway in one apply lets Terraform "+
 			"sequence the destroy before the update that would have released it."+reportedDetails(apiErr),
 	)
