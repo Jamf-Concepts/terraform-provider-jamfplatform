@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Impact Alert Notification Settings | `read:pro:impact-alert-notification-settings` |
-  | Update Impact Alert Notification Settings | `update:pro:impact-alert-notification-settings` |
+  | Read Impact Alert Notification Settings | `impact-alert-notification-settings:read` |
+  | Update Impact Alert Notification Settings | `impact-alert-notification-settings:update` |
 ---
 
 # jamfplatform_pro_impact_alert_notification_settings (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Impact Alert Notification Settings | `read:pro:impact-alert-notification-settings` |
-| Update Impact Alert Notification Settings | `update:pro:impact-alert-notification-settings` |
+| Read Impact Alert Notification Settings | `impact-alert-notification-settings:read` |
+| Update Impact Alert Notification Settings | `impact-alert-notification-settings:update` |
 
 ## Example Usage
 

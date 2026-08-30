@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:patch-external-source` |
+  | `patch-external-source:read` |
 ---
 
 # jamfplatform_pro_patch_external_source (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:patch-external-source` |
+| `patch-external-source:read` |
 
 ## Example Usage
 

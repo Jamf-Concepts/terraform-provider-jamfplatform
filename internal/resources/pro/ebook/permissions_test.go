@@ -117,9 +117,9 @@ func TestPrivileges_Rendered(t *testing.T) {
 		rendered string
 		want     string
 	}{
-		{"resource", resourcePrivileges, "create:pro:ebooks"},
-		{"dataSource", dataSourcePrivileges, "read:pro:ebooks"},
-		{"listResource", listResourcePrivileges, "read:pro:ebooks"},
+		{"resource", resourcePrivileges, "ebooks:create"},
+		{"dataSource", dataSourcePrivileges, "ebooks:read"},
+		{"listResource", listResourcePrivileges, "ebooks:read"},
 	} {
 		if !strings.Contains(tc.rendered, tc.want) {
 			t.Errorf("%s privileges did not render %q:\n%s", tc.name, tc.want, tc.rendered)

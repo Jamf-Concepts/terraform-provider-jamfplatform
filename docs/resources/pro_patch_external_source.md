@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:patch-external-source` |
-  | `delete:pro:patch-external-source` |
-  | `read:pro:patch-external-source` |
-  | `update:pro:patch-external-source` |
+  | `patch-external-source:create` |
+  | `patch-external-source:delete` |
+  | `patch-external-source:read` |
+  | `patch-external-source:update` |
 ---
 
 # jamfplatform_pro_patch_external_source (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:patch-external-source` |
-| `delete:pro:patch-external-source` |
-| `read:pro:patch-external-source` |
-| `update:pro:patch-external-source` |
+| `patch-external-source:create` |
+| `patch-external-source:delete` |
+| `patch-external-source:read` |
+| `patch-external-source:update` |
 
 ## Example Usage
 

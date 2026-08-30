@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Access Management Setting Read | `read:pro:access-management-setting` |
-  | Access Management Setting Update | `update:pro:access-management-setting` |
+  | Access Management Setting Read | `access-management:read` |
+  | Access Management Setting Update | `access-management:update` |
 ---
 
 # jamfplatform_pro_access_management_settings (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Access Management Setting Read | `read:pro:access-management-setting` |
-| Access Management Setting Update | `update:pro:access-management-setting` |
+| Access Management Setting Read | `access-management:read` |
+| Access Management Setting Update | `access-management:update` |
 
 ## Example Usage
 

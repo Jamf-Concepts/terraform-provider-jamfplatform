@@ -100,7 +100,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:computer-check-in") {
+	if !strings.Contains(resourcePrivileges, "computer-check-in:update") {
 		t.Fatalf("resourcePrivileges did not render the check-in privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -108,7 +108,7 @@ func TestResourcePrivileges_Rendered(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:computer-check-in") {
+	if !strings.Contains(dataSourcePrivileges, "computer-check-in:read") {
 		t.Fatalf("dataSourcePrivileges did not render the check-in privileges:\n%s", dataSourcePrivileges)
 	}
 }

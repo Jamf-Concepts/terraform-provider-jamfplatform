@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Enrollment Customizations | `create:pro:enrollment-customizations` |
-  | Delete Enrollment Customizations | `delete:pro:enrollment-customizations` |
-  | Read Enrollment Customizations | `read:pro:enrollment-customizations` |
-  | Update Enrollment Customizations | `update:pro:enrollment-customizations` |
+  | Create Enrollment Customizations | `enrollment-customization:create` |
+  | Delete Enrollment Customizations | `enrollment-customization:delete` |
+  | Read Enrollment Customizations | `enrollment-customization:read` |
+  | Update Enrollment Customizations | `enrollment-customization:update` |
 ---
 
 # jamfplatform_pro_enrollment_customization (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Enrollment Customizations | `create:pro:enrollment-customizations` |
-| Delete Enrollment Customizations | `delete:pro:enrollment-customizations` |
-| Read Enrollment Customizations | `read:pro:enrollment-customizations` |
-| Update Enrollment Customizations | `update:pro:enrollment-customizations` |
+| Create Enrollment Customizations | `enrollment-customization:create` |
+| Delete Enrollment Customizations | `enrollment-customization:delete` |
+| Read Enrollment Customizations | `enrollment-customization:read` |
+| Update Enrollment Customizations | `enrollment-customization:update` |
 
 ## Example Usage
 

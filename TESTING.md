@@ -36,6 +36,11 @@ export JAMFPLATFORM_ENVIRONMENT_ID="your-environment-id" # preferred; or JAMFPLA
 # or mismatched and every Security Cloud test skips rather than failing.
 export JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID="$JAMFPLATFORM_ENVIRONMENT_ID"
 
+# The AD CS OUTBOUND tests need a Jamf Pro API client the provider cannot create
+# (the API-client endpoints were withdrawn at the Platform API GA — make one in
+# Jamf Account and paste its Client ID here). Unset and those tests skip.
+export JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID="client-id-uuid-from-jamf-account"
+
 go test -v -cover -count=1 -tags=acceptance -p=1 ./...
 ```
 
@@ -234,6 +239,7 @@ Some Pro features can only be created when the tenant is in a prerequisite state
 
 - **Dummy fixture, no gating** — when the prerequisite resource doesn't validate live connectivity, build a placeholder. `jamfplatform_pro_ldap_server` does not verify the LDAP connection, so a dummy (`Open Directory`, fake `ldap.acc-anon.example.com:389`, `authentication_type = none`) configures LDAP with no real server and **needs no env var**. Reference: `ceaDSAM`/`mdeaDSAM`.
 - **Real-credential fixture, env-gated** — when the prerequisite needs real external infra (a SAML IdP metadata URL), gate the test on an env var and **skip** when unset (`t.Skipf`). Reference: the enrollment-customization SSO-pane tests gate on `JAMFPLATFORM_ACC_SSO_IDP_URL`; the `sso_settings` suite owns the same var.
+- **Pre-existing tenant object, env-gated** — when the prerequisite is an object the provider *cannot* create, name it by env var and skip when unset. `jamfplatform_pro_pki_adcs` in `OUTBOUND` mode needs a Jamf Pro API client, and API clients and roles were withdrawn from the Platform API at GA (they are created in Jamf Account), so the OUTBOUND tests take the client's UUID from `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` and skip without it.
 
 Two cautions: (1) prefer a fixture that **mutates the tenant minimally and reversibly** — e.g. SSO uses `OIDC_WITH_SAML`, not pure SAML, so Jamf ID admin login keeps working. (2) Many prerequisite singletons (`sso_settings`, `computer_inventory_collection_settings`) have **state-only deletes**, so teardown leaves the tenant in the fixture's state — idempotent on re-run, but document it and don't let other suites assume a clean SSO/inventory baseline.
 
@@ -302,6 +308,7 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |
 | `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` | Declares that the configured `JAMFPLATFORM_ENVIRONMENT_ID` belongs to a Jamf Security Cloud tenant. Must equal it. Unset or mismatched → every Security Cloud test skips |
 | `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two. Also names the tenant a ZTNA gateway grants access to — the gateway tests skip without it, because `tenantIds` is required on every gateway and is validated against the caller's organization |
+| `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` | Client ID (UUID) of a pre-existing Jamf Pro API client holding *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs*, created in Jamf Account. Unset → the two `pki_adcs` OUTBOUND tests skip |
 
 ### Jamf Security Cloud coverage is opt-in, and partly tenant-scope-only
 
@@ -309,6 +316,11 @@ Neither declaration variable is set in CI, so **every Jamf Security Cloud accept
 test skips there** — 48 of them, each printing the reason. The suite is green and the
 coverage is zero; do not read one as the other. They are exercised by running locally
 against an entitled tenant.
+
+The same reading applies, on a much smaller scale, to `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID`:
+it is not set in CI either, so the two AD CS `OUTBOUND` tests skip there. They used to
+mint their own API client and cannot any more, so this is coverage that moved from
+self-provisioned to operator-provided rather than coverage that was removed.
 
 Turning them on is just setting `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` to the same
 value as `JAMFPLATFORM_TENANT_ID`. The gate requires the two to match, so a value

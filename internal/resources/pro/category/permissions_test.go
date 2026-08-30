@@ -88,7 +88,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:categories") {
+	if !strings.Contains(resourcePrivileges, "categories:create") {
 		t.Fatalf("resourcePrivileges did not render the categories privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -106,7 +106,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:categories") {
+	if !strings.Contains(dataSourcePrivileges, "categories:read") {
 		t.Fatalf("dataSourcePrivileges did not render the categories privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -124,7 +124,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "read:pro:categories") {
+	if !strings.Contains(pluralDataSourcePrivileges, "categories:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the categories privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -142,7 +142,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:categories") {
+	if !strings.Contains(listResourcePrivileges, "categories:read") {
 		t.Fatalf("listResourcePrivileges did not render the categories privileges:\n%s", listResourcePrivileges)
 	}
 }

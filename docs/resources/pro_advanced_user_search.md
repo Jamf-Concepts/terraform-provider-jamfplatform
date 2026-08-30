@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:advanced-user-searches` |
-  | `delete:pro:advanced-user-searches` |
-  | `read:pro:advanced-user-searches` |
-  | `update:pro:advanced-user-searches` |
+  | `advanced-user-searches:create` |
+  | `advanced-user-searches:delete` |
+  | `advanced-user-searches:read` |
+  | `advanced-user-searches:update` |
 ---
 
 # jamfplatform_pro_advanced_user_search (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:advanced-user-searches` |
-| `delete:pro:advanced-user-searches` |
-| `read:pro:advanced-user-searches` |
-| `update:pro:advanced-user-searches` |
+| `advanced-user-searches:create` |
+| `advanced-user-searches:delete` |
+| `advanced-user-searches:read` |
+| `advanced-user-searches:update` |
 
 ## Example Usage
 

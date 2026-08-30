@@ -31,7 +31,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // dataSourceSDKMethods lists the privilege-bearing SDK methods the data source
 // calls. data_source.go also calls ResolveSupervisionIdentityV1ByName, but that
 // resolver is a name-lookup wrapper that delegates to the same
-// read:pro:apple-configurator-enrollment endpoint and is not itself a key in
+// apple-configurator-enrollment:read endpoint and is not itself a key in
 // the SDK privilege registry, so only the GET is listed here.
 var dataSourceSDKMethods = []string{
 	"GetSupervisionIdentityV1",

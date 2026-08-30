@@ -119,7 +119,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSourcePrivileges":   dataSourcePrivileges,
 		"listResourcePrivileges": listResourcePrivileges,
 	} {
-		if !strings.Contains(got, "pro:allowed-file-extension") {
+		if !strings.Contains(got, "allowed-file-extension:") {
 			t.Errorf("%s did not render the allowed-file-extension privileges:\n%s", name, got)
 		}
 	}

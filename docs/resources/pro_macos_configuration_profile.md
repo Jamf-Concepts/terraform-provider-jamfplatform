@@ -14,10 +14,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:macos-configuration-profiles` |
-  | `delete:pro:macos-configuration-profiles` |
-  | `read:pro:macos-configuration-profiles` |
-  | `update:pro:macos-configuration-profiles` |
+  | `configuration-profiles:create` |
+  | `configuration-profiles:delete` |
+  | `configuration-profiles:read` |
+  | `configuration-profiles:update` |
 ---
 
 # jamfplatform_pro_macos_configuration_profile (Resource)
@@ -43,10 +43,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:macos-configuration-profiles` |
-| `delete:pro:macos-configuration-profiles` |
-| `read:pro:macos-configuration-profiles` |
-| `update:pro:macos-configuration-profiles` |
+| `configuration-profiles:create` |
+| `configuration-profiles:delete` |
+| `configuration-profiles:read` |
+| `configuration-profiles:update` |
 
 ## Example Usage
 

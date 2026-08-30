@@ -11,8 +11,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read SSO Settings | `read:pro:sso-settings` |
-  | Update SSO Settings | `update:pro:sso-settings` |
+  | Read SSO Settings | `sso-settings:read` |
+  | Update SSO Settings | `sso-settings:update` |
 ---
 
 # jamfplatform_pro_sso_failover_url (Resource)
@@ -31,8 +31,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read SSO Settings | `read:pro:sso-settings` |
-| Update SSO Settings | `update:pro:sso-settings` |
+| Read SSO Settings | `sso-settings:read` |
+| Update SSO Settings | `sso-settings:update` |
 
 ## Example Usage
 

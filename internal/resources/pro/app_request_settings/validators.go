@@ -32,8 +32,7 @@ func canonicalLocale(v string) string {
 }
 
 // appStoreLocaleLister is the subset of *pro.Client the locale preflight needs. Declaring
-// it as an interface keeps the validator unit-testable without a live client (mirrors
-// api_role's privilegeLister).
+// it as an interface keeps the validator unit-testable without a live client.
 type appStoreLocaleLister interface {
 	ListAppStoreCountryCodesV1(ctx context.Context) (*pro.CountryCodes, error)
 }
@@ -49,8 +48,8 @@ type appStoreLocaleLister interface {
 //     the exact value to use.
 //  2. Membership. Jamf Pro rejects an unknown code at apply time with a 400 ("Invalid
 //     country code provided"). The valid set varies by tenant/version and is fetched live
-//     from the same list the server validates against (mirroring api_role.validatePrivileges)
-//     rather than baked into a static enum.
+//     from the same list the server validates against rather than baked into a static
+//     enum.
 //
 // Behaviour:
 //   - null/unknown value: no-op (deferred).

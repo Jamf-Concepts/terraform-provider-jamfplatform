@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Onboarding Configuration | `read:pro:onboarding-configuration` |
-  | Update Onboarding Configuration | `update:pro:onboarding-configuration` |
+  | Read Onboarding Configuration | `onboarding:read` |
+  | Update Onboarding Configuration | `onboarding:update` |
 ---
 
 # jamfplatform_pro_macos_onboarding (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Onboarding Configuration | `read:pro:onboarding-configuration` |
-| Update Onboarding Configuration | `update:pro:onboarding-configuration` |
+| Read Onboarding Configuration | `onboarding:read` |
+| Update Onboarding Configuration | `onboarding:update` |
 
 ## Example Usage
 

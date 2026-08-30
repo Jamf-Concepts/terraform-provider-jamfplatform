@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:webhooks` |
-  | `delete:pro:webhooks` |
-  | `read:pro:webhooks` |
-  | `update:pro:webhooks` |
+  | `webhooks:create` |
+  | `webhooks:delete` |
+  | `webhooks:read` |
+  | `webhooks:update` |
 ---
 
 # jamfplatform_pro_webhook (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:webhooks` |
-| `delete:pro:webhooks` |
-| `read:pro:webhooks` |
-| `update:pro:webhooks` |
+| `webhooks:create` |
+| `webhooks:delete` |
+| `webhooks:read` |
+| `webhooks:update` |
 
 ## Example Usage
 

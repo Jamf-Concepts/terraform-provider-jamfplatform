@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Self Service | `read:pro:self-service` |
-  | Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+  | Read Self Service Branding Configuration, Read Self Service | `self-service:read` |
+  Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
 ---
 
 # jamfplatform_pro_self_service_branding_macos (Data Source)
@@ -22,8 +22,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Self Service | `read:pro:self-service` |
-| Read Self Service Branding Configuration | `read:pro:self-service-branding-configuration` |
+| Read Self Service Branding Configuration, Read Self Service | `self-service:read` |
+
+Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
 
 ## Example Usage
 

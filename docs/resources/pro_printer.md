@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:printers` |
-  | `delete:pro:printers` |
-  | `read:pro:printers` |
-  | `update:pro:printers` |
+  | `printers:create` |
+  | `printers:delete` |
+  | `printers:read` |
+  | `printers:update` |
 ---
 
 # jamfplatform_pro_printer (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:printers` |
-| `delete:pro:printers` |
-| `read:pro:printers` |
-| `update:pro:printers` |
+| `printers:create` |
+| `printers:delete` |
+| `printers:read` |
+| `printers:update` |
 
 ## Example Usage
 

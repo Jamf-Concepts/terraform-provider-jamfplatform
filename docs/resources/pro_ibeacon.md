@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:ibeacon` |
-  | `delete:pro:ibeacon` |
-  | `read:pro:ibeacon` |
-  | `update:pro:ibeacon` |
+  | `ibeacon:create` |
+  | `ibeacon:delete` |
+  | `ibeacon:read` |
+  | `ibeacon:update` |
 ---
 
 # jamfplatform_pro_ibeacon (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:ibeacon` |
-| `delete:pro:ibeacon` |
-| `read:pro:ibeacon` |
-| `update:pro:ibeacon` |
+| `ibeacon:create` |
+| `ibeacon:delete` |
+| `ibeacon:read` |
+| `ibeacon:update` |
 
 ## Example Usage
 

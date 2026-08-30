@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | View Return To Service Configurations | `read:pro:return-to-service-configurations` |
+  | View Return To Service Configurations | `return-to-service:read` |
 ---
 
 # jamfplatform_pro_return_to_service (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| View Return To Service Configurations | `read:pro:return-to-service-configurations` |
+| View Return To Service Configurations | `return-to-service:read` |
 
 ## Example Usage
 

@@ -86,7 +86,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:computer-prestage-enrollments") {
+	if !strings.Contains(resourcePrivileges, "prestage-enrollments:create") {
 		t.Fatalf("resourcePrivileges did not render the prestage privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -108,7 +108,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table rendered into the
 // data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:computer-prestage-enrollments") {
+	if !strings.Contains(dataSourcePrivileges, "prestage-enrollments:read") {
 		t.Fatalf("dataSourcePrivileges did not render the prestage privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -130,7 +130,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table rendered into the
 // list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:computer-prestage-enrollments") {
+	if !strings.Contains(listResourcePrivileges, "prestage-enrollments:read") {
 		t.Fatalf("listResourcePrivileges did not render the prestage privileges:\n%s", listResourcePrivileges)
 	}
 }

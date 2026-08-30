@@ -29,7 +29,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // calls. data_source.go also calls ResolveVolumePurchasingSubscriptionV1IDByName,
 // but that resolver wrapper is not a registry key — its privilege need (the
 // list read) is already covered by GetVolumePurchasingSubscriptionV1's
-// read:pro:volume-purchasing-locations privilege, so the rendered table is
+// volume-purchasing-locations:read privilege, so the rendered table is
 // complete with just the registry-backed methods.
 var dataSourceSDKMethods = []string{
 	"GetVolumePurchasingSubscriptionV1",

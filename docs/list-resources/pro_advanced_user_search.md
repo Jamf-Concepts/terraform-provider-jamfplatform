@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:advanced-user-searches` |
+  | `advanced-user-searches:read` |
 ---
 
 # jamfplatform_pro_advanced_user_search (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:advanced-user-searches` |
+| `advanced-user-searches:read` |
 
 ## Example Usage
 

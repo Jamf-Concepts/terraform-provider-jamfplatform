@@ -66,7 +66,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered is a guard that the table actually rendered
 // into the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "read:pro:teacher-app-settings") {
+	if !strings.Contains(resourcePrivileges, "teacher-app:read") {
 		t.Fatalf("resourcePrivileges did not render the teacher-app-settings privileges:\n%s", resourcePrivileges)
 	}
 }

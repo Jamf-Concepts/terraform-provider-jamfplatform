@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:mac-applications` |
+  | `applications:read` |
 ---
 
 # jamfplatform_pro_mac_app_store_app (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:mac-applications` |
+| `applications:read` |
 
 ## Example Usage
 

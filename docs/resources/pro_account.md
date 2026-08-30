@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Accounts | `create:pro:accounts` |
-  | Delete Accounts | `delete:pro:accounts` |
-  | Read Accounts | `read:pro:accounts` |
-  | Update Accounts | `update:pro:accounts` |
+  | Create Accounts | `accounts:create` |
+  | Delete Accounts | `accounts:delete` |
+  | Read Accounts | `accounts:read` |
+  | Update Accounts | `accounts:update` |
 ---
 
 # jamfplatform_pro_account (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Accounts | `create:pro:accounts` |
-| Delete Accounts | `delete:pro:accounts` |
-| Read Accounts | `read:pro:accounts` |
-| Update Accounts | `update:pro:accounts` |
+| Create Accounts | `accounts:create` |
+| Delete Accounts | `accounts:delete` |
+| Read Accounts | `accounts:read` |
+| Update Accounts | `accounts:update` |
 
 ## Example Usage
 

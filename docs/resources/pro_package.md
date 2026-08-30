@@ -14,10 +14,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Packages | `create:pro:packages` |
-  | Delete Packages | `delete:pro:packages` |
-  | Read Packages | `read:pro:packages` |
-  | Update Packages | `update:pro:packages` |
+  | Create Packages | `packages:create` |
+  | Delete Packages | `packages:delete` |
+  | Read Packages | `packages:read` |
+  | Update Packages | `packages:update` |
 ---
 
 # jamfplatform_pro_package (Resource)
@@ -46,10 +46,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Packages | `create:pro:packages` |
-| Delete Packages | `delete:pro:packages` |
-| Read Packages | `read:pro:packages` |
-| Update Packages | `update:pro:packages` |
+| Create Packages | `packages:create` |
+| Delete Packages | `packages:delete` |
+| Read Packages | `packages:read` |
+| Update Packages | `packages:update` |
 
 ## Example Usage
 

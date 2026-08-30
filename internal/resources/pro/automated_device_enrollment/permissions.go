@@ -33,7 +33,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // data source calls (data_source.go). The name-lookup path resolves via
 // ResolveDeviceEnrollmentV1ByName, which is a synthetic resolver absent from the
 // SDK privilege registry; the privilege it requires
-// (read:pro:device-enrollment-program-instances) is already covered by
+// (device-enrollment-program-instances:read) is already covered by
 // GetDeviceEnrollmentV1.
 var dataSourceSDKMethods = []string{
 	"GetDeviceEnrollmentV1",

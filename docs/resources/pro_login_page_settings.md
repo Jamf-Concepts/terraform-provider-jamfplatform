@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Update Login Disclaimer | `update:pro:login-disclaimer` |
+  | Update Login Disclaimer | `login-disclaimer:update` |
 ---
 
 # jamfplatform_pro_login_page_settings (Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Update Login Disclaimer | `update:pro:login-disclaimer` |
+| Update Login Disclaimer | `login-disclaimer:update` |
 
 ## Example Usage
 

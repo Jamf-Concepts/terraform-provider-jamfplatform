@@ -87,7 +87,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:json-web-token-configuration") {
+	if !strings.Contains(resourcePrivileges, "json-web-token-configuration:create") {
 		t.Fatalf("resourcePrivileges did not render the JSON Web Token configuration privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -118,7 +118,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table rendered into the
 // data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:json-web-token-configuration") {
+	if !strings.Contains(dataSourcePrivileges, "json-web-token-configuration:read") {
 		t.Fatalf("dataSourcePrivileges did not render the JSON Web Token configuration privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -150,7 +150,7 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table rendered into the
 // list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:json-web-token-configuration") {
+	if !strings.Contains(listResourcePrivileges, "json-web-token-configuration:read") {
 		t.Fatalf("listResourcePrivileges did not render the JSON Web Token configuration privileges:\n%s", listResourcePrivileges)
 	}
 }

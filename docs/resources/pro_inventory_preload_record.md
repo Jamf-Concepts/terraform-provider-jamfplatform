@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Inventory Preload Records | `create:pro:inventory-preload-records` |
-  | Delete Inventory Preload Records | `delete:pro:inventory-preload-records` |
-  | Read Inventory Preload Records | `read:pro:inventory-preload-records` |
-  | Update Inventory Preload Records | `update:pro:inventory-preload-records` |
+  | Create Inventory Preload Records | `inventory-preload-records:create` |
+  | Delete Inventory Preload Records | `inventory-preload-records:delete` |
+  | Read Inventory Preload Records | `inventory-preload-records:read` |
+  | Update Inventory Preload Records | `inventory-preload-records:update` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Inventory Preload Records | `create:pro:inventory-preload-records` |
-| Delete Inventory Preload Records | `delete:pro:inventory-preload-records` |
-| Read Inventory Preload Records | `read:pro:inventory-preload-records` |
-| Update Inventory Preload Records | `update:pro:inventory-preload-records` |
+| Create Inventory Preload Records | `inventory-preload-records:create` |
+| Delete Inventory Preload Records | `inventory-preload-records:delete` |
+| Read Inventory Preload Records | `inventory-preload-records:read` |
+| Update Inventory Preload Records | `inventory-preload-records:update` |
 
 ## Example Usage
 

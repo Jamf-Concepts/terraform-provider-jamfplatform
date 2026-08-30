@@ -9,10 +9,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:vpp-invitations` |
-  | `delete:pro:vpp-invitations` |
-  | `read:pro:vpp-invitations` |
-  | `update:pro:vpp-invitations` |
+  | `volume-purchasing-locations:create` |
+  | `volume-purchasing-locations:delete` |
+  | `volume-purchasing-locations:read` |
+  | `volume-purchasing-locations:update` |
 ---
 
 # jamfplatform_pro_vpp_invitation (Resource)
@@ -27,10 +27,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:vpp-invitations` |
-| `delete:pro:vpp-invitations` |
-| `read:pro:vpp-invitations` |
-| `update:pro:vpp-invitations` |
+| `volume-purchasing-locations:create` |
+| `volume-purchasing-locations:delete` |
+| `volume-purchasing-locations:read` |
+| `volume-purchasing-locations:update` |
 
 ## Example Usage
 

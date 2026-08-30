@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read AD CS Settings | `read:pro:ad-cs-settings` |
+  | Read AD CS Settings | `ad-cs-settings:read` |
 ---
 
 # jamfplatform_pro_pki_adcs (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read AD CS Settings | `read:pro:ad-cs-settings` |
+| Read AD CS Settings | `ad-cs-settings:read` |
 
 
 

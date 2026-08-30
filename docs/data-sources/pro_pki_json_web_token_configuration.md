@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:json-web-token-configuration` |
+  | `json-web-token-configuration:read` |
 ---
 
 # jamfplatform_pro_pki_json_web_token_configuration (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:json-web-token-configuration` |
+| `json-web-token-configuration:read` |
 
 ## Example Usage
 

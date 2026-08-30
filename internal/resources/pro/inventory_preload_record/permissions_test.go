@@ -122,7 +122,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSource":   dataSourcePrivileges,
 		"listResource": listResourcePrivileges,
 	} {
-		if !strings.Contains(rendered, "pro:inventory-preload-records") {
+		if !strings.Contains(rendered, "inventory-preload-records:") {
 			t.Errorf("%sPrivileges did not render the inventory-preload-records privileges:\n%s", name, rendered)
 		}
 	}

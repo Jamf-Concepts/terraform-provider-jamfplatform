@@ -81,7 +81,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:ad-cs-settings") {
+	if !strings.Contains(resourcePrivileges, "ad-cs-settings:create") {
 		t.Fatalf("resourcePrivileges did not render the AD CS privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -103,7 +103,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:ad-cs-settings") {
+	if !strings.Contains(dataSourcePrivileges, "ad-cs-settings:read") {
 		t.Fatalf("dataSourcePrivileges did not render the AD CS privileges:\n%s", dataSourcePrivileges)
 	}
 }

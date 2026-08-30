@@ -8,9 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `delete:pro:policies` |
-  | `execute:pro:flush-policy-logs` |
-  | `read:pro:policies` |
+  | `flush-policy-logs:execute` |
+  | `policies:read` |
 ---
 
 # jamfplatform_pro_flush_policy_logs (Action)
@@ -23,9 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `delete:pro:policies` |
-| `execute:pro:flush-policy-logs` |
-| `read:pro:policies` |
+| `flush-policy-logs:execute` |
+| `policies:read` |
 
 ## Example Usage
 

@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read PKI | `read:pro:pki` |
+  | Read PKI | `pki:read` |
 ---
 
 # jamfplatform_pro_pki_certificate_authority (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read PKI | `read:pro:pki` |
+| Read PKI | `pki:read` |
 
 ## Example Usage
 

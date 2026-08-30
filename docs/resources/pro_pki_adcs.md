@@ -13,10 +13,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create AD CS Settings | `create:pro:ad-cs-settings` |
-  | Delete AD CS Settings | `delete:pro:ad-cs-settings` |
-  | Read AD CS Settings | `read:pro:ad-cs-settings` |
-  | Update AD CS Settings | `update:pro:ad-cs-settings` |
+  | Create AD CS Settings | `ad-cs-settings:create` |
+  | Delete AD CS Settings | `ad-cs-settings:delete` |
+  | Read AD CS Settings | `ad-cs-settings:read` |
+  | Update AD CS Settings | `ad-cs-settings:update` |
 ---
 
 # jamfplatform_pro_pki_adcs (Resource)
@@ -40,10 +40,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create AD CS Settings | `create:pro:ad-cs-settings` |
-| Delete AD CS Settings | `delete:pro:ad-cs-settings` |
-| Read AD CS Settings | `read:pro:ad-cs-settings` |
-| Update AD CS Settings | `update:pro:ad-cs-settings` |
+| Create AD CS Settings | `ad-cs-settings:create` |
+| Delete AD CS Settings | `ad-cs-settings:delete` |
+| Read AD CS Settings | `ad-cs-settings:read` |
+| Update AD CS Settings | `ad-cs-settings:update` |
 
 ## Example Usage
 
@@ -85,29 +85,21 @@ variable "adcs_client_p12_password" {
   sensitive = true
 }
 
+# The UUID of an existing Jamf Pro API client holding the "Read AD CS
+# Certificate Jobs" and "Update AD CS Certificate Jobs" privileges. API clients
+# and roles are created in Jamf Account, not by this provider.
+variable "adcs_api_client_id" {
+  type = string
+}
+
 # AD CS integration — OUTBOUND mode.
-# An AD CS Connector polls Jamf Pro using a Jamf Pro API client that holds the
-# "Read AD CS Certificate Jobs" and "Update AD CS Certificate Jobs" privileges.
-resource "jamfplatform_pro_api_role" "adcs" {
-  display_name = "AD CS Connector"
-  privileges = [
-    "Read AD CS Certificate Jobs",
-    "Update AD CS Certificate Jobs",
-  ]
-}
-
-resource "jamfplatform_pro_api_client" "adcs" {
-  display_name = "AD CS Connector"
-  api_roles    = [jamfplatform_pro_api_role.adcs.display_name]
-  enabled      = true
-}
-
+# An AD CS Connector polls Jamf Pro using the API client above.
 resource "jamfplatform_pro_pki_adcs" "outbound" {
   connector_mode = "OUTBOUND"
   display_name   = "AD CS — Outbound"
   ca_name        = "Example Issuing CA"
   fqdn           = "adcs.example.com"
-  api_client_id  = jamfplatform_pro_api_client.adcs.client_id
+  api_client_id  = var.adcs_api_client_id
 }
 ```
 
@@ -124,7 +116,7 @@ resource "jamfplatform_pro_pki_adcs" "outbound" {
 ### Optional
 
 - `adcs_url` (String) **"AD CS Connector URL"** in the Jamf Pro admin UI. The AD CS Connector address (e.g. `connector.example.com`; no scheme required). **`INBOUND` only.** Optional; omit to preserve the current value.
-- `api_client_id` (String) **"API Client ID"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges. **`OUTBOUND` only.** Optional; omit to preserve the current value. (Reference a `jamfplatform_pro_api_client`'s `client_id`.)
+- `api_client_id` (String) **"API Client ID"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges. **`OUTBOUND` only.** Optional; omit to preserve the current value. API clients are created in Jamf Account, not by this provider.
 - `client_certificate` (Attributes) **`INBOUND` only.** The confidential client certificate Jamf Pro presents to the AD CS Connector (`.pfx`/`.p12`). Required when `connector_mode = "INBOUND"`; forbidden for `OUTBOUND`. (see [below for nested schema](#nestedatt--client_certificate))
 - `revocation_enabled` (Boolean) **"Enable Revocation"** in the Jamf Pro admin UI. Whether certificate revocation is enabled. Optional; omit to preserve the current value.
 - `server_certificate` (Attributes) **`INBOUND` only.** The server (trust) certificate Jamf Pro presents/trusts for the AD CS Connector (`.pem`/`.cer`). Public, but Jamf Pro never returns the bytes on read, so the certificate is modelled `WriteOnly` (bytes stay out of state; rotate by bumping `wo_version`). Required when `connector_mode = "INBOUND"`; forbidden for `OUTBOUND`. (see [below for nested schema](#nestedatt--server_certificate))

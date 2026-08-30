@@ -109,7 +109,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:automatically-renew-mdm-profile-settings") {
+	if !strings.Contains(resourcePrivileges, "mdm-profile-renewal-settings:update") {
 		t.Fatalf("resourcePrivileges did not render the expected privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -117,7 +117,7 @@ func TestResourcePrivileges_Rendered(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:automatically-renew-mdm-profile-settings") {
+	if !strings.Contains(dataSourcePrivileges, "mdm-profile-renewal-settings:read") {
 		t.Fatalf("dataSourcePrivileges did not render the expected privileges:\n%s", dataSourcePrivileges)
 	}
 }

@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Jamf Protect Deployment Retry | `deploy:pro:jamf-protect-deployment-retry` |
-  | Read Jamf Protect Deployments | `read:pro:jamf-protect-deployments` |
+  | Jamf Protect Deployment Retry | `jamf-protect-deployments:deploy` |
+  | Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
 ---
 
 # jamfplatform_pro_jamf_protect_deployment_retry (Action)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Jamf Protect Deployment Retry | `deploy:pro:jamf-protect-deployment-retry` |
-| Read Jamf Protect Deployments | `read:pro:jamf-protect-deployments` |
+| Jamf Protect Deployment Retry | `jamf-protect-deployments:deploy` |
+| Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
 
 ## Example Usage
 

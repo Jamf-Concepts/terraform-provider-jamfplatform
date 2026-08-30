@@ -97,7 +97,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into the
 // resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:impact-alert-notification-settings") {
+	if !strings.Contains(resourcePrivileges, "impact-alert-notification-settings:update") {
 		t.Fatalf("resourcePrivileges did not render the impact-alert-notification-settings privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -119,7 +119,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into the
 // data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:impact-alert-notification-settings") {
+	if !strings.Contains(dataSourcePrivileges, "impact-alert-notification-settings:read") {
 		t.Fatalf("dataSourcePrivileges did not render the impact-alert-notification-settings privileges:\n%s", dataSourcePrivileges)
 	}
 }

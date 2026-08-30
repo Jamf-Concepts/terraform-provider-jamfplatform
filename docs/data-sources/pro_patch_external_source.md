@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:patch-external-source` |
-  | `read:pro:patch-management-software-titles` |
+  | `patch-external-source:read` |
+  | `patch-management-software-titles:read` |
 ---
 
 # jamfplatform_pro_patch_external_source (Data Source)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:patch-external-source` |
-| `read:pro:patch-management-software-titles` |
+| `patch-external-source:read` |
+| `patch-management-software-titles:read` |
 
 ## Example Usage
 

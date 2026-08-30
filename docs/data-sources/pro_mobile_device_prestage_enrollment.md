@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
+  | Read Mobile Device PreStage Enrollments | `prestage-enrollments:read` |
 ---
 
 # jamfplatform_pro_mobile_device_prestage_enrollment (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Mobile Device PreStage Enrollments | `read:pro:mobile-device-prestage-enrollments` |
+| Read Mobile Device PreStage Enrollments | `prestage-enrollments:read` |
 
 ## Example Usage
 

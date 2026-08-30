@@ -8,13 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:managed-software-updates` |
-  | `execute:pro:computer-commands` |
-  | `execute:pro:mobile-device-commands` |
-  | `read:pro:computer-groups` |
-  | `read:pro:computers` |
-  | `read:pro:mobile-device-groups` |
-  | `read:pro:mobile-devices` |
+  | `device-actions:execute` |
+  | `device-groups:read` |
+  | `devices:read` |
+  | `managed-software-updates:create` |
 ---
 
 # jamfplatform_pro_managed_software_update_plan (Action)
@@ -27,13 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:managed-software-updates` |
-| `execute:pro:computer-commands` |
-| `execute:pro:mobile-device-commands` |
-| `read:pro:computer-groups` |
-| `read:pro:computers` |
-| `read:pro:mobile-device-groups` |
-| `read:pro:mobile-devices` |
+| `device-actions:execute` |
+| `device-groups:read` |
+| `devices:read` |
+| `managed-software-updates:create` |
 
 ## Example Usage
 

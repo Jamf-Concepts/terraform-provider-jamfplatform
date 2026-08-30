@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:ibeacon` |
+  | `ibeacon:read` |
 ---
 
 # jamfplatform_pro_ibeacon (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:ibeacon` |
+| `ibeacon:read` |
 
 ## Example Usage
 

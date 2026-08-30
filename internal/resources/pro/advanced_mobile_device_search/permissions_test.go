@@ -123,7 +123,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSourcePrivileges":   dataSourcePrivileges,
 		"listResourcePrivileges": listResourcePrivileges,
 	} {
-		if !strings.Contains(got, "pro:advanced-mobile-device-searches") {
+		if !strings.Contains(got, "advanced-device-searches:") {
 			t.Errorf("%s did not render the advanced-mobile-device-searches privileges:\n%s", name, got)
 		}
 	}

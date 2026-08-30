@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Buildings | `create:pro:buildings` |
-  | Delete Buildings | `delete:pro:buildings` |
-  | Read Buildings | `read:pro:buildings` |
-  | Update Buildings | `update:pro:buildings` |
+  | Create Buildings | `buildings:create` |
+  | Delete Buildings | `buildings:delete` |
+  | Read Buildings | `buildings:read` |
+  | Update Buildings | `buildings:update` |
 ---
 
 # jamfplatform_pro_building (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Buildings | `create:pro:buildings` |
-| Delete Buildings | `delete:pro:buildings` |
-| Read Buildings | `read:pro:buildings` |
-| Update Buildings | `update:pro:buildings` |
+| Create Buildings | `buildings:create` |
+| Delete Buildings | `buildings:delete` |
+| Read Buildings | `buildings:read` |
+| Update Buildings | `buildings:update` |
 
 ## Example Usage
 

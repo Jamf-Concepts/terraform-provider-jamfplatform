@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:removable-mac-address` |
-  | `delete:pro:removable-mac-address` |
-  | `read:pro:removable-mac-address` |
-  | `update:pro:removable-mac-address` |
+  | `removable-mac-address:create` |
+  | `removable-mac-address:delete` |
+  | `removable-mac-address:read` |
+  | `removable-mac-address:update` |
 ---
 
 # jamfplatform_pro_removable_mac_address (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:removable-mac-address` |
-| `delete:pro:removable-mac-address` |
-| `read:pro:removable-mac-address` |
-| `update:pro:removable-mac-address` |
+| `removable-mac-address:create` |
+| `removable-mac-address:delete` |
+| `removable-mac-address:read` |
+| `removable-mac-address:update` |
 
 ## Example Usage
 

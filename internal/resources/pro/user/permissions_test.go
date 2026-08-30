@@ -110,10 +110,10 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestPrivileges_Rendered guards that the tables actually rendered into the
 // descriptions (catches an empty/parse-skipped registry).
 func TestPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:user") {
+	if !strings.Contains(dataSourcePrivileges, "users:read") {
 		t.Fatalf("dataSourcePrivileges did not render the user privileges:\n%s", dataSourcePrivileges)
 	}
-	if !strings.Contains(pluralDataSourcePrivileges, "read:pro:user") {
+	if !strings.Contains(pluralDataSourcePrivileges, "users:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the user privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }

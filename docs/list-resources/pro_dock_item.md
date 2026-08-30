@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:dock-items` |
+  | `dock-items:read` |
 ---
 
 # jamfplatform_pro_dock_item (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:dock-items` |
+| `dock-items:read` |
 
 ## Example Usage
 

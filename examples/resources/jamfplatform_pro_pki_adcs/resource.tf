@@ -35,27 +35,19 @@ variable "adcs_client_p12_password" {
   sensitive = true
 }
 
+# The UUID of an existing Jamf Pro API client holding the "Read AD CS
+# Certificate Jobs" and "Update AD CS Certificate Jobs" privileges. API clients
+# and roles are created in Jamf Account, not by this provider.
+variable "adcs_api_client_id" {
+  type = string
+}
+
 # AD CS integration — OUTBOUND mode.
-# An AD CS Connector polls Jamf Pro using a Jamf Pro API client that holds the
-# "Read AD CS Certificate Jobs" and "Update AD CS Certificate Jobs" privileges.
-resource "jamfplatform_pro_api_role" "adcs" {
-  display_name = "AD CS Connector"
-  privileges = [
-    "Read AD CS Certificate Jobs",
-    "Update AD CS Certificate Jobs",
-  ]
-}
-
-resource "jamfplatform_pro_api_client" "adcs" {
-  display_name = "AD CS Connector"
-  api_roles    = [jamfplatform_pro_api_role.adcs.display_name]
-  enabled      = true
-}
-
+# An AD CS Connector polls Jamf Pro using the API client above.
 resource "jamfplatform_pro_pki_adcs" "outbound" {
   connector_mode = "OUTBOUND"
   display_name   = "AD CS — Outbound"
   ca_name        = "Example Issuing CA"
   fqdn           = "adcs.example.com"
-  api_client_id  = jamfplatform_pro_api_client.adcs.client_id
+  api_client_id  = var.adcs_api_client_id
 }

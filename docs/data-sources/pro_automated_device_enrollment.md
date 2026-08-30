@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
+  | Read Device Enrollment Program Instances | `device-enrollment-program-instances:read` |
 ---
 
 # jamfplatform_pro_automated_device_enrollment (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Device Enrollment Program Instances | `read:pro:device-enrollment-program-instances` |
+| Read Device Enrollment Program Instances | `device-enrollment-program-instances:read` |
 
 ## Example Usage
 

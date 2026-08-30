@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:directory-bindings` |
-  | `delete:pro:directory-bindings` |
-  | `read:pro:directory-bindings` |
-  | `update:pro:directory-bindings` |
+  | `directory-bindings:create` |
+  | `directory-bindings:delete` |
+  | `directory-bindings:read` |
+  | `directory-bindings:update` |
 ---
 
 # jamfplatform_pro_directory_binding (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:directory-bindings` |
-| `delete:pro:directory-bindings` |
-| `read:pro:directory-bindings` |
-| `update:pro:directory-bindings` |
+| `directory-bindings:create` |
+| `directory-bindings:delete` |
+| `directory-bindings:read` |
+| `directory-bindings:update` |
 
 ## Example Usage
 

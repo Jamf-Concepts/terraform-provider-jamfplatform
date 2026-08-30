@@ -40,8 +40,9 @@ import (
 // This is deliberately advisory: it says which API the provider was built for,
 // not what a tenant must run. Anything with a real requirement declares its own
 // minJamfProVersion and hard-fails Configure — grep BOTH internal/resources/pro/
-// and internal/actions/pro/ for those, since actions carry floors too (e.g. the
-// enhanced-log-collection actions require 11.30.0).
+// and internal/actions/pro/ for those. Only one construct declares a non-empty
+// floor today (service_discovery_enrollment, 11.25.0) and no action does, but
+// keep checking both trees: actions have carried floors before and will again.
 const ProviderMinJamfProVersion = "11.31.0"
 
 // Data is the value passed via ResourceData/DataSourceData/ListResourceData/ActionData.

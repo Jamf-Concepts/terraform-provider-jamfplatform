@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Distribution Points | `create:pro:distribution-points` |
-  | Delete Distribution Points | `delete:pro:distribution-points` |
-  | Read Distribution Points | `read:pro:distribution-points` |
-  | Update Distribution Points | `update:pro:distribution-points` |
+  | Create Distribution Points | `distribution-points:create` |
+  | Delete Distribution Points | `distribution-points:delete` |
+  | Read Distribution Points | `distribution-points:read` |
+  | Update Distribution Points | `distribution-points:update` |
 ---
 
 # jamfplatform_pro_file_share_distribution_point (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Distribution Points | `create:pro:distribution-points` |
-| Delete Distribution Points | `delete:pro:distribution-points` |
-| Read Distribution Points | `read:pro:distribution-points` |
-| Update Distribution Points | `update:pro:distribution-points` |
+| Create Distribution Points | `distribution-points:create` |
+| Delete Distribution Points | `distribution-points:delete` |
+| Read Distribution Points | `distribution-points:read` |
+| Update Distribution Points | `distribution-points:update` |
 
 ## Example Usage
 

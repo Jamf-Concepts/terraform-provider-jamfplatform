@@ -120,7 +120,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSource":   dataSourcePrivileges,
 		"listResource": listResourcePrivileges,
 	} {
-		if !strings.Contains(got, "pro:restricted-software") {
+		if !strings.Contains(got, "restricted-software:") {
 			t.Errorf("%sPrivileges did not render the restricted-software privileges:\n%s", name, got)
 		}
 	}

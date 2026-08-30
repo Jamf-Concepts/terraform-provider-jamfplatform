@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Inventory Preload Records | `read:pro:inventory-preload-records` |
+  | Read Inventory Preload Records | `inventory-preload-records:read` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Inventory Preload Records | `read:pro:inventory-preload-records` |
+| Read Inventory Preload Records | `inventory-preload-records:read` |
 
 ## Example Usage
 

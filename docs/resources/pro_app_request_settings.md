@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read App Request Settings | `read:pro:app-request-settings` |
-  | Update App Request Settings | `update:pro:app-request-settings` |
+  | Read App Request Settings | `app-request:read` |
+  | Update App Request Settings | `app-request:update` |
 ---
 
 # jamfplatform_pro_app_request_settings (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read App Request Settings | `read:pro:app-request-settings` |
-| Update App Request Settings | `update:pro:app-request-settings` |
+| Read App Request Settings | `app-request:read` |
+| Update App Request Settings | `app-request:update` |
 
 ## Example Usage
 

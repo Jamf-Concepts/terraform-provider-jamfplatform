@@ -40,7 +40,7 @@ var resourcePrivileges = permissions.Section(resourcePrivilegeRegistry, resource
 // dataSourceSDKMethods lists the SDK methods the account data source calls
 // (data_source.go). The username-lookup path resolves via ResolveAccountV1ByName,
 // which is a synthetic resolver absent from the SDK privilege registry; the
-// privilege it requires (read:pro:accounts) is already covered by GetAccountV1.
+// privilege it requires (accounts:read) is already covered by GetAccountV1.
 var dataSourceSDKMethods = []string{
 	"GetAccountV1",
 }

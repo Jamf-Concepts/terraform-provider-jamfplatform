@@ -8,6 +8,7 @@ package pki_adcs_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -28,6 +29,25 @@ import (
 // deferred to connection-test time, which the provider does not model).
 
 const adcsAddr = "jamfplatform_pro_pki_adcs.test"
+
+// envAdcsApiClientID names a pre-existing Jamf Pro API client, by its UUID
+// (`client_id`), that holds the *Read AD CS Certificate Jobs* and *Update AD CS
+// Certificate Jobs* privileges. OUTBOUND mode needs one, and the provider can no
+// longer mint it: POST /v1/api-roles and POST /v1/api-integrations were withdrawn
+// at the Platform API GA, so API clients and roles are created in Jamf Account.
+// Unset and the OUTBOUND tests skip rather than infer anything from the absence.
+const envAdcsApiClientID = "JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID"
+
+// requireAdcsApiClientID skips the calling test unless envAdcsApiClientID names an
+// API client the tenant already has.
+func requireAdcsApiClientID(t *testing.T) string {
+	t.Helper()
+	id := os.Getenv(envAdcsApiClientID)
+	if id == "" {
+		t.Skipf("skipping OUTBOUND AD CS test: set %s to the client_id (UUID) of a Jamf Pro API client holding the AD CS certificate-job privileges", envAdcsApiClientID)
+	}
+	return id
+}
 
 func testAccCheckAdcsDestroy(t *testing.T) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
@@ -76,29 +96,18 @@ resource "jamfplatform_pro_pki_adcs" "test" {
 `, name, revocation, serverWoVersion, clientWoVersion)
 }
 
-// outboundConfig builds an OUTBOUND AD CS resource fed by a same-apply api_role +
-// api_client holding the AD CS certificate-job privileges.
-func outboundConfig(name string) string {
+// outboundConfig builds an OUTBOUND AD CS resource pointed at a pre-existing API
+// client (see envAdcsApiClientID) that holds the AD CS certificate-job privileges.
+func outboundConfig(name, apiClientID string) string {
 	return fmt.Sprintf(`
-resource "jamfplatform_pro_api_role" "adcs" {
-  display_name = "%s-role"
-  privileges   = ["Read AD CS Certificate Jobs", "Update AD CS Certificate Jobs"]
-}
-
-resource "jamfplatform_pro_api_client" "adcs" {
-  display_name = "%s-client"
-  api_roles    = [jamfplatform_pro_api_role.adcs.display_name]
-  enabled      = true
-}
-
 resource "jamfplatform_pro_pki_adcs" "test" {
   connector_mode = "OUTBOUND"
   display_name   = %q
   ca_name        = "acc-ca"
   fqdn           = "adcs.example.com"
-  api_client_id  = jamfplatform_pro_api_client.adcs.client_id
+  api_client_id  = %q
 }
-`, name, name, name)
+`, name, apiClientID)
 }
 
 // TestAccResource_ProPkiAdcs_Inbound drives create → merge update (rename + toggle
@@ -164,6 +173,7 @@ func TestAccResource_ProPkiAdcs_Inbound(t *testing.T) {
 // immutable: changing INBOUND → OUTBOUND forces resource replacement.
 func TestAccResource_ProPkiAdcs_ModeFlipRequiresReplace(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	apiClientID := requireAdcsApiClientID(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
@@ -174,7 +184,7 @@ func TestAccResource_ProPkiAdcs_ModeFlipRequiresReplace(t *testing.T) {
 				Check:  resource.TestCheckResourceAttr(adcsAddr, "connector_mode", "INBOUND"),
 			},
 			{
-				Config: outboundConfig("tf-adcs-flip"),
+				Config: outboundConfig("tf-adcs-flip", apiClientID),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
 					PreApply: []plancheck.PlanCheck{
 						plancheck.ExpectResourceAction(adcsAddr, plancheck.ResourceActionDestroyBeforeCreate),
@@ -186,17 +196,18 @@ func TestAccResource_ProPkiAdcs_ModeFlipRequiresReplace(t *testing.T) {
 	})
 }
 
-// TestAccResource_ProPkiAdcs_Outbound creates an OUTBOUND integration fed by a
-// same-apply api_role + api_client.
+// TestAccResource_ProPkiAdcs_Outbound creates an OUTBOUND integration pointed at
+// the pre-existing API client named by envAdcsApiClientID.
 func TestAccResource_ProPkiAdcs_Outbound(t *testing.T) {
 	testhelpers.AccPreCheck(t)
+	apiClientID := requireAdcsApiClientID(t)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
 		CheckDestroy:             testAccCheckAdcsDestroy(t),
 		Steps: []resource.TestStep{
 			{
-				Config: outboundConfig("tf-adcs-out"),
+				Config: outboundConfig("tf-adcs-out", apiClientID),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(adcsAddr, "connector_mode", "OUTBOUND"),
 					resource.TestCheckResourceAttrSet(adcsAddr, "api_client_id"),

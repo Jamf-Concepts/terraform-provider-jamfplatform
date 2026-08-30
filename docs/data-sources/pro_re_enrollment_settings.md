@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Re-enrollment | `read:pro:re-enrollment` |
+  | Read Re-enrollment | `re-enrollment:read` |
 ---
 
 # jamfplatform_pro_re_enrollment_settings (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Re-enrollment | `read:pro:re-enrollment` |
+| Read Re-enrollment | `re-enrollment:read` |
 
 ## Example Usage
 

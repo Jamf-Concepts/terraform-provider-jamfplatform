@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read User | `read:pro:user` |
+  | Read User | `users:read` |
 ---
 
 # jamfplatform_pro_user (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read User | `read:pro:user` |
+| Read User | `users:read` |
 
 ## Example Usage
 

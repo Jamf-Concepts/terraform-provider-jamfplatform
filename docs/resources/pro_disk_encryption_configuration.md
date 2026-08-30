@@ -10,10 +10,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:disk-encryption-configurations` |
-  | `delete:pro:disk-encryption-configurations` |
-  | `read:pro:disk-encryption-configurations` |
-  | `update:pro:disk-encryption-configurations` |
+  | `disk-encryption-configurations:create` |
+  | `disk-encryption-configurations:delete` |
+  | `disk-encryption-configurations:read` |
+  | `disk-encryption-configurations:update` |
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Resource)
@@ -33,10 +33,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:disk-encryption-configurations` |
-| `delete:pro:disk-encryption-configurations` |
-| `read:pro:disk-encryption-configurations` |
-| `update:pro:disk-encryption-configurations` |
+| `disk-encryption-configurations:create` |
+| `disk-encryption-configurations:delete` |
+| `disk-encryption-configurations:read` |
+| `disk-encryption-configurations:update` |
 
 ## Example Usage
 

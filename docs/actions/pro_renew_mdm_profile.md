@@ -6,10 +6,9 @@ description: |-
   Renews the MDM enrollment profile on one or more mobile devices.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `execute:pro:computer-commands` |
-  | `execute:pro:mobile-device-commands` |
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Send Command to Renew MDM Profile | `device-actions:execute` |
 ---
 
 # jamfplatform_pro_renew_mdm_profile (Action)
@@ -20,10 +19,9 @@ Renews the MDM enrollment profile on one or more mobile devices.
 
 The Jamf Platform API integration used by the provider must be granted the following privileges:
 
-| Required privilege |
-|---|
-| `execute:pro:computer-commands` |
-| `execute:pro:mobile-device-commands` |
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Send Command to Renew MDM Profile | `device-actions:execute` |
 
 ## Example Usage
 

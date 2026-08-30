@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `create:pro:ebooks` |
-  | `delete:pro:ebooks` |
-  | `read:pro:ebooks` |
-  | `update:pro:ebooks` |
+  | `ebooks:create` |
+  | `ebooks:delete` |
+  | `ebooks:read` |
+  | `ebooks:update` |
 ---
 
 # jamfplatform_pro_ebook (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `create:pro:ebooks` |
-| `delete:pro:ebooks` |
-| `read:pro:ebooks` |
-| `update:pro:ebooks` |
+| `ebooks:create` |
+| `ebooks:delete` |
+| `ebooks:read` |
+| `ebooks:update` |
 
 ## Example Usage
 

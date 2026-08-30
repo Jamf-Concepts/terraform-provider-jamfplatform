@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
-  | Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
-  | Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
-  | Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
+  | Create Volume Purchasing Locations | `volume-purchasing-locations:create` |
+  | Delete Volume Purchasing Locations | `volume-purchasing-locations:delete` |
+  | Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
+  | Update Volume Purchasing Locations | `volume-purchasing-locations:update` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Volume Purchasing Locations | `create:pro:volume-purchasing-locations` |
-| Delete Volume Purchasing Locations | `delete:pro:volume-purchasing-locations` |
-| Read Volume Purchasing Locations | `read:pro:volume-purchasing-locations` |
-| Update Volume Purchasing Locations | `update:pro:volume-purchasing-locations` |
+| Create Volume Purchasing Locations | `volume-purchasing-locations:create` |
+| Delete Volume Purchasing Locations | `volume-purchasing-locations:delete` |
+| Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
+| Update Volume Purchasing Locations | `volume-purchasing-locations:update` |
 
 ## Example Usage
 

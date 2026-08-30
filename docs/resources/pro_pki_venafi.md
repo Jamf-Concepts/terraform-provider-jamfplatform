@@ -12,8 +12,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read PKI | `read:pro:pki` |
-  | Update PKI | `update:pro:pki` |
+  | Read PKI | `pki:read` |
+  | Update PKI | `pki:update` |
 ---
 
 # jamfplatform_pro_pki_venafi (Resource)
@@ -34,8 +34,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read PKI | `read:pro:pki` |
-| Update PKI | `update:pro:pki` |
+| Read PKI | `pki:read` |
+| Update PKI | `pki:update` |
 
 ## Example Usage
 

@@ -82,7 +82,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:disk-encryption-configurations") {
+	if !strings.Contains(resourcePrivileges, "disk-encryption-configurations:create") {
 		t.Fatalf("resourcePrivileges did not render the disk encryption privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -100,7 +100,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:disk-encryption-configurations") {
+	if !strings.Contains(dataSourcePrivileges, "disk-encryption-configurations:read") {
 		t.Fatalf("dataSourcePrivileges did not render the disk encryption privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -118,7 +118,7 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:disk-encryption-configurations") {
+	if !strings.Contains(listResourcePrivileges, "disk-encryption-configurations:read") {
 		t.Fatalf("listResourcePrivileges did not render the disk encryption privileges:\n%s", listResourcePrivileges)
 	}
 }

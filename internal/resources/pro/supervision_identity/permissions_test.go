@@ -84,7 +84,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "update:pro:apple-configurator-enrollment") {
+	if !strings.Contains(resourcePrivileges, "apple-configurator-enrollment:update") {
 		t.Fatalf("resourcePrivileges did not render the apple-configurator-enrollment privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -102,7 +102,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:apple-configurator-enrollment") {
+	if !strings.Contains(dataSourcePrivileges, "apple-configurator-enrollment:read") {
 		t.Fatalf("dataSourcePrivileges did not render the apple-configurator-enrollment privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -120,7 +120,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:apple-configurator-enrollment") {
+	if !strings.Contains(listResourcePrivileges, "apple-configurator-enrollment:read") {
 		t.Fatalf("listResourcePrivileges did not render the apple-configurator-enrollment privileges:\n%s", listResourcePrivileges)
 	}
 }

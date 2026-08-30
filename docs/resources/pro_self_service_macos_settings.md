@@ -8,8 +8,8 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Self Service | `read:pro:self-service` |
-  | Update Self Service | `update:pro:self-service` |
+  | Read Self Service | `self-service:read` |
+  | Update Self Service | `self-service:update` |
 ---
 
 # jamfplatform_pro_self_service_macos_settings (Resource)
@@ -22,8 +22,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Self Service | `read:pro:self-service` |
-| Update Self Service | `update:pro:self-service` |
+| Read Self Service | `self-service:read` |
+| Update Self Service | `self-service:update` |
 
 ## Example Usage
 

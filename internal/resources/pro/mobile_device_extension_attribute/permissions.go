@@ -31,7 +31,7 @@ var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods.
 // attribute data source calls (data_source.go). The name-lookup path resolves
 // via ResolveMobileDeviceExtensionAttributeV1ByName, a synthetic resolver
 // absent from the SDK privilege registry; the privilege it requires
-// (read:pro:mobile-device-extension-attributes) is already covered by
+// (extension-attributes:read) is already covered by
 // GetMobileDeviceExtensionAttributeV1.
 var dataSourceSDKMethods = []string{
 	"GetMobileDeviceExtensionAttributeV1",

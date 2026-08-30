@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Mobile Device Extension Attributes | `create:pro:mobile-device-extension-attributes` |
-  | Delete Mobile Device Extension Attributes | `delete:pro:mobile-device-extension-attributes` |
-  | Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
-  | Update Mobile Device Extension Attributes | `update:pro:mobile-device-extension-attributes` |
+  | Create Mobile Device Extension Attributes | `extension-attributes:create` |
+  | Delete Mobile Device Extension Attributes | `extension-attributes:delete` |
+  | Read Mobile Device Extension Attributes | `extension-attributes:read` |
+  | Update Mobile Device Extension Attributes | `extension-attributes:update` |
 ---
 
 # jamfplatform_pro_mobile_device_extension_attribute (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Mobile Device Extension Attributes | `create:pro:mobile-device-extension-attributes` |
-| Delete Mobile Device Extension Attributes | `delete:pro:mobile-device-extension-attributes` |
-| Read Mobile Device Extension Attributes | `read:pro:mobile-device-extension-attributes` |
-| Update Mobile Device Extension Attributes | `update:pro:mobile-device-extension-attributes` |
+| Create Mobile Device Extension Attributes | `extension-attributes:create` |
+| Delete Mobile Device Extension Attributes | `extension-attributes:delete` |
+| Read Mobile Device Extension Attributes | `extension-attributes:read` |
+| Update Mobile Device Extension Attributes | `extension-attributes:update` |
 
 ## Example Usage
 

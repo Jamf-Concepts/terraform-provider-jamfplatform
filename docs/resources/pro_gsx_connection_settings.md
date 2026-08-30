@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Push Certificates | `read:pro:gsx-connection` |
-  | Read GSX Connection | `read:pro:push-certificates` |
-  | Update GSX Connection | `update:pro:gsx-connection` |
-  | Update Push Certificates | `update:pro:push-certificates` |
+  | Read GSX Connection | `gsx-connection:read` |
+  | Update GSX Connection | `gsx-connection:update` |
+  | Read Push Certificates | `push-certificates:read` |
+  | Update Push Certificates | `push-certificates:update` |
 ---
 
 # jamfplatform_pro_gsx_connection_settings (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Push Certificates | `read:pro:gsx-connection` |
-| Read GSX Connection | `read:pro:push-certificates` |
-| Update GSX Connection | `update:pro:gsx-connection` |
-| Update Push Certificates | `update:pro:push-certificates` |
+| Read GSX Connection | `gsx-connection:read` |
+| Update GSX Connection | `gsx-connection:update` |
+| Read Push Certificates | `push-certificates:read` |
+| Update Push Certificates | `push-certificates:update` |
 
 ## Example Usage
 

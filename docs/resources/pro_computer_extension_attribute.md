@@ -8,10 +8,10 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Create Computer Extension Attributes | `create:pro:computer-extension-attributes` |
-  | Delete Computer Extension Attributes | `delete:pro:computer-extension-attributes` |
-  | Read Computer Extension Attributes | `read:pro:computer-extension-attributes` |
-  | Update Computer Extension Attributes | `update:pro:computer-extension-attributes` |
+  | Create Computer Extension Attributes | `extension-attributes:create` |
+  | Delete Computer Extension Attributes | `extension-attributes:delete` |
+  | Read Computer Extension Attributes | `extension-attributes:read` |
+  | Update Computer Extension Attributes | `extension-attributes:update` |
 ---
 
 # jamfplatform_pro_computer_extension_attribute (Resource)
@@ -24,10 +24,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Create Computer Extension Attributes | `create:pro:computer-extension-attributes` |
-| Delete Computer Extension Attributes | `delete:pro:computer-extension-attributes` |
-| Read Computer Extension Attributes | `read:pro:computer-extension-attributes` |
-| Update Computer Extension Attributes | `update:pro:computer-extension-attributes` |
+| Create Computer Extension Attributes | `extension-attributes:create` |
+| Delete Computer Extension Attributes | `extension-attributes:delete` |
+| Read Computer Extension Attributes | `extension-attributes:read` |
+| Update Computer Extension Attributes | `extension-attributes:update` |
 
 ## Example Usage
 

@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read LDAP Servers | `read:pro:ldap-servers` |
+  | Read LDAP Servers | `ldap-servers:read` |
 ---
 
 # jamfplatform_pro_cloud_identity_provider (Data Source)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read LDAP Servers | `read:pro:ldap-servers` |
+| Read LDAP Servers | `ldap-servers:read` |
 
 ## Example Usage
 

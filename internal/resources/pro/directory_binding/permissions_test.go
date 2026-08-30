@@ -89,7 +89,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "create:pro:directory-bindings") {
+	if !strings.Contains(resourcePrivileges, "directory-bindings:create") {
 		t.Fatalf("resourcePrivileges did not render the directory-bindings privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -113,7 +113,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "read:pro:directory-bindings") {
+	if !strings.Contains(dataSourcePrivileges, "directory-bindings:read") {
 		t.Fatalf("dataSourcePrivileges did not render the directory-bindings privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -138,7 +138,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table actually rendered
 // into the list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "read:pro:directory-bindings") {
+	if !strings.Contains(listResourcePrivileges, "directory-bindings:read") {
 		t.Fatalf("listResourcePrivileges did not render the directory-bindings privileges:\n%s", listResourcePrivileges)
 	}
 }

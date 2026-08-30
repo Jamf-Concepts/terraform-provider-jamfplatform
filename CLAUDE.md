@@ -41,7 +41,7 @@ internal/
 │                      #   ~115 packages, fully flat (e.g. the five PKI constructs are pki_adcs/, pki_venafi/, pki_digicert/, … — no pki/ grouping dir).
 ├── actions/
 │   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
-│   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (13 MDM commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
+│   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (send_blank_push, renew_mdm_profile, flush_mdm_commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
 ├── functions/         # Provider-defined functions (offline; no SDK client, no provider config)
 │   ├── mobileconfig/       # mobileconfig(profile) — build a full .mobileconfig from HCL payloads; also holds the shared Assemble core
 │   └── mcx_forced_payload/ # mcx_forced_payload(domain, prefs) — MCX "Custom Settings" envelope; thin wrapper over mobileconfig.Assemble
@@ -239,6 +239,7 @@ Before committing: `make fix fmt lint test`. Then `make generate` if any schema 
 - `JAMFPLATFORM_ENVIRONMENT_ID` — platform-environment scope, sent as `X-Environment-Id`. **Preferred.**
 - `JAMFPLATFORM_TENANT_ID` — tenant scope, sent as `X-Tenant-Id`. **Legacy.** Mutually exclusive with the above; both are optional — see §API integration scope.
 - `JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID` — **acceptance tests only**. Declares that the configured environment holds Jamf AI Governance; must equal `JAMFPLATFORM_ENVIRONMENT_ID`. Unset or mismatched and every AI Governance acceptance test skips. Environment scope only — there is no tenant form, because the surface answers a request carrying no scope header with `REQUEST_CONTEXT_NOT_PROVIDED` and one carrying `X-Tenant-Id` with `403 BAD_PERMISSIONS`, which this repo reads as an unrouted namespace.
+- `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` — **acceptance tests only**. Client ID (UUID) of a pre-existing Jamf Pro API client holding the AD CS certificate-job privileges. `jamfplatform_pro_pki_adcs` in `OUTBOUND` mode needs one and the provider can no longer create it: the API-client and API-role endpoints were withdrawn at the Platform API GA, so clients are created in Jamf Account. Unset and the two OUTBOUND tests skip.
 - `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` / `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` — **acceptance tests only**. Declares that the configured scope belongs to a Jamf Security Cloud tenant; must equal the corresponding `JAMFPLATFORM_*` value. Unset or mismatched and every Security Cloud acceptance test skips — which is CI's current state, deliberately. The ZTNA gateway tests additionally require the *tenant* form: `tenantIds` is mandatory on a gateway and no API exposes an environment's tenants, so an environment-scoped run cannot supply one. See [TESTING.md](TESTING.md).
 - Acceptance tests additionally require `TF_ACC=1` (set automatically by `make testacc`), and one of the two scope variables.
 

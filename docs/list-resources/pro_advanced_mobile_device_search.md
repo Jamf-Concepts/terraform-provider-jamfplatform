@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
+  | Read Advanced Mobile Device Searches | `advanced-device-searches:read` |
 ---
 
 # jamfplatform_pro_advanced_mobile_device_search (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Advanced Mobile Device Searches | `read:pro:advanced-mobile-device-searches` |
+| Read Advanced Mobile Device Searches | `advanced-device-searches:read` |
 
 ## Example Usage
 

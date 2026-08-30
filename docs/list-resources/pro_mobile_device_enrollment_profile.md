@@ -8,7 +8,7 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Required privilege |
   |---|
-  | `read:pro:enrollment-profiles` |
+  | `enrollment-profiles:read` |
 ---
 
 # jamfplatform_pro_mobile_device_enrollment_profile (List Resource)
@@ -21,7 +21,7 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Required privilege |
 |---|
-| `read:pro:enrollment-profiles` |
+| `enrollment-profiles:read` |
 
 ## Example Usage
 
