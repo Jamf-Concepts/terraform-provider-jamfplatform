@@ -5,6 +5,7 @@ package mdmactions
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
@@ -93,12 +94,29 @@ func TestFlushMdmCommandsAction_Schema(t *testing.T) {
 // TestSendBlankPushValidatorsWired covers the at-least-one-of rule: the action
 // accepts management_ids and/or serial_numbers, and previously only rejected
 // "neither" once the apply was already running.
+//
+// It asserts which selectors the validator names, not merely that some validator
+// is present. The behavioural tests for this rule are tenant-gated acceptance
+// tests, so a non-empty check is the whole guard in CI — and it would pass just
+// as happily if the re-pointing onto send_blank_push had picked up an unrelated
+// validator when the twelve batch actions it used to ride were removed.
 func TestSendBlankPushValidatorsWired(t *testing.T) {
 	a, ok := NewSendBlankPushAction().(action.ActionWithConfigValidators)
 	if !ok {
 		t.Fatal("send_blank_push declares no ConfigValidators")
 	}
-	if len(a.ConfigValidators(context.Background())) == 0 {
+	validators := a.ConfigValidators(context.Background())
+	if len(validators) == 0 {
 		t.Fatal("send_blank_push declares an empty ConfigValidators slice")
+	}
+	var described strings.Builder
+	for _, v := range validators {
+		described.WriteString(v.Description(context.Background()))
+		described.WriteString("\n")
+	}
+	for _, selector := range []string{"management_ids", "serial_numbers"} {
+		if !strings.Contains(described.String(), selector) {
+			t.Errorf("no ConfigValidator names %q; the at-least-one-of rule is not wired to both selectors:\n%s", selector, described.String())
+		}
 	}
 }

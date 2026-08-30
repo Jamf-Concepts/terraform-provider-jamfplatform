@@ -6,11 +6,11 @@ description: |-
   Force-stops a stuck Managed Software Updates enable/disable process. Break-glass only — use this when jamfplatform_pro_managed_software_update reports that the feature did not finish turning on or off. Takes no input.
   Required Jamf privileges
   The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `managed-software-updates:create` |
-  | `managed-software-updates:read` |
-  | `managed-software-updates:update` |
+  | Jamf Pro privilege | Scoped name |
+  |---|---|
+  | Create Managed Software Updates | `managed-software-updates:create` |
+  | Read Managed Software Updates | `managed-software-updates:read` |
+  | Update Managed Software Updates | `managed-software-updates:update` |
 ---
 
 # jamfplatform_pro_managed_software_update_abandon (Action)
@@ -21,11 +21,11 @@ Force-stops a stuck Managed Software Updates enable/disable process. Break-glass
 
 The Jamf Platform API integration used by the provider must be granted the following privileges:
 
-| Required privilege |
-|---|
-| `managed-software-updates:create` |
-| `managed-software-updates:read` |
-| `managed-software-updates:update` |
+| Jamf Pro privilege | Scoped name |
+|---|---|
+| Create Managed Software Updates | `managed-software-updates:create` |
+| Read Managed Software Updates | `managed-software-updates:read` |
+| Update Managed Software Updates | `managed-software-updates:update` |
 
 ## Example Usage
 

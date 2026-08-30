@@ -170,8 +170,15 @@ func TestFlushMdmCommandsSDKMethods_MatchFile(t *testing.T) {
 // --- rendered-table guards: each section actually produced a privileges block ---
 
 func TestSendBlankPushPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(sendBlankPushPrivileges, "devices:read") {
-		t.Fatalf("sendBlankPushPrivileges did not render the devices read privilege:\n%s", sendBlankPushPrivileges)
+	// Both privileges, deliberately. devices:read comes from ListDevices, the
+	// serial-resolution helper, so asserting it alone would leave the privilege
+	// the command itself needs unpinned — and an operator who granted only the
+	// resolver's privilege would be refused at POST /v2/mdm/blank-push by a
+	// table that told them they were done.
+	for _, want := range []string{"device-actions:execute", "devices:read"} {
+		if !strings.Contains(sendBlankPushPrivileges, want) {
+			t.Errorf("sendBlankPushPrivileges did not render %q:\n%s", want, sendBlankPushPrivileges)
+		}
 	}
 }
 

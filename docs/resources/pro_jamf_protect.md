@@ -8,8 +8,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | Read Jamf Protect Settings | `jamf-protect-deployments:read` |
+  | Read Jamf Protect Settings, Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
   | Update Jamf Protect Settings | `jamf-protect-deployments:update` |
+  Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
 ---
 
 # jamfplatform_pro_jamf_protect (Resource)
@@ -22,8 +23,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| Read Jamf Protect Settings | `jamf-protect-deployments:read` |
+| Read Jamf Protect Settings, Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
 | Update Jamf Protect Settings | `jamf-protect-deployments:update` |
+
+Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
 
 ## Example Usage
 

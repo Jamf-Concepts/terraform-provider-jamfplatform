@@ -11,6 +11,7 @@ description: |-
   |---|---|
   | View MDM command information in Jamf Pro API | `device-actions:execute` |
   | — | `devices:read` |
+  — means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
 ---
 
 # jamfplatform_pro_send_blank_push (Action)
@@ -27,6 +28,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 |---|---|
 | View MDM command information in Jamf Pro API | `device-actions:execute` |
 | — | `devices:read` |
+
+`—` means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
 
 ## Example Usage
 

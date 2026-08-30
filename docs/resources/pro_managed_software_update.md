@@ -8,9 +8,9 @@ description: |-
   The Jamf Platform API integration used by the provider must be granted the following privileges:
   | Jamf Pro privilege | Scoped name |
   |---|---|
-  | — | `managed-software-updates:create` |
+  | Create Managed Software Updates | `managed-software-updates:create` |
   | Read Managed Software Updates | `managed-software-updates:read` |
-  | — | `managed-software-updates:update` |
+  | Update Managed Software Updates | `managed-software-updates:update` |
 ---
 
 # jamfplatform_pro_managed_software_update (Resource)
@@ -23,9 +23,9 @@ The Jamf Platform API integration used by the provider must be granted the follo
 
 | Jamf Pro privilege | Scoped name |
 |---|---|
-| — | `managed-software-updates:create` |
+| Create Managed Software Updates | `managed-software-updates:create` |
 | Read Managed Software Updates | `managed-software-updates:read` |
-| — | `managed-software-updates:update` |
+| Update Managed Software Updates | `managed-software-updates:update` |
 
 ## Example Usage
 

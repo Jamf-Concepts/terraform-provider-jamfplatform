@@ -13,6 +13,7 @@ description: |-
   | — | `patch-management-software-titles:delete` |
   | Read Patch Management Software Titles | `patch-management-software-titles:read` |
   | Update Patch Management Software Titles | `patch-management-software-titles:update` |
+  — means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
 ---
 
 # jamfplatform_pro_patch_software_title (Resource)
@@ -31,6 +32,8 @@ The Jamf Platform API integration used by the provider must be granted the follo
 | — | `patch-management-software-titles:delete` |
 | Read Patch Management Software Titles | `patch-management-software-titles:read` |
 | Update Patch Management Software Titles | `patch-management-software-titles:update` |
+
+`—` means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
 
 ## Example Usage
 

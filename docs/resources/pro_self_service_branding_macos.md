@@ -10,8 +10,9 @@ description: |-
   |---|---|
   | Create Self Service Branding Configuration | `self-service:create` |
   | Delete Self Service Branding Configuration | `self-service:delete` |
-  | Read Self Service Branding Configuration | `self-service:read` |
+  | Read Self Service Branding Configuration, Read Self Service | `self-service:read` |
   | Update Self Service Branding Configuration | `self-service:update` |
+  Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
 ---
 
 # jamfplatform_pro_self_service_branding_macos (Resource)
@@ -26,8 +27,10 @@ The Jamf Platform API integration used by the provider must be granted the follo
 |---|---|
 | Create Self Service Branding Configuration | `self-service:create` |
 | Delete Self Service Branding Configuration | `self-service:delete` |
-| Read Self Service Branding Configuration | `self-service:read` |
+| Read Self Service Branding Configuration, Read Self Service | `self-service:read` |
 | Update Self Service Branding Configuration | `self-service:update` |
+
+Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
 
 ## Example Usage
 
