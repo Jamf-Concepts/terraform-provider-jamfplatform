@@ -105,6 +105,7 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 
 - `enforcement_mode` (String) Enforcement mode for the benchmark; allowed values: MONITOR or MONITOR_AND_ENFORCE. Required and immutable for this resource (replace on change).
 - `rules` (Attributes List) Set of rules to include in the benchmark. Each entry references a rule id and whether it is enabled; additional metadata (title, section, ODV hints) are computed from the API. Use the `jamfplatform_cbengine_rules` data source to look up available rules. (see [below for nested schema](#nestedatt--rules))
+- `target_device_groups` (Set of String) Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Immutable (replace on change).
 - `title` (String) Benchmark title (max length 100). Required and replaces the resource when changed.
 
 ### Optional
@@ -112,8 +113,6 @@ resource "jamfplatform_cbengine_benchmark" "custom_cis_lvl1" {
 - `description` (String) Optional human-readable description of the benchmark (max length 1000). Replaces the resource when changed.
 - `selected_os_versions` (Attributes Set) Operating system versions the benchmark applies to. Optional: when omitted, the benchmark targets every version available for the baseline. Supplying a subset scopes the benchmark to just those versions. Immutable (replace on change). Look up valid values via `available_os_versions` on the `jamfplatform_cbengine_rules` data source. (see [below for nested schema](#nestedatt--selected_os_versions))
 - `source_baseline_id` (String) mSCP baseline identifier used as the source for rules. Required on creation, but computed for imports. Use the `jamfplatform_cbengine_baselines` data source to look up available baselines.
-- `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups` instead. Single device group Platform ID targeted by this benchmark, in UUID format. Mutually exclusive with `target_device_groups`. Immutable (replace on change).
-- `target_device_groups` (Set of String) Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only

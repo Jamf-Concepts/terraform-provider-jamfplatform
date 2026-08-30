@@ -158,6 +158,8 @@ func TestAccResource_Benchmark_AllRules_Monitor(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "title", benchmarkTitle),
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "enforcement_mode", "MONITOR"),
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "target_device_groups.#", "2"),
+					// Removed at schema v1 once its 90-day deprecation window closed; assert
+					// it stays gone rather than silently reappearing in state.
 					resource.TestCheckNoResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "target_device_group"),
 					// selected_os_versions omitted → computed to the full available set (omit == all).
 					resource.TestCheckResourceAttr("jamfplatform_cbengine_benchmark.test_all_rules", "available_os_versions.#", fmt.Sprintf("%d", len(rules.AvailableOsVersions))),
@@ -346,7 +348,7 @@ func TestAccResource_Benchmark_SelectedOsVersionsOrderIndependent(t *testing.T) 
 				source_baseline_id   = %q
 				rules                = [%s]
 				selected_os_versions = [%s]
-				target_device_group  = jamfplatform_device_group.scope.id
+				target_device_groups = [jamfplatform_device_group.scope.id]
 				enforcement_mode     = "MONITOR"
 			}
 		`, scopeName, benchmarkTitle, baselineID, ruleBlock, osBlock)
@@ -368,89 +370,6 @@ func TestAccResource_Benchmark_SelectedOsVersionsOrderIndependent(t *testing.T) 
 				// would plan a replace here, failing the empty-plan assertion.
 				Config:   config(osBA),
 				PlanOnly: true,
-			},
-		},
-	})
-}
-
-// TestAccResource_Benchmark_DeprecatedSingularTarget verifies the deprecated
-// target_device_group attribute still functions end-to-end. Keep this until the
-// attribute is removed in a future major release.
-func TestAccResource_Benchmark_DeprecatedSingularTarget(t *testing.T) {
-	testhelpers.AccPreCheck(t)
-	suffix := testhelpers.RunSuffix()
-
-	ctx := context.Background()
-	c := testhelpers.NewAcceptanceClient(t)
-	cbClient := cbSDK.New(c)
-	baselines, err := cbClient.ListBaselines(ctx)
-	if err != nil {
-		t.Fatalf("Failed to check baselines: %v", err)
-	}
-	if len(baselines.Baselines) == 0 {
-		t.Skip("No baselines available — CB Engine may not be enabled")
-	}
-
-	baselineID := baselines.Baselines[0].BaselineID
-	rules, err := cbClient.GetBaselineRules(ctx, baselineID)
-	if err != nil {
-		t.Fatalf("Failed to get rules: %v", err)
-	}
-	if len(rules.Rules) == 0 {
-		t.Skip("No rules found for baseline")
-	}
-
-	var ruleBlocks []string
-	for i := 0; i < 1 && i < len(rules.Rules); i++ {
-		r := rules.Rules[i]
-		block := fmt.Sprintf(`{ id = %q, enabled = true`, r.ID)
-		if r.ODV != nil {
-			block += fmt.Sprintf(`, odv_value = %q`, r.ODV.Value)
-		}
-		block += " }"
-		ruleBlocks = append(ruleBlocks, block)
-	}
-
-	benchmarkTitle := "tf-acc-benchmark-deprecated-singular-" + suffix
-	scopeName := "tf-acc-benchmark-scope-deprecated-" + suffix
-
-	ensureBenchmarkCleanup(t, benchmarkTitle)
-
-	config := fmt.Sprintf(`
-		resource "jamfplatform_device_group" "scope" {
-			name        = %q
-			group_type  = "smart"
-			device_type = "computer"
-			criteria = [{
-				criteria = "Serial Number"
-				operator = "like"
-				value    = ""
-			}]
-		}
-
-		resource "jamfplatform_cbengine_benchmark" "test_deprecated" {
-			title              = %q
-			description        = "Backwards-compatibility regression — uses deprecated singular target."
-			source_baseline_id = %q
-
-			rules = [%s]
-
-			target_device_group = jamfplatform_device_group.scope.id
-			enforcement_mode    = "MONITOR"
-		}
-	`, scopeName, benchmarkTitle, baselineID, strings.Join(ruleBlocks, ",\n"))
-
-	resource.Test(t, resource.TestCase{
-		ProtoV6ProviderFactories: testhelpers.AccTestProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckBenchmarkResourcesDestroy(t),
-		Steps: []resource.TestStep{
-			{
-				Config: config,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("jamfplatform_cbengine_benchmark.test_deprecated", "id"),
-					resource.TestCheckResourceAttrSet("jamfplatform_cbengine_benchmark.test_deprecated", "target_device_group"),
-					resource.TestCheckNoResourceAttr("jamfplatform_cbengine_benchmark.test_deprecated", "target_device_groups"),
-				),
 			},
 		},
 	})

@@ -53,8 +53,7 @@ func TestBuildBenchmarkRequest_Full(t *testing.T) {
 				ODVValue: types.StringNull(),
 			},
 		},
-		TargetDeviceGroup:  types.StringValue("group-1"),
-		TargetDeviceGroups: types.SetNull(types.StringType),
+		TargetDeviceGroups: types.SetValueMust(types.StringType, []attr.Value{types.StringValue("group-1")}),
 		EnforcementMode:    types.StringValue("audit"),
 	}
 
@@ -119,7 +118,6 @@ func TestBuildBenchmarkRequest_EmptyRulesAndOmittedOsVersions(t *testing.T) {
 		SourceBaselineID:   types.StringValue("bl-1"),
 		SelectedOsVersions: types.SetNull(osVersionObjectType),
 		Rules:              nil,
-		TargetDeviceGroup:  types.StringValue("dg-1"),
 		TargetDeviceGroups: types.SetNull(types.StringType),
 		EnforcementMode:    types.StringValue("audit"),
 	}
@@ -162,7 +160,6 @@ func TestBuildBenchmarkRequest_ODVNull(t *testing.T) {
 				ODVValue: types.StringNull(),
 			},
 		},
-		TargetDeviceGroup:  types.StringValue("dg-1"),
 		TargetDeviceGroups: types.SetNull(types.StringType),
 		EnforcementMode:    types.StringValue("audit"),
 	}
@@ -185,7 +182,6 @@ func TestBuildBenchmarkRequest_ODVEmpty(t *testing.T) {
 				ODVValue: types.StringValue(""),
 			},
 		},
-		TargetDeviceGroup:  types.StringValue("dg-1"),
 		TargetDeviceGroups: types.SetNull(types.StringType),
 		EnforcementMode:    types.StringValue("audit"),
 	}
@@ -202,7 +198,6 @@ func TestBuildBenchmarkRequest_PluralTargetDeviceGroups(t *testing.T) {
 		Title:              types.StringValue("Plural Scope"),
 		SourceBaselineID:   types.StringValue("bl-1"),
 		Rules:              nil,
-		TargetDeviceGroup:  types.StringNull(),
 		TargetDeviceGroups: setOfStrings("group-a", "group-b", "group-c"),
 		EnforcementMode:    types.StringValue("audit"),
 	}
@@ -230,7 +225,6 @@ func TestBuildBenchmarkRequest_PluralWinsOverSingular(t *testing.T) {
 	data := &BenchmarkResourceModel{
 		Title:              types.StringValue("Both"),
 		SourceBaselineID:   types.StringValue("bl-1"),
-		TargetDeviceGroup:  types.StringValue("should-be-ignored"),
 		TargetDeviceGroups: setOfStrings("kept"),
 		EnforcementMode:    types.StringValue("audit"),
 	}

@@ -25,7 +25,6 @@ type BenchmarkResourceModel struct {
 	SelectedOsVersions  types.Set              `tfsdk:"selected_os_versions"`
 	AvailableOsVersions types.List             `tfsdk:"available_os_versions"`
 	Rules               []RuleModel            `tfsdk:"rules"`
-	TargetDeviceGroup   types.String           `tfsdk:"target_device_group"`
 	TargetDeviceGroups  types.Set              `tfsdk:"target_device_groups"`
 	EnforcementMode     types.String           `tfsdk:"enforcement_mode"`
 	TenantID            types.String           `tfsdk:"tenant_id"`
@@ -47,7 +46,6 @@ type BenchmarkDataSourceModel struct {
 	SelectedOsVersions  types.Set                `tfsdk:"selected_os_versions"`
 	AvailableOsVersions types.List               `tfsdk:"available_os_versions"`
 	Rules               []RuleModel              `tfsdk:"rules"`
-	TargetDeviceGroup   types.String             `tfsdk:"target_device_group"`
 	TargetDeviceGroups  types.Set                `tfsdk:"target_device_groups"`
 	EnforcementMode     types.String             `tfsdk:"enforcement_mode"`
 	Deleted             types.Bool               `tfsdk:"deleted"`
