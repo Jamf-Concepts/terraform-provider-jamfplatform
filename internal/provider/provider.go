@@ -56,7 +56,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_user_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/advanced_volume_purchasing_content_search"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/allowed_file_extension"
-	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/api_role_privileges"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_form_field"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_request_settings"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/pro/app_store_country_codes"
@@ -531,7 +530,6 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		account.NewAccountDataSource,
 		account_group.NewAccountGroupDataSource,
 		account_privileges.NewAccountPrivilegesDataSource,
-		api_role_privileges.NewApiRolePrivilegesDataSource,
 		automated_device_enrollment.NewAutomatedDeviceEnrollmentDataSource,
 		automated_device_enrollment_public_key.NewAutomatedDeviceEnrollmentPublicKeyDataSource,
 		blueprint.NewBlueprintDataSource,
