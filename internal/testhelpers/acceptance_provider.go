@@ -6,9 +6,11 @@
 package testhelpers
 
 import (
+	"context"
 	"os"
 	"testing"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -95,6 +97,66 @@ func AccPreCheckSecurityCloud(t *testing.T) {
 	if configured := os.Getenv("JAMFPLATFORM_TENANT_ID"); configured != declaredTenant {
 		t.Skipf("JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID (%s) does not match the configured JAMFPLATFORM_TENANT_ID (%s); the provider is not scoped to the declared Security Cloud tenant", declaredTenant, configured)
 	}
+}
+
+// AccPreCheckAIGovernance gates the Jamf AI Governance acceptance tests.
+//
+// Like the Security Cloud gate, it requires the operator to *declare* that the configured scope
+// belongs to a tenant holding AI Governance, and skips otherwise: an environment without the surface
+// is a legitimate acceptance environment, not a failure, and the alternative — inferring entitlement
+// from an empty policy list — would read a working tenant with no policies as an unentitled one.
+//
+// Environment scope only, and probed rather than assumed. AI Governance answers a request carrying
+// no scope header with REQUEST_CONTEXT_NOT_PROVIDED, and one carrying X-Tenant-Id with
+// BAD_PERMISSIONS — while a Jamf Pro request presenting the same header succeeds, so the header
+// itself is accepted and the refusal belongs to the namespace. That code is indistinguishable from a
+// real privilege gap, so the namespace is presumed unrouted under tenant scope and there is no
+// tenant form to declare.
+func AccPreCheckAIGovernance(t *testing.T) {
+	t.Helper()
+	AccPreCheck(t)
+
+	declared := os.Getenv("JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID")
+	if declared == "" {
+		t.Skip("JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID must be set to declare that the configured environment holds Jamf AI Governance")
+	}
+	if configured := os.Getenv("JAMFPLATFORM_ENVIRONMENT_ID"); configured != declared {
+		t.Skipf("JAMFPLATFORM_AI_GOVERNANCE_ENVIRONMENT_ID (%s) does not match the configured JAMFPLATFORM_ENVIRONMENT_ID (%s); the provider is not scoped to the declared AI Governance environment", declared, configured)
+	}
+}
+
+// RequireAIGovernanceTool returns the named tool from Jamf's AI tool catalogue, carrying its current
+// settings schema version and every version it still accepts.
+//
+// The two ways this can come up short are deliberately not the same outcome.
+//
+// A tool the catalogue does not list SKIPS. The catalogue is Jamf's, not the tenant's — an
+// environment only offers the tools Jamf has shipped to it, and there is nothing an acceptance test
+// can create to change that, so a tool that is simply absent is a platform capability gap rather
+// than a defect.
+//
+// A catalogue read that FAILS is a defect and fails the test. AccPreCheckAIGovernance has already
+// required the operator to *declare* that this environment holds AI Governance, and the whole point
+// of that declaration is that entitlement is declared rather than inferred from a read. Skipping on
+// a failed read would put the inference straight back: a regression in the namespace path, in the
+// scope header, or in the SDK's own catalogue call would take every AI Governance test with it while
+// the run still reported green — the exact shape of a broken environment hiding behind a skip.
+func RequireAIGovernanceTool(t *testing.T, toolID string) aigovernance.ToolSummary {
+	t.Helper()
+
+	response, err := aigovernance.New(NewAcceptanceClient(t)).ListTools(context.Background())
+	if err != nil {
+		t.Fatalf("Failed to read the AI tool catalogue: %v; this environment was declared to hold Jamf AI Governance, so a failed catalogue read is a defect rather than an environment condition", err)
+	}
+
+	for _, tool := range response.Results {
+		if tool.ID == toolID {
+			return tool
+		}
+	}
+
+	t.Skipf("Skipping: this environment does not offer the AI tool %s", toolID)
+	return aigovernance.ToolSummary{}
 }
 
 // AccTenantIDOrSkip returns the tenant ID the provider is configured with, or

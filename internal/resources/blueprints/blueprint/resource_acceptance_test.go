@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
+	aigovSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
 	bpSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
 	dgSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/helpers"
@@ -51,6 +53,7 @@ func testAccCheckBlueprintResourcesDestroy(t *testing.T) resource.TestCheckFunc 
 		c := testhelpers.NewAcceptanceClient(t)
 		bpClient := bpSDK.New(c)
 		dgClient := dgSDK.New(c)
+		aiClient := aigovSDK.New(c)
 		ctx := context.Background()
 
 		for _, rs := range s.RootModule().Resources {
@@ -62,6 +65,14 @@ func testAccCheckBlueprintResourcesDestroy(t *testing.T) resource.TestCheckFunc 
 				}
 				if !helpers.IsNotFoundError(err) {
 					return fmt.Errorf("error checking blueprint %s: %s", rs.Primary.ID, err)
+				}
+			case "jamfplatform_ai_governance_policy":
+				_, err := aiClient.GetPolicy(ctx, rs.Primary.ID)
+				if err == nil {
+					return fmt.Errorf("AI policy %s still exists after destroy", rs.Primary.ID)
+				}
+				if apiErr := jamfplatform.AsAPIError(err); apiErr == nil || !apiErr.HasStatus(404) {
+					return fmt.Errorf("error checking AI policy %s: %s", rs.Primary.ID, err)
 				}
 			case "jamfplatform_device_group":
 				deadline := time.Now().Add(60 * time.Second)

@@ -45,9 +45,9 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 	model.DeviceGroups = deviceGroupsSet
 
 	if blockMode {
-		updateComponentBlocksFromAPI(ctx, model, blueprint)
+		updateComponentBlocksFromAPI(ctx, &diags, model, blueprint)
 	} else {
-		diags.Append(updateFlatComponentsFromAPI(ctx, model, blueprint)...)
+		updateFlatComponentsFromAPI(ctx, &diags, model, blueprint)
 	}
 
 	model.Timeouts = helpers.EnsureResourceTimeouts(model.Timeouts, blueprintTimeoutAttributeTypes)
@@ -56,7 +56,7 @@ func updateModelFromAPIResponse(ctx context.Context, model *BlueprintResourceMod
 
 // updateComponentBlocksFromAPI populates model.ComponentBlocks from every wire step (block mode)
 // and clears the deprecated flat attributes so state carries a single representation.
-func updateComponentBlocksFromAPI(ctx context.Context, model *BlueprintResourceModel, blueprint *blueprints.BlueprintDetail) {
+func updateComponentBlocksFromAPI(ctx context.Context, diags *diag.Diagnostics, model *BlueprintResourceModel, blueprint *blueprints.BlueprintDetail) {
 	prior := model.ComponentBlocks
 	blocks := make([]ComponentBlockModel, 0, len(blueprint.Steps))
 
@@ -72,7 +72,7 @@ func updateComponentBlocksFromAPI(ctx context.Context, model *BlueprintResourceM
 			priorActivation = prior[i].ActivationConditions
 		}
 
-		block, apiComponentsByID := mapStepComponents(ctx, step, priorRaw)
+		block, apiComponentsByID := mapStepComponents(ctx, diags, step, priorRaw)
 		block.Name = helpers.ReconcileOptionalStringPointer(step.Name, priorName)
 		block.ActivationConditions = helpers.ReconcileOptionalStringPointer(step.ActivationPredicate, priorActivation)
 		block.LegacyPayloads = flattenBlockLegacyPayloads(priorLegacy, apiComponentsByID, priorRaw)
@@ -93,9 +93,7 @@ func updateComponentBlocksFromAPI(ctx context.Context, model *BlueprintResourceM
 // updateFlatComponentsFromAPI populates the deprecated flat top-level attributes from the first
 // step (flat mode). When the blueprint has more than one step it also emits a migration warning:
 // the flat attributes cannot represent the extra blocks, so applying would collapse them.
-func updateFlatComponentsFromAPI(ctx context.Context, model *BlueprintResourceModel, blueprint *blueprints.BlueprintDetail) diag.Diagnostics {
-	var diags diag.Diagnostics
-
+func updateFlatComponentsFromAPI(ctx context.Context, diags *diag.Diagnostics, model *BlueprintResourceModel, blueprint *blueprints.BlueprintDetail) {
 	priorRaw := rawIdentifierSet(model.Components)
 
 	var step blueprints.BlueprintStep
@@ -103,7 +101,7 @@ func updateFlatComponentsFromAPI(ctx context.Context, model *BlueprintResourceMo
 		step = blueprint.Steps[0]
 	}
 
-	block, apiComponentsByID := mapStepComponents(ctx, step, priorRaw)
+	block, apiComponentsByID := mapStepComponents(ctx, diags, step, priorRaw)
 	model.applyFlatComponentsFromBlock(block)
 	model.LegacyPayloads = flattenFlatLegacyPayloads(model.LegacyPayloads, apiComponentsByID, priorRaw)
 	model.ActivationConditions = helpers.ReconcileOptionalStringPointer(step.ActivationPredicate, model.ActivationConditions)
@@ -115,8 +113,6 @@ func updateFlatComponentsFromAPI(ctx context.Context, model *BlueprintResourceMo
 				"Only the first block is reflected in state, and applying this configuration would remove the others. Migrate to `component_blocks` to manage every block.",
 		)
 	}
-
-	return diags
 }
 
 // rawIdentifierSet collects the raw_component identifiers a prior model authored, so components
@@ -135,7 +131,7 @@ func rawIdentifierSet(components []ComponentModel) map[string]struct{} {
 // ComponentBlockModel carrier, and returns the step's components keyed by identifier so the caller
 // can flatten legacy payloads. It leaves Name, ActivationConditions, and LegacyPayloads unset — the
 // caller reconciles those.
-func mapStepComponents(ctx context.Context, step blueprints.BlueprintStep, priorRawIdentifiers map[string]struct{}) (ComponentBlockModel, map[string]blueprints.Component) {
+func mapStepComponents(ctx context.Context, diags *diag.Diagnostics, step blueprints.BlueprintStep, priorRawIdentifiers map[string]struct{}) (ComponentBlockModel, map[string]blueprints.Component) {
 	var block ComponentBlockModel
 
 	apiComponentsByID := make(map[string]blueprints.Component)
@@ -168,64 +164,75 @@ func mapStepComponents(ctx context.Context, step blueprints.BlueprintStep, prior
 		block.Components = rawComponents
 	}
 
-	updateStronglyTypedComponentsFromAPI(&block, apiComponentsByID, priorRawIdentifiers)
+	updateStronglyTypedComponentsFromAPI(diags, &block, apiComponentsByID, priorRawIdentifiers)
 	return block, apiComponentsByID
 }
 
 // updateStronglyTypedComponentsFromAPI updates all strongly-typed components of a block from the
 // API response.
-func updateStronglyTypedComponentsFromAPI(block *ComponentBlockModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
-	block.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(raw json.RawMessage, target *components.AudioAccessorySettingsComponent) error {
+func updateStronglyTypedComponentsFromAPI(diags *diag.Diagnostics, block *ComponentBlockModel, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}) {
+	block.AudioAccessorySettings = buildTypedComponent[components.AudioAccessorySettingsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.audio-accessory-settings", func(raw json.RawMessage, target *components.AudioAccessorySettingsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.CustomDeclarations = buildTypedComponent[components.CustomDeclarationsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.custom-declarations", func(raw json.RawMessage, target *components.CustomDeclarationsComponent) error {
+	block.AIGovernance = buildTypedComponent[components.AIGovernanceComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ai-governance", func(raw json.RawMessage, target *components.AIGovernanceComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.DiskManagementSettings = buildTypedComponent[components.DiskManagementPolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.disk-management", func(raw json.RawMessage, target *components.DiskManagementPolicyComponent) error {
+	block.CustomDeclarations = buildTypedComponent[components.CustomDeclarationsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.custom-declarations", func(raw json.RawMessage, target *components.CustomDeclarationsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.MathSettings = buildTypedComponent[components.MathSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.math-settings", func(raw json.RawMessage, target *components.MathSettingsComponent) error {
+	block.DiskManagementSettings = buildTypedComponent[components.DiskManagementPolicyComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.disk-management", func(raw json.RawMessage, target *components.DiskManagementPolicyComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.PasscodePolicy = buildTypedComponent[components.PasscodePolicyComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.passcode-settings", func(raw json.RawMessage, target *components.PasscodePolicyComponent) error {
+	block.MathSettings = buildTypedComponent[components.MathSettingsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.math-settings", func(raw json.RawMessage, target *components.MathSettingsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.SafariBookmarks = buildTypedComponent[components.SafariBookmarksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-bookmarks", func(raw json.RawMessage, target *components.SafariBookmarksComponent) error {
+	block.PasscodePolicy = buildTypedComponent[components.PasscodePolicyComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.passcode-settings", func(raw json.RawMessage, target *components.PasscodePolicyComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.SafariExtensions = buildTypedComponent[components.SafariExtensionsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-extensions", func(raw json.RawMessage, target *components.SafariExtensionsComponent) error {
+	block.SafariBookmarks = buildTypedComponent[components.SafariBookmarksComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-bookmarks", func(raw json.RawMessage, target *components.SafariBookmarksComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.SafariSettings = buildTypedComponent[components.SafariSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-settings", func(raw json.RawMessage, target *components.SafariSettingsComponent) error {
+	block.SafariExtensions = buildTypedComponent[components.SafariExtensionsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-extensions", func(raw json.RawMessage, target *components.SafariExtensionsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.ServiceBackgroundTasks = buildTypedComponent[components.ServiceBackgroundTasksComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-background-tasks", func(raw json.RawMessage, target *components.ServiceBackgroundTasksComponent) error {
+	block.SafariSettings = buildTypedComponent[components.SafariSettingsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.safari-settings", func(raw json.RawMessage, target *components.SafariSettingsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.ServiceConfigurationFiles = buildTypedComponent[components.ServiceConfigurationFilesComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-configuration-files", func(raw json.RawMessage, target *components.ServiceConfigurationFilesComponent) error {
+	block.ServiceBackgroundTasks = buildTypedComponent[components.ServiceBackgroundTasksComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-background-tasks", func(raw json.RawMessage, target *components.ServiceBackgroundTasksComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.SoftwareUpdate = buildTypedComponent[components.SoftwareUpdateComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.sw-updates", func(raw json.RawMessage, target *components.SoftwareUpdateComponent) error {
+	block.ServiceConfigurationFiles = buildTypedComponent[components.ServiceConfigurationFilesComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.service-configuration-files", func(raw json.RawMessage, target *components.ServiceConfigurationFilesComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 
-	block.SoftwareUpdateSettings = buildTypedComponent[components.SoftwareUpdateSettingsComponent](apiComponentsByID, rawIdentifiers, "com.jamf.ddm.software-update-settings", func(raw json.RawMessage, target *components.SoftwareUpdateSettingsComponent) error {
+	block.SoftwareUpdate = buildTypedComponent[components.SoftwareUpdateComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.sw-updates", func(raw json.RawMessage, target *components.SoftwareUpdateComponent) error {
+		return target.FromRawConfiguration(raw)
+	})
+
+	block.SoftwareUpdateSettings = buildTypedComponent[components.SoftwareUpdateSettingsComponent](diags, apiComponentsByID, rawIdentifiers, "com.jamf.ddm.software-update-settings", func(raw json.RawMessage, target *components.SoftwareUpdateSettingsComponent) error {
 		return target.FromRawConfiguration(raw)
 	})
 }
 
 // buildTypedComponent is a generic helper to build a strongly-typed singleton component pointer.
-func buildTypedComponent[T any](apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}, identifier string, populate func(json.RawMessage, *T) error) *T {
+//
+// A configuration the typed shape cannot decode leaves the component absent, and every typed
+// component attribute is Optional without being Computed, so a configuration that declares the
+// block would then show a permanent diff proposing to add it. That is indistinguishable from a
+// component Jamf never returned, so the decode failure is reported as a warning naming the
+// identifier rather than swallowed. It stays a warning, not an error: the rest of the blueprint
+// reads correctly, and failing the read would make an otherwise-manageable blueprint unusable.
+func buildTypedComponent[T any](diags *diag.Diagnostics, apiComponentsByID map[string]blueprints.Component, rawIdentifiers map[string]struct{}, identifier string, populate func(json.RawMessage, *T) error) *T {
 	if _, handledAsRaw := rawIdentifiers[identifier]; handledAsRaw {
 		return nil
 	}
@@ -237,6 +244,12 @@ func buildTypedComponent[T any](apiComponentsByID map[string]blueprints.Componen
 
 	var component T
 	if err := populate(config, &component); err != nil {
+		diags.AddWarning(
+			"Blueprint component configuration could not be read",
+			"Jamf returned a configuration for the "+identifier+" component that this provider could not decode, so "+
+				"the component is absent from state. A configuration declaring it will keep proposing to add it until "+
+				"the configuration Jamf holds can be read. Reported while decoding: "+err.Error(),
+		)
 		return nil
 	}
 

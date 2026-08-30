@@ -38,4 +38,5 @@ var CommonComponentRegistries = []ComponentRegistry{
 	{"com.jamf.ddm.sw-updates", "Software Update"},
 	{"com.jamf.ddm.software-update-settings", "Software Update Settings"},
 	{"com.jamf.ddm-configuration-profile", "Legacy Payloads"},
+	{"com.jamf.ai-governance", "AI Governance"},
 }

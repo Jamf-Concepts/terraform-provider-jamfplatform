@@ -156,6 +156,12 @@ var sensitiveHeaders = map[string]struct{}{
 // and ComputerContentCachingDataMigrationErrorUserInfo. The blob-bearing
 // siblings below cover the material without hiding those identifiers.
 //
+// Two entries come from a tool vendor's settings body rather than a Jamf schema:
+// env and apikeyhelper, the AI Governance policy settings where a deployment
+// pins a model-provider API key or names a command that prints one. env holds a
+// map, and a matched member's whole value is consumed, so the entire map is
+// withheld rather than one leaf of it.
+//
 // Both camelCase (Jamf Pro JSON) and snake_case (ProClassic XML) spellings are
 // listed because they are distinct strings; case variants are not, since
 // matching lower-cases first.
@@ -165,6 +171,7 @@ var sensitiveBodyFields = map[string]struct{}{
 	"adminpassword":              {},
 	"airplaypassword":            {},
 	"airplay_password":           {},
+	"apikeyhelper":               {},
 	"applecaretoken":             {},
 	"basicauthcredentials":       {},
 	"bootstraptoken":             {},
@@ -173,6 +180,7 @@ var sensitiveBodyFields = map[string]struct{}{
 	"currentpassword":            {},
 	"encodedtoken":               {},
 	"encryption_key":             {},
+	"env":                        {},
 	"googlemailcredentials":      {},
 	"graphapicredentials":        {},
 	"gsxkeystore":                {},

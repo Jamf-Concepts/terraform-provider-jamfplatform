@@ -14,6 +14,7 @@ const (
 
 // stronglyTypedComponentIdentifiers lists all component identifiers that have strongly-typed representations.
 var stronglyTypedComponentIdentifiers = map[string]struct{}{
+	"com.jamf.ai-governance":                   {},
 	"com.jamf.ddm.audio-accessory-settings":    {},
 	"com.jamf.ddm.custom-declarations":         {},
 	"com.jamf.ddm.disk-management":             {},
