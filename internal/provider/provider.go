@@ -150,6 +150,7 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_search_domain"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/dns_zone"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/uem_connect"
+	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_app"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_grouped_gateway"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/resources/security_cloud/ztna_predefined_apps"
@@ -520,6 +521,7 @@ func (p *JamfPlatformProvider) Resources(ctx context.Context) []func() resource.
 		dns_search_domain.NewSearchDomainResource,
 		dns_zone.NewDNSZoneResource,
 		uem_connect.NewUEMConnectResource,
+		ztna_app.NewZtnaAppResource,
 		ztna_gateway.NewGatewayResource,
 		ztna_grouped_gateway.NewGroupedGatewayResource,
 	}
@@ -558,6 +560,8 @@ func (p *JamfPlatformProvider) DataSources(ctx context.Context) []func() datasou
 		dns_zone.NewDNSZoneDataSource,
 		dns_zone.NewDNSZonesDataSource,
 		uem_connect.NewUEMConnectDataSource,
+		ztna_app.NewZtnaAppDataSource,
+		ztna_app.NewZtnaAppsDataSource,
 		ztna_gateway.NewGatewayDataSource,
 		ztna_gateway.NewGatewaysDataSource,
 		ztna_grouped_gateway.NewGroupedGatewayDataSource,
@@ -679,6 +683,7 @@ func (p *JamfPlatformProvider) ListResources(ctx context.Context) []func() list.
 		securityclouddevicegroup.NewDeviceGroupListResource,
 		dns_zone.NewDNSZoneListResource,
 		uem_connect.NewUEMConnectListResource,
+		ztna_app.NewZtnaAppListResource,
 		ztna_gateway.NewGatewayListResource,
 		ztna_grouped_gateway.NewGroupedGatewayListResource,
 		file_share_distribution_point.NewFileShareDistributionPointListResource,

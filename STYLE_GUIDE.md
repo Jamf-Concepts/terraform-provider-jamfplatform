@@ -1216,6 +1216,38 @@ Some pro settings endpoints update via **JSON merge-patch** (`Content-Type: appl
 - **`204` means no echoed body**, so a `GET`-after-write is **mandatory** in both Create and Update to capture authoritative state (computed defaults, server coercions). This is the same GET-after the singleton convention already requires — but here it is load-bearing, not just future-proofing.
 - Probe whether the server **coerces dependent fields** (a parent toggle that disables child sub-options): see [§Cross-field validation](#cross-field-validation) for handling — a config validator, not a plan modifier. Reference: `jamfplatform_pro_computer_inventory_collection_settings`.
 
+#### Merge-patch merges *inside* a nested object, so a discriminated block must send explicit nulls
+
+Merge-patch does not replace a nested object; it merges into it, field by field. When a
+nested object is **discriminated** — one member selects which of its siblings are legal —
+that makes a change of discriminator unexpressible by omission, and both directions fail
+for opposite reasons. On `jamfplatform_security_cloud_ztna_app`'s `routing` block, whose
+`mode` decides whether a gateway and a resolution mode are required or forbidden:
+
+- switching to the mode that **forbids** the siblings, sending only the discriminator,
+  leaves the previous values merged in — and the server refuses the combination;
+- switching to the mode that **requires** them, sending only the discriminator and one
+  sibling, arrives missing the other — and the server refuses that too.
+
+Both draw the same opaque refusal (`400 [INVALID_FIELD] routing: Routing definition is not
+valid.`), so the failure looks like a validation bug rather than a serialisation one.
+
+Two consequences:
+
+- **Send the whole discriminated object on every write, with absent members as explicit
+  `null`s** — never a partial. This is the nested-object analogue of the always-emit rule
+  for classic wrappers and scalars above.
+- **A nil pointer with `,omitempty` cannot express `null`.** The SDK generator has a config
+  knob for exactly this: list the schema in `emitNullForOptional` (`tools/generate/config.json`)
+  and it drops `,omitempty` from that schema's pointer fields, so nil marshals as `null`.
+  Fixing this upstream is required — a provider-side workaround is not available, because
+  the generated `*PatchRequest` type is the method's parameter. Wire-probe that the create
+  path also accepts the explicit-null form before doing it; on this endpoint it does.
+
+Reference: `internal/resources/security_cloud/ztna_app/input_builders.go` (`routingToWire`),
+and `TestRoutingToWireEmitsExplicitNulls`, which asserts the marshalled JSON rather than the
+struct — the struct is identical either way and only the tag decides which body goes out.
+
 ### Classic XML `PUT` merge where *empty clears* (omit = retain)
 
 A third write shape, distinct from both full-replace (omit = wipe) and merge-patch (omit = preserve): some classic XML `PUT` endpoints **merge**, but an **empty element clears** the field. Wire-probe both halves (`PUT` with a block/field omitted → `GET` (retained?); `PUT` with an empty `<field></field>` → `GET` (cleared?)). On `jamfplatform_pro_mobile_device_enrollment_profile`: omitting a field or whole block retains the server value; an empty element clears it; `PUT` returns `201` with no body (GET-after mandatory).
