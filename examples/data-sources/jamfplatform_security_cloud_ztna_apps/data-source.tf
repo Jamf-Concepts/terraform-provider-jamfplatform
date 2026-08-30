@@ -8,7 +8,7 @@ output "direct_routed_applications" {
   value = [
     for app in data.jamfplatform_security_cloud_ztna_apps.all.ztna_apps :
     coalesce(app.name, app.predefined_app_id)
-    if app.routing.mode == "Direct device routing"
+    if app.routing.traffic_routing == "Direct device routing"
   ]
 }
 

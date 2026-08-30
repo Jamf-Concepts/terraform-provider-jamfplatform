@@ -73,6 +73,11 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
   name     = "Internal CRM"
   category = local.cloud_storage
 
+  # hostnames and direct_ips_and_subnets are the traffic matchers, and both clear by
+  # removal: drop an entry here and the application stops matching that traffic on the
+  # next apply. A custom application with neither is accepted by Jamf Security Cloud
+  # and matches nothing at all, so keep at least one populated.
+
   # A wildcard covers only subdomains, so list the parent alongside it if it needs
   # to match too. Entries must be mutually exclusive — listing both
   # "*.crm.example.com" and "eu.crm.example.com" is rejected.
@@ -92,9 +97,9 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
   ]
 
   routing = {
-    mode         = "Encrypt and route via ZTNA"
-    gateway_id   = local.uk_shared_pool
-    routing_mode = "Standard"
+    traffic_routing = "Encrypt and route via ZTNA"
+    gateway_id      = local.uk_shared_pool
+    routing_mode    = "Standard"
   }
 
   # Contractors reach the same application without the tunnel. A group named here
@@ -104,7 +109,7 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
       device_group_ids = [jamfplatform_security_cloud_device_group.contractors.id]
 
       routing = {
-        mode = "Direct device routing"
+        traffic_routing = "Direct device routing"
       }
     },
   ]
@@ -129,7 +134,8 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
 }
 
 # A predefined application: Jamf owns the name and contributes its own host names,
-# which do not appear in hostnames. Anything listed here is an addition to them.
+# which do not appear in hostnames. Anything listed here is an addition to them, and
+# an empty hostnames is normal — the definition's own names still match.
 # Only one application per predefined definition is allowed on a tenant.
 resource "jamfplatform_security_cloud_ztna_app" "slack" {
   predefined_app_id = local.slack
@@ -138,7 +144,7 @@ resource "jamfplatform_security_cloud_ztna_app" "slack" {
   all_device_groups = true
 
   routing = {
-    mode = "Direct device routing"
+    traffic_routing = "Direct device routing"
   }
 }
 
@@ -163,12 +169,14 @@ resource "jamfplatform_security_cloud_device_group" "contractors" {
 ### Optional
 
 - `device_group_ids` (Set of String) IDs of the device groups that may reach this application, from the `jamfplatform_security_cloud_device_group` resource or data source. Applies only when `all_device_groups` is false. Leaving it unset with `all_device_groups` false is accepted and means no device can reach the application.
-- `direct_ips_and_subnets` (Set of String) **"Direct IPs and subnets"** in the Jamf Security Cloud admin UI — address ranges for applications that cannot be reached by host name. Use this only when the application does not support connecting by the host names above; it also requires a current version of Jamf Trust. Each entry is an IPv4 range in CIDR notation such as `10.1.2.0/24`; a bare address and an IPv6 range are both rejected. A range already claimed by another application is rejected.
-- `hostnames` (Set of String) **"Hostname"** entries under Traffic matching in the Jamf Security Cloud admin UI — the host names whose traffic belongs to this application. A wildcard may replace the whole leading label (`*.example.com`), and `*` on its own matches everything. Entries must be mutually exclusive: `*.example.com` already covers `sub.example.com`, and the parent domain has to be listed separately from its subdomains. Host names must be lower-case with no trailing dot, because Jamf Security Cloud stores them that way. A host name already claimed by another application is rejected. For a predefined application these are additions to the definition's own host names, not a replacement for them.
+- `direct_ips_and_subnets` (Set of String) **"Direct IPs and subnets"** in the Jamf Security Cloud admin UI — address ranges for applications that cannot be reached by host name. Use this only when the application does not support connecting by the host names above; it also requires a current version of Jamf Trust. Each entry is an IPv4 range in CIDR notation such as `10.1.2.0/24`; a bare address and an IPv6 range are both rejected. A range must name its own network address rather than a host inside it — write `10.1.2.0/24`, not `10.1.2.3/24`, because Jamf Security Cloud stores only the network. A range already claimed by another application is rejected. Removing an entry stops Jamf Security Cloud treating its traffic as part of this application; omitting the attribute clears the list.
+- `hostnames` (Set of String) **"Hostname"** entries under Traffic matching in the Jamf Security Cloud admin UI — the host names whose traffic belongs to this application. A wildcard may replace the whole leading label (`*.example.com`), and `*` on its own matches everything. Entries must be mutually exclusive: `*.example.com` already covers `sub.example.com`, and the parent domain has to be listed separately from its subdomains. Host names must be lower-case with no trailing dot, because Jamf Security Cloud stores them that way. A host name already claimed by another application is rejected. For a predefined application these are additions to the definition's own host names, not a replacement for them. Removing an entry stops Jamf Security Cloud treating its traffic as part of this application; omitting the attribute clears the list.
 - `name` (String) **"App name"** in the Jamf Security Cloud admin UI. Required for a custom application, and not accepted for a predefined one — a predefined application takes its name from the Jamf-maintained definition. Application names are not required to be unique, so prefer the application ID when referencing one elsewhere.
 - `predefined_app_id` (String) ID of the Jamf-maintained application definition this application is based on, from the `jamfplatform_security_cloud_ztna_predefined_apps` data source. Setting it makes this a predefined application: the definition owns the name and contributes its own host names, which the admin UI shows as "Default" and which do not appear in `hostnames`. Additional host names can still be added. Only one application per definition is allowed on a tenant. Changing this — in either direction — replaces the application, because the choice of form is fixed once made.
 - `routing_overrides` (Attributes List) **"Custom group assignments"** in the Jamf Security Cloud admin UI — per-group routing that overrides `routing` for the groups it names. A device group may appear in only one override, and unless `all_device_groups` is true it must also be in `device_group_ids`. (see [below for nested schema](#nestedatt--routing_overrides))
-- `security` (Attributes) The **Security** tab in the Jamf Security Cloud admin UI — what a device must prove before it may reach this application. Each block corresponds to one card on that tab. A block left out is one Jamf Security Cloud keeps its own setting for; include a block to take control of it. (see [below for nested schema](#nestedatt--security))
+- `security` (Attributes) The **Security** tab in the Jamf Security Cloud admin UI — what a device must prove before it may reach this application. Each block corresponds to one card on that tab. A block left out is one Jamf Security Cloud keeps its own setting for; include a block to take control of it.
+
+Unlike every other attribute here, *removing* a block you had previously applied stops Terraform managing that requirement without turning it off — Jamf Security Cloud keeps it as last applied. Set `enabled = false` to lift a requirement. (see [below for nested schema](#nestedatt--security))
 - `timeouts` (Attributes) (see [below for nested schema](#nestedatt--timeouts))
 
 ### Read-Only
@@ -181,7 +189,7 @@ resource "jamfplatform_security_cloud_device_group" "contractors" {
 
 Required:
 
-- `mode` (String) One of `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" sends traffic through the access gateway named in `gateway_id` and requires `routing_mode` alongside it. "Direct device routing" leaves traffic to the device's own routing and accepts neither. To reach private infrastructure over an IPsec tunnel, configure the tunnel on the gateway rather than here.
+- `traffic_routing` (String) **"Application traffic routing"** in the Jamf Security Cloud admin UI: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" sends traffic through the access gateway named in `gateway_id` and requires `routing_mode` alongside it. "Direct device routing" leaves traffic to the device's own routing and accepts neither. To reach private infrastructure over an IPsec tunnel, configure the tunnel on the gateway rather than here.
 
 Optional:
 
@@ -202,7 +210,7 @@ Required:
 
 Required:
 
-- `mode` (String) One of `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" sends traffic through the access gateway named in `gateway_id` and requires `routing_mode` alongside it. "Direct device routing" leaves traffic to the device's own routing and accepts neither. To reach private infrastructure over an IPsec tunnel, configure the tunnel on the gateway rather than here.
+- `traffic_routing` (String) **"Application traffic routing"** in the Jamf Security Cloud admin UI: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" sends traffic through the access gateway named in `gateway_id` and requires `routing_mode` alongside it. "Direct device routing" leaves traffic to the device's own routing and accepts neither. To reach private infrastructure over an IPsec tunnel, configure the tunnel on the gateway rather than here.
 
 Optional:
 
@@ -271,4 +279,11 @@ The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/c
 
 # Access policy applications are imported by application ID.
 terraform import jamfplatform_security_cloud_ztna_app.internal_crm 27f04387-0a12-4f70-9256-eeccc67d7304
+
+# Import does not adopt the Security tab. Jamf Security Cloud always holds all three
+# requirements, but Terraform manages only the cards the configuration declares, so an
+# imported application starts with no `security` block: write one and all three cards
+# show as additions even though nothing on the server changes. Read the current
+# settings with the jamfplatform_security_cloud_ztna_app data source, then declare the
+# cards you want to manage.
 ```

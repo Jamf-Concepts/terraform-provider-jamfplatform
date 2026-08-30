@@ -54,12 +54,33 @@ const (
 //
 // NOT_ENTITLED is the other one worth naming: the credentials are valid and the
 // tenant simply does not have the surface, which is invisible in a bare 403.
+//
+// Details this function does not translate — an unrecognised code, or a CONFLICT on a
+// custom app — are collected rather than discarded, and reported verbatim once at
+// least one sibling detail has been translated. Both callers add the raw
+// `err.Error()` only when this returns false, so a body carrying one known and one
+// unknown code would otherwise report the known one and drop the unknown entirely.
+// Reporting them only alongside a translated sibling is deliberate: when nothing at
+// all is recognised, returning false is strictly better than reporting the leftovers
+// here, because the SDK's own error string carries the HTTP status, the trace ID and
+// the request URL as well as every detail. Every one of the ~12 refusals probed on
+// 2026-08-30 carried a single-element `errors` array, so the mixed-detail case is
+// defensive rather than observed.
+//
+// INVALID_FIELD deliberately has no case of its own. The live API uses it for the
+// routing refusal, the host name mutual-exclusivity refusal and a malformed
+// `bareIps` entry alike, so only `field` disambiguates it — and the wire field names
+// do not all map onto attribute names (`bareIps` is `direct_ips_and_subnets`). A
+// single named case would therefore mislabel two refusals to point an attribute path
+// at the third, while the untranslated path above already surfaces the server's own
+// field and description.
 func appendWriteDiagnostics(diags *diag.Diagnostics, err error, hasPredefinedAppID bool) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
 		return false
 	}
 	matched := false
+	var untranslated []jamfplatform.ErrorDetail
 	for _, detail := range apiErr.Details() {
 		switch detail.Code {
 		case codeHostnameConflict:
@@ -107,6 +128,7 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error, hasPredefinedApp
 			)
 		case codeConflict:
 			if !hasPredefinedAppID {
+				untranslated = append(untranslated, detail)
 				continue
 			}
 			diags.AddAttributeError(
@@ -125,9 +147,34 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error, hasPredefinedApp
 					detail.Description,
 			)
 		default:
+			untranslated = append(untranslated, detail)
 			continue
 		}
 		matched = true
 	}
-	return matched
+	if !matched {
+		return false
+	}
+	for _, detail := range untranslated {
+		diags.AddError(
+			"Jamf Security Cloud refused the access policy application",
+			"Reported by Jamf Security Cloud: "+reportedDetail(detail),
+		)
+	}
+	return true
+}
+
+// reportedDetail renders one error detail the way the SDK's own error string does,
+// so an untranslated detail reads the same whether it reaches the operator through
+// this function or through the callers' raw-error fallback. Code and field are both
+// optional on the wire — a bare 409 carries neither.
+func reportedDetail(detail jamfplatform.ErrorDetail) string {
+	rendered := detail.Description
+	if detail.Field != "" {
+		rendered = detail.Field + ": " + rendered
+	}
+	if detail.Code != "" {
+		rendered = "[" + detail.Code + "] " + rendered
+	}
+	return rendered
 }

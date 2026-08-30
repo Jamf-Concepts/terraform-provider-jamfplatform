@@ -29,6 +29,15 @@ import (
 // The create response carries only the new ID and a canonical URL, so the zone is
 // read back to populate state with the stored representation — which matters here
 // because Jamf Security Cloud re-sorts the domain list.
+//
+// A read-back that fails after the create has succeeded still commits state. The zone
+// exists on the tenant by then, and returning without state would orphan it: a domain
+// may belong to only one custom DNS zone, so the retry is refused with a domain
+// conflict against the zone the operator does not know they created. What is committed
+// is the plan carrying the new ID — the sort order the server applies is what the next
+// refresh reconciles, and an errored apply does not run Terraform's plan-consistency
+// check, so a re-sorted collection is not a fault at that point. Nothing needs nulling
+// first: the ID is this schema's only Computed value.
 func (r *DNSZoneResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan DNSZoneResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -62,7 +71,15 @@ func (r *DNSZoneResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := r.client.GetDnsZoneV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Security Cloud DNS zone", err.Error())
+		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, dnsZoneIdentityModel{ID: plan.ID})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		resp.Diagnostics.AddError(
+			"Error reading created Jamf Security Cloud DNS zone",
+			"The zone was created with ID \""+created.ID+"\" but could not be read back, so Terraform has "+
+				"recorded its ID and the configured values without confirming what was stored. The next plan will "+
+				"refresh it — do not re-create it: a domain may belong to only one custom DNS zone, so a second "+
+				"create would be refused as a domain conflict with this one. Underlying error: "+err.Error(),
+		)
 		return
 	}
 	resp.Diagnostics.Append(assignDNSZoneResourceModel(ctx, &plan, got)...)

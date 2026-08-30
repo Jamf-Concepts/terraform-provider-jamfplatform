@@ -30,9 +30,9 @@ type ZtnaAppResourceModel struct {
 // RoutingModel represents a routing block, used both for the app's default
 // routing and inside each per-group override.
 type RoutingModel struct {
-	Mode        types.String `tfsdk:"mode"`
-	GatewayID   types.String `tfsdk:"gateway_id"`
-	RoutingMode types.String `tfsdk:"routing_mode"`
+	TrafficRouting types.String `tfsdk:"traffic_routing"`
+	GatewayID      types.String `tfsdk:"gateway_id"`
+	RoutingMode    types.String `tfsdk:"routing_mode"`
 }
 
 // RoutingOverrideModel represents one per-group routing override on the resource.

@@ -12,6 +12,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// TestPrivateCIDR pins the Jamf-side subnet rules the server stated in its own
+// rejection message (wire-probed 2026-08-27), plus the shape rules the shared CIDR
+// grammar contributes. `::ffff:10.0.0.0/104` is the case that matters most: it parses,
+// and its `To4` is non-nil, so the gateway's own former parse let it through to be
+// reported as a `/104` prefix out of range — true, but for the wrong reason.
 func TestPrivateCIDR(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -24,12 +29,13 @@ func TestPrivateCIDR(t *testing.T) {
 		{"one ninety two sixteen", types.StringValue("192.168.0.0/16"), false},
 		{"one ninety two twenty four", types.StringValue("192.168.100.0/24"), false},
 		{"prefix too long", types.StringValue("10.1.2.0/31"), true},
-		{"prefix too short for 172", types.StringValue("172.16.0.0/11"), true},
+		{"host bits set", types.StringValue("172.16.0.0/11"), true},
 		{"prefix too short for 192", types.StringValue("192.168.0.0/15"), true},
 		{"public range", types.StringValue("8.8.8.0/24"), true},
 		{"default route", types.StringValue("0.0.0.0/0"), true},
 		{"bare address", types.StringValue("10.0.0.1"), true},
 		{"ipv6", types.StringValue("fd00::/8"), true},
+		{"ipv4-mapped ipv6 block", types.StringValue("::ffff:10.0.0.0/104"), true},
 		{"nonsense", types.StringValue("not-a-subnet"), true},
 		{"null defers to server", types.StringNull(), false},
 		{"unknown defers to server", types.StringUnknown(), false},
@@ -51,6 +57,10 @@ func TestPrivateCIDR(t *testing.T) {
 	}
 }
 
+// TestCIDRBlock pins the customer-side subnet grammar, which is the shared
+// commonvalidators.IPv4CIDR: no IPv4-mapped IPv6 block, and no range carrying host
+// bits, since `subnets` is Required and Terraform holds the provider to the value it
+// planned.
 func TestCIDRBlock(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -62,6 +72,8 @@ func TestCIDRBlock(t *testing.T) {
 		{"private range", types.StringValue("10.10.0.0/16"), false},
 		{"bare address", types.StringValue("10.10.0.1"), true},
 		{"ipv6", types.StringValue("2001:db8::/32"), true},
+		{"ipv4-mapped ipv6 block", types.StringValue("::ffff:10.0.0.0/104"), true},
+		{"host bits set is accepted; canonicalisation is unprobed on this endpoint", types.StringValue("10.10.0.1/16"), false},
 		{"nonsense", types.StringValue("nope"), true},
 		{"null defers to server", types.StringNull(), false},
 	}

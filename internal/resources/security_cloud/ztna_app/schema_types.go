@@ -21,9 +21,9 @@ var ztnaAppTimeoutAttributeTypes = map[string]attr.Type{
 // One table serves both the app's default routing and each per-group override,
 // because the wire sends the same object in both positions.
 var routingAttributeTypes = map[string]attr.Type{
-	"mode":         types.StringType,
-	"gateway_id":   types.StringType,
-	"routing_mode": types.StringType,
+	"traffic_routing": types.StringType,
+	"gateway_id":      types.StringType,
+	"routing_mode":    types.StringType,
 }
 
 // routingObjectType is the type of a routing block.

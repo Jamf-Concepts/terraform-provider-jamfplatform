@@ -48,6 +48,12 @@ func providerNotConfiguredError() (string, string) {
 // answers an empty set with a 200 and no results, so this branch should be
 // unreachable — but Read already treats a 404 as absence, and having the two disagree
 // would mean a create that fails on a tenant a refresh handles fine.
+//
+// The adoption above is the fallback, not the plan: when the write has landed and only
+// the confirming read has failed, state is committed here anyway, so the tenant is not
+// left holding mappings Terraform knows nothing about. That is what write's return
+// value reports — the diagnostics alone cannot distinguish a write that never happened
+// from a read-back that failed after one did.
 func (r *HostnameMappingsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(providerNotConfiguredError())
@@ -100,8 +106,12 @@ func (r *HostnameMappingsResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	r.write(createCtx, ctx, &plan, &resp.Diagnostics, "creating")
+	written := r.write(createCtx, ctx, &plan, &resp.Diagnostics, "creating")
 	if resp.Diagnostics.HasError() {
+		if written {
+			resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, hostnameMappingsIdentityModel{ID: plan.ID})...)
+			resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		}
 		return
 	}
 
@@ -262,29 +272,41 @@ func (r *HostnameMappingsResource) Delete(ctx context.Context, req resource.Dele
 //
 // callCtx carries the operation timeout; logCtx is the untimed context, so a trace
 // line still lands if the call itself times out.
-func (r *HostnameMappingsResource) write(callCtx, logCtx context.Context, plan *HostnameMappingsResourceModel, diags *diag.Diagnostics, verb string) {
+//
+// The return value reports whether the replace call landed, not whether everything
+// worked: a caller that has to decide between committing partial state and committing
+// none cannot tell those apart from the diagnostics. The singleton ID is set as soon
+// as the write succeeds, before the read-back, so that partial state carries it — it
+// is a provider constant, not a server-assigned value, so there is nothing to wait
+// for.
+func (r *HostnameMappingsResource) write(callCtx, logCtx context.Context, plan *HostnameMappingsResourceModel, diags *diag.Diagnostics, verb string) bool {
 	input, inputDiags := buildMappingsWriteInput(callCtx, plan.Mappings)
 	diags.Append(inputDiags...)
 	if diags.HasError() {
-		return
+		return false
 	}
 
 	if err := r.client.ReplaceDnsCustomHostnameMappingsV1(callCtx, &input); err != nil {
 		if !appendWriteDiagnostics(diags, err) && !appendDuplicateHostnameHint(diags, err) {
 			diags.AddError("Error "+verb+" Jamf Security Cloud hostname mappings", err.Error())
 		}
-		return
+		return false
 	}
+	plan.ID = types.StringValue(helpers.SingletonID)
 
 	got, err := r.client.GetDnsCustomHostnameMappingsV1(callCtx)
 	if err != nil {
-		diags.AddError("Error reading the Jamf Security Cloud hostname mappings just written", err.Error())
-		return
+		diags.AddError(
+			"Error reading the Jamf Security Cloud hostname mappings just written",
+			"The mapping set was written to the tenant but could not be read back, so Terraform has recorded the "+
+				"configured mappings under the ID \""+helpers.SingletonID+"\" without confirming what was "+
+				"stored — the server dedupes addresses and returns its own order. The next plan will refresh "+
+				"them: there is no need to import them, and nothing has to be re-created. Underlying error: "+
+				err.Error(),
+		)
+		return true
 	}
 
 	diags.Append(assignHostnameMappingsResourceModel(logCtx, plan, got)...)
-	if diags.HasError() {
-		return
-	}
-	plan.ID = types.StringValue(helpers.SingletonID)
+	return true
 }

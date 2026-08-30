@@ -34,7 +34,7 @@
 //	direct_ips_and_subnets                 bareIps
 //	all_device_groups                      assignments.inclusions.allUsers
 //	device_group_ids                       assignments.inclusions.groups
-//	routing.mode                           routing.type
+//	routing.traffic_routing                routing.type
 //	routing.routing_mode                   routing.dnsIpResolutionType
 //	routing_overrides                      groupOverrides.routingOverrides
 //	routing_overrides[].device_group_ids   groupOverrides.routingOverrides[].groupIds
@@ -66,6 +66,7 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -214,7 +215,8 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					"subdomains. Host names must be lower-case with no trailing dot, because Jamf Security " +
 					"Cloud stores them that way. A host name already claimed by another application is " +
 					"rejected. For a predefined application these are additions to the definition's own " +
-					"host names, not a replacement for them.",
+					"host names, not a replacement for them. Removing an entry stops Jamf Security Cloud " +
+					"treating its traffic as part of this application; omitting the attribute clears the list.",
 				Optional:    true,
 				ElementType: types.StringType,
 				Validators: []validator.Set{
@@ -230,8 +232,11 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					"address ranges for applications that cannot be reached by host name. Use this only when " +
 					"the application does not support connecting by the host names above; it also requires a " +
 					"current version of Jamf Trust. Each entry is an IPv4 range in CIDR notation such as " +
-					"`10.1.2.0/24`; a bare address and an IPv6 range are both rejected. A range already " +
-					"claimed by another application is rejected.",
+					"`10.1.2.0/24`; a bare address and an IPv6 range are both rejected. A range must name its " +
+					"own network address rather than a host inside it — write `10.1.2.0/24`, not " +
+					"`10.1.2.3/24`, because Jamf Security Cloud stores only the network. A range already " +
+					"claimed by another application is rejected. Removing an entry stops Jamf Security Cloud " +
+					"treating its traffic as part of this application; omitting the attribute clears the list.",
 				Optional:    true,
 				ElementType: types.StringType,
 				Validators: []validator.Set{
@@ -272,6 +277,9 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 					"appear in only one override, and unless `all_device_groups` is true it must also be in " +
 					"`device_group_ids`.",
 				Optional: true,
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(minCollectionSize),
+				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"device_group_ids": schema.SetAttribute{
@@ -296,7 +304,10 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 				MarkdownDescription: "The **Security** tab in the Jamf Security Cloud admin UI — what a " +
 					"device must prove before it may reach this application. Each block corresponds to one " +
 					"card on that tab. A block left out is one Jamf Security Cloud keeps its own setting " +
-					"for; include a block to take control of it.",
+					"for; include a block to take control of it.\n\n" +
+					"Unlike every other attribute here, *removing* a block you had previously applied stops " +
+					"Terraform managing that requirement without turning it off — Jamf Security Cloud keeps " +
+					"it as last applied. Set `enabled = false` to lift a requirement.",
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"managed_device": schema.SingleNestedAttribute{
@@ -339,8 +350,9 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 // controls in both.
 func routingSchemaAttributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
-		"mode": schema.StringAttribute{
-			MarkdownDescription: "One of " + markdownList(routingModeValues()) + ". \"" +
+		"traffic_routing": schema.StringAttribute{
+			MarkdownDescription: "**\"Application traffic routing\"** in the Jamf Security Cloud admin UI: " +
+				markdownList(routingModeValues()) + ". \"" +
 				routingModeLabels[securitycloud.RoutingTypeCustom] + "\" sends traffic through the access " +
 				"gateway named in `gateway_id` and requires `routing_mode` alongside it. \"" +
 				routingModeLabels[securitycloud.RoutingTypeDirect] + "\" leaves traffic to the device's own " +

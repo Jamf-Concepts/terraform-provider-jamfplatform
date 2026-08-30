@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
+	"github.com/hashicorp/terraform-plugin-testing/compare"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/knownvalue"
 	"github.com/hashicorp/terraform-plugin-testing/querycheck"
@@ -99,7 +100,7 @@ func TestAccResource_SecurityCloudZtnaApp_Custom(t *testing.T) {
 						all_device_groups = true
 
 						routing = {
-							mode = "Direct device routing"
+							traffic_routing = "Direct device routing"
 						}
 					}
 				`, name, category, host),
@@ -110,7 +111,7 @@ func TestAccResource_SecurityCloudZtnaApp_Custom(t *testing.T) {
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("predefined_app_id"), knownvalue.Null()),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("all_device_groups"), knownvalue.Bool(true)),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("hostnames"), knownvalue.SetSizeExact(1)),
-					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("mode"), knownvalue.StringExact("Direct device routing")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("traffic_routing"), knownvalue.StringExact("Direct device routing")),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("gateway_id"), knownvalue.Null()),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("routing_mode"), knownvalue.Null()),
 					// An omitted collection reads back null rather than empty, which is the
@@ -147,16 +148,16 @@ func TestAccResource_SecurityCloudZtnaApp_Custom(t *testing.T) {
 						]
 
 						routing = {
-							mode         = "Encrypt and route via ZTNA"
-							gateway_id   = %[6]q
-							routing_mode = "Standard"
+							traffic_routing = "Encrypt and route via ZTNA"
+							gateway_id      = %[6]q
+							routing_mode    = "Standard"
 						}
 
 						routing_overrides = [
 							{
 								device_group_ids = [jamfplatform_security_cloud_device_group.one.id]
 								routing = {
-									mode = "Direct device routing"
+									traffic_routing = "Direct device routing"
 								}
 							},
 						]
@@ -188,11 +189,21 @@ func TestAccResource_SecurityCloudZtnaApp_Custom(t *testing.T) {
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("hostnames"), knownvalue.SetExact([]knownvalue.Check{
 						knownvalue.StringExact(hostUpdated),
 					})),
-					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("mode"), knownvalue.StringExact("Encrypt and route via ZTNA")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("traffic_routing"), knownvalue.StringExact("Encrypt and route via ZTNA")),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("gateway_id"), knownvalue.StringExact(gateways[0])),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing").AtMapKey("routing_mode"), knownvalue.StringExact("Standard")),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing_overrides"), knownvalue.ListSizeExact(1)),
-					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing_overrides").AtSliceIndex(0).AtMapKey("routing").AtMapKey("mode"), knownvalue.StringExact("Direct device routing")),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing_overrides").AtSliceIndex(0).AtMapKey("device_group_ids"), knownvalue.SetSizeExact(1)),
+					// The override names one of the two groups this same config creates, so the
+					// id it must hold is only knowable at apply time. Comparing it against the
+					// group resource pins it anyway — a read that mangles or swaps the override
+					// group ids passes a size-only assertion.
+					statecheck.CompareValuePairs(
+						"jamfplatform_security_cloud_device_group.one", tfjsonpath.New("id"),
+						resourceName, tfjsonpath.New("routing_overrides").AtSliceIndex(0).AtMapKey("device_group_ids").AtSliceIndex(0),
+						compare.ValuesSame(),
+					),
+					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("routing_overrides").AtSliceIndex(0).AtMapKey("routing").AtMapKey("traffic_routing"), knownvalue.StringExact("Direct device routing")),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("security").AtMapKey("managed_device").AtMapKey("enabled"), knownvalue.Bool(true)),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("security").AtMapKey("managed_device").AtMapKey("device_push_notifications"), knownvalue.Bool(false)),
 					statecheck.ExpectKnownValue(resourceName, tfjsonpath.New("security").AtMapKey("device_risk").AtMapKey("deny_at_risk_level"), knownvalue.StringExact("Medium")),
@@ -216,7 +227,7 @@ func TestAccResource_SecurityCloudZtnaApp_Custom(t *testing.T) {
 						all_device_groups = true
 
 						routing = {
-							mode = "Direct device routing"
+							traffic_routing = "Direct device routing"
 						}
 					}
 				`, nameUpdated, categoryUpdated),
@@ -303,7 +314,7 @@ func TestAccResource_SecurityCloudZtnaApp_Predefined(t *testing.T) {
 						all_device_groups = true
 
 						routing = {
-							mode = "Direct device routing"
+							traffic_routing = "Direct device routing"
 						}
 					}
 				`, predefinedID),
@@ -327,7 +338,7 @@ func TestAccResource_SecurityCloudZtnaApp_Predefined(t *testing.T) {
 						all_device_groups = true
 
 						routing = {
-							mode = "Direct device routing"
+							traffic_routing = "Direct device routing"
 						}
 					}
 				`, predefinedID, host),
@@ -370,7 +381,7 @@ func TestAccResource_SecurityCloudZtnaApp_FormIsImmutable(t *testing.T) {
 						all_device_groups = true
 
 						routing = {
-							mode = "Direct device routing"
+							traffic_routing = "Direct device routing"
 						}
 					}
 				`, name),
@@ -383,7 +394,7 @@ func TestAccResource_SecurityCloudZtnaApp_FormIsImmutable(t *testing.T) {
 						all_device_groups = true
 
 						routing = {
-							mode = "Direct device routing"
+							traffic_routing = "Direct device routing"
 						}
 					}
 				`, predefinedID),
@@ -421,7 +432,7 @@ func TestAccResource_SecurityCloudZtnaApp_Drift(t *testing.T) {
 						all_device_groups = true
 
 						routing = {
-							mode = "Direct device routing"
+							traffic_routing = "Direct device routing"
 						}
 					}
 				`, name),
@@ -469,7 +480,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					predefined_app_id = %q
 					category          = "Uncategorized"
 					all_device_groups = true
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 				}
 			`, suffix, predefinedID),
 			expectError: regexp.MustCompile(`cannot be renamed`),
@@ -480,7 +491,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 				resource "jamfplatform_security_cloud_ztna_app" "test" {
 					category          = "Uncategorized"
 					all_device_groups = true
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 				}
 			`,
 			expectError: regexp.MustCompile(`needs\s+a\s+name`),
@@ -493,8 +504,8 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = true
 					routing = {
-						mode         = "Encrypt and route via ZTNA"
-						routing_mode = "Standard"
+						traffic_routing = "Encrypt and route via ZTNA"
+						routing_mode    = "Standard"
 					}
 				}
 			`, suffix),
@@ -508,8 +519,8 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = true
 					routing = {
-						mode       = "Encrypt and route via ZTNA"
-						gateway_id = %q
+						traffic_routing = "Encrypt and route via ZTNA"
+						gateway_id      = %q
 					}
 				}
 			`, suffix, gateways[0]),
@@ -523,8 +534,8 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = true
 					routing = {
-						mode       = "Direct device routing"
-						gateway_id = %q
+						traffic_routing = "Direct device routing"
+						gateway_id      = %q
 					}
 				}
 			`, suffix, gateways[0]),
@@ -538,7 +549,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = true
 					device_group_ids  = ["00000000-0000-0000-0000-000000000000"]
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 				}
 			`, suffix),
 			expectError: regexp.MustCompile(`conflict\s+with\s+all\s+device\s+groups`),
@@ -551,11 +562,11 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = false
 					device_group_ids  = ["aaaaaaaa-0000-0000-0000-000000000000"]
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 					routing_overrides = [
 						{
 							device_group_ids = ["bbbbbbbb-0000-0000-0000-000000000000"]
-							routing = { mode = "Direct device routing" }
+							routing = { traffic_routing = "Direct device routing" }
 						},
 					]
 				}
@@ -569,15 +580,15 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					name              = "tf-acc-dupoverride-%s"
 					category          = "Uncategorized"
 					all_device_groups = true
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 					routing_overrides = [
 						{
 							device_group_ids = ["aaaaaaaa-0000-0000-0000-000000000000"]
-							routing = { mode = "Direct device routing" }
+							routing = { traffic_routing = "Direct device routing" }
 						},
 						{
 							device_group_ids = ["aaaaaaaa-0000-0000-0000-000000000000"]
-							routing = { mode = "Direct device routing" }
+							routing = { traffic_routing = "Direct device routing" }
 						},
 					]
 				}
@@ -592,7 +603,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = true
 					hostnames         = ["*.tf-acc.example.com", "sub.tf-acc.example.com"]
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 				}
 			`, suffix),
 			expectError: regexp.MustCompile(`Host\s+names\s+overlap`),
@@ -605,7 +616,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = true
 					hostnames         = ["UPPER.tf-acc.example.com"]
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 				}
 			`, suffix),
 			expectError: regexp.MustCompile(`lower-case`),
@@ -618,7 +629,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category          = "Uncategorized"
 					all_device_groups = true
 					hostnames         = ["trailing.tf-acc.example.com."]
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 				}
 			`, suffix),
 			expectError: regexp.MustCompile(`trailing\s+dot`),
@@ -631,7 +642,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					category               = "Uncategorized"
 					all_device_groups      = true
 					direct_ips_and_subnets = ["192.0.2.10"]
-					routing = { mode = "Direct device routing" }
+					routing = { traffic_routing = "Direct device routing" }
 				}
 			`, suffix),
 			expectError: regexp.MustCompile(`prefix\s+length`),
@@ -643,7 +654,7 @@ func TestAccResource_SecurityCloudZtnaApp_ValidatorErrors(t *testing.T) {
 					name              = "tf-acc-badmode-%s"
 					category          = "Uncategorized"
 					all_device_groups = true
-					routing = { mode = "CUSTOM" }
+					routing = { traffic_routing = "CUSTOM" }
 				}
 			`, suffix),
 			expectError: regexp.MustCompile(`Invalid\s+Attribute\s+Value\s+Match`),
@@ -686,7 +697,7 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						category          = "Uncategorized"
 						hostnames         = [%[2]q]
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 				`, suffix, host),
 			},
@@ -698,7 +709,7 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						category          = "Uncategorized"
 						hostnames         = [%[2]q]
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 
 					resource "jamfplatform_security_cloud_ztna_app" "clash" {
@@ -706,7 +717,7 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						category          = "Uncategorized"
 						hostnames         = [%[2]q]
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 				`, suffix, host),
 				ExpectError: regexp.MustCompile(`already\s+claimed\s+by\s+another\s+access\s+policy`),
@@ -720,7 +731,7 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						category          = "tf-acc-not-a-category"
 						hostnames         = [%[2]q]
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 				`, suffix, host),
 				ExpectError: regexp.MustCompile(`Unknown\s+application\s+category`),
@@ -734,7 +745,7 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						hostnames         = [%[2]q]
 						all_device_groups = false
 						device_group_ids  = ["00000000-0000-0000-0000-000000000000"]
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 				`, suffix, host),
 				ExpectError: regexp.MustCompile(`Referenced\s+device\s+group\s+not\s+found`),
@@ -747,14 +758,14 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						category          = "Uncategorized"
 						hostnames         = [%[2]q]
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 
 					resource "jamfplatform_security_cloud_ztna_app" "bogus" {
 						predefined_app_id = "00000000-0000-0000-0000-000000000000"
 						category          = "Uncategorized"
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 				`, suffix, host),
 				ExpectError: regexp.MustCompile(`Predefined\s+application\s+not\s+found`),
@@ -768,21 +779,21 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 						category          = "Uncategorized"
 						hostnames         = [%[2]q]
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 
 					resource "jamfplatform_security_cloud_ztna_app" "first" {
 						predefined_app_id = %[3]q
 						category          = "Uncategorized"
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 
 					resource "jamfplatform_security_cloud_ztna_app" "second" {
 						predefined_app_id = %[3]q
 						category          = "Uncategorized"
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 						depends_on        = [jamfplatform_security_cloud_ztna_app.first]
 					}
 				`, suffix, host, predefinedID),
@@ -790,6 +801,52 @@ func TestAccResource_SecurityCloudZtnaApp_ServerConflicts(t *testing.T) {
 			},
 		},
 	})
+}
+
+// listContainsObjectWithString is a knownvalue.Check that passes when a list of
+// objects holds at least one element whose string attribute key equals want.
+//
+// It exists because every list check terraform-plugin-testing v1.16.0 ships is
+// positional — ListExact, ListPartial and ListSizeExact all address elements by
+// index — and the plural application list arrives in whatever order Jamf Security
+// Cloud returns it in, which the schema explicitly says not to rely on. An empty or
+// truncated list therefore fails here rather than passing on a lucky index.
+//
+// A missing or null attribute compares as the empty string, so want must be
+// non-empty for the check to mean anything; the callers pass literals.
+type listContainsObjectWithString struct {
+	key  string
+	want string
+}
+
+var _ knownvalue.Check = listContainsObjectWithString{}
+
+// CheckValue reports whether any element carries the wanted attribute value.
+func (c listContainsObjectWithString) CheckValue(other any) error {
+	elements, ok := other.([]any)
+	if !ok {
+		return fmt.Errorf("expected []any value for listContainsObjectWithString check, got: %T", other)
+	}
+
+	got := make([]string, 0, len(elements))
+	for i, element := range elements {
+		object, ok := element.(map[string]any)
+		if !ok {
+			return fmt.Errorf("expected map[string]any for element %d of listContainsObjectWithString check, got: %T", i, element)
+		}
+		value, _ := object[c.key].(string)
+		if value == c.want {
+			return nil
+		}
+		got = append(got, value)
+	}
+
+	return fmt.Errorf("no element with %s %q among the %d elements checked (saw: %v)", c.key, c.want, len(elements), got)
+}
+
+// String returns the string representation of the check.
+func (c listContainsObjectWithString) String() string {
+	return fmt.Sprintf("an element with %s %q", c.key, c.want)
 }
 
 // TestAccDataSource_SecurityCloudZtnaApp covers all three lookup keys on the singular
@@ -811,14 +868,14 @@ func TestAccDataSource_SecurityCloudZtnaApp(t *testing.T) {
 			category          = "Uncategorized"
 			hostnames         = [%[2]q]
 			all_device_groups = true
-			routing = { mode = "Direct device routing" }
+			routing = { traffic_routing = "Direct device routing" }
 		}
 
 		resource "jamfplatform_security_cloud_ztna_app" "predefined" {
 			predefined_app_id = %[3]q
 			category          = "Uncategorized"
 			all_device_groups = true
-			routing = { mode = "Direct device routing" }
+			routing = { traffic_routing = "Direct device routing" }
 		}
 
 		data "jamfplatform_security_cloud_ztna_app" "by_id" {
@@ -861,6 +918,24 @@ func TestAccDataSource_SecurityCloudZtnaApp(t *testing.T) {
 					// resource, because it has no configuration to gate on.
 					statecheck.ExpectKnownValue("data.jamfplatform_security_cloud_ztna_app.by_id", tfjsonpath.New("security").AtMapKey("jamf_trust").AtMapKey("enabled"), knownvalue.NotNull()),
 					statecheck.ExpectKnownValue("data.jamfplatform_security_cloud_ztna_apps.all", tfjsonpath.New("id"), knownvalue.StringExact("ztna_apps")),
+					// The plural id is a compile-time constant, so on its own it asserts nothing
+					// about the read. These three cover the result list itself.
+					//
+					// The size floor is two — the custom and predefined applications this config
+					// creates — and a floor rather than an exact count because the tenant holds
+					// whatever else other tests and real configuration have left behind. There is
+					// no ListSizeAtLeast in terraform-plugin-testing v1.16.0; ListPartial keyed on
+					// the last required index is the same assertion, since it fails with "missing
+					// element index" on a shorter list.
+					statecheck.ExpectKnownValue("data.jamfplatform_security_cloud_ztna_apps.all", tfjsonpath.New("ztna_apps"), knownvalue.ListPartial(map[int]knownvalue.Check{
+						1: knownvalue.NotNull(),
+					})),
+					// Both created applications must actually appear. Matching by field rather
+					// than by index is deliberate: the endpoint takes no sort parameter and the
+					// schema says the order is the server's, so an index would be a coin toss.
+					// The predefined one is matched on predefined_app_id because its name is null.
+					statecheck.ExpectKnownValue("data.jamfplatform_security_cloud_ztna_apps.all", tfjsonpath.New("ztna_apps"), listContainsObjectWithString{key: "name", want: name}),
+					statecheck.ExpectKnownValue("data.jamfplatform_security_cloud_ztna_apps.all", tfjsonpath.New("ztna_apps"), listContainsObjectWithString{key: "predefined_app_id", want: predefinedID}),
 				},
 			},
 		},
@@ -963,7 +1038,7 @@ func TestAccListResource_SecurityCloudZtnaApp(t *testing.T) {
 						name              = %q
 						category          = "Uncategorized"
 						all_device_groups = true
-						routing = { mode = "Direct device routing" }
+						routing = { traffic_routing = "Direct device routing" }
 					}
 				`, name),
 			},

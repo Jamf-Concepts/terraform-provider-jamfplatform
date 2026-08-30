@@ -33,6 +33,11 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
   name     = "Internal CRM"
   category = local.cloud_storage
 
+  # hostnames and direct_ips_and_subnets are the traffic matchers, and both clear by
+  # removal: drop an entry here and the application stops matching that traffic on the
+  # next apply. A custom application with neither is accepted by Jamf Security Cloud
+  # and matches nothing at all, so keep at least one populated.
+
   # A wildcard covers only subdomains, so list the parent alongside it if it needs
   # to match too. Entries must be mutually exclusive — listing both
   # "*.crm.example.com" and "eu.crm.example.com" is rejected.
@@ -52,9 +57,9 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
   ]
 
   routing = {
-    mode         = "Encrypt and route via ZTNA"
-    gateway_id   = local.uk_shared_pool
-    routing_mode = "Standard"
+    traffic_routing = "Encrypt and route via ZTNA"
+    gateway_id      = local.uk_shared_pool
+    routing_mode    = "Standard"
   }
 
   # Contractors reach the same application without the tunnel. A group named here
@@ -64,7 +69,7 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
       device_group_ids = [jamfplatform_security_cloud_device_group.contractors.id]
 
       routing = {
-        mode = "Direct device routing"
+        traffic_routing = "Direct device routing"
       }
     },
   ]
@@ -89,7 +94,8 @@ resource "jamfplatform_security_cloud_ztna_app" "internal_crm" {
 }
 
 # A predefined application: Jamf owns the name and contributes its own host names,
-# which do not appear in hostnames. Anything listed here is an addition to them.
+# which do not appear in hostnames. Anything listed here is an addition to them, and
+# an empty hostnames is normal — the definition's own names still match.
 # Only one application per predefined definition is allowed on a tenant.
 resource "jamfplatform_security_cloud_ztna_app" "slack" {
   predefined_app_id = local.slack
@@ -98,7 +104,7 @@ resource "jamfplatform_security_cloud_ztna_app" "slack" {
   all_device_groups = true
 
   routing = {
-    mode = "Direct device routing"
+    traffic_routing = "Direct device routing"
   }
 }
 

@@ -21,9 +21,9 @@ import (
 // only the tag decides which body goes out.
 func TestRoutingToWireEmitsExplicitNulls(t *testing.T) {
 	routing := routingToWire(&RoutingModel{
-		Mode:        types.StringValue(routingModeLabels[securitycloud.RoutingTypeDirect]),
-		GatewayID:   types.StringNull(),
-		RoutingMode: types.StringNull(),
+		TrafficRouting: types.StringValue(routingModeLabels[securitycloud.RoutingTypeDirect]),
+		GatewayID:      types.StringNull(),
+		RoutingMode:    types.StringNull(),
 	})
 
 	body, err := json.Marshal(routing)
@@ -51,9 +51,9 @@ func TestRoutingToWireEmitsExplicitNulls(t *testing.T) {
 // as the values the API stores, not as the admin-UI labels the schema exposes.
 func TestRoutingToWireTranslatesLabels(t *testing.T) {
 	routing := routingToWire(&RoutingModel{
-		Mode:        types.StringValue(routingModeLabels[securitycloud.RoutingTypeCustom]),
-		GatewayID:   types.StringValue("a7d2"),
-		RoutingMode: types.StringValue("Legacy"),
+		TrafficRouting: types.StringValue(routingModeLabels[securitycloud.RoutingTypeCustom]),
+		GatewayID:      types.StringValue("a7d2"),
+		RoutingMode:    types.StringValue("Legacy"),
 	})
 
 	if routing.Type != securitycloud.RoutingTypeCustom {
@@ -67,13 +67,86 @@ func TestRoutingToWireTranslatesLabels(t *testing.T) {
 	}
 }
 
+// TestRoutingToWireStartsFromTheOperatorLiteral pins the operator-visible half of
+// the routing contract: the exact string an operator types in HCL has to reach the
+// wire as the matching stored type. TestRoutingToWireTranslatesLabels cannot pin it,
+// because it takes its input from routingModeLabels and then asserts the output
+// against that same table's key — transposing the table's two values passes it
+// unchanged. Starting from the literal is what makes a transposition fail, and a
+// transposition is a misroute: traffic an operator asked to keep off the access
+// gateway sent through it, or ZTNA traffic silently going direct.
+func TestRoutingToWireStartsFromTheOperatorLiteral(t *testing.T) {
+	cases := []struct {
+		label string
+		want  string
+	}{
+		{"Encrypt and route via ZTNA", securitycloud.RoutingTypeCustom},
+		{"Direct device routing", securitycloud.RoutingTypeDirect},
+	}
+	for _, tc := range cases {
+		t.Run(tc.label, func(t *testing.T) {
+			got := routingToWire(&RoutingModel{
+				TrafficRouting: types.StringValue(tc.label),
+				GatewayID:      types.StringNull(),
+				RoutingMode:    types.StringNull(),
+			})
+			if got.Type != tc.want {
+				t.Errorf("traffic_routing = %q reached the wire as %q, want %q", tc.label, got.Type, tc.want)
+			}
+		})
+	}
+}
+
+// TestAssignmentsAllUsersFollowsThePlan pins that all_device_groups reaches the wire
+// rather than being hard-coded. Every other builder test leaves it at the basePlan
+// value of true and asserts something else, so replacing the read with a literal
+// `false` survives the whole suite — an app scoped to every device silently narrowed
+// to the named groups, or to nothing at all. Both builders are asserted because they
+// call assignmentsFromPlan independently and a regression could land in either.
+func TestAssignmentsAllUsersFollowsThePlan(t *testing.T) {
+	cases := []struct {
+		name      string
+		allGroups bool
+	}{
+		{"every device group", true},
+		{"named groups only", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			plan := basePlan(t)
+			plan.Name = types.StringValue("Internal CRM")
+			plan.AllDeviceGroups = types.BoolValue(tc.allGroups)
+			plan.DeviceGroupIDs = stringSetFor(t, []string{"group-a"})
+
+			create, diags := buildAppCreateInput(context.Background(), plan)
+			if diags.HasError() {
+				t.Fatalf("building create input: %s", diags)
+			}
+			if got := create.Assignments.Inclusions.AllUsers; got != tc.allGroups {
+				t.Errorf("create allUsers = %v, want %v", got, tc.allGroups)
+			}
+
+			patch, patchDiags := buildAppPatchInput(context.Background(), plan)
+			if patchDiags.HasError() {
+				t.Fatalf("building patch input: %s", patchDiags)
+			}
+			if patch.Assignments == nil {
+				t.Fatal("the patch body must carry assignments, or the configuration is not authoritative")
+			}
+			if got := patch.Assignments.Inclusions.AllUsers; got != tc.allGroups {
+				t.Errorf("patch allUsers = %v, want %v", got, tc.allGroups)
+			}
+		})
+	}
+}
+
 // TestRoutingToWireIgnoresUnknowns pins that a value Terraform has not resolved yet
 // is sent as null rather than as an empty string, which the enum would refuse.
 func TestRoutingToWireIgnoresUnknowns(t *testing.T) {
 	routing := routingToWire(&RoutingModel{
-		Mode:        types.StringValue(routingModeLabels[securitycloud.RoutingTypeCustom]),
-		GatewayID:   types.StringUnknown(),
-		RoutingMode: types.StringUnknown(),
+		TrafficRouting: types.StringValue(routingModeLabels[securitycloud.RoutingTypeCustom]),
+		GatewayID:      types.StringUnknown(),
+		RoutingMode:    types.StringUnknown(),
 	})
 	if routing.GatewayID != nil || routing.DnsIpResolutionType != nil {
 		t.Errorf("unknown members must not reach the wire: gateway=%v resolution=%v",
@@ -329,9 +402,9 @@ func basePlan(t *testing.T) ZtnaAppResourceModel {
 		AllDeviceGroups:     types.BoolValue(true),
 		DeviceGroupIDs:      types.SetNull(types.StringType),
 		Routing: &RoutingModel{
-			Mode:        types.StringValue(routingModeLabels[securitycloud.RoutingTypeDirect]),
-			GatewayID:   types.StringNull(),
-			RoutingMode: types.StringNull(),
+			TrafficRouting: types.StringValue(routingModeLabels[securitycloud.RoutingTypeDirect]),
+			GatewayID:      types.StringNull(),
+			RoutingMode:    types.StringNull(),
 		},
 		RoutingOverrides: types.ListNull(routingOverrideObjectType),
 	}

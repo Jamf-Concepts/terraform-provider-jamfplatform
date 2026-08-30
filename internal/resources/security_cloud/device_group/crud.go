@@ -60,6 +60,14 @@ import (
 // the collection path, and this API answers GET /v1/groups/ with the whole group
 // list rather than a 404 (wire-probed 2026-08-29), so an unguarded read-back would
 // surface as a decode failure rather than as the missing identifier it is.
+//
+// A read-back that fails after the create has succeeded still commits state. The group
+// exists on the tenant by then, and returning without state would orphan it: group
+// names are unique per tenant, so the retry is refused as a name already in use —
+// naming the group the operator does not know they created. What is committed is the
+// plan carrying the new ID, which the next refresh reconciles; an errored apply does
+// not run Terraform's plan-consistency check. Nothing needs nulling first: the ID is
+// this schema's only Computed value.
 func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan DeviceGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -97,7 +105,15 @@ func (r *DeviceGroupResource) Create(ctx context.Context, req resource.CreateReq
 
 	got, err := r.client.GetDeviceGroupV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Security Cloud device group", err.Error())
+		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, deviceGroupIdentityModel{ID: plan.ID})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		resp.Diagnostics.AddError(
+			"Error reading created Jamf Security Cloud device group",
+			"The group was created with ID \""+created.ID+"\" but could not be read back, so Terraform has "+
+				"recorded its ID and the configured name without confirming what was stored. The next plan will "+
+				"refresh it — do not re-create it: group names are unique per tenant, so a second create would be "+
+				"refused as a name already in use. Underlying error: "+err.Error(),
+		)
 		return
 	}
 	assignDeviceGroupResourceModel(&plan, got)

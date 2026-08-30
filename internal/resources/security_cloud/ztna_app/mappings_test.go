@@ -143,6 +143,32 @@ func TestRiskLevelValuesOrder(t *testing.T) {
 	}
 }
 
+// TestRoutingModeLabelsAreLiteral is the only assertion in this package that can
+// catch a transposed routing-mode label. Every other routing test derives its
+// expectation from the table under test: TestLabelCoverage compares the two sets
+// against the SDK and never looks at label content, TestLabelRoundTrip is true by
+// construction for any bijection, and the builder tests use
+// routingModeLabels[...] as their own input. Swapping the two entries therefore
+// survives all of them, and the regression that admits is a security-relevant
+// misroute — an app written `traffic_routing = "Direct device routing"` created as
+// CUSTOM, or one meant for ZTNA created DIRECT and bypassing the access gateway. It
+// would ship green, because the Security Cloud acceptance tests skip in CI by
+// design. Both labels were read off the admin UI on 2026-08-30 and the direction was
+// confirmed against the live API: CUSTOM is the type that requires a gatewayId.
+// This is the routing-mode equivalent of TestDNSResolutionValuesOrder and
+// TestRiskLevelValuesOrder, which escape the same trap only because they happen to
+// assert literal strings.
+func TestRoutingModeLabelsAreLiteral(t *testing.T) {
+	if got := routingModeLabels[securitycloud.RoutingTypeCustom]; got != "Encrypt and route via ZTNA" {
+		t.Errorf("routingModeLabels[%s] = %q, want %q — it is the type that sends traffic through the access gateway",
+			securitycloud.RoutingTypeCustom, got, "Encrypt and route via ZTNA")
+	}
+	if got := routingModeLabels[securitycloud.RoutingTypeDirect]; got != "Direct device routing" {
+		t.Errorf("routingModeLabels[%s] = %q, want %q — it is the type that bypasses the access gateway",
+			securitycloud.RoutingTypeDirect, got, "Direct device routing")
+	}
+}
+
 // TestAppTypeFor pins the derivation of the app-type label from the presence of a
 // predefined app ID — the only thing on the wire that distinguishes the two forms.
 func TestAppTypeFor(t *testing.T) {

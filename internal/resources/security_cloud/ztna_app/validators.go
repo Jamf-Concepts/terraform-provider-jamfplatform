@@ -10,10 +10,12 @@ import (
 	"strings"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -104,8 +106,8 @@ func (v hostnameOverlapValidator) MarkdownDescription(ctx context.Context) strin
 // Hostnames have to be mutually exclusive.` — which names the attribute but not
 // which pair collided, and only after the write has been attempted.
 func (v hostnameOverlapValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var config ZtnaAppResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	config, diags := configForValidation(ctx, req.Config)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -178,8 +180,8 @@ func (v appFormValidator) MarkdownDescription(ctx context.Context) string {
 // (wire-verified 2026-08-30). Left to the server, the name an operator wrote would
 // vanish without a word and the next plan would try to set it again.
 func (v appFormValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var config ZtnaAppResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	config, diags := configForValidation(ctx, req.Config)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -236,8 +238,8 @@ func (v routingCombinationValidator) MarkdownDescription(ctx context.Context) st
 // nothing about which one it was. So does an unrecognised gateway ID, which is the
 // one case this cannot pre-empt.
 func (v routingCombinationValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var config ZtnaAppResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	config, diags := configForValidation(ctx, req.Config)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -247,27 +249,26 @@ func (v routingCombinationValidator) ValidateResource(ctx context.Context, req r
 // validateAllRouting applies the routing rules to the application's own routing and
 // to every override's. Split from ValidateResource so it can be unit-tested against
 // a model rather than a framework config.
-func validateAllRouting(ctx context.Context, config ZtnaAppResourceModel, diags *diag.Diagnostics) {
+func validateAllRouting(_ context.Context, config ZtnaAppResourceModel, diags *diag.Diagnostics) {
 	validateRouting(config.Routing, path.Root("routing"), diags)
 
-	overrides, overrideDiags := routingOverrideModels(ctx, config)
-	if overrideDiags.HasError() {
-		return
-	}
-	for i, override := range overrides {
+	for i, override := range routingOverrideModels(config) {
+		if override == nil {
+			continue
+		}
 		validateRouting(override.Routing, path.Root("routing_overrides").AtListIndex(i).AtName("routing"), diags)
 	}
 }
 
 // validateRouting applies the routing cross-field rules at one path.
 func validateRouting(routing *RoutingModel, at path.Path, diags *diag.Diagnostics) {
-	if routing == nil || routing.Mode.IsNull() || routing.Mode.IsUnknown() {
+	if routing == nil || routing.TrafficRouting.IsNull() || routing.TrafficRouting.IsUnknown() {
 		return
 	}
 
 	hasGateway := !routing.GatewayID.IsNull()
 	hasRoutingMode := !routing.RoutingMode.IsNull()
-	viaZTNA := routing.Mode.ValueString() == routingModeLabels[securitycloud.RoutingTypeCustom]
+	viaZTNA := routing.TrafficRouting.ValueString() == routingModeLabels[securitycloud.RoutingTypeCustom]
 
 	if viaZTNA {
 		if !hasGateway {
@@ -340,10 +341,11 @@ func (v deviceGroupAssignmentValidator) MarkdownDescription(ctx context.Context)
 //     `groupOverrides` as a whole.
 //
 // The subset rule applies only when `all_device_groups` is false: with it true the
-// server accepts an override on any group, because every group is assigned.
+// server accepts an override on any group, because every group is assigned — so an
+// unresolved `all_device_groups` decides nothing and the whole check defers.
 func (v deviceGroupAssignmentValidator) ValidateResource(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var config ZtnaAppResourceModel
-	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	config, diags := configForValidation(ctx, req.Config)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -353,7 +355,21 @@ func (v deviceGroupAssignmentValidator) ValidateResource(ctx context.Context, re
 // validateDeviceGroupAssignment applies the assignment and override rules. Split
 // from ValidateResource so it can be unit-tested against a model rather than a
 // framework config.
-func validateDeviceGroupAssignment(ctx context.Context, config ZtnaAppResourceModel, diags *diag.Diagnostics) {
+//
+// It defers wholesale on an unknown `all_device_groups`, because that attribute is
+// the discriminator both remaining rules turn on and ValueBool() reads an unknown as
+// false — the wrong answer in both directions, per STYLE_GUIDE §Config-time
+// validators MUST defer on unknown values ("the discriminator is not enough — guard
+// the companion too"; here it is the discriminator itself). Read as false, a
+// to-be-true `all_device_groups` lets a group list through the first rule, and the
+// apply then fails with "Provider produced inconsistent result after apply" — the
+// exact drift this validator exists to prevent. It also runs the subset rule, which
+// only applies when the flag is false, and so refuses a configuration the server
+// accepts. Neither rule has anything to say until the flag resolves.
+func validateDeviceGroupAssignment(_ context.Context, config ZtnaAppResourceModel, diags *diag.Diagnostics) {
+	if config.AllDeviceGroups.IsUnknown() {
+		return
+	}
 	allGroups := config.AllDeviceGroups.ValueBool()
 	if allGroups && !config.DeviceGroupIDs.IsNull() && !config.DeviceGroupIDs.IsUnknown() {
 		diags.AddAttributeError(
@@ -372,13 +388,11 @@ func validateDeviceGroupAssignment(ctx context.Context, config ZtnaAppResourceMo
 		assignedSet[id] = struct{}{}
 	}
 
-	overrides, overrideDiags := routingOverrideModels(ctx, config)
-	if overrideDiags.HasError() {
-		return
-	}
-
 	seen := map[string]int{}
-	for i, override := range overrides {
+	for i, override := range routingOverrideModels(config) {
+		if override == nil {
+			continue
+		}
 		groups, _ := knownStrings(override.DeviceGroupIDs)
 		at := path.Root("routing_overrides").AtListIndex(i).AtName("device_group_ids")
 		for _, id := range groups {
@@ -451,13 +465,106 @@ func knownStrings(set types.Set) ([]string, bool) {
 	return out, complete
 }
 
-// routingOverrideModels decodes the routing_overrides list from a config model,
-// returning an empty slice when it is absent or not yet resolved.
-func routingOverrideModels(ctx context.Context, config ZtnaAppResourceModel) ([]RoutingOverrideModel, diag.Diagnostics) {
+// routingOverrideModels returns the routing overrides Terraform has already
+// resolved, positionally aligned with the configured list so that a diagnostic can
+// name the index the operator wrote. An element Terraform has not resolved is nil.
+//
+// This reads the elements directly for the same reason knownStrings does, and the
+// reason is sharper here. ElementsAs refuses a list holding an unknown element, and
+// the refusal it returns is a "this is always an error in the provider" decode
+// diagnostic — useless to an operator, because an override whose routing block is
+// still unresolved (`routing = var.routing` in a module) is a legal configuration,
+// not a mistake. Discarding those diagnostics silently disabled every per-override
+// check; passing them on would fail a valid plan. Reading the elements resolves what
+// is visible and defers on the rest, per STYLE_GUIDE §Config-time validators MUST
+// defer on unknown values.
+//
+// No completeness flag is returned because no rule here needs one. Every
+// per-override check reports a positive built from values Terraform has already
+// resolved — a missing gateway, a duplicate group — and stays true whatever else is
+// unresolved. The one rule that needs a whole collection is the subset rule, and the
+// collection it needs is `device_group_ids`, which knownStrings already gates.
+func routingOverrideModels(config ZtnaAppResourceModel) []*RoutingOverrideModel {
 	if config.RoutingOverrides.IsNull() || config.RoutingOverrides.IsUnknown() {
-		return nil, nil
+		return nil
 	}
-	var models []RoutingOverrideModel
-	diags := config.RoutingOverrides.ElementsAs(ctx, &models, false)
-	return models, diags
+	elements := config.RoutingOverrides.Elements()
+	overrides := make([]*RoutingOverrideModel, len(elements))
+	for i, element := range elements {
+		object, ok := element.(types.Object)
+		if !ok || object.IsNull() || object.IsUnknown() {
+			continue
+		}
+		attributes := object.Attributes()
+		groups, ok := attributes["device_group_ids"].(types.Set)
+		if !ok {
+			groups = types.SetUnknown(types.StringType)
+		}
+		routing, _ := attributes["routing"].(types.Object)
+		overrides[i] = &RoutingOverrideModel{DeviceGroupIDs: groups, Routing: knownRouting(routing)}
+	}
+	return overrides
+}
+
+// configForValidation reads the parts of a ZTNA app configuration the config
+// validators examine, tolerating an unknown value anywhere in it.
+//
+// req.Config.Get cannot be used. `routing` and `security` decode into Go struct
+// pointers, and a wholly unknown object — `routing = var.routing` in a module — makes
+// the framework refuse the entire decode with "the target type cannot handle unknown
+// values", reported to the operator as a provider bug. That one unresolved object
+// took out all four config validators at once. Reading each attribute as its typed
+// value defers instead, per STYLE_GUIDE §Config-time validators MUST defer on unknown
+// values. `security` is not read at all: no rule here examines it, and not reading it
+// is what keeps an unresolved security block from breaking the others.
+func configForValidation(ctx context.Context, config tfsdk.Config) (ZtnaAppResourceModel, diag.Diagnostics) {
+	var (
+		model   ZtnaAppResourceModel
+		routing types.Object
+		diags   diag.Diagnostics
+	)
+
+	diags.Append(config.GetAttribute(ctx, path.Root("name"), &model.Name)...)
+	diags.Append(config.GetAttribute(ctx, path.Root("predefined_app_id"), &model.PredefinedAppID)...)
+	diags.Append(config.GetAttribute(ctx, path.Root("hostnames"), &model.Hostnames)...)
+	diags.Append(config.GetAttribute(ctx, path.Root("all_device_groups"), &model.AllDeviceGroups)...)
+	diags.Append(config.GetAttribute(ctx, path.Root("device_group_ids"), &model.DeviceGroupIDs)...)
+	diags.Append(config.GetAttribute(ctx, path.Root("routing_overrides"), &model.RoutingOverrides)...)
+	diags.Append(config.GetAttribute(ctx, path.Root("routing"), &routing)...)
+	if diags.HasError() {
+		return model, diags
+	}
+
+	model.Routing = knownRouting(routing)
+	return model, diags
+}
+
+// knownRouting narrows a routing object to the model the routing rules read, or nil
+// when Terraform has not resolved the object itself.
+//
+// A nil result therefore covers both an absent block and an unresolved one, which is
+// the same answer either way: validateRouting has nothing to say about a block whose
+// own discriminator it cannot see, and `routing` is Required, so absence cannot reach
+// a successful plan for it to mask.
+func knownRouting(object types.Object) *RoutingModel {
+	if object.IsNull() || object.IsUnknown() {
+		return nil
+	}
+	attributes := object.Attributes()
+	return &RoutingModel{
+		TrafficRouting: knownString(attributes["traffic_routing"]),
+		GatewayID:      knownString(attributes["gateway_id"]),
+		RoutingMode:    knownString(attributes["routing_mode"]),
+	}
+}
+
+// knownString narrows an object attribute to a string value, reading anything it
+// cannot narrow as unresolved rather than absent — the safe direction, because every
+// rule here errors on a genuine null and defers on an unknown.
+func knownString(value attr.Value) types.String {
+	str, ok := value.(types.String)
+	if !ok {
+		return types.StringUnknown()
+	}
+	return str
 }

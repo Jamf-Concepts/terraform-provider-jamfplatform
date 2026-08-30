@@ -5,6 +5,7 @@ package ztna_app
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -121,7 +122,7 @@ func TestZtnaAppResource_RoutingBlocksShareShape(t *testing.T) {
 		t.Fatalf("routing_overrides[].routing must be a SingleNestedAttribute")
 	}
 
-	for _, name := range []string{"mode", "gateway_id", "routing_mode"} {
+	for _, name := range []string{"traffic_routing", "gateway_id", "routing_mode"} {
 		if _, present := top.Attributes[name]; !present {
 			t.Errorf("routing missing %q", name)
 		}
@@ -129,8 +130,8 @@ func TestZtnaAppResource_RoutingBlocksShareShape(t *testing.T) {
 			t.Errorf("routing_overrides[].routing missing %q", name)
 		}
 	}
-	if !top.Attributes["mode"].IsRequired() {
-		t.Error("routing.mode must be required")
+	if !top.Attributes["traffic_routing"].IsRequired() {
+		t.Error("routing.traffic_routing must be required")
 	}
 	for _, name := range []string{"gateway_id", "routing_mode"} {
 		if !top.Attributes[name].IsOptional() || top.Attributes[name].IsComputed() {
@@ -323,6 +324,91 @@ func TestZtnaAppResource_IdentitySchema(t *testing.T) {
 	if _, ok := resp.IdentitySchema.Attributes["id"]; !ok {
 		t.Fatal("identity schema must carry an id attribute")
 	}
+}
+
+// TestZtnaAppResource_CollectionsCarryMinimumSizeValidators pins the invariant the
+// read path depends on: every collection attribute anywhere in this resource's
+// schema must be constrained to a minimum size, so an explicit empty collection is
+// refused at plan time.
+//
+// state_builders.go collapses an empty response collection to null — stringSetOrNull
+// for the flat sets, routingOverrideListValue for the overrides — and justifies that
+// by the schema refusing an explicit empty collection. routing_overrides shipped
+// without a size validator, which made the justification false for it: with
+// `routing_overrides = []` every apply failed with "Provider produced inconsistent
+// result after apply: .routing_overrides: was cty.ListValEmpty(...), but now null",
+// and because the configuration never stops saying `[]` there was no recovery from
+// inside Terraform. The walk covers the whole schema, and the named list is checked
+// separately, so both a collection added later without a size validator and one of
+// these four ceasing to be a collection fail here rather than at apply.
+func TestZtnaAppResource_CollectionsCarryMinimumSizeValidators(t *testing.T) {
+	collections := collectCollectionValidators(t)
+
+	for _, name := range []string{"hostnames", "direct_ips_and_subnets", "device_group_ids", "routing_overrides"} {
+		if _, ok := collections[name]; !ok {
+			t.Errorf("%s is no longer a collection attribute, but the empty-to-null collapse in state_builders.go was written for it", name)
+		}
+	}
+
+	for path, descriptions := range collections {
+		if len(descriptions) == 0 {
+			t.Errorf("%s carries no validators: without a minimum-size validator, `%s = []` can never converge", path, path)
+			continue
+		}
+		if !slices.ContainsFunc(descriptions, func(description string) bool {
+			return strings.Contains(description, "at least")
+		}) {
+			t.Errorf("%s carries validators but none constrains its minimum size, so `%s = []` can never converge: %v", path, path, descriptions)
+		}
+	}
+}
+
+// collectCollectionValidators returns the validator descriptions of every collection
+// attribute in the resource schema, keyed by a readable path, so the size-validator
+// invariant is checked against nested collections too.
+func collectCollectionValidators(t *testing.T) map[string][]string {
+	t.Helper()
+	ctx := context.Background()
+	s := resourceSchema(t)
+	out := map[string][]string{}
+
+	var walk func(prefix string, attrs map[string]rschema.Attribute)
+	walk = func(prefix string, attrs map[string]rschema.Attribute) {
+		for name, attr := range attrs {
+			path := prefix + name
+			switch typed := attr.(type) {
+			case rschema.SetAttribute:
+				out[path] = validatorDescriptions(ctx, typed.Validators)
+			case rschema.ListAttribute:
+				out[path] = validatorDescriptions(ctx, typed.Validators)
+			case rschema.MapAttribute:
+				out[path] = validatorDescriptions(ctx, typed.Validators)
+			case rschema.SetNestedAttribute:
+				out[path] = validatorDescriptions(ctx, typed.Validators)
+				walk(path+"[].", typed.NestedObject.Attributes)
+			case rschema.ListNestedAttribute:
+				out[path] = validatorDescriptions(ctx, typed.Validators)
+				walk(path+"[].", typed.NestedObject.Attributes)
+			case rschema.MapNestedAttribute:
+				out[path] = validatorDescriptions(ctx, typed.Validators)
+				walk(path+"[].", typed.NestedObject.Attributes)
+			case rschema.SingleNestedAttribute:
+				walk(path+".", typed.Attributes)
+			}
+		}
+	}
+	walk("", s.Attributes)
+	return out
+}
+
+// validatorDescriptions reads the descriptions off a typed validator slice, which is
+// the only vocabulary every validator kind shares.
+func validatorDescriptions[T interface{ Description(context.Context) string }](ctx context.Context, validators []T) []string {
+	out := make([]string, 0, len(validators))
+	for _, v := range validators {
+		out = append(out, v.Description(ctx))
+	}
+	return out
 }
 
 // resourceSchema builds the resource schema once per test, failing on diagnostics.

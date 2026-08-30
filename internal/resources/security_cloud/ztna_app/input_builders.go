@@ -132,7 +132,7 @@ func routingToWire(routing *RoutingModel) securitycloud.Routing {
 		return securitycloud.Routing{}
 	}
 	out := securitycloud.Routing{
-		Type: wireValueFor(routing.Mode.ValueString(), routingModeLabels),
+		Type: wireValueFor(routing.TrafficRouting.ValueString(), routingModeLabels),
 	}
 	if !routing.GatewayID.IsNull() && !routing.GatewayID.IsUnknown() {
 		gateway := routing.GatewayID.ValueString()

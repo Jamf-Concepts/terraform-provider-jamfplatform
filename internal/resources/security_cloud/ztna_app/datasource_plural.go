@@ -18,10 +18,12 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 )
 
-// defaultPluralReadTimeout caps how long the plural applications read will wait.
-// Higher than the singular read because the endpoint is paged and a large tenant
-// costs one request per hundred applications.
-const defaultPluralReadTimeout = 90 * time.Second
+// defaultPagedReadTimeout caps how long a read that walks the whole application
+// collection will wait. Higher than defaultReadTimeout because the list endpoint is
+// paged and a large tenant costs one request per hundred applications. It serves the
+// plural read and the singular data source's `name` / `predefined_app_id` lookups,
+// which make the same paged call.
+const defaultPagedReadTimeout = 90 * time.Second
 
 // pluralDataSourceID is the fixed ID the plural data source reports. The application
 // list endpoint takes no filter, so every read returns the same collection and there
@@ -80,17 +82,21 @@ func (d *ZtnaAppsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 							Computed: true,
 						},
 						"app_type": schema.StringAttribute{
-							MarkdownDescription: "Whether the application is predefined or custom.",
-							Computed:            true,
+							MarkdownDescription: "Whether the application is predefined or custom: " +
+								markdownList(appTypeValues()) + ". Follows from whether `predefined_app_id` " +
+								"is set.",
+							Computed: true,
 						},
 						"category": schema.StringAttribute{
 							MarkdownDescription: "Category the application is classified under.",
 							Computed:            true,
 						},
 						"hostnames": schema.ListAttribute{
-							MarkdownDescription: "Host names whose traffic belongs to this application.",
-							Computed:            true,
-							ElementType:         types.StringType,
+							MarkdownDescription: "Host names whose traffic belongs to this application. For a " +
+								"predefined application these are the additions to the definition's own host " +
+								"names, which are not reported here.",
+							Computed:    true,
+							ElementType: types.StringType,
 						},
 						"direct_ips_and_subnets": schema.ListAttribute{
 							MarkdownDescription: "Address ranges whose traffic belongs to this application.",
@@ -147,8 +153,10 @@ func (d *ZtnaAppsDataSource) Schema(ctx context.Context, _ datasource.SchemaRequ
 											Computed:            true,
 										},
 										"deny_at_risk_level": schema.StringAttribute{
-											MarkdownDescription: "Risk level at which access is denied.",
-											Computed:            true,
+											MarkdownDescription: "Risk level at which access is denied, lowest " +
+												"first: " + markdownList(riskLevelValues()) + ". Jamf Security " +
+												"Cloud keeps this value even while the requirement is not enforced.",
+											Computed: true,
 										},
 										"device_push_notifications": schema.BoolAttribute{
 											MarkdownDescription: "Whether the user is told when access is denied.",
@@ -198,7 +206,7 @@ func (d *ZtnaAppsDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultPluralReadTimeout, data.Timeouts.Read)
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultPagedReadTimeout, data.Timeouts.Read)
 	resp.Diagnostics.Append(timeoutDiags...)
 	if resp.Diagnostics.HasError() {
 		return

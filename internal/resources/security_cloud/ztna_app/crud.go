@@ -29,6 +29,17 @@ import (
 // application is read back to populate state with the stored representation — which
 // matters here because the server re-orders and de-duplicates every collection, and
 // folds host names to lower case.
+//
+// A read-back that fails after the create has succeeded still commits state. The
+// application exists on the tenant by then, and returning without state would orphan
+// it — worse here than on the sibling constructs, because host names, address ranges
+// and predefined definitions belong to only one application per tenant, so the retry
+// an operator reaches for is refused by this provider's own diagnostics, describing an
+// object they never knowingly created. What is committed is the plan carrying the new
+// ID: the configured values are what the next refresh will reconcile, and an errored
+// apply does not run Terraform's plan-consistency check, so a collection the server
+// re-ordered or de-duplicated is not a fault at that point. Values only the read-back
+// could have filled are nulled first — see nullUnknownReadBackValues.
 func (r *ZtnaAppResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan ZtnaAppResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -62,7 +73,17 @@ func (r *ZtnaAppResource) Create(ctx context.Context, req resource.CreateRequest
 
 	got, err := r.client.GetZtnaAppV1(createCtx, created.ID)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading created Jamf Security Cloud access policy application", err.Error())
+		nullUnknownReadBackValues(&plan)
+		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, ztnaAppIdentityModel{ID: plan.ID})...)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+		resp.Diagnostics.AddError(
+			"Error reading created Jamf Security Cloud access policy application",
+			"The application was created with ID \""+created.ID+"\" but could not be read back, so Terraform has "+
+				"recorded its ID and the configured values without confirming what was stored. The next plan will "+
+				"refresh it — do not re-create it: host names, address ranges and predefined definitions belong to "+
+				"only one application per tenant, so a second create would be refused. Underlying error: "+
+				err.Error(),
+		)
 		return
 	}
 	resp.Diagnostics.Append(assignAppResourceModel(ctx, &plan, got)...)
@@ -77,6 +98,21 @@ func (r *ZtnaAppResource) Create(ctx context.Context, req resource.CreateRequest
 
 	tflog.Trace(ctx, "created Jamf Security Cloud access policy application", map[string]any{"id": created.ID})
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// nullUnknownReadBackValues nulls the values only the create read-back could have
+// filled, so the partial state committed when it fails is wholly known.
+//
+// Terraform answers an unknown value in the state a failed apply returns with an
+// "invalid result object after apply" error of its own — a provider-bug notice that
+// would bury the diagnostic the partial state exists to deliver. app_type is the one
+// such value here: it is Computed with no default, so it is Unknown in every create
+// plan. The security cards are Optional and Computed but carry defaults, so the
+// framework has already resolved them at plan time.
+func nullUnknownReadBackValues(plan *ZtnaAppResourceModel) {
+	if plan.AppType.IsUnknown() {
+		plan.AppType = types.StringNull()
+	}
 }
 
 // Read refreshes the Terraform state with the latest application representation.

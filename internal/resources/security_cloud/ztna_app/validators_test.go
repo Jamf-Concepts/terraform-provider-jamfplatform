@@ -12,9 +12,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // TestNormalisedHostname pins the two normalisations Jamf Security Cloud applies and
@@ -94,6 +97,8 @@ func TestCoversHostname(t *testing.T) {
 		{"*.example.com", "example.com", false},
 		{"*.example.com", "notexample.com", false},
 		{"*.example.com", "sub.other.com", false},
+		{"*.example.com", "host.example.com.attacker.net", false},
+		{"*.example.com", "x.example.commercial.net", false},
 		{"example.com", "sub.example.com", false},
 		{"sub.example.com", "sub.example.com", false},
 	}
@@ -121,37 +126,37 @@ func TestValidateRouting(t *testing.T) {
 		{"nil block defers", nil, ""},
 		{
 			"via ztna, complete",
-			&RoutingModel{Mode: types.StringValue(viaZTNA), GatewayID: types.StringValue("a7d2"), RoutingMode: types.StringValue("Standard")},
+			&RoutingModel{TrafficRouting: types.StringValue(viaZTNA), GatewayID: types.StringValue("a7d2"), RoutingMode: types.StringValue("Standard")},
 			"",
 		},
 		{
 			"direct, empty",
-			&RoutingModel{Mode: types.StringValue(direct), GatewayID: types.StringNull(), RoutingMode: types.StringNull()},
+			&RoutingModel{TrafficRouting: types.StringValue(direct), GatewayID: types.StringNull(), RoutingMode: types.StringNull()},
 			"",
 		},
 		{
 			"via ztna without a gateway",
-			&RoutingModel{Mode: types.StringValue(viaZTNA), GatewayID: types.StringNull(), RoutingMode: types.StringValue("Standard")},
+			&RoutingModel{TrafficRouting: types.StringValue(viaZTNA), GatewayID: types.StringNull(), RoutingMode: types.StringValue("Standard")},
 			"needs an access gateway",
 		},
 		{
 			"via ztna without a routing mode",
-			&RoutingModel{Mode: types.StringValue(viaZTNA), GatewayID: types.StringValue("a7d2"), RoutingMode: types.StringNull()},
+			&RoutingModel{TrafficRouting: types.StringValue(viaZTNA), GatewayID: types.StringValue("a7d2"), RoutingMode: types.StringNull()},
 			"needs a routing mode",
 		},
 		{
 			"direct with a gateway",
-			&RoutingModel{Mode: types.StringValue(direct), GatewayID: types.StringValue("a7d2"), RoutingMode: types.StringNull()},
+			&RoutingModel{TrafficRouting: types.StringValue(direct), GatewayID: types.StringValue("a7d2"), RoutingMode: types.StringNull()},
 			"does not use an access gateway",
 		},
 		{
 			"direct with a routing mode",
-			&RoutingModel{Mode: types.StringValue(direct), GatewayID: types.StringNull(), RoutingMode: types.StringValue("Standard")},
+			&RoutingModel{TrafficRouting: types.StringValue(direct), GatewayID: types.StringNull(), RoutingMode: types.StringValue("Standard")},
 			"has no routing mode",
 		},
 		{
 			"unknown mode defers",
-			&RoutingModel{Mode: types.StringUnknown(), GatewayID: types.StringNull(), RoutingMode: types.StringNull()},
+			&RoutingModel{TrafficRouting: types.StringUnknown(), GatewayID: types.StringNull(), RoutingMode: types.StringNull()},
 			"",
 		},
 	}
@@ -183,9 +188,9 @@ func TestValidateRouting(t *testing.T) {
 func TestValidateRoutingReportsBothMissingFields(t *testing.T) {
 	var diags diag.Diagnostics
 	validateRouting(&RoutingModel{
-		Mode:        types.StringValue(routingModeLabels[securitycloud.RoutingTypeCustom]),
-		GatewayID:   types.StringNull(),
-		RoutingMode: types.StringNull(),
+		TrafficRouting: types.StringValue(routingModeLabels[securitycloud.RoutingTypeCustom]),
+		GatewayID:      types.StringNull(),
+		RoutingMode:    types.StringNull(),
 	}, path.Root("routing"), &diags)
 
 	if got := diags.ErrorsCount(); got != 2 {
@@ -349,13 +354,13 @@ func TestValidateAllRoutingWalksOverrides(t *testing.T) {
 
 	config := ZtnaAppResourceModel{
 		Routing: &RoutingModel{
-			Mode:        types.StringValue(direct),
-			GatewayID:   types.StringNull(),
-			RoutingMode: types.StringNull(),
+			TrafficRouting: types.StringValue(direct),
+			GatewayID:      types.StringNull(),
+			RoutingMode:    types.StringNull(),
 		},
 		RoutingOverrides: overrideListWithRouting(t, []*RoutingModel{
-			{Mode: types.StringValue(direct), GatewayID: types.StringNull(), RoutingMode: types.StringNull()},
-			{Mode: types.StringValue(viaZTNA), GatewayID: types.StringNull(), RoutingMode: types.StringValue("Standard")},
+			{TrafficRouting: types.StringValue(direct), GatewayID: types.StringNull(), RoutingMode: types.StringNull()},
+			{TrafficRouting: types.StringValue(viaZTNA), GatewayID: types.StringNull(), RoutingMode: types.StringValue("Standard")},
 		}),
 	}
 
@@ -397,9 +402,9 @@ func overrideListFor(t *testing.T, groups [][]string) types.List {
 	routings := make([]*RoutingModel, 0, len(groups))
 	for range groups {
 		routings = append(routings, &RoutingModel{
-			Mode:        types.StringValue(routingModeLabels[securitycloud.RoutingTypeDirect]),
-			GatewayID:   types.StringNull(),
-			RoutingMode: types.StringNull(),
+			TrafficRouting: types.StringValue(routingModeLabels[securitycloud.RoutingTypeDirect]),
+			GatewayID:      types.StringNull(),
+			RoutingMode:    types.StringNull(),
 		})
 	}
 	return buildOverrideList(t, groups, routings)
@@ -570,4 +575,436 @@ func TestSchemaDoesNotRefuseSelectedGroups(t *testing.T) {
 				v.Description(context.Background()))
 		}
 	}
+}
+
+// TestValidateAppFormTreatsUnknownAsPresent pins that the form rules key on whether
+// an attribute was written, not on whether Terraform has resolved it. An attribute
+// left out of a configuration is null; an attribute written from a variable or
+// another resource is unknown. So `!IsNull()` is the correct presence test here, and
+// the combination rule — a forbidden-when check, which STYLE_GUIDE notes is the safe
+// direction — must still fire when both are unresolved.
+func TestValidateAppFormTreatsUnknownAsPresent(t *testing.T) {
+	cases := []struct {
+		name       string
+		appName    types.String
+		predefined types.String
+		wantErr    string
+	}{
+		{"unknown name alone is the custom form", types.StringUnknown(), types.StringNull(), ""},
+		{"unknown predefined id alone is the predefined form", types.StringNull(), types.StringUnknown(), ""},
+		{"both unresolved is still both", types.StringUnknown(), types.StringUnknown(), "cannot be renamed"},
+		{"unknown name alongside a known predefined id", types.StringUnknown(), types.StringValue("2aaa401c"), "cannot be renamed"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			validateAppForm(ZtnaAppResourceModel{Name: tc.appName, PredefinedAppID: tc.predefined}, &diags)
+
+			if tc.wantErr == "" {
+				if diags.HasError() {
+					t.Fatalf("expected no error, got %s", diags)
+				}
+				return
+			}
+			if !strings.Contains(diagnosticsText(diags), tc.wantErr) {
+				t.Fatalf("expected the error to mention %q, got %s", tc.wantErr, diags)
+			}
+		})
+	}
+}
+
+// TestValidateDeviceGroupAssignmentDefersOnUnknownAllDeviceGroups pins the
+// discriminator's own unknown guard. all_device_groups is Required with no default,
+// so it is unknown whenever it comes from a variable or another resource, and
+// ValueBool() reads an unknown as false — which is wrong in both directions.
+//
+// Read as false, a to-be-true flag lets `device_group_ids` past the conflict rule and
+// the apply then fails with "Provider produced inconsistent result after apply"; and
+// it runs the subset rule, which does not apply when the flag is true, refusing a
+// configuration the server accepts. Per STYLE_GUIDE §Config-time validators MUST
+// defer on unknown values, both cases must defer.
+func TestValidateDeviceGroupAssignmentDefersOnUnknownAllDeviceGroups(t *testing.T) {
+	const assignedGroup = "aaaaaaaa-0000-0000-0000-000000000000"
+	const otherGroup = "cccccccc-0000-0000-0000-000000000000"
+
+	cases := []struct {
+		name      string
+		assigned  []string
+		overrides [][]string
+	}{
+		{"a group list that would conflict if the flag resolved true", []string{assignedGroup}, nil},
+		{"an override on a group absent from the list", []string{assignedGroup}, [][]string{{otherGroup}}},
+		{"an override with no group list at all", nil, [][]string{{otherGroup}}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			config := ZtnaAppResourceModel{
+				AllDeviceGroups:  types.BoolUnknown(),
+				DeviceGroupIDs:   stringSetFor(t, tc.assigned),
+				RoutingOverrides: overrideListFor(t, tc.overrides),
+			}
+
+			var got diag.Diagnostics
+			validateDeviceGroupAssignment(context.Background(), config, &got)
+			if got.HasError() {
+				t.Fatalf("expected both rules to defer while all_device_groups is unresolved, got %s", got)
+			}
+		})
+	}
+}
+
+// TestValidateDeviceGroupAssignmentStillFiresOnKnownAllDeviceGroups is the other half
+// of that guard: deferring on unknown must not become deferring always, which the
+// test above would pass just as happily if the whole function returned early.
+func TestValidateDeviceGroupAssignmentStillFiresOnKnownAllDeviceGroups(t *testing.T) {
+	config := ZtnaAppResourceModel{
+		AllDeviceGroups:  types.BoolValue(true),
+		DeviceGroupIDs:   stringSetFor(t, []string{"aaaaaaaa-0000-0000-0000-000000000000"}),
+		RoutingOverrides: types.ListNull(routingOverrideObjectType),
+	}
+
+	var got diag.Diagnostics
+	validateDeviceGroupAssignment(context.Background(), config, &got)
+	if !strings.Contains(diagnosticsText(got), "conflict with all device groups") {
+		t.Fatalf("expected the conflict rule to fire on a resolved flag, got %s", got)
+	}
+}
+
+// TestRoutingOverrideModelsDefersOnUnknownElement pins the reader that replaced
+// ElementsAs. ElementsAs refuses a list holding an unknown element outright, and its
+// diagnostics were being discarded — so one override whose routing block came from a
+// variable silently disabled every per-override rule in two config validators.
+//
+// The positional alignment is the other half: an unresolved element must still occupy
+// its index, or every diagnostic after it would name the wrong one.
+func TestRoutingOverrideModelsDefersOnUnknownElement(t *testing.T) {
+	overrides := routingOverrideModels(ZtnaAppResourceModel{
+		RoutingOverrides: overrideListOf(t,
+			overrideElementValue(t, []string{"group-a"}, directRoutingObject(t)),
+			types.ObjectUnknown(routingOverrideObjectType.AttrTypes),
+			overrideElementValue(t, []string{"group-c"}, types.ObjectUnknown(routingObjectType.AttrTypes)),
+		),
+	})
+
+	if len(overrides) != 3 {
+		t.Fatalf("expected an entry per configured element, got %d", len(overrides))
+	}
+	if overrides[0] == nil || overrides[0].Routing == nil {
+		t.Fatalf("expected the resolved element to survive, got %+v", overrides[0])
+	}
+	if groups, complete := knownStrings(overrides[0].DeviceGroupIDs); len(groups) != 1 || groups[0] != "group-a" || !complete {
+		t.Errorf("expected the resolved element to keep its groups, got %v (complete=%v)", groups, complete)
+	}
+	if overrides[1] != nil {
+		t.Errorf("expected an unresolved element to read as nil, got %+v", overrides[1])
+	}
+	if overrides[2] == nil {
+		t.Fatal("expected an element with an unresolved routing block to still be read")
+	}
+	if overrides[2].Routing != nil {
+		t.Errorf("expected an unresolved routing block to read as nil, got %+v", overrides[2].Routing)
+	}
+}
+
+// TestRoutingOverrideModelsAbsentAndUnresolvedLists pins the two whole-collection
+// cases, which have to read as "nothing to check" rather than as an error.
+func TestRoutingOverrideModelsAbsentAndUnresolvedLists(t *testing.T) {
+	for name, list := range map[string]types.List{
+		"absent":     types.ListNull(routingOverrideObjectType),
+		"unresolved": types.ListUnknown(routingOverrideObjectType),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := routingOverrideModels(ZtnaAppResourceModel{RoutingOverrides: list}); got != nil {
+				t.Errorf("expected no overrides, got %+v", got)
+			}
+		})
+	}
+}
+
+// TestValidateAllRoutingDefersOnUnresolvedOverrideRouting pins that an override whose
+// routing block is unresolved defers, and — the half that matters more — that the
+// checks on its resolved siblings still run, at the index the operator wrote. The
+// discarded ElementsAs diagnostics used to skip all of them, leaving the server's
+// unattributed `400 [INVALID_FIELD] routing: Routing definition is not valid.` as the
+// only feedback.
+func TestValidateAllRoutingDefersOnUnresolvedOverrideRouting(t *testing.T) {
+	viaZTNA := routingModeLabels[securitycloud.RoutingTypeCustom]
+
+	config := ZtnaAppResourceModel{
+		RoutingOverrides: overrideListOf(t,
+			overrideElementValue(t, []string{"group-a"}, types.ObjectUnknown(routingObjectType.AttrTypes)),
+			overrideElementValue(t, []string{"group-b"}, routingObject(t, types.StringValue(viaZTNA), types.StringNull(), types.StringValue("Standard"))),
+		),
+	}
+
+	var diags diag.Diagnostics
+	validateAllRouting(context.Background(), config, &diags)
+
+	if got := diags.ErrorsCount(); got != 1 {
+		t.Fatalf("expected exactly the resolved override to fail, got %d errors: %s", got, diags)
+	}
+	withPath, ok := diags.Errors()[0].(diag.DiagnosticWithPath)
+	if !ok {
+		t.Fatal("expected the error to be attached to an attribute path")
+	}
+	if got := withPath.Path().String(); got != "routing_overrides[1].routing.gateway_id" {
+		t.Errorf("error is attached to %s, want routing_overrides[1].routing.gateway_id", got)
+	}
+}
+
+// TestValidateAllRoutingDefersOnWhollyUnresolvedOverride pins the same for an element
+// Terraform has not resolved at all.
+func TestValidateAllRoutingDefersOnWhollyUnresolvedOverride(t *testing.T) {
+	config := ZtnaAppResourceModel{
+		RoutingOverrides: overrideListOf(t, types.ObjectUnknown(routingOverrideObjectType.AttrTypes)),
+	}
+
+	var diags diag.Diagnostics
+	validateAllRouting(context.Background(), config, &diags)
+	if diags.HasError() {
+		t.Fatalf("expected an unresolved override to defer, got %s", diags)
+	}
+}
+
+// TestValidateDeviceGroupAssignmentSurvivesUnresolvedOverride pins that the group
+// rules keep working around an unresolved override, and that the index the duplicate
+// diagnostic quotes is the one in the configuration rather than a count of the
+// elements that happened to resolve.
+func TestValidateDeviceGroupAssignmentSurvivesUnresolvedOverride(t *testing.T) {
+	const group = "aaaaaaaa-0000-0000-0000-000000000000"
+
+	config := ZtnaAppResourceModel{
+		AllDeviceGroups: types.BoolValue(false),
+		DeviceGroupIDs:  stringSetFor(t, []string{group}),
+		RoutingOverrides: overrideListOf(t,
+			types.ObjectUnknown(routingOverrideObjectType.AttrTypes),
+			overrideElementValue(t, []string{group}, directRoutingObject(t)),
+			overrideElementValue(t, []string{group}, directRoutingObject(t)),
+		),
+	}
+
+	var diags diag.Diagnostics
+	validateDeviceGroupAssignment(context.Background(), config, &diags)
+
+	text := diagnosticsText(diags)
+	if !strings.Contains(text, "more than one routing override") {
+		t.Fatalf("expected the duplicate rule to still fire past an unresolved element, got %s", diags)
+	}
+	if !strings.Contains(text, "at index 1") {
+		t.Errorf("expected the diagnostic to quote the configured index, got %s", text)
+	}
+}
+
+// TestValidateResourceReachesEveryRule pins the wire from the framework to each inner
+// rule. Every ValidateResource in this file was at zero coverage: deleting the
+// validateX call from any of the four left the whole package suite green, and the
+// registration test only counts the returned slice, so dropping one validator and
+// duplicating another passed that too.
+func TestValidateResourceReachesEveryRule(t *testing.T) {
+	viaZTNA := routingModeLabels[securitycloud.RoutingTypeCustom]
+
+	cases := []struct {
+		name      string
+		validator resource.ConfigValidator
+		overrides map[string]tftypes.Value
+		wantErr   string
+	}{
+		{
+			name:      "app form",
+			validator: appFormValidator{},
+			wantErr:   "needs a name",
+		},
+		{
+			name:      "routing combination",
+			validator: routingCombinationValidator{},
+			overrides: map[string]tftypes.Value{"routing": routingTFValue(t, viaZTNA, nil, nil)},
+			wantErr:   "needs an access gateway",
+		},
+		{
+			name:      "device group assignment",
+			validator: deviceGroupAssignmentValidator{},
+			overrides: map[string]tftypes.Value{
+				"all_device_groups": tftypes.NewValue(tftypes.Bool, true),
+				"device_group_ids":  stringSetTFValue("aaaaaaaa-0000-0000-0000-000000000000"),
+			},
+			wantErr: "conflict with all device groups",
+		},
+		{
+			name:      "hostname overlap",
+			validator: hostnameOverlapValidator{},
+			overrides: map[string]tftypes.Value{"hostnames": stringSetTFValue("*", "example.com")},
+			wantErr:   "Host names overlap",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var resp resource.ValidateConfigResponse
+			tc.validator.ValidateResource(context.Background(), resource.ValidateConfigRequest{
+				Config: resourceConfigWith(t, tc.overrides),
+			}, &resp)
+
+			if !strings.Contains(diagnosticsText(resp.Diagnostics), tc.wantErr) {
+				t.Fatalf("expected %T to report %q, got %s", tc.validator, tc.wantErr, resp.Diagnostics)
+			}
+		})
+	}
+}
+
+// TestValidateResourceDefersOnUnresolvedRouting pins the config read every one of the
+// four validators shares. `routing` is Required and decodes into a Go struct pointer,
+// so `routing = var.routing` in a module made req.Config.Get refuse the whole decode
+// with "the target type cannot handle unknown values" — reported to the operator as a
+// provider bug, and taking out all four validators at once.
+func TestValidateResourceDefersOnUnresolvedRouting(t *testing.T) {
+	config := resourceConfigWith(t, map[string]tftypes.Value{
+		"name":              tftypes.NewValue(tftypes.String, "Internal CRM"),
+		"all_device_groups": tftypes.NewValue(tftypes.Bool, false),
+		"routing":           tftypes.NewValue(routingTFType(t), tftypes.UnknownValue),
+	})
+
+	for _, v := range configValidatorsUnderTest() {
+		var resp resource.ValidateConfigResponse
+		v.ValidateResource(context.Background(), resource.ValidateConfigRequest{Config: config}, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("%T must defer while `routing` is unresolved, got %s", v, resp.Diagnostics)
+		}
+	}
+}
+
+// TestValidateResourceDefersOnUnresolvedAllDeviceGroups is the framework-level form of
+// the unknown-discriminator guard, fed tftypes.UnknownValue as STYLE_GUIDE prescribes:
+// acceptance tests use literal HCL, which is always known, and so cannot reach this
+// path at all.
+func TestValidateResourceDefersOnUnresolvedAllDeviceGroups(t *testing.T) {
+	config := resourceConfigWith(t, map[string]tftypes.Value{
+		"name":              tftypes.NewValue(tftypes.String, "Internal CRM"),
+		"all_device_groups": tftypes.NewValue(tftypes.Bool, tftypes.UnknownValue),
+		"device_group_ids":  stringSetTFValue("aaaaaaaa-0000-0000-0000-000000000000"),
+	})
+
+	for _, v := range configValidatorsUnderTest() {
+		var resp resource.ValidateConfigResponse
+		v.ValidateResource(context.Background(), resource.ValidateConfigRequest{Config: config}, &resp)
+		if resp.Diagnostics.HasError() {
+			t.Errorf("%T must defer while `all_device_groups` is unresolved, got %s", v, resp.Diagnostics)
+		}
+	}
+}
+
+// configValidatorsUnderTest lists the four validators this file defines. It is
+// deliberately a literal rather than a call to the resource's ConfigValidators, so a
+// validator dropped from the registration cannot quietly drop it from these tests too.
+func configValidatorsUnderTest() []resource.ConfigValidator {
+	return []resource.ConfigValidator{
+		appFormValidator{},
+		routingCombinationValidator{},
+		deviceGroupAssignmentValidator{},
+		hostnameOverlapValidator{},
+	}
+}
+
+// resourceConfigWith builds a framework configuration from the resource schema with
+// every attribute null, then replaces the named ones. Building it from the real schema
+// is what makes these tests exercise the same decode the framework performs.
+func resourceConfigWith(t *testing.T, overrides map[string]tftypes.Value) tfsdk.Config {
+	t.Helper()
+	s := resourceSchema(t)
+	objectType, ok := s.Type().TerraformType(context.Background()).(tftypes.Object)
+	if !ok {
+		t.Fatalf("expected the resource schema to be an object type, got %T", s.Type().TerraformType(context.Background()))
+	}
+
+	values := make(map[string]tftypes.Value, len(objectType.AttributeTypes))
+	for name, attributeType := range objectType.AttributeTypes {
+		values[name] = tftypes.NewValue(attributeType, nil)
+	}
+	for name, value := range overrides {
+		if _, ok := objectType.AttributeTypes[name]; !ok {
+			t.Fatalf("the resource schema has no attribute %q — a rename left this test behind", name)
+		}
+		values[name] = value
+	}
+	return tfsdk.Config{Schema: s, Raw: tftypes.NewValue(objectType, values)}
+}
+
+// routingTFType returns the wire type of a routing block.
+func routingTFType(t *testing.T) tftypes.Type {
+	t.Helper()
+	return routingObjectType.TerraformType(context.Background())
+}
+
+// routingTFValue builds a routing block at the wire level, so a member can be handed
+// tftypes.UnknownValue.
+func routingTFValue(t *testing.T, trafficRouting, gatewayID, routingMode any) tftypes.Value {
+	t.Helper()
+	return tftypes.NewValue(routingTFType(t), map[string]tftypes.Value{
+		"traffic_routing": tftypes.NewValue(tftypes.String, trafficRouting),
+		"gateway_id":      tftypes.NewValue(tftypes.String, gatewayID),
+		"routing_mode":    tftypes.NewValue(tftypes.String, routingMode),
+	})
+}
+
+// stringSetTFValue builds a set of strings at the wire level.
+func stringSetTFValue(values ...string) tftypes.Value {
+	elements := make([]tftypes.Value, 0, len(values))
+	for _, value := range values {
+		elements = append(elements, tftypes.NewValue(tftypes.String, value))
+	}
+	return tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, elements)
+}
+
+// routingObject builds a routing block as a framework object value.
+func routingObject(t *testing.T, trafficRouting, gatewayID, routingMode types.String) types.Object {
+	t.Helper()
+	object, diags := types.ObjectValue(routingObjectType.AttrTypes, map[string]attr.Value{
+		"traffic_routing": trafficRouting,
+		"gateway_id":      gatewayID,
+		"routing_mode":    routingMode,
+	})
+	if diags.HasError() {
+		t.Fatalf("building routing object: %s", diags)
+	}
+	return object
+}
+
+// directRoutingObject builds the routing block every valid fixture here uses.
+func directRoutingObject(t *testing.T) types.Object {
+	t.Helper()
+	return routingObject(t,
+		types.StringValue(routingModeLabels[securitycloud.RoutingTypeDirect]),
+		types.StringNull(),
+		types.StringNull(),
+	)
+}
+
+// overrideElementValue builds one routing_overrides element, accepting any routing value so
+// an unresolved block can be placed inside a resolved element.
+func overrideElementValue(t *testing.T, groups []string, routing attr.Value) attr.Value {
+	t.Helper()
+	set, diags := types.SetValueFrom(context.Background(), types.StringType, groups)
+	if diags.HasError() {
+		t.Fatalf("building override group set: %s", diags)
+	}
+	object, diags := types.ObjectValue(routingOverrideObjectType.AttrTypes, map[string]attr.Value{
+		"device_group_ids": set,
+		"routing":          routing,
+	})
+	if diags.HasError() {
+		t.Fatalf("building override element: %s", diags)
+	}
+	return object
+}
+
+// overrideListOf assembles a routing_overrides list from element values, which
+// buildOverrideList cannot do because it goes through a Go model and so cannot hold an
+// unresolved value.
+func overrideListOf(t *testing.T, elements ...attr.Value) types.List {
+	t.Helper()
+	list, diags := types.ListValue(routingOverrideObjectType, elements)
+	if diags.HasError() {
+		t.Fatalf("building override list: %s", diags)
+	}
+	return list
 }

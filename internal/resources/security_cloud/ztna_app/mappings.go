@@ -25,7 +25,7 @@ import (
 // Label provenance — every label here was read off the admin UI in the screenshots
 // this was built from, on 2026-08-30:
 //
-//   - routing mode (`routing.mode`): the "Application traffic routing" dropdown on
+//   - routing mode (`routing.traffic_routing`): the "Application traffic routing" dropdown on
 //     the Routing tab. Both options observed: "Encrypt and route via ZTNA:" for
 //     CUSTOM and "Direct device routing" for DIRECT. The trailing colon on the
 //     first is UI punctuation introducing the gateway picker below it, not part of

@@ -69,7 +69,7 @@ output "crm_routing_gateway" {
 ### Read-Only
 
 - `all_device_groups` (Boolean) Whether every device group may reach this application.
-- `app_type` (String) Whether the application is predefined or custom.
+- `app_type` (String) Whether the application is predefined or custom: `Predefined`, `Custom`. Follows from whether `predefined_app_id` is set.
 - `category` (String) Category the application is classified under.
 - `device_group_ids` (List of String) IDs of the device groups that may reach this application.
 - `direct_ips_and_subnets` (List of String) Address ranges whose traffic belongs to this application.
@@ -91,9 +91,9 @@ Optional:
 
 Read-Only:
 
-- `gateway_id` (String) ID of the access gateway traffic is routed through.
-- `mode` (String) Whether traffic is routed via ZTNA or left to the device.
-- `routing_mode` (String) Standard or legacy address resolution.
+- `gateway_id` (String) ID of the access gateway traffic is routed through. Null for direct device routing.
+- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy` — "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
+- `traffic_routing` (String) Whether traffic is routed via ZTNA or left to the device: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" routes through the access gateway reported in `gateway_id`; "Direct device routing" leaves traffic to the device's own routing and reports neither `gateway_id` nor `routing_mode`.
 
 
 <a id="nestedatt--routing_overrides"></a>
@@ -109,9 +109,9 @@ Read-Only:
 
 Read-Only:
 
-- `gateway_id` (String) ID of the access gateway traffic is routed through.
-- `mode` (String) Whether traffic is routed via ZTNA or left to the device.
-- `routing_mode` (String) Standard or legacy address resolution.
+- `gateway_id` (String) ID of the access gateway traffic is routed through. Null for direct device routing.
+- `routing_mode` (String) How ZTNA resolves this application's addresses: `Standard`, `Legacy` — "Standard" is IPv6 and "Legacy" is IPv4. Null for direct device routing.
+- `traffic_routing` (String) Whether traffic is routed via ZTNA or left to the device: `Encrypt and route via ZTNA`, `Direct device routing`. "Encrypt and route via ZTNA" routes through the access gateway reported in `gateway_id`; "Direct device routing" leaves traffic to the device's own routing and reports neither `gateway_id` nor `routing_mode`.
 
 
 
@@ -129,7 +129,7 @@ Read-Only:
 
 Read-Only:
 
-- `deny_at_risk_level` (String) Risk level at which access is denied.
+- `deny_at_risk_level` (String) Risk level at which access is denied, lowest first: `Low`, `Medium`, `High`. Jamf Security Cloud keeps this value even while the requirement is not enforced.
 - `device_push_notifications` (Boolean) Whether the user is told when access is denied.
 - `enabled` (Boolean) Whether the requirement is enforced.
 

@@ -46,6 +46,10 @@ func providerNotConfiguredError() (string, string) {
 // would refuse the provider's own write and blame an administrator for it. Matching
 // on the value keeps the refusal for a genuine conflict and lets a byte-identical
 // retry finish.
+//
+// The adoption above is the fallback, not the plan: a confirming read that fails after
+// the write has landed now commits state itself, so the tenant is not left configured
+// with Terraform holding nothing. See commitPartialState.
 func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	if r.client == nil {
 		resp.Diagnostics.AddError(providerNotConfiguredError())
@@ -98,16 +102,24 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 
 	got, err := r.client.GetDnsSearchDomainV1(createCtx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error reading the Jamf Security Cloud search domain just written", err.Error())
+		commitPartialState(ctx, &plan, resp)
+		resp.Diagnostics.AddError(
+			"Error reading the Jamf Security Cloud search domain just written",
+			"The search domain \""+plan.DomainName.ValueString()+"\" was written to the tenant but could not be "+
+				"read back, so Terraform has recorded it under the ID \""+helpers.SingletonID+"\" without "+
+				"confirming the stored value. The next plan will refresh it — there is no need to import it, and "+
+				"nothing has to be re-created. Underlying error: "+err.Error(),
+		)
 		return
 	}
 	if got == nil {
+		commitPartialState(ctx, &plan, resp)
 		resp.Diagnostics.AddError(
 			"Jamf Security Cloud returned no search domain after writing one",
-			"The write succeeded but the confirming read returned an empty response, so the stored value "+
-				"cannot be recorded in state. The search domain may now be set on the tenant without Terraform "+
-				"tracking it — import it to reconcile:\n\n"+
-				"    terraform import jamfplatform_security_cloud_dns_search_domain.<name> "+helpers.SingletonID,
+			"The write succeeded but the confirming read returned an empty response, so the stored value cannot "+
+				"be confirmed. Terraform has recorded the planned search domain \""+plan.DomainName.ValueString()+
+				"\" under the ID \""+helpers.SingletonID+"\", so the tenant is not left configured without "+
+				"Terraform tracking it — the next plan will refresh it, and there is no need to import it.",
 		)
 		return
 	}
@@ -121,6 +133,21 @@ func (r *SearchDomainResource) Create(ctx context.Context, req resource.CreateRe
 
 	tflog.Trace(ctx, "set Jamf Security Cloud search domain")
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+// commitPartialState records the planned search domain under the singleton ID when
+// the write has landed but the confirming read has not.
+//
+// Without it a failed read-back leaves the tenant configured and Terraform holding no
+// state, which is the case Create's preflight has to forgive on the next apply. The
+// value recorded is the planned one rather than the stored one, and that is the point:
+// the two are only in doubt because the read failed, and the next refresh settles it.
+// Nothing needs nulling for Terraform's benefit — the ID set here is this schema's
+// only Computed value.
+func commitPartialState(ctx context.Context, plan *SearchDomainResourceModel, resp *resource.CreateResponse) {
+	plan.ID = types.StringValue(helpers.SingletonID)
+	resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, searchDomainIdentityModel{ID: plan.ID})...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, plan)...)
 }
 
 // Read refreshes Terraform state with the tenant's stored search domain.

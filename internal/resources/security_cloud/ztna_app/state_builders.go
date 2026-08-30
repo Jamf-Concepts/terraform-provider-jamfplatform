@@ -31,9 +31,13 @@ import (
 //     Optional-only block population gate.
 //
 // `hostnames` needs no case reconciliation despite the server lower-casing them and
-// stripping a trailing root dot, because the plan modifier applies both
-// normalisations before the value is ever sent. State and configuration therefore
-// already agree by the time this runs.
+// stripping a trailing root dot, because `normalisedHostname()` refuses any spelling
+// the server would rewrite, so the configuration can only ever hold the stored form.
+// State and configuration therefore already agree by the time this runs. That
+// validator is the entire mechanism, and nothing here can stand in for it: because
+// the attribute is Optional rather than Optional+Computed, Terraform will not let the
+// provider rewrite the planned value, so a non-normalised spelling accepted at plan
+// time would diff forever.
 func assignAppResourceModel(ctx context.Context, state *ZtnaAppResourceModel, app *securitycloud.App) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -149,9 +153,9 @@ func routingFromWire(routing *securitycloud.Routing) *RoutingModel {
 		return nil
 	}
 	out := &RoutingModel{
-		Mode:        types.StringValue(labelFor(routing.Type, routingModeLabels)),
-		GatewayID:   types.StringPointerValue(routing.GatewayID),
-		RoutingMode: types.StringNull(),
+		TrafficRouting: types.StringValue(labelFor(routing.Type, routingModeLabels)),
+		GatewayID:      types.StringPointerValue(routing.GatewayID),
+		RoutingMode:    types.StringNull(),
 	}
 	if routing.DnsIpResolutionType != nil {
 		out.RoutingMode = types.StringValue(labelFor(*routing.DnsIpResolutionType, dnsResolutionLabels))
@@ -201,9 +205,9 @@ func routingObjectValue(routing *securitycloud.Routing) (types.Object, diag.Diag
 		return types.ObjectNull(routingAttributeTypes), nil
 	}
 	return types.ObjectValue(routingAttributeTypes, map[string]attr.Value{
-		"mode":         model.Mode,
-		"gateway_id":   model.GatewayID,
-		"routing_mode": model.RoutingMode,
+		"traffic_routing": model.TrafficRouting,
+		"gateway_id":      model.GatewayID,
+		"routing_mode":    model.RoutingMode,
 	})
 }
 

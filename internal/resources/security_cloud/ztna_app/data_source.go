@@ -73,8 +73,9 @@ func (d *ZtnaAppDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 				Computed: true,
 			},
 			"app_type": schema.StringAttribute{
-				MarkdownDescription: "Whether the application is predefined or custom.",
-				Computed:            true,
+				MarkdownDescription: "Whether the application is predefined or custom: " +
+					markdownList(appTypeValues()) + ". Follows from whether `predefined_app_id` is set.",
+				Computed: true,
 			},
 			"category": schema.StringAttribute{
 				MarkdownDescription: "Category the application is classified under.",
@@ -144,8 +145,10 @@ func (d *ZtnaAppDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 								Computed:            true,
 							},
 							"deny_at_risk_level": schema.StringAttribute{
-								MarkdownDescription: "Risk level at which access is denied.",
-								Computed:            true,
+								MarkdownDescription: "Risk level at which access is denied, lowest first: " +
+									markdownList(riskLevelValues()) + ". Jamf Security Cloud keeps this value even " +
+									"while the requirement is not enforced.",
+								Computed: true,
 							},
 							"device_push_notifications": schema.BoolAttribute{
 								MarkdownDescription: "Whether the user is told when access is denied.",
@@ -166,19 +169,35 @@ func (d *ZtnaAppDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 }
 
 // dsRoutingSchemaAttributes returns the read-only attributes of a routing block.
+//
+// The documented value lists are generated from the same `*Values()` helpers the
+// resource's OneOf validators use. These spellings are the provider's own admin-UI
+// labels rather than the wire values a reader could look up in Jamf's API reference,
+// and nothing validates a read-path comparison, so an operator guessing at them gets
+// an empty result rather than an error.
 func dsRoutingSchemaAttributes() map[string]schema.Attribute {
 	return map[string]schema.Attribute{
-		"mode": schema.StringAttribute{
-			MarkdownDescription: "Whether traffic is routed via ZTNA or left to the device.",
-			Computed:            true,
+		"traffic_routing": schema.StringAttribute{
+			MarkdownDescription: "Whether traffic is routed via ZTNA or left to the device: " +
+				markdownList(routingModeValues()) + ". \"" +
+				routingModeLabels[securitycloud.RoutingTypeCustom] + "\" routes through the access gateway " +
+				"reported in `gateway_id`; \"" + routingModeLabels[securitycloud.RoutingTypeDirect] +
+				"\" leaves traffic to the device's own routing and reports neither `gateway_id` nor " +
+				"`routing_mode`.",
+			Computed: true,
 		},
 		"gateway_id": schema.StringAttribute{
-			MarkdownDescription: "ID of the access gateway traffic is routed through.",
-			Computed:            true,
+			MarkdownDescription: "ID of the access gateway traffic is routed through. Null for direct " +
+				"device routing.",
+			Computed: true,
 		},
 		"routing_mode": schema.StringAttribute{
-			MarkdownDescription: "Standard or legacy address resolution.",
-			Computed:            true,
+			MarkdownDescription: "How ZTNA resolves this application's addresses: " +
+				markdownList(dnsResolutionValues()) + " — \"" +
+				dnsResolutionLabels[securitycloud.RoutingDnsIpResolutionTypeIPv6] + "\" is IPv6 and \"" +
+				dnsResolutionLabels[securitycloud.RoutingDnsIpResolutionTypeIPv4] + "\" is IPv4. Null for " +
+				"direct device routing.",
+			Computed: true,
 		},
 	}
 }
@@ -222,6 +241,13 @@ func (d *ZtnaAppDataSource) Configure(ctx context.Context, req datasource.Config
 
 // Read fetches an application by ID, name or predefined app ID and populates
 // Terraform state.
+//
+// The default time budget follows the request shape rather than the data source. A
+// lookup by `id` is a single GET, so it gets defaultReadTimeout; a lookup by `name`
+// or `predefined_app_id` has no endpoint of its own and walks the paged application
+// list at a hundred per request, so it gets the same defaultPagedReadTimeout the
+// plural data source uses for the identical call. An explicit `timeouts.read`
+// overrides both.
 func (d *ZtnaAppDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	if d.client == nil {
 		resp.Diagnostics.AddError(
@@ -237,7 +263,11 @@ func (d *ZtnaAppDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), defaultReadTimeout, data.Timeouts.Read)
+	lookupTimeout := defaultReadTimeout
+	if data.ID.IsNull() {
+		lookupTimeout = defaultPagedReadTimeout
+	}
+	readTimeout, timeoutDiags := helpers.ResolveTimeout(ctx, data.Timeouts.IsNull(), data.Timeouts.IsUnknown(), lookupTimeout, data.Timeouts.Read)
 	resp.Diagnostics.Append(timeoutDiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -281,9 +311,13 @@ func (d *ZtnaAppDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 // lookup resolves the configured key to one application.
 //
-// The name and predefined-app-ID paths list every application rather than going
-// through the SDK's ResolveZtnaAppV1ByName, for two reasons. Application names are
-// not unique on this endpoint (wire-verified 2026-08-30), so an ambiguous match has
+// The name and predefined-app-ID paths cost ceil(N/100) sequential GETs, because
+// ListZtnaAppsV1 pages internally at a hundred applications per request and the whole
+// collection is scanned client-side.
+//
+// Those paths list every application rather than going through the SDK's
+// ResolveZtnaAppV1ByName, for two reasons. Application names are not unique on this
+// endpoint (wire-verified 2026-08-30), so an ambiguous match has
 // to be reported rather than silently resolved to whichever the server listed first;
 // and a predefined application has a null name, so the name field cannot address one
 // at all.
