@@ -41,7 +41,7 @@ internal/
 │                      #   ~115 packages, fully flat (e.g. the five PKI constructs are pki_adcs/, pki_venafi/, pki_digicert/, … — no pki/ grouping dir).
 ├── actions/
 │   ├── device/        # erase, restart, shutdown, unmanage                       (Platform Device Actions API)
-│   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (13 MDM commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
+│   └── pro/           # managed_software_updates (plan + abandon), maintenance/ (flush_policy_logs, redeploy_management_framework), mdm/ (send_blank_push, renew_mdm_profile, flush_mdm_commands), patch/ (retry_patch_policy_logs)   (Jamf Pro)
 ├── functions/         # Provider-defined functions (offline; no SDK client, no provider config)
 │   ├── mobileconfig/       # mobileconfig(profile) — build a full .mobileconfig from HCL payloads; also holds the shared Assemble core
 │   └── mcx_forced_payload/ # mcx_forced_payload(domain, prefs) — MCX "Custom Settings" envelope; thin wrapper over mobileconfig.Assemble

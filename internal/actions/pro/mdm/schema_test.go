@@ -5,7 +5,6 @@ package mdmactions
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/action"
@@ -54,138 +53,6 @@ func assertTypeName(t *testing.T, meta func(context.Context, action.MetadataRequ
 	}
 }
 
-// --- device_lock (canary) ---
-
-func TestDeviceLockAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewDeviceLockAction().(*DeviceLockAction).Metadata, "jamfplatform_pro_device_lock")
-}
-
-func TestDeviceLockAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewDeviceLockAction().(*DeviceLockAction).Schema,
-		[]string{"management_ids", "serial_numbers", "message", "phone_number", "pin"})
-}
-
-// --- disable_lost_mode (canary) ---
-
-func TestDisableLostModeAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewDisableLostModeAction().(*DisableLostModeAction).Metadata, "jamfplatform_pro_disable_lost_mode")
-}
-
-func TestDisableLostModeAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewDisableLostModeAction().(*DisableLostModeAction).Schema,
-		[]string{"management_ids", "serial_numbers"})
-}
-
-// --- play_lost_mode_sound (canary) ---
-
-func TestPlayLostModeSoundAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewPlayLostModeSoundAction().(*PlayLostModeSoundAction).Metadata, "jamfplatform_pro_play_lost_mode_sound")
-}
-
-func TestPlayLostModeSoundAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewPlayLostModeSoundAction().(*PlayLostModeSoundAction).Schema,
-		[]string{"management_ids", "serial_numbers"})
-}
-
-// --- clear_passcode (canary) ---
-
-func TestClearPasscodeAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewClearPasscodeAction().(*ClearPasscodeAction).Metadata, "jamfplatform_pro_clear_passcode")
-}
-
-func TestClearPasscodeAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewClearPasscodeAction().(*ClearPasscodeAction).Schema,
-		[]string{"management_id", "serial_number", "unlock_token"})
-}
-
-// --- enable_lost_mode ---
-
-func TestEnableLostModeAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewEnableLostModeAction().(*EnableLostModeAction).Metadata, "jamfplatform_pro_enable_lost_mode")
-}
-
-func TestEnableLostModeAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewEnableLostModeAction().(*EnableLostModeAction).Schema,
-		[]string{"management_ids", "serial_numbers", "lost_mode_message", "lost_mode_footnote", "lost_mode_phone"})
-}
-
-// --- enable_remote_desktop ---
-
-func TestEnableRemoteDesktopAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewEnableRemoteDesktopAction().(*EnableRemoteDesktopAction).Metadata, "jamfplatform_pro_enable_remote_desktop")
-}
-
-func TestEnableRemoteDesktopAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewEnableRemoteDesktopAction().(*EnableRemoteDesktopAction).Schema,
-		[]string{"management_ids", "serial_numbers"})
-}
-
-// --- disable_remote_desktop ---
-
-func TestDisableRemoteDesktopAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewDisableRemoteDesktopAction().(*DisableRemoteDesktopAction).Metadata, "jamfplatform_pro_disable_remote_desktop")
-}
-
-func TestDisableRemoteDesktopAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewDisableRemoteDesktopAction().(*DisableRemoteDesktopAction).Schema,
-		[]string{"management_ids", "serial_numbers"})
-}
-
-// --- clear_restrictions_password ---
-
-func TestClearRestrictionsPasswordAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewClearRestrictionsPasswordAction().(*ClearRestrictionsPasswordAction).Metadata, "jamfplatform_pro_clear_restrictions_password")
-}
-
-func TestClearRestrictionsPasswordAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewClearRestrictionsPasswordAction().(*ClearRestrictionsPasswordAction).Schema,
-		[]string{"management_ids", "serial_numbers"})
-}
-
-// --- delete_user ---
-
-func TestDeleteUserAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewDeleteUserAction().(*DeleteUserAction).Metadata, "jamfplatform_pro_delete_user")
-}
-
-func TestDeleteUserAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewDeleteUserAction().(*DeleteUserAction).Schema,
-		[]string{"management_ids", "serial_numbers", "user_name", "delete_all_users", "force_deletion"})
-}
-
-// --- log_out_user ---
-
-func TestLogOutUserAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewLogOutUserAction().(*LogOutUserAction).Metadata, "jamfplatform_pro_log_out_user")
-}
-
-func TestLogOutUserAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewLogOutUserAction().(*LogOutUserAction).Schema,
-		[]string{"management_ids", "serial_numbers"})
-}
-
-// --- unlock_user_account ---
-
-func TestUnlockUserAccountAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewUnlockUserAccountAction().(*UnlockUserAccountAction).Metadata, "jamfplatform_pro_unlock_user_account")
-}
-
-func TestUnlockUserAccountAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewUnlockUserAccountAction().(*UnlockUserAccountAction).Schema,
-		[]string{"management_ids", "serial_numbers", "user_name"})
-}
-
-// --- set_auto_admin_password ---
-
-func TestSetAutoAdminPasswordAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewSetAutoAdminPasswordAction().(*SetAutoAdminPasswordAction).Metadata, "jamfplatform_pro_set_auto_admin_password")
-}
-
-func TestSetAutoAdminPasswordAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewSetAutoAdminPasswordAction().(*SetAutoAdminPasswordAction).Schema,
-		[]string{"management_id", "serial_number", "guid", "password"})
-}
-
 // --- send_blank_push ---
 
 func TestSendBlankPushAction_Metadata(t *testing.T) {
@@ -223,43 +90,6 @@ func TestFlushMdmCommandsAction_Schema(t *testing.T) {
 
 // --- plan-time device-target validation ---
 
-// TestDeviceTargetValidatorsWired guards that every action whose schema is built
-// from targetAttributes also declares the matching ConfigValidators. Without the
-// validator, "neither management_id nor serial_number" passes plan and only
-// fails part-way through the apply — the schema alone cannot express
-// exactly-one-of, so the two halves must be kept in step.
-//
-// The list is asserted against the schema itself, so an action that gains the
-// target selector but forgets ConfigValidators fails here.
-func TestDeviceTargetValidatorsWired(t *testing.T) {
-	targetActions := map[string]action.Action{
-		"clear_passcode":              NewClearPasscodeAction(),
-		"clear_restrictions_password": NewClearRestrictionsPasswordAction(),
-		"delete_user":                 NewDeleteUserAction(),
-		"device_lock":                 NewDeviceLockAction(),
-		"disable_lost_mode":           NewDisableLostModeAction(),
-		"disable_remote_desktop":      NewDisableRemoteDesktopAction(),
-		"enable_lost_mode":            NewEnableLostModeAction(),
-		"enable_remote_desktop":       NewEnableRemoteDesktopAction(),
-		"log_out_user":                NewLogOutUserAction(),
-		"play_lost_mode_sound":        NewPlayLostModeSoundAction(),
-		"set_auto_admin_password":     NewSetAutoAdminPasswordAction(),
-		"unlock_user_account":         NewUnlockUserAccountAction(),
-	}
-
-	for name, a := range targetActions {
-		t.Run(name, func(t *testing.T) {
-			withValidators, ok := a.(action.ActionWithConfigValidators)
-			if !ok {
-				t.Fatalf("%s builds its schema from targetAttributes but declares no ConfigValidators", name)
-			}
-			if len(withValidators.ConfigValidators(context.Background())) == 0 {
-				t.Fatalf("%s declares an empty ConfigValidators slice", name)
-			}
-		})
-	}
-}
-
 // TestSendBlankPushValidatorsWired covers the at-least-one-of rule: the action
 // accepts management_ids and/or serial_numbers, and previously only rejected
 // "neither" once the apply was already running.
@@ -270,54 +100,5 @@ func TestSendBlankPushValidatorsWired(t *testing.T) {
 	}
 	if len(a.ConfigValidators(context.Background())) == 0 {
 		t.Fatal("send_blank_push declares an empty ConfigValidators slice")
-	}
-}
-
-// --- enhanced log collection ---
-
-func TestTriggerEnhancedLogCollectionAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewTriggerEnhancedLogCollectionAction().(*TriggerEnhancedLogCollectionAction).Metadata,
-		"jamfplatform_pro_trigger_enhanced_log_collection")
-}
-
-func TestTriggerEnhancedLogCollectionAction_Schema(t *testing.T) {
-	schema := NewTriggerEnhancedLogCollectionAction().(*TriggerEnhancedLogCollectionAction).Schema
-	assertAttrsPresent(t, schema, []string{"management_ids", "serial_numbers", "apple_care_token"})
-	// The spec marks appleCareToken required with minLength 1, and the command is
-	// meaningless without it, so this must not silently become optional.
-	assertRequired(t, schema, []string{"apple_care_token"})
-}
-
-func TestCancelEnhancedLogCollectionAction_Metadata(t *testing.T) {
-	assertTypeName(t, NewCancelEnhancedLogCollectionAction().(*CancelEnhancedLogCollectionAction).Metadata,
-		"jamfplatform_pro_cancel_enhanced_log_collection")
-}
-
-func TestCancelEnhancedLogCollectionAction_Schema(t *testing.T) {
-	assertAttrsPresent(t, NewCancelEnhancedLogCollectionAction().(*CancelEnhancedLogCollectionAction).Schema,
-		[]string{"management_ids", "serial_numbers"})
-}
-
-// Both actions must state their Jamf Pro floor and the Apple OS requirement in
-// the rendered description. The command is accepted by an 11.30 tenant and then
-// does nothing on a device below macOS/iOS 27, which produces no error anywhere
-// the user looks — so the docs are the only place that can explain it.
-func TestEnhancedLogCollectionActions_DocumentTheirRequirements(t *testing.T) {
-	actions := map[string]action.Action{
-		"trigger_enhanced_log_collection": NewTriggerEnhancedLogCollectionAction(),
-		"cancel_enhanced_log_collection":  NewCancelEnhancedLogCollectionAction(),
-	}
-	for name, a := range actions {
-		var resp action.SchemaResponse
-		a.Schema(context.Background(), action.SchemaRequest{}, &resp)
-		if resp.Diagnostics.HasError() {
-			t.Fatalf("%s: schema diagnostics: %v", name, resp.Diagnostics)
-		}
-		desc := resp.Schema.GetMarkdownDescription()
-		for _, want := range []string{"Jamf Pro 11.30", "27.0 or later"} {
-			if !strings.Contains(desc, want) {
-				t.Errorf("%s: description should mention %q, got:\n%s", name, want, desc)
-			}
-		}
 	}
 }

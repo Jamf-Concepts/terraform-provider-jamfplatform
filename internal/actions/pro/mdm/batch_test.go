@@ -117,59 +117,6 @@ func TestChunkSerialsByEncodedSize_Empty(t *testing.T) {
 	}
 }
 
-// TestBuildClientData_EntriesAreDistinct is the aliasing guard. Each clientData
-// entry holds a pointer to its management id; if every entry aliased the same
-// backing string the request would still be valid JSON and the server would
-// happily command one device N times, leaving the others untouched. Nothing else
-// in the suite would notice.
-func TestBuildClientData_EntriesAreDistinct(t *testing.T) {
-	ids := []string{"id-a", "id-b", "id-c"}
-	clients := buildClientData(ids)
-
-	if len(clients) != len(ids) {
-		t.Fatalf("got %d client entries, want %d", len(clients), len(ids))
-	}
-	for i, c := range clients {
-		if c.ManagementID == nil {
-			t.Fatalf("entry %d has a nil management id", i)
-		}
-		if *c.ManagementID != ids[i] {
-			t.Errorf("entry %d = %q, want %q", i, *c.ManagementID, ids[i])
-		}
-	}
-	// Distinct pointers, not just distinct values at read time.
-	for i := range clients {
-		for j := i + 1; j < len(clients); j++ {
-			if clients[i].ManagementID == clients[j].ManagementID {
-				t.Errorf("entries %d and %d share a backing string; every device must have its own", i, j)
-			}
-		}
-	}
-}
-
-func TestBuildClientData_Empty(t *testing.T) {
-	if got := buildClientData(nil); len(got) != 0 {
-		t.Errorf("expected no client entries, got %d", len(got))
-	}
-}
-
-func TestBatchTargetSuffix(t *testing.T) {
-	if got := batchTargetSuffix(nil); got != "" {
-		t.Errorf("no ids should name nothing, got %q", got)
-	}
-	if got := batchTargetSuffix([]string{"a", "b"}); got != " (a, b)" {
-		t.Errorf("small batch should name its ids, got %q", got)
-	}
-	// Beyond the naming ceiling the list becomes noise rather than attribution.
-	var many []string
-	for i := range 50 {
-		many = append(many, fmt.Sprintf("id-%d", i))
-	}
-	if got := batchTargetSuffix(many); got != "" {
-		t.Errorf("large batch should not enumerate ids, got %q", got)
-	}
-}
-
 func TestSortedKeys_IsStable(t *testing.T) {
 	got := sortedKeys(map[string]bool{"c": true, "a": true, "b": true})
 	want := []string{"a", "b", "c"}
@@ -182,37 +129,13 @@ func TestSortedKeys_IsStable(t *testing.T) {
 
 // --- schema/doc guards for the batch conversion ---
 
-// batchActions is every action that targets devices in bulk via clientData.
-// send_blank_push is included: it takes the same list selector, though it
-// reports per-device outcomes rather than failing wholesale.
+// batchActions is every action that targets devices in bulk. send_blank_push is
+// the only one left: the twelve that batched through POST /v2/mdm/commands went
+// with that endpoint at the Platform API GA. Kept as a map so the guards below
+// stay generic for the next batch action.
 func batchActions() map[string]action.Action {
 	return map[string]action.Action{
-		"clear_restrictions_password": NewClearRestrictionsPasswordAction(),
-		"delete_user":                 NewDeleteUserAction(),
-		"device_lock":                 NewDeviceLockAction(),
-		"disable_lost_mode":           NewDisableLostModeAction(),
-		"disable_remote_desktop":      NewDisableRemoteDesktopAction(),
-		"enable_lost_mode":            NewEnableLostModeAction(),
-		"enable_remote_desktop":       NewEnableRemoteDesktopAction(),
-		"log_out_user":                NewLogOutUserAction(),
-		"play_lost_mode_sound":        NewPlayLostModeSoundAction(),
-		"unlock_user_account":         NewUnlockUserAccountAction(),
-		"send_blank_push":             NewSendBlankPushAction(),
-		// Both enhanced-log-collection actions batch. The trigger does carry a
-		// payload field, but apple_care_token is user-supplied rather than
-		// per-device-derived, which is what forces the two actions below to stay
-		// single-target. See triggerTokenScopeNote for the caveat this leaves.
-		"trigger_enhanced_log_collection": NewTriggerEnhancedLogCollectionAction(),
-		"cancel_enhanced_log_collection":  NewCancelEnhancedLogCollectionAction(),
-	}
-}
-
-// singleTargetActions are the two command actions that cannot batch, because
-// their command payload carries a per-device value.
-func singleTargetActions() map[string]action.Action {
-	return map[string]action.Action{
-		"clear_passcode":          NewClearPasscodeAction(),
-		"set_auto_admin_password": NewSetAutoAdminPasswordAction(),
+		"send_blank_push": NewSendBlankPushAction(),
 	}
 }
 
@@ -310,45 +233,5 @@ func TestBatchActions_SelectorsCrossReference(t *testing.T) {
 				t.Errorf("%s: %s description tells the user to set the attribute in terms of itself", name, attrName)
 			}
 		}
-	}
-}
-
-// TestSingleTargetActions_StaySingular locks in the deliberate asymmetry: these
-// two must keep scalar selectors, and must say why in their description.
-func TestSingleTargetActions_StaySingular(t *testing.T) {
-	for name, a := range singleTargetActions() {
-		schema := schemaOf(t, a)
-
-		for _, attrName := range []string{"management_id", "serial_number"} {
-			attr, ok := schema.Attributes[attrName]
-			if !ok {
-				t.Errorf("%s: missing %q", name, attrName)
-				continue
-			}
-			if attr.GetType() != types.StringType {
-				t.Errorf("%s: %s must stay a string, got %s", name, attrName, attr.GetType())
-			}
-		}
-
-		for _, absent := range []string{"management_ids", "serial_numbers"} {
-			if _, ok := schema.Attributes[absent]; ok {
-				t.Errorf("%s: must not expose %q — its command payload carries a per-device value", name, absent)
-			}
-		}
-
-		if !strings.Contains(schema.MarkdownDescription, "one device at a time") {
-			t.Errorf("%s: description must explain why it cannot target several devices", name)
-		}
-	}
-}
-
-// TestBatchWarnThreshold_IsUsable keeps the warning threshold meaningful: it has
-// to sit above any ordinary batch yet below the sizes wire probes reached.
-func TestBatchWarnThreshold_IsUsable(t *testing.T) {
-	if batchWarnThreshold < 100 {
-		t.Errorf("batchWarnThreshold %d is low enough to warn on ordinary batches", batchWarnThreshold)
-	}
-	if batchWarnThreshold > 5000 {
-		t.Errorf("batchWarnThreshold %d exceeds the largest probe-confirmed batch", batchWarnThreshold)
 	}
 }
