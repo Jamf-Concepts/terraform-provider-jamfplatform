@@ -1,6 +1,27 @@
 // Copyright Jamf Software LLC 2026
 // SPDX-License-Identifier: MPL-2.0
 
+// Package mdmactions holds the Jamf Pro MDM command actions. Three remain:
+// send_blank_push, renew_mdm_profile and flush_mdm_commands.
+//
+// Fourteen others were removed at the Platform API GA — device_lock, the lost
+// mode trio, the remote desktop pair, clear_restrictions_password,
+// clear_passcode, delete_user, log_out_user, unlock_user_account,
+// set_auto_admin_password and the enhanced-log-collection pair — because
+// POST /v2/mdm/commands was withdrawn. Only the send verb went: the GET side of
+// /v1 and /v2 survives, which is why the three above are unaffected.
+//
+// Why there is no replacement, recorded here because it is the first question
+// anyone will ask. The capability did not go away with the endpoint: the Classic
+// API still serves these commands on both /computercommands and
+// /mobiledevicecommands, and Jamf Pro v1872 actively *re-privileged* the five
+// mobile-device command POSTs (destructive-device-actions:execute and
+// device-actions:execute), which is not what a withdrawal looks like. Rebuilding
+// on Classic is therefore viable but is a different construct surface, not a
+// port: the command name is path-encoded rather than carried in the body, targets
+// are id lists rather than a clientData array, and the payload is XML. It wants
+// its own change with its own wire probes rather than being smuggled into a
+// removal.
 package mdmactions
 
 import (
@@ -289,7 +310,7 @@ func sortedKeys(m map[string]bool) []string {
 }
 
 // targetListAttributes returns the shared management_ids / serial_numbers
-// selector used by every command action that can target devices in bulk.
+// selector used by the one surviving command action that targets devices in bulk.
 // deviceNoun tunes the description (e.g. "computer", "mobile device").
 //
 // These are lists because the blank-push endpoint takes its devices as an array:

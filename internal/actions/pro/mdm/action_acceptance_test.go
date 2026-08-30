@@ -17,7 +17,7 @@ import (
 )
 
 // These acceptance tests invoke real MDM commands against live enrolled devices.
-// Only the blank push is left to invoke: the thirteen device-effecting commands
+// Only the blank push is left to invoke: the fourteen device-effecting commands
 // went with POST /v2/mdm/commands at the Platform API GA, taking their tests
 // (remote desktop, device lock, clear restrictions password, enhanced log
 // collection) with them. The plan-time guards below outlived those actions and
@@ -75,7 +75,6 @@ action "jamfplatform_pro_send_blank_push" "push" {
 	})
 }
 
-// TestAccAction_ProRemoteDesktop_Invoke enables then disables Remote Desktop on a
 // TestAccAction_ProSendBlankPush_MixedSelectors covers the additive path: a
 // management id and a serial number in one invocation must both be targeted,
 // rather than one selector silently winning.
