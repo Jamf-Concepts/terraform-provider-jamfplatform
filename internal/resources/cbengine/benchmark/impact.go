@@ -15,21 +15,12 @@ import (
 // A compliance benchmark targets device groups by their Platform identifier, the
 // same way a blueprint does, and can reach either estate — so its figure is
 // measured against the whole managed estate.
-//
-// The deprecated singular target_device_group is read as well as the plural set,
-// because a configuration written against the older attribute still has an
-// audience worth reporting.
 func benchmarkImpactScope(ctx context.Context, m *BenchmarkResourceModel) impact.Scope {
 	b := impact.NewScopeBuilder(ctx, impact.DeviceTypeAny)
 	if m == nil {
 		return b.Scope()
 	}
 	b.PlatformGroups("target_device_groups", m.TargetDeviceGroups)
-	if v := m.TargetDeviceGroup; !v.IsNull() && !v.IsUnknown() && v.ValueString() != "" {
-		b.PlatformGroupIDs(v.ValueString())
-	} else if v.IsUnknown() {
-		b.Pending("target_device_group")
-	}
 	return b.Scope()
 }
 

@@ -8,30 +8,25 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// buildDeviceGroupsRequest extracts the device group IDs the user supplied. Plural
-// target_device_groups takes precedence when configured; otherwise the deprecated
-// singular target_device_group is wrapped into a single-element slice. Schema
-// validation guarantees exactly one is supplied so this never observes both.
+// buildDeviceGroupsRequest extracts the device group IDs the user supplied.
 func buildDeviceGroupsRequest(data *BenchmarkResourceModel) []string {
-	if !data.TargetDeviceGroups.IsNull() && !data.TargetDeviceGroups.IsUnknown() {
-		elements := data.TargetDeviceGroups.Elements()
-		out := make([]string, 0, len(elements))
-		for _, el := range elements {
-			s, ok := el.(types.String)
-			if !ok || s.IsNull() || s.IsUnknown() {
-				continue
-			}
-			out = append(out, s.ValueString())
-		}
-		return out
+	if data.TargetDeviceGroups.IsNull() || data.TargetDeviceGroups.IsUnknown() {
+		return nil
 	}
-	return []string{data.TargetDeviceGroup.ValueString()}
+	elements := data.TargetDeviceGroups.Elements()
+	out := make([]string, 0, len(elements))
+	for _, el := range elements {
+		s, ok := el.(types.String)
+		if !ok || s.IsNull() || s.IsUnknown() {
+			continue
+		}
+		out = append(out, s.ValueString())
+	}
+	return out
 }
 
 // buildBenchmarkRequest constructs the API request body from the Terraform plan model.
-// Device group targeting accepts either the deprecated singular target_device_group
-// or the preferred plural target_device_groups set; ConflictsWith + AtLeastOneOf on
-// the schema guarantee exactly one is configured. Sources are omitted deliberately:
+// Sources are omitted deliberately:
 // the server always derives the full source set from the baseline, so the request
 // carries no sources field. Selected OS versions are sent only when configured;
 // when omitted the server defaults the benchmark to every available version.

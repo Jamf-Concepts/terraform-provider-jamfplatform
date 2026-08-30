@@ -36,8 +36,8 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 	}
 
 	s := resp.Schema
-	if s.Version != 0 {
-		t.Errorf("expected schema version 0, got %d", s.Version)
+	if s.Version != 1 {
+		t.Errorf("expected schema version 1, got %d", s.Version)
 	}
 
 	requiredAttrs := []string{"title", "rules", "enforcement_mode"}
@@ -76,7 +76,7 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 		}
 	}
 
-	optionalAttrs := []string{"description", "source_baseline_id", "timeouts", "target_device_group", "target_device_groups"}
+	optionalAttrs := []string{"description", "source_baseline_id", "timeouts"}
 	for _, name := range optionalAttrs {
 		attr, ok := s.Attributes[name]
 		if !ok {
@@ -88,17 +88,18 @@ func TestBenchmarkResource_Schema(t *testing.T) {
 		}
 	}
 
-	singular, _ := s.Attributes["target_device_group"].(resourceschema.StringAttribute)
-	if singular.DeprecationMessage == "" {
-		t.Errorf("target_device_group should carry a DeprecationMessage")
+	// The deprecated singular attribute was removed once its 90-day window closed
+	// (deprecated 2026-05-21, removable from 2026-08-19). Assert it is gone rather
+	// than deprecated, so it cannot come back by accident.
+	if _, ok := s.Attributes["target_device_group"]; ok {
+		t.Error("target_device_group was removed at v1 and must not be reintroduced; use target_device_groups")
 	}
-}
-
-func TestBenchmarkResource_ConfigValidators(t *testing.T) {
-	r := NewBenchmarkResource().(*BenchmarkResource)
-	got := r.ConfigValidators(context.Background())
-	if len(got) != 1 {
-		t.Fatalf("expected 1 resource-level config validator, got %d", len(got))
+	plural, ok := s.Attributes["target_device_groups"]
+	if !ok {
+		t.Fatal("missing target_device_groups")
+	}
+	if !plural.IsRequired() {
+		t.Error("target_device_groups is the only way to target a benchmark now, so it must be Required")
 	}
 }
 

@@ -14,10 +14,8 @@ import (
 
 func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 	// Pre-populate the singular slot so assignTargetDeviceGroups takes the
-	// backwards-compat path and writes the API value into TargetDeviceGroup
-	// rather than the plural set.
+	// plural set from the API response.
 	model := &BenchmarkResourceModel{
-		TargetDeviceGroup:  types.StringValue("placeholder"),
 		TargetDeviceGroups: types.SetNull(types.StringType),
 	}
 	lastUpdated, _ := time.Parse(time.RFC3339, "2025-06-15T10:30:00Z")
@@ -109,8 +107,8 @@ func TestAssignBenchmarkModelFromResponse_Full(t *testing.T) {
 	if model.LastUpdatedAt.ValueString() != "2025-06-15T10:30:00Z" {
 		t.Errorf("expected LastUpdatedAt '2025-06-15T10:30:00Z', got %q", model.LastUpdatedAt.ValueString())
 	}
-	if model.TargetDeviceGroup.ValueString() != "group-1" {
-		t.Errorf("expected TargetDeviceGroup 'group-1', got %q", model.TargetDeviceGroup.ValueString())
+	if got := setStrings(model.TargetDeviceGroups); len(got) != 1 || got[0] != "group-1" {
+		t.Errorf("expected TargetDeviceGroups [group-1], got %v", got)
 	}
 	if l := len(model.Sources.Elements()); l != 1 {
 		t.Fatalf("expected 1 source, got %d", l)
@@ -358,11 +356,10 @@ func TestBuildRuleModel_ODVWithoutValidation(t *testing.T) {
 
 func TestAssignBenchmarkModelFromResponse_PluralPath(t *testing.T) {
 	// Model carries TargetDeviceGroups pre-set (the plural-path signal).
-	// State assignment must keep singular null and populate the plural set
-	// with every group the API returned.
+	// State assignment must populate the plural set with every group the API
+	// returned.
 	preset, _ := types.SetValue(types.StringType, []attr.Value{types.StringValue("placeholder")})
 	model := &BenchmarkResourceModel{
-		TargetDeviceGroup:  types.StringNull(),
 		TargetDeviceGroups: preset,
 	}
 	bench := &compliancebenchmarks.BenchmarkResponseV2{
@@ -372,9 +369,6 @@ func TestAssignBenchmarkModelFromResponse_PluralPath(t *testing.T) {
 
 	assignBenchmarkModelFromResponse(model, bench)
 
-	if !model.TargetDeviceGroup.IsNull() {
-		t.Errorf("expected TargetDeviceGroup null when plural path active, got %q", model.TargetDeviceGroup.ValueString())
-	}
 	if model.TargetDeviceGroups.IsNull() {
 		t.Fatal("expected TargetDeviceGroups populated")
 	}
@@ -387,7 +381,6 @@ func TestAssignBenchmarkModelFromResponse_ImportDefaultsToPlural(t *testing.T) {
 	// Both attribute slots null/unknown (typical import). State builder should
 	// default to populating the plural set so imports surface every group.
 	model := &BenchmarkResourceModel{
-		TargetDeviceGroup:  types.StringNull(),
 		TargetDeviceGroups: types.SetNull(types.StringType),
 	}
 	bench := &compliancebenchmarks.BenchmarkResponseV2{
@@ -397,18 +390,8 @@ func TestAssignBenchmarkModelFromResponse_ImportDefaultsToPlural(t *testing.T) {
 
 	assignBenchmarkModelFromResponse(model, bench)
 
-	if !model.TargetDeviceGroup.IsNull() {
-		t.Errorf("expected singular null on import, got %q", model.TargetDeviceGroup.ValueString())
-	}
 	if model.TargetDeviceGroups.IsNull() || len(model.TargetDeviceGroups.Elements()) != 1 {
 		t.Errorf("expected plural populated on import")
-	}
-}
-
-func TestBuildTargetDeviceGroup(t *testing.T) {
-	result := buildTargetDeviceGroup([]string{"group-a", "group-b"})
-	if result.ValueString() != "group-a" {
-		t.Errorf("expected 'group-a', got %q", result.ValueString())
 	}
 }
 
@@ -426,13 +409,6 @@ func TestBuildTargetDeviceGroupsSet_Empty(t *testing.T) {
 	result := buildTargetDeviceGroupsSet(nil)
 	if !result.IsNull() {
 		t.Error("expected null set for empty input")
-	}
-}
-
-func TestBuildTargetDeviceGroup_Empty(t *testing.T) {
-	result := buildTargetDeviceGroup(nil)
-	if !result.IsNull() {
-		t.Error("expected null for empty device groups")
 	}
 }
 
@@ -655,3 +631,14 @@ func TestBuildODVValidationMax_NilChain(t *testing.T) {
 
 // suppress unused import warning for types package
 var _ = types.StringNull
+
+// setStrings flattens a types.Set of strings for assertion purposes.
+func setStrings(set types.Set) []string {
+	out := make([]string, 0, len(set.Elements()))
+	for _, el := range set.Elements() {
+		if v, ok := el.(types.String); ok {
+			out = append(out, v.ValueString())
+		}
+	}
+	return out
+}

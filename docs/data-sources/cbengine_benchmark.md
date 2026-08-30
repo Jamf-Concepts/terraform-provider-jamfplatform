@@ -75,7 +75,6 @@ output "benchmark_by_title_rules" {
 - `rules` (Attributes List) Rules. (see [below for nested schema](#nestedatt--rules))
 - `selected_os_versions` (Attributes Set) Operating system versions the benchmark applies to. (see [below for nested schema](#nestedatt--selected_os_versions))
 - `sources` (Attributes List) mSCP sources (branch + revision) spanned by the benchmark. (see [below for nested schema](#nestedatt--sources))
-- `target_device_group` (String, Deprecated) **Deprecated** — use `target_device_groups`. First device group ID returned by the API, kept for backwards compatibility.
 - `target_device_groups` (Set of String) All device group Platform IDs targeted by this benchmark.
 - `tenant_id` (String) Tenant ID.
 - `update_available` (Boolean) Update available flag.

@@ -35,32 +35,17 @@ func assignBenchmarkModelFromResponse(model *BenchmarkResourceModel, bench *comp
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
 }
 
-// assignTargetDeviceGroups populates whichever of the two target-device-group attributes
-// the user configured. Singular path: keep TargetDeviceGroup populated, leave plural null.
-// Plural path: keep TargetDeviceGroups populated, leave singular null. If neither is
-// currently set (e.g. import), default to the plural representation.
+// assignTargetDeviceGroups populates the benchmark's device-group targeting from
+// the API response.
 func assignTargetDeviceGroups(model *BenchmarkResourceModel, bench *compliancebenchmarks.BenchmarkResponseV2) {
 	var apiGroups []string
 	if bench.Target != nil {
 		apiGroups = bench.Target.DeviceGroups
 	}
-
-	usedSingular := !model.TargetDeviceGroup.IsNull() && !model.TargetDeviceGroup.IsUnknown()
-	usedPlural := !model.TargetDeviceGroups.IsNull() && !model.TargetDeviceGroups.IsUnknown()
-
-	switch {
-	case usedSingular && !usedPlural:
-		model.TargetDeviceGroup = buildTargetDeviceGroup(apiGroups)
-		model.TargetDeviceGroups = types.SetNull(types.StringType)
-	default:
-		// Plural path, neither configured (import / drift), or both (impossible per schema).
-		model.TargetDeviceGroups = buildTargetDeviceGroupsSet(apiGroups)
-		model.TargetDeviceGroup = types.StringNull()
-	}
+	model.TargetDeviceGroups = buildTargetDeviceGroupsSet(apiGroups)
 }
 
 // assignBenchmarkDataSourceFromResponse maps the API response into the Terraform benchmark data source model.
-// Data sources always populate both attributes — readers can use whichever shape they prefer.
 func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, bench *compliancebenchmarks.BenchmarkResponseV2) {
 	if model == nil || bench == nil {
 		return
@@ -78,7 +63,6 @@ func assignBenchmarkDataSourceFromResponse(model *BenchmarkDataSourceModel, benc
 	if bench.Target != nil {
 		apiGroups = bench.Target.DeviceGroups
 	}
-	model.TargetDeviceGroup = buildTargetDeviceGroup(apiGroups)
 	model.TargetDeviceGroups = buildTargetDeviceGroupsSet(apiGroups)
 	model.EnforcementMode = types.StringValue(bench.EnforcementMode)
 	model.Deleted = types.BoolValue(bench.Deleted)
@@ -177,14 +161,6 @@ func buildRuleModel(r compliancebenchmarks.RuleInfo) RuleModel {
 		Reportable:              types.BoolValue(r.Reportable),
 		SmartCard:               types.BoolValue(r.SmartCard),
 	}
-}
-
-// buildTargetDeviceGroup extracts the first device group ID or returns null.
-func buildTargetDeviceGroup(deviceGroups []string) types.String {
-	if len(deviceGroups) > 0 {
-		return types.StringValue(deviceGroups[0])
-	}
-	return types.StringNull()
 }
 
 // buildTargetDeviceGroupsSet converts the API slice into a Terraform set of strings,

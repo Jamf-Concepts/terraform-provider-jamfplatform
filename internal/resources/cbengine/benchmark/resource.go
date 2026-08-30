@@ -13,7 +13,6 @@ import (
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/common/impact"
 	"github.com/Jamf-Concepts/terraform-provider-jamfplatform/internal/providerdata"
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
-	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -43,7 +42,6 @@ type BenchmarkResource struct {
 var _ resource.Resource = &BenchmarkResource{}
 var _ resource.ResourceWithImportState = &BenchmarkResource{}
 var _ resource.ResourceWithIdentity = &BenchmarkResource{}
-var _ resource.ResourceWithConfigValidators = &BenchmarkResource{}
 var _ resource.ResourceWithModifyPlan = &BenchmarkResource{}
 
 const (
@@ -79,8 +77,16 @@ func (r *BenchmarkResource) IdentitySchema(ctx context.Context, req resource.Ide
 
 // Schema returns the Terraform schema for the benchmark resource.
 func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Version:             0,
+	resp.Schema = benchmarkResourceSchema(ctx)
+}
+
+// benchmarkResourceSchema builds the current resource schema. Factored out of Schema
+// so the state upgrader can derive the prior version from it (adding back the one
+// attribute that was removed) instead of transcribing 160 lines of nested rule
+// attributes, which would then drift from the real schema on the next change.
+func benchmarkResourceSchema(ctx context.Context) schema.Schema {
+	return schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access." + resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -335,26 +341,13 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 					listplanmodifier.RequiresReplace(),
 				},
 			},
-			"target_device_group": schema.StringAttribute{
-				MarkdownDescription: "**Deprecated** — use `target_device_groups` instead. Single device group Platform ID targeted by this benchmark, in UUID format. Mutually exclusive with `target_device_groups`. Immutable (replace on change).",
-				DeprecationMessage:  "Use target_device_groups (set of UUIDs) instead. The singular attribute is retained for backwards compatibility and will be removed in a future major release.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(uuidRegex, "Device group ID must be a valid UUID"),
-					stringvalidator.ConflictsWith(path.MatchRoot("target_device_groups")),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
 			"target_device_groups": schema.SetAttribute{
-				MarkdownDescription: "Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Mutually exclusive with the deprecated `target_device_group`. Immutable (replace on change).",
+				MarkdownDescription: "Device groups this benchmark targets, as a set of group UUIDs. Read them from the `jamfplatform_device_group` or `jamfplatform_device_groups` data sources rather than hand-copying. Immutable (replace on change).",
 				ElementType:         types.StringType,
-				Optional:            true,
+				Required:            true,
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
 					setvalidator.ValueStringsAre(stringvalidator.RegexMatches(uuidRegex, "Each device group ID must be a valid UUID")),
-					setvalidator.ConflictsWith(path.MatchRoot("target_device_group")),
 				},
 				PlanModifiers: []planmodifier.Set{
 					setplanmodifier.RequiresReplace(),
@@ -404,18 +397,6 @@ func (r *BenchmarkResource) Schema(ctx context.Context, req resource.SchemaReque
 				Delete: true,
 			}),
 		},
-	}
-}
-
-// ConfigValidators enforces that callers supply exactly one of the singular or
-// plural device-group attributes. ConflictsWith on each attribute already rejects
-// the both-set case; AtLeastOneOf adds the neither-set case.
-func (r *BenchmarkResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
-	return []resource.ConfigValidator{
-		resourcevalidator.AtLeastOneOf(
-			path.MatchRoot("target_device_group"),
-			path.MatchRoot("target_device_groups"),
-		),
 	}
 }
 
