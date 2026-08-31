@@ -504,9 +504,10 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 // that has mappings.go translate every other enumerated value on this resource into
 // its admin-UI label.
 //
-// Three of the four labels are known from reading the admin UI directly on
-// 2026-08-31: a provisioning gateway shows "Pending", a provisioned one shows
-// "Available", and a disabled one shows "Disabled".
+// All four labels are known from reading the admin UI directly on 2026-08-31:
+// "Pending", "Available", "Down" and "Disabled". Three of the four are the wire value
+// in sentence case; `UP` is the sole genuine rename. The IPsec and internet sections
+// of the gateway page use the same vocabulary, so these are not per-form labels.
 // Note that Jamf's own "Creating a Dedicated Internet Gateway" page disagrees with
 // the second — it says "after a short period, the status changes to Active". The
 // admin UI is what an operator actually reads, so "Available" is what these
@@ -514,13 +515,13 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 // divergence on this resource, the other being egress-region immutability, so prefer
 // an observation to that page wherever the two conflict.
 //
-// What the admin UI calls `DOWN` is still unread — reaching it needs an IPsec gateway
-// with no concentrator answering, which the internet form never entered across 134
-// polls. A table mapping three of four values with the fourth guessed would be worse
-// than none, since a wrong label here is a documentation bug the user cannot detect,
-// so the descriptions name the three observed labels and leave `DOWN` alone.
-// Completing the mapping needs someone to reach that state in the admin UI, at which
-// point these become labels like every other enum on this resource.
+// The values are still surfaced as the wire spells them rather than remapped through
+// mappings.go, and now that the mapping is complete that is a decision rather than a
+// gap. Only `UP` differs materially from its label, and this is a read-only status
+// snapshot: an operator reading it in state may equally be comparing it against an API
+// response or a support conversation, so the wire value earns its place, with the
+// label named alongside. Remapping one value of four would also leave the enum half
+// translated. Nothing here should be read as "the mapping was never finished".
 func statusAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "Operational status Jamf Security Cloud reports for this gateway. Read-only, and " +
@@ -532,9 +533,13 @@ func statusAttribute() schema.SingleNestedAttribute {
 			"so state records the settled status rather than the `PENDING` both transitions pass through. An " +
 			"update that does not re-provision the gateway, such as a name or contact change, finds it already " +
 			"settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning " +
-			"naming the status reached, and the status settles on a later refresh. A dedicated IPsec gateway is " +
-			"not waited on at all: with no reachable concentrator on your side it settles at `DOWN` rather than " +
-			"reaching `UP`.\n\n" +
+			"naming the status reached, and the status settles on a later refresh.\n\n" +
+			"An IPsec gateway is waited on too, but released early: reaching `UP` there depends on a concentrator " +
+			"answering on your side of the tunnel, which is normally built after the Jamf side, and until it " +
+			"answers the gateway sits at `DOWN`. Rather than hold the apply for the whole budget, a gateway that " +
+			"reports `DOWN` continuously for a minute ends the wait with a warning — so a tunnel that comes up " +
+			"promptly is still recorded as `UP`, and one that is not yet built costs about a minute and a half " +
+			"instead of ten.\n\n" +
 			"`UP` means the gateway reports itself operational. It is a necessary condition for traffic to " +
 			"flow, not a guarantee of it.",
 		Computed: true,
@@ -543,9 +548,9 @@ func statusAttribute() schema.SingleNestedAttribute {
 				MarkdownDescription: "Overall gateway state: `PENDING` while provisioning (**Pending** in the " +
 					"Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational " +
 					"(**Available** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when " +
-					"`enabled` is `false` (**Disabled** in the admin UI). Both transitions drift through " +
-					"`PENDING` for a few seconds, which is why an apply waits for the settled value rather " +
-					"than recording the first status it reads.",
+					"`enabled` is `false` (**Disabled** in the admin UI). `DOWN` is **Down** in the admin " +
+					"UI. Every transition drifts through `PENDING` for a few seconds, which is why an apply " +
+					"waits for the settled value rather than recording the first status it reads.",
 				Computed: true,
 			},
 			"tunnel_state": schema.StringAttribute{

@@ -81,7 +81,7 @@ func TestWaitForGatewayState_SatisfiedOnlyByUp(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			read, reads := scriptedReader(tc.states...)
-			observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond)
+			observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond, "", 0)
 
 			if !reachedUp {
 				t.Fatalf("the wait was not satisfied; last state %q after %d reads", lastState, *reads)
@@ -111,7 +111,7 @@ func TestWaitForGatewayState_AlreadyUpDoesNotSleep(t *testing.T) {
 	read, reads := scriptedReader(securitycloud.GatewayStatusStateUp)
 
 	started := time.Now()
-	_, _, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second)
+	_, _, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second, "", 0)
 	elapsed := time.Since(started)
 
 	if !reachedUp {
@@ -143,7 +143,7 @@ func TestWaitForGatewayState_BudgetExpiryReportsTheStateReached(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 			defer cancel()
 
-			observed, lastState, reachedUp := waitForGatewayState(ctx, read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond)
+			observed, lastState, reachedUp := waitForGatewayState(ctx, read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond, "", 0)
 
 			if reachedUp {
 				t.Fatal("a gateway that never reports itself operational must not satisfy the wait")
@@ -175,7 +175,7 @@ func TestWaitForGatewayState_ReadFailureEndsTheWait(t *testing.T) {
 		return nil, errors.New("the read failed")
 	}
 
-	observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second)
+	observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second, "", 0)
 
 	if reachedUp {
 		t.Fatal("a read failure must not satisfy the wait")
@@ -206,7 +206,7 @@ func TestWaitForGatewayState_DisabledTargetIgnoresUp(t *testing.T) {
 		securitycloud.GatewayStatusStateDisabled,
 	)
 
-	observed, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateDisabled, time.Millisecond)
+	observed, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateDisabled, time.Millisecond, "", 0)
 	if !reached {
 		t.Fatalf("the wait must be satisfied by DISABLED, got lastState=%q", lastState)
 	}
@@ -249,19 +249,94 @@ func TestAppendGatewayWaitWarning_DisabledTargetHasItsOwnWording(t *testing.T) {
 	}
 }
 
-// TestGatewayWaitTarget_Gates pins the form gate and the target each state waits for.
+// TestWaitForGatewayState_DwellOnDown pins the dwell, which is the whole reason an
+// enabled IPsec gateway can be waited on at all.
 //
-// The form gate is measured, not cautious. The 2026-08-31 IPsec probe pointed a
-// gateway's peer address at nothing and watched it settle at DOWN after 35 seconds
-// and stay there, never reaching UP — so waiting on that form would burn the whole
-// budget and then warn about a gateway behaving as designed, since building the Jamf
-// side before the customer side is the normal order of work. A disabled IPsec gateway
-// is excluded for the same reason: whether it settles at DISABLED has not been
-// measured, and inferring it from the internet form is the mistake this file exists
-// to avoid.
+// A DOWN that recovers inside the dwell must not end the wait: whether a gateway can
+// report DOWN briefly before reaching UP is unmeasured, and the dwell exists so the
+// answer does not matter. A DOWN that persists past it must end the wait, or an
+// enabled IPsec gateway whose tunnel is not up would hang the apply for the whole
+// ten-minute budget.
+func TestWaitForGatewayState_DwellOnDown(t *testing.T) {
+	t.Run("a DOWN that recovers inside the dwell still reaches UP", func(t *testing.T) {
+		read, reads := scriptedReader(
+			securitycloud.GatewayStatusStateDown,
+			securitycloud.GatewayStatusStateDown,
+			securitycloud.GatewayStatusStateUp,
+		)
+
+		_, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2",
+			securitycloud.GatewayStatusStateUp, time.Millisecond,
+			securitycloud.GatewayStatusStateDown, time.Hour)
+
+		if !reached {
+			t.Fatalf("a recovering gateway must reach UP, got lastState=%q after %d reads", lastState, *reads)
+		}
+		if lastState != securitycloud.GatewayStatusStateUp {
+			t.Errorf("lastState = %q, want UP", lastState)
+		}
+	})
+
+	t.Run("a DOWN that persists past the dwell ends the wait unreached", func(t *testing.T) {
+		read, reads := scriptedReader(securitycloud.GatewayStatusStateDown)
+
+		observed, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2",
+			securitycloud.GatewayStatusStateUp, time.Millisecond,
+			securitycloud.GatewayStatusStateDown, 10*time.Millisecond)
+
+		if reached {
+			t.Fatal("a gateway that stays DOWN must not be reported as having reached UP")
+		}
+		if lastState != securitycloud.GatewayStatusStateDown {
+			t.Errorf("lastState = %q, want DOWN so the warning can name it", lastState)
+		}
+		if observed == nil {
+			t.Error("the last read must survive, so the apply records what it saw")
+		}
+		if *reads < 2 {
+			t.Errorf("reads = %d: the dwell must span at least two reads, or it is not a dwell", *reads)
+		}
+	})
+
+	t.Run("no abandon state means DOWN never ends the wait", func(t *testing.T) {
+		read, _ := scriptedReader(
+			securitycloud.GatewayStatusStateDown,
+			securitycloud.GatewayStatusStateDown,
+			securitycloud.GatewayStatusStateDisabled,
+		)
+
+		_, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2",
+			securitycloud.GatewayStatusStateDisabled, time.Millisecond, "", 0)
+
+		if !reached || lastState != securitycloud.GatewayStatusStateDisabled {
+			t.Errorf("a disable must wait through DOWN: reached=%v lastState=%q", reached, lastState)
+		}
+	})
+}
+
+// TestGatewayAbandonState_OnlyAppliesToTheUpWait pins that a disable is not released
+// by DOWN. Disabling the 2026-08-31 IPsec probe took it from DOWN through PENDING to
+// DISABLED, so treating DOWN as a reason to give up there would abandon a disable that
+// was working.
+func TestGatewayAbandonState_OnlyAppliesToTheUpWait(t *testing.T) {
+	if got := gatewayAbandonState(securitycloud.GatewayStatusStateUp); got != securitycloud.GatewayStatusStateDown {
+		t.Errorf("a wait for UP must be released by a dwelling DOWN, got %q", got)
+	}
+	if got := gatewayAbandonState(securitycloud.GatewayStatusStateDisabled); got != "" {
+		t.Errorf("a wait for DISABLED must not be released by DOWN, got %q", got)
+	}
+}
+
+// TestGatewayWaitTarget_Gates pins what each configuration waits for.
 //
-// `enabled` selects the target rather than skipping the wait. Both transitions drift
-// through PENDING, so both need waiting on.
+// There is no form gate any more. An enabled IPsec gateway waits for UP like any
+// other, and the DOWN dwell is what releases it early when its tunnel is not up —
+// see gatewayAbandonState and TestWaitForGatewayState_DwellOnDown. Folding the IPsec
+// case into the dwell removed the special case rather than adding one: the dwell has
+// to exist anyway for an internet gateway that goes DOWN, and it handles both.
+//
+// `enabled` selects the target. Both transitions drift through PENDING, so both need
+// waiting on; only an unknown value waits for nothing, having no target to aim at.
 func TestGatewayWaitTarget_Gates(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -282,14 +357,16 @@ func TestGatewayWaitTarget_Gates(t *testing.T) {
 			wantState: securitycloud.GatewayStatusStateDisabled,
 		},
 		{
-			name:     "an enabled ipsec gateway does not wait",
-			plan:     GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
-			wantWait: false,
+			name:      "an enabled ipsec gateway waits too, and is released early by the DOWN dwell",
+			plan:      GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
+			wantWait:  true,
+			wantState: securitycloud.GatewayStatusStateUp,
 		},
 		{
-			name:     "a disabled ipsec gateway does not wait either",
-			plan:     GatewayResourceModel{Enabled: types.BoolValue(false), IPSec: &IPSecModel{}},
-			wantWait: false,
+			name:      "a disabled ipsec gateway waits to report disabled, since disabling is Jamf-side",
+			plan:      GatewayResourceModel{Enabled: types.BoolValue(false), IPSec: &IPSecModel{}},
+			wantWait:  true,
+			wantState: securitycloud.GatewayStatusStateDisabled,
 		},
 		{
 			name:     "an unknown enabled value waits for nothing rather than guessing a target",

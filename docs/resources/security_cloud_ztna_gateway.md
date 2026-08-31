@@ -157,7 +157,9 @@ The accepted addresses are fixed per egress region and are the ones the admin UI
 - `id` (String) Gateway ID assigned by Jamf Security Cloud.
 - `status` (Attributes) Operational status Jamf Security Cloud reports for this gateway. Read-only, and live: a create or an egress-region change starts the gateway at `PENDING` — shown as **Pending** in the Jamf Security Cloud admin UI — and it settles to `UP`, shown as **Available**, once the infrastructure is provisioned.
 
-For a dedicated internet gateway the provider waits for the status to settle before finishing a create or an update — for `UP` when the gateway is enabled, and for `DISABLED` when it is not — so state records the settled status rather than the `PENDING` both transitions pass through. An update that does not re-provision the gateway, such as a name or contact change, finds it already settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning naming the status reached, and the status settles on a later refresh. A dedicated IPsec gateway is not waited on at all: with no reachable concentrator on your side it settles at `DOWN` rather than reaching `UP`.
+For a dedicated internet gateway the provider waits for the status to settle before finishing a create or an update — for `UP` when the gateway is enabled, and for `DISABLED` when it is not — so state records the settled status rather than the `PENDING` both transitions pass through. An update that does not re-provision the gateway, such as a name or contact change, finds it already settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning naming the status reached, and the status settles on a later refresh.
+
+An IPsec gateway is waited on too, but released early: reaching `UP` there depends on a concentrator answering on your side of the tunnel, which is normally built after the Jamf side, and until it answers the gateway sits at `DOWN`. Rather than hold the apply for the whole budget, a gateway that reports `DOWN` continuously for a minute ends the wait with a warning — so a tunnel that comes up promptly is still recorded as `UP`, and one that is not yet built costs about a minute and a half instead of ten.
 
 `UP` means the gateway reports itself operational. It is a necessary condition for traffic to flow, not a guarantee of it. (see [below for nested schema](#nestedatt--status))
 
@@ -254,7 +256,7 @@ Optional:
 
 Read-Only:
 
-- `state` (String) Overall gateway state: `PENDING` while provisioning (**Pending** in the Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational (**Available** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when `enabled` is `false` (**Disabled** in the admin UI). Both transitions drift through `PENDING` for a few seconds, which is why an apply waits for the settled value rather than recording the first status it reads.
+- `state` (String) Overall gateway state: `PENDING` while provisioning (**Pending** in the Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational (**Available** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when `enabled` is `false` (**Disabled** in the admin UI). `DOWN` is **Down** in the admin UI. Every transition drifts through `PENDING` for a few seconds, which is why an apply waits for the settled value rather than recording the first status it reads.
 - `tunnel_state` (String) IPsec tunnel health, `UP` or `DOWN`. Null on a dedicated internet gateway, and on an IPsec gateway until the first tunnel report arrives.
 
 ## Import

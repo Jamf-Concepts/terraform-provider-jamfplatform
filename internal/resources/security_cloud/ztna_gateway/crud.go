@@ -84,7 +84,7 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 
 	var got *securitycloud.Gateway
 	if want, wait := gatewayWaitTarget(&plan); wait {
-		observed, lastState, reached := waitForGatewayState(createCtx, r.client.GetZtnaGatewayV1, created.ID, want, gatewayStatusPollInterval)
+		observed, lastState, reached := waitForGatewayState(createCtx, r.client.GetZtnaGatewayV1, created.ID, want, gatewayStatusPollInterval, gatewayAbandonState(want), gatewayDownDwell)
 		if !reached {
 			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitCreate, want, lastState)
 		}
@@ -270,7 +270,7 @@ func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	var got *securitycloud.Gateway
 	if want, wait := gatewayWaitTarget(&plan); wait {
-		observed, lastState, reached := waitForGatewayState(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), want, gatewayStatusPollInterval)
+		observed, lastState, reached := waitForGatewayState(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), want, gatewayStatusPollInterval, gatewayAbandonState(want), gatewayDownDwell)
 		if !reached {
 			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitUpdate, want, lastState)
 		}

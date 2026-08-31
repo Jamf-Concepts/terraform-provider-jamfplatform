@@ -223,6 +223,48 @@ func reportedDetails(apiErr *jamfplatform.APIResponseError) string {
 // see waitForGatewayState on the create-side address figure.
 const gatewayStatusPollInterval = 5 * time.Second
 
+// gatewayDownDwell is how long a gateway must report DOWN continuously before a wait
+// for UP abandons it.
+//
+// DOWN is the steady state of an enabled IPsec gateway whose customer-side
+// concentrator is not answering, and that is the normal condition immediately after
+// creating one: the Jamf side is built first, precisely so its pre-shared key and
+// source addresses can be used to configure the other end. Waiting the whole budget
+// out there would hang an apply for ten minutes to report something the operator
+// already knows.
+//
+// DOWN still cannot simply be treated as terminal. Whether a gateway can report DOWN
+// briefly and then reach UP — a tunnel taking a little longer to establish than Jamf
+// takes to first evaluate it — is unmeasured, and testing it needs a real
+// concentrator. Requiring DOWN to persist sidesteps the question rather than guessing
+// at it: a transient DOWN that recovers inside the dwell still ends with the wait
+// seeing UP, and only a gateway that stays down is abandoned.
+//
+// A minute is the balance struck. Establishing an IPsec tunnel is a seconds-scale
+// negotiation once both ends are configured and reachable, so a minute is well beyond
+// any plausible recovery, while keeping the common case to roughly a minute and a half
+// of apply rather than ten. It is reasoning rather than measurement, so it is worth
+// revisiting if a gateway is ever seen recovering from DOWN more slowly than this —
+// the cost of being wrong is a warning and a status that corrects itself on the next
+// refresh, not a failed apply.
+const gatewayDownDwell = 60 * time.Second
+
+// gatewayAbandonState reports which status ends a wait early when it persists, for a
+// given target.
+//
+// Only a wait for UP has one. DOWN is where an enabled IPsec gateway settles when its
+// tunnel is not up, so a wait for UP that sees DOWN dwelling has almost certainly been
+// given a gateway whose other end is not built yet. A wait for DISABLED must not treat
+// DOWN that way: disabling the 2026-08-31 IPsec probe took it from DOWN through
+// PENDING to DISABLED, so there DOWN is the state being left rather than the state
+// being stuck in.
+func gatewayAbandonState(want string) string {
+	if want == securitycloud.GatewayStatusStateUp {
+		return securitycloud.GatewayStatusStateDown
+	}
+	return ""
+}
+
 // gatewayReader reads one gateway by ID. securitycloud.Client.GetZtnaGatewayV1
 // satisfies it, so the wait takes the method value directly and unit tests
 // substitute a closure.
@@ -290,7 +332,9 @@ type gatewayReader func(ctx context.Context, id string) (*securitycloud.Gateway,
 // makes an already-operational gateway free: one read, no delay. That is what lets
 // the update path wait unconditionally instead of trying to work out whether the
 // change re-provisions anything.
-func waitForGatewayState(ctx context.Context, read gatewayReader, id, want string, interval time.Duration) (observed *securitycloud.Gateway, lastState string, reached bool) {
+func waitForGatewayState(ctx context.Context, read gatewayReader, id, want string, interval time.Duration, abandonState string, abandonAfter time.Duration) (observed *securitycloud.Gateway, lastState string, reached bool) {
+	var abandonedAt time.Time
+	var dwellStart time.Time
 	err := jamfplatform.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
 		got, err := read(pollCtx, id)
 		if err != nil {
@@ -306,36 +350,61 @@ func waitForGatewayState(ctx context.Context, read gatewayReader, id, want strin
 			lastState = state
 		}
 		tflog.Debug(pollCtx, "Jamf Security Cloud ZTNA gateway state", map[string]any{"id": id, "state": state})
-		return state == want, nil
+		if state == want {
+			return true, nil
+		}
+		if abandonState == "" || state != abandonState {
+			dwellStart = time.Time{}
+			return false, nil
+		}
+		now := time.Now()
+		if dwellStart.IsZero() {
+			dwellStart = now
+			return false, nil
+		}
+		if now.Sub(dwellStart) < abandonAfter {
+			return false, nil
+		}
+		tflog.Debug(pollCtx, "abandoning wait for Jamf Security Cloud ZTNA gateway", map[string]any{
+			"id": id, "state": state, "dwelt_for": now.Sub(dwellStart).String(),
+		})
+		abandonedAt = now
+		return true, nil
 	})
-	return observed, lastState, err == nil
+	return observed, lastState, err == nil && abandonedAt.IsZero()
 }
 
-// gatewayWaitTarget reports whether this gateway can be expected to reach an
-// operational state, and so whether waiting for one is worth doing.
+// gatewayWaitTarget reports which settled status this gateway can be expected to
+// reach, and so what an apply should wait for — or that it should wait for nothing.
 //
-// Two conditions, both necessary:
+// `enabled` chooses the target rather than deciding whether to wait, because both
+// transitions drift through PENDING for a few seconds and an apply that records the
+// transient is what this whole wait exists to prevent. Measured 2026-08-31 on one
+// dedicated internet gateway: enabling settled at UP after 5m21s, disabling settled
+// at DISABLED after 12s.
 //
-//   - The gateway is the dedicated internet form, i.e. no `ipsec` block. An IPsec
-//     gateway whose customer-side concentrator is not reachable does not reach an
-//     operational state at all: the 2026-08-31 probe watched one settle at DOWN
-//     after 35 seconds and stay there. Waiting there would burn the whole budget
-//     and then warn about a gateway behaving exactly as designed, since building
-//     the Jamf side before the customer side is the normal order of work. Jamf's
-//     own KB ("Troubleshooting IPSec Tunnel-Down Cases") has Jamf raise an alert
-//     whenever a private gateway's tunnel drops, so a tunnel-down IPsec gateway is
-//     already surfaced by the product and does not need an apply to block on it.
-//     This is a measured exclusion rather than a caution, but it is still written
-//     as one condition, so a later change of mind is a one-condition edit.
-//   - The gateway is enabled. A disabled gateway reports DISABLED by definition,
-//     so the wait could only ever run out.
+// Exactly one combination waits for nothing: an **enabled IPsec** gateway. Its
+// operational state depends on a concentrator on the customer's side of the tunnel,
+// which the apply cannot influence and which is normally built after the Jamf side.
+// The 2026-08-31 IPsec probe pointed one at an unreachable peer and watched it settle
+// at DOWN after 35 to 50 seconds and stay there, never reaching UP, so waiting would
+// burn the whole budget and then warn about a gateway behaving exactly as designed.
+// Jamf's own KB ("Troubleshooting IPSec Tunnel-Down Cases") has Jamf raise an alert
+// whenever a private gateway's tunnel drops, so that condition is already surfaced by
+// the product and does not need an apply to block on it.
 //
-// `enabled` carries a schema default, so it is always known in a plan; an unknown
-// value would read as false and skip the wait, which is the safe direction.
-func gatewayWaitTarget(plan *GatewayResourceModel) (want string, wait bool) {
-	if plan.IPSec != nil {
-		return "", false
-	}
+// A **disabled IPsec** gateway does wait, which is a correction rather than an
+// oversight: it was excluded on the assumption that DISABLED might be unreachable for
+// that form, and the same probe disproved it — disabling the DOWN gateway took it
+// through PENDING to DISABLED within 30 seconds, with the tunnel state dropping back
+// to null. Disabling is a Jamf-side operation and does not depend on the customer's
+// tunnel, so the form does not matter to it.
+//
+// An unknown `enabled` waits for nothing rather than guessing a target. A null one
+// waits for UP, matching the schema default — that default is what stops a null ever
+// arriving here, and TestGatewayWaitTarget_DependsOnTheEnabledDefault fails if it is
+// removed or flipped, because the two have to agree.
+func gatewayWaitTarget(plan *GatewayResourceModel) (want string, wait bool) { //nolint:revive // named results document the pair
 	if plan.Enabled.IsUnknown() {
 		return "", false
 	}
