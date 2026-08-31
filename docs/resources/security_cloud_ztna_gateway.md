@@ -8,7 +8,7 @@ description: |-
   Dedicated IPsec gateway — set ipsec to build a tunnel to your own VPN concentrator.Dedicated internet gateway — omit ipsec to route to the internet through a pair of private egress IP addresses Jamf provisions, reported in dedicated_egress_ip_addresses.
   The form is fixed for the life of the gateway: Jamf Security Cloud refuses to convert one into the other, so adding or removing ipsec replaces the gateway. Deleting a gateway that a custom DNS zone or a grouped gateway still references is also refused — drop the reference in a separate apply first.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Create, Read, Update, Delete | `ztna` |
@@ -27,7 +27,7 @@ The form is fixed for the life of the gateway: Jamf Security Cloud refuses to co
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

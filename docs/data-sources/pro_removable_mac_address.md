@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Look up a Jamf Pro removable MAC address by ID or by exact MAC address. Exactly one of id or mac_address must be supplied.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Removable MAC addresses | Read | `removable-mac-address` |
@@ -17,7 +17,7 @@ Look up a Jamf Pro removable MAC address by ID or by exact MAC address. Exactly 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

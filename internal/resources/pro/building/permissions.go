@@ -24,3 +24,34 @@ var resourceSDKMethods = []string{
 // resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the building resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
+
+// dataSourceSDKMethods lists the SDK methods the singular building data source
+// calls. The data source only reads, so it documents fewer privileges than the
+// resource's full CRUD set.
+var dataSourceSDKMethods = []string{
+	"GetBuildingV1",
+}
+
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
+// section for the singular building data source.
+var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
+
+// pluralDataSourceSDKMethods lists the SDK methods the plural buildings data
+// source calls.
+var pluralDataSourceSDKMethods = []string{
+	"ListBuildingsV1",
+}
+
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions"
+// Markdown section for the plural buildings data source.
+var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
+
+// listResourceSDKMethods lists the SDK methods the building list resource
+// calls.
+var listResourceSDKMethods = []string{
+	"ListBuildingsV1",
+}
+
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
+// section for the building list resource.
+var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

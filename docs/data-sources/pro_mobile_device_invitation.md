@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Look up a Jamf Pro mobile device enrollment invitation by numeric id or by its Jamf Pro-generated invitation code (the admin UI "Invitation ID"). Exactly one of id or invitation must be supplied.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Enrollment | Enrollment invitations | Read | `enrollment-invitations` |
@@ -17,7 +17,7 @@ Look up a Jamf Pro mobile device enrollment invitation by numeric `id` or by its
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Look up a Jamf Pro Return to Service configuration by ID or by exact display name. Exactly one of id or display_name must be supplied. Display names are not guaranteed unique — a name that matches more than one configuration returns an error.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Return to service configuration | Read | `return-to-service` |
@@ -17,7 +17,7 @@ Look up a Jamf Pro Return to Service configuration by ID or by exact display nam
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

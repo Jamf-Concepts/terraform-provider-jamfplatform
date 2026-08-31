@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Look up a Jamf Pro administrator login account by id or username. Surfaces base account fields; the Custom privilege grid is not included (use the jamfplatform_pro_account resource or jamfplatform_pro_account_privileges data source).
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Admin identity and access | Admin account | Read | `accounts` |
@@ -17,7 +17,7 @@ Look up a Jamf Pro administrator login account by `id` or `username`. Surfaces b
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

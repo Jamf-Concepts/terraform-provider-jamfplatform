@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at Settings → Computer Management → PreStage Enrollments in the Jamf Pro admin UI. Device scope (scope_serial_numbers) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Enrollment | PreStage enrollments | Create, Read, Update, Delete | `prestage-enrollments` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device E
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

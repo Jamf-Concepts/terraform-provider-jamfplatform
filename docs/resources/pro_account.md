@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro administrator login account — a person who signs in to Jamf Pro. This is NOT the jamfplatform_pro_user inventory construct (end-user/device records). A Custom privilege grid can be assigned via the privileges block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing account_type forces the account to be replaced.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Admin identity and access | Admin account | Create, Read, Update, Delete | `accounts` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro **administrator login account** — a person who signs in to 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -9,7 +9,7 @@ description: |-
   Destroy — terraform destroy removes the resource from Terraform state only. The settings, certificates and Access Groups are left intact on the tenant. To reset options, set them explicitly and apply before destroy.
   Import with terraform import jamfplatform_pro_user_initiated_enrollment_settings.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | User-initiated enrollment settings | Read, Update | `user-initiated-enrollment` |
@@ -29,7 +29,7 @@ Import with `terraform import jamfplatform_pro_user_initiated_enrollment_setting
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

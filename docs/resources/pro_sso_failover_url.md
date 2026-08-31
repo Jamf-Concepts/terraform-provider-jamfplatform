@@ -8,7 +8,7 @@ description: |-
   Destroy is state-only — terraform destroy removes the resource from Terraform state but leaves the failover URL live on the tenant (the Jamf Pro API has no clear/disable endpoint for the failover URL).
   Import with terraform import jamfplatform_pro_sso_failover_url.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Admin identity and access | Single Sign-On | Read, Update | `sso-settings` |
@@ -26,7 +26,7 @@ Import with `terraform import jamfplatform_pro_sso_failover_url.<name> singleton
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -6,7 +6,7 @@ description: |-
   Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
   Related: device-based Apps & Books locations are managed by jamfplatform_pro_volume_purchasing_location.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
@@ -20,7 +20,7 @@ Related: device-based Apps & Books locations are managed by `jamfplatform_pro_vo
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

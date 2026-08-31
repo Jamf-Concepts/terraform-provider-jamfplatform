@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a .vpptoken file (already base64-encoded by Apple — supply the file contents directly via file("/path/to/vpp.vpptoken")). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates last_sync_time before committing the resource. The default create timeout is 30 minutes — increase via timeouts { create = "60m" } if your tenant has a large catalog.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

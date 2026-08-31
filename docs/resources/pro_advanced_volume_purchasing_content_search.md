@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's Content Name is Name, Price is Cost, Location is Account.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro advanced volume purchasing content search — a saved, criter
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

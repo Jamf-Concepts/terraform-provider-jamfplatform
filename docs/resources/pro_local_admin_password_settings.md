@@ -8,7 +8,7 @@ description: |-
   Destroy — terraform destroy removes the resource from Terraform state only. The LAPS settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_local_admin_password_settings.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Device secrets | Local Admin Passwords (LAPS) | Update | `local-admin-passwords` |
@@ -26,7 +26,7 @@ Import with `terraform import jamfplatform_pro_local_admin_password_settings.<na
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

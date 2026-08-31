@@ -10,7 +10,7 @@ package permissions
 // hand and guarded by TestCatalogueCoversEverySDKCapability, which fails when
 // the SDK starts requiring a capability this file has never heard of.
 //
-// Source: https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map
+// Source: the permissionsMapURL below.
 // Transcribed 2026-08-31 from the revised version of that article which the
 // Platform API spec references. The published page lagged that revision at the
 // time of transcription and is expected to catch up, so a row here may lead the
@@ -29,8 +29,20 @@ package permissions
 // organization-management, Jamf Protect and Secure Enterprise Access rows are
 // present even though no construct here reaches some of them.
 
-// Category names, in the order the article groups them, which is the order
-// Jamf Account lists them in.
+// permissionsMapURL is Jamf's "Jamf Pro permissions map" article: the page this
+// file transcribes, and the page a rendered table sends a reader to when it has
+// no permission name recorded for a capability. Jamf Account's picker is
+// searched by permission name, not by API capability slug, and the two differ
+// substantially — computer-inventory-collection-settings is "Device inventory
+// collection settings" — so the article is the only way to get from a slug to
+// the box to tick.
+const permissionsMapURL = "https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map"
+
+// Category names, declared in the order the article groups them so this file
+// stays diffable against it. Nothing is derived from that order: a rendered
+// table sorts its rows by category name and then permission name, because
+// Jamf Account's row order is a weaker contract than its names — the picker can
+// be reordered without anything being renamed, and no test here could tell.
 const (
 	catOrganizationManagement = "Organization management"
 	catInventory              = "Inventory"
@@ -48,28 +60,6 @@ const (
 	catGlobalSettings         = "Global settings"
 	catInfrastructure         = "Infrastructure"
 )
-
-// categoryOrder fixes the row order of a rendered table. A table sorted
-// alphabetically by permission name would scatter rows a reader is about to
-// tick in one section of Jamf Account's picker, so rows follow the picker
-// instead.
-var categoryOrder = []string{
-	catOrganizationManagement,
-	catInventory,
-	catOrganizationalContext,
-	catDeviceActions,
-	catDeviceSecrets,
-	catDeployment,
-	catEnrollment,
-	catAppLifecycle,
-	catCompliance,
-	catEndpointSecurity,
-	catSecureEnterpriseAccess,
-	catAdminIdentity,
-	catAdminFileUploads,
-	catGlobalSettings,
-	catInfrastructure,
-}
 
 // entry is one row of Jamf Account's permission picker: the section it sits
 // under and the name printed beside its action checkboxes.

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pro look up users and groups in a cloud directory. One resource type covers both supported providers; set provider_name to choose, and supply the matching nested block (google for Google Secure LDAP, entra_id for Microsoft Entra ID). Changing provider_name forces replacement. Multiple Cloud Identity Providers can coexist on a tenant. Microsoft Entra ID: after the first apply you must complete the manual "refresh consent" step in the Jamf Pro admin UI (sign into Entra ID and authorise the Jamf cloud connector) before the connection becomes usable; until consent exists, later updates are rejected by Entra.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Admin identity and access | LDAP / cloud IdP | Create, Read, Update, Delete | `ldap-servers` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro Cloud Identity Provider — the integration that lets Jamf Pr
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -6,7 +6,7 @@ description: |-
   Manages the "Search domain" under Custom DNS in the Jamf Security Cloud admin UI — the domain used to complete an incomplete host name for apps that only accept short host names. With the search domain set to example.com, a user who asks for product is directed to product.example.com.
   There is one search domain per tenant, so only one instance of this resource should exist in your configuration. Destroying it clears the search domain for the whole tenant.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Secure enterprise access | Search domains | Read, Update, Delete | `search-domains` |
@@ -20,7 +20,7 @@ There is one search domain per tenant, so only one instance of this resource sho
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

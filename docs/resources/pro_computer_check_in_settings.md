@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Singleton — one record per tenant. Omit = preserve — each startup/login toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set true/false to change it. check_in_frequency is required. Import with terraform import jamfplatform_pro_computer_check_in_settings.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Device check-in configuration | Read, Update | `computer-check-in` |
@@ -17,7 +17,7 @@ Manages Jamf Pro Client Check-In settings (Settings > Computers > Check-in). Sin
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

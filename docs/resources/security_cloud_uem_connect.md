@@ -9,7 +9,7 @@ description: |-
   The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
   After importing, run terraform plan: user_data_field_mapping and group_membership_mapping are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | UEM Connect configuration | Create, Read, Update, Delete | `uem-connect` |
@@ -29,7 +29,7 @@ After importing, run `terraform plan`: `user_data_field_mapping` and `group_memb
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

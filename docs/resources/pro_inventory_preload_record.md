@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (Settings > Global > Inventory Preload) manages these records via CSV upload; this resource manages individual records through the API instead. Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls — they are consumed, not deleted.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Inventory preload | Create, Read, Update, Delete | `inventory-preload-records` |
@@ -17,7 +17,7 @@ Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (**Set
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

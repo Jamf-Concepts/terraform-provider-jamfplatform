@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro Managed Software Updates feature (Computers > Software updates and Mobile devices > Software updates — the "Use new feature" toggle). Singleton — one record per tenant. When enabled, Jamf Pro uses Apple's Declarative Device Management to enforce software update plans; when disabled, those plans are turned off. Omit = preserve — if you omit enabled, the resource adopts the current Jamf Pro value rather than changing it. Turning the feature on or off happens in the background, so applying this resource waits for the change to take effect before completing. Import with terraform import jamfplatform_pro_managed_software_update.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Software updates | Create, Read, Update | `managed-software-updates` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro Managed Software Updates feature (Computers > Software upda
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

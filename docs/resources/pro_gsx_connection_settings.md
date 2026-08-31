@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Connects Jamf Pro to Apple's Global Service Exchange (GSX) for warranty, repair, and purchase-date lookups. Singleton — one record per tenant. Requires a valid Apple-registered GSX certificate. Every apply re-validates the certificate, token, and account against Apple's live GSX service; a self-signed or invalid certificate is rejected. Secrets are re-sent on every apply — token_wo, keystore_bytes_wo, and keystore_password_wo are Required + WriteOnly (never stored in state); the GSX API mandates them on every write, so they must always be present in config. Import with terraform import jamfplatform_pro_gsx_connection_settings.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | APNS certificate | Read, Update | `push-certificates` |
@@ -18,7 +18,7 @@ Manages Jamf Pro GSX Connection settings (Settings > Global > GSX connection). C
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

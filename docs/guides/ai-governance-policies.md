@@ -210,4 +210,4 @@ Pinning `schema_version` to a literal is the conservative choice, for the reason
 
 AI Governance is reached under an **environment-scoped** API integration — set `environment_id` (or `JAMFPLATFORM_ENVIRONMENT_ID`) on the provider. A tenant-scoped integration is not supported for these constructs.
 
-The integration needs the `ai-policies` permissions; each resource and data source page lists the ones it uses.
+The integration needs the **AI policies** permission, under **Compliance** in Jamf Account's permission picker — API capability `ai-policies`. That capability is the whole surface: every action it exposes is one of create, read, update or delete, and each resource and data source page lists which of the four it uses.

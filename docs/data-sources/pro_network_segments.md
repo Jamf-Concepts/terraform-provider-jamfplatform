@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   List Jamf Pro network segments. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. Omit the filter to receive every network segment. Per-item fields beyond id, name, and the IP range require a singular jamfplatform_pro_network_segment data source lookup.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Organizational context | Network segments | Read | `network-segments` |
@@ -17,7 +17,7 @@ List Jamf Pro network segments. Supply an optional case-insensitive `name_substr
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Look up a Jamf Pro supervision identity by ID or display name. Exactly one of id or display_name must be supplied. Display names are not required to be unique; a lookup by display_name errors if more than one identity shares the name — use id to disambiguate.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Apple Configurator enrollment settings | Read | `apple-configurator-enrollment` |
@@ -17,7 +17,7 @@ Look up a Jamf Pro supervision identity by ID or display name. Exactly one of `i
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

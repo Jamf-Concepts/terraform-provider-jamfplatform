@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Creating this resource adds the macOS branding; destroying it removes it (the Self Service app reverts to default branding). All fields are optional; removing a field from configuration clears it on the tenant. Reference branding images by ID from jamfplatform_pro_self_service_branding_image (the branding image store is separate from jamfplatform_pro_icon). Import with terraform import jamfplatform_pro_self_service_branding_macos.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Self Service configuration | Create, Read, Update, Delete | `self-service` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro Self Service macOS branding configuration (Settings > Self 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

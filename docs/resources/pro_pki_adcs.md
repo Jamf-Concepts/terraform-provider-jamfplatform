@@ -10,7 +10,7 @@ description: |-
   Validator footgun: the connector_mode cross-field validator only sees what is declared in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.
   Import with terraform import jamfplatform_pro_pki_adcs.<name> <id>.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Infrastructure | Active Directory Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
@@ -33,7 +33,7 @@ Import with `terraform import jamfplatform_pro_pki_adcs.<name> <id>`.
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

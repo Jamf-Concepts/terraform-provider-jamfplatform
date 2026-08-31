@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation cannot be updated in place — changing any attribute forces Terraform to destroy and recreate it, which mints a new invitation code.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Enrollment | Enrollment invitations | Create, Read, Delete | `enrollment-invitations` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitati
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

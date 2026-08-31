@@ -77,6 +77,21 @@ func TestSection_NoPrivilegeEndpoint(t *testing.T) {
 	}
 }
 
+// TestSection_NoPrivilegeWordingNeedsEveryMethodResolved covers the asymmetry
+// between "no method needs a permission" and "no method resolved". The
+// affirmative wording is a positive claim about the underlying endpoints, so a
+// list mixing a permission-free method with one absent from the registry must
+// render nothing rather than an assurance that was never read.
+func TestSection_NoPrivilegeWordingNeedsEveryMethodResolved(t *testing.T) {
+	reg, names := synth([]string{})
+	if got := Section(reg, names...); !strings.Contains(got, "None — any authenticated") {
+		t.Fatalf("want the no-privilege wording when every method resolved, got:\n%s", got)
+	}
+	if got := Section(reg, append(slices.Clone(names), "NoSuchMethodXYZ")...); got != "" {
+		t.Fatalf("want an empty section when a method is unresolved, got:\n%s", got)
+	}
+}
+
 func TestSection_EmptyWhenAllMissing(t *testing.T) {
 	if got := Section(pro.Privileges, "NoSuchMethodXYZ"); got != "" {
 		t.Errorf("expected empty section for unknown method, got:\n%s", got)
@@ -131,20 +146,120 @@ func TestActionList_FollowsPlatformOrder(t *testing.T) {
 	}
 }
 
-func TestSection_RowsFollowPickerOrder(t *testing.T) {
-	// Devices (Inventory) precedes Buildings (Organizational context) precedes
-	// Policies (Deployment) in Jamf Account, though not alphabetically.
-	reg, names := synth([]string{"policies:read", "buildings:read", "devices:read"})
+// TestSection_RowsSortAlphabetically pins the sort to category name then
+// permission name. Deployment sorts ahead of Inventory ahead of Organizational
+// context, and Policies ahead of Scripts within Deployment — an order derived
+// from the catalogue rather than from a hand-maintained list of sections.
+func TestSection_RowsSortAlphabetically(t *testing.T) {
+	reg, names := synth([]string{"policies:read", "buildings:read", "devices:read", "scripts:read"})
 	got := Section(reg, names...)
-	iDevices := strings.Index(got, "| Devices |")
-	iBuildings := strings.Index(got, "| Buildings |")
-	iPolicies := strings.Index(got, "| Policies |")
-	if iDevices < 0 || iBuildings < 0 || iPolicies < 0 {
-		t.Fatalf("missing a row:\n%s", got)
+	var order []int
+	for _, row := range []string{"| Policies |", "| Scripts |", "| Devices |", "| Buildings |"} {
+		i := strings.Index(got, row)
+		if i < 0 {
+			t.Fatalf("missing row %q:\n%s", row, got)
+		}
+		order = append(order, i)
 	}
-	if iDevices > iBuildings || iBuildings > iPolicies {
-		t.Fatalf("rows out of picker order (devices %d, buildings %d, policies %d):\n%s",
-			iDevices, iBuildings, iPolicies, got)
+	if !slices.IsSorted(order) {
+		t.Fatalf("rows out of alphabetical order (offsets %v):\n%s", order, got)
+	}
+}
+
+// TestSection_UnresolvedRowsSortLast keeps the contract collect documents: a
+// capability the catalogue does not know, and a value whose shape splitScoped
+// rejected, both follow every row that resolved to picker names. Neither has a
+// section to sort into, and both render as dashes, so sorting them among the
+// real rows would put an unreadable row in the middle of a readable table.
+func TestSection_UnresolvedRowsSortLast(t *testing.T) {
+	reg, names := synth([]string{"zzz-unknown:read", "buildings:read", "devices"})
+	got := Section(reg, names...)
+	iBuildings := strings.Index(got, "| Organizational context | Buildings |")
+	iUnknown := strings.Index(got, "`zzz-unknown`")
+	iMalformed := strings.Index(got, "`devices`")
+	if iBuildings < 0 || iUnknown < 0 || iMalformed < 0 {
+		t.Fatalf("missing a row (buildings %d, unknown %d, malformed %d):\n%s",
+			iBuildings, iUnknown, iMalformed, got)
+	}
+	if iBuildings > iUnknown || iBuildings > iMalformed {
+		t.Fatalf("a resolved row sorted after an unresolved one:\n%s", got)
+	}
+}
+
+// TestSplitScoped covers the shapes the renderer must refuse. The
+// three-part beta slug is the one that used to slip through: strings.Cut takes
+// the first colon, so "create:pro:buildings" split into the capability "create"
+// and rendered a row naming a permission that does not exist.
+func TestSplitScoped(t *testing.T) {
+	for _, tc := range []struct {
+		scoped     string
+		capability string
+		action     string
+		ok         bool
+	}{
+		{"buildings:read", "buildings", "read", true},
+		{":read", "", "", false},
+		{"buildings:", "", "", false},
+		{"create:pro:buildings", "", "", false},
+		{"weird-shape", "", "", false},
+		{"", "", "", false},
+		{":", "", "", false},
+	} {
+		capability, action, ok := splitScoped(tc.scoped)
+		if capability != tc.capability || action != tc.action || ok != tc.ok {
+			t.Errorf("splitScoped(%q) = (%q, %q, %v), want (%q, %q, %v)",
+				tc.scoped, capability, action, ok, tc.capability, tc.action, tc.ok)
+		}
+	}
+}
+
+// TestSection_MalformedValueOnCataloguedCapabilityIsVisiblyBroken guards the
+// worst rendering of an unparseable value: "buildings" alone resolves to the
+// Buildings row with an empty Actions cell, which in Jamf Account's model is a
+// permission granting nothing — and, because buildings IS catalogued, without
+// the footnote that would explain it.
+func TestSection_MalformedValueOnCataloguedCapabilityIsVisiblyBroken(t *testing.T) {
+	reg, names := synth([]string{"buildings"})
+	got := Section(reg, names...)
+	if strings.Contains(got, "| Organizational context | Buildings |") {
+		t.Errorf("malformed value rendered as a grantable Buildings row:\n%s", got)
+	}
+	if want := "| — | — | " + malformedAction + " | `buildings` |"; !strings.Contains(got, want) {
+		t.Errorf("want %q, got:\n%s", want, got)
+	}
+	if !strings.Contains(got, "no Jamf Account name recorded for") {
+		t.Errorf("malformed value should carry the explanatory footnote, got:\n%s", got)
+	}
+}
+
+// TestSection_MalformedValueDoesNotMergeIntoWellFormedRow guards the quieter
+// failure: an unparseable value sharing a capability with a well-formed one used
+// to be absorbed into its row and leave no trace at all.
+func TestSection_MalformedValueDoesNotMergeIntoWellFormedRow(t *testing.T) {
+	reg, names := synth([]string{"buildings", "buildings:read"})
+	got := Section(reg, names...)
+	if want := "| Organizational context | Buildings | Read | `buildings` |"; !strings.Contains(got, want) {
+		t.Errorf("want the well-formed row %q, got:\n%s", want, got)
+	}
+	if want := "| — | — | " + malformedAction + " | `buildings` |"; !strings.Contains(got, want) {
+		t.Errorf("malformed value absorbed into the well-formed row, want %q, got:\n%s", want, got)
+	}
+	if n := strings.Count(got, "| `buildings` |"); n != 2 {
+		t.Errorf("want two buildings rows, one real and one malformed, got %d:\n%s", n, got)
+	}
+}
+
+// TestActionList_UnlabelledOrderedActionRendersAsSlugOnce pins actionOrder to
+// actionLabels. An entry added to the order but not the labels used to append
+// an empty string and then repeat itself through the extras path, rendering a
+// cell like "Read, , annotate" whose blank the operator cannot act on.
+func TestActionList_UnlabelledOrderedActionRendersAsSlugOnce(t *testing.T) {
+	original := actionOrder
+	actionOrder = append(slices.Clone(original), "annotate")
+	t.Cleanup(func() { actionOrder = original })
+
+	if got, want := actionList(map[string]bool{"read": true, "annotate": true}), "Read, annotate"; got != want {
+		t.Fatalf("actionList() = %q, want %q", got, want)
 	}
 }
 
@@ -230,17 +345,6 @@ func TestCatalogueCoversEverySDKCapability(t *testing.T) {
 	for capability, w := range missing {
 		t.Errorf("capability %q (required by %s.%s) has no catalogue entry — add it from Jamf's permissions map",
 			capability, w.pkg, w.method)
-	}
-}
-
-// TestCatalogueCategoriesAreOrdered keeps categoryOrder and the categories the
-// catalogue actually uses in agreement. A category absent from categoryOrder
-// gets slices.Index == -1 and would sort ahead of everything, silently.
-func TestCatalogueCategoriesAreOrdered(t *testing.T) {
-	for capability, e := range catalogue {
-		if !slices.Contains(categoryOrder, e.category) {
-			t.Errorf("capability %q: category %q missing from categoryOrder", capability, e.category)
-		}
 	}
 }
 

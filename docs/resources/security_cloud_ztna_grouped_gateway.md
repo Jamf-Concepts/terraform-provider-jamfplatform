@@ -6,7 +6,7 @@ description: |-
   Manages a Jamf Security Cloud ZTNA grouped gateway — a routing and failover group over two or more of your dedicated gateways. A grouped gateway can be referenced anywhere a single gateway can, including a custom DNS zone's name servers.
   Every member must be one of your own dedicated gateways (Jamf's shared gateways are refused), and all members must be the same form — all IPsec or all internet. Deleting a member gateway while it is still in a group is refused.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Create, Read, Update, Delete | `ztna` |
@@ -20,7 +20,7 @@ Every member must be one of your own dedicated gateways (Jamf's shared gateways 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

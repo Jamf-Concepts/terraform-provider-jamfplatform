@@ -7,7 +7,7 @@ description: |-
   Use this to reference a category without hard-coding a name Jamf may revise — in an output, or to pre-stage an identifier. Note that a category has two names: reference display_name, not name.
   Zero Trust Network Access apps, which are what match a category, are not yet managed by this provider, so today the value read here is for reference rather than for wiring into another resource.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Secure enterprise access | Content categories | Read | `content-categories` |
@@ -23,7 +23,7 @@ Zero Trust Network Access apps, which are what match a category, are not yet man
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

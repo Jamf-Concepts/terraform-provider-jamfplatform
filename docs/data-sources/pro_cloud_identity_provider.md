@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Look up a Jamf Pro Cloud Identity Provider registry entry by id or by exact display_name. Exactly one of the two must be supplied. Covers both Google (Secure LDAP) and Microsoft Entra ID providers. To retrieve the full provider-specific configuration (LDAP server settings, mappings, etc.), use the managed resource instead.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Admin identity and access | LDAP / cloud IdP | Read | `ldap-servers` |
@@ -17,7 +17,7 @@ Look up a Jamf Pro Cloud Identity Provider registry entry by `id` or by exact `d
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

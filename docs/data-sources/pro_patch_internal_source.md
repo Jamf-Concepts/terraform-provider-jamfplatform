@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Look up a Jamf Pro patch internal source by ID or by exact name, and read the catalog of software titles it publishes. Internal sources are managed by Jamf (the built-in "Jamf" definition source) and cannot be created or modified. Exactly one of id or name must be supplied.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Internal patch sources | Read | `patch-internal-source` |
@@ -18,7 +18,7 @@ Look up a Jamf Pro patch internal source by ID or by exact name, and read the ca
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

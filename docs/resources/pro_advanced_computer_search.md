@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro advanced computer search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-computer result set is server-computed report data and is intentionally not modelled. Mirrors the Computers → Search Inventory → Advanced Computer Search UI.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Inventory | Advanced device searches | Create, Read, Update, Delete | `advanced-device-searches` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro advanced computer search — a saved, criteria-driven invento
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

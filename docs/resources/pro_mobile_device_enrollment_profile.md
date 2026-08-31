@@ -6,7 +6,7 @@ description: |-
   Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator / over-the-air enrollment profile that devices use to enrol into Jamf Pro. Carries enrolment metadata plus user/location and purchasing information.
   Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Enrollment | Enrollment profiles | Create, Read, Update, Delete | `enrollment-profiles` |
@@ -20,7 +20,7 @@ Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -8,7 +8,7 @@ description: |-
   This resource manages only the rows you declare (merge semantics, wire-probed). Rows for AxM orgs you do not declare are left untouched. Removing a well_known_setting block stops managing that org and leaves its current Jamf Pro value unchanged — it does NOT reset it. To turn off Jamf-hosted service discovery for an org, set its enrollment_type = "none" (do not delete the block).
   Import with terraform import jamfplatform_pro_service_discovery_enrollment.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | User-initiated enrollment settings | Read, Update | `user-initiated-enrollment` |
@@ -26,7 +26,7 @@ Import with `terraform import jamfplatform_pro_service_discovery_enrollment.<nam
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

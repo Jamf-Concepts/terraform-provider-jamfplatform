@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only Text Field and Pop-up Menu input types; popup_menu_choices is valid only with Pop-up Menu (enforced at plan time).
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Inventory | User extension attributes | Create, Read, Update, Delete | `user-extension-attributes` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro user extension attribute — a custom inventory field collect
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Flushes a policy's logs that are older than the age given by quantity + period (Settings → Jamf Pro information → Log flushing in the Jamf Pro admin UI). For example quantity = "Six" with period = "Months" flushes logs older than six months. Flushing is immediate and cannot be undone. Takes no state.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Policies | Read | `policies` |
@@ -18,7 +18,7 @@ Flushes a policy's logs that are older than the age given by `quantity` + `perio
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

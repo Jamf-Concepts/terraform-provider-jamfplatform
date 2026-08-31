@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro dock item. Dock items are reusable references that Jamf policies use to add an application, file, or folder to a Mac's Dock. The PLIST contents field is derived from name, type, and path by Jamf Pro and exposed read-only.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Deployment | Dock items | Create, Read, Update, Delete | `dock-items` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro dock item. Dock items are reusable references that Jamf polic
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

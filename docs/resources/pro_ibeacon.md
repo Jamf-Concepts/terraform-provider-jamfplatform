@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set include_any_major_value = true and leave major unset — same for include_any_minor_value and minor. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Organizational context | iBeacon regions | Create, Read, Update, Delete | `ibeacon` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions ide
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

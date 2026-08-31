@@ -1,0 +1,91 @@
+name: Jamf Permissions Map Reminder
+
+# Prompts a human to re-read Jamf's "Jamf Pro permissions map" article and diff it against
+# internal/common/permissions/catalogue.go. That file is a hand transcription of the article — the
+# Jamf Account category and permission name for every GA capability — and it is the only artefact
+# carrying that mapping, because the OpenAPI specs publish the capability slug and nothing else.
+#
+# Unlike the Apple Profile Schemas workflow, which regenerates a table from apple/device-management,
+# there is nothing machine-readable to regenerate from here, so this job cannot open a content pull
+# request. It opens an issue instead. No test can close the gap either:
+# TestCatalogueCoversEverySDKCapability fails only when the SDK requires a capability the file has
+# never heard of, and catalogue.golden pins the rendered triples so an edit shows up as a reviewable
+# diff — neither can compare a transcribed name against what Jamf's article now says. A renamed
+# permission is therefore invisible until an operator follows the docs, ticks a box that no longer
+# exists, and gets a 403.
+#
+# This is deliberately a scheduled job that opens a pull request, NOT a check on every pull request:
+# upstream ships a handful of releases a year, and a freshness check on the critical path would block
+# unrelated work the day Apple publishes. The same reasoning applies to Jamf's article — it is
+# revised occasionally and unpredictably, and a stale row degrades documentation rather than breaking
+# a build, so a quarterly reminder is proportionate and a per-pull-request gate would not be.
+
+on:
+  schedule:
+    # 04:00 UTC on the 1st of January, April, July and October.
+    - cron: "0 4 1 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: permissions-map-reminder
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    name: Open Re-verification Issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # An unattended quarter must not accumulate one issue per run, so the label is the dedupe key:
+      # if a reminder is still open, this run says so and stops.
+      - name: Open the re-verification issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          label="permissions-map"
+          catalogue="internal/common/permissions/catalogue.go"
+          golden="internal/common/permissions/testdata/catalogue.golden"
+          rows="$(wc -l < "$golden" | tr -d ' ')"
+
+          gh label create "$label" \
+            --color "0e8a16" \
+            --description "Re-verification of the transcribed Jamf permissions map" \
+            2>/dev/null || true
+
+          existing="$(gh issue list --label "$label" --state open --limit 1 --json number --jq '.[].number')"
+          if [ -n "$existing" ]; then
+            echo "Reminder #${existing} is still open; not opening a second one."
+            exit 0
+          fi
+
+          cat > /tmp/issue-body <<EOF
+          \`${catalogue}\` is a hand transcription of Jamf's permissions map article. Nothing can verify it automatically, so it is re-read on a schedule.
+
+          - **Article:** https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map
+          - **File:** \`${catalogue}\`
+          - **Rows today:** ${rows} (as pinned in \`${golden}\`)
+
+          **Why a human has to do this.** The provider renders a "Required Jamf permissions" table into every construct's schema description, and each row names the category and permission an operator ticks in Jamf Account. The tests check that a required capability *has* a row; none of them can check what the row *says*. A permission Jamf has renamed, moved to a different category, or split still passes every test and still ships in the docs, where it sends the operator to a checkbox that no longer exists.
+
+          **Done means:**
+
+          1. Read the article and diff it against \`${catalogue}\`, row by row. Watch for a renamed permission, a row that moved between categories, a capability slug that has appeared or disappeared, and a category added to or removed from the article's grouping order.
+          2. Correct any changed row, and update the transcription date in the file's header comment.
+          3. \`go test ./internal/common/permissions/ -update-golden\` to refresh \`${golden}\`, then review that diff — it is the reviewable record of what changed.
+          4. \`make generate\` to re-render the affected schema descriptions into \`docs/\`.
+          5. If nothing changed, say so on this issue and close it. A quarter with no diff is the expected outcome and worth recording.
+
+          Opened by the Jamf Permissions Map Reminder workflow.
+          EOF
+
+          gh issue create \
+            --title "chore(permissions): re-verify the transcribed Jamf permissions map" \
+            --label "$label" \
+            --body-file /tmp/issue-body

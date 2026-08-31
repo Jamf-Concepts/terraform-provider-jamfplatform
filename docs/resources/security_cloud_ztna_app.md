@@ -7,7 +7,7 @@ description: |-
   An application is either predefined, based on one of the Jamf-maintained definitions the jamfplatform_security_cloud_ztna_predefined_apps data source lists, or custom, defined entirely by you. Set predefined_app_id for the first and name for the second. The choice cannot be changed afterwards — Terraform replaces the application instead.
   Host names and address ranges may belong to only one application across the whole tenant, so two applications cannot claim the same one. Misconfiguring an application can cut end users off from the resources it covers.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Create, Read, Update, Delete | `ztna` |
@@ -23,7 +23,7 @@ Host names and address ranges may belong to only one application across the whol
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

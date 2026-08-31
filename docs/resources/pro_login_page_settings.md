@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages the Jamf Pro login page disclaimer (Settings > System > Login page). Singleton — one record per tenant. The three disclaimer text fields (disclaimer_heading, disclaimer_main_text, action_text) are required on every write, regardless of include_custom_disclaimer — Jamf Pro rejects a write that omits any of them or sends an empty string (wire-probed 2026-06-09). The custom disclaimer is only shown to users when include_custom_disclaimer = true, but the text must always be present. Omit = preserve — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. Import with terraform import jamfplatform_pro_login_page_settings.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Login disclaimer | Update | `login-disclaimer` |
@@ -17,7 +17,7 @@ Manages the Jamf Pro login page disclaimer (Settings > System > Login page). Sin
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

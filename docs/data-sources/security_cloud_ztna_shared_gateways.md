@@ -6,7 +6,7 @@ description: |-
   Reads the "Shared gateways" catalogue in the Jamf Security Cloud admin UI — Jamf-operated gateways available to every entitled tenant, alongside any dedicated gateways of your own. They cannot be modified or deleted, and no status is reported for them.
   Use this to resolve the ID a custom DNS zone name server needs without hard-coding it. A shared gateway cannot be a member of a grouped gateway.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
@@ -20,7 +20,7 @@ Use this to resolve the ID a custom DNS zone name server needs without hard-codi
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -7,7 +7,7 @@ description: |-
   A policy carries a draft and a history of published versions. Applying a change saves the draft and, unless publish is disabled, publishes it as a new version. Deploying a published version to devices is a separate step: add an AI Governance component to a blueprint and reference the policy's id and published_version. Nothing reaches a device until a blueprint that names the policy is deployed.
   The settings_json body is the tool vendor's own configuration format, checked during terraform plan against the schema Jamf publishes for the tool and schema_version. See the AI Governance policies guide ../guides/ai-governance-policies for where each tool's settings are documented.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Compliance | AI policies | Create, Read, Update, Delete | `ai-policies` |
@@ -23,7 +23,7 @@ The `settings_json` body is the tool vendor's own configuration format, checked 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

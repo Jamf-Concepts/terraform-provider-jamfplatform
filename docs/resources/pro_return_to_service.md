@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro Return to Service configuration — a named pairing of a display name with a Wi-Fi configuration profile. When a device is erased with Return to Service, the referenced Wi-Fi profile lets it automatically rejoin a network and re-enrol into Jamf Pro without manual setup.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Return to service configuration | Read, Update, Delete | `return-to-service` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro Return to Service configuration — a named pairing of a disp
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

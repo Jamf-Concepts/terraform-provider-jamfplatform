@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no view_as or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro advanced user search — a saved, criteria-driven user query 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

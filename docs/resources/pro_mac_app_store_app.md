@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro App Store Mac app (the classic /macapplications endpoint — the "App Store App" entry under the "Mac Apps" sidebar). general.name, general.version, general.bundle_id, and general.url are required on create and stored verbatim — there is no App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
@@ -17,7 +17,7 @@ Manages a Jamf Pro App Store Mac app (the classic `/macapplications` endpoint �
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

@@ -18,17 +18,18 @@ var updateGolden = flag.Bool("update-golden", false, "rewrite testdata/catalogue
 const goldenPath = "testdata/catalogue.golden"
 
 // catalogueGolden renders every transcribed row as one "category | name | slug"
-// line, in the order a table would print them: section first, then permission
-// name. Rendering through rowKey rather than sorting by slug means the golden
-// pins categoryOrder as well as the rows themselves.
+// line, in the order a table would print them: section name first, then
+// permission name. Rendering through rowKey rather than sorting by slug keeps
+// the golden's order the rendered order, so a reviewer reads the diff in the
+// same sequence an operator reads the table.
 func catalogueGolden() string {
 	slugs := make([]string, 0, len(catalogue))
 	for slug := range catalogue {
 		slugs = append(slugs, slug)
 	}
 	sort.Slice(slugs, func(i, j int) bool {
-		ci, ni := rowKey(slugs[i])
-		cj, nj := rowKey(slugs[j])
+		ci, ni, _ := rowKey(requirement{capability: slugs[i]})
+		cj, nj, _ := rowKey(requirement{capability: slugs[j]})
 		if ci != cj {
 			return ci < cj
 		}

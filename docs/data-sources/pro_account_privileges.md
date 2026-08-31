@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Lists the privilege strings grantable on this Jamf Pro tenant, categorised into the seven privilege buckets. The catalog is read from an existing account group or account whose privilege set is Administrator (which holds every grantable privilege). Use it to look up exact privilege strings for the privileges block of jamfplatform_pro_account and jamfplatform_pro_account_group.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Admin identity and access | Admin account | Read | `accounts` |
@@ -17,7 +17,7 @@ Lists the privilege strings grantable on this Jamf Pro tenant, categorised into 
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|

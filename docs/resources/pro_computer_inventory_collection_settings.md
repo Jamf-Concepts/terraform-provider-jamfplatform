@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Manages Jamf Pro computer inventory collection settings (Settings → Computer Management → Inventory Collection). Singleton — one record per tenant. Backed by the V2 API. application_search_paths covers custom application search paths only; the Jamf Pro V2 API does not expose Fonts or Plug-ins custom paths (scope is fixed to APP). Import with terraform import jamfplatform_pro_computer_inventory_collection_settings.<name> singleton.
   Required Jamf permissions
-  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
   |---|---|---|---|
   | Global settings | Device inventory collection custom file paths | Create, Delete | `custom-paths` |
@@ -18,7 +18,7 @@ Manages Jamf Pro computer inventory collection settings (Settings → Computer M
 
 **Required Jamf permissions**
 
-Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
 | Category | Permission | Actions | API capability |
 |---|---|---|---|
