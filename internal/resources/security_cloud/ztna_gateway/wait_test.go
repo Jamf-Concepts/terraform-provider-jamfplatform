@@ -6,6 +6,7 @@ package ztna_gateway
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -81,7 +82,7 @@ func TestWaitForGatewayState_SatisfiedOnlyByUp(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			read, reads := scriptedReader(tc.states...)
-			observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond, "", 0)
+			observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", []string{securitycloud.GatewayStatusStateUp}, time.Millisecond, "", 0)
 
 			if !reachedUp {
 				t.Fatalf("the wait was not satisfied; last state %q after %d reads", lastState, *reads)
@@ -111,7 +112,7 @@ func TestWaitForGatewayState_AlreadyUpDoesNotSleep(t *testing.T) {
 	read, reads := scriptedReader(securitycloud.GatewayStatusStateUp)
 
 	started := time.Now()
-	_, _, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second, "", 0)
+	_, _, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", []string{securitycloud.GatewayStatusStateUp}, 30*time.Second, "", 0)
 	elapsed := time.Since(started)
 
 	if !reachedUp {
@@ -143,7 +144,7 @@ func TestWaitForGatewayState_BudgetExpiryReportsTheStateReached(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 			defer cancel()
 
-			observed, lastState, reachedUp := waitForGatewayState(ctx, read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond, "", 0)
+			observed, lastState, reachedUp := waitForGatewayState(ctx, read, "a1b2", []string{securitycloud.GatewayStatusStateUp}, time.Millisecond, "", 0)
 
 			if reachedUp {
 				t.Fatal("a gateway that never reports itself operational must not satisfy the wait")
@@ -175,7 +176,7 @@ func TestWaitForGatewayState_ReadFailureEndsTheWait(t *testing.T) {
 		return nil, errors.New("the read failed")
 	}
 
-	observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second, "", 0)
+	observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", []string{securitycloud.GatewayStatusStateUp}, 30*time.Second, "", 0)
 
 	if reachedUp {
 		t.Fatal("a read failure must not satisfy the wait")
@@ -206,7 +207,7 @@ func TestWaitForGatewayState_DisabledTargetIgnoresUp(t *testing.T) {
 		securitycloud.GatewayStatusStateDisabled,
 	)
 
-	observed, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateDisabled, time.Millisecond, "", 0)
+	observed, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2", []string{securitycloud.GatewayStatusStateDisabled}, time.Millisecond, "", 0)
 	if !reached {
 		t.Fatalf("the wait must be satisfied by DISABLED, got lastState=%q", lastState)
 	}
@@ -227,7 +228,7 @@ func TestWaitForGatewayState_DisabledTargetIgnoresUp(t *testing.T) {
 // thing they just asked for.
 func TestAppendGatewayWaitWarning_DisabledTargetHasItsOwnWording(t *testing.T) {
 	var diags diag.Diagnostics
-	appendGatewayWaitWarning(&diags, gatewayWaitUpdate, securitycloud.GatewayStatusStateDisabled, securitycloud.GatewayStatusStatePending)
+	appendGatewayWaitWarning(&diags, gatewayWaitUpdate, []string{securitycloud.GatewayStatusStateDisabled}, securitycloud.GatewayStatusStatePending)
 
 	if diags.HasError() {
 		t.Fatalf("an exhausted wait must never error: %v", diags)
@@ -266,7 +267,7 @@ func TestWaitForGatewayState_DwellOnDown(t *testing.T) {
 		)
 
 		_, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2",
-			securitycloud.GatewayStatusStateUp, time.Millisecond,
+			[]string{securitycloud.GatewayStatusStateUp}, time.Millisecond,
 			securitycloud.GatewayStatusStateDown, time.Hour)
 
 		if !reached {
@@ -281,7 +282,7 @@ func TestWaitForGatewayState_DwellOnDown(t *testing.T) {
 		read, reads := scriptedReader(securitycloud.GatewayStatusStateDown)
 
 		observed, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2",
-			securitycloud.GatewayStatusStateUp, time.Millisecond,
+			[]string{securitycloud.GatewayStatusStateUp}, time.Millisecond,
 			securitycloud.GatewayStatusStateDown, 10*time.Millisecond)
 
 		if reached {
@@ -306,10 +307,61 @@ func TestWaitForGatewayState_DwellOnDown(t *testing.T) {
 		)
 
 		_, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2",
-			securitycloud.GatewayStatusStateDisabled, time.Millisecond, "", 0)
+			[]string{securitycloud.GatewayStatusStateDisabled}, time.Millisecond, "", 0)
 
 		if !reached || lastState != securitycloud.GatewayStatusStateDisabled {
 			t.Errorf("a disable must wait through DOWN: reached=%v lastState=%q", reached, lastState)
+		}
+	})
+}
+
+// TestWaitForGatewayState_IPsecCreateSettlesOnEither pins the two-answer wait an
+// enabled IPsec create runs, and that neither answer is favoured.
+//
+// DOWN is the settled status of a gateway whose tunnel is not built, which on a create
+// is every gateway: its far end is configured from values the create returns. UP is
+// still accepted because everything the far end needs is caller-supplied here, so an
+// operator who pre-staged their concentrator can go straight from PENDING to UP. A
+// wait for either is reachable in both cases; a wait for one alone would hang in the
+// other.
+func TestWaitForGatewayState_IPsecCreateSettlesOnEither(t *testing.T) {
+	want := []string{securitycloud.GatewayStatusStateUp, securitycloud.GatewayStatusStateDown}
+
+	t.Run("a tunnel that was never built settles at DOWN", func(t *testing.T) {
+		read, reads := scriptedReader(
+			securitycloud.GatewayStatusStatePending,
+			securitycloud.GatewayStatusStateDown,
+		)
+
+		_, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2", want, time.Millisecond, "", 0)
+
+		if !reached {
+			t.Fatalf("DOWN must satisfy an IPsec create wait, got lastState=%q", lastState)
+		}
+		if lastState != securitycloud.GatewayStatusStateDown {
+			t.Errorf("lastState = %q, want DOWN", lastState)
+		}
+		if *reads != 2 {
+			t.Errorf("reads = %d, want 2 — PENDING must not satisfy it", *reads)
+		}
+	})
+
+	t.Run("a pre-staged concentrator settles at UP without ever reporting DOWN", func(t *testing.T) {
+		read, _ := scriptedReader(
+			securitycloud.GatewayStatusStatePending,
+			securitycloud.GatewayStatusStateUp,
+		)
+
+		_, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2", want, time.Millisecond, "", 0)
+
+		if !reached || lastState != securitycloud.GatewayStatusStateUp {
+			t.Errorf("UP must satisfy it too: reached=%v lastState=%q", reached, lastState)
+		}
+	})
+
+	t.Run("the wait has nothing to abandon, since DOWN is an answer", func(t *testing.T) {
+		if got := gatewayAbandonState(want); got != "" {
+			t.Errorf("gatewayAbandonState = %q, want empty: abandoning DOWN would abandon a satisfied wait", got)
 		}
 	})
 }
@@ -319,10 +371,10 @@ func TestWaitForGatewayState_DwellOnDown(t *testing.T) {
 // DISABLED, so treating DOWN as a reason to give up there would abandon a disable that
 // was working.
 func TestGatewayAbandonState_OnlyAppliesToTheUpWait(t *testing.T) {
-	if got := gatewayAbandonState(securitycloud.GatewayStatusStateUp); got != securitycloud.GatewayStatusStateDown {
+	if got := gatewayAbandonState([]string{securitycloud.GatewayStatusStateUp}); got != securitycloud.GatewayStatusStateDown {
 		t.Errorf("a wait for UP must be released by a dwelling DOWN, got %q", got)
 	}
-	if got := gatewayAbandonState(securitycloud.GatewayStatusStateDisabled); got != "" {
+	if got := gatewayAbandonState([]string{securitycloud.GatewayStatusStateDisabled}); got != "" {
 		t.Errorf("a wait for DISABLED must not be released by DOWN, got %q", got)
 	}
 }
@@ -343,45 +395,46 @@ func TestGatewayWaitTarget_Gates(t *testing.T) {
 		plan      GatewayResourceModel
 		op        gatewayWaitOperation
 		wantWait  bool
-		wantState string
+		wantState []string
 	}{
 		{
 			name:      "an enabled internet gateway waits to come up",
 			plan:      GatewayResourceModel{Enabled: types.BoolValue(true)},
 			wantWait:  true,
-			wantState: securitycloud.GatewayStatusStateUp,
+			wantState: []string{securitycloud.GatewayStatusStateUp},
 		},
 		{
 			name:      "a disabled internet gateway waits to report disabled",
 			plan:      GatewayResourceModel{Enabled: types.BoolValue(false)},
 			wantWait:  true,
-			wantState: securitycloud.GatewayStatusStateDisabled,
+			wantState: []string{securitycloud.GatewayStatusStateDisabled},
 		},
 		{
-			name:     "creating an enabled ipsec gateway waits for nothing: the tunnel cannot be up yet",
-			plan:     GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
-			op:       gatewayWaitCreate,
-			wantWait: false,
+			name:      "creating an enabled ipsec gateway accepts DOWN, since UP is out of reach",
+			plan:      GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
+			op:        gatewayWaitCreate,
+			wantWait:  true,
+			wantState: []string{securitycloud.GatewayStatusStateUp, securitycloud.GatewayStatusStateDown},
 		},
 		{
 			name:      "updating an enabled ipsec gateway does wait, since the tunnel may already be up",
 			plan:      GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
 			op:        gatewayWaitUpdate,
 			wantWait:  true,
-			wantState: securitycloud.GatewayStatusStateUp,
+			wantState: []string{securitycloud.GatewayStatusStateUp},
 		},
 		{
 			name:      "creating an enabled internet gateway waits: nothing external gates it",
 			plan:      GatewayResourceModel{Enabled: types.BoolValue(true)},
 			op:        gatewayWaitCreate,
 			wantWait:  true,
-			wantState: securitycloud.GatewayStatusStateUp,
+			wantState: []string{securitycloud.GatewayStatusStateUp},
 		},
 		{
 			name:      "a disabled ipsec gateway waits to report disabled, since disabling is Jamf-side",
 			plan:      GatewayResourceModel{Enabled: types.BoolValue(false), IPSec: &IPSecModel{}},
 			wantWait:  true,
-			wantState: securitycloud.GatewayStatusStateDisabled,
+			wantState: []string{securitycloud.GatewayStatusStateDisabled},
 		},
 		{
 			name:     "an unknown enabled value waits for nothing rather than guessing a target",
@@ -392,7 +445,7 @@ func TestGatewayWaitTarget_Gates(t *testing.T) {
 			name:      "a null enabled value waits to come up, matching the schema default",
 			plan:      GatewayResourceModel{Enabled: types.BoolNull()},
 			wantWait:  true,
-			wantState: securitycloud.GatewayStatusStateUp,
+			wantState: []string{securitycloud.GatewayStatusStateUp},
 		},
 	}
 
@@ -407,7 +460,7 @@ func TestGatewayWaitTarget_Gates(t *testing.T) {
 			if gotWait != tc.wantWait {
 				t.Fatalf("gatewayWaitTarget wait = %v, want %v", gotWait, tc.wantWait)
 			}
-			if gotWait && gotState != tc.wantState {
+			if gotWait && !slices.Equal(gotState, tc.wantState) {
 				t.Errorf("gatewayWaitTarget state = %q, want %q", gotState, tc.wantState)
 			}
 		})
@@ -517,7 +570,7 @@ func TestAppendGatewayWaitWarning_NamesTheStateReached(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var diags diag.Diagnostics
-			appendGatewayWaitWarning(&diags, tc.op, tc.want, tc.lastState)
+			appendGatewayWaitWarning(&diags, tc.op, []string{tc.want}, tc.lastState)
 
 			if diags.HasError() {
 				t.Fatalf("an exhausted wait must never error, or a billable gateway is tainted and replaced: %v", diags)

@@ -6,6 +6,7 @@ package ztna_gateway
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -252,14 +253,16 @@ const gatewayDownDwell = 60 * time.Second
 // gatewayAbandonState reports which status ends a wait early when it persists, for a
 // given target.
 //
-// Only a wait for UP has one. DOWN is where an enabled IPsec gateway settles when its
+// Only a wait for UP *alone* has one. Where DOWN is itself an accepted answer — an
+// enabled IPsec create — there is nothing to abandon, because arriving at DOWN ends
+// the wait successfully. DOWN is where an enabled IPsec gateway settles when its
 // tunnel is not up, so a wait for UP that sees DOWN dwelling has almost certainly been
 // given a gateway whose other end is not built yet. A wait for DISABLED must not treat
 // DOWN that way: disabling the 2026-08-31 IPsec probe took it from DOWN through
 // PENDING to DISABLED, so there DOWN is the state being left rather than the state
 // being stuck in.
-func gatewayAbandonState(want string) string {
-	if want == securitycloud.GatewayStatusStateUp {
+func gatewayAbandonState(want []string) string {
+	if len(want) == 1 && want[0] == securitycloud.GatewayStatusStateUp {
 		return securitycloud.GatewayStatusStateDown
 	}
 	return ""
@@ -332,7 +335,7 @@ type gatewayReader func(ctx context.Context, id string) (*securitycloud.Gateway,
 // makes an already-operational gateway free: one read, no delay. That is what lets
 // the update path wait unconditionally instead of trying to work out whether the
 // change re-provisions anything.
-func waitForGatewayState(ctx context.Context, read gatewayReader, id, want string, interval time.Duration, abandonState string, abandonAfter time.Duration) (observed *securitycloud.Gateway, lastState string, reached bool) {
+func waitForGatewayState(ctx context.Context, read gatewayReader, id string, want []string, interval time.Duration, abandonState string, abandonAfter time.Duration) (observed *securitycloud.Gateway, lastState string, reached bool) {
 	var abandonedAt time.Time
 	var dwellStart time.Time
 	err := jamfplatform.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
@@ -350,7 +353,7 @@ func waitForGatewayState(ctx context.Context, read gatewayReader, id, want strin
 			lastState = state
 		}
 		tflog.Debug(pollCtx, "Jamf Security Cloud ZTNA gateway state", map[string]any{"id": id, "state": state})
-		if state == want {
+		if slices.Contains(want, state) {
 			return true, nil
 		}
 		if abandonState == "" || state != abandonState {
@@ -374,48 +377,54 @@ func waitForGatewayState(ctx context.Context, read gatewayReader, id, want strin
 	return observed, lastState, err == nil && abandonedAt.IsZero()
 }
 
-// gatewayWaitTarget reports which settled status this gateway can be expected to
-// reach, and so what an apply should wait for — or that it should wait for nothing.
+// gatewayWaitTarget reports which settled statuses would end an apply's wait, and
+// whether to wait at all.
 //
-// `enabled` chooses the target rather than deciding whether to wait, because both
-// transitions drift through PENDING for a few seconds and an apply that records the
-// transient is what this wait exists to prevent. Measured 2026-08-31 on one dedicated
-// internet gateway: enabling settled at UP after 5m21s, disabling at DISABLED after
-// 12s. A disabled IPsec gateway waits too — disabling the same day's IPsec probe took
-// it from DOWN through PENDING to DISABLED within 30 seconds, because disabling is a
-// Jamf-side operation that owes nothing to the customer's tunnel.
+// The principle throughout is that an apply records a *settled* status, never the
+// PENDING every transition drifts through for a few seconds. What differs per
+// configuration is which settled status is actually within reach at that moment.
 //
-// One combination waits for nothing: **creating** an enabled IPsec gateway. Not
-// because reaching UP is slow, but because it cannot have happened yet. Jamf's own
-// Quick Connect procedure is seven steps, and building the Linux VM, installing
-// strongSwan, configuring NAT and opening the firewall are all steps 2 through 7 —
-// after the gateway exists. The Custom IPSec flow has the same shape, and a Jamf
-// support case has a gateway sitting DOWN until the Jamf-side subnet was added to the
-// customer's AWS config, at which point it went UP. The tunnel's other end is built
-// from values this create returns, so waiting for it during the create is waiting for
-// something the operator cannot yet have done: it would spend the DOWN dwell on every
-// such create and warn every time, with no case in which it could succeed.
+// A disabled gateway settles at DISABLED, whatever its form and whichever operation
+// is running — disabling is a Jamf-side change that owes nothing to any tunnel.
+// Measured 2026-08-31: 12s on a dedicated internet gateway, and 30s on an IPsec one
+// taken from DOWN through PENDING to DISABLED.
 //
-// Updating an enabled IPsec gateway does wait. There the tunnel may well be
-// established already — the common update is a cipher, a name or a subnet on a working
-// gateway — so UP is reachable, and the DOWN dwell covers the case where the change
-// takes the tunnel down or it was never up.
+// An enabled gateway normally settles at UP, measured at 275s to 321s across three
+// creates and one enable. A DOWN dwelling past gatewayDownDwell releases that wait —
+// see gatewayAbandonState.
 //
-// An unknown `enabled` waits for nothing rather than guessing a target. A null one
-// waits for UP, matching the schema default — that default is what stops a null ever
-// arriving here, and TestGatewayWaitTarget_DependsOnTheEnabledDefault fails if it is
-// removed or flipped, because the two have to agree.
-func gatewayWaitTarget(plan *GatewayResourceModel, op gatewayWaitOperation) (want string, wait bool) { //nolint:revive // named results document the pair
+// **Creating** an enabled IPsec gateway is the one case with two acceptable answers,
+// because UP is not reachable and DOWN is. The tunnel's other end is built from values
+// the create returns: Jamf's Quick Connect procedure creates the gateway in step 1 and
+// spends steps 2 through 7 building a Linux VM, installing strongSwan, configuring NAT
+// and opening the firewall, and the Custom IPSec flow has the same shape — a Jamf
+// support case has a gateway reporting DOWN until the Jamf-side subnet reached the
+// customer's AWS config, then UP. So the settled status here is DOWN, reached in 35 to
+// 50 seconds, and waiting for UP alone would spend the whole budget on something the
+// operator cannot yet have done.
+//
+// DOWN alone would be just as wrong in the other direction. Everything the far end
+// needs is caller-supplied through this resource — the pre-shared key, the subnets,
+// the source addresses — so an operator who has pre-staged their concentrator can have
+// a gateway go straight from PENDING to UP without ever reporting DOWN, and a wait for
+// DOWN alone would then never be satisfied. Accepting either is what makes the wait
+// reachable in both cases; in effect it waits for the status to leave PENDING.
+//
+// An unknown `enabled` waits for nothing, having no target to aim at. A null one is
+// treated as enabled, matching the schema default — that default is what stops a null
+// ever arriving here, and TestGatewayWaitTarget_DependsOnTheEnabledDefault fails if it
+// is removed or flipped, because the two have to agree.
+func gatewayWaitTarget(plan *GatewayResourceModel, op gatewayWaitOperation) (want []string, wait bool) { //nolint:revive // named results document the pair
 	if plan.Enabled.IsUnknown() {
-		return "", false
+		return nil, false
 	}
-	if plan.Enabled.IsNull() || plan.Enabled.ValueBool() {
-		if plan.IPSec != nil && op.isCreate {
-			return "", false
-		}
-		return securitycloud.GatewayStatusStateUp, true
+	if !plan.Enabled.IsNull() && !plan.Enabled.ValueBool() {
+		return []string{securitycloud.GatewayStatusStateDisabled}, true
 	}
-	return securitycloud.GatewayStatusStateDisabled, true
+	if plan.IPSec != nil && op.isCreate {
+		return []string{securitycloud.GatewayStatusStateUp, securitycloud.GatewayStatusStateDown}, true
+	}
+	return []string{securitycloud.GatewayStatusStateUp}, true
 }
 
 // gatewayWaitOperation names the apply phase a readiness wait ran under, for the
@@ -459,8 +468,8 @@ func lastStateOrUnknown(lastState string) string {
 //
 // State values come from the SDK's generated constants rather than restated
 // literals, per STYLE_GUIDE §"Enum values and error codes come from the SDK".
-func appendGatewayWaitWarning(diags *diag.Diagnostics, op gatewayWaitOperation, want, lastState string) {
-	if want == securitycloud.GatewayStatusStateDisabled {
+func appendGatewayWaitWarning(diags *diag.Diagnostics, op gatewayWaitOperation, want []string, lastState string) {
+	if slices.Contains(want, securitycloud.GatewayStatusStateDisabled) {
 		diags.AddWarning(
 			"Gateway is not yet reported as disabled",
 			"The gateway was "+op.pastTense+" successfully and Terraform has recorded it as disabled. Jamf "+

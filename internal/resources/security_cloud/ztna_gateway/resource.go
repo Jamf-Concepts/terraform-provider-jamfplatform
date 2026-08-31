@@ -542,13 +542,14 @@ func statusAttribute() schema.SingleNestedAttribute {
 			"update that does not re-provision the gateway, such as a name or contact change, finds it already " +
 			"settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning " +
 			"naming the status reached, and the status settles on a later refresh.\n\n" +
-			"**Creating** an IPsec gateway waits for nothing, because the tunnel cannot be up yet: its other end " +
-			"is built from values this resource returns, so the concentrator, its NAT rules and its firewall " +
-			"openings all come afterwards. Expect `PENDING` in state on the first apply, settling to `DOWN` " +
-			"until the tunnel is established and to `UP` once it is — a later refresh records it. **Updating** " +
-			"one does wait, since by then the tunnel may already be up; if it is down, the apply gives up after " +
-			"the gateway has reported `DOWN` for a minute and warns rather than holding for the whole budget." +
-			"\n\n" +
+			"**Creating** an IPsec gateway waits for `DOWN` as readily as `UP`, because `UP` is not yet within " +
+			"reach: the tunnel's other end is configured from values this resource returns, so the " +
+			"concentrator, its NAT rules and its firewall openings all come afterwards. `DOWN` is the settled " +
+			"status until the tunnel is established, and it is what state records — not the `PENDING` the " +
+			"gateway passes through first. If you configured your side in advance the gateway may reach `UP` " +
+			"directly, which is accepted just the same. **Updating** one waits for `UP`, since by then the " +
+			"tunnel may be established; if it is not, the apply gives up once the gateway has reported `DOWN` " +
+			"for a minute and warns, rather than holding for the whole budget.\n\n" +
 			"`UP` means the gateway reports itself operational. It is a necessary condition for traffic to " +
 			"flow, not a guarantee of it.",
 		Computed: true,
