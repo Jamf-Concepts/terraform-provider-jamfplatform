@@ -57,7 +57,7 @@ func jamfProConnector() *securitycloud.ConnectorConfig {
 func TestAssignResourceModel_PlatformTenantForm(t *testing.T) {
 	config := jamfProConnector()
 	config.TenantID = new("ff584e5b-d9f8-4c1c-8752-449d8c5e45d5")
-	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: new("256c303d-28dc-497a-aa1c-4548282c1666")}
+	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: "256c303d-28dc-497a-aa1c-4548282c1666"}
 
 	var state UEMConnectResourceModel
 	if diags := assignUEMConnectResourceModel(&state, config, true); diags.HasError() {
@@ -81,7 +81,7 @@ func TestAssignResourceModel_PlatformTenantForm(t *testing.T) {
 func TestAssignResourceModel_OAuthForm(t *testing.T) {
 	config := jamfProConnector()
 	config.TenantID = nil
-	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: new("d3bcff8b-670a-48a3-b6a6-17e7694536e0")}
+	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: "d3bcff8b-670a-48a3-b6a6-17e7694536e0"}
 
 	var state UEMConnectResourceModel
 	if diags := assignUEMConnectResourceModel(&state, config, true); diags.HasError() {
@@ -125,7 +125,7 @@ func TestAssignResourceModel_EmptyTenantIDReadsAsOAuth(t *testing.T) {
 func TestAssignResourceModel_PreservesWriteOnlyRotationCounter(t *testing.T) {
 	config := jamfProConnector()
 	config.TenantID = nil
-	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: new("client")}
+	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: "client"}
 
 	state := UEMConnectResourceModel{
 		OAuth: &OAuthModel{
@@ -256,7 +256,7 @@ func TestAssignDataSourceModel(t *testing.T) {
 	started := time.Date(2026, 8, 28, 16, 32, 7, 0, time.UTC)
 	config := jamfProConnector()
 	config.TenantID = new("ff584e5b-d9f8-4c1c-8752-449d8c5e45d5")
-	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: new("client")}
+	config.DeviceSyncAuth = &securitycloud.DeviceSyncAuth{ClientID: "client"}
 	config.LatestSync = &securitycloud.LatestSync{
 		TransactionID: "71e2e32b-6650-4f2a-b9d8-9a82b3989888",
 		Status:        securitycloud.LatestSyncStatusCompleted,

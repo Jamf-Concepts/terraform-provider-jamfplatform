@@ -127,26 +127,26 @@ func (c *SafariBookmarksComponent) ToRawConfiguration() (json.RawMessage, error)
 			switch typeValue {
 			case "bookmark", "url", "":
 				item := blueprints.URLBookmarkItem{
-					Type:  "BOOKMARK",
+					Type:  blueprints.BookmarkItemTypeBookmark,
 					Title: bookmark.Title.ValueString(),
 					URL:   bookmark.URL.ValueString(),
 				}
-				bookmarks = append(bookmarks, blueprints.BookmarkItem{Type: "BOOKMARK", BOOKMARK: &item})
+				bookmarks = append(bookmarks, blueprints.BookmarkItem{Type: blueprints.BookmarkItemTypeBookmark, BOOKMARK: &item})
 			case "folder":
 				folder := make([]blueprints.URLBookmarkItem, 0, len(bookmark.Folder))
 				for _, ub := range bookmark.Folder {
 					folder = append(folder, blueprints.URLBookmarkItem{
-						Type:  "BOOKMARK",
+						Type:  blueprints.BookmarkItemTypeBookmark,
 						Title: ub.Title.ValueString(),
 						URL:   ub.URL.ValueString(),
 					})
 				}
 				item := blueprints.FolderBookmarkItem{
-					Type:   "FOLDER",
+					Type:   blueprints.BookmarkItemTypeFolder,
 					Title:  bookmark.Title.ValueString(),
 					Folder: &folder,
 				}
-				bookmarks = append(bookmarks, blueprints.BookmarkItem{Type: "FOLDER", FOLDER: &item})
+				bookmarks = append(bookmarks, blueprints.BookmarkItem{Type: blueprints.BookmarkItemTypeFolder, FOLDER: &item})
 			}
 		}
 		g.Bookmarks = bookmarks
@@ -175,13 +175,13 @@ func (c *SafariBookmarksComponent) FromRawConfiguration(raw json.RawMessage) err
 		for _, bRaw := range g.Bookmarks {
 			bm := BookmarkModel{}
 			switch bRaw.Type {
-			case "BOOKMARK":
+			case blueprints.BookmarkItemTypeBookmark:
 				bm.Type = types.StringValue("bookmark")
 				if bRaw.BOOKMARK != nil {
 					bm.Title = types.StringValue(bRaw.BOOKMARK.Title)
 					bm.URL = types.StringValue(bRaw.BOOKMARK.URL)
 				}
-			case "FOLDER":
+			case blueprints.BookmarkItemTypeFolder:
 				bm.Type = types.StringValue("folder")
 				if bRaw.FOLDER != nil {
 					bm.Title = types.StringValue(bRaw.FOLDER.Title)

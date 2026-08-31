@@ -147,7 +147,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) 
 		config["enforcementType"] = "AUTOMATIC"
 
 		if ignoreMajor {
-			config["strategy"] = "SEMANTIC"
+			config["strategy"] = blueprints.SwUpdateAutomaticConfigurationStrategySemantic
 
 			minorRule := make(map[string]any)
 			if helpers.IsConfiguredValue(c.DeploymentTime) {
@@ -163,7 +163,7 @@ func (c *SoftwareUpdateComponent) ToRawConfiguration() (json.RawMessage, error) 
 				}
 			}
 		} else {
-			config["strategy"] = "LATEST"
+			config["strategy"] = blueprints.SwUpdateAutomaticConfigurationStrategyLatest
 
 			if helpers.IsConfiguredValue(c.DeploymentTime) {
 				config["deploymentTime"] = c.DeploymentTime.ValueString()
@@ -212,16 +212,16 @@ func (c *SoftwareUpdateComponent) FromRawConfiguration(raw json.RawMessage) erro
 		if strategyStr, ok := strategyValue.(string); ok {
 			strategy = strategyStr
 			switch strategyStr {
-			case "SEMANTIC":
+			case blueprints.SwUpdateAutomaticConfigurationStrategySemantic:
 				c.IgnoreMajorVersions = types.BoolValue(true)
-			case "LATEST":
+			case blueprints.SwUpdateAutomaticConfigurationStrategyLatest:
 				c.IgnoreMajorVersions = types.BoolValue(false)
 			}
 		}
 	}
 
 	automaticFieldsDetected := false
-	useSemanticRules := strategy == "SEMANTIC"
+	useSemanticRules := strategy == blueprints.SwUpdateAutomaticConfigurationStrategySemantic
 
 	if useSemanticRules {
 		if rulesValue, exists := rawConfig["rules"]; exists {

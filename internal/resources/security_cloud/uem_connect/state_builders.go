@@ -70,8 +70,8 @@ func assignUEMConnectResourceModel(state *UEMConnectResourceModel, config *secur
 	} else {
 		state.PlatformTenant = nil
 		clientID := types.StringNull()
-		if config.DeviceSyncAuth != nil && config.DeviceSyncAuth.ClientID != nil {
-			clientID = types.StringValue(*config.DeviceSyncAuth.ClientID)
+		if config.DeviceSyncAuth != nil {
+			clientID = helpers.StringValueOrNull(config.DeviceSyncAuth.ClientID)
 		}
 		woVersion := types.Int64Null()
 		if state.OAuth != nil {
@@ -226,7 +226,7 @@ func assignUEMConnectDataSourceModel(ctx context.Context, state *UEMConnectDataS
 
 	state.ClientID = types.StringNull()
 	if config.DeviceSyncAuth != nil {
-		state.ClientID = helpers.StringPointerValueOrNull(config.DeviceSyncAuth.ClientID)
+		state.ClientID = helpers.StringValueOrNull(config.DeviceSyncAuth.ClientID)
 	}
 
 	behaviour, authError, behaviourDiags := syncConfigToState(config.SyncConfig)

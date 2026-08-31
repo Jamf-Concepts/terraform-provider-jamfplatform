@@ -10,7 +10,14 @@
 //	securitycloud.DeleteUemConnectorV1
 //	securitycloud.ListUemConnectorsV1 (data source)
 //
-// Status: current. Last reviewed 2026-08-28.
+// Status: current. Last reviewed 2026-08-31.
+//
+// CreateUemConnectorV1 takes a vendor-discriminated union as of spec v1882: the
+// body is securitycloud.ConnectorCreateRequestBody and the Jamf Pro variant is
+// fully typed rather than the generic request with three fields grafted on from
+// the wire. Re-probed on the review date — the OAuth form's nested
+// deviceSyncAuth clears field validation and fails at the connection test
+// (UEM_CONNECTION_FAILED), so the shape reaches the server intact.
 //
 // Two SDK methods this resource deliberately does not call, both wire-verified
 // redundant on 2026-08-28:
