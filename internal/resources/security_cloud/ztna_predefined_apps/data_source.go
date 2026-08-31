@@ -80,9 +80,9 @@ func (d *PredefinedAppsDataSource) Schema(ctx context.Context, _ datasource.Sche
 			"Jamf, identical for every entitled tenant, and cannot be changed.\n\n" +
 			"Use this to read a template's identifier without hard-coding it, and to review the hostnames the " +
 			"template brings with it.\n\n" +
-			"Zero Trust Network Access apps are not yet managed by this provider, so the identifier read here " +
-			"is for reference today — an output, or a value to pre-stage a configuration on — rather than " +
-			"something another resource can be wired to." + dataSourcePrivileges,
+			"Wire the identifier into a `jamfplatform_security_cloud_ztna_app`'s `predefined_app_id` to " +
+			"manage an application based on the definition. Only one application per definition is allowed " +
+			"on a tenant." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed identifier for this data source.",

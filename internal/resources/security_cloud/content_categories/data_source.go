@@ -82,9 +82,9 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 			"Use this to reference a category without hard-coding a name Jamf may revise — in an output, " +
 			"or to pre-stage an identifier. Note that a category has two names: reference `display_name`, " +
 			"not `name`.\n\n" +
-			"Zero Trust Network Access apps, which are what match a category, are not yet managed by this " +
-			"provider, so today the value read here is for reference rather than for wiring into another " +
-			"resource." + dataSourcePrivileges,
+			"A `jamfplatform_security_cloud_ztna_app` is what matches a category, so resolve the category " +
+			"here and wire `display_name` into its `category` rather than writing the name out." +
+			dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Fixed identifier for this data source.",
@@ -104,8 +104,8 @@ func (d *ContentCategoriesDataSource) Schema(ctx context.Context, _ datasource.S
 							MarkdownDescription: "The category name as shown in Jamf Security Cloud, for " +
 								"example `Social`. **This is the name that identifies the category** — a " +
 								"Zero Trust Network Access app's category matches on it, and it is the name " +
-								"to reference. Zero Trust Network Access apps are not yet managed by this " +
-								"provider.",
+								"to reference. Wire it into a `jamfplatform_security_cloud_ztna_app`'s " +
+								"`category`.",
 							Computed: true,
 						},
 						"name": schema.StringAttribute{

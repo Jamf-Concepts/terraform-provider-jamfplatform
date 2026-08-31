@@ -88,17 +88,23 @@ func TestContentCategoriesDataSource_PointsAtDisplayName(t *testing.T) {
 	}
 }
 
-// TestContentCategoriesDataSource_DisclaimsUnbuiltConsumer pins the honesty of the
-// schema description. The construct that consumes a category — a Zero Trust Network
-// Access app — is not shipped by this provider, so an operator reading the
-// description must not be sent looking for a resource that does not exist. Delete
-// this assertion when the app resource lands, not before.
-func TestContentCategoriesDataSource_DisclaimsUnbuiltConsumer(t *testing.T) {
+// TestContentCategoriesDataSource_NamesItsConsumer pins the honesty of the schema
+// description in the other direction. It used to disclaim that the construct
+// consuming a category was unbuilt; jamfplatform_security_cloud_ztna_app now ships,
+// so the description has to name it rather than send an operator looking for
+// nothing — and must not carry the retired disclaimer.
+func TestContentCategoriesDataSource_NamesItsConsumer(t *testing.T) {
 	d := NewContentCategoriesDataSource()
 	var resp datasource.SchemaResponse
 	d.(*ContentCategoriesDataSource).Schema(context.Background(), datasource.SchemaRequest{}, &resp)
 
-	if !strings.Contains(resp.Schema.GetMarkdownDescription(), "not yet managed by this provider") {
-		t.Errorf("schema description must say Zero Trust Network Access apps are not yet managed by this provider, got: %s", resp.Schema.GetMarkdownDescription())
+	description := resp.Schema.GetMarkdownDescription()
+
+	if !strings.Contains(description, "jamfplatform_security_cloud_ztna_app") {
+		t.Errorf("schema description must name the app resource that consumes a category, got: %s", description)
+	}
+
+	if strings.Contains(description, "not yet managed by this provider") {
+		t.Errorf("schema description still carries the retired unbuilt-consumer disclaimer, got: %s", description)
 	}
 }
