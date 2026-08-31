@@ -34,8 +34,8 @@ import (
 // A gateway is not usable the moment it is created: the 2026-08-31 probe measured
 // 275 seconds before one reported itself operational. For the forms that reach that
 // state the apply waits for it, so a completed create leaves a gateway that is ready
-// rather than one still being built — see waitForGatewayUp for the measurements and
-// gatewayWaitsForUp for which forms qualify. The wait's last read is what gets
+// rather than one still being built — see waitForGatewayState for the measurements
+// and gatewayWaitTarget for which forms qualify and what each waits for. The wait's last read is what gets
 // recorded, which is why readBackGateway exists rather than a second read here: when
 // the wait exhausts the budget, another read on the same context could only fail, and
 // an exhausted wait must stay a warning on a successful apply rather than becoming an
@@ -83,10 +83,10 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 	plan.ID = types.StringValue(created.ID)
 
 	var got *securitycloud.Gateway
-	if gatewayWaitsForUp(&plan) {
-		observed, lastState, reachedUp := waitForGatewayUp(createCtx, r.client.GetZtnaGatewayV1, created.ID, gatewayStatusPollInterval)
-		if !reachedUp {
-			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitCreate, lastState)
+	if want, wait := gatewayWaitTarget(&plan); wait {
+		observed, lastState, reached := waitForGatewayState(createCtx, r.client.GetZtnaGatewayV1, created.ID, want, gatewayStatusPollInterval)
+		if !reached {
+			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitCreate, want, lastState)
 		}
 		got = observed
 	}
@@ -269,10 +269,10 @@ func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	var got *securitycloud.Gateway
-	if gatewayWaitsForUp(&plan) {
-		observed, lastState, reachedUp := waitForGatewayUp(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), gatewayStatusPollInterval)
-		if !reachedUp {
-			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitUpdate, lastState)
+	if want, wait := gatewayWaitTarget(&plan); wait {
+		observed, lastState, reached := waitForGatewayState(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), want, gatewayStatusPollInterval)
+		if !reached {
+			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitUpdate, want, lastState)
 		}
 		got = observed
 	}

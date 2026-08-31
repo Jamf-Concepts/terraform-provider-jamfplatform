@@ -98,7 +98,7 @@ var (
 // Create and update are ten minutes rather than the two the rest of the namespace
 // uses, because both wait for the gateway to report itself operational and that
 // wait dominates the call. The 2026-08-31 probe recorded 275 seconds to `UP` on a
-// create and 295 on an egress-region change (see waitForGatewayUp), so ten minutes
+// create and 295 on an egress-region change (see waitForGatewayState), so ten minutes
 // is roughly twice the observed time and the probe's own twenty-minute cap was
 // never approached. A region that provisions more slowly than the one measured is
 // the case the `timeouts` block exists for — raise `create` or `update` there
@@ -107,7 +107,7 @@ var (
 // One figure that must not be read into this: Jamf's "Creating a Dedicated Internet
 // Gateway" page says "Provisioning takes up to two business days". In context that is
 // the paid add-on being enabled for the account by the Jamf Account Team, not the
-// per-gateway build — the same page has the gateway itself reach Active "after a
+// per-gateway build — the same page has the gateway itself become ready "after a
 // short period", which matches the 275 seconds measured. Ten minutes is sized against
 // the per-gateway build. Nothing Terraform does can wait out an account entitlement,
 // and stretching these defaults towards two days would only turn a missing
@@ -204,7 +204,10 @@ func (r *GatewayResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			},
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether the deployment is active. A disabled gateway reports its status as " +
-					"`DISABLED` and carries no traffic. Defaults to `true`.",
+					"`DISABLED` and carries no traffic. Defaults to `true`. Disabling a gateway reports " +
+					"`PENDING` for a few seconds before it settles, so an apply that disables one waits for " +
+					"`DISABLED` in the same way an apply that enables one waits for `UP` — either way the " +
+					"status recorded is the settled one, not the transient.",
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(true),
@@ -499,29 +502,39 @@ func customerSideAttribute() schema.SingleNestedAttribute {
 // The values are surfaced as the wire spells them, which is a deliberate exception
 // to STYLE_GUIDE §"Attribute names mirror the Jamf Pro admin UI" — the same rule
 // that has mappings.go translate every other enumerated value on this resource into
-// its admin-UI label. Jamf's "Creating a Dedicated Internet Gateway" page documents
-// two of the four labels verbatim: a new gateway appears "with a **Pending**
-// status", and "after a short period, the status changes to **Active**". So `UP` is
-// shown as Active and `PENDING` as Pending. No documentation was found for what the
-// admin UI calls `DOWN` or `DISABLED`, and a table mapping two of four values with the
-// other two guessed would be worse than none — a wrong label here is a
-// documentation bug the user cannot detect. The descriptions therefore name the two
-// evidenced labels alongside the wire values and leave the other two alone.
-// Completing the mapping is a follow-up that needs someone to read the admin UI, at
-// which point these become labels like every other enum on this resource.
+// its admin-UI label.
+//
+// Three of the four labels are known from reading the admin UI directly on
+// 2026-08-31: a provisioning gateway shows "Pending", a provisioned one shows
+// "Available", and a disabled one shows "Disabled".
+// Note that Jamf's own "Creating a Dedicated Internet Gateway" page disagrees with
+// the second — it says "after a short period, the status changes to Active". The
+// admin UI is what an operator actually reads, so "Available" is what these
+// descriptions name; the page is stale. This is the second documented-behaviour
+// divergence on this resource, the other being egress-region immutability, so prefer
+// an observation to that page wherever the two conflict.
+//
+// What the admin UI calls `DOWN` is still unread — reaching it needs an IPsec gateway
+// with no concentrator answering, which the internet form never entered across 134
+// polls. A table mapping three of four values with the fourth guessed would be worse
+// than none, since a wrong label here is a documentation bug the user cannot detect,
+// so the descriptions name the three observed labels and leave `DOWN` alone.
+// Completing the mapping needs someone to reach that state in the admin UI, at which
+// point these become labels like every other enum on this resource.
 func statusAttribute() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
 		MarkdownDescription: "Operational status Jamf Security Cloud reports for this gateway. Read-only, and " +
 			"live: a create or an egress-region change starts the gateway at `PENDING` — shown as **Pending** " +
-			"in the Jamf Security Cloud admin UI — and it settles to `UP`, shown as **Active**, once the " +
+			"in the Jamf Security Cloud admin UI — and it settles to `UP`, shown as **Available**, once the " +
 			"infrastructure is provisioned.\n\n" +
-			"For a dedicated internet gateway that is enabled, the provider waits for `UP` before finishing a " +
-			"create or an update, so state normally records `UP` rather than `PENDING`. An update that does not " +
-			"re-provision the gateway — a name or contact change — finds it already `UP` and waits for nothing. " +
-			"If the wait runs out first the apply still succeeds, with a warning naming the status reached; the " +
-			"status then settles on a later refresh. A dedicated IPsec gateway is not waited on: with no " +
-			"reachable concentrator on your side it settles at `DOWN` rather than reaching `UP`. Nor is a " +
-			"disabled gateway, which reports `DISABLED` by definition.\n\n" +
+			"For a dedicated internet gateway the provider waits for the status to settle before finishing a " +
+			"create or an update — for `UP` when the gateway is enabled, and for `DISABLED` when it is not — " +
+			"so state records the settled status rather than the `PENDING` both transitions pass through. An " +
+			"update that does not re-provision the gateway, such as a name or contact change, finds it already " +
+			"settled and waits for nothing. If a wait runs out first the apply still succeeds, with a warning " +
+			"naming the status reached, and the status settles on a later refresh. A dedicated IPsec gateway is " +
+			"not waited on at all: with no reachable concentrator on your side it settles at `DOWN` rather than " +
+			"reaching `UP`.\n\n" +
 			"`UP` means the gateway reports itself operational. It is a necessary condition for traffic to " +
 			"flow, not a guarantee of it.",
 		Computed: true,
@@ -529,8 +542,10 @@ func statusAttribute() schema.SingleNestedAttribute {
 			"state": schema.StringAttribute{
 				MarkdownDescription: "Overall gateway state: `PENDING` while provisioning (**Pending** in the " +
 					"Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational " +
-					"(**Active** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when " +
-					"`enabled` is `false`.",
+					"(**Available** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when " +
+					"`enabled` is `false` (**Disabled** in the admin UI). Both transitions drift through " +
+					"`PENDING` for a few seconds, which is why an apply waits for the settled value rather " +
+					"than recording the first status it reads.",
 				Computed: true,
 			},
 			"tunnel_state": schema.StringAttribute{

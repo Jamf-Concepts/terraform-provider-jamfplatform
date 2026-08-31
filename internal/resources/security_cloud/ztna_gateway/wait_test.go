@@ -31,7 +31,7 @@ func scriptedReader(states ...string) (gatewayReader, *int) {
 	}, &reads
 }
 
-// TestWaitForGatewayUp_SatisfiedOnlyByUp pins which reported states end the wait.
+// TestWaitForGatewayState_SatisfiedOnlyByUp pins which reported states end the wait.
 //
 // UP ends it. PENDING does not, which is the whole point. DOWN does not either, and
 // specifically does not end it as a failure: the 2026-08-31 internet-form probe never
@@ -39,7 +39,7 @@ func scriptedReader(states ...string) (gatewayReader, *int) {
 // unknown, and treating it as terminal on that ignorance would fail an apply that was
 // about to succeed. The same day's IPsec probe did settle at DOWN, which is why that
 // form is excluded from the wait entirely rather than being made to fail fast here.
-func TestWaitForGatewayUp_SatisfiedOnlyByUp(t *testing.T) {
+func TestWaitForGatewayState_SatisfiedOnlyByUp(t *testing.T) {
 	cases := []struct {
 		name      string
 		states    []string
@@ -81,7 +81,7 @@ func TestWaitForGatewayUp_SatisfiedOnlyByUp(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			read, reads := scriptedReader(tc.states...)
-			observed, lastState, reachedUp := waitForGatewayUp(context.Background(), read, "a1b2", time.Millisecond)
+			observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond)
 
 			if !reachedUp {
 				t.Fatalf("the wait was not satisfied; last state %q after %d reads", lastState, *reads)
@@ -99,7 +99,7 @@ func TestWaitForGatewayUp_SatisfiedOnlyByUp(t *testing.T) {
 	}
 }
 
-// TestWaitForGatewayUp_AlreadyUpDoesNotSleep pins the property that makes the update
+// TestWaitForGatewayState_AlreadyUpDoesNotSleep pins the property that makes the update
 // path affordable.
 //
 // An update that does not re-provision the gateway — a name or contact change — finds
@@ -107,11 +107,11 @@ func TestWaitForGatewayUp_SatisfiedOnlyByUp(t *testing.T) {
 // Update wait unconditionally instead of trying to work out from the plan whether the
 // change re-provisions anything. The interval here is far longer than the assertion
 // window, so a single sleep would fail the test.
-func TestWaitForGatewayUp_AlreadyUpDoesNotSleep(t *testing.T) {
+func TestWaitForGatewayState_AlreadyUpDoesNotSleep(t *testing.T) {
 	read, reads := scriptedReader(securitycloud.GatewayStatusStateUp)
 
 	started := time.Now()
-	_, _, reachedUp := waitForGatewayUp(context.Background(), read, "a1b2", 30*time.Second)
+	_, _, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second)
 	elapsed := time.Since(started)
 
 	if !reachedUp {
@@ -125,10 +125,10 @@ func TestWaitForGatewayUp_AlreadyUpDoesNotSleep(t *testing.T) {
 	}
 }
 
-// TestWaitForGatewayUp_BudgetExpiryReportsTheStateReached pins what the wait hands
+// TestWaitForGatewayState_BudgetExpiryReportsTheStateReached pins what the wait hands
 // back when the caller's context budget runs out: not satisfied, plus the last state
 // it saw, which is what the warning is worded from.
-func TestWaitForGatewayUp_BudgetExpiryReportsTheStateReached(t *testing.T) {
+func TestWaitForGatewayState_BudgetExpiryReportsTheStateReached(t *testing.T) {
 	cases := []struct {
 		name  string
 		state string
@@ -143,7 +143,7 @@ func TestWaitForGatewayUp_BudgetExpiryReportsTheStateReached(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 			defer cancel()
 
-			observed, lastState, reachedUp := waitForGatewayUp(ctx, read, "a1b2", time.Millisecond)
+			observed, lastState, reachedUp := waitForGatewayState(ctx, read, "a1b2", securitycloud.GatewayStatusStateUp, time.Millisecond)
 
 			if reachedUp {
 				t.Fatal("a gateway that never reports itself operational must not satisfy the wait")
@@ -161,21 +161,21 @@ func TestWaitForGatewayUp_BudgetExpiryReportsTheStateReached(t *testing.T) {
 	}
 }
 
-// TestWaitForGatewayUp_ReadFailureEndsTheWait pins that a read failure stops the wait
+// TestWaitForGatewayState_ReadFailureEndsTheWait pins that a read failure stops the wait
 // instead of being swallowed, matching waitForBenchmarkSync in
 // internal/resources/cbengine/benchmark.
 //
 // Swallowing it would turn a broken credential into a full-budget spin. Ending the
 // wait costs nothing, because the caller reads the gateway again afterwards and that
 // read produces the real error diagnostic.
-func TestWaitForGatewayUp_ReadFailureEndsTheWait(t *testing.T) {
+func TestWaitForGatewayState_ReadFailureEndsTheWait(t *testing.T) {
 	reads := 0
 	read := func(_ context.Context, _ string) (*securitycloud.Gateway, error) {
 		reads++
 		return nil, errors.New("the read failed")
 	}
 
-	observed, lastState, reachedUp := waitForGatewayUp(context.Background(), read, "a1b2", 30*time.Second)
+	observed, lastState, reachedUp := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateUp, 30*time.Second)
 
 	if reachedUp {
 		t.Fatal("a read failure must not satisfy the wait")
@@ -191,63 +191,134 @@ func TestWaitForGatewayUp_ReadFailureEndsTheWait(t *testing.T) {
 	}
 }
 
-// TestGatewayWaitsForUp_Gates pins both gate conditions.
+// TestWaitForGatewayState_DisabledTargetIgnoresUp pins that the disabled wait really
+// waits for DISABLED, rather than for "anything that is not PENDING".
 //
-// Both are measured, not cautious. The 2026-08-31 IPsec probe pointed a gateway's
-// peer address at nothing and watched it settle at DOWN after 35 seconds and stay
-// there, never reaching UP — so waiting on that form would burn the whole budget and
-// then warn about a gateway behaving as designed, since building the Jamf side before
-// the customer side is the normal order of work. The enabled gate is definitional: a
-// disabled gateway reports DISABLED, so the wait could only ever run out.
-func TestGatewayWaitsForUp_Gates(t *testing.T) {
+// Disabling a gateway was observed to report PENDING for a few seconds before
+// settling to DISABLED (admin UI and API, 2026-08-31). That transient is the whole
+// reason this wait exists: without it an apply records PENDING on a gateway the
+// operator just disabled. A wait satisfied by UP, or by the first non-PENDING value,
+// would record the wrong status just as skipping the wait did.
+func TestWaitForGatewayState_DisabledTargetIgnoresUp(t *testing.T) {
+	read, reads := scriptedReader(
+		securitycloud.GatewayStatusStateUp,
+		securitycloud.GatewayStatusStatePending,
+		securitycloud.GatewayStatusStateDisabled,
+	)
+
+	observed, lastState, reached := waitForGatewayState(context.Background(), read, "a1b2", securitycloud.GatewayStatusStateDisabled, time.Millisecond)
+	if !reached {
+		t.Fatalf("the wait must be satisfied by DISABLED, got lastState=%q", lastState)
+	}
+	if lastState != securitycloud.GatewayStatusStateDisabled {
+		t.Errorf("lastState = %q, want DISABLED", lastState)
+	}
+	if observed == nil || observed.Status == nil || observed.Status.State != securitycloud.GatewayStatusStateDisabled {
+		t.Errorf("the wait must hand back the disabled read, got %+v", observed)
+	}
+	if *reads != 3 {
+		t.Errorf("reads = %d, want 3 — UP and PENDING must both have been rejected", *reads)
+	}
+}
+
+// TestAppendGatewayWaitWarning_DisabledTargetHasItsOwnWording pins that an exhausted
+// disabled wait does not borrow the coming-up wording, which would tell an operator
+// their gateway is not carrying traffic as though that were a fault rather than the
+// thing they just asked for.
+func TestAppendGatewayWaitWarning_DisabledTargetHasItsOwnWording(t *testing.T) {
+	var diags diag.Diagnostics
+	appendGatewayWaitWarning(&diags, gatewayWaitUpdate, securitycloud.GatewayStatusStateDisabled, securitycloud.GatewayStatusStatePending)
+
+	if diags.HasError() {
+		t.Fatalf("an exhausted wait must never error: %v", diags)
+	}
+	if diags.WarningsCount() != 1 {
+		t.Fatalf("want exactly one warning, got %d: %v", diags.WarningsCount(), diags)
+	}
+	d := diags.Warnings()[0]
+	if !strings.Contains(d.Summary(), "disabled") {
+		t.Errorf("the summary must say the gateway is not yet reported disabled, got %q", d.Summary())
+	}
+	for _, unwanted := range []string{"carrying traffic", "still provisioning"} {
+		if strings.Contains(d.Detail(), unwanted) {
+			t.Errorf("the disabled wording must not borrow the coming-up wording (%q): %s", unwanted, d.Detail())
+		}
+	}
+	if !strings.Contains(d.Detail(), "timeouts") {
+		t.Errorf("the warning must name the timeouts block: %s", d.Detail())
+	}
+}
+
+// TestGatewayWaitTarget_Gates pins the form gate and the target each state waits for.
+//
+// The form gate is measured, not cautious. The 2026-08-31 IPsec probe pointed a
+// gateway's peer address at nothing and watched it settle at DOWN after 35 seconds
+// and stay there, never reaching UP — so waiting on that form would burn the whole
+// budget and then warn about a gateway behaving as designed, since building the Jamf
+// side before the customer side is the normal order of work. A disabled IPsec gateway
+// is excluded for the same reason: whether it settles at DISABLED has not been
+// measured, and inferring it from the internet form is the mistake this file exists
+// to avoid.
+//
+// `enabled` selects the target rather than skipping the wait. Both transitions drift
+// through PENDING, so both need waiting on.
+func TestGatewayWaitTarget_Gates(t *testing.T) {
 	cases := []struct {
-		name string
-		plan GatewayResourceModel
-		want bool
+		name      string
+		plan      GatewayResourceModel
+		wantWait  bool
+		wantState string
 	}{
 		{
-			name: "enabled internet gateway waits",
-			plan: GatewayResourceModel{Enabled: types.BoolValue(true)},
-			want: true,
+			name:      "an enabled internet gateway waits to come up",
+			plan:      GatewayResourceModel{Enabled: types.BoolValue(true)},
+			wantWait:  true,
+			wantState: securitycloud.GatewayStatusStateUp,
 		},
 		{
-			name: "ipsec gateway does not wait",
-			plan: GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
-			want: false,
+			name:      "a disabled internet gateway waits to report disabled",
+			plan:      GatewayResourceModel{Enabled: types.BoolValue(false)},
+			wantWait:  true,
+			wantState: securitycloud.GatewayStatusStateDisabled,
 		},
 		{
-			name: "disabled internet gateway does not wait",
-			plan: GatewayResourceModel{Enabled: types.BoolValue(false)},
-			want: false,
+			name:     "an enabled ipsec gateway does not wait",
+			plan:     GatewayResourceModel{Enabled: types.BoolValue(true), IPSec: &IPSecModel{}},
+			wantWait: false,
 		},
 		{
-			name: "disabled ipsec gateway does not wait",
-			plan: GatewayResourceModel{Enabled: types.BoolValue(false), IPSec: &IPSecModel{}},
-			want: false,
+			name:     "a disabled ipsec gateway does not wait either",
+			plan:     GatewayResourceModel{Enabled: types.BoolValue(false), IPSec: &IPSecModel{}},
+			wantWait: false,
 		},
 		{
-			name: "an unknown enabled value skips the wait rather than risking a hang",
-			plan: GatewayResourceModel{Enabled: types.BoolUnknown()},
-			want: false,
+			name:     "an unknown enabled value waits for nothing rather than guessing a target",
+			plan:     GatewayResourceModel{Enabled: types.BoolUnknown()},
+			wantWait: false,
 		},
 		{
-			name: "a null enabled value skips the wait, which the schema default is what makes safe",
-			plan: GatewayResourceModel{Enabled: types.BoolNull()},
-			want: false,
+			name:      "a null enabled value waits to come up, matching the schema default",
+			plan:      GatewayResourceModel{Enabled: types.BoolNull()},
+			wantWait:  true,
+			wantState: securitycloud.GatewayStatusStateUp,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			plan := tc.plan
-			if got := gatewayWaitsForUp(&plan); got != tc.want {
-				t.Errorf("gatewayWaitsForUp = %v, want %v", got, tc.want)
+			gotState, gotWait := gatewayWaitTarget(&plan)
+			if gotWait != tc.wantWait {
+				t.Fatalf("gatewayWaitTarget wait = %v, want %v", gotWait, tc.wantWait)
+			}
+			if gotWait && gotState != tc.wantState {
+				t.Errorf("gatewayWaitTarget state = %q, want %q", gotState, tc.wantState)
 			}
 		})
 	}
 }
 
-// TestGatewayWaitsForUp_DependsOnTheEnabledDefault pins the coupling that makes the
+// TestGatewayWaitTarget_DependsOnTheEnabledDefault pins the coupling that makes the
 // null case above safe.
 //
 // The gate reads `enabled` with ValueBool(), which answers false for a null value as
@@ -260,7 +331,7 @@ func TestGatewayWaitsForUp_Gates(t *testing.T) {
 //
 // This test fails in that case. If it does, the fix is to decide what an absent
 // `enabled` should mean and make the gate say so, not to update the expectation.
-func TestGatewayWaitsForUp_DependsOnTheEnabledDefault(t *testing.T) {
+func TestGatewayWaitTarget_DependsOnTheEnabledDefault(t *testing.T) {
 	s := resourceSchema(t)
 
 	enabled, ok := s.Attributes["enabled"].(rschema.BoolAttribute)
@@ -268,13 +339,13 @@ func TestGatewayWaitsForUp_DependsOnTheEnabledDefault(t *testing.T) {
 		t.Fatalf("enabled must be a BoolAttribute, got %T", s.Attributes["enabled"])
 	}
 	if enabled.Default == nil {
-		t.Fatal("enabled must carry a schema default: gatewayWaitsForUp treats a null value as disabled, and only the default keeps a null from ever reaching it")
+		t.Fatal("enabled must carry a schema default: gatewayWaitTarget treats a null value as enabled to match it")
 	}
 
 	var resp defaults.BoolResponse
 	enabled.Default.DefaultBool(context.Background(), defaults.BoolRequest{}, &resp)
 	if !resp.PlanValue.ValueBool() {
-		t.Errorf("enabled defaults to %v; gatewayWaitsForUp assumes true, so an unset enabled would now skip the readiness wait", resp.PlanValue)
+		t.Errorf("enabled defaults to %v; gatewayWaitTarget treats a null enabled as true, so an unset enabled would now wait for the wrong state", resp.PlanValue)
 	}
 }
 
@@ -291,6 +362,7 @@ func TestAppendGatewayWaitWarning_NamesTheStateReached(t *testing.T) {
 	cases := []struct {
 		name      string
 		op        gatewayWaitOperation
+		want      string
 		lastState string
 		wantText  []string
 	}{
@@ -349,7 +421,7 @@ func TestAppendGatewayWaitWarning_NamesTheStateReached(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var diags diag.Diagnostics
-			appendGatewayWaitWarning(&diags, tc.op, tc.lastState)
+			appendGatewayWaitWarning(&diags, tc.op, tc.want, tc.lastState)
 
 			if diags.HasError() {
 				t.Fatalf("an exhausted wait must never error, or a billable gateway is tainted and replaced: %v", diags)

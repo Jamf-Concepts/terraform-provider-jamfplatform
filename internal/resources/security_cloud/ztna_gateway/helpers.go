@@ -220,7 +220,7 @@ func reportedDetails(apiErr *jamfplatform.APIResponseError) string {
 // Five seconds against a wait measured in minutes costs at most a couple of
 // hundred reads spread across it, well inside this provider's ~10 req/s budget
 // for the Jamf API. It also bounds how precisely the wait can observe anything:
-// see waitForGatewayUp on the create-side address figure.
+// see waitForGatewayState on the create-side address figure.
 const gatewayStatusPollInterval = 5 * time.Second
 
 // gatewayReader reads one gateway by ID. securitycloud.Client.GetZtnaGatewayV1
@@ -228,7 +228,7 @@ const gatewayStatusPollInterval = 5 * time.Second
 // substitute a closure.
 type gatewayReader func(ctx context.Context, id string) (*securitycloud.Gateway, error)
 
-// waitForGatewayUp polls the gateway until it reports itself operational, and
+// waitForGatewayState polls the gateway until it reports itself operational, and
 // returns the last representation it read, the last state it saw, and whether the
 // wait was satisfied.
 //
@@ -260,7 +260,7 @@ type gatewayReader func(ctx context.Context, id string) (*securitycloud.Gateway,
 // tunnel state DOWN, and stayed there. It never reached UP, and its dedicated
 // egress addresses stayed empty throughout — which is the schema's "always empty on
 // an IPsec gateway", now measured rather than asserted. That probe is what makes the
-// internet-only gate in gatewayWaitsForUp a measurement rather than a caution.
+// internet-only gate in gatewayWaitTarget a measurement rather than a caution.
 //
 // UP is what the gateway reports about itself, and that is all this waits for. It is
 // necessary for traffic to flow and not sufficient: a Jamf support case on
@@ -290,7 +290,7 @@ type gatewayReader func(ctx context.Context, id string) (*securitycloud.Gateway,
 // makes an already-operational gateway free: one read, no delay. That is what lets
 // the update path wait unconditionally instead of trying to work out whether the
 // change re-provisions anything.
-func waitForGatewayUp(ctx context.Context, read gatewayReader, id string, interval time.Duration) (observed *securitycloud.Gateway, lastState string, reachedUp bool) {
+func waitForGatewayState(ctx context.Context, read gatewayReader, id, want string, interval time.Duration) (observed *securitycloud.Gateway, lastState string, reached bool) {
 	err := jamfplatform.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
 		got, err := read(pollCtx, id)
 		if err != nil {
@@ -306,12 +306,12 @@ func waitForGatewayUp(ctx context.Context, read gatewayReader, id string, interv
 			lastState = state
 		}
 		tflog.Debug(pollCtx, "Jamf Security Cloud ZTNA gateway state", map[string]any{"id": id, "state": state})
-		return state == securitycloud.GatewayStatusStateUp, nil
+		return state == want, nil
 	})
 	return observed, lastState, err == nil
 }
 
-// gatewayWaitsForUp reports whether this gateway can be expected to reach an
+// gatewayWaitTarget reports whether this gateway can be expected to reach an
 // operational state, and so whether waiting for one is worth doing.
 //
 // Two conditions, both necessary:
@@ -332,8 +332,17 @@ func waitForGatewayUp(ctx context.Context, read gatewayReader, id string, interv
 //
 // `enabled` carries a schema default, so it is always known in a plan; an unknown
 // value would read as false and skip the wait, which is the safe direction.
-func gatewayWaitsForUp(plan *GatewayResourceModel) bool {
-	return plan.IPSec == nil && plan.Enabled.ValueBool()
+func gatewayWaitTarget(plan *GatewayResourceModel) (want string, wait bool) {
+	if plan.IPSec != nil {
+		return "", false
+	}
+	if plan.Enabled.IsUnknown() {
+		return "", false
+	}
+	if plan.Enabled.IsNull() || plan.Enabled.ValueBool() {
+		return securitycloud.GatewayStatusStateUp, true
+	}
+	return securitycloud.GatewayStatusStateDisabled, true
 }
 
 // gatewayWaitOperation names the apply phase a readiness wait ran under, for the
@@ -348,6 +357,16 @@ var (
 	gatewayWaitCreate = gatewayWaitOperation{pastTense: "created", timeoutAttr: "create"}
 	gatewayWaitUpdate = gatewayWaitOperation{pastTense: "updated", timeoutAttr: "update"}
 )
+
+// lastStateOrUnknown renders the state a wait ended on for a diagnostic, standing in
+// a readable word where the status could not be read at all rather than leaving an
+// empty pair of quotes in the operator's terminal.
+func lastStateOrUnknown(lastState string) string {
+	if lastState == "" {
+		return "an unknown status"
+	}
+	return lastState
+}
 
 // appendGatewayWaitWarning reports a readiness wait that ran out, as a warning.
 //
@@ -366,7 +385,20 @@ var (
 //
 // State values come from the SDK's generated constants rather than restated
 // literals, per STYLE_GUIDE §"Enum values and error codes come from the SDK".
-func appendGatewayWaitWarning(diags *diag.Diagnostics, op gatewayWaitOperation, lastState string) {
+func appendGatewayWaitWarning(diags *diag.Diagnostics, op gatewayWaitOperation, want, lastState string) {
+	if want == securitycloud.GatewayStatusStateDisabled {
+		diags.AddWarning(
+			"Gateway is not yet reported as disabled",
+			"The gateway was "+op.pastTense+" successfully and Terraform has recorded it as disabled. Jamf "+
+				"Security Cloud had not caught up by the time Terraform stopped waiting — it still reports "+
+				"\""+lastStateOrUnknown(lastState)+"\". A gateway takes a few seconds to settle after being "+
+				"disabled, so this is usually only a timing difference and the next refresh corrects the "+
+				"recorded status. To wait longer during the apply itself, raise `"+op.timeoutAttr+"` in this "+
+				"resource's `timeouts` block.",
+		)
+		return
+	}
+
 	var summary, cause string
 	switch lastState {
 	case securitycloud.GatewayStatusStatePending:
