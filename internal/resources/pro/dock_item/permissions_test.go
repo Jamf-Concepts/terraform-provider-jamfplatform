@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -111,16 +110,22 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 	assertMatch(t, "list_resource.go", listResourceSDKMethods, calledSDKMethods(t, "list_resource.go"))
 }
 
-// TestPrivileges_Rendered guards that each table actually rendered into its
-// construct description (catches an empty/parse-skipped registry).
+// TestPrivileges_Rendered guards that each construct's table rendered the dock-items
+// row *and* the action that construct actually performs. Asserting the action —
+// not just the capability — is what makes this a drift guard: a row that ticked
+// the wrong boxes would still contain the capability name.
 func TestPrivileges_Rendered(t *testing.T) {
-	for name, rendered := range map[string]string{
-		"resource":      resourcePrivileges,
-		"data source":   dataSourcePrivileges,
-		"list resource": listResourcePrivileges,
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "dock-items:create"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "dock-items:read"},
+		{"listResourcePrivileges", listResourcePrivileges, "dock-items:read"},
 	} {
-		if !strings.Contains(rendered, "dock-items:") {
-			t.Fatalf("%s privileges did not render the dock-items privileges:\n%s", name, rendered)
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
 		}
 	}
 }

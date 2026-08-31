@@ -10,14 +10,11 @@ description: |-
   package_file_source_checksum (optional) is a SHA-3-512 value checked against the file locally before anything is uploaded. A mismatch fails the apply without uploading — useful for catching on-disk corruption.size is read-only — Jamf Pro calculates it from the uploaded file and ignores any value set in configuration, including on metadata-only records.Changing only metadata (info, notes, priority, ...) updates the record without re-uploading the file; the file is re-uploaded only when its contents change.
   Manifest: manifest_file_source (optional) uploads a .plist manifest for the package. Setting it uploads the manifest; clearing it removes the manifest from Jamf Pro. The manifest is re-uploaded only when its contents change.
   URL sources: both package_file_source and manifest_file_source accept http(s):// URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Packages | `packages:create` |
-  | Delete Packages | `packages:delete` |
-  | Read Packages | `packages:read` |
-  | Update Packages | `packages:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Packages | Create, Read, Update, Delete | `packages` |
 ---
 
 # jamfplatform_pro_package (Resource)
@@ -40,16 +37,13 @@ Manages a Jamf Pro package. A package record carries the metadata (name, categor
 
 **URL sources**: both `package_file_source` and `manifest_file_source` accept `http(s)://` URLs. The provider downloads the URL to a temporary file (8 GiB limit, up to 10 redirects) before uploading.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Packages | `packages:create` |
-| Delete Packages | `packages:delete` |
-| Read Packages | `packages:read` |
-| Update Packages | `packages:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Packages | Create, Read, Update, Delete | `packages` |
 
 ## Example Usage
 

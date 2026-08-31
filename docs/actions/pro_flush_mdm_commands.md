@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_flush_mdm_commands Action - terraform-provider-jam
 subcategory: ""
 description: |-
   Cancels (flushes) pending or failed management commands for a device or group.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-actions:delete` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Device actions | Device actions | Delete | `device-actions` |
 ---
 
 # jamfplatform_pro_flush_mdm_commands (Action)
 
 Cancels (flushes) pending or failed management commands for a device or group.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-actions:delete` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Device actions | Device actions | Delete | `device-actions` |
 
 ## Example Usage
 

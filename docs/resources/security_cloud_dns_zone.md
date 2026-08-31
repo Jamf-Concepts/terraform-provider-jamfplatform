@@ -5,14 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's domains are resolved through authoritative name servers of your choice instead of public DNS — Jamf calls this "split-brain DNS", and a custom DNS zone is required before enterprise apps on internal private networks become reachable over ZTNA.
   Misconfiguring a zone can cut end users off from some or all of your private applications and workloads.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:create` |
-  | `ztna:delete` |
-  | `ztna:read` |
-  | `ztna:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Create, Read, Update, Delete | `ztna` |
 ---
 
 # jamfplatform_security_cloud_dns_zone (Resource)
@@ -21,16 +18,13 @@ Manages a Jamf Security Cloud custom DNS zone. Hostnames belonging to the zone's
 
 Misconfiguring a zone can cut end users off from some or all of your private applications and workloads.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:create` |
-| `ztna:delete` |
-| `ztna:read` |
-| `ztna:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Create, Read, Update, Delete | `ztna` |
 
 ## Example Usage
 

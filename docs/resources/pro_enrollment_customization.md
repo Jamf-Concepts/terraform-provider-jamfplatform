@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_enrollment_customization Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (icon_source, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (branding_settings.icon_url); the two are mutually exclusive.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Enrollment Customizations | `enrollment-customization:create` |
-  | Delete Enrollment Customizations | `enrollment-customization:delete` |
-  | Read Enrollment Customizations | `enrollment-customization:read` |
-  | Update Enrollment Customizations | `enrollment-customization:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Enrollment customization | Create, Read, Update, Delete | `enrollment-customization` |
 ---
 
 # jamfplatform_pro_enrollment_customization (Resource)
 
 Manages a Jamf Pro enrollment customization — the parent record carrying the branding palette plus any combination of text, LDAP, and SSO authentication panes shown to users during enrollment. At most one authentication pane (either LDAP or SSO) can be configured per customization; the two are mutually exclusive. The icon may be supplied either as a local file path (`icon_source`, re-uploaded automatically when its bytes change) or as a pre-uploaded URL (`branding_settings.icon_url`); the two are mutually exclusive.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Enrollment Customizations | `enrollment-customization:create` |
-| Delete Enrollment Customizations | `enrollment-customization:delete` |
-| Read Enrollment Customizations | `enrollment-customization:read` |
-| Update Enrollment Customizations | `enrollment-customization:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Enrollment customization | Create, Read, Update, Delete | `enrollment-customization` |
 
 ## Example Usage
 

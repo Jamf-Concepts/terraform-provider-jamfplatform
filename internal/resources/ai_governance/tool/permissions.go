@@ -17,7 +17,7 @@ var dataSourceSDKMethods = []string{
 	"GetToolSchema",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section for the singular
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section for the singular
 // tool data source.
 var dataSourcePrivileges = permissions.Section(aigovernance.Privileges, dataSourceSDKMethods...)
 
@@ -26,6 +26,6 @@ var pluralDataSourceSDKMethods = []string{
 	"ListTools",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section for the
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section for the
 // plural tools data source.
 var pluralDataSourcePrivileges = permissions.Section(aigovernance.Privileges, pluralDataSourceSDKMethods...)

@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/deviceactions"
@@ -137,7 +136,7 @@ func TestActionPrivileges_Rendered(t *testing.T) {
 		"shutdownDevicePrivileges": {shutdownDevicePrivileges, "device-actions:execute"},
 		"unmanageDevicePrivileges": {unmanageDevicePrivileges, "destructive-device-actions:execute"},
 	} {
-		if !strings.Contains(tc.rendered, tc.want) {
+		if !permissions.Renders(tc.rendered, tc.want) {
 			t.Errorf("%s did not render %q:\n%s", name, tc.want, tc.rendered)
 		}
 	}

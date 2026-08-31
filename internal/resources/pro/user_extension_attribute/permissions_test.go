@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -84,7 +83,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "user-extension-attributes:create") {
+	if !permissions.Renders(resourcePrivileges, "user-extension-attributes:create") {
 		t.Fatalf("resourcePrivileges did not render the user-extension-attributes privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -102,7 +101,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "user-extension-attributes:read") {
+	if !permissions.Renders(dataSourcePrivileges, "user-extension-attributes:read") {
 		t.Fatalf("dataSourcePrivileges did not render the user-extension-attributes privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -120,7 +119,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "user-extension-attributes:read") {
+	if !permissions.Renders(listResourcePrivileges, "user-extension-attributes:read") {
 		t.Fatalf("listResourcePrivileges did not render the user-extension-attributes privileges:\n%s", listResourcePrivileges)
 	}
 }

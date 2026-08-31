@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_notification Resource - terrafor
 subcategory: ""
 description: |-
   Manages a Volume Purchasing notification — the "Notifications" tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set site_id to -1 for no site.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Volume Purchasing Locations | `volume-purchasing-locations:create` |
-  | Delete Volume Purchasing Locations | `volume-purchasing-locations:delete` |
-  | Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
-  | Update Volume Purchasing Locations | `volume-purchasing-locations:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_notification (Resource)
 
 Manages a Volume Purchasing notification — the **"Notifications"** tab under Settings → Volume purchasing in the Jamf Pro admin UI. A notification emails the chosen Jamf Pro accounts and external recipients a daily summary when one of the selected events occurs. Recipients, triggers, and included locations are replaced in full on every apply, so an empty set clears that field. Set `site_id` to `-1` for no site.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Volume Purchasing Locations | `volume-purchasing-locations:create` |
-| Delete Volume Purchasing Locations | `volume-purchasing-locations:delete` |
-| Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
-| Update Volume Purchasing Locations | `volume-purchasing-locations:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 
 ## Example Usage
 

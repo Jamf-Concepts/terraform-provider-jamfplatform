@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the user group resource's CRUD path
 // calls. It mirrors the "SDK endpoints used" block in crud.go and drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteUserGroupByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the user group resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
 
@@ -32,7 +32,7 @@ var dataSourceSDKMethods = []string{
 	"GetUserGroupByName",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the singular user group data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -42,7 +42,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListUserGroups",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges"
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the plural user groups data source.
 var pluralDataSourcePrivileges = permissions.Section(proclassic.Privileges, pluralDataSourceSDKMethods...)
 
@@ -53,6 +53,6 @@ var listResourceSDKMethods = []string{
 	"GetUserGroupByID",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the user group list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

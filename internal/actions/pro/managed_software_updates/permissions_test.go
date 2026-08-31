@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -90,7 +89,7 @@ func TestAbandonFeatureToggleSDKMethods_MatchCalls(t *testing.T) {
 // TestAbandonFeatureTogglePrivileges_Rendered guards that the table actually
 // rendered into the action description.
 func TestAbandonFeatureTogglePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(abandonFeatureTogglePrivileges, "managed-software-updates") {
+	if !permissions.Renders(abandonFeatureTogglePrivileges, "managed-software-updates:update") {
 		t.Fatalf("abandonFeatureTogglePrivileges did not render the managed-software-updates privileges:\n%s", abandonFeatureTogglePrivileges)
 	}
 }
@@ -112,7 +111,7 @@ func TestPlanSDKMethods_MatchCalls(t *testing.T) {
 // TestPlanPrivileges_Rendered guards that the table actually rendered into the
 // action description.
 func TestPlanPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(planPrivileges, "managed-software-updates:create") {
+	if !permissions.Renders(planPrivileges, "managed-software-updates:create") {
 		t.Fatalf("planPrivileges did not render the managed-software-updates privileges:\n%s", planPrivileges)
 	}
 }

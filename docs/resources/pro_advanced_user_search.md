@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_advanced_user_search Resource - terraform-provider
 subcategory: ""
 description: |-
   Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no view_as or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `advanced-user-searches:create` |
-  | `advanced-user-searches:delete` |
-  | `advanced-user-searches:read` |
-  | `advanced-user-searches:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
 ---
 
 # jamfplatform_pro_advanced_user_search (Resource)
 
 Manages a Jamf Pro advanced user search — a saved, criteria-driven user query with a configurable set of display columns. The matched-user result set is server-computed report data and is intentionally not modelled. Unlike advanced computer searches, user searches have no `view_as` or sort columns. Mirrors the Users → Search Users → Advanced User Search UI.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `advanced-user-searches:create` |
-| `advanced-user-searches:delete` |
-| `advanced-user-searches:read` |
-| `advanced-user-searches:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
 
 ## Example Usage
 

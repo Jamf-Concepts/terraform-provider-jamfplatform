@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_pki_json_web_token_configuration Resource - terraf
 subcategory: ""
 description: |-
   Manages a Jamf Pro JSON Web Token configuration — the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `json-web-token-configuration:create` |
-  | `json-web-token-configuration:delete` |
-  | `json-web-token-configuration:read` |
-  | `json-web-token-configuration:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | JSON web token configuration | Create, Read, Update, Delete | `json-web-token-configuration` |
 ---
 
 # jamfplatform_pro_pki_json_web_token_configuration (Resource)
 
 Manages a Jamf Pro JSON Web Token configuration — the "JSON Web Token Configuration" tab under Settings → Global → PKI certificates in the Jamf Pro admin UI. A JSON Web Token configuration holds the encryption key Jamf Pro uses to issue signed tokens (for example, to authenticate apps such as Jamf Setup and Jamf Reset). Note: Jamf Pro allows at most one JSON Web Token configuration per instance — creating a second one fails.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `json-web-token-configuration:create` |
-| `json-web-token-configuration:delete` |
-| `json-web-token-configuration:read` |
-| `json-web-token-configuration:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | JSON web token configuration | Create, Read, Update, Delete | `json-web-token-configuration` |
 
 ## Example Usage
 

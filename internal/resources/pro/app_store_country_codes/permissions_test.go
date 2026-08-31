@@ -68,7 +68,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // parse-skipped registry). ListAppStoreCountryCodesV1 requires no special
 // privilege, so the rendered section is the "None" variant.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "**Required Jamf privileges**") {
+	if !strings.Contains(dataSourcePrivileges, "**Required Jamf permissions**") {
 		t.Fatalf("dataSourcePrivileges did not render the privileges section:\n%s", dataSourcePrivileges)
 	}
 }

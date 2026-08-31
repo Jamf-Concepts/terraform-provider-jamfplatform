@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the mobile device invitation
 // resource's CRUD path calls. It mirrors the "SDK endpoints used" block in
-// crud.go and drives the "Required Jamf privileges" table appended to the
+// crud.go and drives the "Required Jamf permissions" table appended to the
 // resource MarkdownDescription. permissions_test.go asserts this list stays in
 // sync with the actual client.<Method> calls in crud.go and with the SDK
 // privilege registry. (The endpoint is create + delete only; the server rejects
@@ -22,7 +22,7 @@ var resourceSDKMethods = []string{
 	"DeleteMobileDeviceInvitationByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the mobile device invitation resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
@@ -35,7 +35,7 @@ var dataSourceSDKMethods = []string{
 	"GetMobileDeviceInvitationByInvitation",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the mobile device invitation data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -47,6 +47,6 @@ var listResourceSDKMethods = []string{
 	"GetMobileDeviceInvitationByID",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the mobile device invitation list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

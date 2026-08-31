@@ -4,24 +4,24 @@ page_title: "jamfplatform_cbengine_benchmark List Resource - terraform-provider-
 subcategory: ""
 description: |-
   Searches for Jamf Compliance Benchmarks with an optional case-insensitive substring filter.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `compliance-benchmarks:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Compliance | Compliance Benchmarks | Read | `compliance-benchmarks` |
 ---
 
 # jamfplatform_cbengine_benchmark (List Resource)
 
 Searches for Jamf Compliance Benchmarks with an optional case-insensitive substring filter.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `compliance-benchmarks:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Compliance | Compliance Benchmarks | Read | `compliance-benchmarks` |
 
 ## Example Usage
 

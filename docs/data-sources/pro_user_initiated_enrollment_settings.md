@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_user_initiated_enrollment_settings Data Source - t
 subcategory: ""
 description: |-
   Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read User-Initiated Enrollment | `user-initiated-enrollment:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | User-initiated enrollment settings | Read | `user-initiated-enrollment` |
 ---
 
 # jamfplatform_pro_user_initiated_enrollment_settings (Data Source)
 
 Read the current Jamf Pro User-Initiated Enrollment settings (UI: Settings → Global → User-initiated enrollment), including the directory-service Access Groups. Singleton — one record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read User-Initiated Enrollment | `user-initiated-enrollment:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | User-initiated enrollment settings | Read | `user-initiated-enrollment` |
 
 ## Example Usage
 

@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -88,7 +87,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 
 // TestResourcePrivileges_Rendered guards that the table actually rendered.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "patch-external-source:create") {
+	if !permissions.Renders(resourcePrivileges, "patch-external-source:create") {
 		t.Fatalf("resourcePrivileges did not render the patch external source privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -111,7 +110,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "patch-external-source:read") {
+	if !permissions.Renders(dataSourcePrivileges, "patch-external-source:read") {
 		t.Fatalf("dataSourcePrivileges did not render the patch external source privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -134,7 +133,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 
 // TestListResourcePrivileges_Rendered guards that the table actually rendered.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "patch-external-source:read") {
+	if !permissions.Renders(listResourcePrivileges, "patch-external-source:read") {
 		t.Fatalf("listResourcePrivileges did not render the patch external source privileges:\n%s", listResourcePrivileges)
 	}
 }

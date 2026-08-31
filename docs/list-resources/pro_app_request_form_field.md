@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_app_request_form_field List Resource - terraform-p
 subcategory: ""
 description: |-
   Lists Jamf Pro App Request form fields. Supply an optional case-insensitive name_substring filter (matched against the field title); filtering is applied client-side after the full list is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read App Request Settings | `app-request:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | App request settings | Read | `app-request` |
 ---
 
 # jamfplatform_pro_app_request_form_field (List Resource)
 
 Lists Jamf Pro App Request form fields. Supply an optional case-insensitive `name_substring` filter (matched against the field title); filtering is applied client-side after the full list is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read App Request Settings | `app-request:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | App request settings | Read | `app-request` |
 
 ## Example Usage
 

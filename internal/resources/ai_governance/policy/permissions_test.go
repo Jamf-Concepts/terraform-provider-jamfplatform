@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
@@ -120,7 +119,7 @@ func TestResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into the description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
 	for _, privilege := range []string{"ai-policies:create", "ai-policies:read", "ai-policies:update", "ai-policies:delete"} {
-		if !strings.Contains(resourcePrivileges, privilege) {
+		if !permissions.Renders(resourcePrivileges, privilege) {
 			t.Errorf("resourcePrivileges did not render %s:\n%s", privilege, resourcePrivileges)
 		}
 	}
@@ -139,7 +138,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "ai-policies:read") {
+	if !permissions.Renders(dataSourcePrivileges, "ai-policies:read") {
 		t.Fatalf("dataSourcePrivileges did not render the read privilege:\n%s", dataSourcePrivileges)
 	}
 }
@@ -157,7 +156,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "ai-policies:read") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "ai-policies:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the read privilege:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -175,7 +174,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "ai-policies:read") {
+	if !permissions.Renders(listResourcePrivileges, "ai-policies:read") {
 		t.Fatalf("listResourcePrivileges did not render the read privilege:\n%s", listResourcePrivileges)
 	}
 }

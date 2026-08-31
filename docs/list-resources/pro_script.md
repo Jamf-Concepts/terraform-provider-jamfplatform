@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_script List Resource - terraform-provider-jamfplat
 subcategory: ""
 description: |-
   Lists Jamf Pro scripts. Supply an optional filter block to narrow results — the supported selectors match the scripts data source.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Scripts | `scripts:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Scripts | Read | `scripts` |
 ---
 
 # jamfplatform_pro_script (List Resource)
 
 Lists Jamf Pro scripts. Supply an optional `filter` block to narrow results — the supported selectors match the scripts data source.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Scripts | `scripts:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Scripts | Read | `scripts` |
 
 ## Example Usage
 

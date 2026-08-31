@@ -4,24 +4,24 @@ page_title: "jamfplatform_security_cloud_ztna_app List Resource - terraform-prov
 subcategory: ""
 description: |-
   Lists every Jamf Security Cloud access policy application on the tenant. Jamf Security Cloud exposes no filter parameters for applications, so this list resource takes no filter configuration.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 ---
 
 # jamfplatform_security_cloud_ztna_app (List Resource)
 
 Lists every Jamf Security Cloud access policy application on the tenant. Jamf Security Cloud exposes no filter parameters for applications, so this list resource takes no filter configuration.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 
 ## Example Usage
 

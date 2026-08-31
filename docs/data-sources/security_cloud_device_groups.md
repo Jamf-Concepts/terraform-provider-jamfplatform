@@ -4,24 +4,24 @@ page_title: "jamfplatform_security_cloud_device_groups Data Source - terraform-p
 subcategory: ""
 description: |-
   Lists every Jamf Security Cloud device group on the tenant, including the built-in group. Jamf Security Cloud exposes no filter parameters for groups, so this data source takes no search arguments — filter the result in Terraform.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-groups:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device groups | Read | `device-groups` |
 ---
 
 # jamfplatform_security_cloud_device_groups (Data Source)
 
 Lists every Jamf Security Cloud device group on the tenant, including the built-in group. Jamf Security Cloud exposes no filter parameters for groups, so this data source takes no search arguments — filter the result in Terraform.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-groups:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device groups | Read | `device-groups` |
 
 ## Example Usage
 

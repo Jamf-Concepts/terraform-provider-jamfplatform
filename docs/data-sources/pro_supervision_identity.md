@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_supervision_identity Data Source - terraform-provi
 subcategory: ""
 description: |-
   Look up a Jamf Pro supervision identity by ID or display name. Exactly one of id or display_name must be supplied. Display names are not required to be unique; a lookup by display_name errors if more than one identity shares the name — use id to disambiguate.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Apple Configurator Enrollment | `apple-configurator-enrollment:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Apple Configurator enrollment settings | Read | `apple-configurator-enrollment` |
 ---
 
 # jamfplatform_pro_supervision_identity (Data Source)
 
 Look up a Jamf Pro supervision identity by ID or display name. Exactly one of `id` or `display_name` must be supplied. Display names are not required to be unique; a lookup by `display_name` errors if more than one identity shares the name — use `id` to disambiguate.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Apple Configurator Enrollment | `apple-configurator-enrollment:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Apple Configurator enrollment settings | Read | `apple-configurator-enrollment` |
 
 ## Example Usage
 

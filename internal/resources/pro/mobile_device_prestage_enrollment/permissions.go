@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the mobile device prestage
 // enrollment resource's CRUD path calls (crud.go). It mirrors the "SDK
-// endpoints used" block in crud.go and drives the "Required Jamf privileges"
+// endpoints used" block in crud.go and drives the "Required Jamf permissions"
 // table appended to the resource MarkdownDescription. permissions_test.go
 // asserts this list stays in sync with the actual client.<Method> calls in
 // crud.go and with the SDK privilege registry.
@@ -24,7 +24,7 @@ var resourceSDKMethods = []string{
 	"ReplaceMobileDevicePrestageScopeV2",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -38,7 +38,7 @@ var dataSourceSDKMethods = []string{
 	"GetMobileDevicePrestageV3",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the data source, appended to its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -49,6 +49,6 @@ var listResourceSDKMethods = []string{
 	"GetMobileDevicePrestageScopeV2",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the list resource, appended to its top-level Description.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

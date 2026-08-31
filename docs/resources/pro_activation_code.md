@@ -4,26 +4,24 @@ page_title: "jamfplatform_pro_activation_code Resource - terraform-provider-jamf
 subcategory: ""
 description: |-
   Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. Import with terraform import jamfplatform_pro_activation_code.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `activation-code:read` |
-  | `activation-code:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Activation code | Read, Update | `activation-code` |
 ---
 
 # jamfplatform_pro_activation_code (Resource)
 
 Manages the Jamf Pro activation code and organization name (Settings → System → Activation Code). Singleton — one record per tenant. The activation code is a license secret; an invalid code can disable the tenant. Import with `terraform import jamfplatform_pro_activation_code.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `activation-code:read` |
-| `activation-code:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Activation code | Read, Update | `activation-code` |
 
 ## Example Usage
 

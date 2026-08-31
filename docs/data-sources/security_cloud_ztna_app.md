@@ -5,11 +5,11 @@ subcategory: ""
 description: |-
   Look up a Jamf Security Cloud access policy application by ID, by name, or by the Jamf-maintained definition it is based on.
   Which key to use follows from the application's form. A custom application has a name, but names are not required to be unique, so a name matching more than one application is an error. A predefined application has no name of its own at all — Jamf Security Cloud reports it as null — so look one up by predefined_app_id, of which a tenant may hold only one.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 ---
 
 # jamfplatform_security_cloud_ztna_app (Data Source)
@@ -18,13 +18,13 @@ Look up a Jamf Security Cloud access policy application by ID, by name, or by th
 
 Which key to use follows from the application's form. A **custom** application has a name, but names are not required to be unique, so a name matching more than one application is an error. A **predefined** application has no name of its own at all — Jamf Security Cloud reports it as null — so look one up by `predefined_app_id`, of which a tenant may hold only one.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 
 ## Example Usage
 

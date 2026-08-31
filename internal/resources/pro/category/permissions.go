@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the category resource's CRUD path
 // calls. It mirrors the "SDK endpoints used" block in crud.go and drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteCategoryV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the category resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -32,7 +32,7 @@ var dataSourceSDKMethods = []string{
 	"GetCategoryV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the singular category data source.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -42,7 +42,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListCategoriesV1",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges"
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the plural categories data source.
 var pluralDataSourcePrivileges = permissions.Section(pro.Privileges, pluralDataSourceSDKMethods...)
 
@@ -52,6 +52,6 @@ var listResourceSDKMethods = []string{
 	"ListCategoriesV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the category list resource.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

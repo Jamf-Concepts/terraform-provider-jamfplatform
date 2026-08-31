@@ -96,7 +96,7 @@ func TestAccResource_DeviceGroup_StaticComputer(t *testing.T) {
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "group_type", "static"),
 					resource.TestCheckResourceAttr("jamfplatform_device_group.test_static", "device_type", "computer"),
 					// jamf_pro_id is resolved via Pro /v2/groups and depends on the test
-					// tenant having the "Read Groups" privilege wired up on the API
+					// tenant having the Device groups Read permission wired up on the API
 					// client. If this assertion fails on a tenant that lacks Jamf Pro
 					// entirely or lacks the privilege, see the Pro forbidden warning
 					// surfaced during the plan output.

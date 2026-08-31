@@ -4,7 +4,7 @@ page_title: "jamfplatform_pro_login_page_settings Data Source - terraform-provid
 subcategory: ""
 description: |-
   Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). Singleton — one record per tenant.
-  Required Jamf privileges
+  Required Jamf permissions
   None — any authenticated Jamf Platform API integration may call the underlying endpoints.
 ---
 
@@ -12,7 +12,7 @@ description: |-
 
 Read the current Jamf Pro login page disclaimer settings (Settings > System > Login page). Singleton — one record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
 None — any authenticated Jamf Platform API integration may call the underlying endpoints.
 

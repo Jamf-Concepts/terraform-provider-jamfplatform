@@ -5,14 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entries under the "Mobile Device Apps" sidebar. The resource models the app's metadata; uploading an in-house binary (IPA) is not supported. general.name, general.version, and general.bundle_id are required. general.os_type is required only for in-house apps; App Store apps (with an itunes_store_url) do not need it. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. iBeacon scope limitations/exclusions are not supported for mobile device apps.
   Updates are merged, not replaced: removing an entire optional block (scope / self_service / vpp / app_configuration) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `applications:create` |
-  | `applications:delete` |
-  | `applications:read` |
-  | `applications:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 ---
 
 # jamfplatform_pro_mobile_device_app (Resource)
@@ -21,16 +18,13 @@ Manages a Jamf Pro mobile device app — the "App Store App" / in-house app entr
 
 **Updates are merged, not replaced**: removing an entire optional block (`scope` / `self_service` / `vpp` / `app_configuration`) from config does not clear it — the previously-set values are retained. To clear a block, null its individual fields rather than deleting the block.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `applications:create` |
-| `applications:delete` |
-| `applications:read` |
-| `applications:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 
 ## Example Usage
 

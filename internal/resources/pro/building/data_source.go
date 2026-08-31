@@ -39,7 +39,7 @@ func (d *BuildingDataSource) Metadata(ctx context.Context, req datasource.Metada
 // Schema returns the data source schema.
 func (d *BuildingDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Look up a Jamf Pro building by ID.",
+		MarkdownDescription: "Look up a Jamf Pro building by ID." + dataSourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Building ID to look up.",

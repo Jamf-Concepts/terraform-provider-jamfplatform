@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_sso_settings Data Source - terraform-provider-jamf
 subcategory: ""
 description: |-
   Read the current Jamf Pro Single Sign-On configuration. Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read SSO Settings | `sso-settings:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Single Sign-On | Read | `sso-settings` |
 ---
 
 # jamfplatform_pro_sso_settings (Data Source)
 
 Read the current Jamf Pro Single Sign-On configuration. Singleton — one record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read SSO Settings | `sso-settings:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Single Sign-On | Read | `sso-settings` |
 
 ## Example Usage
 

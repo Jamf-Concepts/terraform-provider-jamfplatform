@@ -380,8 +380,9 @@ func IsServerError(err error) bool {
 }
 
 // IsForbiddenError reports whether an error represents a 403/forbidden response from the Jamf API.
-// Used to detect missing privileges on cross-API bridging calls (e.g. resolving the Jamf Pro
-// classic ID for a Platform Services device group when the client lacks "Read Groups").
+// Used to detect missing permissions on cross-API bridging calls (e.g. resolving the Jamf Pro
+// classic ID for a Platform Services device group when the integration lacks the Device groups
+// Read permission).
 func IsForbiddenError(err error) bool {
 	if apiErr, ok := errors.AsType[*jamfplatform.APIResponseError](err); ok {
 		return apiErr.HasStatus(http.StatusForbidden)

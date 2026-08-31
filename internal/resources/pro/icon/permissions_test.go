@@ -69,7 +69,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // so Section emits the "None — any authenticated Jamf Platform API integration"
 // block; assert that rendered rather than an empty string.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "**Required Jamf privileges**") {
+	if !strings.Contains(resourcePrivileges, "**Required Jamf permissions**") {
 		t.Fatalf("resourcePrivileges did not render the privileges section:\n%s", resourcePrivileges)
 	}
 }

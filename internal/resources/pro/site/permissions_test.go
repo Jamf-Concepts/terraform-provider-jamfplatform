@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -120,7 +119,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "sites:create") {
+	if !permissions.Renders(resourcePrivileges, "sites:create") {
 		t.Fatalf("resourcePrivileges did not render the sites privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -138,7 +137,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "sites:read") {
+	if !permissions.Renders(dataSourcePrivileges, "sites:read") {
 		t.Fatalf("dataSourcePrivileges did not render the sites privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -156,7 +155,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "sites:read") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "sites:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the sites privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -174,7 +173,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "sites:read") {
+	if !permissions.Renders(listResourcePrivileges, "sites:read") {
 		t.Fatalf("listResourcePrivileges did not render the sites privileges:\n%s", listResourcePrivileges)
 	}
 }

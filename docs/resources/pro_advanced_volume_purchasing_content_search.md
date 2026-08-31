@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_advanced_volume_purchasing_content_search Resource
 subcategory: ""
 description: |-
   Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's Content Name is Name, Price is Cost, Location is Account.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Advanced User Content Searches | `advanced-user-searches:create` |
-  | Delete Advanced User Content Searches | `advanced-user-searches:delete` |
-  | Read Advanced User Content Searches | `advanced-user-searches:read` |
-  | Update Advanced User Content Searches | `advanced-user-searches:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
 ---
 
 # jamfplatform_pro_advanced_volume_purchasing_content_search (Resource)
 
 Manages a Jamf Pro advanced volume purchasing content search — a saved, criteria-driven query over Volume Purchasing (VPP) content with a configurable set of display columns. The matched-content result set is server-computed report data and is intentionally not modelled. Mirrors the Users → Search volume content → Advanced Volume Purchasing Content Search UI. Criteria and display-field names use Jamf Pro's internal names, which differ from the UI labels — e.g. the UI's `Content Name` is `Name`, `Price` is `Cost`, `Location` is `Account`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Advanced User Content Searches | `advanced-user-searches:create` |
-| Delete Advanced User Content Searches | `advanced-user-searches:delete` |
-| Read Advanced User Content Searches | `advanced-user-searches:read` |
-| Update Advanced User Content Searches | `advanced-user-searches:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Advanced user searches | Create, Read, Update, Delete | `advanced-user-searches` |
 
 ## Example Usage
 

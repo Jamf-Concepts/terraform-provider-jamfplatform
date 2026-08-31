@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -77,10 +76,21 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 // TestResourcePrivileges_Rendered is a guard that the table actually rendered
-// into the resource description (catches an empty/parse-skipped registry).
+// into the resource description (catches an empty/parse-skipped registry). It
+// names every capability-action pair the table renders, not one of them: the
+// GSX read and write both require the APNS push certificate alongside the GSX
+// connection itself, and a row dropped from the table is invisible to a check
+// that only looks for the row it kept.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "gsx-connection:update") {
-		t.Fatalf("resourcePrivileges did not render the gsx-connection privileges:\n%s", resourcePrivileges)
+	for _, want := range []string{
+		"gsx-connection:read",
+		"gsx-connection:update",
+		"push-certificates:read",
+		"push-certificates:update",
+	} {
+		if !permissions.Renders(resourcePrivileges, want) {
+			t.Errorf("resourcePrivileges did not render %q:\n%s", want, resourcePrivileges)
+		}
 	}
 }
 
@@ -107,9 +117,15 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 }
 
 // TestDataSourcePrivileges_Rendered is a guard that the table actually rendered
-// into the data source description.
+// into the data source description. The read alone needs both capabilities, so
+// both are named.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "gsx-connection:read") {
-		t.Fatalf("dataSourcePrivileges did not render the gsx-connection privileges:\n%s", dataSourcePrivileges)
+	for _, want := range []string{
+		"gsx-connection:read",
+		"push-certificates:read",
+	} {
+		if !permissions.Renders(dataSourcePrivileges, want) {
+			t.Errorf("dataSourcePrivileges did not render %q:\n%s", want, dataSourcePrivileges)
+		}
 	}
 }

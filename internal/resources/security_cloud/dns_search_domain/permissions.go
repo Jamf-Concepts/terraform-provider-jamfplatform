@@ -23,10 +23,10 @@ var dataSourceSDKMethods = []string{
 	"GetDnsSearchDomainV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the search domain resource.
 var resourcePrivileges = permissions.Section(securitycloud.Privileges, resourceSDKMethods...)
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the search domain data source.
 var dataSourcePrivileges = permissions.Section(securitycloud.Privileges, dataSourceSDKMethods...)

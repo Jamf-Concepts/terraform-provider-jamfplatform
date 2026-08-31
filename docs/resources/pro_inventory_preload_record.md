@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_inventory_preload_record Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (Settings > Global > Inventory Preload) manages these records via CSV upload; this resource manages individual records through the API instead. Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls — they are consumed, not deleted.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Inventory Preload Records | `inventory-preload-records:create` |
-  | Delete Inventory Preload Records | `inventory-preload-records:delete` |
-  | Read Inventory Preload Records | `inventory-preload-records:read` |
-  | Update Inventory Preload Records | `inventory-preload-records:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Inventory preload | Create, Read, Update, Delete | `inventory-preload-records` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (Resource)
 
 Manages a single Jamf Pro Inventory Preload record. The Jamf Pro admin UI (**Settings > Global > Inventory Preload**) manages these records via CSV upload; this resource manages individual records through the API instead. Preloaded data is applied on an ongoing basis at every inventory collection by matching the device serial number, and overwrites manual inventory edits each time it is applied. Records persist after a device enrolls — they are consumed, not deleted.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Inventory Preload Records | `inventory-preload-records:create` |
-| Delete Inventory Preload Records | `inventory-preload-records:delete` |
-| Read Inventory Preload Records | `inventory-preload-records:read` |
-| Update Inventory Preload Records | `inventory-preload-records:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Inventory preload | Create, Read, Update, Delete | `inventory-preload-records` |
 
 ## Example Usage
 

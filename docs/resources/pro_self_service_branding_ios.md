@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_self_service_branding_ios Resource - terraform-pro
 subcategory: ""
 description: |-
   Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. main_header and the three colour codes are required by the API. Import with terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Self Service Branding Configuration | `self-service:create` |
-  | Delete Self Service Branding Configuration | `self-service:delete` |
-  | Read Self Service Branding Configuration | `self-service:read` |
-  | Update Self Service Branding Configuration | `self-service:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Create, Read, Update, Delete | `self-service` |
 ---
 
 # jamfplatform_pro_self_service_branding_ios (Resource)
 
 Manages the Jamf Pro Self Service iOS & iPadOS branding configuration (Settings > Self Service > Branding > iOS & iPadOS Branding). Singleton — one configuration per tenant. Creating this resource adds the iOS branding; destroying it removes it. `main_header` and the three colour codes are required by the API. Import with `terraform import jamfplatform_pro_self_service_branding_ios.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Self Service Branding Configuration | `self-service:create` |
-| Delete Self Service Branding Configuration | `self-service:delete` |
-| Read Self Service Branding Configuration | `self-service:read` |
-| Update Self Service Branding Configuration | `self-service:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Create, Read, Update, Delete | `self-service` |
 
 ## Example Usage
 

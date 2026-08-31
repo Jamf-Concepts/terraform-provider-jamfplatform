@@ -5,14 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation that registers users with a VPP (Apple Business/School Manager) account so apps and books can be assigned to them.
   Related: device-based Apps & Books locations are managed by jamfplatform_pro_volume_purchasing_location.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `volume-purchasing-locations:create` |
-  | `volume-purchasing-locations:delete` |
-  | `volume-purchasing-locations:read` |
-  | `volume-purchasing-locations:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_vpp_invitation (Resource)
@@ -21,16 +18,13 @@ Manages a Jamf Pro VPP invitation — a user-based Volume Purchasing invitation 
 
 Related: device-based Apps & Books locations are managed by `jamfplatform_pro_volume_purchasing_location`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `volume-purchasing-locations:create` |
-| `volume-purchasing-locations:delete` |
-| `volume-purchasing-locations:read` |
-| `volume-purchasing-locations:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 
 ## Example Usage
 

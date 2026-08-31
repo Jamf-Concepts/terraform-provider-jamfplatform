@@ -6,14 +6,11 @@ description: |-
   Manages a Jamf AI Governance policy — the managed configuration for one AI tool, such as Claude Code, Claude Desktop or OpenAI Codex.
   A policy carries a draft and a history of published versions. Applying a change saves the draft and, unless publish is disabled, publishes it as a new version. Deploying a published version to devices is a separate step: add an AI Governance component to a blueprint and reference the policy's id and published_version. Nothing reaches a device until a blueprint that names the policy is deployed.
   The settings_json body is the tool vendor's own configuration format, checked during terraform plan against the schema Jamf publishes for the tool and schema_version. See the AI Governance policies guide ../guides/ai-governance-policies for where each tool's settings are documented.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ai-policies:create` |
-  | `ai-policies:delete` |
-  | `ai-policies:read` |
-  | `ai-policies:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Compliance | AI policies | Create, Read, Update, Delete | `ai-policies` |
 ---
 
 # jamfplatform_ai_governance_policy (Resource)
@@ -24,16 +21,13 @@ A policy carries a draft and a history of published versions. Applying a change 
 
 The `settings_json` body is the tool vendor's own configuration format, checked during `terraform plan` against the schema Jamf publishes for the tool and `schema_version`. See the [AI Governance policies guide](../guides/ai-governance-policies) for where each tool's settings are documented.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ai-policies:create` |
-| `ai-policies:delete` |
-| `ai-policies:read` |
-| `ai-policies:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Compliance | AI policies | Create, Read, Update, Delete | `ai-policies` |
 
 ## Example Usage
 

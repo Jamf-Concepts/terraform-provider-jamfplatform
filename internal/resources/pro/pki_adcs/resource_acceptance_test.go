@@ -31,11 +31,14 @@ import (
 const adcsAddr = "jamfplatform_pro_pki_adcs.test"
 
 // envAdcsApiClientID names a pre-existing Jamf Pro API client, by its UUID
-// (`client_id`), that holds the *Read AD CS Certificate Jobs* and *Update AD CS
-// Certificate Jobs* privileges. OUTBOUND mode needs one, and the provider can no
-// longer mint it: POST /v1/api-roles and POST /v1/api-integrations were withdrawn
-// at the Platform API GA, so API clients and roles are created in Jamf Account.
-// Unset and the OUTBOUND tests skip rather than infer anything from the absence.
+// (`client_id`), permitted to read and update AD CS certificate jobs — the
+// privileges Jamf Pro called *Read AD CS Certificate Jobs* and *Update AD CS
+// Certificate Jobs* before the Platform API GA, which this provider has no Jamf
+// Account permission recorded for. OUTBOUND mode needs one, and the provider
+// can no longer mint it: POST /v1/api-roles and POST /v1/api-integrations were
+// withdrawn at the Platform API GA, so API clients and roles are created in
+// Jamf Account. Unset and the OUTBOUND tests skip rather than infer anything
+// from the absence.
 const envAdcsApiClientID = "JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID"
 
 // requireAdcsApiClientID skips the calling test unless envAdcsApiClientID names an

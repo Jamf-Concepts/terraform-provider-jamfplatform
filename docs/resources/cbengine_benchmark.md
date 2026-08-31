@@ -4,28 +4,24 @@ page_title: "jamfplatform_cbengine_benchmark Resource - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches SYNCED or a terminal failure. Requires Compliance Benchmarks API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `compliance-benchmarks:create` |
-  | `compliance-benchmarks:delete` |
-  | `compliance-benchmarks:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Compliance | Compliance Benchmarks | Create, Read, Delete | `compliance-benchmarks` |
 ---
 
 # jamfplatform_cbengine_benchmark (Resource)
 
 Creates a Jamf Compliance Benchmark. Creation is asynchronous: the API accepts the request and deploys associated artifacts to the MDM. The provider will poll the benchmark sync state until it reaches `SYNCED` or a terminal failure. Requires **Compliance Benchmarks API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `compliance-benchmarks:create` |
-| `compliance-benchmarks:delete` |
-| `compliance-benchmarks:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Compliance | Compliance Benchmarks | Create, Read, Delete | `compliance-benchmarks` |
 
 ## Example Usage
 

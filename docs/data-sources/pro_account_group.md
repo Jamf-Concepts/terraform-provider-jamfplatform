@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_account_group Data Source - terraform-provider-jam
 subcategory: ""
 description: |-
   Look up a Jamf Pro administrator account group by id or display_name. Values use the same spellings as the jamfplatform_pro_account_group resource; the privileges attribute is the flattened union of the group's privilege grid.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `accounts:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Admin account | Read | `accounts` |
 ---
 
 # jamfplatform_pro_account_group (Data Source)
 
 Look up a Jamf Pro administrator account group by `id` or `display_name`. Values use the same spellings as the `jamfplatform_pro_account_group` resource; the `privileges` attribute is the flattened union of the group's privilege grid.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `accounts:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Admin account | Read | `accounts` |
 
 ## Example Usage
 

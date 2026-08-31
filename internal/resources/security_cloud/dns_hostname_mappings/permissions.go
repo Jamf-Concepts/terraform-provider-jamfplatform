@@ -24,10 +24,10 @@ var dataSourceSDKMethods = []string{
 	"GetDnsCustomHostnameMappingsV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section for
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section for
 // the hostname mappings resource.
 var resourcePrivileges = permissions.Section(securitycloud.Privileges, resourceSDKMethods...)
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the hostname mappings data source.
 var dataSourcePrivileges = permissions.Section(securitycloud.Privileges, dataSourceSDKMethods...)

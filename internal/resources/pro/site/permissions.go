@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteSiteByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the site resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
 
@@ -33,7 +33,7 @@ var dataSourceSDKMethods = []string{
 	"GetSiteByName",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the singular site data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -43,7 +43,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListSites",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the plural site data source.
 var pluralDataSourcePrivileges = permissions.Section(proclassic.Privileges, pluralDataSourceSDKMethods...)
 
@@ -53,6 +53,6 @@ var listResourceSDKMethods = []string{
 	"ListSites",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the site list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

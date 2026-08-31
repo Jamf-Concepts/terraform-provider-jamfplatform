@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -84,7 +83,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "network-segments:create") {
+	if !permissions.Renders(resourcePrivileges, "network-segments:create") {
 		t.Fatalf("resourcePrivileges did not render the network-segments privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -102,7 +101,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "network-segments:read") {
+	if !permissions.Renders(dataSourcePrivileges, "network-segments:read") {
 		t.Fatalf("dataSourcePrivileges did not render the network-segments privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -120,7 +119,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "network-segments:read") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "network-segments:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the network-segments privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -138,7 +137,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "network-segments:read") {
+	if !permissions.Renders(listResourcePrivileges, "network-segments:read") {
 		t.Fatalf("listResourcePrivileges did not render the network-segments privileges:\n%s", listResourcePrivileges)
 	}
 }

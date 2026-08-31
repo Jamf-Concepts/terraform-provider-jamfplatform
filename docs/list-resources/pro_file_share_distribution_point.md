@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_file_share_distribution_point List Resource - terr
 subcategory: ""
 description: |-
   Searches for Jamf Pro file share distribution points using the same filter clauses as the data source.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Distribution Points | `distribution-points:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Distribution points | Read | `distribution-points` |
 ---
 
 # jamfplatform_pro_file_share_distribution_point (List Resource)
 
 Searches for Jamf Pro file share distribution points using the same filter clauses as the data source.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Distribution Points | `distribution-points:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Distribution points | Read | `distribution-points` |
 
 ## Example Usage
 

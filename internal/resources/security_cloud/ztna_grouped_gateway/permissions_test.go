@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -93,7 +92,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "ztna:create") {
+	if !permissions.Renders(resourcePrivileges, "ztna:create") {
 		t.Fatalf("resourcePrivileges did not render the grouped gateway privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -111,7 +110,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "ztna:read") {
+	if !permissions.Renders(dataSourcePrivileges, "ztna:read") {
 		t.Fatalf("dataSourcePrivileges did not render the grouped gateway privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -129,7 +128,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "ztna:read") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "ztna:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the grouped gateway privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -147,7 +146,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "ztna:read") {
+	if !permissions.Renders(listResourcePrivileges, "ztna:read") {
 		t.Fatalf("listResourcePrivileges did not render the grouped gateway privileges:\n%s", listResourcePrivileges)
 	}
 }

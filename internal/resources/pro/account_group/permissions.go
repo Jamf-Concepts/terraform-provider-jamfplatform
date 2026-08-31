@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the account-group resource's CRUD
 // path calls. It mirrors the client.<Method> calls in crud.go and drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with crud.go and with the
 // SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteAccountGroupByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the account-group resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
 
@@ -32,7 +32,7 @@ var dataSourceSDKMethods = []string{
 	"GetAccountGroupByName",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the account-group data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -43,6 +43,6 @@ var listResourceSDKMethods = []string{
 	"ListAccounts",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the account-group list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

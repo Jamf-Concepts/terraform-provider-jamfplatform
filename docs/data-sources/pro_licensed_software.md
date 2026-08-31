@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_licensed_software Data Source - terraform-provider
 subcategory: ""
 description: |-
   Look up a Jamf Pro licensed software record by ID or by exact name. Exactly one of id or name must be supplied. Surfaces a flat read-only projection of the general header; manage the record as a resource for the nested software definitions and licences.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `licensed-software:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Licensed software | Read | `licensed-software` |
 ---
 
 # jamfplatform_pro_licensed_software (Data Source)
 
 Look up a Jamf Pro licensed software record by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces a flat read-only projection of the general header; manage the record as a resource for the nested software definitions and licences.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `licensed-software:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Licensed software | Read | `licensed-software` |
 
 ## Example Usage
 

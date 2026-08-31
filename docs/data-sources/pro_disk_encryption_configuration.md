@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_disk_encryption_configuration Data Source - terraf
 subcategory: ""
 description: |-
   Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of id or name must be supplied. The data source never returns the plaintext IRK password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `disk-encryption-configurations:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Disk encryption | Read | `disk-encryption-configurations` |
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Data Source)
 
 Look up a Jamf Pro disk encryption configuration by ID or by exact name. Exactly one of `id` or `name` must be supplied. The data source never returns the plaintext IRK password — Jamf Pro does not return it on read. Use the resource (not the data source) to manage the password.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `disk-encryption-configurations:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Disk encryption | Read | `disk-encryption-configurations` |
 
 ## Example Usage
 

@@ -12,7 +12,7 @@ import (
 // synchronizeSDKMethods lists the SDK methods the
 // jamfplatform_security_cloud_uem_connect_synchronize action's Invoke path calls.
 // It mirrors the "SDK endpoints used" block in synchronize.go and drives the
-// "Required Jamf privileges" table appended to the action MarkdownDescription.
+// "Required Jamf permissions" table appended to the action MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls and with the SDK privilege registry.
 //
@@ -24,14 +24,14 @@ var synchronizeSDKMethods = []string{
 	"ListUemConnectorsV1",
 }
 
-// synchronizePrivileges is the rendered "Required Jamf privileges" Markdown
+// synchronizePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the synchronize action.
 var synchronizePrivileges = permissions.Section(securitycloud.Privileges, synchronizeSDKMethods...)
 
 // deployActivationProfileSDKMethods lists the SDK methods the
 // jamfplatform_security_cloud_activation_profile_deploy action's Invoke path
 // calls. It mirrors the "SDK endpoints used" block in
-// deploy_activation_profile.go and drives the "Required Jamf privileges" table
+// deploy_activation_profile.go and drives the "Required Jamf permissions" table
 // appended to the action MarkdownDescription. permissions_test.go asserts this
 // list stays in sync with the actual client.<Method> calls and with the SDK
 // privilege registry.
@@ -43,6 +43,6 @@ var deployActivationProfileSDKMethods = []string{
 	"DeployActivationProfileToUemV1",
 }
 
-// deployActivationProfilePrivileges is the rendered "Required Jamf privileges"
+// deployActivationProfilePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the deploy action.
 var deployActivationProfilePrivileges = permissions.Section(securitycloud.Privileges, deployActivationProfileSDKMethods...)

@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -117,15 +116,28 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 }
 
 // TestPrivileges_Rendered guards that each table actually rendered into its
-// description (catches an empty/parse-skipped registry).
+// description (catches an empty/parse-skipped registry). Each section names
+// every action its own table renders, which is not the same set: the create
+// endpoint shares the update capability, so the resource asks for read, update
+// and delete, while both read-only constructs ask for read alone.
 func TestPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "return-to-service:update") {
-		t.Fatalf("resourcePrivileges did not render the expected privileges:\n%s", resourcePrivileges)
-	}
-	if !strings.Contains(dataSourcePrivileges, "return-to-service:read") {
-		t.Fatalf("dataSourcePrivileges did not render the expected privileges:\n%s", dataSourcePrivileges)
-	}
-	if !strings.Contains(listResourcePrivileges, "return-to-service:read") {
-		t.Fatalf("listResourcePrivileges did not render the expected privileges:\n%s", listResourcePrivileges)
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		want     []string
+	}{
+		{"resourcePrivileges", resourcePrivileges, []string{
+			"return-to-service:read",
+			"return-to-service:update",
+			"return-to-service:delete",
+		}},
+		{"dataSourcePrivileges", dataSourcePrivileges, []string{"return-to-service:read"}},
+		{"listResourcePrivileges", listResourcePrivileges, []string{"return-to-service:read"}},
+	} {
+		for _, want := range tc.want {
+			if !permissions.Renders(tc.rendered, want) {
+				t.Errorf("%s did not render %q:\n%s", tc.name, want, tc.rendered)
+			}
+		}
 	}
 }

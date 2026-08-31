@@ -8,14 +8,11 @@ description: |-
   Choose one of two ways to authenticate to Jamf Pro. With platform_tenant, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here — prefer it. With oauth, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
   The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
   After importing, run terraform plan: user_data_field_mapping and group_membership_mapping are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `uem-connect:create` |
-  | `uem-connect:delete` |
-  | `uem-connect:read` |
-  | `uem-connect:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | UEM Connect configuration | Create, Read, Update, Delete | `uem-connect` |
 ---
 
 # jamfplatform_security_cloud_uem_connect (Resource)
@@ -30,16 +27,13 @@ The connection is fixed once created: changing the vendor, the address or the wa
 
 After importing, run `terraform plan`: `user_data_field_mapping` and `group_membership_mapping` are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `uem-connect:create` |
-| `uem-connect:delete` |
-| `uem-connect:read` |
-| `uem-connect:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | UEM Connect configuration | Create, Read, Update, Delete | `uem-connect` |
 
 ## Example Usage
 
@@ -118,9 +112,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # number. Better than a hard-coded "computer_12", which means nothing to a reader
   # and silently stops matching if the group is ever recreated.
   #
-  # jamf_pro_id is null when the API integration lacks Read Groups, or when the group
-  # is not in Jamf Pro yet, so an apply immediately after creating the group may need
-  # a second run.
+  # jamf_pro_id is null when the API integration lacks the Device groups Read
+  # permission, or when the group is not in Jamf Pro yet, so an apply immediately
+  # after creating the group may need a second run.
   #
   # Jamf Security Cloud verifies neither side of a mapping exists, so a wrong ID is
   # accepted and simply never matches — nothing will tell you it is wrong. That is

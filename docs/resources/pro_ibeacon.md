@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_ibeacon Resource - terraform-provider-jamfplatform
 subcategory: ""
 description: |-
   Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set include_any_major_value = true and leave major unset — same for include_any_minor_value and minor. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ibeacon:create` |
-  | `ibeacon:delete` |
-  | `ibeacon:read` |
-  | `ibeacon:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | iBeacon regions | Create, Read, Update, Delete | `ibeacon` |
 ---
 
 # jamfplatform_pro_ibeacon (Resource)
 
 Manages a Jamf Pro iBeacon region. iBeacons are Bluetooth Low Energy regions identified by a UUID plus an optional major/minor pair; Jamf Pro policies and configuration profiles can be scoped to clients that are inside or outside an iBeacon region. To match any major value, set `include_any_major_value = true` and leave `major` unset — same for `include_any_minor_value` and `minor`. The two toggles are independent, so you can match e.g. a specific major with any minor. The resource enforces this mutual exclusivity at plan time.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ibeacon:create` |
-| `ibeacon:delete` |
-| `ibeacon:read` |
-| `ibeacon:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | iBeacon regions | Create, Read, Update, Delete | `ibeacon` |
 
 ## Example Usage
 

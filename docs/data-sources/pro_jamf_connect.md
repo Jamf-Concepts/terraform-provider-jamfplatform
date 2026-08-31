@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_jamf_connect Data Source - terraform-provider-jamf
 subcategory: ""
 description: |-
   Looks up the Jamf Connect deployment and update settings for a configuration profile that is linked to Jamf Connect (Settings → Jamf apps → Jamf Connect). Supply exactly one of config_profile_uuid, profile_id, or profile_name.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Jamf Connect Deployments | `jamf-connect-deployments:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Jamf Connect deployment | Read | `jamf-connect-deployments` |
 ---
 
 # jamfplatform_pro_jamf_connect (Data Source)
 
 Looks up the Jamf Connect deployment and update settings for a configuration profile that is linked to Jamf Connect (Settings → Jamf apps → Jamf Connect). Supply exactly one of `config_profile_uuid`, `profile_id`, or `profile_name`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Jamf Connect Deployments | `jamf-connect-deployments:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Jamf Connect deployment | Read | `jamf-connect-deployments` |
 
 ## Example Usage
 

@@ -4,24 +4,24 @@ page_title: "jamfplatform_blueprints_component Data Source - terraform-provider-
 subcategory: ""
 description: |-
   Returns a blueprint component by identifier. Requires Blueprints API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `blueprints:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Blueprints | Read | `blueprints` |
 ---
 
 # jamfplatform_blueprints_component (Data Source)
 
 Returns a blueprint component by identifier. Requires **Blueprints API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `blueprints:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Blueprints | Read | `blueprints` |
 
 ## Example Usage
 

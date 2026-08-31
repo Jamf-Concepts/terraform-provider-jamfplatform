@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -86,7 +85,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "self-service:") {
+	if !permissions.Renders(resourcePrivileges, "self-service:create") {
 		t.Fatalf("resourcePrivileges did not render the branding privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -109,7 +108,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "self-service:") {
+	if !permissions.Renders(dataSourcePrivileges, "self-service:read") {
 		t.Fatalf("dataSourcePrivileges did not render the branding privileges:\n%s", dataSourcePrivileges)
 	}
 }

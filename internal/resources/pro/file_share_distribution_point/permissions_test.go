@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -113,16 +112,22 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 	assertCallsMatch(t, "list_resource.go", listResourceSDKMethods)
 }
 
-// TestPrivileges_Rendered guards that each table actually rendered the
-// distribution-points privileges (catches an empty/parse-skipped registry).
+// TestPrivileges_Rendered guards that each construct's table rendered the distribution-points
+// row *and* the action that construct actually performs. Asserting the action —
+// not just the capability — is what makes this a drift guard: a row that ticked
+// the wrong boxes would still contain the capability name.
 func TestPrivileges_Rendered(t *testing.T) {
-	for name, got := range map[string]string{
-		"resourcePrivileges":     resourcePrivileges,
-		"dataSourcePrivileges":   dataSourcePrivileges,
-		"listResourcePrivileges": listResourcePrivileges,
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "distribution-points:create"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "distribution-points:read"},
+		{"listResourcePrivileges", listResourcePrivileges, "distribution-points:read"},
 	} {
-		if !strings.Contains(got, "distribution-points:") {
-			t.Errorf("%s did not render the distribution-points privileges:\n%s", name, got)
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
 		}
 	}
 }

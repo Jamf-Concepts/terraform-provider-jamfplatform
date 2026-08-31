@@ -16,6 +16,6 @@ var dataSourceSDKMethods = []string{
 	"ListContentCategoriesV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the content categories data source.
 var dataSourcePrivileges = permissions.Section(securitycloud.Privileges, dataSourceSDKMethods...)

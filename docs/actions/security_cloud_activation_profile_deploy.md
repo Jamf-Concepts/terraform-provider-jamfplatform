@@ -7,11 +7,11 @@ description: |-
   Re-running it is safe: deploying the same activation profile and operating system again updates the configuration profile Jamf Security Cloud already created rather than adding a second one, and it recreates the configuration profile if it has since been deleted in Jamf Pro.
   ~> Scope only ever accumulates. jamf_pro_group_ids adds groups to the configuration profile's scope; it never removes one. Deploying group 3 to a profile already scoped to groups 1 and 2 leaves it scoped to all three, and deploying with the argument omitted leaves the existing scope untouched. To narrow or clear the scope, edit the configuration profile in Jamf Pro.
   ~> Omitting jamf_pro_group_ids on a first deployment scopes the configuration profile to nothing, so it reaches no devices. Jamf Security Cloud reports success either way, so name at least one group unless you intend to scope the profile in Jamf Pro yourself.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `uem-connect:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | UEM Connect configuration | Update | `uem-connect` |
 ---
 
 # jamfplatform_security_cloud_activation_profile_deploy (Action)
@@ -24,13 +24,13 @@ Re-running it is safe: deploying the same activation profile and operating syste
 
 ~> **Omitting `jamf_pro_group_ids` on a first deployment scopes the configuration profile to nothing**, so it reaches no devices. Jamf Security Cloud reports success either way, so name at least one group unless you intend to scope the profile in Jamf Pro yourself.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `uem-connect:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | UEM Connect configuration | Update | `uem-connect` |
 
 ## Example Usage
 

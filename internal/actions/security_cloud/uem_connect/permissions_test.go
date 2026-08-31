@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -78,7 +77,7 @@ func TestSynchronizeSDKMethods_MatchReadCalls(t *testing.T) {
 // TestSynchronizePrivileges_Rendered is a guard that the table actually rendered
 // into the data source description (catches an empty/parse-skipped registry).
 func TestSynchronizePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(synchronizePrivileges, "uem-connect") {
+	if !permissions.Renders(synchronizePrivileges, "uem-connect:update") {
 		t.Fatalf("synchronizePrivileges did not render the devices privileges:\n%s", synchronizePrivileges)
 	}
 }
@@ -142,7 +141,7 @@ func TestDeployActivationProfileSDKMethods_MatchInvokeCalls(t *testing.T) {
 // TestDeployActivationProfilePrivileges_Rendered guards that the table actually
 // rendered into the action description.
 func TestDeployActivationProfilePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(deployActivationProfilePrivileges, "uem-connect") {
+	if !permissions.Renders(deployActivationProfilePrivileges, "uem-connect:update") {
 		t.Fatalf("deployActivationProfilePrivileges did not render the UEM Connect privileges:\n%s", deployActivationProfilePrivileges)
 	}
 }

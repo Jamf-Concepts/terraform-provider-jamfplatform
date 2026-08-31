@@ -10,7 +10,7 @@ import (
 )
 
 // resourceSDKMethods lists the SDK methods the package resource's CRUD path
-// calls (in crud.go). It drives the "Required Jamf privileges" table appended
+// calls (in crud.go). It drives the "Required Jamf permissions" table appended
 // to the resource MarkdownDescription. permissions_test.go asserts this list
 // stays in sync with the actual client.<Method> calls in crud.go and with the
 // SDK privilege registry.
@@ -24,7 +24,7 @@ var resourceSDKMethods = []string{
 	"DeletePackageManifestV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the package resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -38,7 +38,7 @@ var dataSourceSDKMethods = []string{
 	"GetPackageV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the package data source, appended to its MarkdownDescription.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -48,6 +48,6 @@ var listResourceSDKMethods = []string{
 	"ListPackagesV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the package list resource, appended to its Description.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

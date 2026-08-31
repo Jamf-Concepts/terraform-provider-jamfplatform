@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -117,14 +116,22 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 
 // --- rendered-table guards ---
 
+// TestPrivileges_Rendered guards that each construct's table rendered the applications
+// row *and* the action that construct actually performs. Asserting the action —
+// not just the capability — is what makes this a drift guard: a row that ticked
+// the wrong boxes would still contain the capability name.
 func TestPrivileges_Rendered(t *testing.T) {
-	for name, got := range map[string]string{
-		"resource":     resourcePrivileges,
-		"dataSource":   dataSourcePrivileges,
-		"listResource": listResourcePrivileges,
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "applications:create"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "applications:read"},
+		{"listResourcePrivileges", listResourcePrivileges, "applications:read"},
 	} {
-		if !strings.Contains(got, "applications:") {
-			t.Errorf("%sPrivileges did not render the mac-applications privileges:\n%s", name, got)
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
 		}
 	}
 }

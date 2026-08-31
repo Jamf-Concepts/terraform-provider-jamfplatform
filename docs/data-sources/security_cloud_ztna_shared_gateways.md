@@ -5,11 +5,11 @@ subcategory: ""
 description: |-
   Reads the "Shared gateways" catalogue in the Jamf Security Cloud admin UI — Jamf-operated gateways available to every entitled tenant, alongside any dedicated gateways of your own. They cannot be modified or deleted, and no status is reported for them.
   Use this to resolve the ID a custom DNS zone name server needs without hard-coding it. A shared gateway cannot be a member of a grouped gateway.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 ---
 
 # jamfplatform_security_cloud_ztna_shared_gateways (Data Source)
@@ -18,13 +18,13 @@ Reads the **"Shared gateways"** catalogue in the Jamf Security Cloud admin UI �
 
 Use this to resolve the ID a custom DNS zone name server needs without hard-coding it. A shared gateway cannot be a member of a grouped gateway.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 
 ## Example Usage
 

@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_restricted_software Resource - terraform-provider-
 subcategory: ""
 description: |-
   Manages a Jamf Pro restricted software record — the "Restricted software" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `restricted-software:create` |
-  | `restricted-software:delete` |
-  | `restricted-software:read` |
-  | `restricted-software:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Restricted software | Create, Read, Update, Delete | `restricted-software` |
 ---
 
 # jamfplatform_pro_restricted_software (Resource)
 
 Manages a Jamf Pro restricted software record — the "Restricted software" entry under the Computers sidebar in the Jamf Pro admin UI. Restricts a process by name on the targeted computers, optionally killing the process, deleting the application, and notifying admins. Scope is computer-only and supports targets and exclusions but not limitations.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `restricted-software:create` |
-| `restricted-software:delete` |
-| `restricted-software:read` |
-| `restricted-software:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Restricted software | Create, Read, Update, Delete | `restricted-software` |
 
 ## Example Usage
 

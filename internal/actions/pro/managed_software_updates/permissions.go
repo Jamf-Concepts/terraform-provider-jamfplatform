@@ -11,7 +11,7 @@ import (
 
 // abandonFeatureToggleSDKMethods lists the SDK methods the abandon-feature-toggle
 // action's Invoke path calls. It mirrors the "SDK endpoints used" block in
-// abandon.go and drives the "Required Jamf privileges" table appended to the
+// abandon.go and drives the "Required Jamf permissions" table appended to the
 // action MarkdownDescription. permissions_test.go asserts this list stays in
 // sync with the actual client.<Method> calls in abandon.go and with the SDK
 // privilege registry.
@@ -19,7 +19,7 @@ var abandonFeatureToggleSDKMethods = []string{
 	"AbandonManagedSoftwareUpdateFeatureToggleV1",
 }
 
-// abandonFeatureTogglePrivileges is the rendered "Required Jamf privileges"
+// abandonFeatureTogglePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the abandon-feature-toggle action, appended to its
 // MarkdownDescription.
 var abandonFeatureTogglePrivileges = permissions.Section(pro.Privileges, abandonFeatureToggleSDKMethods...)
@@ -33,6 +33,6 @@ var planSDKMethods = []string{
 	"CreateManagedSoftwareUpdateGroupPlanV1",
 }
 
-// planPrivileges is the rendered "Required Jamf privileges" Markdown section for
+// planPrivileges is the rendered "Required Jamf permissions" Markdown section for
 // the plan action, appended to its MarkdownDescription.
 var planPrivileges = permissions.Section(pro.Privileges, planSDKMethods...)

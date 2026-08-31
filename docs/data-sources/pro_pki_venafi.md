@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_pki_venafi Data Source - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Look up a Jamf Pro Venafi certificate authority by ID (Settings → Global → PKI certificates). The refresh token is never exposed — Jamf Pro does not return it on read. Preview feature — may change in a future Jamf Pro release.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read PKI | `pki:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | PKI certificates | Read | `pki` |
 ---
 
 # jamfplatform_pro_pki_venafi (Data Source)
 
 Look up a Jamf Pro Venafi certificate authority by ID (Settings → Global → PKI certificates). The refresh token is never exposed — Jamf Pro does not return it on read. **Preview feature** — may change in a future Jamf Pro release.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read PKI | `pki:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | PKI certificates | Read | `pki` |
 
 
 

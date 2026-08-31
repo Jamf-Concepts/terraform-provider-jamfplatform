@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_extension_attribute Resource - terra
 subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device extension attribute — a custom inventory field collected from managed mobile devices. Mirrors the Settings → Mobile device management → Extension Attributes UI. Mobile-device EAs cannot run scripts, so there is no script/enabled field. The input_type acts as a discriminator: popup_menu_choices only with POPUP; directory_service_attribute (+ allow_multiple_values) only with DIRECTORY_SERVICE_ATTRIBUTE_MAPPING. A plan-time validator enforces these rules before apply.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Mobile Device Extension Attributes | `extension-attributes:create` |
-  | Delete Mobile Device Extension Attributes | `extension-attributes:delete` |
-  | Read Mobile Device Extension Attributes | `extension-attributes:read` |
-  | Update Mobile Device Extension Attributes | `extension-attributes:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device extension attributes | Create, Read, Update, Delete | `extension-attributes` |
 ---
 
 # jamfplatform_pro_mobile_device_extension_attribute (Resource)
 
 Manages a Jamf Pro mobile device extension attribute — a custom inventory field collected from managed mobile devices. Mirrors the Settings → Mobile device management → Extension Attributes UI. Mobile-device EAs cannot run scripts, so there is no script/enabled field. The `input_type` acts as a discriminator: `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`. A plan-time validator enforces these rules before apply.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Mobile Device Extension Attributes | `extension-attributes:create` |
-| Delete Mobile Device Extension Attributes | `extension-attributes:delete` |
-| Read Mobile Device Extension Attributes | `extension-attributes:read` |
-| Update Mobile Device Extension Attributes | `extension-attributes:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device extension attributes | Create, Read, Update, Delete | `extension-attributes` |
 
 ## Example Usage
 

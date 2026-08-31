@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_prestage_enrollment List Resource - 
 subcategory: ""
 description: |-
   Lists Jamf Pro Mobile Device PreStage Enrollments. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so include_resource = true does not require a follow-up read per item.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Mobile Device PreStage Enrollments | `prestage-enrollments:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | PreStage enrollments | Read | `prestage-enrollments` |
 ---
 
 # jamfplatform_pro_mobile_device_prestage_enrollment (List Resource)
 
 Lists Jamf Pro Mobile Device PreStage Enrollments. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response carries every attribute, so `include_resource = true` does not require a follow-up read per item.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Mobile Device PreStage Enrollments | `prestage-enrollments:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | PreStage enrollments | Read | `prestage-enrollments` |
 
 ## Example Usage
 

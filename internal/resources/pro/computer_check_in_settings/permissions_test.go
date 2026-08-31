@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -100,7 +99,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "computer-check-in:update") {
+	if !permissions.Renders(resourcePrivileges, "computer-check-in:update") {
 		t.Fatalf("resourcePrivileges did not render the check-in privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -108,7 +107,7 @@ func TestResourcePrivileges_Rendered(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "computer-check-in:read") {
+	if !permissions.Renders(dataSourcePrivileges, "computer-check-in:read") {
 		t.Fatalf("dataSourcePrivileges did not render the check-in privileges:\n%s", dataSourcePrivileges)
 	}
 }

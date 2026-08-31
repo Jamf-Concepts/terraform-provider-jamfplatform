@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_user_extension_attribute Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only Text Field and Pop-up Menu input types; popup_menu_choices is valid only with Pop-up Menu (enforced at plan time).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `user-extension-attributes:create` |
-  | `user-extension-attributes:delete` |
-  | `user-extension-attributes:read` |
-  | `user-extension-attributes:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | User extension attributes | Create, Read, Update, Delete | `user-extension-attributes` |
 ---
 
 # jamfplatform_pro_user_extension_attribute (Resource)
 
 Manages a Jamf Pro user extension attribute — a custom inventory field collected for users. Mirrors the Settings → User management → Extension Attributes UI. User EAs support only `Text Field` and `Pop-up Menu` input types; `popup_menu_choices` is valid only with `Pop-up Menu` (enforced at plan time).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `user-extension-attributes:create` |
-| `user-extension-attributes:delete` |
-| `user-extension-attributes:read` |
-| `user-extension-attributes:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | User extension attributes | Create, Read, Update, Delete | `user-extension-attributes` |
 
 ## Example Usage
 

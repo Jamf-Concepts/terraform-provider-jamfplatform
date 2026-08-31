@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -88,8 +87,8 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "activation-code:read") ||
-		!strings.Contains(resourcePrivileges, "activation-code:update") {
+	if !permissions.Renders(resourcePrivileges, "activation-code:read") ||
+		!permissions.Renders(resourcePrivileges, "activation-code:update") {
 		t.Fatalf("resourcePrivileges did not render the activation-code privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -112,7 +111,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "activation-code:read") {
+	if !permissions.Renders(dataSourcePrivileges, "activation-code:read") {
 		t.Fatalf("dataSourcePrivileges did not render the activation-code privileges:\n%s", dataSourcePrivileges)
 	}
 }

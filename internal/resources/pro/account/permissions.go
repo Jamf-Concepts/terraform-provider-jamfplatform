@@ -18,7 +18,7 @@ var resourcePrivilegeRegistry = permissions.Merge(pro.Privileges, proclassic.Pri
 
 // resourceSDKMethods lists the SDK methods the account resource's CRUD path
 // calls (crud.go). It mirrors the "SDK endpoints used" block in crud.go and
-// drives the "Required Jamf privileges" table appended to the resource
+// drives the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
 // the actual client.<Method> calls in crud.go and with the SDK privilege
 // registry. Synthetic resolver methods (e.g. ResolveAccountV1ByName) are not
@@ -33,7 +33,7 @@ var resourceSDKMethods = []string{
 	"UpdateAccountByUserID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the account resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(resourcePrivilegeRegistry, resourceSDKMethods...)
 
@@ -45,7 +45,7 @@ var dataSourceSDKMethods = []string{
 	"GetAccountV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the account data source.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -55,6 +55,6 @@ var listResourceSDKMethods = []string{
 	"ListAccountsV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the account list resource.
 var listResourcePrivileges = permissions.Section(pro.Privileges, listResourceSDKMethods...)

@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_account Resource - terraform-provider-jamfplatform
 subcategory: ""
 description: |-
   Manages a Jamf Pro administrator login account — a person who signs in to Jamf Pro. This is NOT the jamfplatform_pro_user inventory construct (end-user/device records). A Custom privilege grid can be assigned via the privileges block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing account_type forces the account to be replaced.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Accounts | `accounts:create` |
-  | Delete Accounts | `accounts:delete` |
-  | Read Accounts | `accounts:read` |
-  | Update Accounts | `accounts:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Admin account | Create, Read, Update, Delete | `accounts` |
 ---
 
 # jamfplatform_pro_account (Resource)
 
 Manages a Jamf Pro **administrator login account** — a person who signs in to Jamf Pro. This is NOT the `jamfplatform_pro_user` inventory construct (end-user/device records). A Custom privilege grid can be assigned via the `privileges` block. In-place updates to base account fields (username, full name, email, access level, etc.) are applied via the Jamf Pro API. Changing `account_type` forces the account to be replaced.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Accounts | `accounts:create` |
-| Delete Accounts | `accounts:delete` |
-| Read Accounts | `accounts:read` |
-| Update Accounts | `accounts:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Admin account | Create, Read, Update, Delete | `accounts` |
 
 ## Example Usage
 

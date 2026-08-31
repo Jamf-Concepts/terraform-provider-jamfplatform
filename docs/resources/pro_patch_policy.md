@@ -5,14 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro patch policy, found in the UI under Computers → Patch management on a software title's Patch Policies tab (the New Patch Policy form). A patch policy is created against a patch software title configuration (software_title_configuration_id, a jamfplatform_pro_patch_software_title ID) and deploys a single target_version of that title. Only versions that have a package assigned on the title can be targeted.
   The form spans three tabs: General (name, enabled, target_version, distribution_method, allow_downgrade, patch_unknown), Scope (scope), and User Interaction (user_interaction). Several General-tab fields are server-derived from the selected target_version's patch definition and are read-only: release_date, incremental_update, reboot, minimum_os, and kill_apps.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `patch-policies:create` |
-  | `patch-policies:delete` |
-  | `patch-policies:read` |
-  | `patch-policies:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Patch policies | Create, Read, Update, Delete | `patch-policies` |
 ---
 
 # jamfplatform_pro_patch_policy (Resource)
@@ -21,16 +18,13 @@ Manages a Jamf Pro patch policy, found in the UI under **Computers → Patch man
 
 The form spans three tabs: **General** (`name`, `enabled`, `target_version`, `distribution_method`, `allow_downgrade`, `patch_unknown`), **Scope** (`scope`), and **User Interaction** (`user_interaction`). Several **General**-tab fields are server-derived from the selected `target_version`'s patch definition and are read-only: `release_date`, `incremental_update`, `reboot`, `minimum_os`, and `kill_apps`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `patch-policies:create` |
-| `patch-policies:delete` |
-| `patch-policies:read` |
-| `patch-policies:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Patch policies | Create, Read, Update, Delete | `patch-policies` |
 
 ## Example Usage
 

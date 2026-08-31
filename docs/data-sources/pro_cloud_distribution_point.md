@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_cloud_distribution_point Data Source - terraform-p
 subcategory: ""
 description: |-
   Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. cdn_type is NONE when no cloud distribution point is configured.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Cloud Distribution Point | `cloud-distribution-point:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Cloud Distribution Point | Read | `cloud-distribution-point` |
 ---
 
 # jamfplatform_pro_cloud_distribution_point (Data Source)
 
 Read the current Jamf Pro cloud distribution point configuration. Singleton — one record per tenant. `cdn_type` is `NONE` when no cloud distribution point is configured.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Cloud Distribution Point | `cloud-distribution-point:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Cloud Distribution Point | Read | `cloud-distribution-point` |
 
 ## Example Usage
 

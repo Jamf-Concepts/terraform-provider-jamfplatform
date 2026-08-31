@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_computer_extension_attribute Resource - terraform-
 subcategory: ""
 description: |-
   Manages a Jamf Pro computer extension attribute — a custom inventory field collected from managed computers. Mirrors the Settings → Computer management → Extension Attributes UI. The input_type acts as a discriminator: script is required for (and only valid with) SCRIPT; popup_menu_choices only with POPUP; directory_service_attribute (+ allow_multiple_values) only with DIRECTORY_SERVICE_ATTRIBUTE_MAPPING; and only SCRIPT EAs may be disabled. A plan-time validator enforces these rules before apply.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Computer Extension Attributes | `extension-attributes:create` |
-  | Delete Computer Extension Attributes | `extension-attributes:delete` |
-  | Read Computer Extension Attributes | `extension-attributes:read` |
-  | Update Computer Extension Attributes | `extension-attributes:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device extension attributes | Create, Read, Update, Delete | `extension-attributes` |
 ---
 
 # jamfplatform_pro_computer_extension_attribute (Resource)
 
 Manages a Jamf Pro computer extension attribute — a custom inventory field collected from managed computers. Mirrors the Settings → Computer management → Extension Attributes UI. The `input_type` acts as a discriminator: `script` is required for (and only valid with) `SCRIPT`; `popup_menu_choices` only with `POPUP`; `directory_service_attribute` (+ `allow_multiple_values`) only with `DIRECTORY_SERVICE_ATTRIBUTE_MAPPING`; and only `SCRIPT` EAs may be disabled. A plan-time validator enforces these rules before apply.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Computer Extension Attributes | `extension-attributes:create` |
-| Delete Computer Extension Attributes | `extension-attributes:delete` |
-| Read Computer Extension Attributes | `extension-attributes:read` |
-| Update Computer Extension Attributes | `extension-attributes:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device extension attributes | Create, Read, Update, Delete | `extension-attributes` |
 
 ## Example Usage
 

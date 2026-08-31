@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_user_group Resource - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Manages a Jamf Pro user group (smart or static). For smart groups, supply criteria; Jamf Pro resolves the user list. For static groups, supply members (user IDs as strings); criteria is forbidden. The group_type field acts as the discriminator and triggers a replace if changed — mirrors jamfplatform_device_group.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `user-groups:create` |
-  | `user-groups:delete` |
-  | `user-groups:read` |
-  | `user-groups:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | User groups | Create, Read, Update, Delete | `user-groups` |
 ---
 
 # jamfplatform_pro_user_group (Resource)
 
 Manages a Jamf Pro user group (smart or static). For smart groups, supply `criteria`; Jamf Pro resolves the user list. For static groups, supply `members` (user IDs as strings); `criteria` is forbidden. The `group_type` field acts as the discriminator and triggers a replace if changed — mirrors `jamfplatform_device_group`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `user-groups:create` |
-| `user-groups:delete` |
-| `user-groups:read` |
-| `user-groups:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | User groups | Create, Read, Update, Delete | `user-groups` |
 
 ## Example Usage
 

@@ -1,29 +1,49 @@
 // Copyright Jamf Software LLC 2026
 // SPDX-License-Identifier: MPL-2.0
 
-// Package permissions renders the Jamf API privileges a resource or data
-// source requires into a Markdown table suitable for appending to a
-// schema MarkdownDescription.
+// Package permissions renders the Jamf API permissions a resource or data
+// source requires into a Markdown table suitable for appending to a schema
+// MarkdownDescription.
 //
-// The privilege data is sourced from the jamfplatform-go-sdk: every generated
-// SDK sub-package (pro, devices, proclassic, ...) exposes a Privileges map
-// keyed by method name. A construct declares the SDK methods it calls and this
-// package turns the union of their required privileges into a deduplicated,
-// operator-facing table. The legacy privilege names (e.g. "Read Buildings")
-// are the labels shown in the Jamf Pro admin UI when granting privileges to a
-// Jamf Platform API integration, so the table is genuinely user-facing rather
-// than API plumbing.
+// The data is sourced from the jamfplatform-go-sdk: every generated SDK
+// sub-package (pro, devices, proclassic, ...) exposes a Privileges map keyed by
+// method name, whose Scoped field carries the GA capability permissions the
+// endpoint requires in {capability}:{action} form. A construct declares the SDK
+// methods it calls and this package turns the union of their requirements into
+// one deduplicated, operator-facing table.
+//
+// The table is written for the person creating the API integration, which
+// happens in Jamf Account, so a row is a row of Jamf Account's permission
+// picker: the section it sits under, the name printed beside its checkboxes,
+// and which of those checkboxes to tick. catalogue.go holds that mapping.
+//
+// The SDK also publishes each method's pre-GA Jamf Pro privilege names
+// (MethodPrivileges.Legacy) and this package used to render them beside the
+// capability. It no longer does. Scoped and Legacy are independent sets — the
+// GA consolidation mapped several pre-GA privileges onto one capability, and
+// where the lengths do match the spec's own orders disagree — so no per-row
+// label can be derived from them, and Jamf Account no longer offers the pre-GA
+// names to grant.
 package permissions
 
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 )
+
+// platformAPIGettingStartedURL is Jamf's "Getting started with the Platform
+// API" page, which covers registering an API integration. A rendered table
+// names both Jamf Account and its permission picker, and a reader arriving at a
+// single Registry page from a search engine has no other route to either, so
+// the lead-in links it. It is an absolute URL because the block is also
+// embedded in each page's YAML frontmatter description, where a relative
+// Registry link would not resolve.
+const platformAPIGettingStartedURL = "https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api"
 
 // Registry is the type of the per-package Privileges maps exported by the SDK
 // (e.g. pro.Privileges). Aliased here so callers and Merge read cleanly.
@@ -41,242 +61,63 @@ func Merge(registries ...Registry) Registry {
 	return out
 }
 
-// privilege is one deduplicated table row: a scoped identifier plus its
-// human-readable Jamf Pro privilege name when one is published.
-type privilege struct {
-	scoped string
-	legacy string
-}
+// malformedAction is the action recorded for a scoped value splitScoped could
+// not parse. It is prose rather than a slug and has no actionLabels entry, so
+// actionList prints it verbatim: the row's Actions cell says the shape was not
+// understood instead of sitting empty, which in Jamf Account's model would read
+// as a permission granting nothing.
+const malformedAction = "unrecognised permission shape"
 
-// legacyVerbActions maps the verb a Jamf Pro privilege name starts with to the
-// action of the scoped identifier it must correspond to. Only the four CRUD
-// verbs are listed: they are the ones a privilege name states unambiguously.
-var legacyVerbActions = map[string]string{
-	"Create": "create",
-	"Read":   "read",
-	"Update": "update",
-	"Delete": "delete",
-}
-
-// pairLegacy returns the Jamf Pro privilege name to render against each of
-// scoped, or nil when no pairing can be trusted. Index i of the result belongs
-// to index i of scoped; an empty string means that row has no label.
+// requirement is one deduplicated table row: a capability plus every action on
+// it the construct needs. One row per capability rather than per
+// capability-action pair, because that is how Jamf Account presents it — a
+// permission with a checkbox per action — and it collapses the four rows of an
+// ordinary CRUD resource into one.
 //
-// The SDK documents Scoped and Legacy as two sets with no bijection, and emits
-// Scoped sorted against Legacy in spec order, so index pairing is a guess. It
-// is also not the only thing available, and discarding the whole set when the
-// guess fails throws away pairings the data determines exactly. So this
-// degrades in stages, most trustworthy first:
-//
-//  1. index pairing, when verifiedPairing can confirm every row;
-//  2. verb-keyed pairing, when every scoped identifier shares one capability —
-//     then the label's leading CRUD verb names its action outright and the
-//     assignment is a bijection no ordering can disturb;
-//  3. a single scoped identifier, which every published name must belong to
-//     because there is nothing else for them to belong to;
-//  4. otherwise unlabelled, because a missing label is honest and a wrong one
-//     is not.
-//
-// Stage 3 exists for Jamf's GA privilege collapse: several pre-GA privileges
-// map onto one GA identifier (ListMacOSBrandingConfigurationsV1 needs both
-// "Read Self Service Branding Configuration" and "Read Self Service" for
-// `self-service:read`), and a length mismatch there is the collapse, not an
-// unpairable set.
-func pairLegacy(scoped, legacy []string) []string {
-	if len(scoped) == 0 || len(legacy) == 0 {
-		return nil
-	}
-	if len(scoped) == len(legacy) {
-		if verifiedPairing(scoped, legacy) {
-			return legacy
-		}
-		return verbKeyedPairing(scoped, legacy)
-	}
-	if len(scoped) == 1 {
-		return []string{strings.Join(legacy, ", ")}
-	}
-	return nil
+// malformed marks a row built from a scoped value splitScoped rejected. Such a
+// row is kept apart from a well-formed row for the same capability rather than
+// merged into it, because merging would let the malformed value vanish into a
+// sibling's checkboxes and leave no trace that anything was unreadable.
+type requirement struct {
+	capability string
+	actions    map[string]bool
+	malformed  bool
 }
 
-// verbKeyedPairing pairs each legacy name to the scoped identifier whose action
-// matches the name's leading CRUD verb. It applies only when every scoped
-// identifier shares one capability — otherwise the verb does not identify a row
-// — and only when the result is a total bijection, so a set with a duplicate or
-// uncheckable verb is refused rather than half-paired.
-func verbKeyedPairing(scoped, legacy []string) []string {
-	byAction := make(map[string]int, len(scoped))
-	capability := capabilityOf(scoped[0])
-	for i, s := range scoped {
-		if capabilityOf(s) != capability {
-			return nil
-		}
-		byAction[actionOf(s)] = i
+// splitScoped divides a GA capability permission into its capability and action
+// halves and reports whether the value had that shape at all. The SDK's Scoped
+// field documents the two-part GA form as the only one it emits and every entry
+// in every shipped registry is that form, so anything else is a shape this
+// package has never seen: an empty half, no colon, or more than one colon as in
+// the retired three-part beta slug "create:pro:buildings". More than one colon
+// is rejected rather than cut at the first, because "create:pro:buildings"
+// would otherwise yield the capability "create" — naming a permission that does
+// not exist, under a footnote blaming the wrong cause.
+func splitScoped(scoped string) (capability, action string, ok bool) {
+	capability, action, ok = strings.Cut(scoped, ":")
+	if !ok || capability == "" || action == "" || strings.Contains(action, ":") {
+		return "", "", false
 	}
-	out := make([]string, len(scoped))
-	paired := 0
-	for _, name := range legacy {
-		verb, _, ok := strings.Cut(name, " ")
-		if !ok {
-			return nil
-		}
-		action, known := legacyVerbActions[verb]
-		if !known {
-			return nil
-		}
-		i, ok := byAction[action]
-		if !ok || out[i] != "" {
-			return nil
-		}
-		out[i] = name
-		paired++
-	}
-	if paired != len(scoped) {
-		return nil
-	}
-	return out
+	return capability, action, true
 }
 
-// verifiedPairing reports whether scoped[i] and legacy[i] can be trusted to
-// describe the same privilege.
-//
-// A single privilege has no ordering to get wrong, so it is always trusted —
-// which keeps every ordinary one-privilege method's admin-UI label intact. From
-// two privileges up, each row must survive three independent checks:
-//
-//   - the legacy name's leading verb must name the action its scoped partner
-//     carries. A verb outside the four CRUD ones (e.g. "Send Computer Remote
-//     Command to Install Package") cannot be checked at all.
-//   - the legacy name's remaining words must share a word with the scoped
-//     identifier's capability. The verb alone is not enough: where every
-//     privilege on a method has the SAME action the verb test passes whatever
-//     the order, so it would wave through GetDeviceGroupsForDeviceV1's
-//     [device-groups:read, devices:read] against [Read Computers, Read Mobile
-//     Devices] — which labels `device-groups:read` "Read Computers".
-//   - that shared word must be discriminating: no other capability on the
-//     method may share a word with the same label. Overlap is symmetric, so
-//     "device" is common to `device-groups` and `devices` and confirms nothing
-//     about which row a label naming a device belongs to — the four
-//     List{Smart,Static}MobileDeviceGroupMembership methods pass the first two
-//     checks in either order. A sibling carrying the SAME capability is not a
-//     rival, because the verb already separates those rows;
-//     UploadInventoryPreloadCsvV2 pairs two inventory-preload-record
-//     privileges beside two user ones and is correctly confirmed.
-//
-// Failing any check marks the whole method unverified rather than half-trusted,
-// because a set with one bad row gives no reason to trust the others. Callers
-// reach for pairLegacy rather than this function directly, so an unverifiable
-// set still gets the reconstruction stages before it is given up on.
-func verifiedPairing(scoped, legacy []string) bool {
-	if len(scoped) != len(legacy) {
-		return false
-	}
-	if len(scoped) < 2 {
-		return true
-	}
-	for i, name := range legacy {
-		verb, rest, ok := strings.Cut(name, " ")
-		if !ok {
-			return false
-		}
-		action, known := legacyVerbActions[verb]
-		if !known {
-			return false
-		}
-		if !hasField(scoped[i], action) {
-			return false
-		}
-		if !sharesWord(capabilityOf(scoped[i]), rest) {
-			return false
-		}
-		for j, other := range scoped {
-			otherCapability := capabilityOf(other)
-			if j == i || otherCapability == capabilityOf(scoped[i]) {
-				continue
-			}
-			if sharesWord(otherCapability, rest) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// sharesWord reports whether a capability slug and the descriptive half of a
-// Jamf Pro privilege name have a word in common — "device-groups" against
-// "Smart Mobile Device Groups" does, "device-groups" against "Computers" does
-// not. Both sides are lowercased, split on anything non-alphanumeric and
-// de-pluralised by a trailing "s", which is enough to match Jamf's own two
-// spellings of the same noun ("Categories"/`categories`, "Check-In"/`check-in`,
-// `users`/"Create User") without a vocabulary to maintain.
-func sharesWord(capability, description string) bool {
-	want := make(map[string]bool)
-	for _, w := range splitWords(capability) {
-		want[w] = true
-	}
-	for _, w := range splitWords(description) {
-		if want[w] {
-			return true
-		}
-	}
-	return false
-}
-
-// splitWords lowercases s, splits it on every non-alphanumeric run and strips a
-// trailing "s" from each word.
-func splitWords(s string) []string {
-	var out []string
-	for _, w := range strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
-	}) {
-		out = append(out, strings.TrimSuffix(w, "s"))
-	}
-	return out
-}
-
-// capabilityOf returns the capability half of a scoped identifier, and actionOf
-// the action half. Both tolerate the two spellings Jamf has shipped: the GA
-// {capability}:{action} form puts the capability first, the older
-// {action}:{scope}:{resource} form puts it last. Keying off the field count
-// rather than a vocabulary keeps them agreeing with hasField, which matches an
-// action in any position for the same reason.
-func capabilityOf(scoped string) string {
-	if fields := strings.Split(scoped, ":"); len(fields) == 3 {
-		return fields[2]
-	}
-	capability, _, _ := strings.Cut(scoped, ":")
-	return capability
-}
-
-func actionOf(scoped string) string {
-	fields := strings.Split(scoped, ":")
-	if len(fields) == 3 {
-		return fields[0]
-	}
-	return fields[len(fields)-1]
-}
-
-// hasField reports whether action is one of scoped's colon-delimited fields.
-// Matching any field rather than a fixed position keeps the check working across
-// both privilege spellings Jamf has shipped — the GA {capability}:{action} form
-// puts the action last, the older {action}:pro:{resource} form put it first —
-// without the check needing to know which one it is looking at.
-func hasField(scoped, action string) bool {
-	for field := range strings.SplitSeq(scoped, ":") {
-		if field == action {
-			return true
-		}
-	}
-	return false
-}
-
-// collect returns the deduplicated privileges required across the named
+// collect returns the deduplicated capability requirements across the named
 // methods, plus the names not found in the registry. A missing slice lets the
-// caller (and the drift-guard test) detect a method that was renamed or
-// removed in the SDK. pairLegacy decides which Jamf Pro privilege name each
-// scoped identifier may be labelled with, so a pairing the SDK does not encode
-// is reconstructed where the data determines it and dropped where it does not.
-func collect(reg Registry, methods []string) (privs []privilege, noPrivilege bool, missing []string) {
-	seen := make(map[string]int) // scoped -> index into privs
+// caller (and the drift-guard test) detect a method that was renamed or removed
+// in the SDK. noPrivilege reports that every method that did resolve requires
+// no permission at all, which is a different answer from none of them
+// resolving.
+//
+// Rows are ordered by section name and then by permission name, alphabetically.
+// The order is therefore derived from the catalogue itself rather than from a
+// second hand-maintained list: Jamf Account's row order is a weaker contract
+// than its names, since the picker can be reordered without anything being
+// renamed and no test could detect it. A row with no catalogue entry, and a row
+// built from a scoped value splitScoped rejected, both sort after every
+// resolved row — neither has picker names to sort on, and both render as
+// visibly incomplete.
+func collect(reg Registry, methods []string) (reqs []requirement, noPrivilege bool, missing []string) {
+	seen := make(map[string]int)
 	known := 0
 	for _, name := range methods {
 		mp, ok := reg[name]
@@ -285,87 +126,135 @@ func collect(reg Registry, methods []string) (privs []privilege, noPrivilege boo
 			continue
 		}
 		known++
-		paired := pairLegacy(mp.Scoped, mp.Legacy)
-		for i, scoped := range mp.Scoped {
-			legacy := ""
-			if paired != nil {
-				legacy = paired[i]
+		for _, scoped := range mp.Scoped {
+			capability, action, parsed := splitScoped(scoped)
+			key := capability
+			if !parsed {
+				capability, action = scoped, malformedAction
+				key = malformedAction + "\x00" + capability
 			}
-			if idx, dup := seen[scoped]; dup {
-				// Prefer a row that carries a legacy name over one that lacks it.
-				if privs[idx].legacy == "" && legacy != "" {
-					privs[idx].legacy = legacy
-				}
-				continue
+			idx, dup := seen[key]
+			if !dup {
+				idx = len(reqs)
+				seen[key] = idx
+				reqs = append(reqs, requirement{
+					capability: capability,
+					actions:    map[string]bool{},
+					malformed:  !parsed,
+				})
 			}
-			seen[scoped] = len(privs)
-			privs = append(privs, privilege{scoped: scoped, legacy: legacy})
+			reqs[idx].actions[action] = true
 		}
 	}
-	// All resolved methods require no special privilege.
-	noPrivilege = known > 0 && len(privs) == 0
-	sort.Slice(privs, func(i, j int) bool { return privs[i].scoped < privs[j].scoped })
-	return privs, noPrivilege, missing
+	noPrivilege = known > 0 && len(reqs) == 0
+	sort.Slice(reqs, func(i, j int) bool {
+		ci, ni, ki := rowKey(reqs[i])
+		cj, nj, kj := rowKey(reqs[j])
+		if ki != kj {
+			return ki
+		}
+		if ci != cj {
+			return ci < cj
+		}
+		if ni != nj {
+			return ni < nj
+		}
+		return reqs[i].capability < reqs[j].capability
+	})
+	return reqs, noPrivilege, missing
 }
 
-// Section renders the full "Required Jamf privileges" Markdown block (heading,
-// lead-in, and table) for the SDK methods a construct calls, ready to append
-// to a schema MarkdownDescription. It returns "" when none of the named
-// methods resolve to a privilege entry, so callers can append it
-// unconditionally. Unknown method names are silently skipped here; the
-// per-construct drift-guard test is responsible for failing the build when a
-// declared method is absent from the registry.
-func Section(reg Registry, methods ...string) string {
-	privs, noPrivilege, _ := collect(reg, methods)
+// rowKey returns the sort key of a rendered row: the Jamf Account section and
+// permission name it will print, plus whether those names resolved at all.
+// Sorting on the names themselves keeps the order alphabetical and derivable,
+// and the known flag is what puts an unresolved row last — stated as its own
+// term rather than smuggled in as a category string chosen to sort after every
+// real one.
+func rowKey(r requirement) (category, name string, known bool) {
+	e, ok := catalogue[r.capability]
+	if !ok || r.malformed {
+		return "", "", false
+	}
+	return e.category, e.name, true
+}
 
-	if noPrivilege {
-		return "\n\n**Required Jamf privileges**\n\n" +
+// actionList renders an action set as the words Jamf Account prints beside the
+// checkboxes, in the platform's own create/read/update/delete/deploy/execute
+// order. An action with no actionLabels entry — one outside those six, or the
+// malformedAction sentinel — is passed through verbatim so it shows up as
+// itself rather than vanishing. The label lookup is guarded so that an action
+// added to actionOrder but not to actionLabels renders once as its slug through
+// that same path, rather than contributing an empty entry the operator cannot
+// identify and then repeating itself.
+func actionList(actions map[string]bool) string {
+	var out []string
+	for _, a := range actionOrder {
+		if label, ok := actionLabels[a]; ok && actions[a] {
+			out = append(out, label)
+		}
+	}
+	var extra []string
+	for a := range actions {
+		if _, known := actionLabels[a]; !known {
+			extra = append(extra, a)
+		}
+	}
+	sort.Strings(extra)
+	out = append(out, extra...)
+	return strings.Join(out, ", ")
+}
+
+// Section renders the full "Required Jamf permissions" Markdown block (heading,
+// lead-in, and table) for the SDK methods a construct calls, ready to append to
+// a schema MarkdownDescription. It returns "" when none of the named methods
+// resolve to a registry entry, so callers can append it unconditionally.
+// Unknown method names are silently skipped here; the per-construct drift-guard
+// test is responsible for failing the build when a declared method is absent
+// from the registry.
+//
+// The affirmative "None" wording is published only when every named method
+// resolved. It is a positive claim that the underlying endpoints need no
+// permission, and a method absent from the registry has requirements this
+// package never read, so a list mixing the two renders nothing rather than an
+// assurance it cannot support.
+//
+// A row whose capability has no catalogue entry, or whose scoped value
+// splitScoped rejected, prints "—" in both name columns and triggers the
+// footnote. The footnote exists because the two look identical in a table: a
+// dash means this provider's copy of Jamf's permissions map does not cover the
+// row, not that the permission is ungrantable.
+func Section(reg Registry, methods ...string) string {
+	reqs, noPrivilege, missing := collect(reg, methods)
+
+	if noPrivilege && len(missing) == 0 {
+		return "\n\n**Required Jamf permissions**\n\n" +
 			"None — any authenticated Jamf Platform API integration may call the underlying endpoints."
 	}
-	if len(privs) == 0 {
+	if len(reqs) == 0 {
 		return ""
 	}
 
-	hasLegacy, hasBlank, hasCollapsed := false, false, false
-	for _, p := range privs {
-		if p.legacy == "" {
-			hasBlank = true
-			continue
-		}
-		hasLegacy = true
-		if strings.Contains(p.legacy, ", ") {
-			hasCollapsed = true
-		}
-	}
-
 	var b strings.Builder
-	b.WriteString("\n\n**Required Jamf privileges**\n\n")
-	b.WriteString("The Jamf Platform API integration used by the provider must be granted the following privileges:\n\n")
-	if hasLegacy {
-		b.WriteString("| Jamf Pro privilege | Scoped name |\n|---|---|\n")
-		for _, p := range privs {
-			name := p.legacy
-			if name == "" {
-				name = "—"
-			}
-			fmt.Fprintf(&b, "| %s | `%s` |\n", name, p.scoped)
+	b.WriteString("\n\n**Required Jamf permissions**\n\n")
+	b.WriteString("Grant the API integration the following permissions in Jamf Account — see " +
+		"[Getting started with the Platform API](" + platformAPIGettingStartedURL + "). " +
+		"`Category` and `Permission` name the section and row of the permission picker; " +
+		"`Actions` are the boxes to tick within that row.\n\n")
+	b.WriteString("| Category | Permission | Actions | API capability |\n|---|---|---|---|\n")
+	unknown := false
+	for _, r := range reqs {
+		e, ok := catalogue[r.capability]
+		if !ok || r.malformed {
+			unknown = true
+			e = entry{category: "—", name: "—"}
 		}
-		// The left column is the pre-GA privilege name for *this operation*, not
-		// an alias of the scoped identifier: Jamf's GA collapse maps several
-		// pre-GA privileges onto one identifier, so the relationship is
-		// many-to-one in both directions across the API. Say so where it shows,
-		// rather than leaving a reader to read a blank cell as a rendering bug.
-		if hasCollapsed {
-			b.WriteString("\nWhere a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.\n")
-		}
-		if hasBlank {
-			b.WriteString("\n`—` means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.\n")
-		}
-	} else {
-		b.WriteString("| Required privilege |\n|---|\n")
-		for _, p := range privs {
-			fmt.Fprintf(&b, "| `%s` |\n", p.scoped)
-		}
+		fmt.Fprintf(&b, "| %s | %s | %s | `%s` |\n", e.category, e.name, actionList(r.actions), r.capability)
+	}
+	if unknown {
+		b.WriteString("\n`—` marks a row this provider release has no Jamf Account name recorded for: " +
+			"either the capability postdates its copy of Jamf's permissions map, or the permission was " +
+			"not in the expected `{capability}:{action}` form. Look the capability up in Jamf's " +
+			"[Jamf Pro permissions map](" + permissionsMapURL + ") and open an issue so the row is added.\n")
 	}
 	return strings.TrimRight(b.String(), "\n")
 }
@@ -376,4 +265,57 @@ func Section(reg Registry, methods ...string) string {
 func Missing(reg Registry, methods ...string) []string {
 	_, _, missing := collect(reg, methods)
 	return missing
+}
+
+// Renders reports whether a Section-rendered block grants scoped, a GA
+// capability permission in {capability}:{action} form.
+//
+// It exists for the per-construct drift-guard tests, which assert that a
+// construct's table really did render the permissions its SDK methods require.
+// Those tests used to look for the scoped string with strings.Contains, which
+// stopped working when the table moved to Jamf Account's own vocabulary: the
+// capability and the action now sit in different cells, and the action is a
+// word rather than a slug. Parsing the table back beats a substring match on
+// the capability alone, which would pass a row that ticks the wrong boxes.
+//
+// It checks the two machine-derived columns only, API capability and Actions.
+// Category and Permission are deliberately unchecked: they are transcribed from
+// Jamf's prose, so nothing machine-readable exists to compare them against, and
+// an assertion over them could only compare catalogue.go with itself. A
+// mistyped picker name therefore passes every per-construct guard;
+// testdata/catalogue.golden is what pins those two columns, by turning an
+// edited row into a reviewable diff.
+func Renders(section, scoped string) bool {
+	capability, action, ok := splitScoped(scoped)
+	if !ok {
+		return false
+	}
+	label, ok := actionLabels[action]
+	if !ok {
+		return false
+	}
+	for line := range strings.SplitSeq(section, "\n") {
+		cells := tableCells(line)
+		if len(cells) != 4 || cells[3] != "`"+capability+"`" {
+			continue
+		}
+		if slices.Contains(strings.Split(cells[2], ", "), label) {
+			return true
+		}
+	}
+	return false
+}
+
+// tableCells splits one Markdown table row into its trimmed cells, or returns
+// nil for a line that is not one.
+func tableCells(line string) []string {
+	line = strings.TrimSpace(line)
+	if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
+		return nil
+	}
+	var out []string
+	for cell := range strings.SplitSeq(strings.Trim(line, "|"), "|") {
+		out = append(out, strings.TrimSpace(cell))
+	}
+	return out
 }

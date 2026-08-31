@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_location List Resource - terrafo
 subcategory: ""
 description: |-
   Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting include_resource = true triggers a follow-up read per row to populate the content catalog. Identity-only listing stays a single round trip.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Volume purchasing | Read | `volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_location (List Resource)
 
 Lists Jamf Pro Volume Purchasing (VPP) locations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The Jamf Pro list response omits the purchased-content catalog; setting `include_resource = true` triggers a follow-up read per row to populate the `content` catalog. Identity-only listing stays a single round trip.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Volume purchasing | Read | `volume-purchasing-locations` |
 
 ## Example Usage
 

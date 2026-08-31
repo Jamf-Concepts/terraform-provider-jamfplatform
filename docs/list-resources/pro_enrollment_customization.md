@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_enrollment_customization List Resource - terraform
 subcategory: ""
 description: |-
   Lists Jamf Pro enrollment customizations. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched. The list response carries the parent record (display name, description, site, branding palette + icon URL); panes are not included — read them via the singular resource per ID.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Enrollment Customizations | `enrollment-customization:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Enrollment customization | Read | `enrollment-customization` |
 ---
 
 # jamfplatform_pro_enrollment_customization (List Resource)
 
 Lists Jamf Pro enrollment customizations. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched. The list response carries the parent record (display name, description, site, branding palette + icon URL); panes are not included — read them via the singular resource per ID.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Enrollment Customizations | `enrollment-customization:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Enrollment customization | Read | `enrollment-customization` |
 
 ## Example Usage
 

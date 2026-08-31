@@ -115,7 +115,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 		MarkdownDescription: "Manages a Jamf Pro AD CS (Active Directory Certificate Services) integration (Settings > Global > PKI certificates > Certificate Authorities). " +
 			"An AD CS connector issues certificates to managed devices. The integration runs in one of two modes selected by `connector_mode`:\n\n" +
 			"- **`INBOUND`**: Jamf Pro reaches an AD CS Connector at `adcs_url`, presenting a `client_certificate` and trusting a `server_certificate`.\n" +
-			"- **`OUTBOUND`**: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by `api_client_id`) that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges.\n\n" +
+			"- **`OUTBOUND`**: an AD CS Connector polls Jamf Pro using a Jamf Pro API client (referenced by `api_client_id`) that is permitted to read and update AD CS certificate jobs. Jamf Pro called that pair *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA; this provider has no Jamf Account permission recorded for it, so grant it from Jamf's AD CS documentation rather than from the table below.\n\n" +
 			"**`connector_mode` is immutable** — changing it forces resource replacement (Jamf Pro rejects an in-place mode flip).\n\n" +
 			"**Certificate write semantics:** certificate bytes (`data_wo`) and the client certificate `password_wo` are `WriteOnly` — sent to Jamf Pro on writes but never persisted in Terraform state and never returned on read. Bump a block's `wo_version` to re-send that certificate (Jamf Pro accepts a certificate in full or not at all). On update, an omitted certificate is left unchanged.\n\n" +
 			"**Validator footgun:** the `connector_mode` cross-field validator only sees what is *declared* in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.\n\n" +
@@ -167,7 +167,7 @@ func (r *AdcsResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				},
 			},
 			"api_client_id": schema.StringAttribute{
-				MarkdownDescription: "**\"API Client ID\"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client that holds the *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* privileges. **`OUTBOUND` only.** Optional; omit to preserve the current value. API clients are created in Jamf Account, not by this provider.",
+				MarkdownDescription: "**\"API Client ID\"** in the Jamf Pro admin UI. The UUID (`client_id`) of an existing Jamf Pro API client the AD CS Connector authenticates as when it polls for certificate jobs, permitted to read and update them — the privileges Jamf Pro called *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA, which this provider has no Jamf Account permission recorded for. **`OUTBOUND` only.** Optional; omit to preserve the current value. API clients are created in Jamf Account, not by this provider.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{

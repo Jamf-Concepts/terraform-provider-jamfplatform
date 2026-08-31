@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the user extension attribute
 // resource's CRUD path calls. It mirrors the "SDK endpoints used" block in
-// crud.go and drives the "Required Jamf privileges" table appended to the
+// crud.go and drives the "Required Jamf permissions" table appended to the
 // resource MarkdownDescription. permissions_test.go asserts this list stays in
 // sync with the actual client.<Method> calls in crud.go and with the SDK
 // privilege registry.
@@ -22,7 +22,7 @@ var resourceSDKMethods = []string{
 	"DeleteUserExtensionAttributeByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the user extension attribute resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
@@ -36,7 +36,7 @@ var dataSourceSDKMethods = []string{
 	"GetUserExtensionAttributeByID",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the user extension attribute data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -48,6 +48,6 @@ var listResourceSDKMethods = []string{
 	"GetUserExtensionAttributeByID",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the user extension attribute list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

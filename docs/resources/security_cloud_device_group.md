@@ -6,14 +6,11 @@ description: |-
   Manages a Jamf Security Cloud device group. Device groups are how access is assigned: an app's assignments name the groups whose members may reach it, and UEM Connect maps the groups it syncs from Jamf Pro onto them.
   Destroying a group does not fail when something still points at it. Jamf Security Cloud removes the group and quietly drops it from every app assignment and mapping that named it, which can leave those objects assigned to nobody. Check what references a group before removing it.
   The built-in group named "Default Group" cannot be managed here — Jamf Security Cloud gives it no identifier and reserves its name. Use the jamfplatform_security_cloud_device_groups data source to see it.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-groups:create` |
-  | `device-groups:delete` |
-  | `device-groups:read` |
-  | `device-groups:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device groups | Create, Read, Update, Delete | `device-groups` |
 ---
 
 # jamfplatform_security_cloud_device_group (Resource)
@@ -24,16 +21,13 @@ Destroying a group does not fail when something still points at it. Jamf Securit
 
 The built-in group named "Default Group" cannot be managed here — Jamf Security Cloud gives it no identifier and reserves its name. Use the `jamfplatform_security_cloud_device_groups` data source to see it.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-groups:create` |
-| `device-groups:delete` |
-| `device-groups:read` |
-| `device-groups:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device groups | Create, Read, Update, Delete | `device-groups` |
 
 ## Example Usage
 

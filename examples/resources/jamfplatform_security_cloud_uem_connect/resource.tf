@@ -72,9 +72,9 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # number. Better than a hard-coded "computer_12", which means nothing to a reader
   # and silently stops matching if the group is ever recreated.
   #
-  # jamf_pro_id is null when the API integration lacks Read Groups, or when the group
-  # is not in Jamf Pro yet, so an apply immediately after creating the group may need
-  # a second run.
+  # jamf_pro_id is null when the API integration lacks the Device groups Read
+  # permission, or when the group is not in Jamf Pro yet, so an apply immediately
+  # after creating the group may need a second run.
   #
   # Jamf Security Cloud verifies neither side of a mapping exists, so a wrong ID is
   # accepted and simply never matches — nothing will tell you it is wrong. That is

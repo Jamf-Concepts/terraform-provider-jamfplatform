@@ -4,26 +4,26 @@ page_title: "jamfplatform_pro_categories Data Source - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Search Jamf Pro categories using optional RSQL filters on name and priority.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Categories | `categories:read` |
-  | Read Self Service | `self-service:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Read | `self-service` |
+  | Organizational context | Categories | Read | `categories` |
 ---
 
 # jamfplatform_pro_categories (Data Source)
 
 Search Jamf Pro categories using optional RSQL filters on `name` and `priority`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account — see [Getting started with the Platform API](https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api). `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Categories | `categories:read` |
-| Read Self Service | `self-service:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Read | `self-service` |
+| Organizational context | Categories | Read | `categories` |
 
 ## Example Usage
 
