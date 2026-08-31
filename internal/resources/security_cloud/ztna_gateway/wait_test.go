@@ -12,6 +12,8 @@ import (
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -228,6 +230,11 @@ func TestGatewayWaitsForUp_Gates(t *testing.T) {
 			plan: GatewayResourceModel{Enabled: types.BoolUnknown()},
 			want: false,
 		},
+		{
+			name: "a null enabled value skips the wait, which the schema default is what makes safe",
+			plan: GatewayResourceModel{Enabled: types.BoolNull()},
+			want: false,
+		},
 	}
 
 	for _, tc := range cases {
@@ -237,6 +244,37 @@ func TestGatewayWaitsForUp_Gates(t *testing.T) {
 				t.Errorf("gatewayWaitsForUp = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestGatewayWaitsForUp_DependsOnTheEnabledDefault pins the coupling that makes the
+// null case above safe.
+//
+// The gate reads `enabled` with ValueBool(), which answers false for a null value as
+// well as for an explicit false. That is only correct because the schema defaults
+// `enabled` to true, so the framework has already replaced a null with true by the
+// time Create or Update sees the plan and the gate never meets one. Nothing in the
+// gate itself expresses that dependency, so removing the default — or flipping it to
+// false — would silently stop every gateway that does not set `enabled` explicitly
+// from waiting, and no other test here would fail.
+//
+// This test fails in that case. If it does, the fix is to decide what an absent
+// `enabled` should mean and make the gate say so, not to update the expectation.
+func TestGatewayWaitsForUp_DependsOnTheEnabledDefault(t *testing.T) {
+	s := resourceSchema(t)
+
+	enabled, ok := s.Attributes["enabled"].(rschema.BoolAttribute)
+	if !ok {
+		t.Fatalf("enabled must be a BoolAttribute, got %T", s.Attributes["enabled"])
+	}
+	if enabled.Default == nil {
+		t.Fatal("enabled must carry a schema default: gatewayWaitsForUp treats a null value as disabled, and only the default keeps a null from ever reaching it")
+	}
+
+	var resp defaults.BoolResponse
+	enabled.Default.DefaultBool(context.Background(), defaults.BoolRequest{}, &resp)
+	if !resp.PlanValue.ValueBool() {
+		t.Errorf("enabled defaults to %v; gatewayWaitsForUp assumes true, so an unset enabled would now skip the readiness wait", resp.PlanValue)
 	}
 }
 
