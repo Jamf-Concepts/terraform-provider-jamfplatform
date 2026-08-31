@@ -90,8 +90,9 @@ resource "jamfplatform_device_group" "example_directory_service_group" {
 
 # The Computed `jamf_pro_id` attribute exposes the numeric Jamf Pro classic ID
 # for the group. Reference it from classic-API scope blocks (policies,
-# configuration profiles, restricted software). The value is null when the
-# Platform API client lacks the `Read Groups` privilege.
+# configuration profiles, restricted software). The value is null when the API
+# integration lacks the Inventory → Device groups → Read permission in Jamf
+# Account (API capability `device-groups:read`).
 output "smart_computer_group_jamf_pro_id" {
   value = jamfplatform_device_group.example_smart_computer_group.jamf_pro_id
 }
@@ -116,7 +117,7 @@ output "smart_computer_group_jamf_pro_id" {
 ### Read-Only
 
 - `id` (String) Unique identifier assigned by the API.
-- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Read Groups** privilege (a single missing-privilege warning surfaces during plan), when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
+- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account (a single missing-permission warning surfaces during plan), when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
 - `member_count` (Number) Total members reported by the API.
 
 <a id="nestedatt--criteria"></a>

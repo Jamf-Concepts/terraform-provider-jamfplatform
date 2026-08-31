@@ -100,7 +100,7 @@ func (a *RetryDeploymentAction) Schema(ctx context.Context, req action.SchemaReq
 	resp.Schema = actionschema.Schema{
 		MarkdownDescription: "Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). " +
 			"Specify exactly one target: a computer (`serial_number`, `management_id`, or `udid`), an explicit `task_ids` list, or `all_failed = true`. " +
-			"Resolving a computer identifier also requires the **Read Computers** privilege. Takes no state." +
+			"Resolving a computer identifier also requires the **Inventory → Devices → Read** permission in Jamf Account (API capability `devices:read`). Takes no state." +
 			retryDeploymentPrivileges,
 		Attributes: map[string]actionschema.Attribute{
 			"deployment_id": actionschema.StringAttribute{

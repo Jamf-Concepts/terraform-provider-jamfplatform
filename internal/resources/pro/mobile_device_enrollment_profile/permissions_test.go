@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -111,16 +110,22 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 
 // --- Rendered guards ---
 
-// TestPrivileges_Rendered guards that each table actually rendered into its
-// construct description (catches an empty/parse-skipped registry).
+// TestPrivileges_Rendered guards that each construct's table rendered the enrollment-profiles
+// row *and* the action that construct actually performs. Asserting the action —
+// not just the capability — is what makes this a drift guard: a row that ticked
+// the wrong boxes would still contain the capability name.
 func TestPrivileges_Rendered(t *testing.T) {
-	for name, section := range map[string]string{
-		"resource":     resourcePrivileges,
-		"dataSource":   dataSourcePrivileges,
-		"listResource": listResourcePrivileges,
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "enrollment-profiles:create"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "enrollment-profiles:read"},
+		{"listResourcePrivileges", listResourcePrivileges, "enrollment-profiles:read"},
 	} {
-		if !strings.Contains(section, "`enrollment-profiles`") {
-			t.Errorf("%s privileges did not render the enrollment-profiles privileges:\n%s", name, section)
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
 		}
 	}
 }

@@ -28,9 +28,12 @@ var syncPlansPrivileges = permissions.Section(pro.Privileges, syncPlansSDKMethod
 // jamfplatform_pro_jamf_protect_deployment_retry action's Invoke path calls
 // directly. It mirrors the "SDK endpoints used" block in retry_deployment.go
 // and drives the "Required Jamf permissions" table. The computer resolver
-// (computertarget.ResolveComputerID) additionally needs Read Computers when a
-// serial_number / management_id is supplied; that is noted in the action
-// description rather than declared here, matching the redeploy action.
+// (computertarget.ResolveComputerID) additionally needs Inventory → Devices →
+// Read (devices:read) when a serial_number / management_id / udid is supplied;
+// that is noted in the action description rather than declared here, matching
+// the redeploy action, because the resolver's SDK calls live in another package
+// and declaring them would put an endpoint this file never calls in its "SDK
+// endpoints used" block.
 var retryDeploymentSDKMethods = []string{
 	"ListJamfProtectDeploymentTasksV1",
 	"RetryJamfProtectDeploymentTasksV1",

@@ -67,11 +67,23 @@ func TestResourceSDKMethods_MatchReadCalls(t *testing.T) {
 	}
 }
 
-// TestResourcePrivileges_Rendered is a guard that the table actually rendered
-// into the data source description (catches an empty/parse-skipped registry).
-func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "uem-connect") {
-		t.Fatalf("resourcePrivileges did not render the devices privileges:\n%s", resourcePrivileges)
+// TestPrivileges_Rendered guards that each construct's table rendered the
+// uem-connect row *and* the action that construct actually performs. Asserting
+// the action — not just the capability — is what makes this a drift guard: a row
+// that ticked the wrong boxes would still contain the capability name.
+func TestPrivileges_Rendered(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "uem-connect:create"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "uem-connect:read"},
+		{"listResourcePrivileges", listResourcePrivileges, "uem-connect:read"},
+	} {
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
+		}
 	}
 }
 

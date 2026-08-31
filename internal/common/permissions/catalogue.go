@@ -10,6 +10,19 @@ package permissions
 // hand and guarded by TestCatalogueCoversEverySDKCapability, which fails when
 // the SDK starts requiring a capability this file has never heard of.
 //
+// Source: https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map
+// Transcribed 2026-08-31 from the revised version of that article which the
+// Platform API spec references. The published page lagged that revision at the
+// time of transcription and is expected to catch up, so a row here may lead the
+// page rather than follow it — check the spec's reference before concluding a
+// row is wrong. The URL itself is stable.
+//
+// No test asserts what an entry SAYS. TestCatalogueCoversEverySDKCapability
+// checks only that a required capability HAS a row, so a wrong section or a
+// wrong permission name is invisible to it; catalogue.golden pins the rendered
+// triples so an edited row shows up as a reviewable diff, but nothing can
+// compare a name against Jamf's article. Re-verify by reading the article.
+//
 // The transcription is deliberately complete rather than trimmed to what this
 // provider calls: an entry costs one line, and keeping the file a faithful copy
 // of the article makes it diffable against the next revision of it. So the

@@ -1,0 +1,125 @@
+Organization management | Distributor actions | distributor-actions
+Organization management | Licensing | licensing
+Organization management | Partner deal registration | deal-registration
+Organization management | SSO connections | sso-connections
+Organization management | SSO domains | sso-domains
+Inventory | Advanced device searches | advanced-device-searches
+Inventory | Advanced user searches | advanced-user-searches
+Inventory | Device extension attributes | extension-attributes
+Inventory | Device groups | device-groups
+Inventory | Device history | device-history
+Inventory | Devices | devices
+Inventory | User extension attributes | user-extension-attributes
+Inventory | User groups | user-groups
+Inventory | Users | users
+Organizational context | Buildings | buildings
+Organizational context | Categories | categories
+Organizational context | Classes | classes
+Organizational context | Departments | departments
+Organizational context | Network segments | network-segments
+Organizational context | Sites | sites
+Organizational context | iBeacon regions | ibeacon
+Device actions | Destructive device actions | destructive-device-actions
+Device actions | Device actions | device-actions
+Device secrets | Device lock PIN | computer-device-lock-pin
+Device secrets | FileVault recovery key | disk-encryption-recovery-key
+Device secrets | Local Admin Passwords (LAPS) | local-admin-passwords
+Device secrets | Recovery lock password | recovery-lock
+Deployment | Blueprints | blueprints
+Deployment | Configuration profiles | configuration-profiles
+Deployment | Declarations reporting | declarations
+Deployment | Directory bindings | directory-bindings
+Deployment | Disk encryption | disk-encryption-configurations
+Deployment | Dock items | dock-items
+Deployment | Jamf Connect deployment | jamf-connect-deployments
+Deployment | Jamf Protect deployment | jamf-protect-deployments
+Deployment | Packages | packages
+Deployment | Policies | policies
+Deployment | Printers | printers
+Deployment | Scripts | scripts
+Deployment | Software updates | managed-software-updates
+Enrollment | Activation profiles | activation-profiles
+Enrollment | Enrollment invitations | enrollment-invitations
+Enrollment | Enrollment profiles | enrollment-profiles
+Enrollment | PreStage enrollments | prestage-enrollments
+App lifecycle management | App package information | jamf-packages-action
+App lifecycle management | Apps | applications
+App lifecycle management | External patch sources | patch-external-source
+App lifecycle management | Internal patch sources | patch-internal-source
+App lifecycle management | Licensed software | licensed-software
+App lifecycle management | Patch policies | patch-policies
+App lifecycle management | Patch titles | patch-management-software-titles
+App lifecycle management | Provisioning profiles for in-house apps | provisioning-profiles
+App lifecycle management | Restricted software | restricted-software
+App lifecycle management | Volume purchasing | volume-purchasing-locations
+App lifecycle management | eBooks | ebooks
+Compliance | AI policies | ai-policies
+Compliance | Compliance Benchmarks | compliance-benchmarks
+Compliance | Conditional access device compliance | device-compliance-information
+Endpoint security | Detection analytics | detection-analytics
+Endpoint security | Prevent lists | prevent-lists
+Endpoint security | Protection plans | protection-plans
+Endpoint security | Security audit log | security-audit-log
+Endpoint security | Threat alerts | threat-alerts
+Endpoint security | Threat definition versions | threat-definition-versions
+Endpoint security | Unified logging filters | unified-logging-filters
+Secure enterprise access | Content categories | content-categories
+Secure enterprise access | Custom hostname mappings | custom-hostname-mappings
+Secure enterprise access | Search domains | search-domains
+Secure enterprise access | Zero-Trust Network Access (ZTNA) | ztna
+Admin identity and access | Access management | access-management
+Admin identity and access | Admin account | accounts
+Admin identity and access | Admin account groups | account-groups
+Admin identity and access | Admin user sessions | user-sessions
+Admin identity and access | Audit events | audit
+Admin identity and access | Change admin password | change-password
+Admin identity and access | LDAP / cloud IdP | ldap-servers
+Admin identity and access | Single Sign-On | sso-settings
+Admin file uploads | Admin file uploads | file-uploads
+Global settings | Allowed file upload extensions | allowed-file-extension
+Global settings | App request settings | app-request
+Global settings | Apple Configurator enrollment settings | apple-configurator-enrollment
+Global settings | Device check-in configuration | computer-check-in
+Global settings | Device inventory collection custom file paths | custom-paths
+Global settings | Device inventory collection settings | computer-inventory-collection-settings
+Global settings | Dismiss notifications | dismiss-notifications
+Global settings | Enrollment customization | enrollment-customization
+Global settings | Inventory preload | inventory-preload-records
+Global settings | Login disclaimer | login-disclaimer
+Global settings | MDM profile renewal settings | mdm-profile-renewal-settings
+Global settings | Microsoft Intune conditional access configuration | conditional-access
+Global settings | Notification settings | impact-alert-notification-settings
+Global settings | Onboarding configuration | onboarding
+Global settings | Parent app settings | parent-app
+Global settings | Re-enrollment settings | re-enrollment
+Global settings | Remote Assist | remote-assist
+Global settings | Removable MAC addresses | removable-mac-address
+Global settings | Return to service configuration | return-to-service
+Global settings | Self Service configuration | self-service
+Global settings | Teacher app settings | teacher-app
+Global settings | TeamViewer configuration | remote-administration
+Global settings | UEM Connect configuration | uem-connect
+Global settings | User-initiated enrollment settings | user-initiated-enrollment
+Global settings | Webhooks | webhooks
+Infrastructure | APNS certificate | push-certificates
+Infrastructure | Activation code | activation-code
+Infrastructure | Active Directory Certificate Services connector | ad-cs-settings
+Infrastructure | Apple GSX connection | gsx-connection
+Infrastructure | Automated Device Enrollment connection | device-enrollment-program-instances
+Infrastructure | Cache | cache
+Infrastructure | Cloud Distribution Point | cloud-distribution-point
+Infrastructure | DigiCert Trust Lifecycle Manager | digicert-settings
+Infrastructure | Distribution points | distribution-points
+Infrastructure | Infrastructure Manager instances | infrastructure-managers
+Infrastructure | JSON web token configuration | json-web-token-configuration
+Infrastructure | Jamf Cloud Distribution Service files | jamf-cloud-distribution-service-files
+Infrastructure | Jamf Cloud Services connection | cloud-services-settings
+Infrastructure | Jamf Pro SLASA | jss-information
+Infrastructure | Jamf Pro server URL | jss-url
+Infrastructure | Log flushing | flush-policy-logs
+Infrastructure | M2M tenant ID | m2m
+Infrastructure | PKI certificates | pki
+Infrastructure | Retention policy | retention-policy
+Infrastructure | SMTP | smtp-server
+Infrastructure | Software update servers | software-update-servers
+Infrastructure | Tomcat server | apache-tomcat-settings

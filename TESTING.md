@@ -308,7 +308,7 @@ Bound to the `acceptance` environment:
 | `JAMFPLATFORM_TENANT_ID`     | Tenant UUID — legacy scope; set exactly one of these two                        |
 | `JAMFPLATFORM_SECURITY_CLOUD_ENVIRONMENT_ID` | Declares that the configured `JAMFPLATFORM_ENVIRONMENT_ID` belongs to a Jamf Security Cloud tenant. Must equal it. Unset or mismatched → every Security Cloud test skips |
 | `JAMFPLATFORM_SECURITY_CLOUD_TENANT_ID` | Same, for `JAMFPLATFORM_TENANT_ID`. Set at most one of these two. Also names the tenant a ZTNA gateway grants access to — the gateway tests skip without it, because `tenantIds` is required on every gateway and is validated against the caller's organization |
-| `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` | Client ID (UUID) of a pre-existing Jamf Pro API client holding *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs*, created in Jamf Account. Unset → the two `pki_adcs` OUTBOUND tests skip |
+| `JAMFPLATFORM_ACC_ADCS_API_CLIENT_ID` | Client ID (UUID) of a pre-existing Jamf Pro API client, created in Jamf Account, permitted to read and update AD CS certificate jobs — the privileges Jamf Pro called *Read AD CS Certificate Jobs* and *Update AD CS Certificate Jobs* before the Platform API GA, which this provider has no Jamf Account permission recorded for. Unset → the two `pki_adcs` OUTBOUND tests skip |
 
 ### Jamf Security Cloud coverage is opt-in, and partly tenant-scope-only
 

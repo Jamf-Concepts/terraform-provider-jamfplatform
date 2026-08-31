@@ -36,8 +36,9 @@ output "device_group_example_by_id" {
 
 # `jamf_pro_id` is the numeric Jamf Pro classic ID resolved from the Pro
 # /v2/groups endpoint. Use it from classic-API scope blocks (policies,
-# configuration profiles, restricted software). Null when the API client lacks
-# the `Read Groups` privilege.
+# configuration profiles, restricted software). Null when the API integration
+# lacks the Inventory → Device groups → Read permission in Jamf Account (API
+# capability `device-groups:read`).
 output "device_group_example_jamf_pro_id" {
   value = data.jamfplatform_device_group.example_by_id.jamf_pro_id
 }
@@ -60,7 +61,7 @@ output "device_group_example_jamf_pro_id" {
 - `description` (String) Device group Description.
 - `device_type` (String) Device type value returned in lowercase.
 - `group_type` (String) Group type value returned in lowercase.
-- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Read Groups** privilege, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
+- `jamf_pro_id` (String) Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.
 - `member_count` (Number) Number of members in the group.
 - `members` (List of String) Devices currently assigned to the group (Jamf Pro Management IDs).
 - `name` (String) Device group name.

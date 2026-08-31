@@ -3,7 +3,7 @@
 page_title: "jamfplatform_pro_jamf_protect_deployment_retry Action - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
-  Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). Specify exactly one target: a computer (serial_number, management_id, or udid), an explicit task_ids list, or all_failed = true. Resolving a computer identifier also requires the Read Computers privilege. Takes no state.
+  Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). Specify exactly one target: a computer (serial_number, management_id, or udid), an explicit task_ids list, or all_failed = true. Resolving a computer identifier also requires the Inventory → Devices → Read permission in Jamf Account (API capability devices:read). Takes no state.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -13,7 +13,7 @@ description: |-
 
 # jamfplatform_pro_jamf_protect_deployment_retry (Action)
 
-Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). Specify exactly one target: a computer (`serial_number`, `management_id`, or `udid`), an explicit `task_ids` list, or `all_failed = true`. Resolving a computer identifier also requires the **Read Computers** privilege. Takes no state.
+Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). Specify exactly one target: a computer (`serial_number`, `management_id`, or `udid`), an explicit `task_ids` list, or `all_failed = true`. Resolving a computer identifier also requires the **Inventory → Devices → Read** permission in Jamf Account (API capability `devices:read`). Takes no state.
 
 **Required Jamf permissions**
 

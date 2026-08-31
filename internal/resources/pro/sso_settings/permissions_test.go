@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -127,17 +126,23 @@ func TestMetadataDataSourceSDKMethods_MatchCalls(t *testing.T) {
 	assertMatchesDeclared(t, "data_source_metadata.go", metadataDataSourceSDKMethods)
 }
 
-// TestPrivileges_Rendered guards that each table actually rendered into its
-// description (catches an empty/parse-skipped registry).
+// TestPrivileges_Rendered guards that each construct's table rendered the sso-settings
+// row *and* the action that construct actually performs. Asserting the action —
+// not just the capability — is what makes this a drift guard: a row that ticked
+// the wrong boxes would still contain the capability name.
 func TestPrivileges_Rendered(t *testing.T) {
-	for name, rendered := range map[string]string{
-		"resource":     resourcePrivileges,
-		"dataSource":   dataSourcePrivileges,
-		"dependencies": dependenciesDataSourcePrivileges,
-		"metadata":     metadataDataSourcePrivileges,
+	for _, tc := range []struct {
+		name     string
+		rendered string
+		scoped   string
+	}{
+		{"resourcePrivileges", resourcePrivileges, "sso-settings:update"},
+		{"dataSourcePrivileges", dataSourcePrivileges, "sso-settings:read"},
+		{"dependenciesDataSourcePrivileges", dependenciesDataSourcePrivileges, "sso-settings:read"},
+		{"metadataDataSourcePrivileges", metadataDataSourcePrivileges, "sso-settings:read"},
 	} {
-		if !strings.Contains(rendered, "`sso-settings`") {
-			t.Errorf("%s privileges did not render the sso-settings privileges:\n%s", name, rendered)
+		if !permissions.Renders(tc.rendered, tc.scoped) {
+			t.Errorf("%s did not render %s:\n%s", tc.name, tc.scoped, tc.rendered)
 		}
 	}
 }

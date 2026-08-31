@@ -35,9 +35,11 @@ variable "adcs_client_p12_password" {
   sensitive = true
 }
 
-# The UUID of an existing Jamf Pro API client holding the "Read AD CS
-# Certificate Jobs" and "Update AD CS Certificate Jobs" privileges. API clients
-# and roles are created in Jamf Account, not by this provider.
+# The UUID of an existing Jamf Pro API client permitted to read and update AD CS
+# certificate jobs — the privileges Jamf Pro called "Read AD CS Certificate
+# Jobs" and "Update AD CS Certificate Jobs" before the Platform API GA, which
+# this provider has no Jamf Account permission recorded for. API clients and
+# roles are created in Jamf Account, not by this provider.
 variable "adcs_api_client_id" {
   type = string
 }

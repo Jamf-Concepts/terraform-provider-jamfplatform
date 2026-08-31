@@ -275,7 +275,7 @@ var proGroupsReadableOnce sync.Once
 var proGroupsReadable bool
 
 // ProbeProGroupsReadable returns true if the acceptance API client can read from
-// the Pro /v2/groups endpoint (i.e. has the "Read Groups" privilege wired up on
+// the Pro /v2/groups endpoint (i.e. has the Device groups Read permission wired up on
 // the integration tenant). On 403 it returns false; on any other error
 // (including network failure or the Pro endpoint not existing on the tenant)
 // it also returns false — the probe is intentionally conservative so missing
@@ -299,22 +299,22 @@ func ProbeProGroupsReadable(t *testing.T) bool {
 		}
 		var apiErr *jamfplatform.APIResponseError
 		if errors.As(err, &apiErr) && apiErr.HasStatus(http.StatusForbidden) {
-			t.Logf("Pro Read Groups privilege probe: 403 forbidden — jamf_pro_id assertions will be skipped")
+			t.Logf("Pro Device groups Read permission probe: 403 forbidden — jamf_pro_id assertions will be skipped")
 			return
 		}
-		t.Logf("Pro Read Groups privilege probe: error (%v) — treating as not-readable; jamf_pro_id assertions will be skipped", err)
+		t.Logf("Pro Device groups Read permission probe: error (%v) — treating as not-readable; jamf_pro_id assertions will be skipped", err)
 	})
 	return proGroupsReadable
 }
 
 // SkipUnlessProGroupsReadable skips the calling test if the integration tenant's
-// API client lacks the Pro "Read Groups" privilege (or the Pro endpoint is
+// API client lacks the Pro Device groups Read permission (or the Pro endpoint is
 // otherwise unreachable). Call this immediately after AccPreCheck in tests that
 // hard-assert jamf_pro_id is set on device_group resources.
 func SkipUnlessProGroupsReadable(t *testing.T) {
 	t.Helper()
 	if !ProbeProGroupsReadable(t) {
-		t.Skip("Skipping: acceptance client lacks Pro 'Read Groups' privilege (or Pro endpoint unreachable); jamf_pro_id cannot be asserted")
+		t.Skip("Skipping: acceptance client lacks the Pro Device groups Read permission (or Pro endpoint unreachable); jamf_pro_id cannot be asserted")
 	}
 }
 

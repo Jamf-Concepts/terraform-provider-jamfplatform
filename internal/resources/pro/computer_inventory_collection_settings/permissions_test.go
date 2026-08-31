@@ -81,10 +81,20 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 }
 
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
-// the resource description (catches an empty/parse-skipped registry).
+// the resource description (catches an empty/parse-skipped registry). It names
+// every capability-action pair the table renders: the custom file paths are a
+// separate capability from the settings they hang off, and a row dropped from
+// the table is invisible to a check that only looks for the row it kept.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !permissions.Renders(resourcePrivileges, "computer-inventory-collection-settings:read") {
-		t.Fatalf("resourcePrivileges did not render the expected privileges:\n%s", resourcePrivileges)
+	for _, want := range []string{
+		"computer-inventory-collection-settings:read",
+		"computer-inventory-collection-settings:update",
+		"custom-paths:create",
+		"custom-paths:delete",
+	} {
+		if !permissions.Renders(resourcePrivileges, want) {
+			t.Errorf("resourcePrivileges did not render %q:\n%s", want, resourcePrivileges)
+		}
 	}
 }
 

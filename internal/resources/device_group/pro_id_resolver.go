@@ -37,8 +37,9 @@ const proGroupsTransientWarningKey = "device_group.jamf_pro_id.transient"
 // All failure modes degrade to (null, warning) rather than (zero, error) so the
 // Platform Create/Update/Read result that called us is never discarded:
 //
-//   - 403 Forbidden — Platform API client lacks the `Read Groups` privilege.
-//     Surfaces a single actionable warning per provider invocation (latched via
+//   - 403 Forbidden — the API integration lacks the Inventory → Device groups →
+//     Read permission (API capability `device-groups:read`). Surfaces a single
+//     actionable warning per provider invocation (latched via
 //     providerdata.Data.FiredOnce with proGroupsForbiddenWarningKey).
 //   - 404 Not Found — group deleted between the Platform read and this call, or
 //     the Pro endpoint is absent on a Platform-only tenant. Silently null; no
@@ -62,8 +63,8 @@ func resolveJamfProID(ctx context.Context, proClient *pro.Client, pd *providerda
 		case helpers.IsForbiddenError(err):
 			if pd.FiredOnce(proGroupsForbiddenWarningKey) {
 				diags.AddWarning(
-					"Platform API client lacks 'Read Groups' privilege; jamf_pro_id will be null.",
-					"The provider tried to resolve the numeric Jamf Pro classic ID for one or more device groups via the Pro `/v2/groups` endpoint but received a 403 Forbidden response. Grant the API client the `Read Groups` privilege to populate `jamf_pro_id` on subsequent applies; otherwise classic-API scope references will be unable to use these groups.",
+					"API integration lacks the Device groups Read permission; jamf_pro_id will be null.",
+					"The provider tried to resolve the numeric Jamf Pro classic ID for one or more device groups via the Pro `/v2/groups` endpoint but received a 403 Forbidden response. In Jamf Account, grant the integration Inventory → Device groups → Read (API capability `device-groups:read`) to populate `jamf_pro_id` on subsequent applies; otherwise classic-API scope references will be unable to use these groups.",
 				)
 			}
 			tflog.Debug(ctx, "Pro groups endpoint returned 403; nulling jamf_pro_id", map[string]any{

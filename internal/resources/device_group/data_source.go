@@ -54,7 +54,7 @@ func (d *DeviceGroupDataSource) Schema(ctx context.Context, req datasource.Schem
 			"jamf_pro_id": schema.StringAttribute{
 				// Wire source: pro/v2 groups lookup, bridging the Platform group UUID to
 				// the numeric Jamf Pro ID that scope blocks require.
-				MarkdownDescription: "Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Read Groups** privilege, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.",
+				MarkdownDescription: "Numeric Jamf Pro ID for this group, looked up in Jamf Pro. Use it to scope Jamf Pro resources to the group — policies, configuration profiles and restricted software all target groups by this ID. Null when the API integration lacks the **Inventory → Device groups → Read** permission in Jamf Account, when the group cannot be found in Jamf Pro, or when the lookup transiently fails.",
 				Computed:            true,
 			},
 			"name": schema.StringAttribute{

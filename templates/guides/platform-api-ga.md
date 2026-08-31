@@ -208,10 +208,11 @@ only itself, so an integration that reads a record before modifying it needs the
 well as the update action. And the pre-GA computer and mobile privilege pairs have collapsed into
 single device-level permissions — `devices`, `device-groups`, `extension-attributes`,
 `configuration-profiles`, `enrollment-invitations`, `advanced-device-searches` and
-`prestage-enrollments` — so a computers-only integration is no longer expressible. Jamf's *Jamf Pro
-permissions map* article is the reference for the full mapping, including the reverse case: the
-old computer and mobile command privileges split into `device-actions` and
-`destructive-device-actions`, the latter covering erase, unmanage and remove MDM profile.
+`prestage-enrollments` — so a computers-only integration is no longer expressible. Jamf's
+**[Jamf Pro permissions map](https://developer.jamf.com/platform-api/reference/jamf-pro-permissions-map)**
+is the reference for the full mapping, including the reverse case: the old computer and mobile
+command privileges split into `device-actions` and `destructive-device-actions`, the latter
+covering erase, unmanage and remove MDM profile.
 
 **Three scope levels are available.** A *platform environment* is a group of tenants across
 product types, and is the scope to prefer for two concrete reasons: one environment-scoped
