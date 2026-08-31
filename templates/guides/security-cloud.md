@@ -287,6 +287,10 @@ Three constructs pick a shape at create time that Jamf will not convert afterwar
 UEM Connect syncs device inventory and group membership from Jamf Pro into Jamf Security Cloud, and signals device risk back. It is what makes the managed-device security requirement above mean anything, and what lets you keep deciding group membership in Jamf Pro.
 
 ```hcl
+# The Jamf Pro tenant identifier is the one value here you cannot read off the
+# UEM Connect screen, so read it rather than copying it between consoles.
+data "jamfplatform_pro_tenant_id" "jamf_pro" {}
+
 resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   uem_vendor = "JAMF_PRO"
   enabled    = true
@@ -296,7 +300,7 @@ resource "jamfplatform_security_cloud_uem_connect" "jamf_pro" {
   # The alternative, oauth, takes the client ID and secret of an API integration
   # you created on the Jamf Pro instance yourself, plus uem_server_url.
   platform_tenant = {
-    tenant_id = var.jamf_pro_tenant_id
+    tenant_id = data.jamfplatform_pro_tenant_id.jamf_pro.tenant_id
   }
 
   group_membership_mapping = {
@@ -326,6 +330,8 @@ action "jamfplatform_security_cloud_uem_connect_synchronize" "now" {
   }
 }
 ```
+
+`jamfplatform_pro_tenant_id` reaches the Jamf Pro namespace, so it works under a platform environment — where it resolves the Jamf Pro tenant in that environment — and under tenant scope pointed at the Jamf Pro tenant. It does **not** work under tenant scope pointed at the Security Cloud tenant, because Jamf Pro does not answer under that scope; supply the identifier as an input there. Note this is a different identifier from a gateway's `tenant_ids` above, which names Security Cloud tenants and has no data source to read it from.
 
 Jamf Security Cloud does not check that either side of a mapping exists, so a wrong group number is accepted and simply never matches. The group configuration is replaced wholesale on every apply, so there is no way to leave it unmanaged: declaring `group_membership_mapping` replaces what it does not mention — an omitted or empty `mappings` clears every mapping — and **omitting the block entirely resets the whole group configuration to its defaults**. Manage it, or expect it cleared.
 
