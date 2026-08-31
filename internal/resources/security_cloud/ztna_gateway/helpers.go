@@ -4,13 +4,16 @@
 package ztna_gateway
 
 import (
+	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform"
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Machine-readable error codes the ZTNA gateway endpoints return. Wire-probed
@@ -210,4 +213,206 @@ func reportedDetails(apiErr *jamfplatform.APIResponseError) string {
 		b.WriteString(detail.Description)
 	}
 	return b.String()
+}
+
+// gatewayStatusPollInterval is how often the readiness wait re-reads the gateway.
+//
+// Five seconds against a wait measured in minutes costs at most a couple of
+// hundred reads spread across it, well inside this provider's ~10 req/s budget
+// for the Jamf API. It also bounds how precisely the wait can observe anything:
+// see waitForGatewayUp on the create-side address figure.
+const gatewayStatusPollInterval = 5 * time.Second
+
+// gatewayReader reads one gateway by ID. securitycloud.Client.GetZtnaGatewayV1
+// satisfies it, so the wait takes the method value directly and unit tests
+// substitute a closure.
+type gatewayReader func(ctx context.Context, id string) (*securitycloud.Gateway, error)
+
+// waitForGatewayUp polls the gateway until it reports itself operational, and
+// returns the last representation it read, the last state it saw, and whether the
+// wait was satisfied.
+//
+// Why wait at all, and why on this signal. Terraform's contract is that a finished
+// apply leaves a usable resource, and a gateway that has not yet reported itself
+// operational is not one. The earlier of the two available signals — the dedicated egress
+// addresses appearing — was considered and rejected: it leaves state recording a
+// provisioning gateway after every apply, and on an update it needs a comparison
+// against the prior addresses, because for a window after an egress-region change
+// the list is non-empty and holds the *old* region's addresses. Waiting for the
+// operational state subsumes that window entirely, so no such comparison exists
+// here and none should be reintroduced.
+//
+// Measured against production EU on 2026-08-31 under tenant scope, one dedicated
+// **internet** gateway created in eu-west-1, moved to eu-central-1 and destroyed,
+// re-read every 5 seconds:
+//
+//	Phase                          Egress addresses populated   State reached UP
+//	----------------------------   --------------------------   ----------------
+//	Create (eu-west-1)             within 6s                    275s
+//	Egress region → eu-central-1   35s                          295s
+//
+// The state went PENDING → UP exactly once per phase, monotonically, and DOWN was
+// never observed. The tunnel state stayed null throughout, as it does on the
+// internet form. Nothing came near the probe's own 20-minute cap.
+//
+// A second probe the same day took the other form: a dedicated IPsec gateway whose
+// peer address pointed at nothing went PENDING at 5s and DOWN at 35s with its
+// tunnel state DOWN, and stayed there. It never reached UP, and its dedicated
+// egress addresses stayed empty throughout — which is the schema's "always empty on
+// an IPsec gateway", now measured rather than asserted. That probe is what makes the
+// internet-only gate in gatewayWaitsForUp a measurement rather than a caution.
+//
+// UP is what the gateway reports about itself, and that is all this waits for. It is
+// necessary for traffic to flow and not sufficient: a Jamf support case on
+// grouped-gateway failover records a tunnel reporting itself established while
+// passing 0 B/s. So nothing here — and nothing in the diagnostics or descriptions —
+// should claim a gateway that reached UP is confirmed usable.
+//
+// Two caveats on those numbers. The create-side address figure is bounded by the
+// 5-second poll interval — the first re-read already showed them, so the true
+// value is somewhere in 0–6s, not 6s. And this is a single sample from one EU
+// tenant and one region pair: it sizes the default budget, it does not promise a
+// duration.
+//
+// DOWN is deliberately not terminal. The internet-form probe never produced it, so
+// whether it can appear transiently mid-provisioning on that form is unknown;
+// treating it as terminal on that ignorance would fail an apply that was about to
+// succeed. The IPsec probe's settled DOWN does not change that, because the IPsec
+// form is never waited on in the first place. Only the caller's context budget ends
+// the wait.
+//
+// A read failure ends the wait rather than being swallowed, matching
+// waitForBenchmarkSync in internal/resources/cbengine/benchmark. The caller reads
+// the gateway again afterwards, so a persistent failure still produces a real
+// error diagnostic there rather than being hidden behind a full-budget spin.
+//
+// jamfplatform.PollUntil calls its checker before it ever sleeps, which is what
+// makes an already-operational gateway free: one read, no delay. That is what lets
+// the update path wait unconditionally instead of trying to work out whether the
+// change re-provisions anything.
+func waitForGatewayUp(ctx context.Context, read gatewayReader, id string, interval time.Duration) (observed *securitycloud.Gateway, lastState string, reachedUp bool) {
+	err := jamfplatform.PollUntil(ctx, interval, func(pollCtx context.Context) (bool, error) {
+		got, err := read(pollCtx, id)
+		if err != nil {
+			tflog.Debug(pollCtx, "polling Jamf Security Cloud ZTNA gateway failed", map[string]any{"id": id, "error": err.Error()})
+			return false, err
+		}
+		observed = got
+		state := ""
+		if got.Status != nil {
+			state = got.Status.State
+		}
+		if state != "" {
+			lastState = state
+		}
+		tflog.Debug(pollCtx, "Jamf Security Cloud ZTNA gateway state", map[string]any{"id": id, "state": state})
+		return state == securitycloud.GatewayStatusStateUp, nil
+	})
+	return observed, lastState, err == nil
+}
+
+// gatewayWaitsForUp reports whether this gateway can be expected to reach an
+// operational state, and so whether waiting for one is worth doing.
+//
+// Two conditions, both necessary:
+//
+//   - The gateway is the dedicated internet form, i.e. no `ipsec` block. An IPsec
+//     gateway whose customer-side concentrator is not reachable does not reach an
+//     operational state at all: the 2026-08-31 probe watched one settle at DOWN
+//     after 35 seconds and stay there. Waiting there would burn the whole budget
+//     and then warn about a gateway behaving exactly as designed, since building
+//     the Jamf side before the customer side is the normal order of work. Jamf's
+//     own KB ("Troubleshooting IPSec Tunnel-Down Cases") has Jamf raise an alert
+//     whenever a private gateway's tunnel drops, so a tunnel-down IPsec gateway is
+//     already surfaced by the product and does not need an apply to block on it.
+//     This is a measured exclusion rather than a caution, but it is still written
+//     as one condition, so a later change of mind is a one-condition edit.
+//   - The gateway is enabled. A disabled gateway reports DISABLED by definition,
+//     so the wait could only ever run out.
+//
+// `enabled` carries a schema default, so it is always known in a plan; an unknown
+// value would read as false and skip the wait, which is the safe direction.
+func gatewayWaitsForUp(plan *GatewayResourceModel) bool {
+	return plan.IPSec == nil && plan.Enabled.ValueBool()
+}
+
+// gatewayWaitOperation names the apply phase a readiness wait ran under, for the
+// warning issued when it runs out: the verb to describe what already succeeded,
+// and the `timeouts` attribute that extends the budget.
+type gatewayWaitOperation struct {
+	pastTense   string
+	timeoutAttr string
+}
+
+var (
+	gatewayWaitCreate = gatewayWaitOperation{pastTense: "created", timeoutAttr: "create"}
+	gatewayWaitUpdate = gatewayWaitOperation{pastTense: "updated", timeoutAttr: "update"}
+)
+
+// appendGatewayWaitWarning reports a readiness wait that ran out, as a warning.
+//
+// A warning and never an error. By the time the wait is exhausted the gateway
+// exists and is billable; an error returned from a create the server accepted
+// makes Terraform mark the resource tainted and destroy and recreate it on the
+// next apply, so the failure mode of being strict here is a paid resource
+// discarded and replaced for being slow.
+//
+// The status reached is named because the three cases mean different things and
+// call for different responses. Still provisioning is almost always just slow and
+// settles on a later refresh. Unreachable or degraded is a plausible real fault
+// and is worth investigating rather than waiting out. Anything else is unexpected
+// enough to be worth repeating verbatim rather than paraphrasing — including the
+// case where the status could not be read at all.
+//
+// State values come from the SDK's generated constants rather than restated
+// literals, per STYLE_GUIDE §"Enum values and error codes come from the SDK".
+func appendGatewayWaitWarning(diags *diag.Diagnostics, op gatewayWaitOperation, lastState string) {
+	var summary, cause string
+	switch lastState {
+	case securitycloud.GatewayStatusStatePending:
+		summary = "Gateway is still provisioning"
+		cause = "Terraform stopped waiting before Jamf Security Cloud finished provisioning it. That usually " +
+			"just means provisioning is taking longer than it normally does, though it can also mean it has " +
+			"stalled."
+	case securitycloud.GatewayStatusStateDown:
+		summary = "Gateway is unreachable or degraded"
+		cause = "Jamf Security Cloud reports the gateway as unreachable or degraded rather than still " +
+			"provisioning. That is more likely a fault than slowness, so look at the gateway in the Jamf " +
+			"Security Cloud admin UI rather than waiting it out."
+	case "":
+		summary = "Gateway status could not be read"
+		cause = "Terraform could not read the gateway's status while waiting for it to become operational, so " +
+			"whether it is ready is unknown."
+	default:
+		summary = "Gateway is not yet operational"
+		cause = "Jamf Security Cloud reports its status as \"" + lastState + "\", which is not a status the " +
+			"provider expects while a gateway is coming up."
+	}
+	diags.AddWarning(
+		summary,
+		"The gateway was "+op.pastTense+" successfully and Terraform has recorded it. "+cause+" It does not yet "+
+			"report itself operational, so do not assume it is carrying traffic. Nothing needs to be "+
+			"re-applied: the status settles on a later refresh, so the next `terraform plan` picks it up. To "+
+			"wait longer during the apply itself, raise `"+op.timeoutAttr+"` in this resource's `timeouts` "+
+			"block.",
+	)
+}
+
+// readBackGateway returns the gateway representation a write path should record,
+// reusing whatever the readiness wait already read.
+//
+// The wait reads the gateway on every tick, so its last successful read is as
+// fresh as anything a further read could produce — and, importantly, it is still
+// available when the wait exhausted the caller's context budget, at which point a
+// further read on that same context could only fail. Reusing it is therefore not
+// an optimisation: it is what keeps an exhausted wait a warning on a successful
+// apply rather than an error on a gateway that already exists and is billable.
+//
+// When no wait ran — an IPsec or disabled gateway — or when it ended before it
+// managed a single read, the gateway is read here instead.
+func readBackGateway(ctx context.Context, read gatewayReader, id string, observed *securitycloud.Gateway) (*securitycloud.Gateway, error) {
+	if observed != nil {
+		return observed, nil
+	}
+	return read(ctx, id)
 }

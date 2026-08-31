@@ -93,7 +93,10 @@ func (d *GatewayDataSource) Schema(ctx context.Context, _ datasource.SchemaReque
 			},
 			"dedicated_egress_ip_addresses": schema.ListAttribute{
 				MarkdownDescription: "The private egress IP addresses Jamf provisioned for a dedicated internet " +
-					"gateway. Empty while provisioning, and always empty on an IPsec gateway.",
+					"gateway. Allocated within seconds of the gateway being created, well before it finishes " +
+					"provisioning, so a populated list means the addresses are reserved rather than that the " +
+					"gateway reports itself operational — read `status` for that. Always empty on an IPsec " +
+					"gateway.",
 				Computed:    true,
 				ElementType: types.StringType,
 			},
@@ -162,7 +165,13 @@ func dsStatusAttribute() schema.SingleNestedAttribute {
 		MarkdownDescription: "Operational status Jamf Security Cloud reports for this gateway.",
 		Computed:            true,
 		Attributes: map[string]schema.Attribute{
-			"state":        schema.StringAttribute{MarkdownDescription: "Overall gateway state.", Computed: true},
+			"state": schema.StringAttribute{
+				MarkdownDescription: "Overall gateway state: `PENDING` while provisioning (**Pending** in the " +
+					"Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational " +
+					"(**Active** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when the " +
+					"gateway is not enabled.",
+				Computed: true,
+			},
 			"tunnel_state": schema.StringAttribute{MarkdownDescription: "IPsec tunnel health.", Computed: true},
 		},
 	}

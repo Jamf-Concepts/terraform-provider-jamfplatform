@@ -11,7 +11,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-const probeTenant = "928260f5-01f3-4881-bd2e-f28faa0dbab2"
+// probeTenant is a synthetic tenant ID standing in for the one the wire probes
+// used. Nothing here reaches the network, and the builders treat the value as an
+// opaque string, so a placeholder exercises them exactly as a real ID would.
+const probeTenant = "00000000-0000-4000-8000-000000000001"
 
 // TestBuildGatewayCreateInput_InternetGatewayDerivesDedicatedFlag pins the derived
 // discriminator on the way out. The API requires exactly one of the

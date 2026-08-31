@@ -57,7 +57,12 @@ func createdThenUnreadableClient(t *testing.T, gatewayID string) *securitycloud.
 // required attributes set, the computed ones Unknown as Terraform sends them, and
 // everything else null. The internet form is the one that carries every computed
 // value — status and the dedicated egress addresses — with no `ipsec` block to build.
-func internetGatewayRawPlan(ctx context.Context, gatewaySchema resourceschema.Schema) tftypes.Value {
+//
+// createTimeout, when non-empty, populates the `timeouts` block's `create` value.
+// Empty leaves the whole block null so the resource's own default applies. The
+// readiness wait runs on that budget, so a test that needs it to run out sets a
+// short one here rather than waiting out the real ten minutes.
+func internetGatewayRawPlan(ctx context.Context, gatewaySchema resourceschema.Schema, createTimeout string) tftypes.Value {
 	object := gatewaySchema.Type().TerraformType(ctx).(tftypes.Object)
 	values := make(map[string]tftypes.Value, len(object.AttributeTypes))
 	for name, attributeType := range object.AttributeTypes {
@@ -79,6 +84,16 @@ func internetGatewayRawPlan(ctx context.Context, gatewaySchema resourceschema.Sc
 	values["status"] = tftypes.NewValue(object.AttributeTypes["status"], tftypes.UnknownValue)
 	values["dedicated_egress_ip_addresses"] = tftypes.NewValue(
 		object.AttributeTypes["dedicated_egress_ip_addresses"], tftypes.UnknownValue)
+
+	if createTimeout != "" {
+		timeoutsType := object.AttributeTypes["timeouts"].(tftypes.Object)
+		timeoutValues := make(map[string]tftypes.Value, len(timeoutsType.AttributeTypes))
+		for name, attributeType := range timeoutsType.AttributeTypes {
+			timeoutValues[name] = tftypes.NewValue(attributeType, nil)
+		}
+		timeoutValues["create"] = tftypes.NewValue(tftypes.String, createTimeout)
+		values["timeouts"] = tftypes.NewValue(timeoutsType, timeoutValues)
+	}
 
 	return tftypes.NewValue(object, values)
 }
@@ -103,7 +118,7 @@ func TestCreate_FailedReadBackKeepsTheNewID(t *testing.T) {
 	var identityResp resource.IdentitySchemaResponse
 	r.IdentitySchema(ctx, resource.IdentitySchemaRequest{}, &identityResp)
 
-	raw := internetGatewayRawPlan(ctx, schemaResp.Schema)
+	raw := internetGatewayRawPlan(ctx, schemaResp.Schema, "")
 	resp := resource.CreateResponse{
 		State:    tfsdk.State{Schema: schemaResp.Schema},
 		Identity: &tfsdk.ResourceIdentity{Schema: identityResp.IdentitySchema},

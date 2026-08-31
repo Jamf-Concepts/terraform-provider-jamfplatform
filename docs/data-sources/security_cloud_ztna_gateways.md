@@ -155,5 +155,5 @@ Read-Only:
 
 Read-Only:
 
-- `state` (String) Overall gateway state.
+- `state` (String) Overall gateway state: `PENDING` while provisioning (**Pending** in the Jamf Security Cloud admin UI), `UP` when the gateway reports itself operational (**Active** in the admin UI), `DOWN` when unreachable or degraded, `DISABLED` when the gateway is not enabled.
 - `tunnel_state` (String) IPsec tunnel health.

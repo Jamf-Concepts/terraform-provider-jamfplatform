@@ -3,7 +3,7 @@
 
 // SDK endpoints used:
 //   securitycloud.CreateZtnaGatewayV1
-//   securitycloud.GetZtnaGatewayV1
+//   securitycloud.GetZtnaGatewayV1 (read, create/update read-back, readiness wait)
 //   securitycloud.UpdateZtnaGatewayV1
 //   securitycloud.DeleteZtnaGatewayV1
 //   securitycloud.ListZtnaGatewaysV1 (data sources / list resource)
@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -29,6 +30,16 @@ import (
 // The create response carries only the new ID, so the gateway is read back for
 // the server-assigned parts — the status block, and the dedicated egress
 // addresses on an internet gateway.
+//
+// A gateway is not usable the moment it is created: the 2026-08-31 probe measured
+// 275 seconds before one reported itself operational. For the forms that reach that
+// state the apply waits for it, so a completed create leaves a gateway that is ready
+// rather than one still being built — see waitForGatewayUp for the measurements and
+// gatewayWaitsForUp for which forms qualify. The wait's last read is what gets
+// recorded, which is why readBackGateway exists rather than a second read here: when
+// the wait exhausts the budget, another read on the same context could only fail, and
+// an exhausted wait must stay a warning on a successful apply rather than becoming an
+// error that taints a gateway the account is already paying for.
 //
 // A read-back that fails after the create has succeeded still commits state. The
 // gateway exists on the tenant by then, and returning without state would leave it
@@ -71,7 +82,16 @@ func (r *GatewayResource) Create(ctx context.Context, req resource.CreateRequest
 
 	plan.ID = types.StringValue(created.ID)
 
-	got, err := r.client.GetZtnaGatewayV1(createCtx, created.ID)
+	var got *securitycloud.Gateway
+	if gatewayWaitsForUp(&plan) {
+		observed, lastState, reachedUp := waitForGatewayUp(createCtx, r.client.GetZtnaGatewayV1, created.ID, gatewayStatusPollInterval)
+		if !reachedUp {
+			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitCreate, lastState)
+		}
+		got = observed
+	}
+
+	got, err = readBackGateway(createCtx, r.client.GetZtnaGatewayV1, created.ID, got)
 	if err != nil {
 		nullUnknownReadBackValues(&plan)
 		resp.Diagnostics.Append(helpers.SetIdentity(ctx, resp.Identity, gatewayIdentityModel{ID: plan.ID})...)
@@ -207,6 +227,12 @@ func (r *GatewayResource) Read(ctx context.Context, req resource.ReadRequest, re
 // The prior state is needed as well as the plan and config: it carries the
 // pre-shared key's rotation trigger, which is what decides whether the key goes
 // on the wire at all.
+//
+// The readiness wait runs unconditionally on the forms that qualify, with no attempt
+// to work out from the plan whether this particular change re-provisions anything. It
+// does not need to: an update that changes only a name or a contact leaves the gateway
+// already operational, and the wait costs exactly one read in that case, which is the
+// read this path had to make anyway.
 func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state, config GatewayResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -242,7 +268,16 @@ func (r *GatewayResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	got, err := r.client.GetZtnaGatewayV1(updateCtx, plan.ID.ValueString())
+	var got *securitycloud.Gateway
+	if gatewayWaitsForUp(&plan) {
+		observed, lastState, reachedUp := waitForGatewayUp(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), gatewayStatusPollInterval)
+		if !reachedUp {
+			appendGatewayWaitWarning(&resp.Diagnostics, gatewayWaitUpdate, lastState)
+		}
+		got = observed
+	}
+
+	got, err := readBackGateway(updateCtx, r.client.GetZtnaGatewayV1, plan.ID.ValueString(), got)
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading updated Jamf Security Cloud ZTNA gateway", err.Error())
 		return
