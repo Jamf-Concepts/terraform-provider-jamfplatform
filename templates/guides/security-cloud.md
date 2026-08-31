@@ -145,7 +145,7 @@ resource "jamfplatform_security_cloud_dns_zone" "internal" {
 Queries matching the zone's domains go to one of its name servers by pseudo-random load balancing. Four rules here are Jamf's, not the provider's, and each one is a plan that applies and then fails to work:
 
 - A **domain belongs to exactly one zone**, tenant-wide, and a name server IP address may appear only once per zone.
-- The name server has to be reachable **through the gateway you name**, and **its address must be publicly routable when that gateway is shared**. Jamf Security Cloud refuses a reserved address — private, loopback and similar — behind the shared "Nearest Data Center" egress. A name server on an internal address needs a gateway of your own that reaches your network, which is what the dedicated gateways below are for.
+- The name server has to be reachable **through the gateway you name**, and **its address must be publicly routable**. Jamf Security Cloud refuses a reserved address — private, loopback and similar — with `Name server IP address not allowed`. Jamf's own documentation attaches that restriction to the shared "Nearest Data Center" egress, but a dedicated *internet* gateway refuses a private address just the same, so do not plan on one lifting the rule. A name server on an internal address needs a gateway that actually reaches your network, which means the IPsec form below.
 - Reverse lookups work by adding the `.in-addr.arpa` and `.ipv6.arpa` domains to the zone.
 - **Changes to your own infrastructure need the zone changed too** — a new or renumbered name server, or an application on a domain the zone does not match.
 
@@ -177,6 +177,8 @@ resource "jamfplatform_security_cloud_ztna_gateway" "frankfurt" {
 ```
 
 `tenant_ids` is mandatory and every tenant named in it must belong to the same organization as the provider's credentials. Because no API lists an environment's tenants, an environment-scoped configuration has no way to fill it in from data — supply the tenant ID as an input, or configure the provider with `tenant_id`.
+
+A gateway reports `PENDING` the moment it is created and carries no `dedicated_egress_ip_addresses` until Jamf has finished provisioning it, so an apply completing is not the same as a gateway being usable. Changing `egress_region` later re-provisions it: connectivity drops, the status returns to `PENDING`, and the egress addresses stay stale until it settles.
 
 ### Short names and fixed addresses
 
@@ -230,9 +232,11 @@ Jamf Security Cloud enforces references on delete in three different ways, and k
 
 | Destroying | What happens |
 |---|---|
-| A **gateway** a DNS zone, grouped gateway or app still references | Refused. Drop the reference in an earlier apply. |
+| A **gateway** a DNS zone, grouped gateway or app still references | Refused, naming what holds it. |
 | A **grouped gateway's member** while it is still in the group | Refused. |
 | A **device group** an app assignment or UEM mapping still names | **Succeeds silently**, and quietly drops the group from every assignment that named it — which can leave an application assigned to nobody. |
+
+The first has a Terraform-specific trap on top of the API's refusal. Dropping the reference *and* the gateway in a single apply does not work either, because Terraform sequences the destroy before the update that would have released the gateway — so the destroy still hits a live reference. Release it in one apply, destroy the gateway in the next.
 
 The third is the dangerous one, because nothing fails. Check what references a device group before removing it. Note also that the built-in **Default Group** cannot be managed here at all: Jamf gives it no identifier and reserves the name. It shows up in the `..._device_groups` data source with `built_in = true` and a null `id`.
 

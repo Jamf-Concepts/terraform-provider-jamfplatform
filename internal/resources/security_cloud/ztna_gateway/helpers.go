@@ -184,7 +184,7 @@ func referencedByDetail(code string) (summary, referrer string, ok bool) {
 	case codeReferencedByDNSZones:
 		return "Gateway is still referenced by a custom DNS zone",
 			"a custom DNS zone name server — a `jamfplatform_security_cloud_dns_zone` whose " +
-				"`name_servers[].gateway_id` names this gateway —", true
+				"`authoritative_name_servers[].gateway_id` names this gateway —", true
 	case codeReferencedByGroupedGateways:
 		return "Gateway is still a member of a grouped gateway",
 			"a grouped gateway — a `jamfplatform_security_cloud_ztna_grouped_gateway` whose `gateway_ids` " +

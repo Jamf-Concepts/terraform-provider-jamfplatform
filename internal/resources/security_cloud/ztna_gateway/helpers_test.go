@@ -231,7 +231,7 @@ func TestAppendDeleteDiagnostics_NamesTheReferrer(t *testing.T) {
 			code:        codeReferencedByDNSZones,
 			description: "The gateway could not be deleted because it is referenced by one or more Custom DNS Zones. Disconnect this gateway from all zones, then try again.",
 			wantSummary: "custom DNS zone",
-			wantDetail:  []string{"jamfplatform_security_cloud_dns_zone", "name_servers[].gateway_id"},
+			wantDetail:  []string{"jamfplatform_security_cloud_dns_zone", "authoritative_name_servers[].gateway_id"},
 			wantAbsent:  []string{"access policy application", "grouped gateway"},
 		},
 		{
