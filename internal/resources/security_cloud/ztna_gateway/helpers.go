@@ -243,11 +243,20 @@ const gatewayStatusPollInterval = 5 * time.Second
 //
 // A minute is the balance struck. Establishing an IPsec tunnel is a seconds-scale
 // negotiation once both ends are configured and reachable, so a minute is well beyond
-// any plausible recovery, while keeping the common case to roughly a minute and a half
-// of apply rather than ten. It is reasoning rather than measurement, so it is worth
-// revisiting if a gateway is ever seen recovering from DOWN more slowly than this —
-// the cost of being wrong is a warning and a status that corrects itself on the next
-// refresh, not a failed apply.
+// any plausible recovery, while keeping the common case to about two minutes of apply
+// rather than ten.
+//
+// Two minutes rather than one, because the dwell begins when DOWN is first *seen*, not
+// when the wait starts. An update re-provisions the gateway, so it returns to PENDING,
+// spends 35 to 50 seconds coming back to DOWN, and only then starts dwelling. Measured
+// end to end on 2026-08-31: an enabled IPsec update against an unbuilt tunnel took
+// 124s to give up and warn. Anyone tuning this should size it against that total, not
+// against the constant alone.
+//
+// The minute itself is reasoning rather than measurement, so it is worth revisiting if
+// a gateway is ever seen recovering from DOWN more slowly than this — the cost of being
+// wrong is a warning and a status that corrects itself on the next refresh, not a
+// failed apply.
 const gatewayDownDwell = 60 * time.Second
 
 // gatewayAbandonState reports which status ends a wait early when it persists, for a
