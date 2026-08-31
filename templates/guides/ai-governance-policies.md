@@ -8,6 +8,10 @@ description: |-
 
 An **AI policy** is the managed configuration for one AI tool running on your Macs. You author it here; a blueprint delivers it.
 
+Jamf's own documentation for the capability is the [AI Governance Configuration Guide](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/AI_Governance). Read it alongside this guide, which covers the Terraform half only, and see [Further reading](#further-reading) below for the pages worth having open while you work.
+
+AI Governance has two halves. [**AI Visibility**](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/AI_Visibility) is a dashboard in Jamf Account, fed by the Jamf Protect agent, reporting which AI tools are running on your fleet, what launches them and which commands they run — including risky ones. It is read-only, the provider exposes none of it, and it is where you work out what a policy should say. [**AI Policies**](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/AI_Policies) is the half Terraform manages: the configuration, and the blueprint that delivers it. Everything below is that half.
+
 ## End to end
 
 Three resources: write the policy, target a device group, deliver the published version.
@@ -74,6 +78,8 @@ resource "jamfplatform_blueprints_blueprint" "ai_governance" {
 
 Change the policy's settings and the next apply publishes version 2, the blueprint's pinned version follows, and the blueprint redeploys. Nothing else to do.
 
+Done by hand, that last resource is the procedure in [Deploying a Policy with Blueprints](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Deploying_a_Policy_with_Blueprints): drag the AI Governance component into a blueprint, choose a policy and a version, scope it, deploy. The Components library organises those components by AI product and hides the policy choice inside one; the provider's block works from IDs instead — `policies` is a list, each entry a `policy_id` and a `version`, and the order you write is the order Jamf keeps.
+
 ### Pinning a schema version, or tracking the current one
 
 Pinning a literal, as the example above does, is the safer default — the schema a policy is written against then moves only when you move it:
@@ -115,7 +121,7 @@ A policy carries a **draft** and a history of **published versions**. Applying a
 
 Nothing reaches a device until a blueprint delivers it, and a blueprint pins a **version number** rather than tracking the policy — which is why the end-to-end example above interpolates `published_version` into the blueprint's AI Governance component. Until a blueprint names the policy and is deployed, the policy is configuration nobody has received.
 
-Set `publish = false` to stage changes without creating a version — useful when someone else reviews and publishes in the Jamf Account admin UI. `has_draft` then reports that unpublished changes are waiting.
+Set `publish = false` to stage changes without creating a version — useful when someone else reviews and publishes in the Jamf Account admin UI. `has_draft` then reports that unpublished changes are waiting. The admin UI calls that state **Unpublished changes**, and its **Publish changes** action is what clears it; see [Publishing Changes to a Policy](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Publishing_changes_to_an_AI_Governance_policy).
 
 Publishing is skipped automatically when nothing changed: renaming a policy does not mint a version, because Jamf compares the settings it holds against the ones sent.
 
@@ -136,6 +142,8 @@ Jamf lets you delete a policy a deployed blueprint references. It does not refus
 
 Terraform cannot see this coming: nothing in the API reports which blueprints reference a policy. **Re-point or remove the blueprint's AI Governance component before destroying the policy.**
 
+Jamf's [Deleting a Policy](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Deleting_a_Policy) page opens with the same instruction. Treat it as a procedure you have to follow rather than a rule the platform enforces — nothing stops you skipping it, in the admin UI or in Terraform.
+
 ## Writing `settings_json`
 
 The settings are the tool vendor's own configuration format, not Jamf's. Each tool publishes a JSON Schema per `schema_version`, and that schema is the authority on what the settings may contain.
@@ -153,9 +161,15 @@ settings_json = file("${path.module}/claude-code.json")
 settings_json = file("${path.module}/exported-policy.json")
 ```
 
+That last form is the shortest route from an existing policy to a managed one: in Jamf Account, on the policy's row, choose **Download latest config** and you have exactly this document. It travels the other way too — the **Upload config** button in the admin UI's create-policy wizard takes the same JSON — so a policy prototyped in the builder and one written in HCL are interchangeable.
+
+One thing the wizard does that Terraform does not: it asks for an authentication method and its provider settings before showing any settings category. There is no wizard here, so those are keys in `settings_json` like every other key, and the tool's category reference below says which ones they are.
+
 Formatting and key order are not significant — the value is compared as JSON, so reindenting or reordering keys produces no change.
 
 ### Where each tool's settings are documented
+
+Jamf's category references group each tool's settings the way the admin UI's policy builder does — for Claude Code, *Models & Reasoning*, *Identity & Compliance*, *Permissions*, *Sandbox Isolation*, *Managed MCP Server Policy*, *Hook Execution Policy* and the rest — which is the quickest way to find the handful of keys behind an outcome you have in mind. The vendor documentation is then authoritative on what each key actually does.
 
 | Product | Jamf's category reference | Vendor documentation |
 |---|---|---|
@@ -208,6 +222,36 @@ Pinning `schema_version` to a literal is the conservative choice, for the reason
 
 ## Requirements
 
+### The capability
+
+AI Governance is enabled once, in Jamf Account, and Terraform cannot do it for you. Jamf's [Requirements](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Requiremements) page is authoritative; in outline:
+
+- One of the cloud platform offerings that includes AI Governance — Jamf for Mac, Jamf for Mac – Higher Education, Business Plan or Enterprise Plan. Standalone product subscriptions are not eligible, and no configuration change makes them so.
+- A **platform environment** in Jamf Account grouping your Jamf Pro and Jamf Protect tenants, all in one region. Jamf Security Cloud is not part of this grouping.
+- **OIDC SSO through Jamf Account** enabled in Jamf Pro — the policy builder is reached through Jamf Account.
+- Jamf Protect deployed to the environment. This is what AI Visibility runs on, and the capability will not enable without it.
+- A Jamf Account role, scoped to that environment, carrying the AI Governance privileges — **Policies** (create, view, edit, delete) and **Visibility** (view) — plus, in Jamf Pro, at least **Blueprints** create/read/update/delete.
+
+That environment is the same platform environment `environment_id` names below, which is why these constructs are environment-scoped rather than tenant-scoped.
+
+### The provider's API integration
+
 AI Governance is reached under an **environment-scoped** API integration — set `environment_id` (or `JAMFPLATFORM_ENVIRONMENT_ID`) on the provider. A tenant-scoped integration is not supported for these constructs.
 
 The integration needs the **AI policies** permission, under **Compliance** in Jamf Account's permission picker — API capability `ai-policies`. That capability is the whole surface: every action it exposes is one of create, read, update or delete, and each resource and data source page lists which of the four it uses.
+
+An integration's permission is granted separately from a person's role: a user clicking through the policy builder and a Terraform run authenticating with client credentials are authorised independently, so granting one does not grant the other.
+
+## Further reading
+
+| Topic | Page |
+|---|---|
+| The capability end to end, in Jamf's words | [AI Governance](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/AI_Governance) |
+| Plans, privileges and prerequisites | [Requirements](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Requiremements) |
+| What is running on the fleet, and what to configure because of it | [AI Visibility](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/AI_Visibility), [Viewing the AI Visibility Dashboard](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Viewing_the_AI_Visibility_Dashboard) |
+| Enabling the capability | [Enabling AI Visibility](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Enabling_AI_Visibility) |
+| Authoring a policy in the admin UI, and the JSON upload | [Creating a New Policy](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Creating_a_New_Policy) |
+| Publishing, and the *Unpublished changes* state | [Publishing Changes to a Policy](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Publishing_changes_to_an_AI_Governance_policy) |
+| Delivering a policy with a blueprint | [Deploying a Policy with Blueprints](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Deploying_a_Policy_with_Blueprints) |
+| Removing a policy safely | [Deleting a Policy](https://learn.jamf.com/r/en-US/ai-governance-configuration-guide/Deleting_a_Policy) |
+| What each tool's settings mean | the per-product references in [Where each tool's settings are documented](#where-each-tools-settings-are-documented) above |
