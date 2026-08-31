@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_policy Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: general, scope, self_service, user_interaction, and the Options payloads packages, scripts, printers, disk_encryption, dock_items, local_accounts, management_account, directory_bindings, efi_password, restart_options, maintenance, files_and_processes. Scope targets are flat sets of Jamf Pro IDs — interpolate jamfplatform_device_group.x.jamf_pro_id to bridge from Platform Services. The four account-maintenance payloads (local_accounts, management_account, directory_bindings, efi_password) are flattened peers of the UI sections; internally Jamf Pro stores them as a single account_maintenance object. The legacy Software Update and Conditional Access policy sections are intentionally not modelled — both are obsolete in Jamf Pro, superseded by MDM-driven app installs / OS update scheduling and the patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `policies:create` |
-  | `policies:delete` |
-  | `policies:read` |
-  | `policies:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Policies | Create, Read, Update, Delete | `policies` |
 ---
 
 # jamfplatform_pro_policy (Resource)
 
 Manages a Jamf Pro policy. Top-level blocks mirror the admin UI's tabs and Options sidebar: `general`, `scope`, `self_service`, `user_interaction`, and the Options payloads `packages`, `scripts`, `printers`, `disk_encryption`, `dock_items`, `local_accounts`, `management_account`, `directory_bindings`, `efi_password`, `restart_options`, `maintenance`, `files_and_processes`. Scope targets are flat sets of Jamf Pro IDs — interpolate `jamfplatform_device_group.x.jamf_pro_id` to bridge from Platform Services. The four account-maintenance payloads (`local_accounts`, `management_account`, `directory_bindings`, `efi_password`) are flattened peers of the UI sections; internally Jamf Pro stores them as a single `account_maintenance` object. The legacy Software Update and Conditional Access policy sections are **intentionally not modelled** — both are obsolete in Jamf Pro, superseded by MDM-driven app installs / OS update scheduling and the patch-management surface. If you need to drive OS or app updates from Terraform, reach for the patch / DDM resources instead.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `policies:create` |
-| `policies:delete` |
-| `policies:read` |
-| `policies:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Policies | Create, Read, Update, Delete | `policies` |
 
 ## Example Usage
 

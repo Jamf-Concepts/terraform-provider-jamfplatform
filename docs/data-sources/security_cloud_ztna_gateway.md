@@ -4,24 +4,24 @@ page_title: "jamfplatform_security_cloud_ztna_gateway Data Source - terraform-pr
 subcategory: ""
 description: |-
   Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported — Jamf Security Cloud does not return it.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 ---
 
 # jamfplatform_security_cloud_ztna_gateway (Data Source)
 
 Look up a dedicated Jamf Security Cloud ZTNA gateway by ID or by name. Use it to resolve the gateway ID a custom DNS zone name server needs. The IPsec pre-shared key is never reported — Jamf Security Cloud does not return it.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 
 ## Example Usage
 

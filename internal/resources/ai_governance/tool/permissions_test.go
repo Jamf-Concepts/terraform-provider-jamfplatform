@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/aigovernance"
@@ -83,7 +82,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSourcePrivileges":       dataSourcePrivileges,
 		"pluralDataSourcePrivileges": pluralDataSourcePrivileges,
 	} {
-		if !strings.Contains(rendered, "ai-policies:read") {
+		if !permissions.Renders(rendered, "ai-policies:read") {
 			t.Errorf("%s did not render the read privilege:\n%s", name, rendered)
 		}
 	}

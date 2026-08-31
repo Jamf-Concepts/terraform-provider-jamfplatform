@@ -4,24 +4,24 @@ page_title: "jamfplatform_security_cloud_device_group Data Source - terraform-pr
 subcategory: ""
 description: |-
   Look up a Jamf Security Cloud device group by ID or by name. Group names are unique on the tenant, but they are matched exactly — a name that differs only in capitalisation is a different group and will not be found.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-groups:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device groups | Read | `device-groups` |
 ---
 
 # jamfplatform_security_cloud_device_group (Data Source)
 
 Look up a Jamf Security Cloud device group by ID or by name. Group names are unique on the tenant, but they are matched exactly — a name that differs only in capitalisation is a different group and will not be found.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-groups:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device groups | Read | `device-groups` |
 
 ## Example Usage
 

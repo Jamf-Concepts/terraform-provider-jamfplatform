@@ -121,7 +121,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSourcePrivileges":   dataSourcePrivileges,
 		"listResourcePrivileges": listResourcePrivileges,
 	} {
-		if !strings.Contains(got, "distribution-points:") {
+		if !strings.Contains(got, "`distribution-points`") {
 			t.Errorf("%s did not render the distribution-points privileges:\n%s", name, got)
 		}
 	}

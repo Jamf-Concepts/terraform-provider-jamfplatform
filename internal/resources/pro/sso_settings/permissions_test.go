@@ -136,7 +136,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dependencies": dependenciesDataSourcePrivileges,
 		"metadata":     metadataDataSourcePrivileges,
 	} {
-		if !strings.Contains(rendered, "sso-settings:") {
+		if !strings.Contains(rendered, "`sso-settings`") {
 			t.Errorf("%s privileges did not render the sso-settings privileges:\n%s", name, rendered)
 		}
 	}

@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_computer_prestage_enrollment Resource - terraform-
 subcategory: ""
 description: |-
   Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at Settings → Computer Management → PreStage Enrollments in the Jamf Pro admin UI. Device scope (scope_serial_numbers) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Computer PreStage Enrollments | `prestage-enrollments:create` |
-  | Delete Computer PreStage Enrollments | `prestage-enrollments:delete` |
-  | Read Computer PreStage Enrollments | `prestage-enrollments:read` |
-  | Update Computer PreStage Enrollments | `prestage-enrollments:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | PreStage enrollments | Create, Read, Update, Delete | `prestage-enrollments` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (Resource)
 
 Manages a Jamf Pro Computer PreStage Enrollment — the macOS Automated Device Enrollment (ADE) record exposed at *Settings → Computer Management → PreStage Enrollments* in the Jamf Pro admin UI. Device scope (`scope_serial_numbers`) is folded into this resource; serial numbers must exist on the underlying ADE token or Jamf Pro rejects the assignment.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Computer PreStage Enrollments | `prestage-enrollments:create` |
-| Delete Computer PreStage Enrollments | `prestage-enrollments:delete` |
-| Read Computer PreStage Enrollments | `prestage-enrollments:read` |
-| Update Computer PreStage Enrollments | `prestage-enrollments:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | PreStage enrollments | Create, Read, Update, Delete | `prestage-enrollments` |
 
 ## Example Usage
 

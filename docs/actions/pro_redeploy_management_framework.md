@@ -4,26 +4,26 @@ page_title: "jamfplatform_pro_redeploy_management_framework Action - terraform-p
 subcategory: ""
 description: |-
   Redeploys the Jamf management framework (binary and MDM management profile) to a computer.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `computer-check-in:read` |
-  | `device-actions:execute` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Device actions | Device actions | Execute | `device-actions` |
+  | Global settings | Device check-in configuration | Read | `computer-check-in` |
 ---
 
 # jamfplatform_pro_redeploy_management_framework (Action)
 
 Redeploys the Jamf management framework (binary and MDM management profile) to a computer.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `computer-check-in:read` |
-| `device-actions:execute` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Device actions | Device actions | Execute | `device-actions` |
+| Global settings | Device check-in configuration | Read | `computer-check-in` |
 
 ## Example Usage
 

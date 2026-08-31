@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the SSO settings resource's CRUD
 // path calls. It mirrors the "SDK endpoints used" block in crud.go and drives
-// the "Required Jamf privileges" table appended to the resource
+// the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
 // the actual client.<Method> calls in crud.go and with the SDK privilege
 // registry.
@@ -24,7 +24,7 @@ var resourceSDKMethods = []string{
 	"DeleteSsoCertificateV2",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the SSO settings resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(pro.Privileges, resourceSDKMethods...)
 
@@ -35,7 +35,7 @@ var dataSourceSDKMethods = []string{
 	"GetSsoCertificateV2",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the SSO settings data source.
 var dataSourcePrivileges = permissions.Section(pro.Privileges, dataSourceSDKMethods...)
 
@@ -45,7 +45,7 @@ var dependenciesDataSourceSDKMethods = []string{
 	"GetSsoDependenciesV3",
 }
 
-// dependenciesDataSourcePrivileges is the rendered "Required Jamf privileges"
+// dependenciesDataSourcePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the SSO dependencies data source.
 var dependenciesDataSourcePrivileges = permissions.Section(pro.Privileges, dependenciesDataSourceSDKMethods...)
 
@@ -56,6 +56,6 @@ var metadataDataSourceSDKMethods = []string{
 	"DownloadSsoMetadataV3",
 }
 
-// metadataDataSourcePrivileges is the rendered "Required Jamf privileges"
+// metadataDataSourcePrivileges is the rendered "Required Jamf permissions"
 // Markdown section for the SSO SP metadata data source.
 var metadataDataSourcePrivileges = permissions.Section(pro.Privileges, metadataDataSourceSDKMethods...)

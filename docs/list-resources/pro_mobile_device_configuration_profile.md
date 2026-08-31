@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_configuration_profile List Resource 
 subcategory: ""
 description: |-
   Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive name_substring filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the jamfplatform_pro_mobile_device_configuration_profile data source to fetch per-profile detail.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `configuration-profiles:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Configuration profiles | Read | `configuration-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_configuration_profile (List Resource)
 
 Lists mobile device configuration profiles in the tenant. Supply an optional case-insensitive `name_substring` filter — filtering is applied client-side, so all profiles are fetched before the filter runs. List entries return identity only; use the `jamfplatform_pro_mobile_device_configuration_profile` data source to fetch per-profile detail.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `configuration-profiles:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Configuration profiles | Read | `configuration-profiles` |
 
 ## Example Usage
 

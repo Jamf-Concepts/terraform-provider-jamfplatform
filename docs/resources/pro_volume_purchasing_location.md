@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_volume_purchasing_location Resource - terraform-pr
 subcategory: ""
 description: |-
   Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a .vpptoken file (already base64-encoded by Apple — supply the file contents directly via file("/path/to/vpp.vpptoken")). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates last_sync_time before committing the resource. The default create timeout is 30 minutes — increase via timeouts { create = "60m" } if your tenant has a large catalog.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Volume Purchasing Locations | `volume-purchasing-locations:create` |
-  | Delete Volume Purchasing Locations | `volume-purchasing-locations:delete` |
-  | Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
-  | Update Volume Purchasing Locations | `volume-purchasing-locations:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_volume_purchasing_location (Resource)
 
 Manages a Jamf Pro Volume Purchasing (VPP) location. A VPP location binds a Jamf Pro tenant to an Apple Business Manager / Apple School Manager Volume Purchasing account using a `.vpptoken` file (already base64-encoded by Apple — supply the file contents directly via `file("/path/to/vpp.vpptoken")`). On create the provider registers the location, immediately reclaims licenses to clear any client-context mismatch inherited from a previously shared token, then polls until Apple's content sync populates `last_sync_time` before committing the resource. The default create timeout is 30 minutes — increase via `timeouts { create = "60m" }` if your tenant has a large catalog.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Volume Purchasing Locations | `volume-purchasing-locations:create` |
-| Delete Volume Purchasing Locations | `volume-purchasing-locations:delete` |
-| Read Volume Purchasing Locations | `volume-purchasing-locations:read` |
-| Update Volume Purchasing Locations | `volume-purchasing-locations:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Volume purchasing | Create, Read, Update, Delete | `volume-purchasing-locations` |
 
 ## Example Usage
 

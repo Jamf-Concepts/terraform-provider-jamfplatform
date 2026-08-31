@@ -8,7 +8,6 @@ import (
 	"go/parser"
 	"go/token"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -112,7 +111,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "device-groups:create") {
+	if !permissions.Renders(resourcePrivileges, "device-groups:create") {
 		t.Fatalf("resourcePrivileges did not render the device group privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -130,7 +129,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "device-groups:read") {
+	if !permissions.Renders(dataSourcePrivileges, "device-groups:read") {
 		t.Fatalf("dataSourcePrivileges did not render the device group privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -148,7 +147,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "device-groups:read") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "device-groups:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the device group privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -166,7 +165,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "device-groups:read") {
+	if !permissions.Renders(listResourcePrivileges, "device-groups:read") {
 		t.Fatalf("listResourcePrivileges did not render the device group privileges:\n%s", listResourcePrivileges)
 	}
 }

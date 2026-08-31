@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_site Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `sites:create` |
-  | `sites:delete` |
-  | `sites:read` |
-  | `sites:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Sites | Create, Read, Update, Delete | `sites` |
 ---
 
 # jamfplatform_pro_site (Resource)
 
 Manages a Jamf Pro site. Sites are an inventory partitioning primitive — most Jamf Pro objects can be scoped to a site for access-control and reporting purposes.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `sites:create` |
-| `sites:delete` |
-| `sites:read` |
-| `sites:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Sites | Create, Read, Update, Delete | `sites` |
 
 ## Example Usage
 

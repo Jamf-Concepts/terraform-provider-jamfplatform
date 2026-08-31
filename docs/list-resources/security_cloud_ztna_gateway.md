@@ -4,24 +4,24 @@ page_title: "jamfplatform_security_cloud_ztna_gateway List Resource - terraform-
 subcategory: ""
 description: |-
   Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this list resource takes no filter configuration. Generated configuration for an IPsec gateway omits the pre-shared key, which Jamf Security Cloud never returns.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ztna:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 ---
 
 # jamfplatform_security_cloud_ztna_gateway (List Resource)
 
 Lists every dedicated Jamf Security Cloud ZTNA gateway on the tenant. Jamf Security Cloud exposes no query parameters for gateways, so this list resource takes no filter configuration. Generated configuration for an IPsec gateway omits the pre-shared key, which Jamf Security Cloud never returns.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ztna:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Zero-Trust Network Access (ZTNA) | Read | `ztna` |
 
 ## Example Usage
 

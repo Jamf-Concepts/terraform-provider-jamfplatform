@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_network_segment Resource - terraform-provider-jamf
 subcategory: ""
 description: |-
   Manages a Jamf Pro network segment. Network segments are IP ranges used to scope Jamf Pro policies, configuration profiles, and other objects to clients whose IP falls within the segment. Optionally a network segment can override the building/department assignment of devices that join it.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `network-segments:create` |
-  | `network-segments:delete` |
-  | `network-segments:read` |
-  | `network-segments:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Network segments | Create, Read, Update, Delete | `network-segments` |
 ---
 
 # jamfplatform_pro_network_segment (Resource)
 
 Manages a Jamf Pro network segment. Network segments are IP ranges used to scope Jamf Pro policies, configuration profiles, and other objects to clients whose IP falls within the segment. Optionally a network segment can override the building/department assignment of devices that join it.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `network-segments:create` |
-| `network-segments:delete` |
-| `network-segments:read` |
-| `network-segments:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Network segments | Create, Read, Update, Delete | `network-segments` |
 
 ## Example Usage
 

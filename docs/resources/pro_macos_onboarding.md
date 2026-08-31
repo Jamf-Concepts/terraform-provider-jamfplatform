@@ -4,26 +4,24 @@ page_title: "jamfplatform_pro_macos_onboarding Resource - terraform-provider-jam
 subcategory: ""
 description: |-
   Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. The onboarding_items list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and onboarding_items = [] clears all items. priority follows the list order automatically. Import with terraform import jamfplatform_pro_macos_onboarding.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Onboarding Configuration | `onboarding:read` |
-  | Update Onboarding Configuration | `onboarding:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Onboarding configuration | Read, Update | `onboarding` |
 ---
 
 # jamfplatform_pro_macos_onboarding (Resource)
 
 Manages the Jamf Pro macOS Onboarding configuration (Settings > Self Service > macOS Onboarding). Singleton — one record per tenant. Onboarding presents a curated, ordered list of Self Service items (policies, configuration profiles, and apps) to users during macOS onboarding. The `onboarding_items` list fully replaces what is stored: declare the complete set in the order users should see them, an item you remove is removed from onboarding, and `onboarding_items = []` clears all items. `priority` follows the list order automatically. Import with `terraform import jamfplatform_pro_macos_onboarding.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Onboarding Configuration | `onboarding:read` |
-| Update Onboarding Configuration | `onboarding:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Onboarding configuration | Read, Update | `onboarding` |
 
 ## Example Usage
 

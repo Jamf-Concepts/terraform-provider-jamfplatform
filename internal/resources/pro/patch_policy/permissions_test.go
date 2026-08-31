@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -89,7 +88,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "patch-policies:create") {
+	if !permissions.Renders(resourcePrivileges, "patch-policies:create") {
 		t.Fatalf("resourcePrivileges did not render the patch-policies privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -113,7 +112,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "patch-policies:read") {
+	if !permissions.Renders(dataSourcePrivileges, "patch-policies:read") {
 		t.Fatalf("dataSourcePrivileges did not render the patch-policies privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -138,7 +137,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table actually rendered
 // into the list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "patch-policies:read") {
+	if !permissions.Renders(listResourcePrivileges, "patch-policies:read") {
 		t.Fatalf("listResourcePrivileges did not render the patch-policies privileges:\n%s", listResourcePrivileges)
 	}
 }

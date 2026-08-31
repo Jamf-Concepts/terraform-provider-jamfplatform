@@ -4,26 +4,26 @@ page_title: "jamfplatform_pro_gsx_connection_settings Data Source - terraform-pr
 subcategory: ""
 description: |-
   Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Singleton — one record per tenant. The token and keystore secrets are never returned by the API and are not exposed here.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read GSX Connection | `gsx-connection:read` |
-  | Read Push Certificates | `push-certificates:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | APNS certificate | Read | `push-certificates` |
+  | Infrastructure | Apple GSX connection | Read | `gsx-connection` |
 ---
 
 # jamfplatform_pro_gsx_connection_settings (Data Source)
 
 Read the current Jamf Pro GSX Connection settings (Settings > Global > GSX connection). Singleton — one record per tenant. The token and keystore secrets are never returned by the API and are not exposed here.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read GSX Connection | `gsx-connection:read` |
-| Read Push Certificates | `push-certificates:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | APNS certificate | Read | `push-certificates` |
+| Infrastructure | Apple GSX connection | Read | `gsx-connection` |
 
 ## Example Usage
 

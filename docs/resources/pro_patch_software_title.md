@@ -5,15 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro patch software title, found in the UI under Computers → Patch management. A configured title spans the tabs of that interface: the Software Title Settings tab (name, category_id, site_id, notifications), the Definition tab (per-version package assignments), and the Extension Attribute tab (extension_attributes / accept_extension_attributes). A title is defined by its name_id (catalog key) and source_id (patch source); the server populates the full catalog of available_versions. Assign packages to specific versions via version_packages (the Definition tab's per-version Package column) so patch policies can target them.
   **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | — | `patch-management-software-titles:create` |
-  | — | `patch-management-software-titles:delete` |
-  | Read Patch Management Software Titles | `patch-management-software-titles:read` |
-  | Update Patch Management Software Titles | `patch-management-software-titles:update` |
-  — means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Patch titles | Create, Read, Update, Delete | `patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_software_title (Resource)
@@ -22,18 +18,13 @@ Manages a Jamf Pro patch software title, found in the UI under **Computers → P
 
 > **Deprecation notice:** this resource is backed by the Jamf ProClassic `/patchsoftwaretitles` endpoints, which the Jamf API spec flags as deprecated in favour of `/v2/patch-software-title-configurations`. The classic endpoints remain the only functional CRUD surface — the v2 `POST` requires a `softwareTitleId` that cannot be minted independently — so the provider uses them until a usable v2 create path ships. Behaviour may change if Jamf removes the classic endpoints.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| — | `patch-management-software-titles:create` |
-| — | `patch-management-software-titles:delete` |
-| Read Patch Management Software Titles | `patch-management-software-titles:read` |
-| Update Patch Management Software Titles | `patch-management-software-titles:update` |
-
-`—` means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Patch titles | Create, Read, Update, Delete | `patch-management-software-titles` |
 
 ## Example Usage
 

@@ -4,30 +4,30 @@ page_title: "jamfplatform_pro_managed_software_update_plan Action - terraform-pr
 subcategory: ""
 description: |-
   Submits a Managed Software Updates plan that enforces a target OS version on the members of a smart or static group. This is a fire-once directive: each invocation submits a new plan (there is nothing to update, and nothing to destroy). The Managed Software Updates feature must be enabled first (see jamfplatform_pro_managed_software_update).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-actions:execute` |
-  | `device-groups:read` |
-  | `devices:read` |
-  | `managed-software-updates:create` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device groups | Read | `device-groups` |
+  | Inventory | Devices | Read | `devices` |
+  | Device actions | Device actions | Execute | `device-actions` |
+  | Deployment | Software updates | Create | `managed-software-updates` |
 ---
 
 # jamfplatform_pro_managed_software_update_plan (Action)
 
 Submits a Managed Software Updates plan that enforces a target OS version on the members of a smart or static group. This is a fire-once directive: each invocation submits a new plan (there is nothing to update, and nothing to destroy). The Managed Software Updates feature must be enabled first (see `jamfplatform_pro_managed_software_update`).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-actions:execute` |
-| `device-groups:read` |
-| `devices:read` |
-| `managed-software-updates:create` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device groups | Read | `device-groups` |
+| Inventory | Devices | Read | `devices` |
+| Device actions | Device actions | Execute | `device-actions` |
+| Deployment | Software updates | Create | `managed-software-updates` |
 
 ## Example Usage
 

@@ -5,14 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator / over-the-air enrollment profile that devices use to enrol into Jamf Pro. Carries enrolment metadata plus user/location and purchasing information.
   Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `enrollment-profiles:create` |
-  | `enrollment-profiles:delete` |
-  | `enrollment-profiles:read` |
-  | `enrollment-profiles:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | Enrollment profiles | Create, Read, Update, Delete | `enrollment-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_enrollment_profile (Resource)
@@ -21,16 +18,13 @@ Manages a Jamf Pro mobile device enrollment profile — the Apple Configurator /
 
 Attachments are read-only: Jamf Pro's attachment-upload endpoint does not accept this provider's authentication for enrollment profiles, so attachments can be listed but not managed here — add or remove them in the Jamf Pro admin UI.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `enrollment-profiles:create` |
-| `enrollment-profiles:delete` |
-| `enrollment-profiles:read` |
-| `enrollment-profiles:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | Enrollment profiles | Create, Read, Update, Delete | `enrollment-profiles` |
 
 ## Example Usage
 

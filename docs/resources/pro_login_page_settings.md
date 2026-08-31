@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_login_page_settings Resource - terraform-provider-
 subcategory: ""
 description: |-
   Manages the Jamf Pro login page disclaimer (Settings > System > Login page). Singleton — one record per tenant. The three disclaimer text fields (disclaimer_heading, disclaimer_main_text, action_text) are required on every write, regardless of include_custom_disclaimer — Jamf Pro rejects a write that omits any of them or sends an empty string (wire-probed 2026-06-09). The custom disclaimer is only shown to users when include_custom_disclaimer = true, but the text must always be present. Omit = preserve — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. Import with terraform import jamfplatform_pro_login_page_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Update Login Disclaimer | `login-disclaimer:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Login disclaimer | Update | `login-disclaimer` |
 ---
 
 # jamfplatform_pro_login_page_settings (Resource)
 
 Manages the Jamf Pro login page disclaimer (Settings > System > Login page). Singleton — one record per tenant. **The three disclaimer text fields (`disclaimer_heading`, `disclaimer_main_text`, `action_text`) are required on every write, regardless of `include_custom_disclaimer`** — Jamf Pro rejects a write that omits any of them or sends an empty string (wire-probed 2026-06-09). The custom disclaimer is only *shown* to users when `include_custom_disclaimer = true`, but the text must always be present. **Omit = preserve** — a field you omit keeps its current Jamf Pro value, including on the first apply: this resource adopts the existing settings and only changes the fields you declare. Import with `terraform import jamfplatform_pro_login_page_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Update Login Disclaimer | `login-disclaimer:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Login disclaimer | Update | `login-disclaimer` |
 
 ## Example Usage
 

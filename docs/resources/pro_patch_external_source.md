@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_patch_external_source Resource - terraform-provide
 subcategory: ""
 description: |-
   Manages a Jamf Pro patch external source, configured in the UI under Settings → Computer management → Patch management in the Patch External Source section (the New External Patch Source form). External patch sources host third-party software title definitions consumed by patch management.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `patch-external-source:create` |
-  | `patch-external-source:delete` |
-  | `patch-external-source:read` |
-  | `patch-external-source:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | External patch sources | Create, Read, Update, Delete | `patch-external-source` |
 ---
 
 # jamfplatform_pro_patch_external_source (Resource)
 
 Manages a Jamf Pro patch external source, configured in the UI under **Settings → Computer management → Patch management** in the **Patch External Source** section (the **New External Patch Source** form). External patch sources host third-party software title definitions consumed by patch management.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `patch-external-source:create` |
-| `patch-external-source:delete` |
-| `patch-external-source:read` |
-| `patch-external-source:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | External patch sources | Create, Read, Update, Delete | `patch-external-source` |
 
 ## Example Usage
 

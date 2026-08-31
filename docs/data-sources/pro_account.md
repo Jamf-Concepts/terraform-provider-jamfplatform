@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_account Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Look up a Jamf Pro administrator login account by id or username. Surfaces base account fields; the Custom privilege grid is not included (use the jamfplatform_pro_account resource or jamfplatform_pro_account_privileges data source).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Accounts | `accounts:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Admin account | Read | `accounts` |
 ---
 
 # jamfplatform_pro_account (Data Source)
 
 Look up a Jamf Pro administrator login account by `id` or `username`. Surfaces base account fields; the Custom privilege grid is not included (use the `jamfplatform_pro_account` resource or `jamfplatform_pro_account_privileges` data source).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Accounts | `accounts:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Admin account | Read | `accounts` |
 
 ## Example Usage
 

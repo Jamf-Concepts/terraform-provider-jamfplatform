@@ -6,12 +6,11 @@ description: |-
   "Synchronize" on the Jamf Security Cloud UEM Connect Actions menu — starts a sync run immediately, rather than waiting for the next scheduled one.
   Jamf Security Cloud accepts the request and runs the sync in the background, so this returns as soon as the run has started and does not wait for it or report what it did. Read the outcome from the latest_sync attribute of the jamfplatform_security_cloud_uem_connect data source, or from the sync logs in the admin UI.
   Synchronizing a disabled integration is refused.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `uem-connect:read` |
-  | `uem-connect:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | UEM Connect configuration | Read, Update | `uem-connect` |
 ---
 
 # jamfplatform_security_cloud_uem_connect_synchronize (Action)
@@ -22,14 +21,13 @@ Jamf Security Cloud accepts the request and runs the sync in the background, so 
 
 Synchronizing a disabled integration is refused.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `uem-connect:read` |
-| `uem-connect:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | UEM Connect configuration | Read, Update | `uem-connect` |
 
 ## Example Usage
 

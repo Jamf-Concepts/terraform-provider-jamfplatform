@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_webhook Data Source - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Look up a Jamf Pro webhook by ID or by exact name. Exactly one of id or name must be supplied. The plaintext password is never surfaced; header is returned (the server echoes it) and marked sensitive.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `webhooks:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Webhooks | Read | `webhooks` |
 ---
 
 # jamfplatform_pro_webhook (Data Source)
 
 Look up a Jamf Pro webhook by ID or by exact name. Exactly one of `id` or `name` must be supplied. The plaintext password is never surfaced; `header` is returned (the server echoes it) and marked sensitive.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `webhooks:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Webhooks | Read | `webhooks` |
 
 ## Example Usage
 

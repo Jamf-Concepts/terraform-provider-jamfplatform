@@ -86,7 +86,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "self-service:") {
+	if !strings.Contains(resourcePrivileges, "`self-service`") {
 		t.Fatalf("resourcePrivileges did not render the branding privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -109,7 +109,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "self-service:") {
+	if !strings.Contains(dataSourcePrivileges, "`self-service`") {
 		t.Fatalf("dataSourcePrivileges did not render the branding privileges:\n%s", dataSourcePrivileges)
 	}
 }

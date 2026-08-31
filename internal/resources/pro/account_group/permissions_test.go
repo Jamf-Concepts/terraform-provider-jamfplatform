@@ -86,7 +86,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 
 // TestResourcePrivileges_Rendered guards that the table actually rendered.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "accounts:") {
+	if !strings.Contains(resourcePrivileges, "`accounts`") {
 		t.Fatalf("resourcePrivileges did not render the accounts privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -109,7 +109,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "accounts:") {
+	if !strings.Contains(dataSourcePrivileges, "`accounts`") {
 		t.Fatalf("dataSourcePrivileges did not render the accounts privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -132,7 +132,7 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 
 // TestListResourcePrivileges_Rendered guards that the table actually rendered.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "accounts:") {
+	if !strings.Contains(listResourcePrivileges, "`accounts`") {
 		t.Fatalf("listResourcePrivileges did not render the accounts privileges:\n%s", listResourcePrivileges)
 	}
 }

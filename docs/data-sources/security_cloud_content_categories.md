@@ -6,11 +6,11 @@ description: |-
   Reads the content categories available in Jamf Security Cloud — Jamf's own classification of web and app traffic, such as Social or Cloud & File Storage. The catalogue is curated by Jamf, identical for every entitled tenant, and cannot be changed.
   Use this to reference a category without hard-coding a name Jamf may revise — in an output, or to pre-stage an identifier. Note that a category has two names: reference display_name, not name.
   Zero Trust Network Access apps, which are what match a category, are not yet managed by this provider, so today the value read here is for reference rather than for wiring into another resource.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `content-categories:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Content categories | Read | `content-categories` |
 ---
 
 # jamfplatform_security_cloud_content_categories (Data Source)
@@ -21,13 +21,13 @@ Use this to reference a category without hard-coding a name Jamf may revise — 
 
 Zero Trust Network Access apps, which are what match a category, are not yet managed by this provider, so today the value read here is for reference rather than for wiring into another resource.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `content-categories:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Content categories | Read | `content-categories` |
 
 ## Example Usage
 

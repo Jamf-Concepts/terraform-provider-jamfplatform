@@ -4,24 +4,24 @@ page_title: "jamfplatform_security_cloud_device_group List Resource - terraform-
 subcategory: ""
 description: |-
   Lists every Jamf Security Cloud device group on the tenant that Terraform can manage. Jamf Security Cloud exposes no filter parameters for groups, so this list resource takes no filter configuration. Results are sorted by name by the provider. The built-in group is not listed: it has no identifier, so it cannot be imported or managed. Use the jamfplatform_security_cloud_device_groups data source to see it.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `device-groups:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device groups | Read | `device-groups` |
 ---
 
 # jamfplatform_security_cloud_device_group (List Resource)
 
 Lists every Jamf Security Cloud device group on the tenant that Terraform can manage. Jamf Security Cloud exposes no filter parameters for groups, so this list resource takes no filter configuration. Results are sorted by name by the provider. The built-in group is not listed: it has no identifier, so it cannot be imported or managed. Use the jamfplatform_security_cloud_device_groups data source to see it.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `device-groups:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device groups | Read | `device-groups` |
 
 ## Example Usage
 

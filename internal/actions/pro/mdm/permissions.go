@@ -15,7 +15,7 @@ import (
 // send_blank_push routes its serial-number resolution through the shared helpers
 // in helpers.go (resolveSerialNumbers -> ListDevices); the other two call the SDK
 // directly. The declared list is the full reachable set so the rendered
-// "Required Jamf privileges" table is honest; permissions_test.go asserts each
+// "Required Jamf permissions" table is honest; permissions_test.go asserts each
 // list stays in sync with the methods reachable from the action's own file
 // (direct calls plus the helpers it invokes) and with the SDK privilege
 // registries.

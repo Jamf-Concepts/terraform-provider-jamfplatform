@@ -24,7 +24,7 @@ var resourceSDKMethods = []string{
 	"GetToolSchema",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section for the policy
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section for the policy
 // resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(aigovernance.Privileges, resourceSDKMethods...)
 
@@ -33,7 +33,7 @@ var dataSourceSDKMethods = []string{
 	"GetPolicy",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section for the singular
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section for the singular
 // policy data source.
 var dataSourcePrivileges = permissions.Section(aigovernance.Privileges, dataSourceSDKMethods...)
 
@@ -42,7 +42,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListPolicies",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section for the
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section for the
 // plural policies data source.
 var pluralDataSourcePrivileges = permissions.Section(aigovernance.Privileges, pluralDataSourceSDKMethods...)
 
@@ -54,6 +54,6 @@ var listResourceSDKMethods = []string{
 	"GetPolicy",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown section for the policy
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown section for the policy
 // list resource.
 var listResourcePrivileges = permissions.Section(aigovernance.Privileges, listResourceSDKMethods...)

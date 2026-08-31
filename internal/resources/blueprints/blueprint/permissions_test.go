@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	bp "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/blueprints"
@@ -87,7 +86,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "blueprints:create") {
+	if !permissions.Renders(resourcePrivileges, "blueprints:create") {
 		t.Fatalf("resourcePrivileges did not render the blueprints privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -109,7 +108,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "blueprints:read") {
+	if !permissions.Renders(dataSourcePrivileges, "blueprints:read") {
 		t.Fatalf("dataSourcePrivileges did not render the blueprints privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -132,7 +131,7 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table actually rendered
 // into the list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "blueprints:read") {
+	if !permissions.Renders(listResourcePrivileges, "blueprints:read") {
 		t.Fatalf("listResourcePrivileges did not render the blueprints privileges:\n%s", listResourcePrivileges)
 	}
 }

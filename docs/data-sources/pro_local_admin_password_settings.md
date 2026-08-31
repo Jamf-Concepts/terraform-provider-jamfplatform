@@ -4,27 +4,24 @@ page_title: "jamfplatform_pro_local_admin_password_settings Data Source - terraf
 subcategory: ""
 description: |-
   Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read User-Initiated Enrollment, Update Local Admin Password Settings | `local-admin-passwords:update` |
-  Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Device secrets | Local Admin Passwords (LAPS) | Update | `local-admin-passwords` |
 ---
 
 # jamfplatform_pro_local_admin_password_settings (Data Source)
 
 Read the current Jamf Pro local administrator password (LAPS) settings (UI: Settings → Computer Management → Security → "Password settings for managed local administrator accounts"). Singleton — one record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read User-Initiated Enrollment, Update Local Admin Password Settings | `local-admin-passwords:update` |
-
-Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Device secrets | Local Admin Passwords (LAPS) | Update | `local-admin-passwords` |
 
 ## Example Usage
 

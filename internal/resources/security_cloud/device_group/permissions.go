@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the device group resource's CRUD path
 // calls. It mirrors the "SDK endpoints used" block in crud.go and drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteDeviceGroupV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the device group resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(securitycloud.Privileges, resourceSDKMethods...)
 
@@ -34,7 +34,7 @@ var dataSourceSDKMethods = []string{
 	"ListDeviceGroupsV2",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the singular device group data source.
 var dataSourcePrivileges = permissions.Section(securitycloud.Privileges, dataSourceSDKMethods...)
 
@@ -44,7 +44,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListDeviceGroupsV2",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the plural device groups data source.
 var pluralDataSourcePrivileges = permissions.Section(securitycloud.Privileges, pluralDataSourceSDKMethods...)
 
@@ -54,6 +54,6 @@ var listResourceSDKMethods = []string{
 	"ListDeviceGroupsV2",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the device group list resource.
 var listResourcePrivileges = permissions.Section(securitycloud.Privileges, listResourceSDKMethods...)

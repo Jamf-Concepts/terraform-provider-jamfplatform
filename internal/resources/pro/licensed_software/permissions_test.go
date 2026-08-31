@@ -119,7 +119,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSource":   dataSourcePrivileges,
 		"listResource": listResourcePrivileges,
 	} {
-		if !strings.Contains(got, "licensed-software:") {
+		if !strings.Contains(got, "`licensed-software`") {
 			t.Fatalf("%sPrivileges did not render the licensed-software privileges:\n%s", name, got)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 
 // flushPolicyLogsSDKMethods lists the SDK methods the flush_policy_logs action's
 // Invoke path calls. It mirrors the "SDK endpoints used" calls in
-// flush_policy_logs.go and drives the "Required Jamf privileges" table appended
+// flush_policy_logs.go and drives the "Required Jamf permissions" table appended
 // to the action MarkdownDescription. permissions_test.go asserts this list stays
 // in sync with the actual classic.<Method> calls in flush_policy_logs.go and
 // with the SDK privilege registry.
@@ -21,14 +21,14 @@ var flushPolicyLogsSDKMethods = []string{
 	"DeleteLogFlushByLogIDInterval",
 }
 
-// flushPolicyLogsPrivileges is the rendered "Required Jamf privileges" Markdown
+// flushPolicyLogsPrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the flush_policy_logs action, appended to its MarkdownDescription.
 var flushPolicyLogsPrivileges = permissions.Section(proclassic.Privileges, flushPolicyLogsSDKMethods...)
 
 // redeployManagementFrameworkSDKMethods lists the SDK methods the
 // redeploy_management_framework action's Invoke path calls. It mirrors the
 // client.<Method> calls in redeploy_management_framework.go and drives the
-// "Required Jamf privileges" table appended to the action MarkdownDescription.
+// "Required Jamf permissions" table appended to the action MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in redeploy_management_framework.go and with the SDK
 // privilege registry.

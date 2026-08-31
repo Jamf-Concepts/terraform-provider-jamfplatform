@@ -4,26 +4,24 @@ page_title: "jamfplatform_pro_app_request_form_field Resource - terraform-provid
 subcategory: ""
 description: |-
   Manages a Jamf Pro App Request form field (Settings → Self Service → App Request → App Request Form). Form fields are the custom input prompts shown to users on the App Request form in Self Service. Each field is an independent record ordered by priority. Titles are not required to be unique.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read App Request Settings | `app-request:read` |
-  | Update App Request Settings | `app-request:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | App request settings | Read, Update | `app-request` |
 ---
 
 # jamfplatform_pro_app_request_form_field (Resource)
 
 Manages a Jamf Pro App Request form field (Settings → Self Service → App Request → App Request Form). Form fields are the custom input prompts shown to users on the App Request form in Self Service. Each field is an independent record ordered by `priority`. Titles are not required to be unique.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read App Request Settings | `app-request:read` |
-| Update App Request Settings | `app-request:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | App request settings | Read, Update | `app-request` |
 
 ## Example Usage
 

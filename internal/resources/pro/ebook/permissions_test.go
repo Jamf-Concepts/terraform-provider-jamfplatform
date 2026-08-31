@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -121,7 +120,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		{"dataSource", dataSourcePrivileges, "ebooks:read"},
 		{"listResource", listResourcePrivileges, "ebooks:read"},
 	} {
-		if !strings.Contains(tc.rendered, tc.want) {
+		if !permissions.Renders(tc.rendered, tc.want) {
 			t.Errorf("%s privileges did not render %q:\n%s", tc.name, tc.want, tc.rendered)
 		}
 	}

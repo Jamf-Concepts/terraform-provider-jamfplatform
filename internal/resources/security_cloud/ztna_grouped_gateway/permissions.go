@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the grouped gateway resource's CRUD
 // path calls. It mirrors the "SDK endpoints used" block in crud.go and drives the
-// "Required Jamf privileges" table appended to the resource MarkdownDescription.
+// "Required Jamf permissions" table appended to the resource MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // client.<Method> calls in crud.go and with the SDK privilege registry.
 var resourceSDKMethods = []string{
@@ -21,7 +21,7 @@ var resourceSDKMethods = []string{
 	"DeleteZtnaGroupedGatewayV1",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the grouped gateway resource, appended to its MarkdownDescription.
 var resourcePrivileges = permissions.Section(securitycloud.Privileges, resourceSDKMethods...)
 
@@ -34,7 +34,7 @@ var dataSourceSDKMethods = []string{
 	"ListZtnaGroupedGatewaysV1",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown section
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown section
 // for the singular grouped gateway data source.
 var dataSourcePrivileges = permissions.Section(securitycloud.Privileges, dataSourceSDKMethods...)
 
@@ -44,7 +44,7 @@ var pluralDataSourceSDKMethods = []string{
 	"ListZtnaGroupedGatewaysV1",
 }
 
-// pluralDataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// pluralDataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the plural grouped gateways data source.
 var pluralDataSourcePrivileges = permissions.Section(securitycloud.Privileges, pluralDataSourceSDKMethods...)
 
@@ -54,6 +54,6 @@ var listResourceSDKMethods = []string{
 	"ListZtnaGroupedGatewaysV1",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the grouped gateway list resource.
 var listResourcePrivileges = permissions.Section(securitycloud.Privileges, listResourceSDKMethods...)

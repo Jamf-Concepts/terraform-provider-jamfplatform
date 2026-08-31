@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_automated_device_enrollment Resource - terraform-p
 subcategory: ""
 description: |-
   Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a .p7m server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible name and any optional site_id / supervision_identity_id associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind. After every token write (initial create AND any update that bumps server_token_wo_version), the provider blocks until Jamf Pro reports the Apple ADE sync as SUCCESSFUL — until that completes the device list is not known to Jamf and downstream resources (e.g. jamfplatform_pro_computer_prestage_enrollment scope assignments) will fail. Default create/update timeout is 5 minutes; override via the timeouts block when Apple's round-trip is slower on a particular tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Device Enrollment Program Instances | `device-enrollment-program-instances:create` |
-  | Delete Device Enrollment Program Instances | `device-enrollment-program-instances:delete` |
-  | Read Device Enrollment Program Instances | `device-enrollment-program-instances:read` |
-  | Update Device Enrollment Program Instances | `device-enrollment-program-instances:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Automated Device Enrollment connection | Create, Read, Update, Delete | `device-enrollment-program-instances` |
 ---
 
 # jamfplatform_pro_automated_device_enrollment (Resource)
 
 Manages a Jamf Pro Automated Device Enrollment (ADE) instance. ADE binds a Jamf Pro tenant to an Apple School Manager / Apple Business Manager MDM server using a `.p7m` server token downloaded from Apple. The provider performs the two-step upload-and-rename flow internally: it first uploads the decoded token bytes to allocate the instance, then sets the user-visible `name` and any optional `site_id` / `supervision_identity_id` associations. If the rename step fails the provider deletes the partially-created instance so Terraform's create either fully succeeds or leaves no resource behind. After every token write (initial create AND any update that bumps `server_token_wo_version`), the provider blocks until Jamf Pro reports the Apple ADE sync as `SUCCESSFUL` — until that completes the device list is not known to Jamf and downstream resources (e.g. `jamfplatform_pro_computer_prestage_enrollment` scope assignments) will fail. Default create/update timeout is 5 minutes; override via the `timeouts` block when Apple's round-trip is slower on a particular tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Device Enrollment Program Instances | `device-enrollment-program-instances:create` |
-| Delete Device Enrollment Program Instances | `device-enrollment-program-instances:delete` |
-| Read Device Enrollment Program Instances | `device-enrollment-program-instances:read` |
-| Update Device Enrollment Program Instances | `device-enrollment-program-instances:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Automated Device Enrollment connection | Create, Read, Update, Delete | `device-enrollment-program-instances` |
 
 ## Example Usage
 

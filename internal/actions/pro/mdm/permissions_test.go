@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
@@ -176,20 +175,20 @@ func TestSendBlankPushPrivileges_Rendered(t *testing.T) {
 	// resolver's privilege would be refused at POST /v2/mdm/blank-push by a
 	// table that told them they were done.
 	for _, want := range []string{"device-actions:execute", "devices:read"} {
-		if !strings.Contains(sendBlankPushPrivileges, want) {
+		if !permissions.Renders(sendBlankPushPrivileges, want) {
 			t.Errorf("sendBlankPushPrivileges did not render %q:\n%s", want, sendBlankPushPrivileges)
 		}
 	}
 }
 
 func TestRenewMdmProfilePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(renewMdmProfilePrivileges, "device-actions:execute") {
+	if !permissions.Renders(renewMdmProfilePrivileges, "device-actions:execute") {
 		t.Fatalf("renewMdmProfilePrivileges did not render the expected privilege:\n%s", renewMdmProfilePrivileges)
 	}
 }
 
 func TestFlushMdmCommandsPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(flushMdmCommandsPrivileges, "device-actions:delete") {
+	if !permissions.Renders(flushMdmCommandsPrivileges, "device-actions:delete") {
 		t.Fatalf("flushMdmCommandsPrivileges did not render the expected privilege:\n%s", flushMdmCommandsPrivileges)
 	}
 }

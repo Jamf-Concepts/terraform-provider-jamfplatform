@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_class Data Source - terraform-provider-jamfplatfor
 subcategory: ""
 description: |-
   Look up a Jamf Pro class by ID or by exact name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `classes:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Classes | Read | `classes` |
 ---
 
 # jamfplatform_pro_class (Data Source)
 
 Look up a Jamf Pro class by ID or by exact name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `classes:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Classes | Read | `classes` |
 
 ## Example Usage
 

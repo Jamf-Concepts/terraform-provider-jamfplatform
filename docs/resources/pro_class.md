@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_class Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro class — the "Classes" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers (by username) and student/teacher/mobile-device groups (by ID). Membership is authoritative: each set is applied in full on every change. Classes synchronised from a roster (Apple School Manager) are managed by the sync and should not be managed with this resource.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `classes:create` |
-  | `classes:delete` |
-  | `classes:read` |
-  | `classes:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Classes | Create, Read, Update, Delete | `classes` |
 ---
 
 # jamfplatform_pro_class (Resource)
 
 Manages a Jamf Pro class — the "Classes" item under the Computers sidebar in the Jamf Pro admin UI, used by Apple Classroom and Apple School Manager. A class groups students and teachers (by username) and student/teacher/mobile-device groups (by ID). Membership is authoritative: each set is applied in full on every change. Classes synchronised from a roster (Apple School Manager) are managed by the sync and should not be managed with this resource.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `classes:create` |
-| `classes:delete` |
-| `classes:read` |
-| `classes:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Classes | Create, Read, Update, Delete | `classes` |
 
 ## Example Usage
 

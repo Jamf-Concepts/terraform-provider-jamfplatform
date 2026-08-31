@@ -119,7 +119,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"data source":   dataSourcePrivileges,
 		"list resource": listResourcePrivileges,
 	} {
-		if !strings.Contains(rendered, "dock-items:") {
+		if !strings.Contains(rendered, "`dock-items`") {
 			t.Fatalf("%s privileges did not render the dock-items privileges:\n%s", name, rendered)
 		}
 	}

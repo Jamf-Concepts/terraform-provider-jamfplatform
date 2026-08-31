@@ -8,14 +8,11 @@ description: |-
   Choose one of two ways to authenticate to Jamf Pro. With platform_tenant, Jamf Security Cloud creates and manages its own credentials on the named tenant and no secret is configured here — prefer it. With oauth, supply the client ID and secret of an API integration you created on the Jamf Pro instance yourself.
   The connection is fixed once created: changing the vendor, the address or the way it authenticates replaces the integration, which briefly interrupts syncing.
   After importing, run terraform plan: user_data_field_mapping and group_membership_mapping are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `uem-connect:create` |
-  | `uem-connect:delete` |
-  | `uem-connect:read` |
-  | `uem-connect:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | UEM Connect configuration | Create, Read, Update, Delete | `uem-connect` |
 ---
 
 # jamfplatform_security_cloud_uem_connect (Resource)
@@ -30,16 +27,13 @@ The connection is fixed once created: changing the vendor, the address or the wa
 
 After importing, run `terraform plan`: `user_data_field_mapping` and `group_membership_mapping` are captured from the tenant even though your configuration may not declare them, and the plan shows you what to write in to keep them.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `uem-connect:create` |
-| `uem-connect:delete` |
-| `uem-connect:read` |
-| `uem-connect:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | UEM Connect configuration | Create, Read, Update, Delete | `uem-connect` |
 
 ## Example Usage
 

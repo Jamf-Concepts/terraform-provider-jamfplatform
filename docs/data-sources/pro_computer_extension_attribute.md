@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_computer_extension_attribute Data Source - terrafo
 subcategory: ""
 description: |-
   Look up a Jamf Pro computer extension attribute by ID or by exact name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Computer Extension Attributes | `extension-attributes:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Device extension attributes | Read | `extension-attributes` |
 ---
 
 # jamfplatform_pro_computer_extension_attribute (Data Source)
 
 Look up a Jamf Pro computer extension attribute by ID or by exact name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Computer Extension Attributes | `extension-attributes:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Device extension attributes | Read | `extension-attributes` |
 
 ## Example Usage
 

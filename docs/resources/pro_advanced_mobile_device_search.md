@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_advanced_mobile_device_search Resource - terraform
 subcategory: ""
 description: |-
   Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Advanced Mobile Device Searches | `advanced-device-searches:create` |
-  | Delete Advanced Mobile Device Searches | `advanced-device-searches:delete` |
-  | Read Advanced Mobile Device Searches | `advanced-device-searches:read` |
-  | Update Advanced Mobile Device Searches | `advanced-device-searches:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Advanced device searches | Create, Read, Update, Delete | `advanced-device-searches` |
 ---
 
 # jamfplatform_pro_advanced_mobile_device_search (Resource)
 
 Manages a Jamf Pro advanced mobile device search — a saved, criteria-driven inventory query with a configurable set of display columns. The matched-device result set and the Reports tab (file format, scheduled email) are server-computed report concerns and are intentionally not modelled. Mirrors the Devices → Search Inventory → Advanced Mobile Device Search UI.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Advanced Mobile Device Searches | `advanced-device-searches:create` |
-| Delete Advanced Mobile Device Searches | `advanced-device-searches:delete` |
-| Read Advanced Mobile Device Searches | `advanced-device-searches:read` |
-| Update Advanced Mobile Device Searches | `advanced-device-searches:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Advanced device searches | Create, Read, Update, Delete | `advanced-device-searches` |
 
 ## Example Usage
 

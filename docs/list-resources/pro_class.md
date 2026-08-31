@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_class List Resource - terraform-provider-jamfplatf
 subcategory: ""
 description: |-
   Lists Jamf Pro classes. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `classes:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Classes | Read | `classes` |
 ---
 
 # jamfplatform_pro_class (List Resource)
 
 Lists Jamf Pro classes. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `classes:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Classes | Read | `classes` |
 
 ## Example Usage
 

@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_script Resource - terraform-provider-jamfplatform"
 subcategory: ""
 description: |-
   Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via parameter_4 through parameter_11.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create Scripts | `scripts:create` |
-  | Delete Scripts | `scripts:delete` |
-  | Read Scripts | `scripts:read` |
-  | Update Scripts | `scripts:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Scripts | Create, Read, Update, Delete | `scripts` |
 ---
 
 # jamfplatform_pro_script (Resource)
 
 Manages a Jamf Pro script. Scripts execute on managed devices via policies or Self Service workflows. Parameter slots 1-3 are reserved by Jamf Pro; user-managed parameter labels are exposed via `parameter_4` through `parameter_11`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create Scripts | `scripts:create` |
-| Delete Scripts | `scripts:delete` |
-| Read Scripts | `scripts:read` |
-| Update Scripts | `scripts:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Scripts | Create, Read, Update, Delete | `scripts` |
 
 ## Example Usage
 

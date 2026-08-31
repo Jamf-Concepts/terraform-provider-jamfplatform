@@ -6,14 +6,11 @@ description: |-
   Manages a Jamf Pro DigiCert Trust Lifecycle Manager integration (Settings → Global → PKI certificates → Certificate Authorities). DigiCert TLM is an external certificate authority Jamf Pro uses to issue certificates referenced by configuration profiles.
   Client certificate: the certificate (a .p12/.pfx keystore) authenticates Jamf Pro to DigiCert One. It is supplied through the client_certificate block as data_wo (base64 of the keystore — use filebase64("cert.p12")) plus password_wo; both are WriteOnly and never persisted in Terraform state, and Jamf Pro never returns them on read. DigiCert treats the certificate as all-or-nothing, so the provider re-sends the whole certificate only when you bump client_certificate.wo_version (editing data_wo/password_wo without bumping the version is intentionally a no-op). Certificate metadata Jamf Pro parses from the uploaded keystore (serial, subject, issuer, expiry, filename) is surfaced in the read-only client_certificate_details block.
   Import with terraform import jamfplatform_pro_pki_digicert.<name> <id>.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create DigiCert Settings | `digicert-settings:create` |
-  | Delete DigiCert Settings | `digicert-settings:delete` |
-  | Read DigiCert Settings | `digicert-settings:read` |
-  | Update DigiCert Settings | `digicert-settings:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | DigiCert Trust Lifecycle Manager | Create, Read, Update, Delete | `digicert-settings` |
 ---
 
 # jamfplatform_pro_pki_digicert (Resource)
@@ -24,16 +21,13 @@ Manages a Jamf Pro DigiCert Trust Lifecycle Manager integration (Settings → Gl
 
 Import with `terraform import jamfplatform_pro_pki_digicert.<name> <id>`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create DigiCert Settings | `digicert-settings:create` |
-| Delete DigiCert Settings | `digicert-settings:delete` |
-| Read DigiCert Settings | `digicert-settings:read` |
-| Update DigiCert Settings | `digicert-settings:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | DigiCert Trust Lifecycle Manager | Create, Read, Update, Delete | `digicert-settings` |
 
 ## Example Usage
 

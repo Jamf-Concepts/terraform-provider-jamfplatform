@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_ldap_server Data Source - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of id or name must be supplied. The data source never returns the bind password — Jamf Pro does not return it on read.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ldap-servers:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | LDAP / cloud IdP | Read | `ldap-servers` |
 ---
 
 # jamfplatform_pro_ldap_server (Data Source)
 
 Look up a Jamf Pro on-premises LDAP server by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The data source never returns the bind password — Jamf Pro does not return it on read.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ldap-servers:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | LDAP / cloud IdP | Read | `ldap-servers` |
 
 ## Example Usage
 

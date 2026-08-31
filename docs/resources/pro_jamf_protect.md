@@ -4,29 +4,24 @@ page_title: "jamfplatform_pro_jamf_protect Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). Singleton — one registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. Changing api_url, client_id, or bumping password_wo_version re-registers in place — the server overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. Unregistering note: destroying this resource removes the registration only — configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the jamfplatform_pro_jamf_protect_plans data source). Import with terraform import jamfplatform_pro_jamf_protect.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Jamf Protect Settings, Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
-  | Update Jamf Protect Settings | `jamf-protect-deployments:update` |
-  Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Jamf Protect deployment | Read, Update | `jamf-protect-deployments` |
 ---
 
 # jamfplatform_pro_jamf_protect (Resource)
 
 Manages the Jamf Pro ↔ Jamf Protect registration (Settings → Jamf apps → Jamf Protect). Singleton — one registration per tenant. Creating this resource registers Jamf Pro with the Jamf Protect instance (credentials are validated live against Protect) and triggers an initial plans sync; destroying it unregisters. Changing `api_url`, `client_id`, or bumping `password_wo_version` re-registers in place — the server overwrites the existing registration without unregistering first, and a failed credential check leaves the old registration intact. **Unregistering note:** destroying this resource removes the registration only — configuration profiles already created from Protect plans remain in Jamf Pro, and the synced plans catalog persists (see the `jamfplatform_pro_jamf_protect_plans` data source). Import with `terraform import jamfplatform_pro_jamf_protect.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Jamf Protect Settings, Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
-| Update Jamf Protect Settings | `jamf-protect-deployments:update` |
-
-Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Jamf Protect deployment | Read, Update | `jamf-protect-deployments` |
 
 ## Example Usage
 

@@ -4,26 +4,24 @@ page_title: "jamfplatform_pro_self_service_plus_settings Resource - terraform-pr
 subcategory: ""
 description: |-
   Manages Jamf Pro Self Service Plus settings. Singleton — one record per tenant. Import with terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Self Service | `self-service:read` |
-  | Update Self Service | `self-service:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Read, Update | `self-service` |
 ---
 
 # jamfplatform_pro_self_service_plus_settings (Resource)
 
 Manages Jamf Pro Self Service Plus settings. Singleton — one record per tenant. Import with `terraform import jamfplatform_pro_self_service_plus_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Self Service | `self-service:read` |
-| Update Self Service | `self-service:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Read, Update | `self-service` |
 
 ## Example Usage
 

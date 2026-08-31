@@ -5,13 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device provisioning profile — the signed .mobileprovision profile that authorises in-house (enterprise) apps to run on managed devices.
   An uploaded profile cannot be modified in place: changing name or profile_data replaces the profile (Terraform deletes and recreates it).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `provisioning-profiles:create` |
-  | `provisioning-profiles:delete` |
-  | `provisioning-profiles:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Provisioning profiles for in-house apps | Create, Read, Delete | `provisioning-profiles` |
 ---
 
 # jamfplatform_pro_mobile_device_provisioning_profile (Resource)
@@ -20,15 +18,13 @@ Manages a Jamf Pro mobile device provisioning profile — the signed `.mobilepro
 
 An uploaded profile cannot be modified in place: changing `name` or `profile_data` replaces the profile (Terraform deletes and recreates it).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `provisioning-profiles:create` |
-| `provisioning-profiles:delete` |
-| `provisioning-profiles:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Provisioning profiles for in-house apps | Create, Read, Delete | `provisioning-profiles` |
 
 ## Example Usage
 

@@ -7,12 +7,11 @@ description: |-
   Omit = preserve — each optional attribute you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the attributes you declare. timezone must always be set — the Jamf Pro API requires it on every write.
   Destroy — terraform destroy removes the resource from Terraform state only. The Jamf Teacher settings are left intact on the tenant; they cannot be deleted.
   Import with terraform import jamfplatform_pro_jamf_teacher_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Teacher App Settings | `teacher-app:read` |
-  | Update Teacher App Settings | `teacher-app:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Teacher app settings | Read, Update | `teacher-app` |
 ---
 
 # jamfplatform_pro_jamf_teacher_settings (Resource)
@@ -25,14 +24,13 @@ Manages the Jamf Pro **Jamf Teacher** settings page (UI: Settings → Jamf apps 
 
 Import with `terraform import jamfplatform_pro_jamf_teacher_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Teacher App Settings | `teacher-app:read` |
-| Update Teacher App Settings | `teacher-app:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Teacher app settings | Read, Update | `teacher-app` |
 
 ## Example Usage
 

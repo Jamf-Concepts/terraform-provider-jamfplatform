@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_activation_code Data Source - terraform-provider-j
 subcategory: ""
 description: |-
   Read the current Jamf Pro activation code and organization name. Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `activation-code:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Activation code | Read | `activation-code` |
 ---
 
 # jamfplatform_pro_activation_code (Data Source)
 
 Read the current Jamf Pro activation code and organization name. Singleton — one record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `activation-code:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Activation code | Read | `activation-code` |
 
 
 

@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -87,7 +86,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "departments:create") {
+	if !permissions.Renders(resourcePrivileges, "departments:create") {
 		t.Fatalf("resourcePrivileges did not render the departments privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -105,7 +104,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "departments:read") {
+	if !permissions.Renders(dataSourcePrivileges, "departments:read") {
 		t.Fatalf("dataSourcePrivileges did not render the departments privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -123,7 +122,7 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestPluralDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(pluralDataSourcePrivileges, "departments:read") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "departments:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the departments privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }
@@ -141,7 +140,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "departments:read") {
+	if !permissions.Renders(listResourcePrivileges, "departments:read") {
 		t.Fatalf("listResourcePrivileges did not render the departments privileges:\n%s", listResourcePrivileges)
 	}
 }

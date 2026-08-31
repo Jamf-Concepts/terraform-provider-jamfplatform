@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_computer_check_in_settings Data Source - terraform
 subcategory: ""
 description: |-
   Read the current Jamf Pro Client Check-In settings. Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Computer Check-In | `computer-check-in:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Device check-in configuration | Read | `computer-check-in` |
 ---
 
 # jamfplatform_pro_computer_check_in_settings (Data Source)
 
 Read the current Jamf Pro Client Check-In settings. Singleton — one record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Computer Check-In | `computer-check-in:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Device check-in configuration | Read | `computer-check-in` |
 
 
 

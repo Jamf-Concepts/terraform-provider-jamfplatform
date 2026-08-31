@@ -4,26 +4,24 @@ page_title: "jamfplatform_pro_mdm_profile_settings Resource - terraform-provider
 subcategory: ""
 description: |-
   Manages Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). Singleton — one record per tenant. Import with terraform import jamfplatform_pro_mdm_profile_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:read` |
-  | Update Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | MDM profile renewal settings | Read, Update | `mdm-profile-renewal-settings` |
 ---
 
 # jamfplatform_pro_mdm_profile_settings (Resource)
 
 Manages Jamf Pro device communication settings (Settings → Device communication → MDM profile settings). Singleton — one record per tenant. Import with `terraform import jamfplatform_pro_mdm_profile_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:read` |
-| Update Automatically Renew MDM Profile Settings | `mdm-profile-renewal-settings:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | MDM profile renewal settings | Read, Update | `mdm-profile-renewal-settings` |
 
 ## Example Usage
 

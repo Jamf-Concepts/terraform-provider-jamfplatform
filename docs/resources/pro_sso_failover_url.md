@@ -7,12 +7,11 @@ description: |-
   The URL is rotated by changing regeneration_trigger. Any change to that attribute causes the next Update to call the failover regenerate endpoint and replace the URL.
   Destroy is state-only — terraform destroy removes the resource from Terraform state but leaves the failover URL live on the tenant (the Jamf Pro API has no clear/disable endpoint for the failover URL).
   Import with terraform import jamfplatform_pro_sso_failover_url.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read SSO Settings | `sso-settings:read` |
-  | Update SSO Settings | `sso-settings:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | Single Sign-On | Read, Update | `sso-settings` |
 ---
 
 # jamfplatform_pro_sso_failover_url (Resource)
@@ -25,14 +24,13 @@ The URL is rotated by changing `regeneration_trigger`. Any change to that attrib
 
 Import with `terraform import jamfplatform_pro_sso_failover_url.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read SSO Settings | `sso-settings:read` |
-| Update SSO Settings | `sso-settings:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | Single Sign-On | Read, Update | `sso-settings` |
 
 ## Example Usage
 

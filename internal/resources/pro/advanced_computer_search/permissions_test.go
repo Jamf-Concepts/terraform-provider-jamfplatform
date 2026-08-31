@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -85,7 +84,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "advanced-device-searches:create") {
+	if !permissions.Renders(resourcePrivileges, "advanced-device-searches:create") {
 		t.Fatalf("resourcePrivileges did not render the advanced computer search privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -107,7 +106,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table rendered into the data
 // source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "advanced-device-searches:read") {
+	if !permissions.Renders(dataSourcePrivileges, "advanced-device-searches:read") {
 		t.Fatalf("dataSourcePrivileges did not render the advanced computer search privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -130,7 +129,7 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table rendered into the
 // list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "advanced-device-searches:read") {
+	if !permissions.Renders(listResourcePrivileges, "advanced-device-searches:read") {
 		t.Fatalf("listResourcePrivileges did not render the advanced computer search privileges:\n%s", listResourcePrivileges)
 	}
 }

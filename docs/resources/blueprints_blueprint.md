@@ -4,30 +4,24 @@ page_title: "jamfplatform_blueprints_blueprint Resource - terraform-provider-jam
 subcategory: ""
 description: |-
   Resource schema for creating and managing Jamf Blueprints. Requires Blueprints API access.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `blueprints:create` |
-  | `blueprints:delete` |
-  | `blueprints:read` |
-  | `blueprints:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Blueprints | Create, Read, Update, Delete | `blueprints` |
 ---
 
 # jamfplatform_blueprints_blueprint (Resource)
 
 Resource schema for creating and managing Jamf Blueprints. Requires **Blueprints API** access.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `blueprints:create` |
-| `blueprints:delete` |
-| `blueprints:read` |
-| `blueprints:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Blueprints | Create, Read, Update, Delete | `blueprints` |
 
 ## Example Usage
 

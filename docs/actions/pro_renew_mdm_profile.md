@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_renew_mdm_profile Action - terraform-provider-jamf
 subcategory: ""
 description: |-
   Renews the MDM enrollment profile on one or more mobile devices.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Send Command to Renew MDM Profile | `device-actions:execute` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Device actions | Device actions | Execute | `device-actions` |
 ---
 
 # jamfplatform_pro_renew_mdm_profile (Action)
 
 Renews the MDM enrollment profile on one or more mobile devices.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Send Command to Renew MDM Profile | `device-actions:execute` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Device actions | Device actions | Execute | `device-actions` |
 
 ## Example Usage
 

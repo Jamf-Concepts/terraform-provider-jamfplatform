@@ -4,26 +4,24 @@ page_title: "jamfplatform_pro_impact_alert_notification_settings Resource - terr
 subcategory: ""
 description: |-
   Manages Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). Singleton — one record per tenant. Omit = preserve — each toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set true/false to change it. Dependency: a confirmation-code toggle requires its matching alert toggle to be true — Jamf Pro rejects *_confirmation_code_enabled = true while the matching *_alert_enabled is false. To turn an alert off, set its matching *_confirmation_code_enabled = false in the same apply — omitting the confirmation-code toggle preserves the prior true and the apply fails with a 400. Import with terraform import jamfplatform_pro_impact_alert_notification_settings.<name> singleton.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Impact Alert Notification Settings | `impact-alert-notification-settings:read` |
-  | Update Impact Alert Notification Settings | `impact-alert-notification-settings:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Notification settings | Read, Update | `impact-alert-notification-settings` |
 ---
 
 # jamfplatform_pro_impact_alert_notification_settings (Resource)
 
 Manages Jamf Pro Impact Alert Notification settings (Settings > System > Impact alert notifications). Singleton — one record per tenant. **Omit = preserve** — each toggle you omit keeps its current Jamf Pro value (it is not changed), including on the first apply: this resource adopts the existing settings and only changes the toggles you declare. A boolean has no "unset" — omit to preserve, or set `true`/`false` to change it. **Dependency:** a confirmation-code toggle requires its matching alert toggle to be `true` — Jamf Pro rejects `*_confirmation_code_enabled = true` while the matching `*_alert_enabled` is `false`. **To turn an alert off, set its matching `*_confirmation_code_enabled = false` in the same apply** — omitting the confirmation-code toggle preserves the prior `true` and the apply fails with a 400. Import with `terraform import jamfplatform_pro_impact_alert_notification_settings.<name> singleton`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Impact Alert Notification Settings | `impact-alert-notification-settings:read` |
-| Update Impact Alert Notification Settings | `impact-alert-notification-settings:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Notification settings | Read, Update | `impact-alert-notification-settings` |
 
 ## Example Usage
 

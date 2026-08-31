@@ -5,12 +5,11 @@ subcategory: ""
 description: |-
   Manages a Jamf Pro supervision identity — the certificate used to supervise and enroll devices through Apple Configurator (Settings > Apple Configurator Enrollment).
   Provide certificate_data to import an existing .p12 identity, or omit it to have Jamf Pro generate a new identity for you. The password and certificate are write-only: they are sent to Jamf Pro but never stored in Terraform state, and Jamf Pro never returns them. Only display_name can be changed in place; changing the password or certificate replaces the identity.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Apple Configurator Enrollment | `apple-configurator-enrollment:read` |
-  | Update Apple Configurator Enrollment | `apple-configurator-enrollment:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Apple Configurator enrollment settings | Read, Update | `apple-configurator-enrollment` |
 ---
 
 # jamfplatform_pro_supervision_identity (Resource)
@@ -19,14 +18,13 @@ Manages a Jamf Pro supervision identity — the certificate used to supervise an
 
 Provide `certificate_data` to import an existing `.p12` identity, or omit it to have Jamf Pro generate a new identity for you. The password and certificate are write-only: they are sent to Jamf Pro but never stored in Terraform state, and Jamf Pro never returns them. Only `display_name` can be changed in place; changing the password or certificate replaces the identity.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Apple Configurator Enrollment | `apple-configurator-enrollment:read` |
-| Update Apple Configurator Enrollment | `apple-configurator-enrollment:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Apple Configurator enrollment settings | Read, Update | `apple-configurator-enrollment` |
 
 ## Example Usage
 

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_webhook List Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Lists Jamf Pro webhooks. Supply an optional case-insensitive name_substring filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-record read.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `webhooks:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Webhooks | Read | `webhooks` |
 ---
 
 # jamfplatform_pro_webhook (List Resource)
 
 Lists Jamf Pro webhooks. Supply an optional case-insensitive `name_substring` filter applied locally after the full list is fetched. List entries surface as identity-only (id and display name); full detail requires a per-record read.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `webhooks:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Webhooks | Read | `webhooks` |
 
 ## Example Usage
 

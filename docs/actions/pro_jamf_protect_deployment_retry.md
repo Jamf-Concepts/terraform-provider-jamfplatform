@@ -4,26 +4,24 @@ page_title: "jamfplatform_pro_jamf_protect_deployment_retry Action - terraform-p
 subcategory: ""
 description: |-
   Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). Specify exactly one target: a computer (serial_number, management_id, or udid), an explicit task_ids list, or all_failed = true. Resolving a computer identifier also requires the Read Computers privilege. Takes no state.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Jamf Protect Deployment Retry | `jamf-protect-deployments:deploy` |
-  | Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Jamf Protect deployment | Read, Deploy | `jamf-protect-deployments` |
 ---
 
 # jamfplatform_pro_jamf_protect_deployment_retry (Action)
 
 Retries failed Jamf Protect install tasks for a deployment (Settings → Jamf apps → Jamf Protect → deployment → Retry). Specify exactly one target: a computer (`serial_number`, `management_id`, or `udid`), an explicit `task_ids` list, or `all_failed = true`. Resolving a computer identifier also requires the **Read Computers** privilege. Takes no state.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Jamf Protect Deployment Retry | `jamf-protect-deployments:deploy` |
-| Read Jamf Protect Deployments | `jamf-protect-deployments:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Jamf Protect deployment | Read, Deploy | `jamf-protect-deployments` |
 
 ## Example Usage
 

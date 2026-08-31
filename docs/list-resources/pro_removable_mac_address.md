@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_removable_mac_address List Resource - terraform-pr
 subcategory: ""
 description: |-
   Lists Jamf Pro removable MAC addresses. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `removable-mac-address:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Removable MAC addresses | Read | `removable-mac-address` |
 ---
 
 # jamfplatform_pro_removable_mac_address (List Resource)
 
 Lists Jamf Pro removable MAC addresses. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `removable-mac-address:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Removable MAC addresses | Read | `removable-mac-address` |
 
 ## Example Usage
 

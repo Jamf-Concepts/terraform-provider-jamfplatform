@@ -4,28 +4,24 @@ page_title: "jamfplatform_pro_mobile_device_invitation Resource - terraform-prov
 subcategory: ""
 description: |-
   Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation cannot be updated in place — changing any attribute forces Terraform to destroy and recreate it, which mints a new invitation code.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `enrollment-invitations:create` |
-  | `enrollment-invitations:delete` |
-  | `enrollment-invitations:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | Enrollment invitations | Create, Read, Delete | `enrollment-invitations` |
 ---
 
 # jamfplatform_pro_mobile_device_invitation (Resource)
 
 Manages a Jamf Pro mobile device enrollment invitation. A mobile device invitation is a single-use (or multiple-use) enrollment token for the user-initiated enrollment of mobile devices, optionally delivered by email and optionally requiring login, with a site assignment and an expiration. The invitation **cannot be updated in place** — changing any attribute forces Terraform to destroy and recreate it, which mints a new `invitation` code.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `enrollment-invitations:create` |
-| `enrollment-invitations:delete` |
-| `enrollment-invitations:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | Enrollment invitations | Create, Read, Delete | `enrollment-invitations` |
 
 ## Example Usage
 

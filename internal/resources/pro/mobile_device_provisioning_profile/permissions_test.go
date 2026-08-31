@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -88,7 +87,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "provisioning-profiles:create") {
+	if !permissions.Renders(resourcePrivileges, "provisioning-profiles:create") {
 		t.Fatalf("resourcePrivileges did not render the provisioning-profiles privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -112,7 +111,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "provisioning-profiles:read") {
+	if !permissions.Renders(dataSourcePrivileges, "provisioning-profiles:read") {
 		t.Fatalf("dataSourcePrivileges did not render the provisioning-profiles privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -136,7 +135,7 @@ func TestListResourceSDKMethods_MatchCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table actually rendered
 // into the list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "provisioning-profiles:read") {
+	if !permissions.Renders(listResourcePrivileges, "provisioning-profiles:read") {
 		t.Fatalf("listResourcePrivileges did not render the provisioning-profiles privileges:\n%s", listResourcePrivileges)
 	}
 }

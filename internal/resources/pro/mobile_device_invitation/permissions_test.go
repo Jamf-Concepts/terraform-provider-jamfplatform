@@ -121,7 +121,7 @@ func TestPrivileges_Rendered(t *testing.T) {
 		"dataSource":   dataSourcePrivileges,
 		"listResource": listResourcePrivileges,
 	} {
-		if !strings.Contains(rendered, "enrollment-invitations:") {
+		if !strings.Contains(rendered, "`enrollment-invitations`") {
 			t.Errorf("%sPrivileges did not render the mobile device invitation privileges:\n%s", name, rendered)
 		}
 	}

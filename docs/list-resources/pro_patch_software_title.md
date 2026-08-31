@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_patch_software_title List Resource - terraform-pro
 subcategory: ""
 description: |-
   Lists Jamf Pro patch software titles. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched, matching each title's display name.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `patch-management-software-titles:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 ---
 
 # jamfplatform_pro_patch_software_title (List Resource)
 
 Lists Jamf Pro patch software titles. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched, matching each title's display name.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `patch-management-software-titles:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Patch titles | Read | `patch-management-software-titles` |
 
 ## Example Usage
 

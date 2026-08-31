@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	devSDK "github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devices"
@@ -71,7 +70,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered is a guard that the table actually rendered
 // into the data source description (catches an empty/parse-skipped registry).
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "devices:read") {
+	if !permissions.Renders(dataSourcePrivileges, "devices:read") {
 		t.Fatalf("dataSourcePrivileges did not render the devices privileges:\n%s", dataSourcePrivileges)
 	}
 }

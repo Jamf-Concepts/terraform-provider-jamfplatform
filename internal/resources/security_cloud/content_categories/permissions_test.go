@@ -6,7 +6,6 @@ package content_categories
 import (
 	"os"
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -48,7 +47,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "content-categories:read") {
+	if !permissions.Renders(dataSourcePrivileges, "content-categories:read") {
 		t.Fatalf("dataSourcePrivileges did not render the content category privileges:\n%s", dataSourcePrivileges)
 	}
 }

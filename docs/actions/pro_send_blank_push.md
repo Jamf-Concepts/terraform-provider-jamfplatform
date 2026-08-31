@@ -5,13 +5,12 @@ subcategory: ""
 description: |-
   Sends a blank push notification to one or more devices to prompt them to check in.
   All targeted devices are pushed in a single request. Devices that do not accept the push are reported individually as a warning; the invocation itself still succeeds.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | View MDM command information in Jamf Pro API | `device-actions:execute` |
-  | — | `devices:read` |
-  — means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | Devices | Read | `devices` |
+  | Device actions | Device actions | Execute | `device-actions` |
 ---
 
 # jamfplatform_pro_send_blank_push (Action)
@@ -20,16 +19,14 @@ Sends a blank push notification to one or more devices to prompt them to check i
 
 All targeted devices are pushed in a single request. Devices that do not accept the push are reported individually as a warning; the invocation itself still succeeds.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| View MDM command information in Jamf Pro API | `device-actions:execute` |
-| — | `devices:read` |
-
-`—` means Jamf publishes no Jamf Pro privilege name that can be matched to that scoped privilege with confidence, so none is guessed here — grant it by its scoped name.
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | Devices | Read | `devices` |
+| Device actions | Device actions | Execute | `device-actions` |
 
 ## Example Usage
 

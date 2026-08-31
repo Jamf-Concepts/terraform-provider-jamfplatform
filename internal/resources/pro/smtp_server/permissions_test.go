@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -84,7 +83,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description.
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "smtp-server:update") {
+	if !permissions.Renders(resourcePrivileges, "smtp-server:update") {
 		t.Fatalf("resourcePrivileges did not render the SMTP Server privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -106,7 +105,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "smtp-server:read") {
+	if !permissions.Renders(dataSourcePrivileges, "smtp-server:read") {
 		t.Fatalf("dataSourcePrivileges did not render the SMTP Server privileges:\n%s", dataSourcePrivileges)
 	}
 }

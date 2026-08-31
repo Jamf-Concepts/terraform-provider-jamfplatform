@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_computer_prestage_enrollment Data Source - terrafo
 subcategory: ""
 description: |-
   Look up a Jamf Pro Computer PreStage Enrollment by ID or by exact display name. Exactly one of id or name must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Computer PreStage Enrollments | `prestage-enrollments:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Enrollment | PreStage enrollments | Read | `prestage-enrollments` |
 ---
 
 # jamfplatform_pro_computer_prestage_enrollment (Data Source)
 
 Look up a Jamf Pro Computer PreStage Enrollment by ID or by exact display name. Exactly one of `id` or `name` must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Computer PreStage Enrollments | `prestage-enrollments:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Enrollment | PreStage enrollments | Read | `prestage-enrollments` |
 
 ## Example Usage
 

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_macos_configuration_profile Data Source - terrafor
 subcategory: ""
 description: |-
   Look up a macOS configuration profile by ID or by exact name. Exactly one of id or name must be supplied. Returns a flat Computed projection of the most-frequently looked-up fields. To manage the full payload, use the jamfplatform_pro_macos_configuration_profile resource.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `configuration-profiles:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Configuration profiles | Read | `configuration-profiles` |
 ---
 
 # jamfplatform_pro_macos_configuration_profile (Data Source)
 
 Look up a macOS configuration profile by ID or by exact name. Exactly one of `id` or `name` must be supplied. Returns a flat Computed projection of the most-frequently looked-up fields. To manage the full payload, use the `jamfplatform_pro_macos_configuration_profile` resource.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `configuration-profiles:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Configuration profiles | Read | `configuration-profiles` |
 
 ## Example Usage
 

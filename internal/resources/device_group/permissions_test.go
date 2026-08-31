@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/devicegroups"
@@ -86,7 +85,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 // TestResourcePrivileges_Rendered guards that the table actually rendered into
 // the resource description (catches an empty/parse-skipped registry).
 func TestResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "device-groups:create") {
+	if !permissions.Renders(resourcePrivileges, "device-groups:create") {
 		t.Fatalf("resourcePrivileges did not render the device-groups privileges:\n%s", resourcePrivileges)
 	}
 }
@@ -110,7 +109,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered guards that the table actually rendered into
 // the data source description.
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "device-groups:read") {
+	if !permissions.Renders(dataSourcePrivileges, "device-groups:read") {
 		t.Fatalf("dataSourcePrivileges did not render the device-groups privileges:\n%s", dataSourcePrivileges)
 	}
 }
@@ -135,7 +134,7 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 // TestListResourcePrivileges_Rendered guards that the table actually rendered
 // into the list resource description.
 func TestListResourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(listResourcePrivileges, "device-groups:read") {
+	if !permissions.Renders(listResourcePrivileges, "device-groups:read") {
 		t.Fatalf("listResourcePrivileges did not render the device-groups privileges:\n%s", listResourcePrivileges)
 	}
 }

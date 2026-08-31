@@ -11,14 +11,14 @@ import (
 
 // eraseDeviceSDKMethods lists the SDK methods the device erase action's Invoke
 // path calls. It mirrors the a.actions.<Method> call in erase.go and drives the
-// "Required Jamf privileges" table appended to the action MarkdownDescription.
+// "Required Jamf permissions" table appended to the action MarkdownDescription.
 // permissions_test.go asserts this list stays in sync with the actual
 // a.actions.<Method> calls in erase.go and with the SDK privilege registry.
 var eraseDeviceSDKMethods = []string{
 	"EraseDevice",
 }
 
-// eraseDevicePrivileges is the rendered "Required Jamf privileges" Markdown
+// eraseDevicePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the device erase action, appended to its MarkdownDescription.
 var eraseDevicePrivileges = permissions.Section(deviceactions.Privileges, eraseDeviceSDKMethods...)
 
@@ -28,7 +28,7 @@ var restartDeviceSDKMethods = []string{
 	"RestartDevice",
 }
 
-// restartDevicePrivileges is the rendered "Required Jamf privileges" Markdown
+// restartDevicePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the device restart action.
 var restartDevicePrivileges = permissions.Section(deviceactions.Privileges, restartDeviceSDKMethods...)
 
@@ -38,7 +38,7 @@ var shutdownDeviceSDKMethods = []string{
 	"ShutdownDevice",
 }
 
-// shutdownDevicePrivileges is the rendered "Required Jamf privileges" Markdown
+// shutdownDevicePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the device shutdown action.
 var shutdownDevicePrivileges = permissions.Section(deviceactions.Privileges, shutdownDeviceSDKMethods...)
 
@@ -48,6 +48,6 @@ var unmanageDeviceSDKMethods = []string{
 	"UnmanageDevice",
 }
 
-// unmanageDevicePrivileges is the rendered "Required Jamf privileges" Markdown
+// unmanageDevicePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the device unmanage action.
 var unmanageDevicePrivileges = permissions.Section(deviceactions.Privileges, unmanageDeviceSDKMethods...)

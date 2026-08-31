@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -119,13 +118,13 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 // TestPrivileges_Rendered guards that each table actually rendered into its
 // description (catches an empty/parse-skipped registry).
 func TestPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "advanced-user-searches:create") {
+	if !permissions.Renders(resourcePrivileges, "advanced-user-searches:create") {
 		t.Fatalf("resourcePrivileges did not render the expected privileges:\n%s", resourcePrivileges)
 	}
-	if !strings.Contains(dataSourcePrivileges, "advanced-user-searches:read") {
+	if !permissions.Renders(dataSourcePrivileges, "advanced-user-searches:read") {
 		t.Fatalf("dataSourcePrivileges did not render the expected privileges:\n%s", dataSourcePrivileges)
 	}
-	if !strings.Contains(listResourcePrivileges, "advanced-user-searches:read") {
+	if !permissions.Renders(listResourcePrivileges, "advanced-user-searches:read") {
 		t.Fatalf("listResourcePrivileges did not render the expected privileges:\n%s", listResourcePrivileges)
 	}
 }

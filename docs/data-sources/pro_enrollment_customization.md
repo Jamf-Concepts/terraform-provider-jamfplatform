@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_enrollment_customization Data Source - terraform-p
 subcategory: ""
 description: |-
   Look up a Jamf Pro enrollment customization by ID or by exact display name. Exactly one of id or display_name must be supplied. Display names are not enforced unique by Jamf Pro; the lookup surfaces an error when more than one customization matches.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Enrollment Customizations | `enrollment-customization:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Enrollment customization | Read | `enrollment-customization` |
 ---
 
 # jamfplatform_pro_enrollment_customization (Data Source)
 
 Look up a Jamf Pro enrollment customization by ID or by exact display name. Exactly one of `id` or `display_name` must be supplied. Display names are not enforced unique by Jamf Pro; the lookup surfaces an error when more than one customization matches.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Enrollment Customizations | `enrollment-customization:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Enrollment customization | Read | `enrollment-customization` |
 
 ## Example Usage
 

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_user_group List Resource - terraform-provider-jamf
 subcategory: ""
 description: |-
   Lists Jamf Pro user groups. Supply an optional case-insensitive name_substring filter applied client-side after the full list is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `user-groups:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | User groups | Read | `user-groups` |
 ---
 
 # jamfplatform_pro_user_group (List Resource)
 
 Lists Jamf Pro user groups. Supply an optional case-insensitive `name_substring` filter applied client-side after the full list is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `user-groups:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | User groups | Read | `user-groups` |
 
 ## Example Usage
 

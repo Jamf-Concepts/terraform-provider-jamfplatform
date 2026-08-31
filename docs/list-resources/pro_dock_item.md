@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_dock_item List Resource - terraform-provider-jamfp
 subcategory: ""
 description: |-
   Lists Jamf Pro dock items. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched. The list returns id and name per row by default — setting include_resource = true fetches the full record for each item (type, path, and the Jamf-computed contents).
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `dock-items:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Dock items | Read | `dock-items` |
 ---
 
 # jamfplatform_pro_dock_item (List Resource)
 
 Lists Jamf Pro dock items. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched. The list returns `id` and `name` per row by default — setting `include_resource = true` fetches the full record for each item (`type`, `path`, and the Jamf-computed `contents`).
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `dock-items:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Dock items | Read | `dock-items` |
 
 ## Example Usage
 

@@ -4,27 +4,24 @@ page_title: "jamfplatform_pro_self_service_branding_macos Data Source - terrafor
 subcategory: ""
 description: |-
   Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Self Service Branding Configuration, Read Self Service | `self-service:read` |
-  Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Self Service configuration | Read | `self-service` |
 ---
 
 # jamfplatform_pro_self_service_branding_macos (Data Source)
 
 Read the current Jamf Pro Self Service macOS branding configuration (Settings > Self Service > Branding > macOS Branding). Singleton — one configuration per tenant. Errors if no macOS branding is configured.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Self Service Branding Configuration, Read Self Service | `self-service:read` |
-
-Where a row lists more than one Jamf Pro privilege, the single scoped privilege replaced all of them: grant every name listed on a Jamf Pro version that predates the scoped privileges.
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Self Service configuration | Read | `self-service` |
 
 ## Example Usage
 

@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/pro"
@@ -110,10 +109,10 @@ func TestPluralDataSourceSDKMethods_MatchCalls(t *testing.T) {
 // TestPrivileges_Rendered guards that the tables actually rendered into the
 // descriptions (catches an empty/parse-skipped registry).
 func TestPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "users:read") {
+	if !permissions.Renders(dataSourcePrivileges, "users:read") {
 		t.Fatalf("dataSourcePrivileges did not render the user privileges:\n%s", dataSourcePrivileges)
 	}
-	if !strings.Contains(pluralDataSourcePrivileges, "users:read") {
+	if !permissions.Renders(pluralDataSourcePrivileges, "users:read") {
 		t.Fatalf("pluralDataSourcePrivileges did not render the user privileges:\n%s", pluralDataSourcePrivileges)
 	}
 }

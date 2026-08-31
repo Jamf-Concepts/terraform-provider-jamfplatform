@@ -5,13 +5,11 @@ subcategory: ""
 description: |-
   Manages "Hostname mapping" under Custom DNS in the Jamf Security Cloud admin UI — custom IPv4 and IPv6 mappings for internal host names your organization uses, so that users reach internal resources while staying protected from mobile and network threats.
   This resource owns the tenant's entire set of hostname mappings: a mapping added elsewhere and absent from this configuration is removed on the next apply. There is one set per tenant, so only one instance of this resource should exist in your configuration, and destroying it removes every mapping.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `custom-hostname-mappings:delete` |
-  | `custom-hostname-mappings:read` |
-  | `custom-hostname-mappings:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Custom hostname mappings | Read, Update, Delete | `custom-hostname-mappings` |
 ---
 
 # jamfplatform_security_cloud_dns_hostname_mappings (Resource)
@@ -20,15 +18,13 @@ Manages **"Hostname mapping"** under Custom DNS in the Jamf Security Cloud admin
 
 This resource owns the tenant's **entire** set of hostname mappings: a mapping added elsewhere and absent from this configuration is removed on the next apply. There is one set per tenant, so only one instance of this resource should exist in your configuration, and destroying it removes every mapping.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `custom-hostname-mappings:delete` |
-| `custom-hostname-mappings:read` |
-| `custom-hostname-mappings:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Custom hostname mappings | Read, Update, Delete | `custom-hostname-mappings` |
 
 ## Example Usage
 

@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_package List Resource - terraform-provider-jamfpla
 subcategory: ""
 description: |-
   Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the selector attribute for the allowed values.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Packages | `packages:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Packages | Read | `packages` |
 ---
 
 # jamfplatform_pro_package (List Resource)
 
 Searches Jamf Pro packages using an RSQL filter. The supported selectors are limited by Jamf Pro — see the `selector` attribute for the allowed values.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Packages | `packages:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Packages | Read | `packages` |
 
 ## Example Usage
 

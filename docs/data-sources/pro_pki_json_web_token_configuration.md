@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_pki_json_web_token_configuration Data Source - ter
 subcategory: ""
 description: |-
   Look up a Jamf Pro JSON Web Token configuration by ID or by exact display name. Exactly one of id or name must be supplied. The encryption key is never surfaced.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `json-web-token-configuration:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | JSON web token configuration | Read | `json-web-token-configuration` |
 ---
 
 # jamfplatform_pro_pki_json_web_token_configuration (Data Source)
 
 Look up a Jamf Pro JSON Web Token configuration by ID or by exact display name. Exactly one of `id` or `name` must be supplied. The encryption key is never surfaced.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `json-web-token-configuration:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | JSON web token configuration | Read | `json-web-token-configuration` |
 
 ## Example Usage
 

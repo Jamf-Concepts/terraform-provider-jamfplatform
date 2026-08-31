@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_inventory_preload_record List Resource - terraform
 subcategory: ""
 description: |-
   Searches for Jamf Pro Inventory Preload records using RSQL filter clauses.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Inventory Preload Records | `inventory-preload-records:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Inventory preload | Read | `inventory-preload-records` |
 ---
 
 # jamfplatform_pro_inventory_preload_record (List Resource)
 
 Searches for Jamf Pro Inventory Preload records using RSQL filter clauses.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Inventory Preload Records | `inventory-preload-records:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Inventory preload | Read | `inventory-preload-records` |
 
 ## Example Usage
 

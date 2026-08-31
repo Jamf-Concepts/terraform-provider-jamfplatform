@@ -4,26 +4,26 @@ page_title: "jamfplatform_pro_category List Resource - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Searches for Jamf Pro categories using the same filter clauses as the categories data source.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read Categories | `categories:read` |
-  | Read Self Service | `self-service:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Organizational context | Categories | Read | `categories` |
+  | Global settings | Self Service configuration | Read | `self-service` |
 ---
 
 # jamfplatform_pro_category (List Resource)
 
 Searches for Jamf Pro categories using the same filter clauses as the categories data source.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read Categories | `categories:read` |
-| Read Self Service | `self-service:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Organizational context | Categories | Read | `categories` |
+| Global settings | Self Service configuration | Read | `self-service` |
 
 ## Example Usage
 

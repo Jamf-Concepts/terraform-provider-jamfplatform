@@ -4,30 +4,24 @@ page_title: "jamfplatform_pro_mac_app_store_app Resource - terraform-provider-ja
 subcategory: ""
 description: |-
   Manages a Jamf Pro App Store Mac app (the classic /macapplications endpoint — the "App Store App" entry under the "Mac Apps" sidebar). general.name, general.version, general.bundle_id, and general.url are required on create and stored verbatim — there is no App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate jamfplatform_device_group.<x>.jamf_pro_id to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `applications:create` |
-  | `applications:delete` |
-  | `applications:read` |
-  | `applications:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 ---
 
 # jamfplatform_pro_mac_app_store_app (Resource)
 
 Manages a Jamf Pro App Store Mac app (the classic `/macapplications` endpoint — the "App Store App" entry under the "Mac Apps" sidebar). `general.name`, `general.version`, `general.bundle_id`, and `general.url` are required on create and stored verbatim — there is **no** App Store metadata resolution from the URL. Scope targets are flat sets of Jamf Pro IDs; interpolate `jamfplatform_device_group.<x>.jamf_pro_id` to bridge from Platform Services. Scope omits iBeacon limitations/exclusions because the endpoint silently drops them.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `applications:create` |
-| `applications:delete` |
-| `applications:read` |
-| `applications:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Apps | Create, Read, Update, Delete | `applications` |
 
 ## Example Usage
 

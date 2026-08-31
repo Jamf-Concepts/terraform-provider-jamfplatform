@@ -6,14 +6,11 @@ description: |-
   Manages a Jamf Pro on-premises LDAP server (Settings → "LDAP Servers"). Use this resource for classic, directly-reachable directories — Active Directory, Apple Open Directory, Novell eDirectory, or a manually-configured (Custom) LDAP server. Cloud directories (Google, Microsoft Entra) are managed by jamfplatform_pro_cloud_identity_provider, not this resource.
   The connection_settings block carries the server identity, transport, authentication, and (for non-anonymous binds) the lookup account. The mappings_for_users block maps directory attributes onto Jamf Pro user / user-group / membership fields. The bind password is a Terraform WriteOnly attribute — sent to Jamf Pro on writes but never persisted in state; pair it with password_wo_version to rotate.
   This resource also defines the directories Jamf Pro searches when resolving directory-service user groups for scoping.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ldap-servers:create` |
-  | `ldap-servers:delete` |
-  | `ldap-servers:read` |
-  | `ldap-servers:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Admin identity and access | LDAP / cloud IdP | Create, Read, Update, Delete | `ldap-servers` |
 ---
 
 # jamfplatform_pro_ldap_server (Resource)
@@ -24,16 +21,13 @@ The `connection_settings` block carries the server identity, transport, authenti
 
 This resource also defines the directories Jamf Pro searches when resolving directory-service user groups for scoping.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ldap-servers:create` |
-| `ldap-servers:delete` |
-| `ldap-servers:read` |
-| `ldap-servers:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Admin identity and access | LDAP / cloud IdP | Create, Read, Update, Delete | `ldap-servers` |
 
 ## Example Usage
 

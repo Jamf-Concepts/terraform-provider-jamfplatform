@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -77,7 +76,7 @@ func TestDataSourceSDKMethods_MatchReadCalls(t *testing.T) {
 // TestDataSourcePrivileges_Rendered is a guard that the table actually rendered
 // into the data source description (catches an empty/parse-skipped registry).
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "patch-internal-source:read") {
+	if !permissions.Renders(dataSourcePrivileges, "patch-internal-source:read") {
 		t.Fatalf("dataSourcePrivileges did not render the patch internal source privileges:\n%s", dataSourcePrivileges)
 	}
 }

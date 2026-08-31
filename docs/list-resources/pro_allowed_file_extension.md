@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_allowed_file_extension List Resource - terraform-p
 subcategory: ""
 description: |-
   Lists Jamf Pro allowed file extensions. Supply an optional case-insensitive name_substring filter; filtering is applied client-side after the full list is fetched.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `allowed-file-extension:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | Allowed file upload extensions | Read | `allowed-file-extension` |
 ---
 
 # jamfplatform_pro_allowed_file_extension (List Resource)
 
 Lists Jamf Pro allowed file extensions. Supply an optional case-insensitive `name_substring` filter; filtering is applied client-side after the full list is fetched.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `allowed-file-extension:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | Allowed file upload extensions | Read | `allowed-file-extension` |
 
 ## Example Usage
 

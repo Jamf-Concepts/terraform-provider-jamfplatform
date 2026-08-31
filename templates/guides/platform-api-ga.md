@@ -196,10 +196,22 @@ Refer to that page for how to register an integration and where to obtain its cl
 secret.
 
 **Permissions are organised by capability and action** rather than by product privilege list. The
-names take the form `compliance-benchmarks:create` or `device-groups:read`. Resource, data source,
-list resource and action pages in this documentation carry a **Required Jamf privileges** table
-already expressed in that form. Use those tables to select permissions for the replacement
-integration, granting only what the constructs in use require.
+API names take the form `compliance-benchmarks:create` or `device-groups:read`, and Jamf Account's
+permission picker presents the same thing as a named permission with a checkbox per action.
+Resource, data source, list resource and action pages in this documentation carry a **Required Jamf
+permissions** table written the way the picker reads — the section, the permission name, the boxes
+to tick, and the API capability behind them. Use those tables to select permissions for the
+replacement integration, granting only what the constructs in use require.
+
+Two consequences of the new model are worth knowing before granting anything. An action covers
+only itself, so an integration that reads a record before modifying it needs the read action as
+well as the update action. And the pre-GA computer and mobile privilege pairs have collapsed into
+single device-level permissions — `devices`, `device-groups`, `extension-attributes`,
+`configuration-profiles`, `enrollment-invitations`, `advanced-device-searches` and
+`prestage-enrollments` — so a computers-only integration is no longer expressible. Jamf's *Jamf Pro
+permissions map* article is the reference for the full mapping, including the reverse case: the
+old computer and mobile command privileges split into `device-actions` and
+`destructive-device-actions`, the latter covering erase, unmanage and remove MDM profile.
 
 **Three scope levels are available.** A *platform environment* is a group of tenants across
 product types, and is the scope to prefer for two concrete reasons: one environment-scoped
@@ -374,8 +386,9 @@ environment scope, described under [Scope](#scope). Further detail:
   [Reverse proxies and custom headers](reverse-proxy).
 - An incorrect `base_url` is now reported as such, rather than presenting as a network failure.
 - Built against Jamf Pro 11.31.0 and Classic API 11.28.0.
-- The required-privilege tables throughout this documentation are regenerated in the GA
-  `capability:action` form.
+- The required-permission tables throughout this documentation are regenerated against the GA
+  capability model, and now name each permission as Jamf Account's permission picker does rather
+  than by its retired Jamf Pro privilege name.
 
 ## Troubleshooting
 

@@ -9,14 +9,11 @@ description: |-
   Certificate write semantics: certificate bytes (data_wo) and the client certificate password_wo are WriteOnly — sent to Jamf Pro on writes but never persisted in Terraform state and never returned on read. Bump a block's wo_version to re-send that certificate (Jamf Pro accepts a certificate in full or not at all). On update, an omitted certificate is left unchanged.
   Validator footgun: the connector_mode cross-field validator only sees what is declared in config. Because omitted optional fields are preserved by the server, a value left over from a previous apply is not re-validated — the validator catches a both-declared conflict, not a preserved one.
   Import with terraform import jamfplatform_pro_pki_adcs.<name> <id>.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Create AD CS Settings | `ad-cs-settings:create` |
-  | Delete AD CS Settings | `ad-cs-settings:delete` |
-  | Read AD CS Settings | `ad-cs-settings:read` |
-  | Update AD CS Settings | `ad-cs-settings:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Infrastructure | Active Directory Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
 ---
 
 # jamfplatform_pro_pki_adcs (Resource)
@@ -34,16 +31,13 @@ Manages a Jamf Pro AD CS (Active Directory Certificate Services) integration (Se
 
 Import with `terraform import jamfplatform_pro_pki_adcs.<name> <id>`.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Create AD CS Settings | `ad-cs-settings:create` |
-| Delete AD CS Settings | `ad-cs-settings:delete` |
-| Read AD CS Settings | `ad-cs-settings:read` |
-| Update AD CS Settings | `ad-cs-settings:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Infrastructure | Active Directory Certificate Services connector | Create, Read, Update, Delete | `ad-cs-settings` |
 
 ## Example Usage
 

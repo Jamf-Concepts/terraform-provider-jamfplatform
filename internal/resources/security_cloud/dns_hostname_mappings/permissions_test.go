@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/securitycloud"
@@ -86,7 +85,7 @@ func TestResourceSDKMethods_MatchCRUDCalls(t *testing.T) {
 
 func TestResourcePrivileges_Rendered(t *testing.T) {
 	for _, want := range []string{"custom-hostname-mappings:read", "custom-hostname-mappings:update", "custom-hostname-mappings:delete"} {
-		if !strings.Contains(resourcePrivileges, want) {
+		if !permissions.Renders(resourcePrivileges, want) {
 			t.Errorf("resourcePrivileges did not render %q:\n%s", want, resourcePrivileges)
 		}
 	}
@@ -105,7 +104,7 @@ func TestDataSourceSDKMethods_MatchCalls(t *testing.T) {
 }
 
 func TestDataSourcePrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(dataSourcePrivileges, "custom-hostname-mappings:read") {
+	if !permissions.Renders(dataSourcePrivileges, "custom-hostname-mappings:read") {
 		t.Fatalf("dataSourcePrivileges did not render the hostname mappings privileges:\n%s", dataSourcePrivileges)
 	}
 }

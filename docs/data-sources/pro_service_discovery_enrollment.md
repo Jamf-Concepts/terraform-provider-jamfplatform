@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_service_discovery_enrollment Data Source - terrafo
 subcategory: ""
 description: |-
   Read the current Jamf Pro service-discovery ("well-known") settings for Account-Driven enrollment. Returns one row per synced Apple Business/School Manager (AxM) organization, with its server_uuid, display name, and current enrollment_type. Useful for discovering the server_uuid values to manage with jamfplatform_pro_service_discovery_enrollment. Requires Jamf Pro 11.25.0 or later. Singleton — one record per tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Jamf Pro privilege | Scoped name |
-  |---|---|
-  | Read User-Initiated Enrollment | `user-initiated-enrollment:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Global settings | User-initiated enrollment settings | Read | `user-initiated-enrollment` |
 ---
 
 # jamfplatform_pro_service_discovery_enrollment (Data Source)
 
 Read the current Jamf Pro service-discovery ("well-known") settings for Account-Driven enrollment. Returns one row per synced Apple Business/School Manager (AxM) organization, with its `server_uuid`, display name, and current `enrollment_type`. Useful for discovering the `server_uuid` values to manage with `jamfplatform_pro_service_discovery_enrollment`. Requires Jamf Pro 11.25.0 or later. Singleton — one record per tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Jamf Pro privilege | Scoped name |
-|---|---|
-| Read User-Initiated Enrollment | `user-initiated-enrollment:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Global settings | User-initiated enrollment settings | Read | `user-initiated-enrollment` |
 
 ## Example Usage
 

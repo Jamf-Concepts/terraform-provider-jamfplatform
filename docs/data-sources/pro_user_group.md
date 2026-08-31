@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_user_group Data Source - terraform-provider-jamfpl
 subcategory: ""
 description: |-
   Look up a Jamf Pro user group by ID or by exact name. Exactly one of id or name must be supplied. Surfaces the full Jamf Pro-resolved user list as the Computed users block — useful for inspecting smart-group membership.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `user-groups:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Inventory | User groups | Read | `user-groups` |
 ---
 
 # jamfplatform_pro_user_group (Data Source)
 
 Look up a Jamf Pro user group by ID or by exact name. Exactly one of `id` or `name` must be supplied. Surfaces the full Jamf Pro-resolved user list as the Computed `users` block — useful for inspecting smart-group membership.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `user-groups:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Inventory | User groups | Read | `user-groups` |
 
 ## Example Usage
 

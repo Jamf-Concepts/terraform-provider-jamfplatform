@@ -4,24 +4,24 @@ page_title: "jamfplatform_pro_vpp_invitation Data Source - terraform-provider-ja
 subcategory: ""
 description: |-
   Look up a Jamf Pro VPP invitation by ID or name. Exactly one selector must be supplied.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `volume-purchasing-locations:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | App lifecycle management | Volume purchasing | Read | `volume-purchasing-locations` |
 ---
 
 # jamfplatform_pro_vpp_invitation (Data Source)
 
 Look up a Jamf Pro VPP invitation by ID or name. Exactly one selector must be supplied.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `volume-purchasing-locations:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| App lifecycle management | Volume purchasing | Read | `volume-purchasing-locations` |
 
 ## Example Usage
 

@@ -5,13 +5,11 @@ subcategory: ""
 description: |-
   Manages the "Search domain" under Custom DNS in the Jamf Security Cloud admin UI — the domain used to complete an incomplete host name for apps that only accept short host names. With the search domain set to example.com, a user who asks for product is directed to product.example.com.
   There is one search domain per tenant, so only one instance of this resource should exist in your configuration. Destroying it clears the search domain for the whole tenant.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `search-domains:delete` |
-  | `search-domains:read` |
-  | `search-domains:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Search domains | Read, Update, Delete | `search-domains` |
 ---
 
 # jamfplatform_security_cloud_dns_search_domain (Resource)
@@ -20,15 +18,13 @@ Manages the **"Search domain"** under Custom DNS in the Jamf Security Cloud admi
 
 There is one search domain per tenant, so only one instance of this resource should exist in your configuration. Destroying it clears the search domain for the whole tenant.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `search-domains:delete` |
-| `search-domains:read` |
-| `search-domains:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Search domains | Read, Update, Delete | `search-domains` |
 
 ## Example Usage
 

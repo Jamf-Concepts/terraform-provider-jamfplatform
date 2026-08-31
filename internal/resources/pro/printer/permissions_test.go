@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/Jamf-Concepts/jamfplatform-go-sdk/jamfplatform/proclassic"
@@ -118,13 +117,13 @@ func TestListResourceSDKMethods_MatchListCalls(t *testing.T) {
 // TestPrivileges_Rendered guards that each construct's table actually rendered
 // into its description (catches an empty/parse-skipped registry).
 func TestPrivileges_Rendered(t *testing.T) {
-	if !strings.Contains(resourcePrivileges, "printers:create") {
+	if !permissions.Renders(resourcePrivileges, "printers:create") {
 		t.Fatalf("resourcePrivileges did not render the printers privileges:\n%s", resourcePrivileges)
 	}
-	if !strings.Contains(dataSourcePrivileges, "printers:read") {
+	if !permissions.Renders(dataSourcePrivileges, "printers:read") {
 		t.Fatalf("dataSourcePrivileges did not render the printers privileges:\n%s", dataSourcePrivileges)
 	}
-	if !strings.Contains(listResourcePrivileges, "printers:read") {
+	if !permissions.Renders(listResourcePrivileges, "printers:read") {
 		t.Fatalf("listResourcePrivileges did not render the printers privileges:\n%s", listResourcePrivileges)
 	}
 }

@@ -5,11 +5,11 @@ subcategory: ""
 description: |-
   Reads a single Jamf AI Governance policy by ID, including its current settings.
   Lookup is by ID because policy names are not required to be unique.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ai-policies:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Compliance | AI policies | Read | `ai-policies` |
 ---
 
 # jamfplatform_ai_governance_policy (Data Source)
@@ -18,13 +18,13 @@ Reads a single Jamf AI Governance policy by ID, including its current settings.
 
 Lookup is by ID because policy names are not required to be unique.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ai-policies:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Compliance | AI policies | Read | `ai-policies` |
 
 ## Example Usage
 

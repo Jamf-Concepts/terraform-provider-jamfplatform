@@ -5,11 +5,11 @@ subcategory: ""
 description: |-
   Reads one AI tool Jamf can govern, and the schema describing what its settings may contain.
   Use this to discover the schema_version values a jamfplatform_ai_governance_policy may be written against, and settings_schema_json to see what settings that version accepts. The schema is the tool vendor's own document — see the AI Governance policies guide ../guides/ai-governance-policies for where each vendor documents its settings.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `ai-policies:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Compliance | AI policies | Read | `ai-policies` |
 ---
 
 # jamfplatform_ai_governance_tool (Data Source)
@@ -18,13 +18,13 @@ Reads one AI tool Jamf can govern, and the schema describing what its settings m
 
 Use this to discover the `schema_version` values a `jamfplatform_ai_governance_policy` may be written against, and `settings_schema_json` to see what settings that version accepts. The schema is the tool vendor's own document — see the [AI Governance policies guide](../guides/ai-governance-policies) for where each vendor documents its settings.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `ai-policies:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Compliance | AI policies | Read | `ai-policies` |
 
 ## Example Usage
 

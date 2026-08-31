@@ -11,7 +11,7 @@ import (
 
 // resourceSDKMethods lists the SDK methods the advanced user search resource's
 // CRUD path calls. It mirrors the "SDK endpoints used" block in crud.go and
-// drives the "Required Jamf privileges" table appended to the resource
+// drives the "Required Jamf permissions" table appended to the resource
 // MarkdownDescription. permissions_test.go asserts this list stays in sync with
 // the actual client.<Method> calls in crud.go and with the SDK privilege
 // registry.
@@ -22,7 +22,7 @@ var resourceSDKMethods = []string{
 	"DeleteAdvancedUserSearchByID",
 }
 
-// resourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// resourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the advanced user search resource, appended to its
 // MarkdownDescription.
 var resourcePrivileges = permissions.Section(proclassic.Privileges, resourceSDKMethods...)
@@ -34,7 +34,7 @@ var dataSourceSDKMethods = []string{
 	"GetAdvancedUserSearchByName",
 }
 
-// dataSourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// dataSourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the advanced user search data source.
 var dataSourcePrivileges = permissions.Section(proclassic.Privileges, dataSourceSDKMethods...)
 
@@ -44,6 +44,6 @@ var listResourceSDKMethods = []string{
 	"ListAdvancedUserSearches",
 }
 
-// listResourcePrivileges is the rendered "Required Jamf privileges" Markdown
+// listResourcePrivileges is the rendered "Required Jamf permissions" Markdown
 // section for the advanced user search list resource.
 var listResourcePrivileges = permissions.Section(proclassic.Privileges, listResourceSDKMethods...)

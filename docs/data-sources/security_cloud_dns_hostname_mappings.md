@@ -5,11 +5,11 @@ subcategory: ""
 description: |-
   Reads "Hostname mapping" under Custom DNS in the Jamf Security Cloud admin UI — the custom IPv4 and IPv6 mappings for internal host names your organization uses.
   There is one set per tenant, so this data source takes no arguments. A tenant with no mappings reads back an empty collection rather than an error.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `custom-hostname-mappings:read` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Secure enterprise access | Custom hostname mappings | Read | `custom-hostname-mappings` |
 ---
 
 # jamfplatform_security_cloud_dns_hostname_mappings (Data Source)
@@ -18,13 +18,13 @@ Reads **"Hostname mapping"** under Custom DNS in the Jamf Security Cloud admin U
 
 There is one set per tenant, so this data source takes no arguments. A tenant with no mappings reads back an empty collection rather than an error.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `custom-hostname-mappings:read` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Secure enterprise access | Custom hostname mappings | Read | `custom-hostname-mappings` |
 
 ## Example Usage
 

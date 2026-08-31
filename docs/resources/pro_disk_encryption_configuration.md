@@ -6,14 +6,11 @@ description: |-
   Manages a Jamf Pro disk encryption configuration. Disk encryption configurations describe how Jamf-managed Macs derive a FileVault recovery key. The top-level fields (name, key_type, file_vault_enabled_users) are paired with an optional institutional_recovery_key block carrying the recovery certificate when key_type selects Institutional or Individual and Institutional.
   Things worth knowing:
   key_type values use lowercase and in Individual and Institutional — see the attribute description for the full list.certificate_type is required whenever institutional_recovery_key is supplied. Jamf Pro rejects the block otherwise with Certificate type is required if a recovery key is specified.institutional_recovery_key.password is a Terraform WriteOnly attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with institutional_recovery_key.password_wo_version to trigger rotation: bump the integer to force a new update carrying the current password value. Jamf Pro never returns the plaintext on read.Clearing the recovery key is not supported by Jamf Pro. Once the institutional_recovery_key block is set, removing it or transitioning key_type from Institutional / Individual and Institutional back to Individual does not remove the stored certificate on the server. Destroy and recreate the resource to fully clear the recovery key material.
-  Required Jamf privileges
-  The Jamf Platform API integration used by the provider must be granted the following privileges:
-  | Required privilege |
-  |---|
-  | `disk-encryption-configurations:create` |
-  | `disk-encryption-configurations:delete` |
-  | `disk-encryption-configurations:read` |
-  | `disk-encryption-configurations:update` |
+  Required Jamf permissions
+  Grant the API integration the following permissions in Jamf Account. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
+  | Category | Permission | Actions | API capability |
+  |---|---|---|---|
+  | Deployment | Disk encryption | Create, Read, Update, Delete | `disk-encryption-configurations` |
 ---
 
 # jamfplatform_pro_disk_encryption_configuration (Resource)
@@ -27,16 +24,13 @@ Manages a Jamf Pro disk encryption configuration. Disk encryption configurations
 - `institutional_recovery_key.password` is a Terraform `WriteOnly` attribute — sent to Jamf Pro on writes but never persisted in Terraform state. Pair it with `institutional_recovery_key.password_wo_version` to trigger rotation: bump the integer to force a new update carrying the current `password` value. Jamf Pro never returns the plaintext on read.
 - **Clearing the recovery key is not supported by Jamf Pro.** Once the `institutional_recovery_key` block is set, removing it or transitioning `key_type` from `Institutional` / `Individual and Institutional` back to `Individual` does not remove the stored certificate on the server. Destroy and recreate the resource to fully clear the recovery key material.
 
-**Required Jamf privileges**
+**Required Jamf permissions**
 
-The Jamf Platform API integration used by the provider must be granted the following privileges:
+Grant the API integration the following permissions in Jamf Account. `Category` and `Permission` name the section and row of the permission picker; `Actions` are the boxes to tick within that row.
 
-| Required privilege |
-|---|
-| `disk-encryption-configurations:create` |
-| `disk-encryption-configurations:delete` |
-| `disk-encryption-configurations:read` |
-| `disk-encryption-configurations:update` |
+| Category | Permission | Actions | API capability |
+|---|---|---|---|
+| Deployment | Disk encryption | Create, Read, Update, Delete | `disk-encryption-configurations` |
 
 ## Example Usage
 
