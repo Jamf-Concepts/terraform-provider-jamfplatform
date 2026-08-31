@@ -110,7 +110,10 @@ func (r *DNSZoneResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			"are resolved through authoritative name servers of your choice instead of public DNS — Jamf calls this " +
 			"\"split-brain DNS\", and a custom DNS zone is required before enterprise apps on internal private networks " +
 			"become reachable over ZTNA.\n\n" +
-			"Misconfiguring a zone can cut end users off from some or all of your private applications and workloads." +
+			"Misconfiguring a zone can cut end users off from some or all of your private applications and workloads.\n\n" +
+			"See the [Jamf Security Cloud guide](../guides/security-cloud) for the rules a name server address has " +
+			"to satisfy, how to choose the gateway each one is reached through, and why the gateway has to exist " +
+			"before the zone that names it." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

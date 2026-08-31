@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   Reads the content categories available in Jamf Security Cloud — Jamf's own classification of web and app traffic, such as Social or Cloud & File Storage. The catalogue is curated by Jamf, identical for every entitled tenant, and cannot be changed.
   Use this to reference a category without hard-coding a name Jamf may revise — in an output, or to pre-stage an identifier. Note that a category has two names: reference display_name, not name.
-  Zero Trust Network Access apps, which are what match a category, are not yet managed by this provider, so today the value read here is for reference rather than for wiring into another resource.
+  A jamfplatform_security_cloud_ztna_app is what matches a category, so resolve the category here and wire display_name into its category rather than writing the name out.
   Required Jamf permissions
   Grant the API integration the following permissions in Jamf Account — see Getting started with the Platform API https://developer.jamf.com/platform-api/reference/getting-started-with-platform-api. Category and Permission name the section and row of the permission picker; Actions are the boxes to tick within that row.
   | Category | Permission | Actions | API capability |
@@ -19,7 +19,7 @@ Reads the content categories available in Jamf Security Cloud — Jamf's own cla
 
 Use this to reference a category without hard-coding a name Jamf may revise — in an output, or to pre-stage an identifier. Note that a category has two names: reference `display_name`, not `name`.
 
-Zero Trust Network Access apps, which are what match a category, are not yet managed by this provider, so today the value read here is for reference rather than for wiring into another resource.
+A `jamfplatform_security_cloud_ztna_app` is what matches a category, so resolve the category here and wire `display_name` into its `category` rather than writing the name out.
 
 **Required Jamf permissions**
 
@@ -77,6 +77,6 @@ Optional:
 
 Read-Only:
 
-- `display_name` (String) The category name as shown in Jamf Security Cloud, for example `Social`. **This is the name that identifies the category** — a Zero Trust Network Access app's category matches on it, and it is the name to reference. Zero Trust Network Access apps are not yet managed by this provider.
+- `display_name` (String) The category name as shown in Jamf Security Cloud, for example `Social`. **This is the name that identifies the category** — a Zero Trust Network Access app's category matches on it, and it is the name to reference. Wire it into a `jamfplatform_security_cloud_ztna_app`'s `category`.
 - `id` (String) Content category identifier.
 - `name` (String) Jamf's internal label for the category, for example `Category - Social`. Informational only — reference `display_name` instead.

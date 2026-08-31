@@ -210,7 +210,10 @@ func (r *UEMConnectResource) Schema(ctx context.Context, _ resource.SchemaReques
 			"replaces the integration, which briefly interrupts syncing.\n\n" +
 			"After importing, run `terraform plan`: `user_data_field_mapping` and `group_membership_mapping` are captured from " +
 			"the tenant even though your configuration may not declare them, and the plan shows you what to " +
-			"write in to keep them." +
+			"write in to keep them.\n\n" +
+			"See the [Jamf Security Cloud guide](../guides/security-cloud) for how a Jamf Pro group is named in a " +
+			"membership mapping, why the order of the mappings decides which group a device joins, and what an " +
+			"import leaves you to reconcile." +
 			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{

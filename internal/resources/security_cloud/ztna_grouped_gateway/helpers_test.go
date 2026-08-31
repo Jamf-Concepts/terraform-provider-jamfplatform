@@ -149,7 +149,10 @@ func TestAppendWriteDiagnostics_NotEntitledIsNotAttributeScoped(t *testing.T) {
 
 // TestAppendWriteDiagnostics_MixedDedicatedIPs pins the member constraint whose
 // server message names a wire field with no counterpart on this schema, so the
-// translation is the only thing telling the operator which attribute to change.
+// translation is the only thing telling the operator what to change. It has to
+// name the `ipsec` block, which is what actually sets a gateway's form, and the
+// gateway data source, which is how the form of an unmanaged member is read —
+// and it must not restate the wire field name.
 func TestAppendWriteDiagnostics_MixedDedicatedIPs(t *testing.T) {
 	var diags diag.Diagnostics
 
@@ -165,12 +168,20 @@ func TestAppendWriteDiagnostics_MixedDedicatedIPs(t *testing.T) {
 			continue
 		}
 		if withPath.Path().Equal(path.Root("gateway_ids")) &&
-			strings.Contains(d.Detail(), "dedicated_egress_ips_enabled") {
+			strings.Contains(d.Detail(), "`ipsec`") &&
+			strings.Contains(d.Detail(), "jamfplatform_security_cloud_ztna_gateway") {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("want a gateway_ids diagnostic naming dedicated_egress_ips_enabled; got %v", diags)
+		t.Errorf("want a gateway_ids diagnostic naming the ipsec block and the gateway data source; got %v", diags)
+	}
+	for _, d := range diags {
+		authored, _, _ := strings.Cut(d.Detail(), "Reported by Jamf Security Cloud:")
+		if strings.Contains(authored, "dedicatedIps") ||
+			strings.Contains(authored, "dedicated_egress_ips_enabled") {
+			t.Errorf("the diagnostic must not name a wire field or a nonexistent attribute: %v", d)
+		}
 	}
 }
 

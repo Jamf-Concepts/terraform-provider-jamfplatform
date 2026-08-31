@@ -32,10 +32,10 @@ const (
 // The codes worth translating are the ones whose cause is not the field the
 // server names. GATEWAY_NOT_FOUND is the clearest case: the request that fails
 // is a zone write, but the thing that does not exist is a gateway, so the
-// diagnostic has to point at `name_servers` — a zone cannot be created before
-// the gateway its name servers are reachable through. NOT_ENTITLED is the other
-// one worth naming: the credentials are valid and the tenant simply does not
-// have the surface, which is invisible in a bare 403.
+// diagnostic has to point at `authoritative_name_servers` — a zone cannot be
+// created before the gateway its name servers are reachable through.
+// NOT_ENTITLED is the other one worth naming: the credentials are valid and the
+// tenant simply does not have the surface, which is invisible in a bare 403.
 func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 	apiErr := jamfplatform.AsAPIError(err)
 	if apiErr == nil {
@@ -71,9 +71,9 @@ func appendWriteDiagnostics(diags *diag.Diagnostics, err error) bool {
 		case codeListSizeExceeded:
 			diags.AddError(
 				"DNS zone collection size out of range",
-				"A collection on this zone is outside the size Jamf Security Cloud accepts: `domains` takes 1 to 100 "+
-					"entries and `name_servers` takes 1 to 20. There is also a per-tenant cap on the number of "+
-					"zones. Reported by Jamf Security Cloud: "+detail.Description,
+				"A collection on this zone is outside the size Jamf Security Cloud accepts: `domains` takes 1 to "+
+					"100 entries and `authoritative_name_servers` takes 1 to 20. There is also a per-tenant cap "+
+					"on the number of zones. Reported by Jamf Security Cloud: "+detail.Description,
 			)
 		case codeNotEntitled:
 			diags.AddError(

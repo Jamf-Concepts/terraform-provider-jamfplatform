@@ -155,7 +155,12 @@ func (r *ZtnaAppResource) Schema(ctx context.Context, _ resource.SchemaRequest, 
 			"cannot be changed afterwards — Terraform replaces the application instead.\n\n" +
 			"Host names and address ranges may belong to only one application across the whole tenant, so two " +
 			"applications cannot claim the same one. Misconfiguring an application can cut end users off from " +
-			"the resources it covers." + resourcePrivileges,
+			"the resources it covers.\n\n" +
+			"See the [Jamf Security Cloud guide](../guides/security-cloud) for what that tenant-wide uniqueness " +
+			"means in practice — how overlapping host names are resolved, and why renaming an application by " +
+			"replacing it fails — and for a worked example taking one internal application all the way from a " +
+			"device group to a device that can reach it." +
+			resourcePrivileges,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Application ID assigned by Jamf Security Cloud.",

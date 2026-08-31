@@ -16,10 +16,10 @@ import (
 //
 // Both collections are written straight from the response with no reconciliation
 // against the prior state. That is safe here because neither is order-sensitive
-// in Terraform: `domains` and `name_servers` are sets, so the comparison ignores
-// order. It also has to be that way for `domains` — Jamf Security Cloud sorts the
-// stored domain list byte-wise ascending, so the read never echoes the authored
-// order back (wire-probed 2026-08-27).
+// in Terraform: `domains` and `authoritative_name_servers` are sets, so the
+// comparison ignores order. It also has to be that way for `domains` — Jamf
+// Security Cloud sorts the stored domain list byte-wise ascending, so the read
+// never echoes the authored order back (wire-probed 2026-08-27).
 func assignDNSZoneResourceModel(ctx context.Context, state *DNSZoneResourceModel, z *securitycloud.Zone) diag.Diagnostics {
 	var diags diag.Diagnostics
 
@@ -92,7 +92,7 @@ func nameServerObjectValues(servers []securitycloud.NameServer) ([]attr.Value, d
 	return values, diags
 }
 
-// nameServerSetValue builds the resource-side name_servers set.
+// nameServerSetValue builds the resource-side authoritative_name_servers set.
 func nameServerSetValue(servers []securitycloud.NameServer) (types.Set, diag.Diagnostics) {
 	values, diags := nameServerObjectValues(servers)
 	if diags.HasError() {
@@ -103,7 +103,7 @@ func nameServerSetValue(servers []securitycloud.NameServer) (types.Set, diag.Dia
 	return set, diags
 }
 
-// nameServerListValue builds the data-source-side name_servers list.
+// nameServerListValue builds the data-source-side authoritative_name_servers list.
 func nameServerListValue(servers []securitycloud.NameServer) (types.List, diag.Diagnostics) {
 	values, diags := nameServerObjectValues(servers)
 	if diags.HasError() {

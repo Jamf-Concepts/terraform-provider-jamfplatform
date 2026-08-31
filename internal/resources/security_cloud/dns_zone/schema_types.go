@@ -24,5 +24,6 @@ var nameServerAttributeTypes = map[string]attr.Type{
 	"gateway_id": types.StringType,
 }
 
-// nameServerObjectType is the element type of the name_servers collection.
+// nameServerObjectType is the element type of the authoritative_name_servers
+// collection.
 var nameServerObjectType = types.ObjectType{AttrTypes: nameServerAttributeTypes}
