@@ -216,7 +216,9 @@ yours to create:
   member of a group.
 - **Dedicated** — your own egress point, and a paid add-on. An `ipsec` block builds a tunnel to your
   VPN concentrator; omitting it provisions a pair of private egress IPs, reported in
-  `dedicated_egress_ip_addresses`.
+  `dedicated_egress_ip_addresses`. The IPsec form here is Jamf's **Custom IPSec** gateway; its
+  **Quick Connect** kind, a Linux VM Jamf walks you through building, cannot be expressed in
+  Terraform.
 - **Grouped** — a failover and routing group over two or more dedicated gateways of the *same* form,
   all IPsec or all internet. Shared gateways are refused as members.
 
@@ -242,14 +244,16 @@ provider's credentials. No API lists an environment's tenants, so an environment
 configuration cannot fill it in from data — supply it as an input, or configure the provider with
 `tenant_id`.
 
-**A completed apply is not a usable gateway.** A new one reports `PENDING` and settles to `UP`
-roughly four and a half minutes later. The egress addresses arrive far sooner — within seconds — so
-`dedicated_egress_ip_addresses` is populated long before the gateway carries any traffic.
+**An apply waits for the gateway to settle**, so the one that returns is a gateway you can act on.
+A dedicated internet gateway takes about five minutes to report `UP` — **Available** in the portal —
+and an `egress_region` change re-provisions it and takes about as long again. Disabling one settles
+in seconds. Without the wait a first apply would hand downstream an empty
+`dedicated_egress_ip_addresses`, and a region change would hand it the *old* region's addresses.
 
-Changing `egress_region` re-provisions it: connectivity drops and the status returns to `PENDING`.
-For about half a minute the attribute still holds the **old** region's addresses, then the new ones
-replace them in place — it never empties, so a value read during that window is plausible and wrong.
-Both timings come from a single EU measurement; treat them as orders of magnitude.
+Creating an **IPsec** gateway is the exception: it settles at `DOWN`, because the tunnel's far end is
+configured from values the create returns, so it cannot be up yet. Build your side and the status
+reaches `UP` on a later refresh. If any wait runs out the apply still succeeds, with a warning naming
+the status reached; raise `create` or `update` in the `timeouts` block to wait longer.
 
 ### Short names and fixed addresses
 
